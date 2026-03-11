@@ -9,10 +9,11 @@ import {
   Phone, Mail, Users, StickyNote, CheckSquare, Paperclip,
   Building2, Globe, DollarSign, CalendarDays,
   Plus, MessageSquare, Calendar, ClipboardList, Star, Briefcase,
+  User,
 } from 'lucide-react';
-import type { Lead, TimelineEvent, Etapa, CompanyRubro, CompanyTipo, ActivityType } from '@/types';
+import type { Lead, TimelineEvent, Etapa, CompanyRubro, CompanyTipo, ActivityType, LeadSource, LeadPriority } from '@/types';
 import {
-  users, leadSourceLabels, etapaLabels,
+  users, leadSourceLabels, etapaLabels, priorityLabels,
   companyRubroLabels, companyTipoLabels,
   timelineEvents, activities,
 } from '@/data/mock';
@@ -53,6 +54,45 @@ function formatDate(dateStr: string) {
     day: '2-digit', month: 'short', year: 'numeric',
   });
 }
+
+const rubroColors: Record<string, string> = {
+  mineria: 'bg-amber-100 text-amber-700',
+  hoteleria: 'bg-purple-100 text-purple-700',
+  banca: 'bg-blue-100 text-blue-700',
+  construccion: 'bg-orange-100 text-orange-700',
+  salud: 'bg-rose-100 text-rose-700',
+  retail: 'bg-pink-100 text-pink-700',
+  telecomunicaciones: 'bg-indigo-100 text-indigo-700',
+  educacion: 'bg-cyan-100 text-cyan-700',
+  energia: 'bg-yellow-100 text-yellow-700',
+  consultoria: 'bg-teal-100 text-teal-700',
+  diplomatico: 'bg-violet-100 text-violet-700',
+  aviacion: 'bg-sky-100 text-sky-700',
+  consumo_masivo: 'bg-lime-100 text-lime-700',
+  otros: 'bg-gray-100 text-gray-700',
+};
+
+const tipoColors: Record<string, string> = {
+  A: 'bg-emerald-100 text-emerald-700',
+  B: 'bg-blue-100 text-blue-700',
+  C: 'bg-slate-100 text-slate-600',
+};
+
+const etapaColors: Record<string, string> = {
+  lead: 'bg-slate-100 text-slate-700',
+  contacto: 'bg-blue-100 text-blue-700',
+  reunion_agendada: 'bg-indigo-100 text-indigo-700',
+  reunion_efectiva: 'bg-cyan-100 text-cyan-700',
+  propuesta_economica: 'bg-purple-100 text-purple-700',
+  negociacion: 'bg-amber-100 text-amber-700',
+  licitacion: 'bg-amber-100 text-amber-700',
+  licitacion_etapa_final: 'bg-amber-100 text-amber-700',
+  cierre_ganado: 'bg-emerald-100 text-emerald-700',
+  firma_contrato: 'bg-emerald-100 text-emerald-700',
+  activo: 'bg-emerald-100 text-emerald-700',
+  cierre_perdido: 'bg-red-100 text-red-700',
+  inactivo: 'bg-gray-100 text-gray-700',
+};
 
 const timelineIconMap: Record<TimelineEvent['type'], typeof Phone> = {
   llamada: Phone,
@@ -149,6 +189,18 @@ export default function LeadDetailPage() {
   const [newContactCompany, setNewContactCompany] = useState('');
   const [newContactPhone, setNewContactPhone] = useState('');
   const [newContactEmail, setNewContactEmail] = useState('');
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    cargo: '',
+    phone: '',
+    email: '',
+    source: '' as LeadSource,
+    priority: '' as LeadPriority,
+    estimatedValue: 0,
+    nextAction: '',
+    nextFollowUp: '',
+  });
 
   const oppForm = useForm<NewOpportunityForm>({
     resolver: zodResolver(newOpportunitySchema) as import('react-hook-form').Resolver<NewOpportunityForm>,
@@ -184,6 +236,39 @@ export default function LeadDetailPage() {
       toast.success('Nota agregada correctamente');
       setNoteText('');
     }
+  }
+
+  function handleOpenEditDialog() {
+    if (!lead) return;
+    setEditForm({
+      name: lead.name,
+      cargo: lead.cargo ?? '',
+      phone: lead.phone,
+      email: lead.email,
+      source: lead.source,
+      priority: lead.priority,
+      estimatedValue: lead.estimatedValue,
+      nextAction: lead.nextAction,
+      nextFollowUp: lead.nextFollowUp,
+    });
+    setEditDialogOpen(true);
+  }
+
+  function handleSaveEdit() {
+    if (!lead) return;
+    updateLead(lead.id, {
+      name: editForm.name,
+      cargo: editForm.cargo || undefined,
+      phone: editForm.phone,
+      email: editForm.email,
+      source: editForm.source,
+      priority: editForm.priority,
+      estimatedValue: editForm.estimatedValue,
+      nextAction: editForm.nextAction,
+      nextFollowUp: editForm.nextFollowUp,
+    });
+    toast.success('Contacto actualizado correctamente');
+    setEditDialogOpen(false);
   }
 
   function handleQuickAction(action: string) {
@@ -417,7 +502,7 @@ export default function LeadDetailPage() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={() => toast.info('Función de edición próximamente')}>
+          <Button variant="outline" size="sm" onClick={handleOpenEditDialog}>
             <Edit /> Editar
           </Button>
           <Button variant="outline" size="sm" onClick={() => setStatusDialogOpen(true)}>
@@ -432,6 +517,27 @@ export default function LeadDetailPage() {
       {/* Main content: Summary cards + Tabs (left) | Sidebar (right) */}
       <div className="grid gap-6 lg:grid-cols-[1fr_520px] items-start">
         <div className="space-y-6">
+          {/* Quick actions */}
+          <div className="flex flex-wrap gap-1 rounded-lg bg-muted/40 p-1.5 border border-border/40">
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" onClick={() => handleQuickAction('nota')}>
+              <MessageSquare className="size-4" /> Nota
+            </Button>
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" onClick={() => handleQuickAction('llamada')}>
+              <Phone className="size-4" /> Llamada
+            </Button>
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" onClick={() => handleQuickAction('reunion')}>
+              <Calendar className="size-4" /> Reunión
+            </Button>
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" onClick={() => handleQuickAction('correo')}>
+              <Mail className="size-4" /> Correo
+            </Button>
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" onClick={() => handleQuickAction('archivo')}>
+              <Paperclip className="size-4" /> Archivo
+            </Button>
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" onClick={() => handleQuickAction('tarea')}>
+              <ClipboardList className="size-4" /> Tarea
+            </Button>
+          </div>
           {/* Summary cards */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Card className="py-0">
@@ -592,39 +698,45 @@ export default function LeadDetailPage() {
 
           {/* Tareas Tab */}
           <TabsContent value="tareas" className="mt-4">
-            <Card>
-              <CardHeader className="flex-row items-center justify-between">
-                <CardTitle>Tareas</CardTitle>
-                <Button size="sm" onClick={() => handleQuickAction('tarea')}>
-                  <Plus className="size-4" /> Nueva tarea
-                </Button>
-              </CardHeader>
+            <Card className="pt-2">
               <CardContent>
-                <div className="space-y-2">
-                  {mockTasks.map((task) => (
-                    <div key={task.id} className="flex items-center gap-3 rounded-lg border p-3">
-                      <Checkbox checked={task.done} />
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-medium ${task.done ? 'line-through text-muted-foreground' : ''}`}>
-                          {task.title}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {task.assignee} · Vence: {formatDate(task.dueDate)}
-                        </p>
-                      </div>
-                      <Badge variant={task.done ? 'secondary' : 'outline'} className="text-xs">
-                        {task.done ? 'Completada' : 'Pendiente'}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-10"></TableHead>
+                      <TableHead>Tarea</TableHead>
+                      <TableHead>Responsable</TableHead>
+                      <TableHead>Vencimiento</TableHead>
+                      <TableHead className="text-right">Estado</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {mockTasks.map((task) => (
+                      <TableRow key={task.id}>
+                        <TableCell><Checkbox checked={task.done} /></TableCell>
+                        <TableCell>
+                          <span className={`text-sm font-medium ${task.done ? 'line-through text-muted-foreground' : ''}`}>
+                            {task.title}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{task.assignee}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{formatDate(task.dueDate)}</TableCell>
+                        <TableCell className="text-right">
+                          <Badge variant={task.done ? 'secondary' : 'outline'} className="text-xs">
+                            {task.done ? 'Completada' : 'Pendiente'}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
           </TabsContent>
 
           {/* Historial Tab */}
           <TabsContent value="historial" className="mt-4">
-            <Card className="bg-transparent shadow-none pt-0">
+            <Card className="border-0 bg-transparent shadow-none pt-0">
               <CardContent className="pt-6">
                 <div className="relative">
                   <div className="absolute left-[19px] top-0 bottom-0 w-px bg-border" />
@@ -686,6 +798,7 @@ export default function LeadDetailPage() {
             </CardContent>
           </Card>
 
+          {/* Acciones Rápidas */}
           <Card className="gap-2">
             <CardHeader className="-mb-1 -mt-1">
               <CardTitle className="text-[14px]">Acciones Rápidas</CardTitle>
@@ -735,30 +848,45 @@ export default function LeadDetailPage() {
               </DropdownMenu>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-                {leadOpportunities.length === 0 ? (
+              {leadOpportunities.length === 0 ? (
+                <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
                   <p className="text-center text-xs text-muted-foreground">Sin oportunidades vinculadas.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {leadOpportunities.slice(0, 3).map((opp) => (
-                      <div
-                        key={opp.id}
-                        className="flex items-center justify-between gap-2 rounded py-1.5 hover:bg-muted/30 cursor-pointer"
-                        onClick={() => navigate('/opportunities')}
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[14px] font-medium truncate">{opp.title}</p>
-                          <p className="text-[13px] text-muted-foreground">{formatCurrency(opp.amount)} · {opp.probability}%</p>
-                        </div>
-                        <Badge variant="secondary" className="text-[12px] shrink-0 bg-blue-100 text-blue-700 border-0">{opp.status}</Badge>
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {leadOpportunities.slice(0, 3).map((opp) => (
+                    <div
+                      key={opp.id}
+                      className="rounded-xl border bg-card p-3.5 hover:shadow-sm transition-shadow cursor-pointer"
+                      onClick={() => navigate('/opportunities')}
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <p className="text-[14px] font-semibold leading-tight">{opp.title}</p>
+                        <Badge variant="outline" className={`text-[11px] font-medium shrink-0 border-0 ${etapaColors[opp.etapa] ?? 'bg-gray-100 text-gray-700'}`}>
+                          {etapaLabels[opp.etapa]}
+                        </Badge>
                       </div>
-                    ))}
-                    {leadOpportunities.length > 3 && (
-                      <p className="text-[11px] text-muted-foreground text-center pt-1">+{leadOpportunities.length - 3} más</p>
-                    )}
-                  </div>
-                )}
-              </div>
+                      <div className="flex items-baseline gap-2 mb-2.5">
+                        <span className="text-[15px] font-bold text-emerald-600">{formatCurrency(opp.amount)}</span>
+                        <span className="text-[12px] text-muted-foreground">{opp.probability}% prob.</span>
+                      </div>
+                      <div className="flex items-center gap-4 text-[12px] text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <User className="size-3" />
+                          {opp.assignedToName}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <CalendarDays className="size-3" />
+                          Cierre: {formatDate(opp.expectedCloseDate)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                  {leadOpportunities.length > 3 && (
+                    <p className="text-[11px] text-muted-foreground text-center pt-1">+{leadOpportunities.length - 3} más</p>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -783,26 +911,48 @@ export default function LeadDetailPage() {
               </DropdownMenu>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-                {(!lead.companies || lead.companies.length === 0) ? (
+              {(!lead.companies || lead.companies.length === 0) ? (
+                <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
                   <p className="text-center text-xs text-muted-foreground">Sin empresas vinculadas.</p>
-                ) : (
-                  <ul className="space-y-1">
-                    {lead.companies.slice(0, 3).map((comp, idx) => (
-                      <li key={`${comp.name}-${idx}`} className="flex items-center gap-1.5 py-1">
-                        {comp.isPrimary && <Star className="size-3 shrink-0 fill-amber-400 text-amber-500" />}
-                        <div className="min-w-0 flex-1">
-                          <span className="text-[14px] truncate block">{comp.name}</span>
-                          <span className="text-[12px] text-muted-foreground">{etapaLabels[lead.etapa]}</span>
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {lead.companies.slice(0, 3).map((comp, idx) => (
+                    <div
+                      key={`${comp.name}-${idx}`}
+                      className="rounded-xl border bg-card p-3.5 hover:shadow-sm transition-shadow cursor-pointer"
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          {comp.isPrimary && <Star className="size-3.5 shrink-0 fill-amber-400 text-amber-500" />}
+                          <p className="text-[14px] font-semibold leading-tight truncate">{comp.name}</p>
                         </div>
-                      </li>
-                    ))}
-                    {(lead.companies?.length ?? 0) > 3 && (
-                      <p className="text-[11px] text-muted-foreground text-center pt-1">+{(lead.companies?.length ?? 0) - 3} más</p>
-                    )}
-                  </ul>
-                )}
-              </div>
+                        {comp.rubro && (
+                          <Badge variant="outline" className={`text-[11px] font-medium shrink-0 border-0 ${rubroColors[comp.rubro] ?? 'bg-gray-100 text-gray-700'}`}>
+                            {companyRubroLabels[comp.rubro]}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-4 text-[12px] text-muted-foreground">
+                        {comp.domain && (
+                          <span className="flex items-center gap-1">
+                            <Globe className="size-3" />
+                            {comp.domain}
+                          </span>
+                        )}
+                        {comp.tipo && (
+                          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 font-medium border-0 ${tipoColors[comp.tipo]}`}>
+                            Tipo {comp.tipo}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {(lead.companies?.length ?? 0) > 3 && (
+                    <p className="text-[11px] text-muted-foreground text-center pt-1">+{(lead.companies?.length ?? 0) - 3} más</p>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -827,37 +977,129 @@ export default function LeadDetailPage() {
               </DropdownMenu>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-                {(!lead.linkedContactIds || lead.linkedContactIds.length === 0) ? (
+              {(!lead.linkedContactIds || lead.linkedContactIds.length === 0) ? (
+                <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
                   <p className="text-center text-xs text-muted-foreground">Sin contactos vinculados.</p>
-                ) : (
-                  <ul className="space-y-1">
-                    {(lead.linkedContactIds ?? []).slice(0, 3).map((contactId) => {
-                      const linked = leads.find((l) => l.id === contactId);
-                      if (!linked) return null;
-                      return (
-                        <li
-                          key={contactId}
-                          className="flex items-center gap-1.5 py-1 cursor-pointer hover:bg-muted/30 rounded"
-                          onClick={() => navigate(`/contactos/${contactId}`)}
-                        >
-                          <div className="min-w-0 flex-1">
-                            <span className="text-[14px] truncate block">{linked.name}</span>
-                            {linked.email && <span className="text-[12px] text-muted-foreground truncate block">{linked.email}</span>}
-                          </div>
-                        </li>
-                      );
-                    })}
-                    {(lead.linkedContactIds?.length ?? 0) > 3 && (
-                      <p className="text-[11px] text-muted-foreground text-center pt-1">+{(lead.linkedContactIds?.length ?? 0) - 3} más</p>
-                    )}
-                  </ul>
-                )}
-              </div>
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {(lead.linkedContactIds ?? []).slice(0, 3).map((contactId) => {
+                    const linked = leads.find((l) => l.id === contactId);
+                    if (!linked) return null;
+                    const primaryCompany = getPrimaryCompany(linked);
+                    return (
+                      <div
+                        key={contactId}
+                        className="rounded-xl border bg-card p-3.5 hover:shadow-sm transition-shadow cursor-pointer"
+                        onClick={() => navigate(`/contactos/${contactId}`)}
+                      >
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <p className="text-[14px] font-semibold leading-tight truncate">{linked.name}</p>
+                          <Badge variant="outline" className={`text-[11px] font-medium shrink-0 border-0 ${etapaColors[linked.etapa] ?? 'bg-gray-100 text-gray-700'}`}>
+                            {etapaLabels[linked.etapa]}
+                          </Badge>
+                        </div>
+                        {linked.cargo && (
+                          <p className="text-[13px] text-muted-foreground mb-2">{linked.cargo}{primaryCompany ? ` · ${primaryCompany.name}` : ''}</p>
+                        )}
+                        <div className="flex items-center gap-4 text-[12px] text-muted-foreground">
+                          {linked.phone && (
+                            <span className="flex items-center gap-1">
+                              <Phone className="size-3" />
+                              {linked.phone}
+                            </span>
+                          )}
+                          {linked.email && (
+                            <span className="flex items-center gap-1 truncate">
+                              <Mail className="size-3 shrink-0" />
+                              {linked.email}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {(lead.linkedContactIds?.length ?? 0) > 3 && (
+                    <p className="text-[11px] text-muted-foreground text-center pt-1">+{(lead.linkedContactIds?.length ?? 0) - 3} más</p>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Editar Contacto</DialogTitle>
+            <DialogDescription>Modifica los datos del contacto.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Nombre</Label>
+                <Input id="edit-name" value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-cargo">Cargo</Label>
+                <Input id="edit-cargo" value={editForm.cargo} onChange={(e) => setEditForm((f) => ({ ...f, cargo: e.target.value }))} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-phone">Teléfono</Label>
+                <Input id="edit-phone" value={editForm.phone} onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-email">Email</Label>
+                <Input id="edit-email" type="email" value={editForm.email} onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Fuente</Label>
+                <Select value={editForm.source} onValueChange={(v) => setEditForm((f) => ({ ...f, source: v as LeadSource }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(leadSourceLabels).map(([key, label]) => (
+                      <SelectItem key={key} value={key}>{label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Prioridad</Label>
+                <Select value={editForm.priority} onValueChange={(v) => setEditForm((f) => ({ ...f, priority: v as LeadPriority }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(priorityLabels).map(([key, label]) => (
+                      <SelectItem key={key} value={key}>{label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-value">Valor estimado (S/)</Label>
+              <Input id="edit-value" type="number" min={0} value={editForm.estimatedValue} onChange={(e) => setEditForm((f) => ({ ...f, estimatedValue: Number(e.target.value) }))} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-next-action">Próxima acción</Label>
+              <Input id="edit-next-action" value={editForm.nextAction} onChange={(e) => setEditForm((f) => ({ ...f, nextAction: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-followup">Próximo seguimiento</Label>
+              <Input id="edit-followup" type="date" value={editForm.nextFollowUp} onChange={(e) => setEditForm((f) => ({ ...f, nextFollowUp: e.target.value }))} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSaveEdit} disabled={!editForm.name.trim()}>Guardar cambios</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Quick Action Dialog */}
       <Dialog open={activeDialog !== null} onOpenChange={(open) => { if (!open) setActiveDialog(null); }}>
