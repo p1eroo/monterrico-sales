@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import {
   ArrowLeft, Edit, RefreshCw, UserPlus,
   Phone, Mail, Users, StickyNote, CheckSquare, Paperclip,
-  Building2, Globe, DollarSign, CalendarDays,
+  Building2, Globe, DollarSign, CalendarDays, MapPin,
   Plus, MessageSquare, Calendar, ClipboardList, Star, Briefcase,
   User,
 } from 'lucide-react';
@@ -136,11 +136,52 @@ const mockNotes = [
   { id: 'n3', text: 'Se acordó enviar tarifas diferenciadas según volumen de uso mensual.', author: 'María García', date: '2026-03-05' },
 ];
 
-const mockTasks = [
-  { id: 't1', title: 'Enviar propuesta comercial actualizada', done: true, dueDate: '2026-03-05', assignee: 'Carlos Mendoza' },
-  { id: 't2', title: 'Coordinar visita a la flota ejecutiva', done: false, dueDate: '2026-03-08', assignee: 'José Ramírez' },
-  { id: 't3', title: 'Preparar contrato borrador', done: false, dueDate: '2026-03-10', assignee: 'María García' },
-  { id: 't4', title: 'Confirmar disponibilidad de vehículos', done: false, dueDate: '2026-03-07', assignee: 'Ana Torres' },
+type TaskStatus = 'pendiente' | 'en_progreso' | 'completada';
+type TaskPriority = 'alta' | 'media' | 'baja';
+type TaskType = 'llamada' | 'reunion' | 'correo';
+
+interface MockTask {
+  id: string;
+  title: string;
+  status: TaskStatus;
+  type?: TaskType;
+  priority: TaskPriority;
+  company?: string;
+  startDate?: string;
+  dueDate: string;
+  startTime?: string;
+  assignee: string;
+}
+
+const taskStatusLabels: Record<TaskStatus, string> = {
+  pendiente: 'Pendiente',
+  en_progreso: 'En progreso',
+  completada: 'Completada',
+};
+
+const taskStatusColors: Record<TaskStatus, string> = {
+  pendiente: 'bg-amber-100 text-amber-700',
+  en_progreso: 'bg-blue-100 text-blue-700',
+  completada: 'bg-emerald-100 text-emerald-700',
+};
+
+const taskPriorityColors: Record<TaskPriority, string> = {
+  alta: 'bg-red-100 text-red-700',
+  media: 'bg-amber-100 text-amber-700',
+  baja: 'bg-slate-100 text-slate-600',
+};
+
+const taskTypeLabels: Record<TaskType, string> = {
+  llamada: 'Llamada',
+  reunion: 'Reunión',
+  correo: 'Correo',
+};
+
+const initialMockTasks: MockTask[] = [
+  { id: 't1', title: 'Enviar propuesta comercial actualizada', status: 'completada', type: 'correo', priority: 'alta', company: 'Minera Los Andes', startDate: '2026-03-03', dueDate: '2026-03-05', startTime: '09:00', assignee: 'Carlos Mendoza' },
+  { id: 't2', title: 'Coordinar visita a la flota ejecutiva', status: 'pendiente', type: 'reunion', priority: 'media', company: 'Hotel Libertador', startDate: '2026-03-06', dueDate: '2026-03-08', startTime: '14:00', assignee: 'José Ramírez' },
+  { id: 't3', title: 'Preparar contrato borrador', status: 'pendiente', type: 'correo', priority: 'media', startDate: '2026-03-08', dueDate: '2026-03-10', startTime: '10:00', assignee: 'María García' },
+  { id: 't4', title: 'Confirmar disponibilidad de vehículos', status: 'en_progreso', type: 'llamada', priority: 'baja', startDate: '2026-03-05', dueDate: '2026-03-07', startTime: '11:30', assignee: 'Ana Torres' },
 ];
 
 const etapasParaOportunidad: Etapa[] = ['lead', 'contacto', 'reunion_agendada', 'reunion_efectiva', 'propuesta_economica', 'negociacion', 'licitacion', 'licitacion_etapa_final', 'cierre_ganado', 'firma_contrato', 'activo', 'cierre_perdido', 'inactivo'];
@@ -189,6 +230,21 @@ export default function LeadDetailPage() {
   const [newContactCompany, setNewContactCompany] = useState('');
   const [newContactPhone, setNewContactPhone] = useState('');
   const [newContactEmail, setNewContactEmail] = useState('');
+  const [tasks, setTasks] = useState<MockTask[]>(initialMockTasks);
+  const [newTask, setNewTask] = useState({
+    title: '',
+    type: '' as TaskType | '',
+    status: 'pendiente' as TaskStatus,
+    priority: 'media' as TaskPriority,
+    company: '',
+    startDate: '',
+    dueDate: '',
+    startTime: '',
+    assignee: '',
+  });
+  const [completedTask, setCompletedTask] = useState<MockTask | null>(null);
+  const [activityFromTaskOpen, setActivityFromTaskOpen] = useState(false);
+
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editForm, setEditForm] = useState({
     name: '',
@@ -276,16 +332,57 @@ export default function LeadDetailPage() {
   }
 
   function submitQuickAction() {
+    if (activeDialog === 'tarea') {
+      if (!newTask.title.trim()) {
+        toast.error('Ingresa un título para la tarea');
+        return;
+      }
+      const assigneeName = users.find((u) => u.id === newTask.assignee)?.name ?? '';
+      const task: MockTask = {
+        id: `t${Date.now()}`,
+        title: newTask.title,
+        status: newTask.status,
+        type: (newTask.type || undefined) as TaskType | undefined,
+        priority: newTask.priority,
+        company: newTask.company || undefined,
+        startDate: newTask.startDate || undefined,
+        dueDate: newTask.dueDate,
+        startTime: newTask.startTime || undefined,
+        assignee: assigneeName,
+      };
+      setTasks((prev) => [...prev, task]);
+      setNewTask({ title: '', type: '', status: 'pendiente', priority: 'media', company: '', startDate: '', dueDate: '', startTime: '', assignee: '' });
+      toast.success('Tarea creada');
+      setActiveDialog(null);
+      return;
+    }
     const actionLabels: Record<string, string> = {
       nota: 'Nota agregada',
       llamada: 'Llamada registrada',
       reunion: 'Reunión programada',
-      tarea: 'Tarea creada',
       correo: 'Correo enviado',
       archivo: 'Archivo adjuntado',
     };
     toast.success(actionLabels[activeDialog ?? ''] ?? 'Acción completada');
     setActiveDialog(null);
+  }
+
+  function handleTaskToggle(taskId: string) {
+    const task = tasks.find((t) => t.id === taskId);
+    if (!task) return;
+
+    if (task.status === 'completada') {
+      setTasks((prev) => prev.map((t) => t.id === taskId ? { ...t, status: 'pendiente' as TaskStatus } : t));
+      return;
+    }
+
+    setTasks((prev) => prev.map((t) => t.id === taskId ? { ...t, status: 'completada' as TaskStatus } : t));
+    toast.success('Tarea completada');
+
+    if (task.type) {
+      setCompletedTask(task);
+      setActivityFromTaskOpen(true);
+    }
   }
 
   function handleOpenConvertDialog() {
@@ -705,25 +802,47 @@ export default function LeadDetailPage() {
                     <TableRow>
                       <TableHead className="w-10"></TableHead>
                       <TableHead>Tarea</TableHead>
+                      <TableHead className="hidden md:table-cell">Empresa</TableHead>
+                      <TableHead className="hidden sm:table-cell">Tipo</TableHead>
+                      <TableHead className="hidden lg:table-cell">Prioridad</TableHead>
                       <TableHead>Responsable</TableHead>
-                      <TableHead>Vencimiento</TableHead>
+                      <TableHead className="hidden md:table-cell">Fecha</TableHead>
                       <TableHead className="text-right">Estado</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {mockTasks.map((task) => (
+                    {tasks.map((task) => (
                       <TableRow key={task.id}>
-                        <TableCell><Checkbox checked={task.done} /></TableCell>
                         <TableCell>
-                          <span className={`text-sm font-medium ${task.done ? 'line-through text-muted-foreground' : ''}`}>
+                          <Checkbox
+                            checked={task.status === 'completada'}
+                            onCheckedChange={() => handleTaskToggle(task.id)}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <span className={`text-sm font-medium ${task.status === 'completada' ? 'line-through text-muted-foreground' : ''}`}>
                             {task.title}
                           </span>
                         </TableCell>
+                        <TableCell className="hidden md:table-cell text-sm text-muted-foreground">{task.company ?? '—'}</TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          {task.type ? (
+                            <Badge variant="outline" className="text-xs">{taskTypeLabels[task.type]}</Badge>
+                          ) : '—'}
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          <Badge className={`text-xs border-0 ${taskPriorityColors[task.priority]}`}>
+                            {priorityLabels[task.priority]}
+                          </Badge>
+                        </TableCell>
                         <TableCell className="text-sm text-muted-foreground">{task.assignee}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{formatDate(task.dueDate)}</TableCell>
+                        <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                          {formatDate(task.dueDate)}
+                          {task.startTime && <span className="ml-1 text-xs">({task.startTime})</span>}
+                        </TableCell>
                         <TableCell className="text-right">
-                          <Badge variant={task.done ? 'secondary' : 'outline'} className="text-xs">
-                            {task.done ? 'Completada' : 'Pendiente'}
+                          <Badge className={`text-xs border-0 ${taskStatusColors[task.status]}`}>
+                            {taskStatusLabels[task.status]}
                           </Badge>
                         </TableCell>
                       </TableRow>
@@ -795,37 +914,39 @@ export default function LeadDetailPage() {
                 <CalendarDays className="size-4 text-muted-foreground" />
                 <span>Fecha de creación: {formatDate(lead.createdAt)}</span>
               </div>
+              {(lead.departamento || lead.provincia || lead.distrito || lead.direccion) && (
+                <>
+                  <div className="border-t pt-2 mt-1" />
+                  {lead.departamento && (
+                    <div className="flex items-center gap-2">
+                      <MapPin className="size-4 text-muted-foreground" />
+                      <span>{lead.departamento}</span>
+                    </div>
+                  )}
+                  {lead.provincia && (
+                    <div className="flex items-center gap-2 pl-6">
+                      <span className="text-muted-foreground">Provincia:</span>
+                      <span>{lead.provincia}</span>
+                    </div>
+                  )}
+                  {lead.distrito && (
+                    <div className="flex items-center gap-2 pl-6">
+                      <span className="text-muted-foreground">Distrito:</span>
+                      <span>{lead.distrito}</span>
+                    </div>
+                  )}
+                  {lead.direccion && (
+                    <div className="flex items-center gap-2 pl-6">
+                      <span className="text-muted-foreground">Dirección:</span>
+                      <span>{lead.direccion}</span>
+                    </div>
+                  )}
+                </>
+              )}
             </CardContent>
           </Card>
 
-          {/* Acciones Rápidas */}
-          <Card className="gap-2">
-            <CardHeader className="-mb-1 -mt-1">
-              <CardTitle className="text-[14px]">Acciones Rápidas</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="grid grid-cols-2 gap-2">
-                <Button variant="outline" className="justify-start" onClick={() => handleQuickAction('nota')}>
-                  <MessageSquare className="size-4 shrink-0" /> Nota
-                </Button>
-                <Button variant="outline" className="justify-start" onClick={() => handleQuickAction('llamada')}>
-                  <Phone className="size-4 shrink-0" /> Llamada
-                </Button>
-                <Button variant="outline" className="justify-start" onClick={() => handleQuickAction('reunion')}>
-                  <Calendar className="size-4 shrink-0" /> Reunión
-                </Button>
-                <Button variant="outline" className="justify-start" onClick={() => handleQuickAction('correo')}>
-                  <Mail className="size-4 shrink-0" /> Correo
-                </Button>
-                <Button variant="outline" className="justify-start" onClick={() => handleQuickAction('archivo')}>
-                  <Paperclip className="size-4 shrink-0" /> Archivo
-                </Button>
-                <Button variant="outline" className="justify-start" onClick={() => handleQuickAction('tarea')}>
-                  <ClipboardList className="size-4 shrink-0" /> Tarea
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+
 
           {/* Oportunidades vinculadas */}
           <Card className="gap-2">
@@ -1135,6 +1256,32 @@ export default function LeadDetailPage() {
                   <Label>Asunto</Label>
                   <Input placeholder="Asunto de la llamada" />
                 </div>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label>Fecha</Label>
+                    <Input type="date" defaultValue={new Date().toISOString().slice(0, 10)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Hora</Label>
+                    <Input type="time" defaultValue={new Date().toTimeString().slice(0, 5)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Duración (min)</Label>
+                    <Input type="number" min={1} placeholder="Ej: 15" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Resultado</Label>
+                  <Select>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="contactado">Contactado</SelectItem>
+                      <SelectItem value="no_contesta">No contesta</SelectItem>
+                      <SelectItem value="ocupado">Ocupado</SelectItem>
+                      <SelectItem value="mensaje">Dejó mensaje</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="space-y-2">
                   <Label>Resumen</Label>
                   <Textarea placeholder="Resumen de la conversación..." rows={3} />
@@ -1147,13 +1294,37 @@ export default function LeadDetailPage() {
                   <Label>Título</Label>
                   <Input placeholder="Título de la reunión" />
                 </div>
-                <div className="space-y-2">
-                  <Label>Fecha y hora</Label>
-                  <Input type="datetime-local" />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Fecha y hora</Label>
+                    <Input type="datetime-local" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Tipo de reunión</Label>
+                    <Select>
+                      <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="presencial">Presencial</SelectItem>
+                        <SelectItem value="virtual">Virtual</SelectItem>
+                        <SelectItem value="telefonica">Telefónica</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Descripción</Label>
-                  <Textarea placeholder="Detalles de la reunión..." rows={2} />
+                  <Label>Resultado</Label>
+                  <Select>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="efectiva">Efectiva</SelectItem>
+                      <SelectItem value="reprogramada">Reprogramada</SelectItem>
+                      <SelectItem value="cancelada">Cancelada</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Notas de la reunión</Label>
+                  <Textarea placeholder="Puntos tratados, acuerdos, próximos pasos..." rows={3} />
                 </div>
               </>
             )}
@@ -1161,24 +1332,138 @@ export default function LeadDetailPage() {
               <>
                 <div className="space-y-2">
                   <Label>Título de la tarea</Label>
-                  <Input placeholder="¿Qué necesitas hacer?" />
+                  <Input
+                    placeholder="¿Qué necesitas hacer?"
+                    value={newTask.title}
+                    onChange={(e) => setNewTask((t) => ({ ...t, title: e.target.value }))}
+                  />
                 </div>
-                <div className="space-y-2">
-                  <Label>Fecha límite</Label>
-                  <Input type="date" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Asignar a</Label>
-                  <Select>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Seleccionar asesor" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {users.filter((u) => u.status === 'activo').map((u) => (
-                        <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+
+                <div className="grid gap-4 grid-cols-2">
+                  {/* Empresa */}
+                  <div className="space-y-2">
+                    <Label>Empresa</Label>
+                    <Select
+                      value={newTask.company}
+                      onValueChange={(v) => setNewTask((t) => ({ ...t, company: v }))}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Seleccionar empresa" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(lead?.companies ?? []).map((comp) => (
+                          <SelectItem key={comp.name} value={comp.name}>
+                            <span className="flex items-center gap-2">
+                              <Building2 className="size-3.5" />
+                              {comp.name}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Asignar a */}
+                  <div className="space-y-2">
+                    <Label>Asignar a</Label>
+                    <Select
+                      value={newTask.assignee}
+                      onValueChange={(v) => setNewTask((t) => ({ ...t, assignee: v }))}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Seleccionar asesor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {users.filter((u) => u.status === 'activo').map((u) => (
+                          <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Tipo */}
+                  <div className="space-y-2">
+                    <Label>Tipo</Label>
+                    <Select
+                      value={newTask.type}
+                      onValueChange={(v) => setNewTask((t) => ({ ...t, type: v as TaskType }))}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Seleccionar tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(taskTypeLabels).map(([key, label]) => (
+                          <SelectItem key={key} value={key}>{label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Estado */}
+                  <div className="space-y-2">
+                    <Label>Estado</Label>
+                    <Select
+                      value={newTask.status}
+                      onValueChange={(v) => setNewTask((t) => ({ ...t, status: v as TaskStatus }))}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(taskStatusLabels).map(([key, label]) => (
+                          <SelectItem key={key} value={key}>{label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Prioridad */}
+                  <div className="space-y-2">
+                    <Label>Prioridad</Label>
+                    <Select
+                      value={newTask.priority}
+                      onValueChange={(v) => setNewTask((t) => ({ ...t, priority: v as TaskPriority }))}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(priorityLabels).map(([key, label]) => (
+                          <SelectItem key={key} value={key}>{label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Hora estimada */}
+                  <div className="space-y-2">
+                    <Label>Hora estimada</Label>
+                    <Input
+                      type="time"
+                      value={newTask.startTime}
+                      onChange={(e) => setNewTask((t) => ({ ...t, startTime: e.target.value }))}
+                    />
+                  </div>
+
+                  {/* Fecha de inicio */}
+                  <div className="space-y-2">
+                    <Label>Fecha de inicio</Label>
+                    <Input
+                      type="date"
+                      value={newTask.startDate}
+                      onChange={(e) => setNewTask((t) => ({ ...t, startDate: e.target.value }))}
+                    />
+                  </div>
+
+                  {/* Fecha límite */}
+                  <div className="space-y-2">
+                    <Label>Fecha límite</Label>
+                    <Input
+                      type="date"
+                      value={newTask.dueDate}
+                      onChange={(e) => setNewTask((t) => ({ ...t, dueDate: e.target.value }))}
+                    />
+                  </div>
                 </div>
               </>
             )}
@@ -1189,8 +1474,8 @@ export default function LeadDetailPage() {
                   <Input placeholder="Asunto del correo" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Mensaje</Label>
-                  <Textarea placeholder="Escribe tu mensaje..." rows={4} />
+                  <Label>Resumen del contenido</Label>
+                  <Textarea placeholder="Resumen de lo enviado/recibido..." rows={3} />
                 </div>
               </>
             )}
@@ -1540,6 +1825,147 @@ export default function LeadDetailPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setAssignDialogOpen(false)}>
               Cancelar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Actividad generada al completar tarea */}
+      <Dialog open={activityFromTaskOpen} onOpenChange={(open) => { setActivityFromTaskOpen(open); if (!open) setCompletedTask(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {completedTask?.type === 'llamada' && <><Phone className="size-5 text-blue-600" /> Registrar Llamada</>}
+              {completedTask?.type === 'reunion' && <><Users className="size-5 text-emerald-600" /> Registrar Reunión</>}
+              {completedTask?.type === 'correo' && <><Mail className="size-5 text-purple-600" /> Registrar Correo</>}
+            </DialogTitle>
+            <DialogDescription>
+              La tarea "{completedTask?.title}" fue completada. Registra los detalles de la actividad.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Resumen de la tarea completada */}
+            <div className="rounded-lg border bg-muted/30 p-3 space-y-1.5 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Tarea</span>
+                <span className="font-medium">{completedTask?.title}</span>
+              </div>
+              {completedTask?.company && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Empresa</span>
+                  <span className="font-medium">{completedTask.company}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Responsable</span>
+                <span>{completedTask?.assignee}</span>
+              </div>
+            </div>
+
+            {completedTask?.type === 'llamada' && (
+              <>
+                <div className="space-y-2">
+                  <Label>Asunto</Label>
+                  <Input placeholder="Asunto de la llamada" defaultValue={completedTask.title} />
+                </div>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label>Fecha</Label>
+                    <Input type="date" defaultValue={completedTask.dueDate || new Date().toISOString().slice(0, 10)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Hora</Label>
+                    <Input type="time" defaultValue={completedTask.startTime || new Date().toTimeString().slice(0, 5)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Duración (min)</Label>
+                    <Input type="number" min={1} placeholder="Ej: 15" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Resultado</Label>
+                  <Select>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="contactado">Contactado</SelectItem>
+                      <SelectItem value="no_contesta">No contesta</SelectItem>
+                      <SelectItem value="ocupado">Ocupado</SelectItem>
+                      <SelectItem value="mensaje">Dejó mensaje</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Resumen</Label>
+                  <Textarea placeholder="Resumen de la conversación..." rows={3} />
+                </div>
+              </>
+            )}
+
+            {completedTask?.type === 'reunion' && (
+              <>
+                <div className="space-y-2">
+                  <Label>Título</Label>
+                  <Input placeholder="Título de la reunión" defaultValue={completedTask.title} />
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Fecha y hora</Label>
+                    <Input type="datetime-local" defaultValue={completedTask.dueDate && completedTask.startTime ? `${completedTask.dueDate}T${completedTask.startTime}` : ''} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Tipo de reunión</Label>
+                    <Select>
+                      <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="presencial">Presencial</SelectItem>
+                        <SelectItem value="virtual">Virtual</SelectItem>
+                        <SelectItem value="telefonica">Telefónica</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Resultado</Label>
+                  <Select>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="efectiva">Efectiva</SelectItem>
+                      <SelectItem value="reprogramada">Reprogramada</SelectItem>
+                      <SelectItem value="cancelada">Cancelada</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Notas de la reunión</Label>
+                  <Textarea placeholder="Puntos tratados, acuerdos, próximos pasos..." rows={3} />
+                </div>
+              </>
+            )}
+
+            {completedTask?.type === 'correo' && (
+              <>
+                <div className="space-y-2">
+                  <Label>Asunto</Label>
+                  <Input placeholder="Asunto del correo" defaultValue={completedTask.title} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Resumen del contenido</Label>
+                  <Textarea placeholder="Resumen de lo enviado/recibido..." rows={3} />
+                </div>
+              </>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setActivityFromTaskOpen(false); setCompletedTask(null); }}>
+              Omitir
+            </Button>
+            <Button className="bg-[#13944C] hover:bg-[#0f7a3d]" onClick={() => {
+              toast.success(`${completedTask?.type === 'llamada' ? 'Llamada' : completedTask?.type === 'reunion' ? 'Reunión' : 'Correo'} registrad${completedTask?.type === 'reunion' ? 'a' : completedTask?.type === 'llamada' ? 'a' : 'o'} exitosamente`);
+              setActivityFromTaskOpen(false);
+              setCompletedTask(null);
+            }}>
+              Guardar actividad
             </Button>
           </DialogFooter>
         </DialogContent>

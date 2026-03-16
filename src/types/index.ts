@@ -71,6 +71,12 @@ export interface Lead {
   nextFollowUp: string;
   notes?: string;
   tags?: string[];
+  docType?: 'dni' | 'cee';
+  docNumber?: string;
+  departamento?: string;
+  provincia?: string;
+  distrito?: string;
+  direccion?: string;
   /** IDs de otros contactos vinculados (ej. colegas de la misma empresa) */
   linkedContactIds?: string[];
 }
