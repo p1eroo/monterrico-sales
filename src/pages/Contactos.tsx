@@ -1,17 +1,14 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import {
   Plus, Search, Grid3X3, List, MoreHorizontal,
   Eye, Pencil, Trash2, X, ArrowUpDown,
-  Phone, Mail, Building2, DollarSign, Users, ChevronLeft, ChevronRight, Check,
+  Phone, Mail, Building2, DollarSign, Users, ChevronLeft, ChevronRight,
   Upload, Download, FileSpreadsheet,
 } from 'lucide-react';
-import type { LeadPriority, LeadSource, Etapa } from '@/types';
 import { users, leadSourceLabels, etapaLabels, priorityLabels } from '@/data/mock';
+import { NewContactWizard, type NewContactData } from '@/components/shared/NewContactWizard';
 import { useCRMStore } from '@/store/crmStore';
 import { getPrimaryCompany } from '@/lib/utils';
 
@@ -26,14 +23,9 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -61,28 +53,6 @@ const etapaTabs: { value: string; label: string }[] = [
   { value: 'inactivo', label: 'Inactivo' },
 ];
 
-const newLeadSchema = z.object({
-  name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
-  cargo: z.string().optional(),
-  docType: z.enum(['dni', 'cee'] as const).optional(),
-  docNumber: z.string().optional(),
-  company: z.string().min(2, 'La empresa debe tener al menos 2 caracteres'),
-  phone: z.string().min(6, 'Ingresa un teléfono válido'),
-  email: z.string().email('Ingresa un email válido'),
-  source: z.enum(['referido', 'base', 'entorno', 'feria', 'masivo'] as const),
-  priority: z.enum(['alta', 'media', 'baja'] as const),
-  assignedTo: z.string().min(1, 'Selecciona un asesor'),
-  etapaCiclo: z.enum(['lead', 'contacto', 'reunion_agendada', 'reunion_efectiva', 'propuesta_economica', 'negociacion', 'licitacion', 'licitacion_etapa_final', 'cierre_ganado', 'firma_contrato', 'activo', 'cierre_perdido', 'inactivo'] as const),
-  estimatedValue: z.coerce.number().min(0, 'El valor debe ser positivo'),
-  departamento: z.string().optional(),
-  provincia: z.string().optional(),
-  distrito: z.string().optional(),
-  direccion: z.string().optional(),
-  notes: z.string().optional(),
-});
-
-type NewLeadForm = z.infer<typeof newLeadSchema>;
-
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(value);
 }
@@ -100,32 +70,8 @@ export default function ContactosPage() {
   const [page, setPage] = useState(1);
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [newLeadOpen, setNewLeadOpen] = useState(false);
-  const [wizardStep, setWizardStep] = useState(0);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [leadToDelete, setLeadToDelete] = useState<string | null>(null);
-
-  const form = useForm<NewLeadForm>({
-    resolver: zodResolver(newLeadSchema) as import('react-hook-form').Resolver<NewLeadForm>,
-    defaultValues: {
-      name: '',
-      cargo: '',
-      docType: undefined,
-      docNumber: '',
-      company: '',
-      phone: '',
-      email: '',
-      source: 'base',
-      priority: 'media',
-      assignedTo: '',
-      etapaCiclo: 'lead',
-      estimatedValue: 0,
-      departamento: '',
-      provincia: '',
-      distrito: '',
-      direccion: '',
-      notes: '',
-    },
-  });
 
   const filteredLeads = useMemo(() => {
     return leads.filter((lead) => {
@@ -192,30 +138,12 @@ export default function ContactosPage() {
     }
   }
 
-  const wizardSteps = [
-    { label: 'Identificación', fields: ['name', 'company', 'phone', 'email'] as const },
-    { label: 'Comercial', fields: ['assignedTo'] as const },
-    { label: 'Ubicación', fields: [] as const },
-  ];
-
-  async function handleNextStep(e: React.MouseEvent) {
-    e.preventDefault();
-    const valid = await form.trigger(wizardSteps[wizardStep].fields as unknown as (keyof NewLeadForm)[]);
-    if (valid) setWizardStep((s) => Math.min(s + 1, 2));
-  }
-
-  async function handleWizardSubmit(e: React.MouseEvent) {
-    e.preventDefault();
-    const valid = await form.trigger();
-    if (valid) {
-      onSubmitNewLead(form.getValues());
-    }
-  }
-
-  function onSubmitNewLead(data: NewLeadForm) {
+  function onSubmitNewLead(data: NewContactData) {
     addLead({
       name: data.name,
-      cargo: data.cargo?.trim() || undefined,
+      cargo: data.cargo,
+      docType: data.docType,
+      docNumber: data.docNumber,
       companies: [{ name: data.company, isPrimary: true }],
       phone: data.phone,
       email: data.email,
@@ -224,10 +152,12 @@ export default function ContactosPage() {
       assignedTo: data.assignedTo,
       estimatedValue: data.estimatedValue,
       notes: data.notes,
+      departamento: data.departamento,
+      provincia: data.provincia,
+      distrito: data.distrito,
+      direccion: data.direccion,
     });
     toast.success(`Contacto "${data.name}" creado exitosamente`);
-    form.reset();
-    setWizardStep(0);
     setNewLeadOpen(false);
   }
 
@@ -415,254 +345,11 @@ export default function ContactosPage() {
         </div>
       )}
 
-      {/* New Contact Dialog - Wizard */}
-      <Dialog open={newLeadOpen} onOpenChange={(open) => { setNewLeadOpen(open); if (!open) { setWizardStep(0); form.reset(); } }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Nuevo Contacto</DialogTitle>
-            <DialogDescription>Registra un nuevo prospecto en el sistema.</DialogDescription>
-          </DialogHeader>
-
-          {/* Step indicator */}
-          <div className="flex items-center justify-center gap-0 py-2">
-            {wizardSteps.map((step, i) => (
-              <div key={step.label} className="flex items-center">
-                <div className="flex flex-col items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => { if (i < wizardStep) setWizardStep(i); }}
-                    className={`flex size-8 items-center justify-center rounded-full border-2 text-sm font-semibold transition-colors ${
-                      i < wizardStep
-                        ? 'border-[#13944C] bg-[#13944C] text-white'
-                        : i === wizardStep
-                          ? 'border-[#13944C] bg-white text-[#13944C]'
-                          : 'border-muted-foreground/30 bg-muted text-muted-foreground'
-                    }`}
-                  >
-                    {i < wizardStep ? <Check className="size-4" /> : i + 1}
-                  </button>
-                  <span className={`text-xs whitespace-nowrap ${i === wizardStep ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
-                    {step.label}
-                  </span>
-                </div>
-                {i < wizardSteps.length - 1 && (
-                  <div className={`mx-2 mb-5 h-0.5 w-12 sm:w-16 ${i < wizardStep ? 'bg-[#13944C]' : 'bg-muted-foreground/20'}`} />
-                )}
-              </div>
-            ))}
-          </div>
-
-          <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
-            {/* Step 1: Identificacion */}
-            {wizardStep === 0 && (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Tipo de documento</Label>
-                  <Select
-                    value={form.watch('docType') ?? ''}
-                    onValueChange={(v) => {
-                      form.setValue('docType', v as 'dni' | 'cee');
-                      form.setValue('docNumber', '');
-                    }}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Seleccionar" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="dni">DNI</SelectItem>
-                      <SelectItem value="cee">CEE</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="docNumber">
-                    N° de {form.watch('docType') === 'dni' ? 'DNI' : form.watch('docType') === 'cee' ? 'CEE' : 'documento'}
-                  </Label>
-                  <Input
-                    id="docNumber"
-                    {...form.register('docNumber')}
-                    placeholder={form.watch('docType') === 'dni' ? '12345678' : form.watch('docType') === 'cee' ? '001234567890' : 'Selecciona un tipo'}
-                    maxLength={form.watch('docType') === 'dni' ? 8 : 12}
-                    disabled={!form.watch('docType')}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nombre completo *</Label>
-                  <Input id="name" {...form.register('name')} placeholder="Nombre del contacto" />
-                  {form.formState.errors.name && (
-                    <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cargo">Cargo</Label>
-                  <Input id="cargo" {...form.register('cargo')} placeholder="Ej: Gerente de Compras" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="company">Empresa *</Label>
-                  <Input id="company" {...form.register('company')} placeholder="Nombre de la empresa" />
-                  {form.formState.errors.company && (
-                    <p className="text-xs text-destructive">{form.formState.errors.company.message}</p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label>Etapa de ciclo de vida</Label>
-                  <Select
-                    value={form.watch('etapaCiclo')}
-                    onValueChange={(v) => form.setValue('etapaCiclo', v as Etapa)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(etapaLabels).map(([key, label]) => (
-                        <SelectItem key={key} value={key}>{label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Teléfono *</Label>
-                  <Input id="phone" {...form.register('phone')} placeholder="+51 999 999 999" />
-                  {form.formState.errors.phone && (
-                    <p className="text-xs text-destructive">{form.formState.errors.phone.message}</p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email *</Label>
-                  <Input id="email" type="email" {...form.register('email')} placeholder="email@empresa.com" />
-                  {form.formState.errors.email && (
-                    <p className="text-xs text-destructive">{form.formState.errors.email.message}</p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Step 2: Comercial */}
-            {wizardStep === 1 && (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Fuente</Label>
-                  <Select
-                    value={form.watch('source')}
-                    onValueChange={(v) => form.setValue('source', v as LeadSource)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(leadSourceLabels).map(([key, label]) => (
-                        <SelectItem key={key} value={key}>{label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Prioridad</Label>
-                  <Select
-                    value={form.watch('priority')}
-                    onValueChange={(v) => form.setValue('priority', v as LeadPriority)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(priorityLabels).map(([key, label]) => (
-                        <SelectItem key={key} value={key}>{label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Asesor asignado *</Label>
-                  <Select
-                    value={form.watch('assignedTo')}
-                    onValueChange={(v) => form.setValue('assignedTo', v)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Seleccionar asesor" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {users.filter((u) => u.status === 'activo').map((u) => (
-                        <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {form.formState.errors.assignedTo && (
-                    <p className="text-xs text-destructive">{form.formState.errors.assignedTo.message}</p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="estimatedValue">Valor estimado (S/)</Label>
-                  <Input
-                    id="estimatedValue"
-                    type="number"
-                    {...form.register('estimatedValue', { valueAsNumber: true })}
-                    placeholder="0"
-                  />
-                  {form.formState.errors.estimatedValue && (
-                    <p className="text-xs text-destructive">{form.formState.errors.estimatedValue.message}</p>
-                  )}
-                </div>
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="notes">Notas</Label>
-                  <Textarea
-                    id="notes"
-                    {...form.register('notes')}
-                    placeholder="Información adicional sobre el contacto..."
-                    rows={3}
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Step 3: Ubicacion */}
-            {wizardStep === 2 && (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="departamento">Departamento</Label>
-                  <Input id="departamento" {...form.register('departamento')} placeholder="Ej: Lima" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="provincia">Provincia</Label>
-                  <Input id="provincia" {...form.register('provincia')} placeholder="Ej: Lima" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="distrito">Distrito</Label>
-                  <Input id="distrito" {...form.register('distrito')} placeholder="Ej: Surco" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="direccion">Dirección</Label>
-                  <Input id="direccion" {...form.register('direccion')} placeholder="Ej: Av. Primavera 1234" />
-                </div>
-              </div>
-            )}
-
-            <DialogFooter className="flex-row gap-2 sm:justify-between">
-              <div>
-                {wizardStep > 0 && (
-                  <Button type="button" variant="outline" onClick={() => setWizardStep((s) => s - 1)}>
-                    <ChevronLeft className="size-4" /> Anterior
-                  </Button>
-                )}
-              </div>
-              <div className="flex gap-2">
-                <Button type="button" variant="outline" onClick={() => { setNewLeadOpen(false); setWizardStep(0); form.reset(); }}>
-                  Cancelar
-                </Button>
-                {wizardStep < 2 ? (
-                  <Button type="button" className="bg-[#13944C] hover:bg-[#0f7a3d]" onClick={handleNextStep}>
-                    Siguiente <ChevronRight className="size-4" />
-                  </Button>
-                ) : (
-                  <Button type="button" className="bg-[#13944C] hover:bg-[#0f7a3d]" onClick={handleWizardSubmit}>
-                    Crear Contacto
-                  </Button>
-                )}
-              </div>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <NewContactWizard
+        open={newLeadOpen}
+        onOpenChange={setNewLeadOpen}
+        onSubmit={onSubmitNewLead}
+      />
 
       {/* Delete Confirmation */}
       <ConfirmDialog

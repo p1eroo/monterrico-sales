@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -509,6 +510,7 @@ export default function OpportunitiesPage() {
 /* ─── Table View ─── */
 
 function OpportunitiesTable({ data }: { data: Opportunity[] }) {
+  const navigate = useNavigate();
   return (
     <div className="rounded-lg border">
       <Table>
@@ -527,7 +529,7 @@ function OpportunitiesTable({ data }: { data: Opportunity[] }) {
         </TableHeader>
         <TableBody>
           {data.map((opp) => (
-            <TableRow key={opp.id} className="group">
+            <TableRow key={opp.id} className="group cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/opportunities/${opp.id}`)}>
               <TableCell>
                 <div>
                   <p className="font-medium">{opp.title}</p>
@@ -565,7 +567,7 @@ function OpportunitiesTable({ data }: { data: Opportunity[] }) {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem>
+                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/opportunities/${opp.id}`); }}>
                       <Eye /> Ver detalle
                     </DropdownMenuItem>
                     <DropdownMenuItem>
@@ -589,12 +591,14 @@ function OpportunitiesTable({ data }: { data: Opportunity[] }) {
 /* ─── Card View ─── */
 
 function OpportunitiesGrid({ data }: { data: Opportunity[] }) {
+  const navigate = useNavigate();
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {data.map((opp) => (
         <Card
           key={opp.id}
           className="group cursor-pointer transition-all hover:shadow-md hover:border-[#13944C]/30"
+          onClick={() => navigate(`/opportunities/${opp.id}`)}
         >
           <CardContent className="p-5">
             <div className="flex items-start justify-between gap-2">
@@ -611,7 +615,7 @@ function OpportunitiesGrid({ data }: { data: Opportunity[] }) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem><Eye /> Ver</DropdownMenuItem>
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/opportunities/${opp.id}`); }}><Eye /> Ver</DropdownMenuItem>
                   <DropdownMenuItem><Pencil /> Editar</DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem variant="destructive"><Trash2 /> Eliminar</DropdownMenuItem>

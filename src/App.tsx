@@ -7,7 +7,7 @@ const MainLayout = lazy(() => import('@/components/layout/MainLayout'));
 const Login = lazy(() => import('@/pages/Login'));
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const Contactos = lazy(() => import('@/pages/Contactos'));
-const LeadDetail = lazy(() => import('@/pages/LeadDetail'));
+const ContactoDetail = lazy(() => import('@/pages/ContactoDetail'));
 const Empresas = lazy(() => import('@/pages/Empresas'));
 const EmpresaDetail = lazy(() => import('@/pages/EmpresaDetail'));
 const Pipeline = lazy(() => import('@/pages/Pipeline'));
@@ -18,6 +18,7 @@ function RedirectLeadToContact() {
 }
 const Activities = lazy(() => import('@/pages/Activities'));
 const Opportunities = lazy(() => import('@/pages/Opportunities'));
+const OportunidadDetail = lazy(() => import('@/pages/OportunidadDetail'));
 const Clients = lazy(() => import('@/pages/Clients'));
 const Reports = lazy(() => import('@/pages/Reports'));
 const Team = lazy(() => import('@/pages/Team'));
@@ -71,12 +72,13 @@ export default function App() {
               <Route path="/leads" element={<Navigate to="/contactos" replace />} />
               <Route path="/leads/:id" element={<RedirectLeadToContact />} />
               <Route path="/contactos" element={<Contactos />} />
-              <Route path="/contactos/:id" element={<LeadDetail />} />
+              <Route path="/contactos/:id" element={<ContactoDetail />} />
               <Route path="/empresas" element={<Empresas />} />
               <Route path="/empresas/:id" element={<EmpresaDetail />} />
               <Route path="/pipeline" element={<Pipeline />} />
               <Route path="/activities" element={<Activities />} />
               <Route path="/opportunities" element={<Opportunities />} />
+              <Route path="/opportunities/:id" element={<OportunidadDetail />} />
               <Route path="/clients" element={<Clients />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/team" element={<Team />} />
