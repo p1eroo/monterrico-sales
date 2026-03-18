@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
-import type { Etapa, CompanyRubro, CompanyTipo, LeadSource } from '@/types';
-import { companyRubroLabels, companyTipoLabels, etapaLabels, leadSourceLabels, users } from '@/data/mock';
+import type { Etapa, CompanyRubro, CompanyTipo, ContactSource } from '@/types';
+import { companyRubroLabels, companyTipoLabels, etapaLabels, contactSourceLabels, users } from '@/data/mock';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,7 +28,7 @@ export interface NewCompanyData {
   dominio: string;
   linkedin: string;
   correo: string;
-  origenLead: LeadSource | '';
+  origenLead: ContactSource | '';
   propietario: string;
   clienteRecuperado: 'si' | 'no';
   nombreNegocio: string;
@@ -210,10 +210,10 @@ export function NewCompanyWizard({
               </div>
               <div className="space-y-2">
                 <Label>Origen de lead</Label>
-                <Select value={form.origenLead} onValueChange={(v) => set('origenLead', v as LeadSource)}>
+                <Select value={form.origenLead} onValueChange={(v) => set('origenLead', v as ContactSource)}>
                   <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar origen" /></SelectTrigger>
                   <SelectContent>
-                    {Object.entries(leadSourceLabels).map(([key, label]) => (
+                    {Object.entries(contactSourceLabels).map(([key, label]) => (
                       <SelectItem key={key} value={key}>{label}</SelectItem>
                     ))}
                   </SelectContent>

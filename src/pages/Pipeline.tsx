@@ -23,11 +23,12 @@ import {
   Building2,
   GripVertical,
 } from 'lucide-react';
-import type { Lead, Etapa, PipelineColumn } from '@/types';
+import { toast } from 'sonner';
+import type { Contact, Etapa, PipelineColumn } from '@/types';
 import { companyRubroLabels } from '@/data/mock';
 import { useCRMStore } from '@/store/crmStore';
 import { getPrimaryCompany } from '@/lib/utils';
-import { PageHeader } from '@/components/shared/PageHeader';
+import { NewContactWizard, type NewContactData } from '@/components/shared/NewContactWizard';
 import { PriorityBadge } from '@/components/shared/PriorityBadge';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -52,14 +53,14 @@ const PIPELINE_COLUMNS: { id: Etapa; title: string; color: string }[] = [
 const formatCurrency = (value: number) =>
   `S/ ${new Intl.NumberFormat('es-PE').format(value)}`;
 
-function buildPipeline(allLeads: Lead[]): PipelineColumn[] {
+function buildPipeline(allContacts: Contact[]): PipelineColumn[] {
   return PIPELINE_COLUMNS.map(({ id, title }) => {
-    const columnLeads = allLeads.filter((l) => l.etapa === id);
+    const columnContacts = allContacts.filter((l) => l.etapa === id);
     return {
       id,
       title,
-      leads: columnLeads,
-      totalValue: columnLeads.reduce((sum, l) => sum + l.estimatedValue, 0),
+      contacts: columnContacts,
+      totalValue: columnContacts.reduce((sum, l) => sum + l.estimatedValue, 0),
     };
   });
 }
@@ -73,7 +74,7 @@ function formatFollowUp(dateStr: string): string {
 // --- Sortable Lead Card ---
 
 interface SortableLeadCardProps {
-  lead: Lead;
+  lead: Contact;
   overlay?: boolean;
 }
 
@@ -107,7 +108,7 @@ function SortableLeadCard({ lead, overlay }: SortableLeadCardProps) {
 // --- Lead Card ---
 
 interface LeadCardProps {
-  lead: Lead;
+  lead: Contact;
   dragListeners?: ReturnType<typeof useSortable>['listeners'];
   isDragging?: boolean;
   overlay?: boolean;
@@ -196,7 +197,7 @@ function KanbanColumn({ column, colorClass }: KanbanColumnProps) {
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-semibold text-foreground">{column.title}</h3>
           <Badge variant="secondary" className="size-5 justify-center rounded-full p-0 text-[10px] font-bold">
-            {column.leads.length}
+            {column.contacts.length}
           </Badge>
         </div>
         <span className="text-xs font-medium text-muted-foreground">
@@ -209,15 +210,15 @@ function KanbanColumn({ column, colorClass }: KanbanColumnProps) {
         className="scrollbar-thin flex flex-1 flex-col gap-2 overflow-y-auto rounded-b-lg border-x border-b bg-muted/30 p-2"
       >
         <SortableContext
-          items={column.leads.map((l) => l.id)}
+          items={column.contacts.map((l) => l.id)}
           strategy={verticalListSortingStrategy}
         >
-          {column.leads.map((lead) => (
-            <SortableLeadCard key={lead.id} lead={lead} />
+          {column.contacts.map((contact) => (
+            <SortableLeadCard key={contact.id} lead={contact} />
           ))}
         </SortableContext>
 
-        {column.leads.length === 0 && (
+        {column.contacts.length === 0 && (
           <div className="flex flex-1 items-center justify-center rounded-md border border-dashed py-8 text-xs text-muted-foreground">
             Sin leads
           </div>
@@ -230,23 +231,24 @@ function KanbanColumn({ column, colorClass }: KanbanColumnProps) {
 // --- Pipeline Page ---
 
 export default function Pipeline() {
-  const { leads: allLeads, updateLead } = useCRMStore();
+  const { contacts: allContacts, updateContact, addContact } = useCRMStore();
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [newContactOpen, setNewContactOpen] = useState(false);
 
-  const pipeline = useMemo(() => buildPipeline(allLeads), [allLeads]);
+  const pipeline = useMemo(() => buildPipeline(allContacts), [allContacts]);
 
   const activeLead = useMemo(
-    () => (activeId ? allLeads.find((l) => l.id === activeId) : undefined),
-    [activeId, allLeads],
+    () => (activeId ? allContacts.find((l) => l.id === activeId) : undefined),
+    [activeId, allContacts],
   );
 
   const totalPipelineValue = useMemo(
-    () => allLeads.reduce((sum, l) => sum + l.estimatedValue, 0),
-    [allLeads],
+    () => allContacts.reduce((sum, l) => sum + l.estimatedValue, 0),
+    [allContacts],
   );
 
-  function findColumnByLeadId(leadId: string): Etapa | undefined {
-    const lead = allLeads.find((l) => l.id === leadId);
+  function findColumnByContactId(contactId: string): Etapa | undefined {
+    const lead = allContacts.find((l) => l.id === contactId);
     return lead?.etapa;
   }
 
@@ -258,17 +260,17 @@ export default function Pipeline() {
     const { active, over } = event;
     if (!over) return;
 
-    const activeLeadId = active.id as string;
+    const activeContactId = active.id as string;
     const overId = over.id as string;
 
-    const activeColumn = findColumnByLeadId(activeLeadId);
+    const activeColumn = findColumnByContactId(activeContactId);
     const overColumn = PIPELINE_COLUMNS.find((c) => c.id === overId)
       ? (overId as Etapa)
-      : findColumnByLeadId(overId);
+      : findColumnByContactId(overId);
 
     if (!activeColumn || !overColumn || activeColumn === overColumn) return;
 
-    updateLead(activeLeadId, { etapa: overColumn });
+    updateContact(activeContactId, { etapa: overColumn });
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -276,38 +278,62 @@ export default function Pipeline() {
     setActiveId(null);
     if (!over) return;
 
-    const activeLeadId = active.id as string;
+    const activeContactId = active.id as string;
     const overId = over.id as string;
 
     const overColumn = PIPELINE_COLUMNS.find((c) => c.id === overId)
       ? (overId as Etapa)
-      : findColumnByLeadId(overId);
+      : findColumnByContactId(overId);
 
     if (!overColumn) return;
 
-    updateLead(activeLeadId, { etapa: overColumn });
+    updateContact(activeContactId, { etapa: overColumn });
+  }
+
+  function onSubmitNewContact(data: NewContactData) {
+    addContact({
+      name: data.name,
+      cargo: data.cargo,
+      docType: data.docType,
+      docNumber: data.docNumber,
+      companies: [{ name: data.company, isPrimary: true }],
+      phone: data.phone,
+      email: data.email,
+      source: data.source,
+      priority: data.priority,
+      assignedTo: data.assignedTo,
+      estimatedValue: data.estimatedValue,
+      notes: data.notes,
+      departamento: data.departamento,
+      provincia: data.provincia,
+      distrito: data.distrito,
+      direccion: data.direccion,
+    });
+    toast.success(`Contacto "${data.name}" creado exitosamente`);
+    setNewContactOpen(false);
   }
 
   return (
-    <div className="flex h-full flex-col gap-6">
-      <PageHeader
-        title="Pipeline Comercial"
-        description="Gestiona tu embudo de ventas arrastrando leads entre etapas"
-      >
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span className="hidden font-medium sm:inline">
+    <div className="flex h-full min-w-0 flex-col gap-6">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold tracking-tight">Pipeline Comercial</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Gestiona tu embudo de ventas arrastrando contactos entre etapas</p>
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <span className="text-sm font-medium text-muted-foreground">
             Valor total: <span className="text-foreground">{formatCurrency(totalPipelineValue)}</span>
           </span>
+          <Button variant="outline" size="sm" onClick={() => toast.info('Filtros próximamente')}>
+            <Filter className="size-4" />
+            Filtros
+          </Button>
+          <Button size="sm" onClick={() => setNewContactOpen(true)}>
+            <Plus className="size-4" />
+            Nuevo Contacto
+          </Button>
         </div>
-        <Button variant="outline" size="sm">
-          <Filter className="size-4" />
-          Filtros
-        </Button>
-        <Button size="sm">
-          <Plus className="size-4" />
-          Nuevo Lead
-        </Button>
-      </PageHeader>
+      </div>
 
       <DndContext
         collisionDetection={closestCorners}
@@ -336,6 +362,12 @@ export default function Pipeline() {
           ) : null}
         </DragOverlay>
       </DndContext>
+
+      <NewContactWizard
+        open={newContactOpen}
+        onOpenChange={setNewContactOpen}
+        onSubmit={onSubmitNewContact}
+      />
     </div>
   );
 }

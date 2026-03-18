@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { users, priorityLabels } from '@/data/mock';
-import type { Lead, Opportunity } from '@/types';
+import type { Contact, Opportunity } from '@/types';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -104,14 +104,14 @@ function getAvatarColor(name: string) {
 }
 
 interface TasksTabProps {
-  contacts?: Lead[];
+  contacts?: Contact[];
   companies?: { name: string }[];
   opportunities?: Opportunity[];
   defaultAssigneeId?: string;
   initialTasks?: MockTask[];
   initialComments?: TaskComment[];
-  onActivityCreated?: (activity: { id: string; type: string; title: string; description: string; assignedTo: string; assignedToName: string; status: string; dueDate: string; createdAt: string; leadId?: string }) => void;
-  leadId?: string;
+  onActivityCreated?: (activity: { id: string; type: string; title: string; description: string; assignedTo: string; assignedToName: string; status: string; dueDate: string; createdAt: string; contactId?: string }) => void;
+  contactId?: string;
 }
 
 const defaultInitialTasks: MockTask[] = [
@@ -139,7 +139,7 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
   initialTasks = defaultInitialTasks,
   initialComments = defaultInitialComments,
   onActivityCreated,
-  leadId,
+  contactId,
 }, ref) {
   const [tasks, setTasks] = useState<MockTask[]>(initialTasks);
 
@@ -294,7 +294,7 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
               status: 'completada',
               dueDate,
               createdAt: new Date().toISOString().slice(0, 10),
-              leadId,
+              contactId,
             });
             setActivityFromTaskOpen(false);
             setLinkedTaskPromptOpen(true);

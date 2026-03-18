@@ -9,8 +9,8 @@ import {
   Eye, Pencil, Trash2, X, ArrowUpDown,
   Phone, Mail, Building2, DollarSign, Users, ChevronLeft, ChevronRight,
 } from 'lucide-react';
-import type { LeadPriority, LeadSource, CompanyRubro, CompanyTipo } from '@/types';
-import { users, leadSourceLabels, etapaLabels, priorityLabels, companyRubroLabels, companyTipoLabels } from '@/data/mock';
+import type { ContactPriority, ContactSource, CompanyRubro, CompanyTipo } from '@/types';
+import { users, contactSourceLabels, etapaLabels, priorityLabels, companyRubroLabels, companyTipoLabels } from '@/data/mock';
 import { useCRMStore } from '@/store/crmStore';
 import { getPrimaryCompany } from '@/lib/utils';
 
@@ -49,7 +49,7 @@ const etapaTabs: { value: string; label: string }[] = [
   ...Object.entries(etapaLabels).map(([value, label]) => ({ value, label })),
 ];
 
-const newLeadSchema = z.object({
+const newContactSchema = z.object({
   name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
   cargo: z.string().optional(),
   company: z.string().min(2, 'La empresa debe tener al menos 2 caracteres'),
@@ -64,15 +64,15 @@ const newLeadSchema = z.object({
   notes: z.string().optional(),
 });
 
-type NewLeadForm = z.infer<typeof newLeadSchema>;
+type NewContactForm = z.infer<typeof newContactSchema>;
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(value);
 }
 
-export default function LeadsPage() {
+export default function ContactsPage() {
   const navigate = useNavigate();
-  const { leads, addLead, deleteLead } = useCRMStore();
+  const { contacts, addContact, deleteContact } = useCRMStore();
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
@@ -84,13 +84,13 @@ export default function LeadsPage() {
   const [activeTab, setActiveTab] = useState('todos');
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [page, setPage] = useState(1);
-  const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
-  const [newLeadOpen, setNewLeadOpen] = useState(false);
+  const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
+  const [newContactOpen, setNewContactOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [leadToDelete, setLeadToDelete] = useState<string | null>(null);
+  const [contactToDelete, setContactToDelete] = useState<string | null>(null);
 
-  const form = useForm<NewLeadForm>({
-    resolver: zodResolver(newLeadSchema) as import('react-hook-form').Resolver<NewLeadForm>,
+  const form = useForm<NewContactForm>({
+    resolver: zodResolver(newContactSchema) as import('react-hook-form').Resolver<NewContactForm>,
     defaultValues: {
       name: '',
       cargo: '',
@@ -107,42 +107,42 @@ export default function LeadsPage() {
     },
   });
 
-  const filteredLeads = useMemo(() => {
-    return leads.filter((lead) => {
-      const primary = getPrimaryCompany(lead);
+  const filteredContacts = useMemo(() => {
+    return contacts.filter((contact) => {
+      const primary = getPrimaryCompany(contact);
       const matchesSearch =
         !search ||
-        lead.name.toLowerCase().includes(search.toLowerCase()) ||
-        lead.companies?.some((c) => c.name.toLowerCase().includes(search.toLowerCase())) ||
-        lead.email.toLowerCase().includes(search.toLowerCase()) ||
-        lead.phone.includes(search);
+        contact.name.toLowerCase().includes(search.toLowerCase()) ||
+        contact.companies?.some((c) => c.name.toLowerCase().includes(search.toLowerCase())) ||
+        contact.email.toLowerCase().includes(search.toLowerCase()) ||
+        contact.phone.includes(search);
 
-      const matchesTab = activeTab === 'todos' || lead.etapa === activeTab;
-      const matchesEtapa = statusFilter === 'todos' || lead.etapa === statusFilter;
-      const matchesPriority = priorityFilter === 'todos' || lead.priority === priorityFilter;
-      const matchesSource = sourceFilter === 'todos' || lead.source === sourceFilter;
+      const matchesTab = activeTab === 'todos' || contact.etapa === activeTab;
+      const matchesEtapa = statusFilter === 'todos' || contact.etapa === statusFilter;
+      const matchesPriority = priorityFilter === 'todos' || contact.priority === priorityFilter;
+      const matchesSource = sourceFilter === 'todos' || contact.source === sourceFilter;
       const matchesRubro = rubroFilter === 'todos' || primary?.rubro === rubroFilter;
       const matchesTipo = tipoFilter === 'todos' || primary?.tipo === tipoFilter;
-      const matchesAdvisor = advisorFilter === 'todos' || lead.assignedTo === advisorFilter;
+      const matchesAdvisor = advisorFilter === 'todos' || contact.assignedTo === advisorFilter;
 
       return matchesSearch && matchesTab && matchesEtapa && matchesPriority && matchesSource && matchesRubro && matchesTipo && matchesAdvisor;
     });
   }, [search, activeTab, statusFilter, priorityFilter, sourceFilter, rubroFilter, tipoFilter, advisorFilter]);
 
-  const totalPages = Math.ceil(filteredLeads.length / ITEMS_PER_PAGE);
-  const paginatedLeads = filteredLeads.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(filteredContacts.length / ITEMS_PER_PAGE);
+  const paginatedContacts = filteredContacts.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
   const startIndex = (page - 1) * ITEMS_PER_PAGE + 1;
-  const endIndex = Math.min(page * ITEMS_PER_PAGE, filteredLeads.length);
+  const endIndex = Math.min(page * ITEMS_PER_PAGE, filteredContacts.length);
 
   const hasActiveFilters = statusFilter !== 'todos' || priorityFilter !== 'todos' || sourceFilter !== 'todos' || rubroFilter !== 'todos' || tipoFilter !== 'todos' || advisorFilter !== 'todos' || search !== '';
 
   const etapaCounts = useMemo(() => {
-    const counts: Record<string, number> = { todos: leads.length };
-    for (const lead of leads) {
-      counts[lead.etapa] = (counts[lead.etapa] ?? 0) + 1;
+    const counts: Record<string, number> = { todos: contacts.length };
+    for (const contact of contacts) {
+      counts[contact.etapa] = (counts[contact.etapa] ?? 0) + 1;
     }
     return counts;
-  }, [leads]);
+  }, [contacts]);
 
   function clearFilters() {
     setSearch('');
@@ -156,29 +156,29 @@ export default function LeadsPage() {
   }
 
   function toggleSelectAll() {
-    if (selectedLeads.length === paginatedLeads.length) {
-      setSelectedLeads([]);
+    if (selectedContacts.length === paginatedContacts.length) {
+      setSelectedContacts([]);
     } else {
-      setSelectedLeads(paginatedLeads.map((l) => l.id));
+      setSelectedContacts(paginatedContacts.map((l) => l.id));
     }
   }
 
-  function toggleSelectLead(id: string) {
-    setSelectedLeads((prev) =>
+  function toggleSelectContact(id: string) {
+    setSelectedContacts((prev) =>
       prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
     );
   }
 
   function handleDelete() {
-    if (leadToDelete) {
-      deleteLead(leadToDelete);
+    if (contactToDelete) {
+      deleteContact(contactToDelete);
       toast.success('Lead eliminado correctamente');
-      setLeadToDelete(null);
+      setContactToDelete(null);
     }
   }
 
-  function onSubmitNewLead(data: NewLeadForm) {
-    addLead({
+  function onSubmitNewContact(data: NewContactForm) {
+    addContact({
       name: data.name,
       cargo: data.cargo?.trim() || undefined,
       companies: [{ name: data.company, rubro: data.companyRubro, tipo: data.companyTipo, isPrimary: true }],
@@ -192,13 +192,13 @@ export default function LeadsPage() {
     });
     toast.success(`Lead "${data.name}" creado exitosamente`);
     form.reset();
-    setNewLeadOpen(false);
+    setNewContactOpen(false);
   }
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Leads" description="Gestiona y da seguimiento a tus prospectos de venta">
-        <Button onClick={() => setNewLeadOpen(true)}>
+      <PageHeader title="Contactos" description="Gestiona y da seguimiento a tus prospectos de venta">
+        <Button onClick={() => setNewContactOpen(true)}>
           <Plus /> Nuevo Lead
         </Button>
       </PageHeader>
@@ -206,7 +206,7 @@ export default function LeadsPage() {
       {/* Stats bar */}
       <div className="flex flex-wrap gap-2">
         <Badge variant="secondary" className="gap-1.5 px-3 py-1.5 text-sm">
-          <Users className="size-3.5" /> Total: {leads.length}
+          <Users className="size-3.5" /> Total: {contacts.length}
         </Badge>
         {etapaTabs.slice(1).filter((tab) => (etapaCounts[tab.value] ?? 0) > 0).map((tab) => (
           <Badge
@@ -262,7 +262,7 @@ export default function LeadsPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todas las fuentes</SelectItem>
-              {Object.entries(leadSourceLabels).map(([key, label]) => (
+              {Object.entries(contactSourceLabels).map(([key, label]) => (
                 <SelectItem key={key} value={key}>{label}</SelectItem>
               ))}
             </SelectContent>
@@ -345,39 +345,39 @@ export default function LeadsPage() {
         </TabsList>
 
         <TabsContent value={activeTab} className="mt-4">
-          {filteredLeads.length === 0 ? (
+          {filteredContacts.length === 0 ? (
             <EmptyState
               icon={Users}
               title="No se encontraron leads"
               description="Intenta ajustar los filtros o crea un nuevo lead."
               actionLabel="Nuevo Lead"
-              onAction={() => setNewLeadOpen(true)}
+              onAction={() => setNewContactOpen(true)}
             />
           ) : viewMode === 'table' ? (
-            <LeadsTable
-              leads={paginatedLeads}
-              selectedLeads={selectedLeads}
+            <ContactsTable
+              contacts={paginatedContacts}
+              selectedContacts={selectedContacts}
               onToggleSelectAll={toggleSelectAll}
-              onToggleSelect={toggleSelectLead}
-              allSelected={selectedLeads.length === paginatedLeads.length && paginatedLeads.length > 0}
+              onToggleSelect={toggleSelectContact}
+              allSelected={selectedContacts.length === paginatedContacts.length && paginatedContacts.length > 0}
               onView={(id) => navigate(`/leads/${id}`)}
-              onDelete={(id) => { setLeadToDelete(id); setDeleteDialogOpen(true); }}
+              onDelete={(id) => { setContactToDelete(id); setDeleteDialogOpen(true); }}
             />
           ) : (
-            <LeadsGrid
-              leads={paginatedLeads}
+            <ContactsGrid
+              contacts={paginatedContacts}
               onView={(id) => navigate(`/leads/${id}`)}
-              onDelete={(id) => { setLeadToDelete(id); setDeleteDialogOpen(true); }}
+              onDelete={(id) => { setContactToDelete(id); setDeleteDialogOpen(true); }}
             />
           )}
         </TabsContent>
       </Tabs>
 
       {/* Pagination */}
-      {filteredLeads.length > 0 && (
+      {filteredContacts.length > 0 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Mostrando {startIndex}-{endIndex} de {filteredLeads.length} leads
+            Mostrando {startIndex}-{endIndex} de {filteredContacts.length} contactos
           </p>
           <div className="flex items-center gap-2">
             <Button
@@ -404,13 +404,13 @@ export default function LeadsPage() {
       )}
 
       {/* New Lead Dialog */}
-      <Dialog open={newLeadOpen} onOpenChange={setNewLeadOpen}>
+      <Dialog open={newContactOpen} onOpenChange={setNewContactOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Nuevo Lead</DialogTitle>
             <DialogDescription>Registra un nuevo prospecto en el sistema.</DialogDescription>
           </DialogHeader>
-          <form onSubmit={form.handleSubmit(onSubmitNewLead as (data: NewLeadForm) => void)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmitNewContact as (data: NewContactForm) => void)} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="name">Nombre completo *</Label>
@@ -480,13 +480,13 @@ export default function LeadsPage() {
                 <Label>Fuente</Label>
                 <Select
                   value={form.watch('source')}
-                  onValueChange={(v) => form.setValue('source', v as LeadSource)}
+                  onValueChange={(v) => form.setValue('source', v as ContactSource)}
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(leadSourceLabels).map(([key, label]) => (
+                    {Object.entries(contactSourceLabels).map(([key, label]) => (
                       <SelectItem key={key} value={key}>{label}</SelectItem>
                     ))}
                   </SelectContent>
@@ -496,7 +496,7 @@ export default function LeadsPage() {
                 <Label>Prioridad</Label>
                 <Select
                   value={form.watch('priority')}
-                  onValueChange={(v) => form.setValue('priority', v as LeadPriority)}
+                  onValueChange={(v) => form.setValue('priority', v as ContactPriority)}
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue />
@@ -550,7 +550,7 @@ export default function LeadsPage() {
               />
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setNewLeadOpen(false)}>
+              <Button type="button" variant="outline" onClick={() => setNewContactOpen(false)}>
                 Cancelar
               </Button>
               <Button type="submit">Crear Lead</Button>
@@ -574,9 +574,9 @@ export default function LeadsPage() {
 
 /* ─── Table View ─── */
 
-interface LeadsTableProps {
-  leads: import('@/types').Lead[];
-  selectedLeads: string[];
+interface ContactsTableProps {
+  contacts: import('@/types').Contact[];
+  selectedContacts: string[];
   allSelected: boolean;
   onToggleSelectAll: () => void;
   onToggleSelect: (id: string) => void;
@@ -584,15 +584,15 @@ interface LeadsTableProps {
   onDelete: (id: string) => void;
 }
 
-function LeadsTable({
-  leads: data,
-  selectedLeads,
+function ContactsTable({
+  contacts: data,
+  selectedContacts,
   allSelected,
   onToggleSelectAll,
   onToggleSelect,
   onView,
   onDelete,
-}: LeadsTableProps) {
+}: ContactsTableProps) {
   return (
     <div className="rounded-md border">
       <Table>
@@ -627,41 +627,41 @@ function LeadsTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {data.map((lead) => (
+          {data.map((contact) => (
             <TableRow
-              key={lead.id}
+              key={contact.id}
               className="cursor-pointer"
-              onClick={() => onView(lead.id)}
+              onClick={() => onView(contact.id)}
             >
               <TableCell onClick={(e) => e.stopPropagation()}>
                 <Checkbox
-                  checked={selectedLeads.includes(lead.id)}
-                  onCheckedChange={() => onToggleSelect(lead.id)}
+                  checked={selectedContacts.includes(contact.id)}
+                  onCheckedChange={() => onToggleSelect(contact.id)}
                 />
               </TableCell>
               <TableCell>
                 <div>
-                  <p className="font-medium">{lead.name}</p>
-                  {lead.cargo && <p className="text-xs text-muted-foreground">{lead.cargo}</p>}
+                  <p className="font-medium">{contact.name}</p>
+                  {contact.cargo && <p className="text-xs text-muted-foreground">{contact.cargo}</p>}
                 </div>
               </TableCell>
-              <TableCell className="hidden md:table-cell text-muted-foreground">{getPrimaryCompany(lead)?.name ?? '—'}</TableCell>
-              <TableCell className="hidden lg:table-cell text-muted-foreground">{lead.phone}</TableCell>
-              <TableCell className="hidden xl:table-cell text-muted-foreground">{lead.email}</TableCell>
+              <TableCell className="hidden md:table-cell text-muted-foreground">{getPrimaryCompany(contact)?.name ?? '—'}</TableCell>
+              <TableCell className="hidden lg:table-cell text-muted-foreground">{contact.phone}</TableCell>
+              <TableCell className="hidden xl:table-cell text-muted-foreground">{contact.email}</TableCell>
               <TableCell className="hidden lg:table-cell">
-                <Badge variant="outline" className="text-xs">{leadSourceLabels[lead.source]}</Badge>
+                <Badge variant="outline" className="text-xs">{contactSourceLabels[contact.source]}</Badge>
               </TableCell>
               <TableCell className="hidden xl:table-cell text-muted-foreground">
-                {getPrimaryCompany(lead)?.rubro ? companyRubroLabels[getPrimaryCompany(lead)!.rubro!] : '—'}
+                {getPrimaryCompany(contact)?.rubro ? companyRubroLabels[getPrimaryCompany(contact)!.rubro!] : '—'}
               </TableCell>
               <TableCell className="hidden xl:table-cell text-muted-foreground">
-                {getPrimaryCompany(lead)?.tipo ?? '—'}
+                {getPrimaryCompany(contact)?.tipo ?? '—'}
               </TableCell>
-              <TableCell><StatusBadge status={lead.etapa} /></TableCell>
-              <TableCell className="hidden sm:table-cell"><PriorityBadge priority={lead.priority} /></TableCell>
-              <TableCell className="hidden xl:table-cell text-muted-foreground">{lead.assignedToName}</TableCell>
+              <TableCell><StatusBadge status={contact.etapa} /></TableCell>
+              <TableCell className="hidden sm:table-cell"><PriorityBadge priority={contact.priority} /></TableCell>
+              <TableCell className="hidden xl:table-cell text-muted-foreground">{contact.assignedToName}</TableCell>
               <TableCell className="hidden md:table-cell text-muted-foreground">
-                {new Date(lead.createdAt).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}
+                {new Date(contact.createdAt).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}
               </TableCell>
               <TableCell onClick={(e) => e.stopPropagation()}>
                 <DropdownMenu>
@@ -671,14 +671,14 @@ function LeadsTable({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => onView(lead.id)}>
+                    <DropdownMenuItem onClick={() => onView(contact.id)}>
                       <Eye /> Ver
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onView(lead.id)}>
+                    <DropdownMenuItem onClick={() => onView(contact.id)}>
                       <Pencil /> Editar
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem variant="destructive" onClick={() => onDelete(lead.id)}>
+                    <DropdownMenuItem variant="destructive" onClick={() => onDelete(contact.id)}>
                       <Trash2 /> Eliminar
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -694,28 +694,28 @@ function LeadsTable({
 
 /* ─── Card View ─── */
 
-interface LeadsGridProps {
-  leads: import('@/types').Lead[];
+interface ContactsGridProps {
+  contacts: import('@/types').Contact[];
   onView: (id: string) => void;
   onDelete: (id: string) => void;
 }
 
-function LeadsGrid({ leads: data, onView, onDelete }: LeadsGridProps) {
+function ContactsGrid({ contacts: data, onView, onDelete }: ContactsGridProps) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {data.map((lead) => (
+      {data.map((contact) => (
         <Card
-          key={lead.id}
+          key={contact.id}
           className="cursor-pointer transition-shadow hover:shadow-md"
-          onClick={() => onView(lead.id)}
+          onClick={() => onView(contact.id)}
         >
           <CardContent className="p-5">
             <div className="flex items-start justify-between">
               <div className="flex-1 min-w-0">
-                <h3 className="font-semibold truncate">{lead.name}</h3>
-                {lead.cargo && <p className="text-xs text-muted-foreground truncate">{lead.cargo}</p>}
+                <h3 className="font-semibold truncate">{contact.name}</h3>
+                {contact.cargo && <p className="text-xs text-muted-foreground truncate">{contact.cargo}</p>}
                 <p className="mt-0.5 flex items-center gap-1 text-sm text-muted-foreground truncate">
-                  <Building2 className="size-3 shrink-0" /> {getPrimaryCompany(lead)?.name ?? '—'}
+                  <Building2 className="size-3 shrink-0" /> {getPrimaryCompany(contact)?.name ?? '—'}
                 </p>
               </div>
               <DropdownMenu>
@@ -725,11 +725,11 @@ function LeadsGrid({ leads: data, onView, onDelete }: LeadsGridProps) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => onView(lead.id)}>
+                  <DropdownMenuItem onClick={() => onView(contact.id)}>
                     <Eye /> Ver
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem variant="destructive" onClick={() => onDelete(lead.id)}>
+                  <DropdownMenuItem variant="destructive" onClick={() => onDelete(contact.id)}>
                     <Trash2 /> Eliminar
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -737,31 +737,31 @@ function LeadsGrid({ leads: data, onView, onDelete }: LeadsGridProps) {
             </div>
 
             <div className="mt-3 flex flex-wrap gap-1.5">
-              <StatusBadge status={lead.etapa} />
-              <PriorityBadge priority={lead.priority} />
-              {getPrimaryCompany(lead)?.rubro && (
-                <Badge variant="outline" className="text-xs">{companyRubroLabels[getPrimaryCompany(lead)!.rubro!]}</Badge>
+              <StatusBadge status={contact.etapa} />
+              <PriorityBadge priority={contact.priority} />
+              {getPrimaryCompany(contact)?.rubro && (
+                <Badge variant="outline" className="text-xs">{companyRubroLabels[getPrimaryCompany(contact)!.rubro!]}</Badge>
               )}
-              {getPrimaryCompany(lead)?.tipo && (
-                <Badge variant="secondary" className="text-xs">Tipo {getPrimaryCompany(lead)!.tipo}</Badge>
+              {getPrimaryCompany(contact)?.tipo && (
+                <Badge variant="secondary" className="text-xs">Tipo {getPrimaryCompany(contact)!.tipo}</Badge>
               )}
             </div>
 
             <div className="mt-3 space-y-1.5 text-sm text-muted-foreground">
               <p className="flex items-center gap-2 truncate">
-                <Phone className="size-3 shrink-0" /> {lead.phone}
+                <Phone className="size-3 shrink-0" /> {contact.phone}
               </p>
               <p className="flex items-center gap-2 truncate">
-                <Mail className="size-3 shrink-0" /> {lead.email}
+                <Mail className="size-3 shrink-0" /> {contact.email}
               </p>
             </div>
 
             <div className="mt-3 flex items-center justify-between border-t pt-3">
               <span className="flex items-center gap-1 text-sm font-semibold text-emerald-600">
                 <DollarSign className="size-3.5" />
-                {formatCurrency(lead.estimatedValue)}
+                {formatCurrency(contact.estimatedValue)}
               </span>
-              <span className="text-xs text-muted-foreground">{lead.assignedToName}</span>
+              <span className="text-xs text-muted-foreground">{contact.assignedToName}</span>
             </div>
           </CardContent>
         </Card>

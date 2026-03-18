@@ -125,7 +125,7 @@ export default function TeamPage() {
 
   const chartData = selectedUser
     ? [
-        { name: 'Leads', value: selectedUser.leadsAssigned, fill: '#13944C' },
+        { name: 'Contactos', value: selectedUser.contactsAssigned, fill: '#13944C' },
         { name: 'Oportunidades', value: selectedUser.opportunitiesActive, fill: '#3b82f6' },
         { name: 'Ventas', value: selectedUser.salesClosed, fill: '#22c55e' },
       ]
@@ -245,8 +245,8 @@ export default function TeamPage() {
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-2 text-center text-xs">
                   <div className="rounded bg-muted/50 p-2">
-                    <p className="font-medium">{user.leadsAssigned}</p>
-                    <p className="text-muted-foreground">Leads</p>
+                    <p className="font-medium">{user.contactsAssigned}</p>
+                    <p className="text-muted-foreground">Contactos</p>
                   </div>
                   <div className="rounded bg-muted/50 p-2">
                     <p className="font-medium">{user.opportunitiesActive}</p>
@@ -289,7 +289,7 @@ export default function TeamPage() {
                   <TableHead>Email</TableHead>
                   <TableHead>Rol</TableHead>
                   <TableHead>Estado</TableHead>
-                  <TableHead className="text-right">Leads</TableHead>
+                  <TableHead className="text-right">Contactos</TableHead>
                   <TableHead className="text-right">Oportunidades</TableHead>
                   <TableHead className="text-right">Ventas</TableHead>
                   <TableHead className="text-right">Conversión</TableHead>
@@ -320,7 +320,7 @@ export default function TeamPage() {
                         {user.status === 'activo' ? 'Activo' : 'Inactivo'}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">{user.leadsAssigned}</TableCell>
+                    <TableCell className="text-right">{user.contactsAssigned}</TableCell>
                     <TableCell className="text-right">{user.opportunitiesActive}</TableCell>
                     <TableCell className="text-right">{user.salesClosed}</TableCell>
                     <TableCell className="text-right">{user.conversionRate}%</TableCell>
@@ -380,8 +380,8 @@ export default function TeamPage() {
                   <h4 className="text-sm font-medium mb-2">Métricas</h4>
                   <div className="grid grid-cols-4 gap-4">
                     <div className="rounded-lg border p-3 text-center">
-                      <p className="text-2xl font-bold text-[#13944C]">{selectedUser.leadsAssigned}</p>
-                      <p className="text-xs text-muted-foreground">Leads</p>
+                      <p className="text-2xl font-bold text-[#13944C]">{selectedUser.contactsAssigned}</p>
+                      <p className="text-xs text-muted-foreground">Contactos</p>
                     </div>
                     <div className="rounded-lg border p-3 text-center">
                       <p className="text-2xl font-bold text-blue-600">{selectedUser.opportunitiesActive}</p>

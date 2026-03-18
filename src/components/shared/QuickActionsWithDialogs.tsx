@@ -6,7 +6,7 @@ import {
 import { toast } from 'sonner';
 import { useCRMStore } from '@/store/crmStore';
 import { users, priorityLabels } from '@/data/mock';
-import type { Lead, Opportunity } from '@/types';
+import type { Contact, Opportunity } from '@/types';
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -70,12 +70,12 @@ const actions = [
 
 interface QuickActionsWithDialogsProps {
   entityName: string;
-  contacts?: Lead[];
+  contacts?: Contact[];
   companies?: { name: string }[];
   opportunities?: Opportunity[];
   onTaskCreated?: (task: QuickTask) => void;
-  onActivityCreated?: (activity: { id: string; type: import('@/types').ActivityType; title: string; description: string; assignedTo: string; assignedToName: string; status: import('@/types').ActivityStatus; dueDate: string; createdAt: string; leadId?: string }) => void;
-  leadId?: string;
+  onActivityCreated?: (activity: { id: string; type: import('@/types').ActivityType; title: string; description: string; assignedTo: string; assignedToName: string; status: import('@/types').ActivityStatus; dueDate: string; createdAt: string; contactId?: string }) => void;
+  contactId?: string;
 }
 
 export function QuickActionsWithDialogs({
@@ -85,9 +85,9 @@ export function QuickActionsWithDialogs({
   opportunities = [],
   onTaskCreated,
   onActivityCreated,
-  leadId,
+  contactId,
 }: QuickActionsWithDialogsProps) {
-  const { leads } = useCRMStore();
+  const { contacts: storeContacts } = useCRMStore();
   const [activeDialog, setActiveDialog] = useState<string | null>(null);
 
   const [activityDialogType, setActivityDialogType] = useState<'llamada' | 'reunion' | 'correo' | null>(null);
@@ -163,13 +163,13 @@ export function QuickActionsWithDialogs({
       status: 'completada' as import('@/types').ActivityStatus,
       dueDate,
       createdAt: new Date().toISOString().slice(0, 10),
-      leadId,
+      contactId,
     });
     setActivityDialogType(null);
     setActiveDialog(null);
   }
 
-  const assocContacts = contacts.length > 0 ? contacts : leads;
+  const assocContacts = contacts.length > 0 ? contacts : storeContacts;
   const assocCounts = {
     contactos: assocContacts.length,
     empresas: companies.length,

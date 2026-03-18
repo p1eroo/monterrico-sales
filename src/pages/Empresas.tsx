@@ -5,8 +5,8 @@ import {
   Search, Building2, Users, ChevronRight, ChevronLeft, Briefcase,
   FileSpreadsheet, Upload, Download, Plus, List, Grid3X3, DollarSign,
 } from 'lucide-react';
-import type { Lead, Etapa, CompanyRubro, CompanyTipo, LeadSource } from '@/types';
-import { companyRubroLabels, companyTipoLabels, etapaLabels, etapaProbabilidad, leadSourceLabels, users } from '@/data/mock';
+import type { Contact, Etapa, CompanyRubro, CompanyTipo, ContactSource } from '@/types';
+import { companyRubroLabels, companyTipoLabels, etapaLabels, etapaProbabilidad, contactSourceLabels, users } from '@/data/mock';
 import { useCRMStore } from '@/store/crmStore';
 
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -37,7 +37,7 @@ interface EmpresaGroup {
   domain?: string;
   companyRubro?: CompanyRubro;
   companyTipo?: CompanyTipo;
-  contacts: Lead[];
+  contacts: Contact[];
   totalValue: number;
   /** Etapa más avanzada entre los contactos (por orden en etapaOrder) */
   etapa: Etapa;
@@ -55,7 +55,7 @@ const ITEMS_PER_PAGE = 8;
 
 export default function EmpresasPage() {
   const navigate = useNavigate();
-  const { leads, addLead, addOpportunity } = useCRMStore();
+  const { contacts, addContact, addOpportunity } = useCRMStore();
 
   const [search, setSearch] = useState('');
   const [sourceFilter, setSourceFilter] = useState<string>('todos');
@@ -70,7 +70,7 @@ export default function EmpresasPage() {
   function handleNewEmpresaSubmit(data: NewCompanyData) {
     const monto = Number(data.facturacion) || 0;
 
-    const newLead = addLead({
+    const newLead = addContact({
       name: data.nombreComercial,
       companies: [{
         name: data.nombreComercial,
@@ -81,7 +81,7 @@ export default function EmpresasPage() {
       }],
       phone: data.telefono || '',
       email: data.correo || '',
-      source: (data.origenLead || 'base') as LeadSource,
+      source: (data.origenLead || 'base') as ContactSource,
       priority: 'media',
       assignedTo: data.propietario || users[0]?.id || '',
       estimatedValue: monto,
@@ -91,7 +91,7 @@ export default function EmpresasPage() {
     if (data.nombreNegocio.trim()) {
       addOpportunity({
         title: data.nombreNegocio,
-        leadId: newLead.id,
+        contactId: newLead.id,
         amount: monto,
         etapa: data.etapa,
         expectedCloseDate: data.fechaCierre || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
@@ -105,7 +105,7 @@ export default function EmpresasPage() {
 
   const empresas = useMemo(() => {
     const map = new Map<string, EmpresaGroup>();
-    for (const lead of leads) {
+    for (const lead of contacts) {
       for (const comp of lead.companies ?? []) {
         const key = comp.name.trim().toLowerCase();
         const existing = map.get(key);
@@ -133,7 +133,7 @@ export default function EmpresasPage() {
       }
     }
     return Array.from(map.values()).sort((a, b) => b.totalValue - a.totalValue);
-  }, [leads]);
+  }, [contacts]);
 
   const filteredEmpresas = useMemo(() => {
     return empresas.filter((emp) => {
@@ -209,7 +209,7 @@ export default function EmpresasPage() {
           </Badge>
         ))}
         <Badge variant="outline" className="gap-1.5 px-3 py-1.5 text-sm">
-          <Users className="size-3.5" /> {leads.length} contactos
+          <Users className="size-3.5" /> {contacts.length} contactos
         </Badge>
       </div>
 
@@ -231,7 +231,7 @@ export default function EmpresasPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todas las fuentes</SelectItem>
-              {Object.entries(leadSourceLabels).map(([key, label]) => (
+              {Object.entries(contactSourceLabels).map(([key, label]) => (
                 <SelectItem key={key} value={key}>{label}</SelectItem>
               ))}
             </SelectContent>
@@ -364,7 +364,7 @@ export default function EmpresasPage() {
                         const primary = emp.contacts.reduce((a, b) =>
                           etapaProbabilidad[a.etapa] > etapaProbabilidad[b.etapa] ? a : b,
                         );
-                        return primary.source ? leadSourceLabels[primary.source] : '—';
+                        return primary.source ? contactSourceLabels[primary.source] : '—';
                       })()}
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-muted-foreground">

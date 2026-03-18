@@ -139,7 +139,7 @@ export default function LoginPage() {
           </p>
           <div className="flex flex-col gap-4">
             <div className="rounded-lg bg-white/10 p-4 backdrop-blur-sm">
-              <p className="text-sm font-medium text-white/90">Leads activos</p>
+              <p className="text-sm font-medium text-white/90">Contactos activos</p>
               <p className="text-2xl font-bold text-white">+24% este mes</p>
             </div>
             <div className="rounded-lg bg-white/10 p-4 backdrop-blur-sm">

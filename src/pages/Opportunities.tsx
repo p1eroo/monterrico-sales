@@ -85,7 +85,7 @@ const etapas: Etapa[] = [
 
 const newOpportunitySchema = z.object({
   title: z.string().min(2, 'El título debe tener al menos 2 caracteres'),
-  leadId: z.string().optional(),
+  contactId: z.string().optional(),
   amount: z.coerce.number().min(0, 'El monto debe ser positivo'),
   etapa: z.enum(['lead', 'contacto', 'reunion_agendada', 'reunion_efectiva', 'propuesta_economica', 'negociacion', 'licitacion', 'licitacion_etapa_final', 'cierre_ganado', 'firma_contrato', 'activo', 'cierre_perdido', 'inactivo'] as const),
   expectedCloseDate: z.string().min(1, 'Selecciona una fecha'),
@@ -134,7 +134,7 @@ function OpportunityStatusBadge({ status }: { status: OpportunityStatus }) {
 }
 
 export default function OpportunitiesPage() {
-  const { opportunities, leads, addOpportunity } = useCRMStore();
+  const { opportunities, contacts, addOpportunity } = useCRMStore();
   const [search, setSearch] = useState('');
   const [etapaFilter, setEtapaFilter] = useState('todas');
   const [statusFilter, setStatusFilter] = useState('todas');
@@ -147,7 +147,7 @@ export default function OpportunitiesPage() {
     resolver: zodResolver(newOpportunitySchema) as import('react-hook-form').Resolver<NewOpportunityForm>,
     defaultValues: {
       title: '',
-      leadId: '',
+      contactId: '',
       amount: 0,
       etapa: 'lead',
       expectedCloseDate: '',
@@ -161,7 +161,7 @@ export default function OpportunitiesPage() {
       const matchesSearch =
         !search ||
         opp.title.toLowerCase().includes(search.toLowerCase()) ||
-        opp.leadName?.toLowerCase().includes(search.toLowerCase()) ||
+        opp.contactName?.toLowerCase().includes(search.toLowerCase()) ||
         opp.clientName?.toLowerCase().includes(search.toLowerCase());
 
       const matchesTab = activeTab === 'todas' || opp.status === activeTab;
@@ -208,10 +208,10 @@ export default function OpportunitiesPage() {
   }
 
   function onSubmit(data: NewOpportunityForm) {
-    const leadId = data.leadId && data.leadId !== 'none' ? data.leadId : undefined;
+    const contactId = data.contactId && data.contactId !== 'none' ? data.contactId : undefined;
     addOpportunity({
       title: data.title,
-      leadId,
+      contactId,
       amount: data.amount,
       etapa: data.etapa,
       status: 'abierta',
@@ -410,15 +410,15 @@ export default function OpportunitiesPage() {
               <div className="space-y-2">
                 <Label>Lead asociado</Label>
                 <Select
-                  value={form.watch('leadId') ?? ''}
-                  onValueChange={(v) => form.setValue('leadId', v)}
+                  value={form.watch('contactId') ?? ''}
+                  onValueChange={(v) => form.setValue('contactId', v)}
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Seleccionar lead" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Sin lead</SelectItem>
-                    {leads.map((l) => (
+                    {contacts.map((l) => (
                       <SelectItem key={l.id} value={l.id}>{l.name} - {getPrimaryCompany(l)?.name ?? '—'}</SelectItem>
                     ))}
                   </SelectContent>
@@ -534,12 +534,12 @@ function OpportunitiesTable({ data }: { data: Opportunity[] }) {
                 <div>
                   <p className="font-medium">{opp.title}</p>
                   <p className="text-xs text-muted-foreground md:hidden">
-                    {opp.leadName ?? opp.clientName ?? '—'}
+                    {opp.contactName ?? opp.clientName ?? '—'}
                   </p>
                 </div>
               </TableCell>
               <TableCell className="hidden md:table-cell text-muted-foreground">
-                {opp.leadName ?? opp.clientName ?? '—'}
+                {opp.contactName ?? opp.clientName ?? '—'}
               </TableCell>
               <TableCell className="font-semibold tabular-nums">
                 {formatCurrency(opp.amount)}
@@ -605,7 +605,7 @@ function OpportunitiesGrid({ data }: { data: Opportunity[] }) {
               <div className="min-w-0 flex-1">
                 <h3 className="font-semibold leading-tight truncate">{opp.title}</h3>
                 <p className="mt-1 text-xs text-muted-foreground truncate">
-                  {opp.leadName ?? opp.clientName ?? 'Sin lead asignado'}
+                  {opp.contactName ?? opp.clientName ?? 'Sin lead asignado'}
                 </p>
               </div>
               <DropdownMenu>

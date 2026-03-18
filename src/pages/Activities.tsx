@@ -82,7 +82,7 @@ const newActivitySchema = z.object({
   type: z.enum(['llamada', 'reunion', 'tarea', 'correo', 'seguimiento', 'whatsapp'] as const),
   title: z.string().min(3, 'El título debe tener al menos 3 caracteres'),
   description: z.string().min(5, 'La descripción debe tener al menos 5 caracteres'),
-  leadId: z.string().optional(),
+  contactId: z.string().optional(),
   assignedTo: z.string().min(1, 'Selecciona un asesor'),
   dueDate: z.string().min(1, 'Selecciona una fecha'),
   status: z.enum(['pendiente', 'completada', 'vencida', 'reprogramada'] as const),
@@ -115,7 +115,7 @@ export default function ActivitiesPage() {
       type: 'llamada',
       title: '',
       description: '',
-      leadId: '',
+      contactId: '',
       assignedTo: '',
       dueDate: '',
       status: 'pendiente',
@@ -139,7 +139,7 @@ export default function ActivitiesPage() {
         !search ||
         activity.title.toLowerCase().includes(search.toLowerCase()) ||
         activity.description.toLowerCase().includes(search.toLowerCase()) ||
-        (activity.leadName?.toLowerCase().includes(search.toLowerCase()) ?? false);
+        (activity.contactName?.toLowerCase().includes(search.toLowerCase()) ?? false);
 
       const matchesTab = activeTab === 'todas' || activity.status === activeTab;
       const matchesType = typeFilter === 'todos' || activity.type === typeFilter;
@@ -395,10 +395,10 @@ export default function ActivitiesPage() {
                               </div>
 
                               <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
-                                {activity.leadName && (
+                                {activity.contactName && (
                                   <span className="flex items-center gap-1.5 font-medium text-[#13944C] hover:underline cursor-pointer">
                                     <Users className="size-3.5" />
-                                    {activity.leadName}
+                                    {activity.contactName}
                                   </span>
                                 )}
                                 <span className="flex items-center gap-1.5">
@@ -636,8 +636,8 @@ export default function ActivitiesPage() {
               <div className="space-y-2">
                 <Label>Lead (opcional)</Label>
                 <Select
-                  value={form.watch('leadId') ?? ''}
-                  onValueChange={(v) => form.setValue('leadId', v)}
+                  value={form.watch('contactId') ?? ''}
+                  onValueChange={(v) => form.setValue('contactId', v)}
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Seleccionar lead" />
@@ -645,10 +645,10 @@ export default function ActivitiesPage() {
                   <SelectContent>
                     <SelectItem value="none">Sin lead</SelectItem>
                     {activities
-                      .filter((a) => a.leadId && a.leadName)
+                      .filter((a) => a.contactId && a.contactName)
                       .reduce<Array<{ id: string; name: string }>>((acc, a) => {
-                        if (a.leadId && a.leadName && !acc.some((x) => x.id === a.leadId)) {
-                          acc.push({ id: a.leadId, name: a.leadName });
+                        if (a.contactId && a.contactName && !acc.some((x) => x.id === a.contactId)) {
+                          acc.push({ id: a.contactId, name: a.contactName });
                         }
                         return acc;
                       }, [])

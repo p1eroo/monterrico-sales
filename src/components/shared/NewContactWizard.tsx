@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Check, ChevronLeft, ChevronRight } from 'lucide-react';
-import type { Etapa, LeadSource, LeadPriority } from '@/types';
-import { users, leadSourceLabels, etapaLabels, priorityLabels } from '@/data/mock';
+import type { Etapa, ContactSource, ContactPriority } from '@/types';
+import { users, contactSourceLabels, etapaLabels, priorityLabels } from '@/data/mock';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,8 +24,8 @@ export interface NewContactData {
   etapaCiclo: Etapa;
   phone: string;
   email: string;
-  source: LeadSource;
-  priority: LeadPriority;
+  source: ContactSource;
+  priority: ContactPriority;
   assignedTo: string;
   estimatedValue: number;
   notes?: string;
@@ -69,8 +69,8 @@ export function NewContactWizard({
   const [etapaCiclo, setEtapaCiclo] = useState<Etapa>(defaultValues?.etapaCiclo ?? 'lead');
   const [phone, setPhone] = useState(defaultValues?.phone ?? '');
   const [email, setEmail] = useState(defaultValues?.email ?? '');
-  const [source, setSource] = useState<LeadSource>(defaultValues?.source ?? 'base');
-  const [priority, setPriority] = useState<LeadPriority>(defaultValues?.priority ?? 'media');
+  const [source, setSource] = useState<ContactSource>(defaultValues?.source ?? 'base');
+  const [priority, setPriority] = useState<ContactPriority>(defaultValues?.priority ?? 'media');
   const [assignedTo, setAssignedTo] = useState(defaultValues?.assignedTo ?? '');
   const [estimatedValue, setEstimatedValue] = useState(defaultValues?.estimatedValue ?? 0);
   const [notes, setNotes] = useState(defaultValues?.notes ?? '');
@@ -234,10 +234,10 @@ export function NewContactWizard({
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Fuente</Label>
-                <Select value={source} onValueChange={(v) => setSource(v as LeadSource)}>
+                <Select value={source} onValueChange={(v) => setSource(v as ContactSource)}>
                   <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {Object.entries(leadSourceLabels).map(([key, label]) => (
+                    {Object.entries(contactSourceLabels).map(([key, label]) => (
                       <SelectItem key={key} value={key}>{label}</SelectItem>
                     ))}
                   </SelectContent>
@@ -245,7 +245,7 @@ export function NewContactWizard({
               </div>
               <div className="space-y-2">
                 <Label>Prioridad</Label>
-                <Select value={priority} onValueChange={(v) => setPriority(v as LeadPriority)}>
+                <Select value={priority} onValueChange={(v) => setPriority(v as ContactPriority)}>
                   <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {Object.entries(priorityLabels).map(([key, label]) => (

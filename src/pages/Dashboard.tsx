@@ -59,8 +59,8 @@ function formatDate(dateStr: string) {
 }
 
 export default function Dashboard() {
-  const { leads } = useCRMStore();
-  const latestLeads = leads.slice(0, 5);
+  const { contacts } = useCRMStore();
+  const latestContacts = contacts.slice(0, 5);
   const pendingActivities = activities
     .filter((a) => a.status === 'pendiente' || a.status === 'vencida')
     .slice(0, 5);
@@ -84,7 +84,7 @@ export default function Dashboard() {
       {/* KPI Row 1 */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
-          title="Total Leads"
+          title="Total Contactos"
           value={156}
           change="+12.5%"
           changeType="positive"
@@ -116,7 +116,7 @@ export default function Dashboard() {
       {/* KPI Row 2 */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
-          title="Leads Nuevos"
+          title="Contactos Nuevos"
           value={23}
           change="+18%"
           changeType="positive"
@@ -177,10 +177,10 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Leads por Fuente */}
+        {/* Contactos por Fuente */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Leads por Fuente</CardTitle>
+            <CardTitle className="text-base">Contactos por Fuente</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-72">
@@ -201,7 +201,7 @@ export default function Dashboard() {
                       <Cell key={index} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value?: number) => [value ?? 0, 'Leads']} />
+                  <Tooltip formatter={(value?: number) => [value ?? 0, 'Contactos']} />
                   <Legend
                     iconType="circle"
                     iconSize={8}
@@ -235,7 +235,7 @@ export default function Dashboard() {
                     tickLine={false}
                     width={90}
                   />
-                  <Tooltip formatter={(value?: number) => [value ?? 0, 'Leads']} />
+                  <Tooltip formatter={(value?: number) => [value ?? 0, 'Contactos']} />
                   <Bar dataKey="value" radius={[0, 4, 4, 0]}>
                     {funnelData.map((_, index) => (
                       <Cell key={index} fill={FUNNEL_COLORS[index % FUNNEL_COLORS.length]} />
@@ -260,7 +260,7 @@ export default function Dashboard() {
                   <XAxis dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
                   <Tooltip />
-                  <Bar dataKey="leads" fill="#13944C" radius={[4, 4, 0, 0]} name="Leads" />
+                  <Bar dataKey="leads" fill="#13944C" radius={[4, 4, 0, 0]} name="Contactos" />
                   <Bar dataKey="ventas" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Ventas" />
                 </BarChart>
               </ResponsiveContainer>
@@ -271,28 +271,28 @@ export default function Dashboard() {
 
       {/* Bottom Sections */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Últimos Leads */}
+        {/* Últimos Contactos */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Últimos Leads</CardTitle>
+            <CardTitle className="text-base">Últimos Contactos</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {latestLeads.map((lead) => (
+              {latestContacts.map((contact) => (
                 <div
-                  key={lead.id}
+                  key={contact.id}
                   className="flex items-center justify-between rounded-lg border p-3"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{lead.name}</p>
+                    <p className="truncate text-sm font-medium">{contact.name}</p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {lead.companies?.find((c) => c.isPrimary)?.name ?? lead.companies?.[0]?.name ?? '—'}
+                      {contact.companies?.find((c) => c.isPrimary)?.name ?? contact.companies?.[0]?.name ?? '—'}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-3 pl-4">
-                    <StatusBadge status={lead.etapa} />
+                    <StatusBadge status={contact.etapa} />
                     <span className="text-xs text-muted-foreground">
-                      {formatDate(lead.createdAt)}
+                      {formatDate(contact.createdAt)}
                     </span>
                   </div>
                 </div>
@@ -332,7 +332,7 @@ export default function Dashboard() {
                         )}
                       </div>
                       <p className="truncate text-xs text-muted-foreground">
-                        {activity.leadName}
+                        {activity.contactName}
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
                         {formatDate(activity.dueDate)}

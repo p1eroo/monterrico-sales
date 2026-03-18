@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { etapaLabels } from '@/data/mock';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import type { Lead } from '@/types';
+import type { Contact } from '@/types';
 
 const etapaColors: Record<string, string> = {
   lead: 'bg-slate-100 text-slate-700',
@@ -29,7 +29,7 @@ function formatCurrency(value: number) {
   return new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(value);
 }
 
-function getPrimaryCompany(lead: Lead) {
+function getPrimaryCompany(lead: Contact) {
   return lead.companies?.find((c) => c.isPrimary) ?? lead.companies?.[0];
 }
 
@@ -41,7 +41,7 @@ export interface LinkedContact {
   phone?: string;
   email?: string;
   estimatedValue: number;
-  companies?: Lead['companies'];
+  companies?: Contact['companies'];
 }
 
 interface LinkedContactsCardProps {
@@ -85,7 +85,7 @@ export function LinkedContactsCard({ contacts, title = 'Contactos vinculados', o
         ) : (
           <div className="space-y-2.5">
             {contacts.slice(0, maxItems).map((contact) => {
-              const primaryCompany = getPrimaryCompany(contact as Lead);
+              const primaryCompany = getPrimaryCompany(contact as Contact);
               return (
                 <div key={contact.id} className="rounded-xl border bg-card p-3.5 hover:shadow-sm transition-shadow cursor-pointer" onClick={() => navigate(`/contactos/${contact.id}`)}>
                   <div className="flex items-start justify-between gap-2 mb-1">

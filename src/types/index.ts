@@ -14,8 +14,8 @@ export type Etapa =
   | 'cierre_perdido'          // -1%
   | 'inactivo';               // -5%
 
-export type LeadPriority = 'alta' | 'media' | 'baja';
-export type LeadSource = 'referido' | 'base' | 'entorno' | 'feria' | 'masivo';
+export type ContactPriority = 'alta' | 'media' | 'baja';
+export type ContactSource = 'referido' | 'base' | 'entorno' | 'feria' | 'masivo';
 export type CompanyRubro = 'mineria' | 'hoteleria' | 'banca' | 'construccion' | 'salud' | 'retail' | 'telecomunicaciones' | 'educacion' | 'energia' | 'consultoria' | 'diplomatico' | 'aviacion' | 'consumo_masivo' | 'otros';
 export type CompanyTipo = 'A' | 'B' | 'C';
 
@@ -44,14 +44,14 @@ export interface User {
   avatar?: string;
   phone: string;
   status: 'activo' | 'inactivo';
-  leadsAssigned: number;
+  contactsAssigned: number;
   opportunitiesActive: number;
   salesClosed: number;
   conversionRate: number;
   joinedAt: string;
 }
 
-export interface Lead {
+export interface Contact {
   id: string;
   name: string;
   /** Cargo o puesto del contacto en la empresa */
@@ -60,9 +60,9 @@ export interface Lead {
   companies: LinkedCompany[];
   phone: string;
   email: string;
-  source: LeadSource;
+  source: ContactSource;
   etapa: Etapa;
-  priority: LeadPriority;
+  priority: ContactPriority;
   assignedTo: string;
   assignedToName: string;
   estimatedValue: number;
@@ -86,8 +86,8 @@ export interface Activity {
   type: ActivityType;
   title: string;
   description: string;
-  leadId?: string;
-  leadName?: string;
+  contactId?: string;
+  contactName?: string;
   opportunityId?: string;
   assignedTo: string;
   assignedToName: string;
@@ -100,8 +100,8 @@ export interface Activity {
 export interface Opportunity {
   id: string;
   title: string;
-  leadId?: string;
-  leadName?: string;
+  contactId?: string;
+  contactName?: string;
   clientId?: string;
   clientName?: string;
   amount: number;
@@ -145,9 +145,9 @@ export interface TimelineEvent {
 }
 
 export interface DashboardMetrics {
-  totalLeads: number;
-  newLeads: number;
-  contactedLeads: number;
+  totalContacts: number;
+  newContacts: number;
+  contactedContacts: number;
   activeOpportunities: number;
   closedSales: number;
   conversionRate: number;
@@ -160,7 +160,7 @@ export interface DashboardMetrics {
 export interface PipelineColumn {
   id: Etapa;
   title: string;
-  leads: Lead[];
+  contacts: Contact[];
   totalValue: number;
 }
 

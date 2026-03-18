@@ -8,9 +8,9 @@ export default function MainLayout() {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset>
+      <SidebarInset className="overflow-hidden">
         <Topbar />
-        <div className="flex-1 overflow-y-auto p-4 md:p-6">
+        <div className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6">
           <Outlet />
         </div>
       </SidebarInset>

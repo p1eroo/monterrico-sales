@@ -31,7 +31,7 @@ import { cn } from '@/lib/utils';
 
 const NAV_SECTIONS = [
   { id: 'general', label: 'General', icon: Building2 },
-  { id: 'fuentes', label: 'Fuentes de Leads', icon: Globe },
+  { id: 'fuentes', label: 'Fuentes de Contactos', icon: Globe },
   { id: 'pipeline', label: 'Etapas del Pipeline', icon: GitBranch },
   { id: 'roles', label: 'Roles y Permisos', icon: Shield },
   { id: 'prioridades', label: 'Prioridades', icon: Flag },
@@ -294,11 +294,11 @@ export default function Settings() {
             </Card>
           )}
 
-          {/* Fuentes de Leads */}
+          {/* Fuentes de Contactos */}
           {activeTab === 'fuentes' && (
             <Card>
               <CardHeader>
-                <CardTitle>Fuentes de Leads</CardTitle>
+                <CardTitle>Fuentes de Contactos</CardTitle>
                 <CardDescription>
                   Configura las fuentes de captación de leads
                 </CardDescription>

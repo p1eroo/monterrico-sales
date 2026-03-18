@@ -92,7 +92,7 @@ export default function Reports() {
   const [sourceFilter, setSourceFilter] = useState('all');
 
   const summaryCards = [
-    { label: 'Total Leads del Periodo', value: '156', icon: TrendingUp, color: 'text-[#13944C]', bg: 'bg-[#13944C]/10', trend: '+12% vs periodo anterior' },
+    { label: 'Total Contactos del Periodo', value: '156', icon: TrendingUp, color: 'text-[#13944C]', bg: 'bg-[#13944C]/10', trend: '+12% vs periodo anterior' },
     { label: 'Tasa de Conversión', value: '32.5%', icon: Target, color: 'text-blue-600', bg: 'bg-blue-50', trend: '+3.2% vs periodo anterior' },
     { label: 'Ventas Cerradas', value: 'S/ 245,000', icon: DollarSign, color: 'text-amber-600', bg: 'bg-amber-50', trend: '+18% vs periodo anterior' },
     { label: 'Actividades Realizadas', value: '87', icon: Activity, color: 'text-purple-600', bg: 'bg-purple-50', trend: '+5 vs periodo anterior' },
@@ -177,11 +177,11 @@ export default function Reports() {
 
       {/* Charts Grid */}
       <div className="grid gap-6 md:grid-cols-2">
-        {/* 1. Leads por Periodo - AreaChart */}
+        {/* 1. Contactos por Periodo - AreaChart */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Leads por Periodo</CardTitle>
-            <CardDescription>Evolución de captación de leads en el tiempo</CardDescription>
+            <CardTitle className="text-base">Contactos por Periodo</CardTitle>
+            <CardDescription>Evolución de captación de contactos en el tiempo</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -206,7 +206,7 @@ export default function Reports() {
                 <Area
                   type="monotone"
                   dataKey="leads"
-                  name="Total Leads"
+                  name="Total Contactos"
                   stroke="#13944C"
                   strokeWidth={2}
                   fill="url(#colorLeads)"
@@ -224,11 +224,11 @@ export default function Reports() {
           </CardContent>
         </Card>
 
-        {/* 2. Leads por Fuente - PieChart Donut */}
+        {/* 2. Contactos por Fuente - PieChart Donut */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Leads por Fuente</CardTitle>
-            <CardDescription>Distribución de leads según canal de origen</CardDescription>
+            <CardTitle className="text-base">Contactos por Fuente</CardTitle>
+            <CardDescription>Distribución de contactos según canal de origen</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -297,7 +297,7 @@ export default function Reports() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Rendimiento por Asesor</CardTitle>
-            <CardDescription>Leads asignados y ventas cerradas por ejecutivo</CardDescription>
+            <CardDescription>Contactos asignados y ventas cerradas por ejecutivo</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -316,7 +316,7 @@ export default function Reports() {
                   contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: '13px' }}
                 />
                 <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
-                <Bar dataKey="leads" name="Leads" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={14} />
+                <Bar dataKey="leads" name="Contactos" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={14} />
                 <Bar dataKey="ventas" name="Ventas" fill="#13944C" radius={[0, 4, 4, 0]} barSize={14} />
               </BarChart>
             </ResponsiveContainer>

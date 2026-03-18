@@ -36,7 +36,7 @@ export interface ActivityResult {
   status: ActivityStatus;
   dueDate: string;
   createdAt: string;
-  leadId?: string;
+  contactId?: string;
 }
 
 const emptyForm: ActivityFormData = {

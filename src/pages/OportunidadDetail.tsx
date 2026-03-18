@@ -7,7 +7,7 @@ import {
 import { useCRMStore } from '@/store/crmStore';
 import { etapaLabels, companyRubroLabels, users, timelineEvents, activities } from '@/data/mock';
 import { getPrimaryCompany } from '@/lib/utils';
-import type { CompanyRubro } from '@/types';
+import type { CompanyRubro, Etapa, OpportunityStatus } from '@/types';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { DetailLayout } from '@/components/shared/DetailLayout';
 import { EntityInfoCard } from '@/components/shared/EntityInfoCard';
@@ -21,12 +21,22 @@ import { LinkExistingDialog, type LinkExistingItem } from '@/components/shared/L
 import { NewContactWizard } from '@/components/shared/NewContactWizard';
 import type { NewContactData } from '@/components/shared/NewContactWizard';
 import { TasksTab, type TasksTabHandle } from '@/components/shared/TasksTab';
+import { ChangeEtapaDialog } from '@/components/shared/ChangeEtapaDialog';
+import { AssignDialog } from '@/components/shared/AssignDialog';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 function formatCurrency(value: number) {
@@ -55,21 +65,21 @@ const statusColors: Record<string, string> = {
 export default function OportunidadDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { opportunities, leads } = useCRMStore();
+  const { opportunities, contacts } = useCRMStore();
 
   const opp = opportunities.find((o) => o.id === id);
 
-  const linkedLead = opp?.leadId ? leads.find((l) => l.id === opp.leadId) : null;
-  const primaryCompany = linkedLead ? getPrimaryCompany(linkedLead) : null;
+  const linkedContact = opp?.contactId ? contacts.find((l) => l.id === opp.contactId) : null;
+  const primaryCompany = linkedContact ? getPrimaryCompany(linkedContact) : null;
   const assignedUser = opp ? users.find((u) => u.id === opp.assignedTo) : null;
 
   const initialOppActivities = useMemo(() => {
-    if (!opp?.leadId) return [];
-    return activities.filter((a) => a.leadId === opp.leadId);
+    if (!opp?.contactId) return [];
+    return activities.filter((a) => a.contactId === opp.contactId);
   }, [opp]);
   const [oppActivities, setOppActivities] = useState(initialOppActivities);
 
-  const { updateLead, addLead, updateOpportunity } = useCRMStore();
+  const { updateContact, addContact, updateOpportunity } = useCRMStore();
 
   const tasksTabRef = useRef<TasksTabHandle>(null);
   const [newContactOpen, setNewContactOpen] = useState(false);
@@ -99,9 +109,56 @@ export default function OportunidadDetailPage() {
     toast.success('Nota agregada correctamente');
   }
 
+  // --- Edit / Etapa / Asignar dialogs ---
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editForm, setEditForm] = useState({ title: '', amount: 0, expectedCloseDate: '', description: '', status: '' as OpportunityStatus | '' });
+
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+
+  function handleOpenEditDialog() {
+    if (!opp) return;
+    setEditForm({
+      title: opp.title,
+      amount: opp.amount,
+      expectedCloseDate: opp.expectedCloseDate,
+      description: opp.description ?? '',
+      status: opp.status,
+    });
+    setEditDialogOpen(true);
+  }
+
+  function handleSaveEdit() {
+    if (!opp) return;
+    updateOpportunity(opp.id, {
+      title: editForm.title,
+      amount: editForm.amount,
+      expectedCloseDate: editForm.expectedCloseDate,
+      description: editForm.description || undefined,
+      status: (editForm.status || undefined) as OpportunityStatus | undefined,
+    });
+    toast.success('Oportunidad actualizada correctamente');
+    setEditDialogOpen(false);
+  }
+
+  function handleEtapaChange(newEtapa: string) {
+    if (!opp) return;
+    updateOpportunity(opp.id, { etapa: newEtapa as Etapa });
+    toast.success('Etapa actualizada correctamente');
+    setStatusDialogOpen(false);
+  }
+
+  function handleAssignChange(newAssigneeId: string) {
+    if (!opp) return;
+    const user = users.find((u) => u.id === newAssigneeId);
+    updateOpportunity(opp.id, { assignedTo: newAssigneeId, assignedToName: user?.name ?? 'Sin asignar' });
+    toast.success('Asesor asignado correctamente');
+    setAssignDialogOpen(false);
+  }
+
   function handleCreateNewContact(data: NewContactData) {
     if (!opp) return;
-    const newLead = addLead({
+    const newContact = addContact({
       name: data.name,
       cargo: data.cargo,
       docType: data.docType,
@@ -114,7 +171,7 @@ export default function OportunidadDetailPage() {
       assignedTo: data.assignedTo || opp.assignedTo,
       estimatedValue: data.estimatedValue,
     });
-    updateOpportunity(opp.id, { leadId: newLead.id, leadName: newLead.name });
+    updateOpportunity(opp.id, { contactId: newContact.id, contactName: newContact.name });
     toast.success('Contacto creado y vinculado a la oportunidad');
     setNewContactOpen(false);
   }
@@ -122,7 +179,7 @@ export default function OportunidadDetailPage() {
   function handleLinkContacts() {
     if (linkContactIds.length === 0 || !opp) return;
     const firstContactId = linkContactIds[0];
-    updateOpportunity(opp.id, { leadId: firstContactId, leadName: leads.find((l) => l.id === firstContactId)?.name });
+    updateOpportunity(opp.id, { contactId: firstContactId, contactName: contacts.find((l) => l.id === firstContactId)?.name });
     toast.success('Contacto vinculado a la oportunidad');
     setLinkContactIds([]);
     setLinkContactSearch('');
@@ -130,31 +187,31 @@ export default function OportunidadDetailPage() {
   }
 
   function handleAddCompany(data: NewCompanyData) {
-    if (!linkedLead) return;
-    const companies = [...(linkedLead.companies ?? []), {
+    if (!linkedContact) return;
+    const companies = [...(linkedContact.companies ?? []), {
       name: data.nombreComercial,
       rubro: data.rubro || undefined,
       tipo: data.tipoEmpresa || undefined,
       domain: data.dominio || undefined,
       isPrimary: false,
     }];
-    updateLead(linkedLead.id, { companies });
+    updateContact(linkedContact.id, { companies });
     toast.success('Empresa agregada');
   }
 
   function handleLinkCompanies() {
-    if (linkCompanyNames.length === 0 || !linkedLead) return;
-    const currentNames = new Set(linkedLead.companies?.map((c) => c.name) ?? []);
-    let companies = [...(linkedLead.companies ?? [])];
+    if (linkCompanyNames.length === 0 || !linkedContact) return;
+    const currentNames = new Set(linkedContact.companies?.map((c) => c.name) ?? []);
+    let companies = [...(linkedContact.companies ?? [])];
     for (const name of linkCompanyNames) {
       if (currentNames.has(name)) continue;
-      const sourceLead = leads.find((l) => l.companies?.some((c) => c.name === name));
-      const sourceCompany = sourceLead?.companies?.find((c) => c.name === name);
+      const sourceContact = contacts.find((l) => l.companies?.some((c) => c.name === name));
+      const sourceCompany = sourceContact?.companies?.find((c) => c.name === name);
       companies.push({ name, rubro: sourceCompany?.rubro, tipo: sourceCompany?.tipo, isPrimary: false });
       currentNames.add(name);
     }
-    if (companies.length > (linkedLead.companies?.length ?? 0)) {
-      updateLead(linkedLead.id, { companies });
+    if (companies.length > (linkedContact.companies?.length ?? 0)) {
+      updateContact(linkedContact.id, { companies });
       toast.success('Empresa(s) vinculada(s)');
     }
     setLinkCompanyNames([]);
@@ -162,7 +219,7 @@ export default function OportunidadDetailPage() {
     setAddExistingCompanyOpen(false);
   }
 
-  const availableContacts = linkedLead ? leads.filter((l) => l.id !== linkedLead.id) : leads;
+  const availableContacts = linkedContact ? contacts.filter((l) => l.id !== linkedContact.id) : contacts;
   const contactLinkItems: LinkExistingItem[] = availableContacts.map((c) => ({
     id: c.id,
     title: c.name,
@@ -171,11 +228,11 @@ export default function OportunidadDetailPage() {
     icon: <Users className="size-4" />,
   }));
 
-  const currentCompanyNames = new Set((linkedLead?.companies ?? []).map((c) => c.name.trim().toLowerCase()));
+  const currentCompanyNames = new Set((linkedContact?.companies ?? []).map((c) => c.name.trim().toLowerCase()));
   const availableCompanies = (() => {
     const seen = new Set<string>();
     const result: { name: string; rubro?: CompanyRubro }[] = [];
-    for (const l of leads) {
+    for (const l of contacts) {
       for (const c of l.companies ?? []) {
         const key = c.name.trim().toLowerCase();
         if (!currentCompanyNames.has(key) && !seen.has(key)) {
@@ -219,13 +276,13 @@ export default function OportunidadDetailPage() {
           <Badge variant="outline" className={`${statusColors[opp.status] ?? ''} border-0`}>
             {statusLabels[opp.status] ?? opp.status}
           </Badge>
-          <Button variant="outline" size="sm" onClick={() => toast.info('Editar oportunidad')}>
+          <Button variant="outline" size="sm" onClick={handleOpenEditDialog}>
             <Edit /> Editar
           </Button>
-          <Button variant="outline" size="sm" onClick={() => toast.info('Cambiar etapa')}>
+          <Button variant="outline" size="sm" onClick={() => setStatusDialogOpen(true)}>
             <RefreshCw /> Cambiar Etapa
           </Button>
-          <Button variant="outline" size="sm" onClick={() => toast.info('Asignar')}>
+          <Button variant="outline" size="sm" onClick={() => setAssignDialogOpen(true)}>
             <UserPlus /> Asignar
           </Button>
         </>
@@ -233,10 +290,10 @@ export default function OportunidadDetailPage() {
       quickActions={
         <QuickActionsWithDialogs
           entityName={opp.title}
-          contacts={linkedLead ? [linkedLead] : []}
-          companies={linkedLead?.companies ?? []}
+          contacts={linkedContact ? [linkedContact] : []}
+          companies={linkedContact?.companies ?? []}
           opportunities={[opp]}
-          leadId={opp?.leadId}
+          contactId={opp?.contactId}
           onTaskCreated={(task) => tasksTabRef.current?.addTask(task as any)}
           onActivityCreated={(activity) => setOppActivities((prev) => [activity, ...prev])}
         />
@@ -311,14 +368,14 @@ export default function OportunidadDetailPage() {
           />
 
           <LinkedContactsCard
-            contacts={linkedLead ? [linkedLead] : []}
+            contacts={linkedContact ? [linkedContact] : []}
             title="Contacto vinculado"
             onCreate={() => setNewContactOpen(true)}
             onAddExisting={() => setAddExistingContactOpen(true)}
           />
 
           <LinkedCompaniesCard
-            companies={primaryCompany ? [primaryCompany] : (linkedLead?.companies ?? [])}
+            companies={primaryCompany ? [primaryCompany] : (linkedContact?.companies ?? [])}
             onCreate={() => setNewCompanyDialogOpen(true)}
             onAddExisting={() => setAddExistingCompanyOpen(true)}
           />
@@ -347,8 +404,8 @@ export default function OportunidadDetailPage() {
         <TabsList variant="line" className="w-full justify-start flex-wrap">
           <TabsTrigger value="historial">Historial</TabsTrigger>
           <TabsTrigger value="actividades">Actividades</TabsTrigger>
-          <TabsTrigger value="notas">Notas</TabsTrigger>
           <TabsTrigger value="tareas">Tareas</TabsTrigger>
+          <TabsTrigger value="notas">Notas</TabsTrigger>
         </TabsList>
 
         <TabsContent value="historial" className="mt-4">
@@ -395,12 +452,12 @@ export default function OportunidadDetailPage() {
         <TabsContent value="tareas" className="mt-4">
           <TasksTab
             ref={tasksTabRef}
-            contacts={linkedLead ? [linkedLead] : []}
+            contacts={linkedContact ? [linkedContact] : []}
             companies={primaryCompany ? [{ name: primaryCompany.name }] : []}
             opportunities={opp ? [opp] : []}
             defaultAssigneeId={opp?.assignedTo}
             onActivityCreated={(activity) => setOppActivities((prev) => [activity as any, ...prev])}
-            leadId={opp?.leadId}
+            contactId={opp?.contactId}
           />
         </TabsContent>
       </Tabs>
@@ -422,7 +479,7 @@ export default function OportunidadDetailPage() {
       onOpenChange={(open) => { setAddExistingContactOpen(open); if (!open) { setLinkContactIds([]); setLinkContactSearch(''); } }}
       title="Vincular Contacto Existente"
       searchPlaceholder="Buscar contactos..."
-      leadName={opp.title}
+      contactName={opp.title}
       items={contactLinkItems}
       selectedIds={linkContactIds}
       onSelectionChange={setLinkContactIds}
@@ -446,7 +503,7 @@ export default function OportunidadDetailPage() {
       onOpenChange={(open) => { setAddExistingCompanyOpen(open); if (!open) { setLinkCompanyNames([]); setLinkCompanySearch(''); } }}
       title="Vincular Empresa Existente"
       searchPlaceholder="Buscar empresas..."
-      leadName={opp.title}
+      contactName={opp.title}
       items={companyLinkItems}
       selectedIds={linkCompanyNames}
       onSelectionChange={setLinkCompanyNames}
@@ -454,6 +511,67 @@ export default function OportunidadDetailPage() {
       searchValue={linkCompanySearch}
       onSearchChange={setLinkCompanySearch}
       emptyMessage="No hay empresas disponibles para vincular."
+    />
+
+    {/* Editar Oportunidad */}
+    <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Editar Oportunidad</DialogTitle>
+          <DialogDescription>Modifica los datos de la oportunidad.</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-2">
+          <div className="space-y-2">
+            <Label>Título *</Label>
+            <Input value={editForm.title} onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))} />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Monto (S/)</Label>
+              <Input type="number" value={editForm.amount} onChange={(e) => setEditForm((f) => ({ ...f, amount: Number(e.target.value) }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>Fecha estimada de cierre</Label>
+              <Input type="date" value={editForm.expectedCloseDate} onChange={(e) => setEditForm((f) => ({ ...f, expectedCloseDate: e.target.value }))} />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Estado</Label>
+            <Select value={editForm.status} onValueChange={(v) => setEditForm((f) => ({ ...f, status: v as OpportunityStatus }))}>
+              <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+              <SelectContent>
+                {Object.entries(statusLabels).map(([key, label]) => (
+                  <SelectItem key={key} value={key}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Descripción</Label>
+            <Textarea placeholder="Descripción de la oportunidad..." rows={3} value={editForm.description} onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancelar</Button>
+          <Button onClick={handleSaveEdit} disabled={!editForm.title.trim()}>Guardar cambios</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <ChangeEtapaDialog
+      open={statusDialogOpen}
+      onOpenChange={setStatusDialogOpen}
+      entityName={opp.title}
+      currentEtapa={opp.etapa}
+      onEtapaChange={handleEtapaChange}
+    />
+
+    <AssignDialog
+      open={assignDialogOpen}
+      onOpenChange={setAssignDialogOpen}
+      entityName={opp.title}
+      currentAssigneeId={opp.assignedTo}
+      onAssignChange={handleAssignChange}
     />
     </>
   );

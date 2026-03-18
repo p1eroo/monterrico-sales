@@ -7,9 +7,9 @@ import {
   Building2, Globe, DollarSign, CalendarDays, MapPin,
   Plus,
 } from 'lucide-react';
-import type { Lead, Etapa, CompanyRubro, CompanyTipo, LeadSource, LeadPriority } from '@/types';
+import type { Contact, Etapa, CompanyRubro, CompanyTipo, ContactSource, ContactPriority } from '@/types';
 import {
-  users, leadSourceLabels, etapaLabels, priorityLabels,
+  users, contactSourceLabels, etapaLabels, priorityLabels,
   companyRubroLabels,
   timelineEvents, activities,
 } from '@/data/mock';
@@ -31,6 +31,8 @@ import { LinkedContactsCard } from '@/components/shared/LinkedContactsCard';
 import { NewCompanyWizard, type NewCompanyData } from '@/components/shared/NewCompanyWizard';
 import { NewOpportunityDialog, type NewOpportunityData } from '@/components/shared/NewOpportunityDialog';
 import { TasksTab, type TasksTabHandle } from '@/components/shared/TasksTab';
+import { ChangeEtapaDialog } from '@/components/shared/ChangeEtapaDialog';
+import { AssignDialog } from '@/components/shared/AssignDialog';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -64,9 +66,9 @@ const initialNotes = [
 
 
 
-function ContactoSidebar({ lead, leadOpportunities, onOpenConvertDialog, onAddExistingOpportunity, onAddCompany, onAddExistingCompany, onNewContact, onAddLinkContact }: {
-  lead: Lead;
-  leadOpportunities: import('@/types').Opportunity[];
+function ContactoSidebar({ contact, contactOpportunities, onOpenConvertDialog, onAddExistingOpportunity, onAddCompany, onAddExistingCompany, onNewContact, onAddLinkContact }: {
+  contact: Contact;
+  contactOpportunities: import('@/types').Opportunity[];
   onOpenConvertDialog: () => void;
   onAddExistingOpportunity: () => void;
   onAddCompany: () => void;
@@ -74,37 +76,37 @@ function ContactoSidebar({ lead, leadOpportunities, onOpenConvertDialog, onAddEx
   onNewContact: () => void;
   onAddLinkContact: () => void;
 }) {
-  const { leads } = useCRMStore();
+  const { contacts } = useCRMStore();
 
-  const linkedContacts = (lead.linkedContactIds ?? [])
-    .map((id) => leads.find((l) => l.id === id))
-    .filter((l): l is Lead => !!l);
+  const linkedContacts = (contact.linkedContactIds ?? [])
+    .map((id) => contacts.find((l) => l.id === id))
+    .filter((l): l is Contact => !!l);
 
   return (
     <>
       <EntityInfoCard
         title="Información de Contacto"
         fields={[
-          { icon: Phone, value: lead.phone, href: `tel:${lead.phone}` },
-          { icon: Mail, value: lead.email, href: `mailto:${lead.email}` },
-          { icon: Building2, value: getPrimaryCompany(lead)?.name ?? '—' },
-          { icon: Globe, value: leadSourceLabels[lead.source] },
-          { icon: CalendarDays, value: `Fecha de creación: ${formatDate(lead.createdAt)}` },
-          ...(lead.departamento ? [{ icon: MapPin as typeof Phone, value: lead.departamento }] : []),
-          ...(lead.provincia ? [{ label: 'Provincia:', value: lead.provincia, indent: true }] : []),
-          ...(lead.distrito ? [{ label: 'Distrito:', value: lead.distrito, indent: true }] : []),
-          ...(lead.direccion ? [{ label: 'Dirección:', value: lead.direccion, indent: true }] : []),
+          { icon: Phone, value: contact.phone, href: `tel:${contact.phone}` },
+          { icon: Mail, value: contact.email, href: `mailto:${contact.email}` },
+          { icon: Building2, value: getPrimaryCompany(contact)?.name ?? '—' },
+          { icon: Globe, value: contactSourceLabels[contact.source] },
+          { icon: CalendarDays, value: `Fecha de creación: ${formatDate(contact.createdAt)}` },
+          ...(contact.departamento ? [{ icon: MapPin as typeof Phone, value: contact.departamento }] : []),
+          ...(contact.provincia ? [{ label: 'Provincia:', value: contact.provincia, indent: true }] : []),
+          ...(contact.distrito ? [{ label: 'Distrito:', value: contact.distrito, indent: true }] : []),
+          ...(contact.direccion ? [{ label: 'Dirección:', value: contact.direccion, indent: true }] : []),
         ]}
       />
 
       <LinkedOpportunitiesCard
-        opportunities={leadOpportunities}
+        opportunities={contactOpportunities}
         onCreate={onOpenConvertDialog}
         onAddExisting={onAddExistingOpportunity}
       />
 
       <LinkedCompaniesCard
-        companies={lead.companies ?? []}
+        companies={contact.companies ?? []}
         onCreate={onAddCompany}
         onAddExisting={onAddExistingCompany}
       />
@@ -121,14 +123,14 @@ function ContactoSidebar({ lead, leadOpportunities, onOpenConvertDialog, onAddEx
 export default function ContactoDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { leads, opportunities, getOpportunitiesByLeadId, addOpportunity, updateOpportunity, updateLead, addLead } = useCRMStore();
+  const { contacts, opportunities, getOpportunitiesByContactId, addOpportunity, updateOpportunity, updateContact, addContact } = useCRMStore();
 
-  const lead = leads.find((l) => l.id === id);
-  const initialActivities = activities.filter((a) => a.leadId === id);
-  const leadOpportunities = id ? getOpportunitiesByLeadId(id) : [];
+  const contact = contacts.find((l) => l.id === id);
+  const initialActivities = activities.filter((a) => a.contactId === id);
+  const contactOpportunities = id ? getOpportunitiesByContactId(id) : [];
 
   const tasksTabRef = useRef<TasksTabHandle>(null);
-  const [leadActivities, setLeadActivities] = useState(initialActivities);
+  const [contactActivities, setContactActivities] = useState(initialActivities);
   const [notes, setNotes] = useState(initialNotes);
   const [noteText, setNoteText] = useState('');
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
@@ -151,14 +153,14 @@ export default function ContactoDetailPage() {
     cargo: '',
     phone: '',
     email: '',
-    source: '' as LeadSource,
-    priority: '' as LeadPriority,
+    source: '' as ContactSource,
+    priority: '' as ContactPriority,
     estimatedValue: 0,
     nextAction: '',
     nextFollowUp: '',
   });
 
-  if (!lead) {
+  if (!contact) {
     return (
       <div className="space-y-6">
         <Button variant="ghost" onClick={() => navigate('/contactos')}>
@@ -186,24 +188,24 @@ export default function ContactoDetailPage() {
   }
 
   function handleOpenEditDialog() {
-    if (!lead) return;
+    if (!contact) return;
     setEditForm({
-      name: lead.name,
-      cargo: lead.cargo ?? '',
-      phone: lead.phone,
-      email: lead.email,
-      source: lead.source,
-      priority: lead.priority,
-      estimatedValue: lead.estimatedValue,
-      nextAction: lead.nextAction,
-      nextFollowUp: lead.nextFollowUp,
+      name: contact.name,
+      cargo: contact.cargo ?? '',
+      phone: contact.phone,
+      email: contact.email,
+      source: contact.source,
+      priority: contact.priority,
+      estimatedValue: contact.estimatedValue,
+      nextAction: contact.nextAction,
+      nextFollowUp: contact.nextFollowUp,
     });
     setEditDialogOpen(true);
   }
 
   function handleSaveEdit() {
-    if (!lead) return;
-    updateLead(lead.id, {
+    if (!contact) return;
+    updateContact(contact.id, {
       name: editForm.name,
       cargo: editForm.cargo || undefined,
       phone: editForm.phone,
@@ -220,10 +222,10 @@ export default function ContactoDetailPage() {
 
 
   function handleConvertToOpportunity(data: NewOpportunityData) {
-    if (!lead) return;
+    if (!contact) return;
     addOpportunity({
       title: data.title,
-      leadId: lead.id,
+      contactId: contact.id,
       amount: data.amount,
       etapa: data.etapa as Etapa,
       status: 'abierta',
@@ -236,43 +238,43 @@ export default function ContactoDetailPage() {
   }
 
   function handleEtapaChange(newEtapa: string) {
-    if (lead) {
-      updateLead(lead.id, { etapa: newEtapa as Lead['etapa'] });
+    if (contact) {
+      updateContact(contact.id, { etapa: newEtapa as Contact['etapa'] });
       toast.success('Etapa actualizada correctamente');
     }
     setStatusDialogOpen(false);
   }
 
   function handleAssignChange(newAssigneeId: string) {
-    if (lead) {
+    if (contact) {
       const user = users.find((u) => u.id === newAssigneeId);
-      updateLead(lead.id, { assignedTo: newAssigneeId, assignedToName: user?.name ?? 'Sin asignar' });
+      updateContact(contact.id, { assignedTo: newAssigneeId, assignedToName: user?.name ?? 'Sin asignar' });
       toast.success('Asesor asignado correctamente');
     }
     setAssignDialogOpen(false);
   }
 
   function handleAddCompany(data: NewCompanyData) {
-    if (!lead) return;
+    if (!contact) return;
     const rubro = data.rubro || undefined;
     const tipo = data.tipoEmpresa || undefined;
-    const companies = [...(lead.companies ?? []), {
+    const companies = [...(contact.companies ?? []), {
       name: data.nombreComercial,
       rubro,
       tipo,
       domain: data.dominio || undefined,
-      isPrimary: lead.companies?.length === 0,
+      isPrimary: contact.companies?.length === 0,
     }];
-    updateLead(lead.id, { companies });
+    updateContact(contact.id, { companies });
     toast.success('Empresa agregada');
   }
 
   function handleLinkContacts() {
-    if (linkContactIds.length === 0 || !lead) return;
-    const ids = lead.linkedContactIds ?? [];
-    const toAdd = linkContactIds.filter((id) => id !== lead.id && !ids.includes(id));
+    if (linkContactIds.length === 0 || !contact) return;
+    const ids = contact.linkedContactIds ?? [];
+    const toAdd = linkContactIds.filter((id) => id !== contact.id && !ids.includes(id));
     if (toAdd.length === 0) return;
-    updateLead(lead.id, { linkedContactIds: [...ids, ...toAdd] });
+    updateContact(contact.id, { linkedContactIds: [...ids, ...toAdd] });
     toast.success(toAdd.length === 1 ? 'Contacto vinculado' : `${toAdd.length} contactos vinculados`);
     setLinkContactIds([]);
     setLinkContactSearch('');
@@ -280,9 +282,9 @@ export default function ContactoDetailPage() {
   }
 
   function handleLinkOpportunities() {
-    if (linkOpportunityIds.length === 0 || !lead) return;
+    if (linkOpportunityIds.length === 0 || !contact) return;
     for (const oppId of linkOpportunityIds) {
-      updateOpportunity(oppId, { leadId: lead.id, leadName: lead.name });
+      updateOpportunity(oppId, { contactId: contact.id, contactName: contact.name });
     }
     toast.success(linkOpportunityIds.length === 1 ? 'Oportunidad vinculada' : `${linkOpportunityIds.length} oportunidades vinculadas`);
     setLinkOpportunityIds([]);
@@ -291,13 +293,13 @@ export default function ContactoDetailPage() {
   }
 
   function handleLinkCompanies() {
-    if (linkCompanyNames.length === 0 || !lead) return;
-    const currentNames = new Set(lead.companies?.map((c) => c.name) ?? []);
-    let companies = [...(lead.companies ?? [])];
+    if (linkCompanyNames.length === 0 || !contact) return;
+    const currentNames = new Set(contact.companies?.map((c) => c.name) ?? []);
+    let companies = [...(contact.companies ?? [])];
     for (const name of linkCompanyNames) {
       if (currentNames.has(name)) continue;
-      const sourceLead = leads.find((l) => l.companies?.some((c) => c.name === name));
-      const sourceCompany = sourceLead?.companies?.find((c) => c.name === name);
+      const sourceContact = contacts.find((l) => l.companies?.some((c) => c.name === name));
+      const sourceCompany = sourceContact?.companies?.find((c) => c.name === name);
       companies.push({
         name,
         rubro: sourceCompany?.rubro,
@@ -306,9 +308,9 @@ export default function ContactoDetailPage() {
       });
       currentNames.add(name);
     }
-    if (companies.length > (lead.companies?.length ?? 0)) {
-      updateLead(lead.id, { companies });
-      toast.success(companies.length - (lead.companies?.length ?? 0) === 1 ? 'Empresa vinculada' : `${companies.length - (lead.companies?.length ?? 0)} empresas vinculadas`);
+    if (companies.length > (contact.companies?.length ?? 0)) {
+      updateContact(contact.id, { companies });
+      toast.success(companies.length - (contact.companies?.length ?? 0) === 1 ? 'Empresa vinculada' : `${companies.length - (contact.companies?.length ?? 0)} empresas vinculadas`);
     }
     setLinkCompanyNames([]);
     setLinkCompanySearch('');
@@ -316,44 +318,44 @@ export default function ContactoDetailPage() {
   }
 
   function handleCreateNewContact(data: NewContactData) {
-    if (!lead) return;
-    const newLead = addLead({
+    if (!contact) return;
+    const newContact = addContact({
       name: data.name,
       cargo: data.cargo,
       docType: data.docType,
       docNumber: data.docNumber,
       companies: [{ name: data.company }],
-      phone: data.phone || lead.phone,
-      email: data.email || lead.email,
+      phone: data.phone || contact.phone,
+      email: data.email || contact.email,
       source: data.source,
       priority: data.priority,
-      assignedTo: data.assignedTo || lead.assignedTo,
+      assignedTo: data.assignedTo || contact.assignedTo,
       estimatedValue: data.estimatedValue,
       departamento: data.departamento,
       provincia: data.provincia,
       distrito: data.distrito,
       direccion: data.direccion,
     });
-    const ids = lead.linkedContactIds ?? [];
-    updateLead(lead.id, { linkedContactIds: [...ids, newLead.id] });
+    const ids = contact.linkedContactIds ?? [];
+    updateContact(contact.id, { linkedContactIds: [...ids, newContact.id] });
     toast.success('Contacto creado y vinculado');
     setNewContactOpen(false);
   }
 
-  const availableContactsToLink = leads.filter(
-    (l) => l.id !== lead?.id && !(lead?.linkedContactIds ?? []).includes(l.id),
+  const availableContactsToLink = contacts.filter(
+    (l) => l.id !== contact?.id && !(contact?.linkedContactIds ?? []).includes(l.id),
   );
 
   const availableOpportunitiesToLink = id
-    ? opportunities.filter((o) => o.leadId !== id)
+    ? opportunities.filter((o) => o.contactId !== id)
     : [];
 
   const availableCompaniesToLink = (() => {
-    if (!lead?.companies) return [];
-    const currentNames = new Set(lead.companies.map((c) => c.name));
+    if (!contact?.companies) return [];
+    const currentNames = new Set(contact.companies.map((c) => c.name));
     const seen = new Set<string>();
     const result: { name: string; rubro?: CompanyRubro; tipo?: CompanyTipo; contactName?: string; contactPhone?: string }[] = [];
-    for (const l of leads) {
+    for (const l of contacts) {
       for (const c of l.companies ?? []) {
         if (!currentNames.has(c.name) && !seen.has(c.name)) {
           seen.add(c.name);
@@ -409,8 +411,8 @@ export default function ContactoDetailPage() {
     <>
     <DetailLayout
       backPath="/contactos"
-      title={lead.name}
-      subtitle={lead.cargo}
+      title={contact.name}
+      subtitle={contact.cargo}
       headerActions={
         <>
           <Button variant="outline" size="sm" onClick={handleOpenEditDialog}>
@@ -426,13 +428,13 @@ export default function ContactoDetailPage() {
       }
       quickActions={
         <QuickActionsWithDialogs
-          entityName={lead.name}
-          contacts={leads.filter((l) => l.id !== lead.id)}
-          companies={lead.companies ?? []}
-          opportunities={leadOpportunities}
-          leadId={id}
+          entityName={contact.name}
+          contacts={contacts.filter((l) => l.id !== contact.id)}
+          companies={contact.companies ?? []}
+          opportunities={contactOpportunities}
+          contactId={id}
           onTaskCreated={(task) => tasksTabRef.current?.addTask(task as any)}
-          onActivityCreated={(activity) => setLeadActivities((prev) => [activity, ...prev])}
+          onActivityCreated={(activity) => setContactActivities((prev) => [activity, ...prev])}
         />
       }
       summaryCards={
@@ -445,7 +447,7 @@ export default function ContactoDetailPage() {
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm text-muted-foreground">Valor estimado</p>
-                    <p className="text-l font-semibold">{formatCurrency(lead.estimatedValue)}</p>
+                    <p className="text-l font-semibold">{formatCurrency(contact.estimatedValue)}</p>
                   </div>
                 </div>
               </CardContent>
@@ -458,7 +460,7 @@ export default function ContactoDetailPage() {
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm text-muted-foreground">Etapa actual</p>
-                    <p className="text-l font-semibold">{etapaLabels[lead.etapa]}</p>
+                    <p className="text-l font-semibold">{etapaLabels[contact.etapa]}</p>
                   </div>
                 </div>
               </CardContent>
@@ -471,7 +473,7 @@ export default function ContactoDetailPage() {
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm text-muted-foreground">Próximo seguimiento</p>
-                    <p className="text-l font-semibold">{formatDate(lead.nextFollowUp)}</p>
+                    <p className="text-l font-semibold">{formatDate(contact.nextFollowUp)}</p>
                   </div>
                 </div>
               </CardContent>
@@ -484,25 +486,25 @@ export default function ContactoDetailPage() {
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm text-muted-foreground">Asesor asignado</p>
-                    <p className="text-l font-semibold truncate">{lead.assignedToName}</p>
+                    <p className="text-l font-semibold truncate">{contact.assignedToName}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
           </div>
       }
-      sidebar={<ContactoSidebar lead={lead} leadOpportunities={leadOpportunities} onOpenConvertDialog={() => setConvertDialogOpen(true)} onAddExistingOpportunity={() => setAddExistingOpportunityOpen(true)} onAddCompany={() => setAddCompanyOpen(true)} onAddExistingCompany={() => setAddExistingCompanyOpen(true)} onNewContact={() => setNewContactOpen(true)} onAddLinkContact={() => setAddLinkContactOpen(true)} />}
+      sidebar={<ContactoSidebar contact={contact} contactOpportunities={contactOpportunities} onOpenConvertDialog={() => setConvertDialogOpen(true)} onAddExistingOpportunity={() => setAddExistingOpportunityOpen(true)} onAddCompany={() => setAddCompanyOpen(true)} onAddExistingCompany={() => setAddExistingCompanyOpen(true)} onNewContact={() => setNewContactOpen(true)} onAddLinkContact={() => setAddLinkContactOpen(true)} />}
     >
         <Tabs defaultValue="historial">
           <TabsList variant="line" className="w-full justify-start flex-wrap">
             <TabsTrigger value="historial">Historial</TabsTrigger>
             <TabsTrigger value="actividades">Actividades</TabsTrigger>
-            <TabsTrigger value="notas">Notas</TabsTrigger>
             <TabsTrigger value="tareas">Tareas</TabsTrigger>
+            <TabsTrigger value="notas">Notas</TabsTrigger>
           </TabsList>
 
           <TabsContent value="actividades" className="mt-4">
-            <ActivityPanel activities={leadActivities} onRegisterActivity={() => toast.info('Usa las acciones rápidas para registrar una actividad')} />
+            <ActivityPanel activities={contactActivities} onRegisterActivity={() => toast.info('Usa las acciones rápidas para registrar una actividad')} />
           </TabsContent>
 
           {/* Notas Tab */}
@@ -543,12 +545,12 @@ export default function ContactoDetailPage() {
           <TabsContent value="tareas" className="mt-4">
             <TasksTab
               ref={tasksTabRef}
-              contacts={leads.filter((l) => l.id !== lead?.id)}
-              companies={lead?.companies ?? []}
-              opportunities={leadOpportunities}
-              defaultAssigneeId={lead?.assignedTo}
-              onActivityCreated={(activity) => setLeadActivities((prev) => [activity as any, ...prev])}
-              leadId={id}
+              contacts={contacts.filter((l) => l.id !== contact?.id)}
+              companies={contact?.companies ?? []}
+              opportunities={contactOpportunities}
+              defaultAssigneeId={contact?.assignedTo}
+              onActivityCreated={(activity) => setContactActivities((prev) => [activity as any, ...prev])}
+              contactId={id}
             />
           </TabsContent>
 
@@ -593,10 +595,10 @@ export default function ContactoDetailPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Fuente</Label>
-                <Select value={editForm.source} onValueChange={(v) => setEditForm((f) => ({ ...f, source: v as LeadSource }))}>
+                <Select value={editForm.source} onValueChange={(v) => setEditForm((f) => ({ ...f, source: v as ContactSource }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {Object.entries(leadSourceLabels).map(([key, label]) => (
+                    {Object.entries(contactSourceLabels).map(([key, label]) => (
                       <SelectItem key={key} value={key}>{label}</SelectItem>
                     ))}
                   </SelectContent>
@@ -604,7 +606,7 @@ export default function ContactoDetailPage() {
               </div>
               <div className="space-y-2">
                 <Label>Prioridad</Label>
-                <Select value={editForm.priority} onValueChange={(v) => setEditForm((f) => ({ ...f, priority: v as LeadPriority }))}>
+                <Select value={editForm.priority} onValueChange={(v) => setEditForm((f) => ({ ...f, priority: v as ContactPriority }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {Object.entries(priorityLabels).map(([key, label]) => (
@@ -639,7 +641,7 @@ export default function ContactoDetailPage() {
         onOpenChange={setAddCompanyOpen}
         onSubmit={handleAddCompany}
         title="Agregar empresa"
-        description={`Vincula una nueva empresa a ${lead.name}.`}
+        description={`Vincula una nueva empresa a ${contact.name}.`}
       />
 
       {/* Vincular oportunidad existente Dialog */}
@@ -654,7 +656,7 @@ export default function ContactoDetailPage() {
         }}
         title="Vincular Oportunidad Existente"
         searchPlaceholder="Buscar oportunidades..."
-        leadName={lead.name}
+        contactName={contact.name}
         items={opportunityLinkItems}
         selectedIds={linkOpportunityIds}
         onSelectionChange={setLinkOpportunityIds}
@@ -667,7 +669,7 @@ export default function ContactoDetailPage() {
       <NewOpportunityDialog
         open={convertDialogOpen}
         onOpenChange={setConvertDialogOpen}
-        entityName={lead.name}
+        entityName={contact.name}
         onSave={handleConvertToOpportunity}
       />
 
@@ -683,7 +685,7 @@ export default function ContactoDetailPage() {
         }}
         title="Vincular Empresa Existente"
         searchPlaceholder="Buscar empresas..."
-        leadName={lead.name}
+        contactName={contact.name}
         items={companyLinkItems}
         selectedIds={linkCompanyNames}
         onSelectionChange={setLinkCompanyNames}
@@ -698,7 +700,7 @@ export default function ContactoDetailPage() {
         onOpenChange={setNewContactOpen}
         onSubmit={handleCreateNewContact}
         title="Crear nuevo contacto"
-        description={`Crea un nuevo contacto y vincúlalo a ${lead.name}.`}
+        description={`Crea un nuevo contacto y vincúlalo a ${contact.name}.`}
         submitLabel="Crear y vincular"
       />
 
@@ -714,7 +716,7 @@ export default function ContactoDetailPage() {
         }}
         title="Vincular Contacto Existente"
         searchPlaceholder="Buscar contactos..."
-        leadName={lead.name}
+        contactName={contact.name}
         items={contactLinkItems}
         selectedIds={linkContactIds}
         onSelectionChange={setLinkContactIds}
@@ -724,61 +726,21 @@ export default function ContactoDetailPage() {
         emptyMessage="No hay contactos disponibles para vincular."
       />
 
-      {/* Change Etapa Dialog */}
-      <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Cambiar Etapa</DialogTitle>
-            <DialogDescription>Selecciona la nueva etapa para {lead.name}.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Label>Nueva etapa</Label>
-            <Select value={lead.etapa} onValueChange={handleEtapaChange}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(etapaLabels).map(([key, label]) => (
-                  <SelectItem key={key} value={key}>{label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setStatusDialogOpen(false)}>
-              Cancelar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ChangeEtapaDialog
+        open={statusDialogOpen}
+        onOpenChange={setStatusDialogOpen}
+        entityName={contact.name}
+        currentEtapa={contact.etapa}
+        onEtapaChange={handleEtapaChange}
+      />
 
-      {/* Assign Dialog */}
-      <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Asignar Asesor</DialogTitle>
-            <DialogDescription>Selecciona el asesor para {lead.name}.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Label>Asesor</Label>
-            <Select value={lead.assignedTo} onValueChange={handleAssignChange}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {users.filter((u) => u.status === 'activo').map((u) => (
-                  <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAssignDialogOpen(false)}>
-              Cancelar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <AssignDialog
+        open={assignDialogOpen}
+        onOpenChange={setAssignDialogOpen}
+        entityName={contact.name}
+        currentAssigneeId={contact.assignedTo}
+        onAssignChange={handleAssignChange}
+      />
     </>
   );
 }

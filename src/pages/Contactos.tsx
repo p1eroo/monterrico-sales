@@ -7,7 +7,7 @@ import {
   Phone, Mail, Building2, DollarSign, Users, ChevronLeft, ChevronRight,
   Upload, Download, FileSpreadsheet,
 } from 'lucide-react';
-import { users, leadSourceLabels, etapaLabels, priorityLabels } from '@/data/mock';
+import { users, contactSourceLabels, etapaLabels, priorityLabels } from '@/data/mock';
 import { NewContactWizard, type NewContactData } from '@/components/shared/NewContactWizard';
 import { useCRMStore } from '@/store/crmStore';
 import { getPrimaryCompany } from '@/lib/utils';
@@ -59,7 +59,7 @@ function formatCurrency(value: number) {
 
 export default function ContactosPage() {
   const navigate = useNavigate();
-  const { leads, addLead, deleteLead } = useCRMStore();
+  const { contacts, addContact, deleteContact } = useCRMStore();
 
   const [search, setSearch] = useState('');
   const [etapaFilter, setEtapaFilter] = useState<string>('todos');
@@ -68,44 +68,44 @@ export default function ContactosPage() {
   const [advisorFilter, setAdvisorFilter] = useState<string>('todos');
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [page, setPage] = useState(1);
-  const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
-  const [newLeadOpen, setNewLeadOpen] = useState(false);
+  const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
+  const [newContactOpen, setNewContactOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [leadToDelete, setLeadToDelete] = useState<string | null>(null);
+  const [contactToDelete, setContactToDelete] = useState<string | null>(null);
 
-  const filteredLeads = useMemo(() => {
-    return leads.filter((lead) => {
+  const filteredContacts = useMemo(() => {
+    return contacts.filter((contact) => {
       const matchesSearch =
         !search ||
-        lead.name.toLowerCase().includes(search.toLowerCase()) ||
-        lead.cargo?.toLowerCase().includes(search.toLowerCase()) ||
-        lead.companies?.some((c) => c.name.toLowerCase().includes(search.toLowerCase())) ||
-        lead.email.toLowerCase().includes(search.toLowerCase()) ||
-        lead.phone.includes(search);
+        contact.name.toLowerCase().includes(search.toLowerCase()) ||
+        contact.cargo?.toLowerCase().includes(search.toLowerCase()) ||
+        contact.companies?.some((c) => c.name.toLowerCase().includes(search.toLowerCase())) ||
+        contact.email.toLowerCase().includes(search.toLowerCase()) ||
+        contact.phone.includes(search);
 
-      const matchesEtapa = etapaFilter === 'todos' || lead.etapa === etapaFilter;
-      const matchesPriority = priorityFilter === 'todos' || lead.priority === priorityFilter;
-      const matchesSource = sourceFilter === 'todos' || lead.source === sourceFilter;
-      const matchesAdvisor = advisorFilter === 'todos' || lead.assignedTo === advisorFilter;
+      const matchesEtapa = etapaFilter === 'todos' || contact.etapa === etapaFilter;
+      const matchesPriority = priorityFilter === 'todos' || contact.priority === priorityFilter;
+      const matchesSource = sourceFilter === 'todos' || contact.source === sourceFilter;
+      const matchesAdvisor = advisorFilter === 'todos' || contact.assignedTo === advisorFilter;
 
       return matchesSearch && matchesEtapa && matchesPriority && matchesSource && matchesAdvisor;
     });
   }, [search, etapaFilter, priorityFilter, sourceFilter, advisorFilter]);
 
-  const totalPages = Math.ceil(filteredLeads.length / ITEMS_PER_PAGE);
-  const paginatedLeads = filteredLeads.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(filteredContacts.length / ITEMS_PER_PAGE);
+  const paginatedContacts = filteredContacts.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
   const startIndex = (page - 1) * ITEMS_PER_PAGE + 1;
-  const endIndex = Math.min(page * ITEMS_PER_PAGE, filteredLeads.length);
+  const endIndex = Math.min(page * ITEMS_PER_PAGE, filteredContacts.length);
 
   const hasActiveFilters = etapaFilter !== 'todos' || priorityFilter !== 'todos' || sourceFilter !== 'todos' || advisorFilter !== 'todos' || search !== '';
 
   const etapaCounts = useMemo(() => {
-    const counts: Record<string, number> = { todos: leads.length };
-    for (const lead of leads) {
-      counts[lead.etapa] = (counts[lead.etapa] ?? 0) + 1;
+    const counts: Record<string, number> = { todos: contacts.length };
+    for (const contact of contacts) {
+      counts[contact.etapa] = (counts[contact.etapa] ?? 0) + 1;
     }
     return counts;
-  }, [leads]);
+  }, [contacts]);
 
   function clearFilters() {
     setSearch('');
@@ -117,29 +117,29 @@ export default function ContactosPage() {
   }
 
   function toggleSelectAll() {
-    if (selectedLeads.length === paginatedLeads.length) {
-      setSelectedLeads([]);
+    if (selectedContacts.length === paginatedContacts.length) {
+      setSelectedContacts([]);
     } else {
-      setSelectedLeads(paginatedLeads.map((l) => l.id));
+      setSelectedContacts(paginatedContacts.map((l) => l.id));
     }
   }
 
-  function toggleSelectLead(id: string) {
-    setSelectedLeads((prev) =>
+  function toggleSelectContact(id: string) {
+    setSelectedContacts((prev) =>
       prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
     );
   }
 
   function handleDelete() {
-    if (leadToDelete) {
-      deleteLead(leadToDelete);
+    if (contactToDelete) {
+      deleteContact(contactToDelete);
       toast.success('Contacto eliminado correctamente');
-      setLeadToDelete(null);
+      setContactToDelete(null);
     }
   }
 
-  function onSubmitNewLead(data: NewContactData) {
-    addLead({
+  function onSubmitNewContact(data: NewContactData) {
+    addContact({
       name: data.name,
       cargo: data.cargo,
       docType: data.docType,
@@ -158,7 +158,7 @@ export default function ContactosPage() {
       direccion: data.direccion,
     });
     toast.success(`Contacto "${data.name}" creado exitosamente`);
-    setNewLeadOpen(false);
+    setNewContactOpen(false);
   }
 
   return (
@@ -173,7 +173,7 @@ export default function ContactosPage() {
         <Button variant="outline" size="sm" onClick={() => toast.info('Exportando contactos...')}>
           <Download className="size-4" /> Exportar
         </Button>
-        <Button onClick={() => setNewLeadOpen(true)}>
+        <Button onClick={() => setNewContactOpen(true)}>
           <Plus /> Nuevo Contacto
         </Button>
       </PageHeader>
@@ -185,7 +185,7 @@ export default function ContactosPage() {
           className="cursor-pointer gap-1.5 px-3 py-1.5 text-sm transition-colors hover:bg-accent"
           onClick={() => { setEtapaFilter('todos'); setPage(1); }}
         >
-          <Users className="size-3.5" /> Total: {leads.length}
+          <Users className="size-3.5" /> Total: {contacts.length}
         </Badge>
         {etapaTabs.slice(1).filter((tab) => (etapaCounts[tab.value] ?? 0) > 0).map((tab) => (
           <Badge
@@ -217,7 +217,7 @@ export default function ContactosPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todas las fuentes</SelectItem>
-              {Object.entries(leadSourceLabels).map(([key, label]) => (
+              {Object.entries(contactSourceLabels).map(([key, label]) => (
                 <SelectItem key={key} value={key}>{label}</SelectItem>
               ))}
             </SelectContent>
@@ -288,38 +288,38 @@ export default function ContactosPage() {
 
       {/* Content */}
       <div className="mt-4">
-        {filteredLeads.length === 0 ? (
+        {filteredContacts.length === 0 ? (
           <EmptyState
             icon={Users}
             title="No se encontraron contactos"
             description="Intenta ajustar los filtros o crea un nuevo contacto."
             actionLabel="Nuevo Contacto"
-            onAction={() => setNewLeadOpen(true)}
+            onAction={() => setNewContactOpen(true)}
           />
         ) : viewMode === 'table' ? (
-          <LeadsTable
-            leads={paginatedLeads}
-            selectedLeads={selectedLeads}
+          <ContactsTable
+            contacts={paginatedContacts}
+            selectedContacts={selectedContacts}
             onToggleSelectAll={toggleSelectAll}
-            onToggleSelect={toggleSelectLead}
-            allSelected={selectedLeads.length === paginatedLeads.length && paginatedLeads.length > 0}
+            onToggleSelect={toggleSelectContact}
+            allSelected={selectedContacts.length === paginatedContacts.length && paginatedContacts.length > 0}
             onView={(id) => navigate(`/contactos/${id}`)}
-            onDelete={(id) => { setLeadToDelete(id); setDeleteDialogOpen(true); }}
+            onDelete={(id) => { setContactToDelete(id); setDeleteDialogOpen(true); }}
           />
         ) : (
-          <LeadsGrid
-            leads={paginatedLeads}
+          <ContactsGrid
+            contacts={paginatedContacts}
             onView={(id) => navigate(`/contactos/${id}`)}
-            onDelete={(id) => { setLeadToDelete(id); setDeleteDialogOpen(true); }}
+            onDelete={(id) => { setContactToDelete(id); setDeleteDialogOpen(true); }}
           />
         )}
       </div>
 
       {/* Pagination */}
-      {filteredLeads.length > 0 && (
+      {filteredContacts.length > 0 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Mostrando {startIndex}-{endIndex} de {filteredLeads.length} contactos
+            Mostrando {startIndex}-{endIndex} de {filteredContacts.length} contactos
           </p>
           <div className="flex items-center gap-2">
             <Button
@@ -346,9 +346,9 @@ export default function ContactosPage() {
       )}
 
       <NewContactWizard
-        open={newLeadOpen}
-        onOpenChange={setNewLeadOpen}
-        onSubmit={onSubmitNewLead}
+        open={newContactOpen}
+        onOpenChange={setNewContactOpen}
+        onSubmit={onSubmitNewContact}
       />
 
       {/* Delete Confirmation */}
@@ -366,9 +366,9 @@ export default function ContactosPage() {
 
 /* ─── Table View ─── */
 
-interface LeadsTableProps {
-  leads: import('@/types').Lead[];
-  selectedLeads: string[];
+interface ContactsTableProps {
+  contacts: import('@/types').Contact[];
+  selectedContacts: string[];
   allSelected: boolean;
   onToggleSelectAll: () => void;
   onToggleSelect: (id: string) => void;
@@ -376,15 +376,15 @@ interface LeadsTableProps {
   onDelete: (id: string) => void;
 }
 
-function LeadsTable({
-  leads: data,
-  selectedLeads,
+function ContactsTable({
+  contacts: data,
+  selectedContacts,
   allSelected,
   onToggleSelectAll,
   onToggleSelect,
   onView,
   onDelete,
-}: LeadsTableProps) {
+}: ContactsTableProps) {
   return (
     <div className="rounded-md border">
       <Table>
@@ -417,35 +417,35 @@ function LeadsTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {data.map((lead) => (
+          {data.map((contact) => (
             <TableRow
-              key={lead.id}
+              key={contact.id}
               className="cursor-pointer"
-              onClick={() => onView(lead.id)}
+              onClick={() => onView(contact.id)}
             >
               <TableCell onClick={(e) => e.stopPropagation()}>
                 <Checkbox
-                  checked={selectedLeads.includes(lead.id)}
-                  onCheckedChange={() => onToggleSelect(lead.id)}
+                  checked={selectedContacts.includes(contact.id)}
+                  onCheckedChange={() => onToggleSelect(contact.id)}
                 />
               </TableCell>
               <TableCell>
                 <div>
-                  <p className="font-medium">{lead.name}</p>
-                  {lead.cargo && <p className="text-xs text-muted-foreground">{lead.cargo}</p>}
+                  <p className="font-medium">{contact.name}</p>
+                  {contact.cargo && <p className="text-xs text-muted-foreground">{contact.cargo}</p>}
                 </div>
               </TableCell>
-              <TableCell className="hidden md:table-cell text-muted-foreground">{getPrimaryCompany(lead)?.name ?? '—'}</TableCell>
-              <TableCell className="hidden lg:table-cell text-muted-foreground">{lead.phone}</TableCell>
-              <TableCell className="hidden xl:table-cell text-muted-foreground">{lead.email}</TableCell>
+              <TableCell className="hidden md:table-cell text-muted-foreground">{getPrimaryCompany(contact)?.name ?? '—'}</TableCell>
+              <TableCell className="hidden lg:table-cell text-muted-foreground">{contact.phone}</TableCell>
+              <TableCell className="hidden xl:table-cell text-muted-foreground">{contact.email}</TableCell>
               <TableCell className="hidden lg:table-cell">
-                <Badge variant="outline" className="text-xs">{leadSourceLabels[lead.source]}</Badge>
+                <Badge variant="outline" className="text-xs">{contactSourceLabels[contact.source]}</Badge>
               </TableCell>
-              <TableCell><StatusBadge status={lead.etapa} /></TableCell>
-              <TableCell className="hidden sm:table-cell"><PriorityBadge priority={lead.priority} /></TableCell>
-              <TableCell className="hidden xl:table-cell text-muted-foreground">{lead.assignedToName}</TableCell>
+              <TableCell><StatusBadge status={contact.etapa} /></TableCell>
+              <TableCell className="hidden sm:table-cell"><PriorityBadge priority={contact.priority} /></TableCell>
+              <TableCell className="hidden xl:table-cell text-muted-foreground">{contact.assignedToName}</TableCell>
               <TableCell className="hidden md:table-cell text-muted-foreground">
-                {new Date(lead.createdAt).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}
+                {new Date(contact.createdAt).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}
               </TableCell>
               <TableCell onClick={(e) => e.stopPropagation()}>
                 <DropdownMenu>
@@ -455,14 +455,14 @@ function LeadsTable({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => onView(lead.id)}>
+                    <DropdownMenuItem onClick={() => onView(contact.id)}>
                       <Eye /> Ver
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onView(lead.id)}>
+                    <DropdownMenuItem onClick={() => onView(contact.id)}>
                       <Pencil /> Editar
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem variant="destructive" onClick={() => onDelete(lead.id)}>
+                    <DropdownMenuItem variant="destructive" onClick={() => onDelete(contact.id)}>
                       <Trash2 /> Eliminar
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -478,28 +478,28 @@ function LeadsTable({
 
 /* ─── Card View ─── */
 
-interface LeadsGridProps {
-  leads: import('@/types').Lead[];
+interface ContactsGridProps {
+  contacts: import('@/types').Contact[];
   onView: (id: string) => void;
   onDelete: (id: string) => void;
 }
 
-function LeadsGrid({ leads: data, onView, onDelete }: LeadsGridProps) {
+function ContactsGrid({ contacts: data, onView, onDelete }: ContactsGridProps) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {data.map((lead) => (
+      {data.map((contact) => (
         <Card
-          key={lead.id}
+          key={contact.id}
           className="cursor-pointer transition-shadow hover:shadow-md"
-          onClick={() => onView(lead.id)}
+          onClick={() => onView(contact.id)}
         >
           <CardContent className="p-5">
             <div className="flex items-start justify-between">
               <div className="flex-1 min-w-0">
-                <h3 className="font-semibold truncate">{lead.name}</h3>
-                {lead.cargo && <p className="text-xs text-muted-foreground truncate">{lead.cargo}</p>}
+                <h3 className="font-semibold truncate">{contact.name}</h3>
+                {contact.cargo && <p className="text-xs text-muted-foreground truncate">{contact.cargo}</p>}
                 <p className="mt-0.5 flex items-center gap-1 text-sm text-muted-foreground truncate">
-                  <Building2 className="size-3 shrink-0" /> {getPrimaryCompany(lead)?.name ?? '—'}
+                  <Building2 className="size-3 shrink-0" /> {getPrimaryCompany(contact)?.name ?? '—'}
                 </p>
               </div>
               <DropdownMenu>
@@ -509,11 +509,11 @@ function LeadsGrid({ leads: data, onView, onDelete }: LeadsGridProps) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => onView(lead.id)}>
+                  <DropdownMenuItem onClick={() => onView(contact.id)}>
                     <Eye /> Ver
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem variant="destructive" onClick={() => onDelete(lead.id)}>
+                  <DropdownMenuItem variant="destructive" onClick={() => onDelete(contact.id)}>
                     <Trash2 /> Eliminar
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -521,25 +521,25 @@ function LeadsGrid({ leads: data, onView, onDelete }: LeadsGridProps) {
             </div>
 
             <div className="mt-3 flex flex-wrap gap-1.5">
-              <StatusBadge status={lead.etapa} />
-              <PriorityBadge priority={lead.priority} />
+              <StatusBadge status={contact.etapa} />
+              <PriorityBadge priority={contact.priority} />
             </div>
 
             <div className="mt-3 space-y-1.5 text-sm text-muted-foreground">
               <p className="flex items-center gap-2 truncate">
-                <Phone className="size-3 shrink-0" /> {lead.phone}
+                <Phone className="size-3 shrink-0" /> {contact.phone}
               </p>
               <p className="flex items-center gap-2 truncate">
-                <Mail className="size-3 shrink-0" /> {lead.email}
+                <Mail className="size-3 shrink-0" /> {contact.email}
               </p>
             </div>
 
             <div className="mt-3 flex items-center justify-between border-t pt-3">
               <span className="flex items-center gap-1 text-sm font-semibold text-emerald-600">
                 <DollarSign className="size-3.5" />
-                {formatCurrency(lead.estimatedValue)}
+                {formatCurrency(contact.estimatedValue)}
               </span>
-              <span className="text-xs text-muted-foreground">{lead.assignedToName}</span>
+              <span className="text-xs text-muted-foreground">{contact.assignedToName}</span>
             </div>
           </CardContent>
         </Card>
