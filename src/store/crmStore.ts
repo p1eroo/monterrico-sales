@@ -26,16 +26,19 @@ export const useCRMStore = create<CRMState>((set, get) => ({
   opportunities: [...initialOpportunities],
 
   addContact: (contactData) => {
+    const etapa = contactData.etapa ?? 'lead';
+    const createdAt = new Date().toISOString().slice(0, 10);
     const newContact: Contact = {
       ...contactData,
       id: generateId('c'),
-      etapa: contactData.etapa ?? 'lead',
+      etapa,
       assignedToName: getUserName(contactData.assignedTo),
       nextAction: 'Contactar',
       nextFollowUp: '',
-      createdAt: new Date().toISOString().slice(0, 10),
+      createdAt,
       notes: contactData.notes,
       tags: contactData.tags,
+      etapaHistory: [{ etapa, fecha: createdAt }],
     };
     set((state) => ({ contacts: [newContact, ...state.contacts] }));
     return newContact;
@@ -43,7 +46,16 @@ export const useCRMStore = create<CRMState>((set, get) => ({
 
   updateContact: (id, updates) => {
     set((state) => ({
-      contacts: state.contacts.map((c) => (c.id === id ? { ...c, ...updates } : c)),
+      contacts: state.contacts.map((c) => {
+        if (c.id !== id) return c;
+        const merged = { ...c, ...updates };
+        if (updates.etapa !== undefined && updates.etapa !== c.etapa) {
+          const today = new Date().toISOString().slice(0, 10);
+          const history = c.etapaHistory ?? (c.createdAt ? [{ etapa: c.etapa, fecha: c.createdAt }] : []);
+          merged.etapaHistory = [...history, { etapa: updates.etapa, fecha: today }];
+        }
+        return merged;
+      }),
     }));
   },
 

@@ -2,10 +2,33 @@ import type {
   User, Contact, Activity, Opportunity, Client,
   TimelineEvent, DashboardMetrics, NotificationItem,
   ChartDataPoint, Etapa, LinkedCompany, CompanyRubro, CompanyTipo,
+  CalendarEvent,
 } from '@/types';
 
 function leadCompanies(name: string, rubro?: CompanyRubro, tipo?: CompanyTipo, domain?: string): LinkedCompany[] {
   return [{ name, rubro, tipo, domain, isPrimary: true }];
+}
+
+const PIPELINE_ORDER: Etapa[] = ['lead', 'contacto', 'reunion_agendada', 'reunion_efectiva', 'propuesta_economica', 'negociacion', 'licitacion', 'licitacion_etapa_final', 'cierre_ganado', 'firma_contrato', 'activo'];
+const PIPELINE_ORDER_WITH_LOST: Etapa[] = [...PIPELINE_ORDER, 'cierre_perdido', 'inactivo'];
+
+function addDays(dateStr: string, days: number): string {
+  const d = new Date(dateStr + 'T12:00:00');
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function buildEtapaHistory(createdAt: string, currentEtapa: Etapa): { etapa: Etapa; fecha: string }[] {
+  const order = ['cierre_perdido', 'inactivo'].includes(currentEtapa) ? PIPELINE_ORDER_WITH_LOST : PIPELINE_ORDER;
+  const idx = order.indexOf(currentEtapa);
+  if (idx < 0) return [{ etapa: currentEtapa, fecha: createdAt }];
+  const history: { etapa: Etapa; fecha: string }[] = [];
+  let d = createdAt;
+  for (let i = 0; i <= idx; i++) {
+    history.push({ etapa: order[i], fecha: d });
+    d = addDays(d, 2 + (i % 2));
+  }
+  return history;
 }
 
 export const users: User[] = [
@@ -17,7 +40,7 @@ export const users: User[] = [
   { id: 'u6', name: 'Lucía Fernández', email: 'lucia.fernandez@taximonterrico.com', role: 'asesor', phone: '+51 998 111 222', status: 'inactivo', contactsAssigned: 15, opportunitiesActive: 2, salesClosed: 8, conversionRate: 53, joinedAt: '2024-03-01' },
 ];
 
-export const contacts: Contact[] = [
+const rawContacts: Omit<Contact, 'etapaHistory'>[] = [
   { id: 'l1', name: 'Pedro Castillo', cargo: 'Gerente de Operaciones', companies: leadCompanies('Minera Los Andes SAC', 'mineria', 'A', 'mineraandes.com'), phone: '+51 912 345 678', email: 'pcastillo@mineraandes.com', source: 'base', etapa: 'lead', priority: 'alta', assignedTo: 'u1', assignedToName: 'Carlos Mendoza', estimatedValue: 45000, createdAt: '2026-03-01', nextAction: 'Llamar para presentar servicios', nextFollowUp: '2026-03-07', tags: ['minería', 'corporativo'], linkedContactIds: ['l3'] },
   { id: 'l2', name: 'Sofía Vargas', cargo: 'Directora de Compras', companies: leadCompanies('Hotel Belmond Miraflores', 'hoteleria', 'A', 'belmondhotels.pe'), phone: '+51 923 456 789', email: 'svargas@belmondhotels.pe', source: 'referido', etapa: 'contacto', priority: 'alta', assignedTo: 'u2', assignedToName: 'María García', estimatedValue: 38000, createdAt: '2026-02-28', nextAction: 'Enviar propuesta de servicio ejecutivo', nextFollowUp: '2026-03-06', tags: ['hotelería', 'turismo'] },
   { id: 'l3', name: 'Miguel Ángel Ruiz', cargo: 'Jefe de Proyectos', companies: leadCompanies('Constructora Graña y Montero', 'construccion', 'A', 'gym.com.pe'), phone: '+51 934 567 890', email: 'maruiz@gym.com.pe', source: 'feria', etapa: 'reunion_agendada', priority: 'media', assignedTo: 'u3', assignedToName: 'José Ramírez', estimatedValue: 62000, createdAt: '2026-02-25', nextAction: 'Reunión presencial en oficina', nextFollowUp: '2026-03-08', tags: ['construcción'] },
@@ -35,16 +58,21 @@ export const contacts: Contact[] = [
   { id: 'l15', name: 'Enrique Vásquez', cargo: 'Socio Partner', companies: leadCompanies('EY Perú (Ernst & Young)', 'consultoria', 'A', 'ey.com'), phone: '+51 966 789 012', email: 'evasquez@ey.com', source: 'referido', etapa: 'lead', priority: 'alta', assignedTo: 'u1', assignedToName: 'Carlos Mendoza', estimatedValue: 68000, createdAt: '2026-03-05', nextAction: 'Agendar llamada introductoria', nextFollowUp: '2026-03-08', tags: ['consultoría', 'Big Four'] },
 ];
 
+export const contacts: Contact[] = rawContacts.map((c) => ({
+  ...c,
+  etapaHistory: buildEtapaHistory(c.createdAt, c.etapa),
+}));
+
 export const activities: Activity[] = [
-  { id: 'a1', type: 'llamada', title: 'Llamada de presentación', description: 'Presentar servicios corporativos de Taxi Monterrico', contactId: 'l1', contactName: 'Pedro Castillo - Minera Los Andes', assignedTo: 'u1', assignedToName: 'Carlos Mendoza', status: 'pendiente', dueDate: '2026-03-07', createdAt: '2026-03-05' },
-  { id: 'a2', type: 'correo', title: 'Enviar propuesta comercial', description: 'Propuesta de servicio ejecutivo para hotel', contactId: 'l2', contactName: 'Sofía Vargas - Hotel Belmond', assignedTo: 'u2', assignedToName: 'María García', status: 'completada', dueDate: '2026-03-06', completedAt: '2026-03-06', createdAt: '2026-03-04' },
-  { id: 'a3', type: 'reunion', title: 'Reunión presencial', description: 'Visita a oficinas de Graña y Montero para demo', contactId: 'l3', contactName: 'Miguel Ángel Ruiz - GyM', assignedTo: 'u3', assignedToName: 'José Ramírez', status: 'pendiente', dueDate: '2026-03-08', createdAt: '2026-03-05' },
+  { id: 'a1', type: 'llamada', title: 'Llamada de presentación', description: 'Presentar servicios corporativos de Taxi Monterrico', contactId: 'l1', contactName: 'Pedro Castillo - Minera Los Andes', assignedTo: 'u1', assignedToName: 'Carlos Mendoza', status: 'pendiente', dueDate: '2026-03-07', startDate: '2026-03-06', startTime: '10:00', createdAt: '2026-03-05' },
+  { id: 'a2', type: 'correo', title: 'Enviar propuesta comercial', description: 'Propuesta de servicio ejecutivo para hotel', contactId: 'l2', contactName: 'Sofía Vargas - Hotel Belmond', assignedTo: 'u2', assignedToName: 'María García', status: 'completada', dueDate: '2026-03-06', startDate: '2026-03-04', completedAt: '2026-03-06', createdAt: '2026-03-04' },
+  { id: 'a3', type: 'reunion', title: 'Reunión presencial', description: 'Visita a oficinas de Graña y Montero para demo', contactId: 'l3', contactName: 'Miguel Ángel Ruiz - GyM', assignedTo: 'u3', assignedToName: 'José Ramírez', status: 'pendiente', dueDate: '2026-03-08', startDate: '2026-03-08', startTime: '14:30', createdAt: '2026-03-05' },
   { id: 'a4', type: 'seguimiento', title: 'Seguimiento de propuesta', description: 'Revisar respuesta a propuesta enviada', contactId: 'l5', contactName: 'Fernando Ochoa - BCP', assignedTo: 'u1', assignedToName: 'Carlos Mendoza', status: 'vencida', dueDate: '2026-03-04', createdAt: '2026-03-01' },
   { id: 'a5', type: 'whatsapp', title: 'Mensaje WhatsApp', description: 'Enviar información de flota y servicios', contactId: 'l9', contactName: 'Diego Sánchez - Telefónica', assignedTo: 'u5', assignedToName: 'Roberto Silva', status: 'pendiente', dueDate: '2026-03-07', createdAt: '2026-03-06' },
-  { id: 'a6', type: 'tarea', title: 'Preparar brochure ejecutivo', description: 'Diseñar brochure personalizado para Interbank', contactId: 'l10', contactName: 'Valentina Rojas - Interbank', assignedTo: 'u1', assignedToName: 'Carlos Mendoza', status: 'pendiente', dueDate: '2026-03-06', createdAt: '2026-03-05' },
-  { id: 'a7', type: 'llamada', title: 'Llamada de negociación', description: 'Discutir términos de contrato con Repsol', contactId: 'l14', contactName: 'Isabella Campos - Repsol', assignedTo: 'u5', assignedToName: 'Roberto Silva', status: 'reprogramada', dueDate: '2026-03-09', createdAt: '2026-03-03' },
+  { id: 'a6', type: 'tarea', title: 'Preparar brochure ejecutivo', description: 'Diseñar brochure personalizado para Interbank', contactId: 'l10', contactName: 'Valentina Rojas - Interbank', assignedTo: 'u1', assignedToName: 'Carlos Mendoza', status: 'pendiente', dueDate: '2026-03-06', startDate: '2026-03-05', createdAt: '2026-03-05' },
+  { id: 'a7', type: 'llamada', title: 'Llamada de negociación', description: 'Discutir términos de contrato con Repsol', contactId: 'l14', contactName: 'Isabella Campos - Repsol', assignedTo: 'u5', assignedToName: 'Roberto Silva', status: 'en_progreso', dueDate: '2026-03-09', startDate: '2026-03-09', startTime: '09:00', createdAt: '2026-03-03' },
   { id: 'a8', type: 'reunion', title: 'Demo de flota ejecutiva', description: 'Mostrar vehículos y app a Clínica Internacional', contactId: 'l4', contactName: 'Laura Mendez - Clínica Internacional', assignedTo: 'u4', assignedToName: 'Ana Torres', status: 'completada', dueDate: '2026-03-05', completedAt: '2026-03-05', createdAt: '2026-03-02' },
-  { id: 'a9', type: 'correo', title: 'Enviar contrato', description: 'Enviar borrador de contrato a la universidad', contactId: 'l6', contactName: 'Patricia Huamán - PUCP', assignedTo: 'u2', assignedToName: 'María García', status: 'pendiente', dueDate: '2026-03-06', createdAt: '2026-03-05' },
+  { id: 'a9', type: 'correo', title: 'Enviar contrato', description: 'Enviar borrador de contrato a la universidad', contactId: 'l6', contactName: 'Patricia Huamán - PUCP', assignedTo: 'u2', assignedToName: 'María García', status: 'pendiente', dueDate: '2026-03-06', startDate: '2026-03-06', createdAt: '2026-03-05' },
   { id: 'a10', type: 'seguimiento', title: 'Follow-up Southern Copper', description: 'Verificar interés y agendar reunión', contactId: 'l11', contactName: 'Andrés Paredes - Southern Copper', assignedTo: 'u2', assignedToName: 'María García', status: 'vencida', dueDate: '2026-03-03', createdAt: '2026-02-28' },
   { id: 'a11', type: 'tarea', title: 'Actualizar CRM', description: 'Registrar notas de la reunión con EY', contactId: 'l15', contactName: 'Enrique Vásquez - EY', assignedTo: 'u1', assignedToName: 'Carlos Mendoza', status: 'pendiente', dueDate: '2026-03-08', createdAt: '2026-03-06' },
   { id: 'a12', type: 'whatsapp', title: 'Confirmar reunión', description: 'Confirmar asistencia a reunión de mañana', contactId: 'l3', contactName: 'Miguel Ángel Ruiz - GyM', assignedTo: 'u3', assignedToName: 'José Ramírez', status: 'completada', dueDate: '2026-03-07', completedAt: '2026-03-07', createdAt: '2026-03-06' },
@@ -72,6 +100,24 @@ export const clients: Client[] = [
   { id: 'c6', company: 'Deloitte Perú', companyRubro: 'consultoria', companyTipo: 'A', contactName: 'Mónica Reyes', phone: '+51 956 666 777', email: 'mreyes@deloitte.com', status: 'activo', assignedTo: 'u1', assignedToName: 'Carlos Mendoza', service: 'Plan Corporate Plus', createdAt: '2025-09-01', lastActivity: '2026-03-06', totalRevenue: 180000 },
   { id: 'c7', company: 'Claro Perú', companyRubro: 'telecomunicaciones', companyTipo: 'A', contactName: 'Jorge Medina', phone: '+51 967 777 888', email: 'jmedina@claro.pe', status: 'activo', assignedTo: 'u3', assignedToName: 'José Ramírez', service: 'Transporte de Personal', createdAt: '2025-10-15', lastActivity: '2026-03-02', totalRevenue: 95000 },
   { id: 'c8', company: 'PWC Perú', companyRubro: 'consultoria', companyTipo: 'A', contactName: 'Daniela Quispe', phone: '+51 978 888 999', email: 'dquispe@pwc.com', status: 'activo', assignedTo: 'u2', assignedToName: 'María García', service: 'Servicio Premium Ejecutivo', createdAt: '2025-07-20', lastActivity: '2026-03-05', totalRevenue: 160000 },
+];
+
+export const calendarEvents: CalendarEvent[] = [
+  { id: 'ce1', title: 'Llamada de presentación', type: 'llamada', date: '2026-03-07', startTime: '10:00', endTime: '10:30', assignedTo: 'u1', assignedToName: 'Carlos Mendoza', relatedEntityType: 'contact', relatedEntityId: 'l1', relatedEntityName: 'Pedro Castillo - Minera Los Andes', description: 'Presentar servicios corporativos', status: 'pendiente' },
+  { id: 'ce2', title: 'Enviar propuesta comercial', type: 'correo', date: '2026-03-06', startTime: '09:00', endTime: '09:30', assignedTo: 'u2', assignedToName: 'María García', relatedEntityType: 'contact', relatedEntityId: 'l2', relatedEntityName: 'Sofía Vargas - Hotel Belmond', description: 'Propuesta de servicio ejecutivo', status: 'completada' },
+  { id: 'ce3', title: 'Reunión presencial GyM', type: 'reunion', date: '2026-03-08', startTime: '14:30', endTime: '16:00', assignedTo: 'u3', assignedToName: 'José Ramírez', relatedEntityType: 'contact', relatedEntityId: 'l3', relatedEntityName: 'Miguel Ángel Ruiz - GyM', description: 'Visita a oficinas para demo', status: 'pendiente' },
+  { id: 'ce4', title: 'Seguimiento propuesta BCP', type: 'seguimiento', date: '2026-03-04', startTime: '11:00', endTime: '11:30', assignedTo: 'u1', assignedToName: 'Carlos Mendoza', relatedEntityType: 'opportunity', relatedEntityId: 'o3', relatedEntityName: 'Flota Exclusiva BCP', description: 'Revisar respuesta a propuesta', status: 'vencida' },
+  { id: 'ce5', title: 'Mensaje WhatsApp Telefónica', type: 'whatsapp', date: '2026-03-07', startTime: '15:00', endTime: '15:15', assignedTo: 'u5', assignedToName: 'Roberto Silva', relatedEntityType: 'contact', relatedEntityId: 'l9', relatedEntityName: 'Diego Sánchez - Telefónica', description: 'Enviar información de flota', status: 'pendiente' },
+  { id: 'ce6', title: 'Preparar brochure Interbank', type: 'tarea', date: '2026-03-06', startTime: '08:00', endTime: '10:00', assignedTo: 'u1', assignedToName: 'Carlos Mendoza', relatedEntityType: 'opportunity', relatedEntityId: 'o10', relatedEntityName: 'Interbank VIP', description: 'Diseñar brochure personalizado', status: 'pendiente' },
+  { id: 'ce7', title: 'Llamada negociación Repsol', type: 'llamada', date: '2026-03-09', startTime: '09:00', endTime: '09:45', assignedTo: 'u5', assignedToName: 'Roberto Silva', relatedEntityType: 'opportunity', relatedEntityId: 'o8', relatedEntityName: 'Repsol Corporate Fleet', description: 'Discutir términos de contrato', status: 'en_progreso' },
+  { id: 'ce8', title: 'Demo flota Clínica Internacional', type: 'reunion', date: '2026-03-05', startTime: '10:00', endTime: '11:30', assignedTo: 'u4', assignedToName: 'Ana Torres', relatedEntityType: 'contact', relatedEntityId: 'l4', relatedEntityName: 'Laura Mendez - Clínica Internacional', description: 'Mostrar vehículos y app', status: 'completada' },
+  { id: 'ce9', title: 'Enviar contrato PUCP', type: 'correo', date: '2026-03-06', startTime: '14:00', endTime: '14:30', assignedTo: 'u2', assignedToName: 'María García', relatedEntityType: 'opportunity', relatedEntityId: 'o6', relatedEntityName: 'Plan Universitario PUCP', description: 'Enviar borrador de contrato', status: 'pendiente' },
+  { id: 'ce10', title: 'Follow-up Southern Copper', type: 'seguimiento', date: '2026-03-03', startTime: '16:00', endTime: '16:30', assignedTo: 'u2', assignedToName: 'María García', relatedEntityType: 'opportunity', relatedEntityId: 'o7', relatedEntityName: 'Southern Copper Premium', description: 'Verificar interés y agendar reunión', status: 'vencida' },
+  { id: 'ce11', title: 'Actualizar CRM post-reunión', type: 'tarea', date: '2026-03-08', startTime: '17:00', endTime: '17:30', assignedTo: 'u1', assignedToName: 'Carlos Mendoza', relatedEntityType: 'contact', relatedEntityId: 'l15', relatedEntityName: 'Enrique Vásquez - EY', description: 'Registrar notas de la reunión', status: 'pendiente' },
+  { id: 'ce12', title: 'Confirmar reunión GyM', type: 'whatsapp', date: '2026-03-07', startTime: '08:30', endTime: '08:45', assignedTo: 'u3', assignedToName: 'José Ramírez', relatedEntityType: 'contact', relatedEntityId: 'l3', relatedEntityName: 'Miguel Ángel Ruiz - GyM', description: 'Confirmar asistencia', status: 'completada' },
+  { id: 'ce13', title: 'Reunión con Embajada España', type: 'reunion', date: '2026-03-10', startTime: '11:00', endTime: '12:00', assignedTo: 'u3', assignedToName: 'José Ramírez', relatedEntityType: 'opportunity', relatedEntityId: 'o4', relatedEntityName: 'Contrato Embajada España', description: 'Revisión de servicio activo', status: 'pendiente' },
+  { id: 'ce14', title: 'Llamada presentación Minera', type: 'llamada', date: '2026-03-11', startTime: '10:00', endTime: '10:45', assignedTo: 'u1', assignedToName: 'Carlos Mendoza', relatedEntityType: 'opportunity', relatedEntityId: 'o1', relatedEntityName: 'Servicio Corporativo Minera Los Andes', description: 'Presentar servicios de transporte', status: 'pendiente' },
+  { id: 'ce15', title: 'Enviar cotización Alicorp', type: 'correo', date: '2026-03-12', startTime: '09:00', endTime: '09:30', assignedTo: 'u4', assignedToName: 'Ana Torres', relatedEntityType: 'opportunity', relatedEntityId: 'o9', relatedEntityName: 'Alicorp Ejecutivo', description: 'Cotización para directores regionales', status: 'pendiente' },
 ];
 
 export const timelineEvents: TimelineEvent[] = [

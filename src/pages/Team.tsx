@@ -143,9 +143,9 @@ export default function TeamPage() {
       </PageHeader>
 
       {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardContent className="pt-6">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 items-start">
+        <Card className="p-4">
+          <CardContent className="p-0">
             <div className="flex items-center gap-2">
               <Users className="size-5 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Total miembros</span>
@@ -153,8 +153,8 @@ export default function TeamPage() {
             <p className="mt-1 text-2xl font-bold">{totalMembers}</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-6">
+        <Card className="p-4">
+          <CardContent className="p-0">
             <div className="flex items-center gap-2">
               <UserCheck className="size-5 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Activos</span>
@@ -162,8 +162,8 @@ export default function TeamPage() {
             <p className="mt-1 text-2xl font-bold">{activeMembers}</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-6">
+        <Card className="p-4">
+          <CardContent className="p-0">
             <div className="flex items-center gap-2">
               <Shield className="size-5 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Admin + Gerentes</span>
@@ -171,8 +171,8 @@ export default function TeamPage() {
             <p className="mt-1 text-2xl font-bold">{adminGerentes}</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-6">
+        <Card className="p-4">
+          <CardContent className="p-0">
             <div className="flex items-center gap-2">
               <Users className="size-5 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Asesores</span>

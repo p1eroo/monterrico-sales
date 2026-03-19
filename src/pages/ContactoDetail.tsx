@@ -183,7 +183,7 @@ export default function ContactoDetailPage() {
       { id: `n-${Date.now()}`, text: noteText.trim(), author: 'Tú', date: new Date().toISOString().slice(0, 10) },
       ...prev,
     ]);
-    setNoteText('');
+      setNoteText('');
     toast.success('Nota agregada correctamente');
   }
 
@@ -438,7 +438,7 @@ export default function ContactoDetailPage() {
         />
       }
       summaryCards={
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Card className="py-0">
               <CardContent className="px-4 py-3">
                 <div className="flex items-center gap-3">

@@ -27,6 +27,10 @@ import {
   TableHeader, TableRow,
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter,
+  DialogHeader, DialogTitle,
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
 const NAV_SECTIONS = [
@@ -74,13 +78,20 @@ const PERMISSION_KEYS = [
   'Configuración',
 ] as const;
 
-const INITIAL_PERMISSIONS: Record<UserRole, Record<string, boolean>> = {
+type SettingsRole = UserRole | 'jefe_comercial';
+
+const INITIAL_PERMISSIONS: Record<SettingsRole, Record<string, boolean>> = {
   admin: {
     'Ver leads': true, 'Crear leads': true, 'Editar leads': true,
     'Eliminar leads': true, 'Ver reportes': true, 'Gestionar equipo': true,
     'Configuración': true,
   },
   gerente: {
+    'Ver leads': true, 'Crear leads': true, 'Editar leads': true,
+    'Eliminar leads': false, 'Ver reportes': true, 'Gestionar equipo': true,
+    'Configuración': false,
+  },
+  jefe_comercial: {
     'Ver leads': true, 'Crear leads': true, 'Editar leads': true,
     'Eliminar leads': false, 'Ver reportes': true, 'Gestionar equipo': true,
     'Configuración': false,
@@ -132,9 +143,10 @@ const ETAPAS_CONFIG = [
   { id: 'inactivo', name: 'Inactivo', color: '#6b7280', order: 13, prob: -5 },
 ];
 
-const ROLE_LABELS: Record<UserRole, string> = {
+const ROLE_LABELS: Record<SettingsRole, string> = {
   admin: 'Administrador',
-  gerente: 'Gerente',
+  gerente: 'Gerente Comercial',
+  jefe_comercial: 'Jefe Comercial',
   asesor: 'Asesor',
 };
 
@@ -143,6 +155,9 @@ export default function Settings() {
   const [leadSources, setLeadSources] = useState(INITIAL_LEAD_SOURCES);
   const [newSourceName, setNewSourceName] = useState('');
   const [pipelineStages, setPipelineStages] = useState(INITIAL_PIPELINE_STAGES);
+  const [addStageOpen, setAddStageOpen] = useState(false);
+  const [newStageName, setNewStageName] = useState('');
+  const [newStageColor, setNewStageColor] = useState('#64748b');
   const [rolePermissions, setRolePermissions] = useState(INITIAL_PERMISSIONS);
   const [activityTypes, setActivityTypes] = useState(INITIAL_ACTIVITY_TYPES);
   const [emailNotif, setEmailNotif] = useState(true);
@@ -175,7 +190,31 @@ export default function Settings() {
     );
   }
 
-  function handlePermissionChange(role: UserRole, permission: string, checked: boolean) {
+  function addPipelineStage() {
+    const trimmed = newStageName.trim();
+    if (!trimmed) return;
+    const baseId = trimmed.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    const existingIds = new Set(pipelineStages.map((s) => s.id));
+    let id = baseId || 'etapa';
+    let n = 1;
+    while (existingIds.has(id)) {
+      id = `${baseId}_${n}`;
+      n++;
+    }
+    setPipelineStages((prev) => [
+      ...prev,
+      { id, name: trimmed, color: newStageColor, enabled: true },
+    ]);
+    setNewStageName('');
+    setNewStageColor('#64748b');
+    setAddStageOpen(false);
+  }
+
+  function removePipelineStage(id: string) {
+    setPipelineStages((prev) => prev.filter((s) => s.id !== id));
+  }
+
+  function handlePermissionChange(role: SettingsRole, permission: string, checked: boolean) {
     setRolePermissions((prev) => ({
       ...prev,
       [role]: { ...prev[role], [permission]: checked },
@@ -365,31 +404,53 @@ export default function Settings() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
+                <div className="mb-4 flex justify-end">
+                  <Button
+                    onClick={() => setAddStageOpen(true)}
+                    className="bg-[#13944C] text-white hover:bg-[#0f7a3d]"
+                  >
+                    <Plus className="size-4" />
+                    Añadir etapa
+                  </Button>
+                </div>
                 <div className="space-y-2">
-                  {pipelineStages.map((stage) => (
-                    <div
-                      key={stage.id}
-                      className="flex items-center gap-3 rounded-lg border px-4 py-3"
-                    >
-                      <GripVertical className="size-4 shrink-0 cursor-grab text-muted-foreground" />
+                  {pipelineStages.map((stage) => {
+                    const isDefault = INITIAL_PIPELINE_STAGES.some((s) => s.id === stage.id);
+                    return (
                       <div
-                        className="size-3 shrink-0 rounded-full"
-                        style={{ backgroundColor: stage.color }}
-                      />
-                      <span
-                        className={cn(
-                          'flex-1 text-sm font-medium',
-                          !stage.enabled && 'text-muted-foreground line-through',
-                        )}
+                        key={stage.id}
+                        className="flex items-center gap-3 rounded-lg border px-4 py-3"
                       >
-                        {stage.name}
-                      </span>
-                      <Switch
-                        checked={stage.enabled}
-                        onCheckedChange={() => togglePipelineStage(stage.id)}
-                      />
-                    </div>
-                  ))}
+                        <GripVertical className="size-4 shrink-0 cursor-grab text-muted-foreground" />
+                        <div
+                          className="size-3 shrink-0 rounded-full"
+                          style={{ backgroundColor: stage.color }}
+                        />
+                        <span
+                          className={cn(
+                            'flex-1 text-sm font-medium',
+                            !stage.enabled && 'text-muted-foreground line-through',
+                          )}
+                        >
+                          {stage.name}
+                        </span>
+                        <Switch
+                          checked={stage.enabled}
+                          onCheckedChange={() => togglePipelineStage(stage.id)}
+                        />
+                        {!isDefault && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-muted-foreground hover:text-red-600"
+                            onClick={() => removePipelineStage(stage.id)}
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
                 <p className="mt-3 text-xs text-muted-foreground">
                   Arrastra los elementos para reordenar las etapas del pipeline.
@@ -397,6 +458,60 @@ export default function Settings() {
               </CardContent>
             </Card>
           )}
+
+          {/* Modal Añadir etapa */}
+          <Dialog open={addStageOpen} onOpenChange={setAddStageOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Añadir etapa</DialogTitle>
+                <DialogDescription>
+                  Crea una nueva etapa para el pipeline del equipo. La lógica se sincronizará con el backend al implementarlo.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="stage-name">Nombre de la etapa</Label>
+                  <Input
+                    id="stage-name"
+                    placeholder="Ej: Cotización enviada"
+                    value={newStageName}
+                    onChange={(e) => setNewStageName(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && addPipelineStage()}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="stage-color">Color</Label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      id="stage-color"
+                      type="color"
+                      value={newStageColor}
+                      onChange={(e) => setNewStageColor(e.target.value)}
+                      className="h-10 w-14 cursor-pointer rounded border border-input"
+                    />
+                    <Input
+                      value={newStageColor}
+                      onChange={(e) => setNewStageColor(e.target.value)}
+                      className="font-mono text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setAddStageOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={addPipelineStage}
+                  disabled={!newStageName.trim()}
+                  className="bg-[#13944C] text-white hover:bg-[#0f7a3d]"
+                >
+                  <Plus className="size-4" />
+                  Añadir
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           {/* Roles y Permisos */}
           {activeTab === 'roles' && (
@@ -412,7 +527,7 @@ export default function Settings() {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[200px]">Permiso</TableHead>
-                      {(['admin', 'gerente', 'asesor'] as const).map((role) => (
+                      {(['admin', 'gerente', 'jefe_comercial', 'asesor'] as const).map((role) => (
                         <TableHead key={role} className="text-center">
                           {ROLE_LABELS[role]}
                         </TableHead>
@@ -423,7 +538,7 @@ export default function Settings() {
                     {PERMISSION_KEYS.map((perm) => (
                       <TableRow key={perm}>
                         <TableCell className="font-medium">{perm}</TableCell>
-                        {(['admin', 'gerente', 'asesor'] as const).map((role) => (
+                        {(['admin', 'gerente', 'jefe_comercial', 'asesor'] as const).map((role) => (
                           <TableCell key={role} className="text-center">
                             <Checkbox
                               checked={rolePermissions[role][perm]}

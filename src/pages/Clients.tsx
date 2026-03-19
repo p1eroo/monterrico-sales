@@ -28,9 +28,10 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 import {
-  Building2, Users, UserX, DollarSign, Search, Plus, Eye, Pencil,
-  Phone, Mail, Calendar, Briefcase, FileText, Clock, User,
+  Building2, Users, UserX, DollarSign, Search, Plus, Eye,
+  Phone, Mail, Calendar, FileText, Clock, User, RefreshCw, Download, ExternalLink,
 } from 'lucide-react';
 
 const clientStatusConfig: Record<ClientStatus, { label: string; className: string }> = {
@@ -55,7 +56,6 @@ const newClientSchema = z.object({
   contactName: z.string().min(1, 'El nombre de contacto es requerido'),
   phone: z.string().min(1, 'El teléfono es requerido'),
   email: z.string().email('Email inválido'),
-  service: z.string().min(1, 'El servicio es requerido'),
   assignedTo: z.string().min(1, 'Seleccione un ejecutivo'),
   notes: z.string().optional(),
 });
@@ -83,13 +83,45 @@ function getInitials(name: string) {
     .toUpperCase();
 }
 
+function getDomainFromEmail(email: string): string | null {
+  const match = email?.match(/@([\w.-]+\.[a-z]{2,})/i);
+  return match ? match[1] : null;
+}
+
+function exportClientsToCSV(clients: Client[]) {
+  const headers = ['Empresa', 'Dominio', 'Contacto principal', 'Rubro', 'Tipo', 'Teléfono', 'Email', 'Estado', 'Ejecutivo', 'Fecha alta', 'Ingresos'];
+  const rows = clients.map((c) => [
+    c.company,
+    getDomainFromEmail(c.email) ?? '',
+    c.contactName,
+    c.companyRubro ? companyRubroLabels[c.companyRubro] : '',
+    c.companyTipo ?? '',
+    c.phone,
+    c.email,
+    clientStatusConfig[c.status].label,
+    c.assignedToName,
+    formatDate(c.createdAt),
+    c.totalRevenue.toString(),
+  ]);
+  const csvContent = [headers.join(','), ...rows.map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))].join('\n');
+  const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `clientes-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function Clients() {
+  const navigate = useNavigate();
   const [clientList, setClientList] = useState<Client[]>(mockClients);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [assigneeFilter, setAssigneeFilter] = useState<string>('all');
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isNewClientOpen, setIsNewClientOpen] = useState(false);
+  const [isChangeStatusOpen, setIsChangeStatusOpen] = useState(false);
 
   const {
     register,
@@ -106,7 +138,6 @@ export default function Clients() {
       contactName: '',
       phone: '',
       email: '',
-      service: '',
       assignedTo: '',
       notes: '',
     },
@@ -151,7 +182,7 @@ export default function Clients() {
       status: 'potencial',
       assignedTo: data.assignedTo,
       assignedToName: assignedUser?.name ?? '',
-      service: data.service,
+      service: '',
       createdAt: new Date().toISOString().split('T')[0],
       totalRevenue: 0,
       notes: data.notes,
@@ -161,6 +192,18 @@ export default function Clients() {
     reset();
     toast.success('Cliente creado exitosamente', {
       description: `${newClient.company} ha sido registrado en el sistema.`,
+    });
+  }
+
+  function handleStatusChange(newStatus: ClientStatus) {
+    if (!selectedClient) return;
+    setClientList((prev) =>
+      prev.map((c) => (c.id === selectedClient.id ? { ...c, status: newStatus } : c)),
+    );
+    setSelectedClient((prev) => (prev?.id === selectedClient.id ? { ...prev, status: newStatus } : prev));
+    setIsChangeStatusOpen(false);
+    toast.success('Estado actualizado', {
+      description: `${selectedClient.company} ahora está ${clientStatusConfig[newStatus].label.toLowerCase()}.`,
     });
   }
 
@@ -174,6 +217,18 @@ export default function Clients() {
   return (
     <div className="space-y-6">
       <PageHeader title="Clientes" description="Gestión y seguimiento de clientes corporativos">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            exportClientsToCSV(filteredClients);
+            toast.success('Exportación completada', {
+              description: `Se exportaron ${filteredClients.length} clientes.`,
+            });
+          }}
+        >
+          <Download className="size-4" /> Exportar
+        </Button>
         <Button onClick={() => setIsNewClientOpen(true)} className="bg-[#13944C] hover:bg-[#0f7a3d]">
           <Plus className="mr-2 size-4" />
           Nuevo Cliente
@@ -198,17 +253,17 @@ export default function Clients() {
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por empresa, contacto, email..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
-            />
-          </div>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por empresa, contacto, email..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder="Estado" />
@@ -233,13 +288,11 @@ export default function Clients() {
               ))}
             </SelectContent>
           </Select>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
+      <div className="overflow-x-auto rounded-lg border">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -251,7 +304,6 @@ export default function Clients() {
                   <TableHead className="hidden lg:table-cell">Email</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead className="hidden md:table-cell">Ejecutivo</TableHead>
-                  <TableHead className="hidden xl:table-cell">Servicio</TableHead>
                   <TableHead className="hidden xl:table-cell">Fecha alta</TableHead>
                   <TableHead className="text-right">Ingresos</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
@@ -260,18 +312,36 @@ export default function Clients() {
               <TableBody>
                 {filteredClients.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={12} className="py-12 text-center text-muted-foreground">
+                    <TableCell colSpan={11} className="py-12 text-center text-muted-foreground">
                       No se encontraron clientes con los filtros aplicados.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredClients.map((client) => (
+                  filteredClients.map((client) => {
+                    const domain = getDomainFromEmail(client.email);
+                    return (
                     <TableRow
                       key={client.id}
                       className="cursor-pointer hover:bg-muted/50"
                       onClick={() => setSelectedClient(client)}
                     >
-                      <TableCell className="font-medium">{client.company}</TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">{client.company}</p>
+                          {domain && (
+                            <a
+                              href={`https://${domain}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title={`Abrir ${domain}`}
+                              className="text-xs text-muted-foreground hover:text-primary hover:underline cursor-pointer block"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {domain}
+                            </a>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell>{client.contactName}</TableCell>
                       <TableCell className="hidden lg:table-cell text-muted-foreground">
                         {client.companyRubro ? companyRubroLabels[client.companyRubro] : '—'}
@@ -285,9 +355,6 @@ export default function Clients() {
                         <ClientStatusBadge status={client.status} />
                       </TableCell>
                       <TableCell className="hidden md:table-cell">{client.assignedToName}</TableCell>
-                      <TableCell className="hidden xl:table-cell max-w-[200px] truncate">
-                        {client.service}
-                      </TableCell>
                       <TableCell className="hidden xl:table-cell">{formatDate(client.createdAt)}</TableCell>
                       <TableCell className="text-right font-medium">
                         {formatCurrency(client.totalRevenue)}
@@ -309,23 +376,23 @@ export default function Clients() {
                             variant="ghost"
                             size="icon"
                             className="size-8"
+                            title="Ver empresa"
                             onClick={(e) => {
                               e.stopPropagation();
-                              toast.info('Edición de cliente próximamente');
+                              navigate(`/empresas/${encodeURIComponent(client.company)}`);
                             }}
                           >
-                            <Pencil className="size-4" />
+                            <ExternalLink className="size-4" />
                           </Button>
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))
+                  );
+                  })
                 )}
               </TableBody>
             </Table>
-          </div>
-        </CardContent>
-      </Card>
+      </div>
 
       {/* Client Detail Sheet */}
       <Sheet open={!!selectedClient} onOpenChange={(open) => !open && setSelectedClient(null)}>
@@ -341,6 +408,27 @@ export default function Clients() {
                     <SheetTitle className="truncate">{selectedClient.company}</SheetTitle>
                     <SheetDescription className="flex flex-wrap items-center gap-2 pt-1">
                       <ClientStatusBadge status={selectedClient.status} />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => setIsChangeStatusOpen(true)}
+                      >
+                        <RefreshCw className="size-3.5 mr-1" />
+                        Cambiar estado
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => {
+                          navigate(`/empresas/${encodeURIComponent(selectedClient.company)}`);
+                          setSelectedClient(null);
+                        }}
+                      >
+                        <ExternalLink className="size-3.5 mr-1" />
+                        Ver empresa
+                      </Button>
                       {selectedClient.companyRubro && (
                         <Badge variant="outline" className="text-xs">{companyRubroLabels[selectedClient.companyRubro]}</Badge>
                       )}
@@ -353,7 +441,7 @@ export default function Clients() {
               </SheetHeader>
 
               <ScrollArea className="h-[calc(100vh-130px)]">
-                <div className="space-y-6 pr-4">
+                <div className="space-y-6 px-4">
                   {/* Contact Details */}
                   <div className="space-y-3">
                     <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
@@ -372,19 +460,6 @@ export default function Clients() {
                         <Mail className="size-4 text-muted-foreground shrink-0" />
                         <span className="text-sm">{selectedClient.email}</span>
                       </div>
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  {/* Service */}
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                      Servicio
-                    </h4>
-                    <div className="flex items-start gap-3">
-                      <Briefcase className="size-4 text-muted-foreground shrink-0 mt-0.5" />
-                      <span className="text-sm">{selectedClient.service}</span>
                     </div>
                   </div>
 
@@ -488,6 +563,33 @@ export default function Clients() {
         </SheetContent>
       </Sheet>
 
+      {/* Change Status Dialog */}
+      <Dialog open={isChangeStatusOpen} onOpenChange={setIsChangeStatusOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cambiar estado</DialogTitle>
+            <DialogDescription>
+              Selecciona el nuevo estado para {selectedClient?.company}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Select
+              value={selectedClient?.status ?? ''}
+              onValueChange={(v) => handleStatusChange(v as ClientStatus)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="activo">Activo</SelectItem>
+                <SelectItem value="inactivo">Inactivo</SelectItem>
+                <SelectItem value="potencial">Potencial</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* New Client Dialog */}
       <Dialog
         open={isNewClientOpen}
@@ -575,14 +677,6 @@ export default function Clients() {
                 <Input id="email" type="email" placeholder="correo@empresa.com" {...register('email')} />
                 {errors.email && (
                   <p className="text-xs text-destructive">{errors.email.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="service">Servicio</Label>
-                <Input id="service" placeholder="Ej: Servicio Ejecutivo Corporativo" {...register('service')} />
-                {errors.service && (
-                  <p className="text-xs text-destructive">{errors.service.message}</p>
                 )}
               </div>
 

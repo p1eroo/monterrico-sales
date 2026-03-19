@@ -29,7 +29,27 @@ export interface LinkedCompany {
 }
 
 export type ActivityType = 'llamada' | 'reunion' | 'tarea' | 'correo' | 'seguimiento' | 'whatsapp';
-export type ActivityStatus = 'pendiente' | 'completada' | 'vencida' | 'reprogramada';
+export type ActivityStatus = 'pendiente' | 'completada' | 'en_progreso' | 'vencida';
+
+export type CalendarEventType = 'llamada' | 'reunion' | 'tarea' | 'correo' | 'seguimiento' | 'whatsapp';
+export type CalendarEventStatus = 'pendiente' | 'completada' | 'en_progreso' | 'vencida';
+export type RelatedEntityType = 'contact' | 'company' | 'opportunity';
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  type: CalendarEventType;
+  date: string;
+  startTime: string;
+  endTime: string;
+  assignedTo: string;
+  assignedToName: string;
+  relatedEntityType?: RelatedEntityType;
+  relatedEntityId?: string;
+  relatedEntityName?: string;
+  description?: string;
+  status: CalendarEventStatus;
+}
 
 export type OpportunityStatus = 'abierta' | 'ganada' | 'perdida' | 'suspendida';
 
@@ -79,6 +99,8 @@ export interface Contact {
   direccion?: string;
   /** IDs de otros contactos vinculados (ej. colegas de la misma empresa) */
   linkedContactIds?: string[];
+  /** Historial de fechas en que el contacto estuvo en cada etapa */
+  etapaHistory?: { etapa: Etapa; fecha: string }[];
 }
 
 export interface Activity {
@@ -93,6 +115,10 @@ export interface Activity {
   assignedToName: string;
   status: ActivityStatus;
   dueDate: string;
+  /** Fecha de inicio (YYYY-MM-DD) */
+  startDate?: string;
+  /** Hora estimada (formato HH:mm) para mostrar en la columna Vence */
+  startTime?: string;
   completedAt?: string;
   createdAt: string;
 }

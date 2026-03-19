@@ -103,9 +103,8 @@ export default function Reports() {
       <PageHeader title="Reportes" description="Análisis y métricas del rendimiento comercial" />
 
       {/* Filters */}
-      <Card>
-        <CardContent className="flex flex-col gap-4 p-4 md:flex-row md:items-center">
-          <Select value={dateRange} onValueChange={setDateRange}>
+      <div className="flex flex-col gap-3 md:flex-row md:items-center">
+        <Select value={dateRange} onValueChange={setDateRange}>
             <SelectTrigger className="w-full md:w-[200px]">
               <SelectValue />
             </SelectTrigger>
@@ -140,22 +139,21 @@ export default function Reports() {
             </SelectContent>
           </Select>
 
-          <div className="flex gap-2 md:ml-auto">
-            <Button variant="outline" size="sm" onClick={() => handleExport('PDF')}>
-              <FileText className="mr-1.5 size-4" />
-              PDF
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => handleExport('Excel')}>
-              <FileSpreadsheet className="mr-1.5 size-4" />
-              Excel
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => handleExport('CSV')}>
-              <FileDown className="mr-1.5 size-4" />
-              CSV
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+        <div className="flex gap-2 md:ml-auto">
+          <Button variant="outline" size="sm" onClick={() => handleExport('PDF')}>
+            <FileText className="mr-1.5 size-4" />
+            PDF
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => handleExport('Excel')}>
+            <FileSpreadsheet className="mr-1.5 size-4" />
+            Excel
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => handleExport('CSV')}>
+            <FileDown className="mr-1.5 size-4" />
+            CSV
+          </Button>
+        </div>
+      </div>
 
       {/* Summary Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

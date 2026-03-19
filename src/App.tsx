@@ -16,7 +16,8 @@ function RedirectLeadToContact() {
   const { id } = useParams<{ id: string }>();
   return <Navigate to={id ? `/contactos/${id}` : '/contactos'} replace />;
 }
-const Activities = lazy(() => import('@/pages/Activities'));
+const Tareas = lazy(() => import('@/pages/Tareas'));
+const Calendario = lazy(() => import('@/pages/Calendario'));
 const Opportunities = lazy(() => import('@/pages/Opportunities'));
 const OportunidadDetail = lazy(() => import('@/pages/OportunidadDetail'));
 const Clients = lazy(() => import('@/pages/Clients'));
@@ -76,7 +77,8 @@ export default function App() {
               <Route path="/empresas" element={<Empresas />} />
               <Route path="/empresas/:id" element={<EmpresaDetail />} />
               <Route path="/pipeline" element={<Pipeline />} />
-              <Route path="/activities" element={<Activities />} />
+              <Route path="/tareas" element={<Tareas />} />
+              <Route path="/calendario" element={<Calendario />} />
               <Route path="/opportunities" element={<Opportunities />} />
               <Route path="/opportunities/:id" element={<OportunidadDetail />} />
               <Route path="/clients" element={<Clients />} />
