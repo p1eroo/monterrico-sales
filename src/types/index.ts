@@ -56,11 +56,42 @@ export type OpportunityStatus = 'abierta' | 'ganada' | 'perdida' | 'suspendida';
 export type ClientStatus = 'activo' | 'inactivo' | 'potencial';
 export type UserRole = 'admin' | 'gerente' | 'asesor';
 
+/** RBAC: Módulos del CRM para permisos */
+export type PermissionModule =
+  | 'contactos'
+  | 'empresas'
+  | 'oportunidades'
+  | 'pipeline'
+  | 'actividades'
+  | 'reportes'
+  | 'usuarios'
+  | 'configuracion';
+
+/** RBAC: Tipos de permiso por módulo */
+export type PermissionAction = 'ver' | 'crear' | 'editar' | 'eliminar' | 'asignar';
+
+/** RBAC: Permiso = módulo + acción (ej: contactos.ver) */
+export type PermissionKey = `${PermissionModule}.${PermissionAction}`;
+
+/** RBAC: Rol del sistema */
+export interface RBACRole {
+  id: string;
+  name: string;
+  description: string;
+  /** ID del template base (admin, supervisor, asesor, solo_lectura) o null si personalizado */
+  templateId?: string;
+  permissions: Record<PermissionKey, boolean>;
+  userCount: number;
+}
+
+/** RBAC: Usuario con rol extendido */
 export interface User {
   id: string;
   name: string;
   email: string;
   role: UserRole;
+  /** ID del rol RBAC (para nuevo sistema) */
+  roleId?: string;
   avatar?: string;
   phone: string;
   status: 'activo' | 'inactivo';
@@ -69,6 +100,8 @@ export interface User {
   salesClosed: number;
   conversionRate: number;
   joinedAt: string;
+  /** Última actividad (mock) */
+  lastActivity?: string;
 }
 
 export interface Contact {
@@ -196,11 +229,215 @@ export interface ChartDataPoint {
   [key: string]: string | number;
 }
 
+export type NotificationType =
+  | 'lead'
+  | 'sistema'
+  | 'exito'
+  | 'alerta'
+  | 'error'
+  | 'info'
+  | 'warning'
+  | 'success';
+
+export type NotificationPriority = 'alta' | 'media' | 'baja';
+
 export interface NotificationItem {
   id: string;
   title: string;
   description: string;
   time: string;
   read: boolean;
-  type: 'info' | 'warning' | 'success' | 'error';
+  type: NotificationType | 'info' | 'warning' | 'success' | 'error';
+  /** Prioridad: alta=rojo, media=amarillo, baja=gris */
+  priority?: NotificationPriority;
+  /** Para acciones: ver contacto */
+  contactId?: string;
+  /** Para acciones: ver oportunidad */
+  opportunityId?: string;
+  /** Para acciones: reprogramar */
+  activityId?: string;
+  /** ISO string para agrupar por fecha */
+  createdAt?: string;
+  /** Marcar como importante */
+  important?: boolean;
+}
+
+/** Audit: Módulo donde ocurrió la acción */
+export type AuditModule =
+  | 'contactos'
+  | 'empresas'
+  | 'oportunidades'
+  | 'pipeline'
+  | 'actividades'
+  | 'usuarios'
+  | 'roles'
+  | 'configuracion'
+  | 'sistema';
+
+/** Audit: Tipo de acción realizada */
+export type AuditActionType =
+  | 'crear'
+  | 'actualizar'
+  | 'eliminar'
+  | 'asignar'
+  | 'cambiar_etapa'
+  | 'login'
+  | 'login_fallido'
+  | 'cambiar_password'
+  | 'desactivar_usuario';
+
+/** Activity Log: registro de actividad general */
+export interface ActivityLog {
+  id: string;
+  userId: string;
+  userName: string;
+  action: AuditActionType;
+  module: AuditModule;
+  entityType: string;
+  entityId?: string;
+  entityName?: string;
+  description: string;
+  timestamp: string;
+  status: 'exito' | 'fallido' | 'pendiente';
+  isCritical?: boolean;
+}
+
+/** Audit Log: registro detallado de cambios (campo por campo) */
+export interface AuditLogEntry {
+  id: string;
+  userId: string;
+  userName: string;
+  entityType: string;
+  entityId: string;
+  entityName: string;
+  fieldChanged: string;
+  oldValue: string;
+  newValue: string;
+  timestamp: string;
+  actionId?: string;
+}
+
+/** Audit Log: agrupación de cambios en una sola acción */
+export interface AuditLog {
+  id: string;
+  userId: string;
+  userName: string;
+  entityType: string;
+  entityId: string;
+  entityName: string;
+  action: AuditActionType;
+  timestamp: string;
+  entries: AuditLogEntry[];
+}
+
+/** Email: entidad de correo para inbox CRM */
+export type EmailFolder = 'inbox' | 'sent' | 'drafts' | 'starred' | 'trash';
+
+export interface EmailAttachment {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+}
+
+export interface EmailMessage {
+  id: string;
+  from: string;
+  fromName: string;
+  to: string[];
+  cc?: string[];
+  bcc?: string[];
+  subject: string;
+  body: string;
+  timestamp: string;
+  isRead: boolean;
+  isStarred: boolean;
+  folder: EmailFolder;
+  threadId: string;
+  attachments?: EmailAttachment[];
+}
+
+/** Email thread: conversación agrupada */
+export interface EmailThread {
+  id: string;
+  subject: string;
+  messages: EmailMessage[];
+  relatedEntityType?: RelatedEntityType;
+  relatedEntityId?: string;
+  relatedEntityName?: string;
+}
+
+/** Campaign: bulk messaging module */
+export type CampaignChannel = 'email' | 'sms' | 'whatsapp';
+export type CampaignStatus = 'draft' | 'scheduled' | 'sending' | 'sent' | 'failed' | 'cancelled';
+export type RecipientStatus = 'pendiente' | 'enviado' | 'entregado' | 'abierto' | 'clic' | 'fallido' | 'rebote';
+
+export interface CampaignRecipient {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  company?: string;
+  etapa?: Etapa;
+  /** CRM contact ID if from CRM */
+  contactId?: string;
+  /** Validation warnings */
+  hasInvalidEmail?: boolean;
+  isDuplicate?: boolean;
+}
+
+export interface CampaignMessageTemplate {
+  id: string;
+  name: string;
+  subject?: string;
+  body: string;
+  channel: CampaignChannel;
+  createdAt: string;
+}
+
+export interface CampaignMessage {
+  channel: CampaignChannel;
+  subject?: string;
+  body: string;
+  /** Variables used: {{nombre}}, {{empresa}}, etc. */
+  variables?: string[];
+}
+
+export interface CampaignRecipientResult {
+  recipientId: string;
+  contactId?: string;
+  name: string;
+  email: string;
+  status: RecipientStatus;
+  sentAt?: string;
+  deliveredAt?: string;
+  openedAt?: string;
+  clickedAt?: string;
+  errorMessage?: string;
+}
+
+export interface Campaign {
+  id: string;
+  name: string;
+  status: CampaignStatus;
+  channel: CampaignChannel;
+  message: CampaignMessage;
+  recipients: CampaignRecipient[];
+  results?: CampaignRecipientResult[];
+  /** Metrics (computed from results) */
+  sentCount?: number;
+  deliveredCount?: number;
+  openedCount?: number;
+  clickedCount?: number;
+  failedCount?: number;
+  bounceCount?: number;
+  createdAt: string;
+  sentAt?: string;
+  scheduledFor?: string;
+  createdBy: string;
+  createdByName: string;
+  /** CRM links */
+  relatedContactIds?: string[];
+  relatedCompanyIds?: string[];
+  relatedOpportunityIds?: string[];
 }

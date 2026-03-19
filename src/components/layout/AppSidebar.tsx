@@ -11,8 +11,12 @@ import {
   Building2,
   BarChart3,
   Users,
+  Shield,
   Settings,
   LogOut,
+  FileSearch,
+  Mail,
+  Send,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -37,9 +41,13 @@ const navItems = [
   { to: '/pipeline', label: 'Pipeline', icon: Kanban },
   { to: '/tareas', label: 'Tareas', icon: CalendarCheck },
   { to: '/calendario', label: 'Calendario', icon: Calendar },
+  { to: '/inbox', label: 'Correo', icon: Mail },
+  { to: '/campaigns', label: 'Campañas', icon: Send },
   { to: '/clients', label: 'Clientes', icon: Building2 },
   { to: '/reports', label: 'Reportes', icon: BarChart3 },
   { to: '/team', label: 'Equipo', icon: Users },
+  { to: '/users', label: 'Usuarios y Roles', icon: Shield },
+  { to: '/audit', label: 'Auditoría', icon: FileSearch },
   { to: '/settings', label: 'Configuración', icon: Settings },
 ] as const;
 
@@ -65,7 +73,7 @@ export function AppSidebar() {
               Taxi Monterrico
             </span>
             <span className="text-[11px] text-sidebar-foreground/60">
-              CRM Ventas
+              CRM Qatuna
             </span>
           </div>
         </NavLink>

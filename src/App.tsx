@@ -23,6 +23,14 @@ const OportunidadDetail = lazy(() => import('@/pages/OportunidadDetail'));
 const Clients = lazy(() => import('@/pages/Clients'));
 const Reports = lazy(() => import('@/pages/Reports'));
 const Team = lazy(() => import('@/pages/Team'));
+const Users = lazy(() => import('@/pages/Users'));
+const UserDetail = lazy(() => import('@/pages/UserDetail'));
+const Audit = lazy(() => import('@/pages/Audit'));
+const Inbox = lazy(() => import('@/pages/Inbox'));
+const CampaignHistory = lazy(() => import('@/pages/CampaignHistory'));
+const CampaignBuilder = lazy(() => import('@/pages/CampaignBuilder'));
+const CampaignResults = lazy(() => import('@/pages/CampaignResults'));
+const Profile = lazy(() => import('@/pages/Profile'));
 const Settings = lazy(() => import('@/pages/Settings'));
 
 function LoadingFallback() {
@@ -84,6 +92,14 @@ export default function App() {
               <Route path="/clients" element={<Clients />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/team" element={<Team />} />
+              <Route path="/users" element={<Users />} />
+              <Route path="/users/:id" element={<UserDetail />} />
+              <Route path="/audit" element={<Audit />} />
+              <Route path="/inbox" element={<Inbox />} />
+              <Route path="/campaigns" element={<CampaignHistory />} />
+              <Route path="/campaigns/new" element={<CampaignBuilder />} />
+              <Route path="/campaigns/:id/results" element={<CampaignResults />} />
+              <Route path="/profile" element={<Profile />} />
               <Route path="/settings" element={<Settings />} />
             </Route>
             <Route path="*" element={<Navigate to="/login" replace />} />

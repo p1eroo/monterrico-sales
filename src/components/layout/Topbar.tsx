@@ -2,14 +2,9 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Search,
   Plus,
-  Bell,
   User,
   Settings,
   LogOut,
-  CheckCircle2,
-  AlertTriangle,
-  Info,
-  XCircle,
 } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
@@ -33,8 +28,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAppStore } from '@/store';
-import { notifications } from '@/data/mock';
-import { cn } from '@/lib/utils';
+import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 
 const routeLabels: Record<string, string> = {
   '/dashboard': 'Dashboard',
@@ -43,33 +37,22 @@ const routeLabels: Record<string, string> = {
   '/pipeline': 'Pipeline',
   '/tareas': 'Tareas',
   '/calendario': 'Calendario',
+  '/inbox': 'Correo',
+  '/campaigns': 'Campañas',
   '/opportunities': 'Oportunidades',
   '/clients': 'Clientes',
   '/reports': 'Reportes',
   '/team': 'Equipo',
+  '/users': 'Usuarios y Roles',
+  '/audit': 'Auditoría',
+  '/profile': 'Mi perfil',
   '/settings': 'Configuración',
 };
-
-const notificationIcons = {
-  info: Info,
-  warning: AlertTriangle,
-  success: CheckCircle2,
-  error: XCircle,
-} as const;
-
-const notificationColors = {
-  info: 'text-blue-500',
-  warning: 'text-amber-500',
-  success: 'text-emerald-500',
-  error: 'text-red-500',
-} as const;
 
 export function Topbar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { currentUser, logout } = useAppStore();
-
-  const unreadCount = notifications.filter((n) => !n.read).length;
 
   const currentRoute = Object.keys(routeLabels).find((route) =>
     location.pathname.startsWith(route),
@@ -117,68 +100,7 @@ export function Topbar() {
           <Plus className="size-4" />
         </Button>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="relative text-muted-foreground"
-            >
-              <Bell className="size-4" />
-              {unreadCount > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white">
-                  {unreadCount}
-                </span>
-              )}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80">
-            <DropdownMenuLabel className="flex items-center justify-between">
-              <span>Notificaciones</span>
-              {unreadCount > 0 && (
-                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                  {unreadCount} nuevas
-                </span>
-              )}
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {notifications.map((notification) => {
-              const IconComp = notificationIcons[notification.type];
-              return (
-                <DropdownMenuItem
-                  key={notification.id}
-                  className="flex items-start gap-3 p-3"
-                >
-                  <IconComp
-                    className={cn(
-                      'mt-0.5 size-4 shrink-0',
-                      notificationColors[notification.type],
-                    )}
-                  />
-                  <div className="min-w-0 flex-1 space-y-0.5">
-                    <p
-                      className={cn(
-                        'text-sm leading-tight',
-                        !notification.read && 'font-medium',
-                      )}
-                    >
-                      {notification.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground leading-tight">
-                      {notification.description}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground/70">
-                      {notification.time}
-                    </p>
-                  </div>
-                  {!notification.read && (
-                    <span className="mt-1.5 size-2 shrink-0 rounded-full bg-primary" />
-                  )}
-                </DropdownMenuItem>
-              );
-            })}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <NotificationCenter />
 
         <Separator orientation="vertical" className="mx-1 h-5" />
 
@@ -207,11 +129,11 @@ export function Topbar() {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/profile')}>
                 <User />
                 <span>Perfil</span>
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/settings')}>
                 <Settings />
                 <span>Configuración</span>
               </DropdownMenuItem>

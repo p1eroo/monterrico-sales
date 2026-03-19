@@ -1,12 +1,13 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
-  Building2, Globe, GitBranch, Shield, Flag,
+  Building2, Globe, GitBranch, Flag,
   Activity, Tag, Settings as SettingsIcon,
   Plus, Trash2, GripVertical, Phone, Mail,
   MapPin, Save, Video, FileText, RefreshCw,
-  MessageCircle, Bell, Moon,
+  MessageCircle, Bell, Moon, Link2, CheckCircle2,
 } from 'lucide-react';
-import type { UserRole } from '@/types';
+import { useAppStore } from '@/store';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,16 +17,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import {
   Select, SelectContent, SelectItem,
   SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import {
-  Table, TableBody, TableCell, TableHead,
-  TableHeader, TableRow,
-} from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
@@ -35,9 +31,9 @@ import { cn } from '@/lib/utils';
 
 const NAV_SECTIONS = [
   { id: 'general', label: 'General', icon: Building2 },
+  { id: 'integraciones', label: 'Integraciones', icon: Link2 },
   { id: 'fuentes', label: 'Fuentes de Contactos', icon: Globe },
   { id: 'pipeline', label: 'Etapas del Pipeline', icon: GitBranch },
-  { id: 'roles', label: 'Roles y Permisos', icon: Shield },
   { id: 'prioridades', label: 'Prioridades', icon: Flag },
   { id: 'actividades', label: 'Tipos de Actividad', icon: Activity },
   { id: 'estados', label: 'Etapas (Contactos/Empresas/Oportunidades)', icon: Tag },
@@ -67,41 +63,6 @@ const INITIAL_PIPELINE_STAGES = [
   { id: 'cierre_perdido', name: 'Cierre Perdido', color: '#ef4444', enabled: true },
   { id: 'inactivo', name: 'Inactivo', color: '#6b7280', enabled: true },
 ];
-
-const PERMISSION_KEYS = [
-  'Ver leads',
-  'Crear leads',
-  'Editar leads',
-  'Eliminar leads',
-  'Ver reportes',
-  'Gestionar equipo',
-  'Configuración',
-] as const;
-
-type SettingsRole = UserRole | 'jefe_comercial';
-
-const INITIAL_PERMISSIONS: Record<SettingsRole, Record<string, boolean>> = {
-  admin: {
-    'Ver leads': true, 'Crear leads': true, 'Editar leads': true,
-    'Eliminar leads': true, 'Ver reportes': true, 'Gestionar equipo': true,
-    'Configuración': true,
-  },
-  gerente: {
-    'Ver leads': true, 'Crear leads': true, 'Editar leads': true,
-    'Eliminar leads': false, 'Ver reportes': true, 'Gestionar equipo': true,
-    'Configuración': false,
-  },
-  jefe_comercial: {
-    'Ver leads': true, 'Crear leads': true, 'Editar leads': true,
-    'Eliminar leads': false, 'Ver reportes': true, 'Gestionar equipo': true,
-    'Configuración': false,
-  },
-  asesor: {
-    'Ver leads': true, 'Crear leads': true, 'Editar leads': true,
-    'Eliminar leads': false, 'Ver reportes': false, 'Gestionar equipo': false,
-    'Configuración': false,
-  },
-};
 
 const PRIORITIES = [
   { id: 'alta', name: 'Alta', color: '#ef4444', description: 'Atención inmediata requerida' },
@@ -143,22 +104,17 @@ const ETAPAS_CONFIG = [
   { id: 'inactivo', name: 'Inactivo', color: '#6b7280', order: 13, prob: -5 },
 ];
 
-const ROLE_LABELS: Record<SettingsRole, string> = {
-  admin: 'Administrador',
-  gerente: 'Gerente Comercial',
-  jefe_comercial: 'Jefe Comercial',
-  asesor: 'Asesor',
-};
-
 export default function Settings() {
-  const [activeTab, setActiveTab] = useState('general');
+  const [searchParams] = useSearchParams();
+  const gmailConnected = useAppStore((s) => s.gmailConnected);
+  const tabFromUrl = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(tabFromUrl && NAV_SECTIONS.some((s) => s.id === tabFromUrl) ? tabFromUrl : 'general');
   const [leadSources, setLeadSources] = useState(INITIAL_LEAD_SOURCES);
   const [newSourceName, setNewSourceName] = useState('');
   const [pipelineStages, setPipelineStages] = useState(INITIAL_PIPELINE_STAGES);
   const [addStageOpen, setAddStageOpen] = useState(false);
   const [newStageName, setNewStageName] = useState('');
   const [newStageColor, setNewStageColor] = useState('#64748b');
-  const [rolePermissions, setRolePermissions] = useState(INITIAL_PERMISSIONS);
   const [activityTypes, setActivityTypes] = useState(INITIAL_ACTIVITY_TYPES);
   const [emailNotif, setEmailNotif] = useState(true);
   const [pushNotif, setPushNotif] = useState(true);
@@ -212,13 +168,6 @@ export default function Settings() {
 
   function removePipelineStage(id: string) {
     setPipelineStages((prev) => prev.filter((s) => s.id !== id));
-  }
-
-  function handlePermissionChange(role: SettingsRole, permission: string, checked: boolean) {
-    setRolePermissions((prev) => ({
-      ...prev,
-      [role]: { ...prev[role], [permission]: checked },
-    }));
   }
 
   function toggleActivityType(id: string) {
@@ -329,6 +278,53 @@ export default function Settings() {
                     Guardar Cambios
                   </Button>
                 </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Integraciones - solo vista de estado (conectar desde Perfil) */}
+          {activeTab === 'integraciones' && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Integraciones activas</CardTitle>
+                <CardDescription>
+                  Vista del estado de las integraciones en el sistema. Para conectar tu cuenta, ve a Mi perfil → Integraciones.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between rounded-lg border p-4">
+                  <div className="flex items-center gap-4">
+                    <div className="flex size-12 items-center justify-center rounded-lg bg-[#ea4335]/10">
+                      <svg className="size-7" viewBox="0 0 24 24">
+                        <path
+                          fill="#EA4335"
+                          d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L12 9.883l8.073-6.39C21.69 2.28 24 3.434 24 5.457z"
+                        />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="font-medium">Gmail</p>
+                      <p className="text-sm text-muted-foreground">
+                        Sincronización de correos con el módulo de Correo del CRM
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {gmailConnected ? (
+                      <span className="flex items-center gap-1.5 text-sm text-[#13944C] font-medium">
+                        <CheckCircle2 className="size-4" />
+                        Conectado
+                      </span>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">
+                        No conectado
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Cada usuario conecta su propia cuenta de Gmail desde Mi perfil → Integraciones.
+                </p>
               </CardContent>
             </Card>
           )}
@@ -512,53 +508,6 @@ export default function Settings() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-
-          {/* Roles y Permisos */}
-          {activeTab === 'roles' && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Roles y Permisos</CardTitle>
-                <CardDescription>
-                  Define qué puede hacer cada rol dentro del sistema
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[200px]">Permiso</TableHead>
-                      {(['admin', 'gerente', 'jefe_comercial', 'asesor'] as const).map((role) => (
-                        <TableHead key={role} className="text-center">
-                          {ROLE_LABELS[role]}
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {PERMISSION_KEYS.map((perm) => (
-                      <TableRow key={perm}>
-                        <TableCell className="font-medium">{perm}</TableCell>
-                        {(['admin', 'gerente', 'jefe_comercial', 'asesor'] as const).map((role) => (
-                          <TableCell key={role} className="text-center">
-                            <Checkbox
-                              checked={rolePermissions[role][perm]}
-                              onCheckedChange={(checked) =>
-                                handlePermissionChange(role, perm, !!checked)
-                              }
-                              disabled={role === 'admin'}
-                            />
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                <p className="mt-3 text-xs text-muted-foreground">
-                  Los permisos del administrador no pueden ser modificados.
-                </p>
-              </CardContent>
-            </Card>
-          )}
 
           {/* Prioridades */}
           {activeTab === 'prioridades' && (
