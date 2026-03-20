@@ -322,6 +322,7 @@ export default function ContactoDetailPage() {
       priority: data.priority,
       assignedTo: data.assignedTo || contact.assignedTo,
       estimatedValue: data.estimatedValue,
+      clienteRecuperado: data.clienteRecuperado,
       departamento: data.departamento,
       provincia: data.provincia,
       distrito: data.distrito,

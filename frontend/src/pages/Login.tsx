@@ -1,22 +1,22 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useForm, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { Eye, EyeOff, Loader2, Info } from 'lucide-react';
-import { useAppStore } from '@/store';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
-import { cn } from '@/lib/utils';
-import { ThemeToggle } from '@/components/shared/ThemeToggle';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Eye, EyeOff, Loader2, Info } from "lucide-react";
+import { useAppStore } from "@/store";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { cn } from "@/lib/utils";
+import { ThemeToggle } from "@/components/shared/ThemeToggle";
 
-import imgLogin from '@/assets/imglogin.png';
+import imgLogin from "@/assets/imglogin.png";
 
 const loginSchema = z.object({
-  email: z.string().min(1, 'Usuario o email requerido'),
-  password: z.string().min(1, 'La contraseña es requerida'),
+  email: z.string().min(1, "Usuario o email requerido"),
+  password: z.string().min(1, "La contraseña es requerida"),
   remember: z.boolean().optional(),
 });
 
@@ -24,9 +24,10 @@ type LoginForm = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const login = useAppStore((s) => s.login);
+  const { login, updateCurrentUser } = useAppStore();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const {
     register,
@@ -37,22 +38,53 @@ export default function LoginPage() {
   } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: '',
-      password: '',
+      email: "",
+      password: "",
       remember: false,
     },
   });
 
-  const email = watch('email');
-  const password = watch('password');
+  const email = watch("email");
+  const password = watch("password");
   const isFormValid = !!email?.trim() && !!password?.trim();
 
-  async function onSubmit() {
+  async function onSubmit(data: LoginForm) {
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 800));
-    login();
-    navigate('/dashboard');
-    setIsLoading(false);
+    setError(null);
+
+    try {
+      const res = await fetch("http://localhost:3000/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          idacceso: data.email,
+          contraseña: data.password,
+        }),
+      });
+
+      const json = await res.json();
+
+      if (res.ok) {
+        const { accessToken, user } = json;
+        localStorage.setItem("accessToken", accessToken);
+        if (user) {
+          updateCurrentUser({
+            id: user.id ?? "",
+            name: user.name ?? data.email,
+            email: user.email ?? data.email,
+            role: user.role ?? "Usuario",
+          });
+        }
+        login();
+        navigate("/dashboard");
+      } else {
+        setError(json.message || "Credenciales inválidas");
+      }
+    } catch {
+      setError("Error de conexión. Intenta de nuevo.");
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -60,13 +92,13 @@ export default function LoginPage() {
       {/* Left: Branding / Visual - estilo glassmorphic/claymorphic */}
       <div
         className={cn(
-          'relative hidden flex-col overflow-visible',
-          'bg-gradient-to-b from-[#f8f8f9] via-[#f0f0f2] to-[#e8e8ec]',
-          'dark:from-[#0f172a] dark:via-[#1e293b] dark:to-[#0f172a]',
-          'lg:flex lg:w-[26%]'
+          "relative hidden flex-col overflow-visible",
+          "bg-gradient-to-b from-[#f8f8f9] via-[#f0f0f2] to-[#e8e8ec]",
+          "dark:from-[#0f172a] dark:via-[#1e293b] dark:to-[#0f172a]",
+          "lg:flex lg:w-[26%]",
         )}
         style={{
-          boxShadow: 'inset 0 -40px 60px -20px rgba(19, 148, 76, 0.06)',
+          boxShadow: "inset 0 -40px 60px -20px rgba(19, 148, 76, 0.06)",
         }}
       >
         {/* Toques de verde sobre base gris */}
@@ -74,14 +106,14 @@ export default function LoginPage() {
           className="absolute inset-0 opacity-40 dark:opacity-20"
           style={{
             background:
-              'radial-gradient(ellipse 80% 40% at 70% 10%, rgba(220, 252, 231, 0.4) 0%, transparent 50%)',
+              "radial-gradient(ellipse 80% 40% at 70% 10%, rgba(220, 252, 231, 0.4) 0%, transparent 50%)",
           }}
         />
         <div
           className="absolute inset-0 opacity-100 dark:opacity-30"
           style={{
             background:
-              'radial-gradient(ellipse 100% 60% at 10% 90%, rgba(187, 247, 208, 0.25) 0%, transparent 55%)',
+              "radial-gradient(ellipse 100% 60% at 10% 90%, rgba(187, 247, 208, 0.25) 0%, transparent 55%)",
           }}
         />
 
@@ -99,7 +131,9 @@ export default function LoginPage() {
           <div className="flex flex-1 flex-col items-center justify-center overflow-visible px-4 py-12 xl:px-6 xl:py-16">
             {/* Título centrado - "una sola plataforma" en verde */}
             <h1 className="text-center text-2xl font-bold leading-tight tracking-tight xl:text-3xl">
-              <span className="text-[#333] dark:text-[#f1f5f9]">Todo tu equipo,</span>
+              <span className="text-[#333] dark:text-[#f1f5f9]">
+                Todo tu equipo,
+              </span>
               <br />
               <span className="text-[#13944C]">una sola plataforma</span>
             </h1>
@@ -163,15 +197,16 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-5">
             <div className="space-y-2">
               <Label htmlFor="email">Usuario o Email</Label>
-                <Input
+              <Input
                 id="email"
                 type="text"
                 placeholder="usuario@taximonterrico.com"
-                {...register('email')}
+                {...register("email")}
                 aria-invalid={!!errors.email}
                 className={cn(
-                  'h-11 rounded-lg transition-all duration-200',
-                  errors.email && 'border-destructive focus-visible:ring-destructive'
+                  "h-11 rounded-lg transition-all duration-200",
+                  errors.email &&
+                    "border-destructive focus-visible:ring-destructive",
                 )}
                 autoComplete="username"
               />
@@ -187,13 +222,14 @@ export default function LoginPage() {
               <div className="relative">
                 <Input
                   id="password"
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
-                  {...register('password')}
+                  {...register("password")}
                   aria-invalid={!!errors.password}
                   className={cn(
-                    'h-11 rounded-lg pr-10 transition-all duration-200',
-                    errors.password && 'border-destructive focus-visible:ring-destructive'
+                    "h-11 rounded-lg pr-10 transition-all duration-200",
+                    errors.password &&
+                      "border-destructive focus-visible:ring-destructive",
                   )}
                   autoComplete="current-password"
                 />
@@ -201,7 +237,9 @@ export default function LoginPage() {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
-                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  aria-label={
+                    showPassword ? "Ocultar contraseña" : "Mostrar contraseña"
+                  }
                 >
                   {showPassword ? (
                     <EyeOff className="size-4" />
@@ -228,7 +266,9 @@ export default function LoginPage() {
                       onCheckedChange={(v) => field.onChange(!!v)}
                       className="rounded-md"
                     />
-                    <span className="text-sm text-muted-foreground">Recordarme</span>
+                    <span className="text-sm text-muted-foreground">
+                      Recordarme
+                    </span>
                   </label>
                 )}
               />
@@ -244,18 +284,19 @@ export default function LoginPage() {
               type="submit"
               disabled={!isFormValid || isLoading}
               className={cn(
-                'h-11 w-full rounded-lg bg-[#13944C] font-medium transition-all duration-200',
-                'hover:bg-[#0f7a3d] hover:shadow-lg hover:shadow-[#13944C]/25',
-                'active:scale-[0.99]',
-                'disabled:opacity-50 disabled:hover:scale-100'
+                "h-11 w-full rounded-lg bg-[#13944C] font-medium transition-all duration-200",
+                "hover:bg-[#0f7a3d] hover:shadow-lg hover:shadow-[#13944C]/25",
+                "active:scale-[0.99]",
+                "disabled:opacity-50 disabled:hover:scale-100",
               )}
             >
               {isLoading ? (
                 <Loader2 className="size-5 animate-spin" />
               ) : (
-                'Ingresar'
+                "Ingresar"
               )}
             </Button>
+            {error && <p className="text-sm text-destructive">{error}</p>}
           </form>
         </div>
       </div>

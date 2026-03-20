@@ -8,6 +8,7 @@ import {
 import type { Contact, Etapa, CompanyRubro, CompanyTipo, ContactSource } from '@/types';
 import { companyRubroLabels, companyTipoLabels, etapaLabels, etapaProbabilidad, contactSourceLabels, users } from '@/data/mock';
 import { useCRMStore } from '@/store/crmStore';
+import { useCompaniesStore } from '@/store/companiesStore';
 
 import { PageHeader } from '@/components/shared/PageHeader';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -42,6 +43,8 @@ interface EmpresaGroup {
   totalValue: number;
   /** Etapa más avanzada entre los contactos (por orden en etapaOrder) */
   etapa: Etapa;
+  /** Cliente recuperado: Sí si algún contacto lo tiene */
+  clienteRecuperado?: 'si' | 'no';
 }
 
 function slugifyCompany(company: string): string {
@@ -53,6 +56,7 @@ const ITEMS_PER_PAGE = 8;
 export default function EmpresasPage() {
   const navigate = useNavigate();
   const { contacts, addContact, addOpportunity } = useCRMStore();
+  const { companies: standaloneCompanies } = useCompaniesStore();
 
   const [search, setSearch] = useState('');
   const [sourceFilter, setSourceFilter] = useState<string>('todos');
@@ -83,6 +87,7 @@ export default function EmpresasPage() {
       assignedTo: data.propietario || users[0]?.id || '',
       estimatedValue: monto,
       etapa: data.etapa,
+      clienteRecuperado: data.clienteRecuperado,
     });
 
     if (data.nombreNegocio.trim()) {
@@ -116,6 +121,7 @@ export default function EmpresasPage() {
           if (comp.rubro && !existing.companyRubro) existing.companyRubro = comp.rubro;
           if (comp.tipo && !existing.companyTipo) existing.companyTipo = comp.tipo;
           if (leadProb > etapaProbabilidad[existing.etapa]) existing.etapa = lead.etapa;
+          if (lead.clienteRecuperado === 'si') existing.clienteRecuperado = 'si';
         } else {
           map.set(key, {
             company: comp.name,
@@ -125,12 +131,27 @@ export default function EmpresasPage() {
             contacts: [lead],
             totalValue: lead.estimatedValue,
             etapa: lead.etapa,
+            clienteRecuperado: lead.clienteRecuperado,
           });
         }
       }
     }
+    for (const comp of standaloneCompanies) {
+      const key = comp.name.trim().toLowerCase();
+      if (!map.has(key)) {
+        map.set(key, {
+          company: comp.name,
+          domain: comp.domain,
+          companyRubro: comp.rubro,
+          companyTipo: comp.tipo,
+          contacts: [],
+          totalValue: 0,
+          etapa: 'lead',
+        });
+      }
+    }
     return Array.from(map.values()).sort((a, b) => b.totalValue - a.totalValue);
-  }, [contacts]);
+  }, [contacts, standaloneCompanies]);
 
   const filteredEmpresas = useMemo(() => {
     return empresas.filter((emp) => {
@@ -181,8 +202,8 @@ export default function EmpresasPage() {
         <Button variant="outline" size="sm" onClick={() => toast.info('Exportando empresas...')}>
           <Download className="size-4" /> Exportar
         </Button>
-        <Button onClick={() => setNewEmpresaOpen(true)}>
-          <Plus /> Nueva Empresa
+        <Button className="bg-[#13944C] hover:bg-[#0f7a3d]" onClick={() => setNewEmpresaOpen(true)}>
+          <Plus className="size-4" /> Nueva Empresa
         </Button>
       </PageHeader>
 
@@ -319,6 +340,7 @@ export default function EmpresasPage() {
                   <TableHead className="hidden lg:table-cell">Fuente</TableHead>
                   <TableHead className="hidden md:table-cell">Rubro</TableHead>
                   <TableHead className="hidden md:table-cell">Tipo</TableHead>
+                  <TableHead className="hidden lg:table-cell">Cliente Recuperado</TableHead>
                   <TableHead className="hidden xl:table-cell">Asesor</TableHead>
                   <TableHead className="text-center">Contactos</TableHead>
                   <TableHead className="text-right">Valor total</TableHead>
@@ -369,6 +391,9 @@ export default function EmpresasPage() {
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-muted-foreground">
                       {emp.companyTipo ?? '—'}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell text-muted-foreground">
+                      {emp.clienteRecuperado === 'si' ? 'Sí' : emp.clienteRecuperado === 'no' ? 'No' : '—'}
                     </TableCell>
                     <TableCell className="hidden xl:table-cell text-muted-foreground">
                       {(() => {
@@ -422,6 +447,9 @@ export default function EmpresasPage() {
                     )}
                     {emp.companyTipo && (
                       <Badge variant="outline" className="text-xs">Tipo {emp.companyTipo}</Badge>
+                    )}
+                    {emp.clienteRecuperado === 'si' && (
+                      <Badge variant="secondary" className="text-xs">Cliente Recuperado</Badge>
                     )}
                   </div>
 

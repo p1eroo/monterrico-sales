@@ -148,6 +148,8 @@ export default function ContactosPage() {
       priority: data.priority,
       assignedTo: data.assignedTo,
       estimatedValue: data.estimatedValue,
+      etapa: data.etapaCiclo,
+      clienteRecuperado: data.clienteRecuperado,
       notes: data.notes,
       departamento: data.departamento,
       provincia: data.provincia,
@@ -402,6 +404,7 @@ function ContactsTable({
             <TableHead className="hidden lg:table-cell">Teléfono</TableHead>
             <TableHead className="hidden xl:table-cell">Email</TableHead>
             <TableHead className="hidden lg:table-cell">Fuente</TableHead>
+            <TableHead className="hidden lg:table-cell">Cliente Recuperado</TableHead>
             <TableHead>Etapa</TableHead>
             <TableHead className="hidden sm:table-cell">Prioridad</TableHead>
             <TableHead className="hidden xl:table-cell">Asesor</TableHead>
@@ -437,6 +440,9 @@ function ContactsTable({
               <TableCell className="hidden xl:table-cell text-muted-foreground">{contact.email}</TableCell>
               <TableCell className="hidden lg:table-cell">
                 <Badge variant="outline" className="text-xs">{contactSourceLabels[contact.source]}</Badge>
+              </TableCell>
+              <TableCell className="hidden lg:table-cell text-muted-foreground">
+                {contact.clienteRecuperado === 'si' ? 'Sí' : contact.clienteRecuperado === 'no' ? 'No' : '—'}
               </TableCell>
               <TableCell><StatusBadge status={contact.etapa} /></TableCell>
               <TableCell className="hidden sm:table-cell"><PriorityBadge priority={contact.priority} /></TableCell>
@@ -520,6 +526,9 @@ function ContactsGrid({ contacts: data, onView, onDelete }: ContactsGridProps) {
             <div className="mt-3 flex flex-wrap gap-1.5">
               <StatusBadge status={contact.etapa} />
               <PriorityBadge priority={contact.priority} />
+              {contact.clienteRecuperado === 'si' && (
+                <Badge variant="secondary" className="text-xs">Cliente Recuperado</Badge>
+              )}
             </div>
 
             <div className="mt-3 space-y-1.5 text-sm text-muted-foreground">

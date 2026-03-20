@@ -28,6 +28,7 @@ export interface NewContactData {
   priority: ContactPriority;
   assignedTo: string;
   estimatedValue: number;
+  clienteRecuperado?: 'si' | 'no';
   notes?: string;
   departamento?: string;
   provincia?: string;
@@ -73,6 +74,7 @@ export function NewContactWizard({
   const [priority, setPriority] = useState<ContactPriority>(defaultValues?.priority ?? 'media');
   const [assignedTo, setAssignedTo] = useState(defaultValues?.assignedTo ?? '');
   const [estimatedValue, setEstimatedValue] = useState(defaultValues?.estimatedValue ?? 0);
+  const [clienteRecuperado, setClienteRecuperado] = useState<'si' | 'no'>(defaultValues?.clienteRecuperado ?? 'no');
   const [notes, setNotes] = useState(defaultValues?.notes ?? '');
   const [departamento, setDepartamento] = useState(defaultValues?.departamento ?? '');
   const [provincia, setProvincia] = useState(defaultValues?.provincia ?? '');
@@ -93,6 +95,7 @@ export function NewContactWizard({
     setPriority(defaultValues?.priority ?? 'media');
     setAssignedTo(defaultValues?.assignedTo ?? '');
     setEstimatedValue(defaultValues?.estimatedValue ?? 0);
+    setClienteRecuperado(defaultValues?.clienteRecuperado ?? 'no');
     setNotes(defaultValues?.notes ?? '');
     setDepartamento(defaultValues?.departamento ?? '');
     setProvincia(defaultValues?.provincia ?? '');
@@ -128,6 +131,7 @@ export function NewContactWizard({
       priority,
       assignedTo,
       estimatedValue,
+      clienteRecuperado,
       notes: notes.trim() || undefined,
       departamento: departamento.trim() || undefined,
       provincia: provincia.trim() || undefined,
@@ -268,6 +272,16 @@ export function NewContactWizard({
               <div className="space-y-2">
                 <Label>Valor estimado (S/)</Label>
                 <Input type="number" value={estimatedValue} onChange={(e) => setEstimatedValue(Number(e.target.value))} placeholder="0" />
+              </div>
+              <div className="space-y-2">
+                <Label>Cliente Recuperado</Label>
+                <Select value={clienteRecuperado} onValueChange={(v) => setClienteRecuperado(v as 'si' | 'no')}>
+                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="no">No</SelectItem>
+                    <SelectItem value="si">Sí</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label>Notas</Label>

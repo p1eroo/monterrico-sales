@@ -5,6 +5,7 @@ import {
   Edit, RefreshCw, UserPlus, Plus, FileArchive,
 } from 'lucide-react';
 import { useCRMStore } from '@/store/crmStore';
+import { useCompaniesStore } from '@/store/companiesStore';
 import { companyRubroLabels, companyTipoLabels, etapaLabels, users, timelineEvents, activities } from '@/data/mock';
 import { getPrimaryCompany } from '@/lib/utils';
 import type { Etapa, CompanyRubro, CompanyTipo } from '@/types';
@@ -46,6 +47,7 @@ export default function EmpresaDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { contacts, opportunities } = useCRMStore();
+  const { getCompanyByName, updateCompany, companies: standaloneCompanies } = useCompaniesStore();
 
   const companyName = id ? decodeURIComponent(id) : '';
 
@@ -56,10 +58,18 @@ export default function EmpresaDetailPage() {
     );
   }, [contacts, companyName]);
 
+  const standaloneCompany = useMemo(
+    () => (companyContacts.length === 0 ? getCompanyByName(companyName) : undefined),
+    [companyContacts.length, companyName, getCompanyByName],
+  );
+
   const firstContact = companyContacts[0];
-  const companyData = firstContact?.companies?.find(
+  const companyDataFromContact = firstContact?.companies?.find(
     (c) => c.name.trim().toLowerCase() === companyName.trim().toLowerCase(),
   );
+  const companyData = companyDataFromContact ?? (standaloneCompany
+    ? { name: standaloneCompany.name, domain: standaloneCompany.domain, rubro: standaloneCompany.rubro, tipo: standaloneCompany.tipo }
+    : undefined);
   const totalValue = companyContacts.reduce((sum: number, l) => sum + l.estimatedValue, 0);
 
   const companyOpportunities = useMemo(() => {
@@ -142,14 +152,23 @@ export default function EmpresaDetailPage() {
   }
 
   function handleSaveEdit() {
-    for (const contact of companyContacts) {
-      const updatedCompanies = (contact.companies ?? []).map((c) => {
-        if (c.name.trim().toLowerCase() === companyName.trim().toLowerCase()) {
-          return { ...c, name: editForm.name, domain: editForm.domain || undefined, rubro: (editForm.rubro || undefined) as CompanyRubro | undefined, tipo: (editForm.tipo || undefined) as CompanyTipo | undefined };
-        }
-        return c;
+    if (isStandalone && standaloneCompany) {
+      updateCompany(standaloneCompany.id, {
+        name: editForm.name,
+        domain: editForm.domain || undefined,
+        rubro: (editForm.rubro || undefined) as CompanyRubro | undefined,
+        tipo: (editForm.tipo || undefined) as CompanyTipo | undefined,
       });
-      updateContact(contact.id, { companies: updatedCompanies });
+    } else {
+      for (const contact of companyContacts) {
+        const updatedCompanies = (contact.companies ?? []).map((c) => {
+          if (c.name.trim().toLowerCase() === companyName.trim().toLowerCase()) {
+            return { ...c, name: editForm.name, domain: editForm.domain || undefined, rubro: (editForm.rubro || undefined) as CompanyRubro | undefined, tipo: (editForm.tipo || undefined) as CompanyTipo | undefined };
+          }
+          return c;
+        });
+        updateContact(contact.id, { companies: updatedCompanies });
+      }
     }
     toast.success('Empresa actualizada correctamente');
     setEditDialogOpen(false);
@@ -237,7 +256,7 @@ export default function EmpresaDetailPage() {
   }
 
   function handleCreateNewContact(data: NewContactData) {
-    if (!firstContact) return;
+    const defaultAssignedTo = firstContact?.assignedTo ?? users[0]?.id ?? '';
     addContact({
       name: data.name,
       cargo: data.cargo,
@@ -248,8 +267,9 @@ export default function EmpresaDetailPage() {
       email: data.email || '',
       source: data.source,
       priority: data.priority,
-      assignedTo: data.assignedTo || firstContact.assignedTo,
+      assignedTo: data.assignedTo || defaultAssignedTo,
       estimatedValue: data.estimatedValue,
+      clienteRecuperado: data.clienteRecuperado,
       departamento: data.departamento,
       provincia: data.provincia,
       distrito: data.distrito,
@@ -300,6 +320,13 @@ export default function EmpresaDetailPage() {
         }
       }
     }
+    for (const c of standaloneCompanies) {
+      const key = c.name.trim().toLowerCase();
+      if (!currentCompanyNames.has(key) && !seen.has(key)) {
+        seen.add(key);
+        result.push({ name: c.name, rubro: c.rubro, tipo: c.tipo });
+      }
+    }
     return result;
   })();
   const companyLinkItems: LinkExistingItem[] = availableCompanies.map((c) => ({
@@ -319,7 +346,8 @@ export default function EmpresaDetailPage() {
     icon: <Users className="size-4" />,
   }));
 
-  if (!companyName || companyContacts.length === 0) {
+  const hasCompany = companyContacts.length > 0 || standaloneCompany;
+  if (!companyName || !hasCompany) {
     return (
       <div className="space-y-6">
         <Button variant="ghost" onClick={() => navigate('/empresas')}>
@@ -328,13 +356,15 @@ export default function EmpresaDetailPage() {
         <EmptyState
           icon={Building2}
           title="Empresa no encontrada"
-          description="La empresa que buscas no existe o no tiene contactos asociados."
+          description="La empresa que buscas no existe."
           actionLabel="Volver a Empresas"
           onAction={() => navigate('/empresas')}
         />
       </div>
     );
   }
+
+  const isStandalone = companyContacts.length === 0 && !!standaloneCompany;
 
   const subtitle = [
     companyData?.domain,
@@ -353,12 +383,16 @@ export default function EmpresaDetailPage() {
           <Button variant="outline" size="sm" onClick={handleOpenEditDialog}>
             <Edit /> Editar
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setStatusDialogOpen(true)}>
-            <RefreshCw /> Cambiar Etapa
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setAssignDialogOpen(true)}>
-            <UserPlus /> Asignar
-          </Button>
+          {!isStandalone && (
+            <>
+              <Button variant="outline" size="sm" onClick={() => setStatusDialogOpen(true)}>
+                <RefreshCw /> Cambiar Etapa
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setAssignDialogOpen(true)}>
+                <UserPlus /> Asignar
+              </Button>
+            </>
+          )}
         </>
       }
       quickActions={
@@ -440,17 +474,21 @@ export default function EmpresaDetailPage() {
             ]}
           />
 
-          <LinkedOpportunitiesCard
-            opportunities={companyOpportunities}
-            onCreate={() => setNewOppOpen(true)}
-            onAddExisting={() => setAddExistingOppOpen(true)}
-          />
+          {!isStandalone && (
+            <>
+              <LinkedOpportunitiesCard
+                opportunities={companyOpportunities}
+                onCreate={() => setNewOppOpen(true)}
+                onAddExisting={() => setAddExistingOppOpen(true)}
+              />
 
-          <LinkedCompaniesCard
-            companies={linkedCompanies}
-            onCreate={() => setNewCompanyDialogOpen(true)}
-            onAddExisting={() => setAddExistingCompanyOpen(true)}
-          />
+              <LinkedCompaniesCard
+                companies={linkedCompanies}
+                onCreate={() => setNewCompanyDialogOpen(true)}
+                onAddExisting={() => setAddExistingCompanyOpen(true)}
+              />
+            </>
+          )}
 
           <LinkedContactsCard
             contacts={companyContacts}

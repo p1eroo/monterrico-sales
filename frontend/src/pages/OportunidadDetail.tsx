@@ -163,6 +163,7 @@ export default function OportunidadDetailPage() {
       priority: data.priority,
       assignedTo: data.assignedTo || opp.assignedTo,
       estimatedValue: data.estimatedValue,
+      clienteRecuperado: data.clienteRecuperado,
     });
     updateOpportunity(opp.id, { contactId: newContact.id, contactName: newContact.name });
     toast.success('Contacto creado y vinculado a la oportunidad');

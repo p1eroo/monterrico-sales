@@ -28,6 +28,16 @@ export interface LinkedCompany {
   isPrimary?: boolean;
 }
 
+/** Empresa independiente (creada sola, sin contacto) */
+export interface Company {
+  id: string;
+  name: string;
+  domain?: string;
+  rubro?: CompanyRubro;
+  tipo?: CompanyTipo;
+  createdAt: string;
+}
+
 export type ActivityType = 'llamada' | 'reunion' | 'tarea' | 'correo' | 'seguimiento' | 'whatsapp';
 export type ActivityStatus = 'pendiente' | 'completada' | 'en_progreso' | 'vencida';
 
@@ -141,6 +151,8 @@ export interface Contact {
   linkedContactIds?: string[];
   /** Historial de fechas en que el contacto estuvo en cada etapa */
   etapaHistory?: { etapa: Etapa; fecha: string }[];
+  /** Indica si es un cliente recuperado (antes inactivo/cierre perdido) */
+  clienteRecuperado?: 'si' | 'no';
 }
 
 export interface Activity {

@@ -1,0 +1,225 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Entidades principales ───
+
+model User {
+  id                    String        @id @default(cuid())
+  username              String        @unique
+  name                  String
+  role                  String
+  roleId                String?
+  phone                 String?
+  avatar                String?
+  status                String        @default("activo")
+  joinedAt              DateTime      @default(now())
+  lastActivity          DateTime?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  contactsAssigned      Contact[]
+  opportunitiesAssigned Opportunity[]
+  activitiesAssigned    Activity[]
+}
+
+model Contact {
+  id                String               @id @default(cuid())
+  name              String
+  cargo             String?
+  phone             String
+  email             String
+  source            String
+  etapa             String               @default("lead")
+  priority          String               @default("media")
+  assignedTo        String?
+  estimatedValue    Float                @default(0)
+  nextAction        String?
+  nextFollowUp      DateTime?
+  notes             String?
+  tags              String[]             @default([])
+  docType           String?
+  docNumber         String?
+  departamento      String?
+  provincia         String?
+  distrito          String?
+  direccion         String?
+  clienteRecuperado String?
+  etapaHistory      Json?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  user              User?                @relation(fields: [assignedTo], references: [id], onDelete: SetNull)
+  companies         CompanyContact[]
+  contacts          ContactContact[]     @relation("ContactLinks")
+  linkedBy          ContactContact[]     @relation("LinkedContacts")
+  opportunities     ContactOpportunity[]
+  activities        ContactActivity[]
+}
+
+model Company {
+  id            String               @id @default(cuid())
+  name          String
+  razonSocial   String?
+  ruc           String?
+  domain        String?
+  rubro         String?
+  tipo          String?
+  linkedin      String?
+  correo        String?
+  distrito      String?
+  provincia     String?
+  departamento  String?
+  direccion     String?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  contacts      CompanyContact[]
+  companies     CompanyCompany[]     @relation("CompanyLinks")
+  linkedBy      CompanyCompany[]     @relation("LinkedCompanies")
+  opportunities CompanyOpportunity[]
+  activities    CompanyActivity[]
+}
+
+model Opportunity {
+  id                String                   @id @default(cuid())
+  title             String
+  amount            Float
+  probability       Int                      @default(0)
+  etapa             String
+  status            String                   @default("abierta")
+  expectedCloseDate DateTime?
+  assignedTo        String?
+  description       String?
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+  user              User?                    @relation(fields: [assignedTo], references: [id], onDelete: SetNull)
+  contacts          ContactOpportunity[]
+  companies         CompanyOpportunity[]
+  opportunities     OpportunityOpportunity[] @relation("OpportunityLinks")
+  linkedBy          OpportunityOpportunity[] @relation("LinkedOpportunities")
+  activities        OpportunityActivity[]
+}
+
+// ─── Activity: puede vincularse a muchos Contact, Company, Opportunity ───
+
+model Activity {
+  id            String                @id @default(cuid())
+  type          String
+  title         String
+  description   String
+  assignedTo    String
+  status        String                @default("pendiente")
+  dueDate       DateTime
+  startDate     DateTime?
+  startTime     String?
+  completedAt   DateTime?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  user          User                  @relation(fields: [assignedTo], references: [id])
+  contacts      ContactActivity[]
+  companies     CompanyActivity[]
+  opportunities OpportunityActivity[]
+}
+
+// ─── Tablas de unión entre entidades principales ───
+
+model CompanyContact {
+  id        String  @id @default(cuid())
+  companyId String
+  contactId String
+  isPrimary Boolean @default(false)
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, contactId])
+}
+
+model ContactContact {
+  id        String  @id @default(cuid())
+  contactId String
+  linkedId  String
+  contact   Contact @relation("ContactLinks", fields: [contactId], references: [id], onDelete: Cascade)
+  linked    Contact @relation("LinkedContacts", fields: [linkedId], references: [id], onDelete: Cascade)
+
+  @@unique([contactId, linkedId])
+}
+
+model ContactOpportunity {
+  id            String      @id @default(cuid())
+  contactId     String
+  opportunityId String
+  contact       Contact     @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@unique([contactId, opportunityId])
+}
+
+model CompanyCompany {
+  id        String  @id @default(cuid())
+  companyId String
+  linkedId  String
+  company   Company @relation("CompanyLinks", fields: [companyId], references: [id], onDelete: Cascade)
+  linked    Company @relation("LinkedCompanies", fields: [linkedId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, linkedId])
+}
+
+model CompanyOpportunity {
+  id            String      @id @default(cuid())
+  companyId     String
+  opportunityId String
+  company       Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, opportunityId])
+}
+
+model OpportunityOpportunity {
+  id            String      @id @default(cuid())
+  opportunityId String
+  linkedId      String
+  opportunity   Opportunity @relation("OpportunityLinks", fields: [opportunityId], references: [id], onDelete: Cascade)
+  linked        Opportunity @relation("LinkedOpportunities", fields: [linkedId], references: [id], onDelete: Cascade)
+
+  @@unique([opportunityId, linkedId])
+}
+
+// ─── Tablas de unión de Activity con Contact, Company, Opportunity ───
+
+model ContactActivity {
+  id         String   @id @default(cuid())
+  contactId  String
+  activityId String
+  contact    Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@unique([contactId, activityId])
+}
+
+model CompanyActivity {
+  id         String   @id @default(cuid())
+  companyId  String
+  activityId String
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, activityId])
+}
+
+model OpportunityActivity {
+  id            String      @id @default(cuid())
+  opportunityId String
+  activityId    String
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  activity      Activity    @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@unique([opportunityId, activityId])
+}
