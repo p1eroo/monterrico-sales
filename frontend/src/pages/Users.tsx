@@ -1,0 +1,563 @@
+import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import {
+  Search,
+  UserPlus,
+  MoreHorizontal,
+  Eye,
+  Pencil,
+  UserX,
+  UserCheck,
+  Shield,
+  ChevronLeft,
+  ChevronRight,
+  Users,
+  Filter,
+} from 'lucide-react';
+import type { User } from '@/types';
+import { users as mockUsers } from '@/data/mock';
+import { INITIAL_ROLES } from '@/data/rbac';
+import type { RBACRole, PermissionKey } from '@/types';
+
+import { PageHeader } from '@/components/shared/PageHeader';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { UserFormModal, type UserFormData } from '@/components/users/UserFormModal';
+import { RoleCard } from '@/components/roles/RoleCard';
+import { PermissionMatrix } from '@/components/roles/PermissionMatrix';
+import { CreateRoleDialog } from '@/components/roles/CreateRoleDialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { EmptyState } from '@/components/shared/EmptyState';
+import { formatDate } from '@/lib/formatters';
+
+const PAGE_SIZE = 10;
+const roleLabels: Record<string, string> = {
+  r1: 'Administrador',
+  r2: 'Supervisor Comercial',
+  r3: 'Asesor Comercial',
+  r4: 'Solo lectura',
+};
+
+function getInitials(name: string) {
+  return name
+    .split(' ')
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+}
+
+function getAvatarColor(name: string) {
+  const colors = [
+    'bg-emerald-100 text-emerald-700',
+    'bg-blue-100 text-blue-700',
+    'bg-amber-100 text-amber-700',
+    'bg-violet-100 text-violet-700',
+  ];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash += name.charCodeAt(i);
+  return colors[Math.abs(hash) % colors.length];
+}
+
+function formatLastActivity(isoStr?: string) {
+  if (!isoStr) return '—';
+  const d = new Date(isoStr);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+  if (diffMins < 60) return `Hace ${diffMins} min`;
+  if (diffHours < 24) return `Hace ${diffHours} h`;
+  if (diffDays < 7) return `Hace ${diffDays} días`;
+  return formatDate(isoStr);
+}
+
+export default function UsersPage() {
+  const navigate = useNavigate();
+  const [users, setUsers] = useState<User[]>(mockUsers);
+  const [roles, setRoles] = useState<RBACRole[]>(INITIAL_ROLES);
+  const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState<string>('todos');
+  const [statusFilter, setStatusFilter] = useState<string>('todos');
+  const [sortBy] = useState<'name' | 'email' | 'joinedAt' | 'lastActivity'>('name');
+  const [page, setPage] = useState(1);
+  const [userFormOpen, setUserFormOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [createRoleOpen, setCreateRoleOpen] = useState(false);
+  const [editingRole, setEditingRole] = useState<RBACRole | null>(null);
+
+  const filteredUsers = useMemo(() => {
+    return users.filter((u) => {
+      const matchSearch =
+        !search ||
+        u.name.toLowerCase().includes(search.toLowerCase()) ||
+        u.email.toLowerCase().includes(search.toLowerCase());
+      const matchRole =
+        roleFilter === 'todos' || (u.roleId ?? 'r3') === roleFilter;
+      const matchStatus =
+        statusFilter === 'todos' || u.status === statusFilter;
+      return matchSearch && matchRole && matchStatus;
+    });
+  }, [users, search, roleFilter, statusFilter]);
+
+  const sortedUsers = useMemo(() => {
+    return [...filteredUsers].sort((a, b) => {
+      if (sortBy === 'name') return a.name.localeCompare(b.name);
+      if (sortBy === 'email') return a.email.localeCompare(b.email);
+      if (sortBy === 'joinedAt') return b.joinedAt.localeCompare(a.joinedAt);
+      if (sortBy === 'lastActivity') {
+        const aVal = a.lastActivity ?? '';
+        const bVal = b.lastActivity ?? '';
+        return bVal.localeCompare(aVal);
+      }
+      return 0;
+    });
+  }, [filteredUsers, sortBy]);
+
+  const totalPages = Math.ceil(sortedUsers.length / PAGE_SIZE);
+  const paginatedUsers = sortedUsers.slice(
+    (page - 1) * PAGE_SIZE,
+    page * PAGE_SIZE
+  );
+
+  function handleUserSubmit(data: UserFormData) {
+    if (editingUser) {
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === editingUser.id
+            ? {
+                ...u,
+                name: data.name,
+                roleId: data.roleId,
+                status: data.status ? 'activo' : 'inactivo',
+                phone: data.phone ?? u.phone,
+              }
+            : u
+        )
+      );
+      toast.success('Usuario actualizado');
+    } else {
+      const newUser: User = {
+        id: `u${Date.now()}`,
+        name: data.name,
+        email: data.email,
+        role: 'asesor',
+        roleId: data.roleId,
+        phone: data.phone ?? '',
+        status: data.status ? 'activo' : 'inactivo',
+        contactsAssigned: 0,
+        opportunitiesActive: 0,
+        salesClosed: 0,
+        conversionRate: 0,
+        joinedAt: new Date().toISOString().slice(0, 10),
+      };
+      setUsers((prev) => [...prev, newUser]);
+      setRoles((prev) =>
+        prev.map((r) =>
+          r.id === data.roleId
+            ? { ...r, userCount: r.userCount + 1 }
+            : r
+        )
+      );
+      toast.success('Usuario creado');
+    }
+    setEditingUser(null);
+  }
+
+  function handleCreateRole(role: Omit<RBACRole, 'userCount'>) {
+    setRoles((prev) => [...prev, { ...role, userCount: 0 }]);
+    toast.success(`Rol "${role.name}" creado`);
+  }
+
+  function handleRolePermissionsChange(roleId: string, key: PermissionKey, value: boolean) {
+    setRoles((prev) =>
+      prev.map((r) =>
+        r.id === roleId
+          ? { ...r, permissions: { ...r.permissions, [key]: value } }
+          : r
+      )
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Usuarios y Roles"
+        description="Gestiona usuarios, roles y permisos del CRM"
+      />
+
+      <Tabs defaultValue="usuarios" className="space-y-4">
+        <TabsList className="bg-muted/50">
+          <TabsTrigger value="usuarios" className="gap-2">
+            <Users className="size-4" />
+            Usuarios
+          </TabsTrigger>
+          <TabsTrigger value="roles" className="gap-2">
+            <Shield className="size-4" />
+            Roles y Permisos
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="usuarios" className="space-y-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nombre o email..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Select value={roleFilter} onValueChange={setRoleFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <Filter className="size-4" />
+                  <SelectValue placeholder="Rol" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos los roles</SelectItem>
+                  {roles.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Estado" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos</SelectItem>
+                  <SelectItem value="activo">Activo</SelectItem>
+                  <SelectItem value="inactivo">Inactivo</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              className="bg-[#13944C] hover:bg-[#0f7a3d] shrink-0"
+              onClick={() => {
+                setEditingUser(null);
+                setUserFormOpen(true);
+              }}
+            >
+              <UserPlus className="size-4" />
+              Crear usuario
+            </Button>
+          </div>
+
+          {paginatedUsers.length === 0 ? (
+            <Card>
+              <CardContent className="py-12">
+                <EmptyState
+                  icon={Users}
+                  title="Sin usuarios"
+                  description="No hay usuarios que coincidan con los filtros."
+                />
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+            <Card className="hidden md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12">Usuario</TableHead>
+                    <TableHead>Nombre</TableHead>
+                    <TableHead>Rol</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead>Última actividad</TableHead>
+                    <TableHead>Fecha creación</TableHead>
+                    <TableHead className="w-12" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedUsers.map((u) => (
+                    <TableRow key={u.id}>
+                      <TableCell>
+                        <Avatar className="size-8">
+                          <AvatarFallback
+                            className={`text-xs ${getAvatarColor(u.name)}`}
+                          >
+                            {getInitials(u.name)}
+                          </AvatarFallback>
+                        </Avatar>
+                      </TableCell>
+                      <TableCell className="font-medium">{u.name}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-xs">
+                          {roleLabels[u.roleId ?? 'r3'] ?? u.roleId}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={u.status === 'activo' ? 'default' : 'secondary'}
+                        >
+                          {u.status === 'activo' ? 'Activo' : 'Inactivo'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {formatLastActivity(u.lastActivity)}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {formatDate(u.joinedAt)}
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="size-8">
+                              <MoreHorizontal className="size-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => navigate(`/users/${u.id}`)}
+                            >
+                              <Eye className="size-4" />
+                              Ver perfil
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setEditingUser(u);
+                                setUserFormOpen(true);
+                              }}
+                            >
+                              <Pencil className="size-4" />
+                              Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setUsers((prev) =>
+                                  prev.map((us) =>
+                                    us.id === u.id
+                                      ? {
+                                          ...us,
+                                          status: us.status === 'activo' ? 'inactivo' : 'activo',
+                                        }
+                                      : us
+                                  )
+                                );
+                                toast.success(
+                                  u.status === 'activo'
+                                    ? 'Usuario desactivado'
+                                    : 'Usuario activado'
+                                );
+                              }}
+                            >
+                              {u.status === 'activo' ? (
+                                <>
+                                  <UserX className="size-4" />
+                                  Desactivar
+                                </>
+                              ) : (
+                                <>
+                                  <UserCheck className="size-4" />
+                                  Activar
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between border-t px-4 py-3">
+                  <p className="text-sm text-muted-foreground">
+                    {sortedUsers.length} usuario{sortedUsers.length !== 1 ? 's' : ''}
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={page <= 1}
+                      onClick={() => setPage((p) => p - 1)}
+                    >
+                      <ChevronLeft className="size-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={page >= totalPages}
+                      onClick={() => setPage((p) => p + 1)}
+                    >
+                      <ChevronRight className="size-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </Card>
+            <div className="grid gap-3 sm:grid-cols-2 md:hidden">
+              {paginatedUsers.map((u) => (
+                <Card key={u.id} className="overflow-hidden">
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                      <Avatar className="size-12">
+                        <AvatarFallback
+                          className={`text-sm ${getAvatarColor(u.name)}`}
+                        >
+                          {getInitials(u.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold">{u.name}</p>
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          <Badge variant="outline" className="text-[10px]">
+                            {roleLabels[u.roleId ?? 'r3']}
+                          </Badge>
+                          <Badge
+                            variant={u.status === 'activo' ? 'default' : 'secondary'}
+                            className="text-[10px]"
+                          >
+                            {u.status}
+                          </Badge>
+                        </div>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="size-8">
+                            <MoreHorizontal className="size-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => navigate(`/users/${u.id}`)}
+                          >
+                            <Eye className="size-4" />
+                            Ver perfil
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setEditingUser(u);
+                              setUserFormOpen(true);
+                            }}
+                          >
+                            <Pencil className="size-4" />
+                            Editar
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            </>
+          )}
+        </TabsContent>
+
+        <TabsContent value="roles" className="space-y-4">
+          <div className="flex justify-end">
+            <Button
+              className="bg-[#13944C] hover:bg-[#0f7a3d]"
+              onClick={() => setCreateRoleOpen(true)}
+            >
+              <Shield className="size-4" />
+              Crear rol
+            </Button>
+          </div>
+
+          <div className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {roles.map((role) => (
+              <RoleCard
+                key={role.id}
+                role={role}
+                onEdit={(r) => setEditingRole(r)}
+                isDefault={['r1', 'r2', 'r3', 'r4'].includes(role.id)}
+              />
+            ))}
+          </div>
+
+          {editingRole && (() => {
+            const currentRole = roles.find((r) => r.id === editingRole.id) ?? editingRole;
+            return (
+              <Dialog
+                open={!!editingRole}
+                onOpenChange={(open) => !open && setEditingRole(null)}
+              >
+                <DialogContent className="!max-w-[90vw] sm:!max-w-[90vw] lg:!max-w-6xl w-[90vw] sm:w-[90vw] max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Editar permisos: {currentRole.name}</DialogTitle>
+                    <DialogDescription>
+                      Modifica los permisos de este rol. Los cambios afectarán a todos los usuarios con este rol.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <PermissionMatrix
+                    permissions={currentRole.permissions}
+                    onChange={(key, value) =>
+                      handleRolePermissionsChange(currentRole.id, key, value)
+                    }
+                  />
+                  <DialogFooter>
+                    <Button
+                      onClick={() => {
+                        setEditingRole(null);
+                        toast.success('Permisos actualizados');
+                      }}
+                      className="bg-[#13944C] hover:bg-[#0f7a3d]"
+                    >
+                      Guardar cambios
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            );
+          })()}
+        </TabsContent>
+      </Tabs>
+
+      <UserFormModal
+        open={userFormOpen}
+        onOpenChange={(o) => {
+          setUserFormOpen(o);
+          if (!o) setEditingUser(null);
+        }}
+        user={editingUser}
+        onSubmit={handleUserSubmit}
+      />
+
+      <CreateRoleDialog
+        open={createRoleOpen}
+        onOpenChange={setCreateRoleOpen}
+        onSave={handleCreateRole}
+      />
+    </div>
+  );
+}
