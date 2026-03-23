@@ -1,6 +1,11 @@
 # Autenticación local
 
-- Los usuarios están en la tabla `User` (PostgreSQL) con `username`, `name`, `role` y `passwordHash` (bcrypt). **No** se usa correo en el modelo de usuario.
+- **User**: perfil (name, roleId, status, etc.). Sin username ni password.
+- **Account**: credenciales por método de login. Un usuario puede tener varios (p. ej. `credentials` + Google).
+  - `provider`: `"credentials"` (usuario/contraseña), `"google"`, etc.
+  - `providerId`: username para credentials; ID de OAuth para otros.
+  - `passwordHash`: solo para provider `credentials` (bcrypt).
+- El **username** se obtiene de `Account.providerId` cuando `provider='credentials'` (usado en JWT y API).
 
 ## Migración
 

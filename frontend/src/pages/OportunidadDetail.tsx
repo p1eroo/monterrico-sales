@@ -50,7 +50,7 @@ import {
   mapApiContactToContact,
   mapApiOpportunityToOpportunity,
 } from '@/lib/opportunityApi';
-import { type ApiContactListRow, contactRemoveCompany, isLikelyContactCuid, mapApiContactRowToContact } from '@/lib/contactApi';
+import { type ApiContactListRow, contactListAll, contactRemoveCompany, isLikelyContactCuid, mapApiContactRowToContact } from '@/lib/contactApi';
 import { type ApiCompanyRecord } from '@/lib/companyApi';
 
 const statusLabels: Record<string, string> = {
@@ -92,7 +92,7 @@ export default function OportunidadDetailPage() {
     setApiError(null);
     Promise.all([
       api<ApiOpportunityDetail>(`/opportunities/${routeId}`),
-      api<ApiContactListRow[]>('/contacts'),
+      contactListAll(),
     ])
       .then(([oppRow, contactsList]) => {
         if (!cancelled) {

@@ -1,0 +1,2 @@
+-- Migración reemplazada por 20260327120001_add_authority_role_fk (ejecuta después de crear Role/Authority).
+-- Se mantiene por compatibilidad con el historial de la BD; no-op.

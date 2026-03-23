@@ -36,14 +36,15 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { formatCurrency } from '@/lib/formatters';
 import { api } from '@/lib/api';
-import { type ApiCompanyRecord } from '@/lib/companyApi';
+import { type ApiCompanyRecord, companyListAll } from '@/lib/companyApi';
 import {
   type ApiContactListRow,
   isLikelyContactCuid,
   mapApiContactRowToContact,
+  contactListPaginated,
 } from '@/lib/contactApi';
 
-const ITEMS_PER_PAGE = 8;
+const ITEMS_PER_PAGE = 25;
 
 const etapaTabs: { value: string; label: string }[] = [
   { value: 'todos', label: 'Todos' },
@@ -67,15 +68,49 @@ export default function ContactosPage() {
   const { contacts, deleteContact } = useCRMStore();
   const { users } = useUsers();
   const [apiRows, setApiRows] = useState<ApiContactListRow[]>([]);
+  const [totalContacts, setTotalContacts] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(true);
+
+  const [search, setSearch] = useState('');
+  const [searchDebounced, setSearchDebounced] = useState('');
+  const [etapaFilter, setEtapaFilter] = useState<string>('todos');
+  const [sourceFilter, setSourceFilter] = useState<string>('todos');
+  const [advisorFilter, setAdvisorFilter] = useState<string>('todos');
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+  const [page, setPage] = useState(1);
+  const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
+  const [newContactOpen, setNewContactOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [contactToDelete, setContactToDelete] = useState<string | null>(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => setSearchDebounced(search), 400);
+    return () => clearTimeout(t);
+  }, [search]);
 
   const loadApiContacts = useCallback(async () => {
+    setLoading(true);
     try {
-      const list = await api<ApiContactListRow[]>('/contacts');
-      setApiRows(list);
+      const res = await contactListPaginated({
+        page,
+        limit: ITEMS_PER_PAGE,
+        search: searchDebounced || undefined,
+        etapa: etapaFilter === 'todos' ? undefined : etapaFilter,
+        source: sourceFilter === 'todos' ? undefined : sourceFilter,
+        assignedTo: advisorFilter === 'todos' ? undefined : advisorFilter,
+      });
+      setApiRows(res.data);
+      setTotalContacts(res.total);
+      setTotalPages(res.totalPages);
     } catch {
       setApiRows([]);
+      setTotalContacts(0);
+      setTotalPages(1);
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  }, [page, searchDebounced, etapaFilter, sourceFilter, advisorFilter]);
 
   useEffect(() => {
     void loadApiContacts();
@@ -88,49 +123,11 @@ export default function ContactosPage() {
     return [...fromApi, ...fromStore];
   }, [apiRows, contacts]);
 
-  const [search, setSearch] = useState('');
-  const [etapaFilter, setEtapaFilter] = useState<string>('todos');
-  const [sourceFilter, setSourceFilter] = useState<string>('todos');
-  const [advisorFilter, setAdvisorFilter] = useState<string>('todos');
-  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
-  const [page, setPage] = useState(1);
-  const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
-  const [newContactOpen, setNewContactOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [contactToDelete, setContactToDelete] = useState<string | null>(null);
-
-  const filteredContacts = useMemo(() => {
-    return mergedContacts.filter((contact) => {
-      const matchesSearch =
-        !search ||
-        contact.name.toLowerCase().includes(search.toLowerCase()) ||
-        contact.cargo?.toLowerCase().includes(search.toLowerCase()) ||
-        contact.companies?.some((c) => c.name.toLowerCase().includes(search.toLowerCase())) ||
-        contact.email.toLowerCase().includes(search.toLowerCase()) ||
-        contact.phone.includes(search);
-
-      const matchesEtapa = etapaFilter === 'todos' || contact.etapa === etapaFilter;
-      const matchesSource = sourceFilter === 'todos' || contact.source === sourceFilter;
-      const matchesAdvisor = advisorFilter === 'todos' || contact.assignedTo === advisorFilter;
-
-      return matchesSearch && matchesEtapa && matchesSource && matchesAdvisor;
-    });
-  }, [mergedContacts, search, etapaFilter, sourceFilter, advisorFilter]);
-
-  const totalPages = Math.ceil(filteredContacts.length / ITEMS_PER_PAGE);
-  const paginatedContacts = filteredContacts.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
-  const startIndex = (page - 1) * ITEMS_PER_PAGE + 1;
-  const endIndex = Math.min(page * ITEMS_PER_PAGE, filteredContacts.length);
+  const paginatedContacts = mergedContacts;
+  const startIndex = totalContacts === 0 ? 0 : (page - 1) * ITEMS_PER_PAGE + 1;
+  const endIndex = Math.min(page * ITEMS_PER_PAGE, totalContacts);
 
   const hasActiveFilters = etapaFilter !== 'todos' || sourceFilter !== 'todos' || advisorFilter !== 'todos' || search !== '';
-
-  const etapaCounts = useMemo(() => {
-    const counts: Record<string, number> = { todos: mergedContacts.length };
-    for (const contact of mergedContacts) {
-      counts[contact.etapa] = (counts[contact.etapa] ?? 0) + 1;
-    }
-    return counts;
-  }, [mergedContacts]);
 
   function clearFilters() {
     setSearch('');
@@ -282,7 +279,7 @@ export default function ContactosPage() {
       companyId = data.companyId;
     } else if (data.company.trim()) {
       try {
-        const all = await api<ApiCompanyRecord[]>('/companies');
+        const all = await companyListAll();
         const key = data.company.trim().toLowerCase();
         const found = all.find((c) => c.name.trim().toLowerCase() === key);
         if (found) {
@@ -346,9 +343,9 @@ export default function ContactosPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Contactos" description="Gestiona y da seguimiento a tus prospectos de venta">
-        {apiRows.length > 0 && (
+        {totalContacts > 0 && (
           <Badge variant="secondary" className="mr-2 font-normal">
-            <Users className="size-3.5" /> {apiRows.length} en servidor
+            <Users className="size-3.5" /> {totalContacts} contactos
           </Badge>
         )}
         <Button variant="outline" size="sm" onClick={() => toast.info('Descargando plantilla...')}>
@@ -372,16 +369,16 @@ export default function ContactosPage() {
           className="cursor-pointer gap-1.5 px-3 py-1.5 text-sm transition-colors hover:bg-accent"
           onClick={() => { setEtapaFilter('todos'); setPage(1); }}
         >
-          <Users className="size-3.5" /> Total: {mergedContacts.length}
+          <Users className="size-3.5" /> Total: {totalContacts}
         </Badge>
-        {etapaTabs.slice(1).filter((tab) => (etapaCounts[tab.value] ?? 0) > 0).map((tab) => (
+        {etapaTabs.slice(1).map((tab) => (
           <Badge
             key={tab.value}
             variant={etapaFilter === tab.value ? 'secondary' : 'outline'}
             className="cursor-pointer gap-1.5 px-3 py-1.5 text-sm transition-colors hover:bg-accent"
             onClick={() => { setEtapaFilter(tab.value); setPage(1); }}
           >
-            {tab.label}: {etapaCounts[tab.value] ?? 0}
+            {tab.label}
           </Badge>
         ))}
       </div>
@@ -463,7 +460,11 @@ export default function ContactosPage() {
 
       {/* Content */}
       <div className="mt-4">
-        {filteredContacts.length === 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center py-16 text-muted-foreground">
+            Cargando contactos...
+          </div>
+        ) : totalContacts === 0 && mergedContacts.length === 0 ? (
           <EmptyState
             icon={Users}
             title="No se encontraron contactos"
@@ -491,16 +492,16 @@ export default function ContactosPage() {
       </div>
 
       {/* Pagination */}
-      {filteredContacts.length > 0 && (
+      {!loading && (totalContacts > 0 || mergedContacts.length > 0) && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Mostrando {startIndex}-{endIndex} de {filteredContacts.length} contactos
+            Mostrando {startIndex}-{endIndex} de {totalContacts || mergedContacts.length} contactos
           </p>
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
-              disabled={page <= 1}
+              disabled={page <= 1 || loading}
               onClick={() => setPage((p) => p - 1)}
             >
               <ChevronLeft className="size-4" /> Anterior
@@ -511,7 +512,7 @@ export default function ContactosPage() {
             <Button
               variant="outline"
               size="sm"
-              disabled={page >= totalPages}
+              disabled={page >= totalPages || loading}
               onClick={() => setPage((p) => p + 1)}
             >
               Siguiente <ChevronRight className="size-4" />

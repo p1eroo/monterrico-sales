@@ -14,7 +14,7 @@ export type ApiActivity = {
   type: string;
   title: string;
   description: string;
-  assignedTo: string;
+  assignedTo?: string;
   status: string;
   dueDate: string;
   startDate: string | null;
@@ -73,7 +73,7 @@ export function mapApiActivityToActivity(row: ApiActivity): Activity {
     companyId: company?.id,
     opportunityId: opportunity?.id,
     opportunityTitle: opportunity?.title,
-    assignedTo: row.assignedTo,
+    assignedTo: row.user?.id ?? row.assignedTo ?? '',
     assignedToName: row.user?.name ?? 'Sin asignar',
     status: parseStatus(row.status),
     dueDate: toDateOnly(row.dueDate),
@@ -110,7 +110,14 @@ export type UpdateActivityPayload = {
 };
 
 export async function fetchActivities(): Promise<Activity[]> {
-  const rows = (await api<ApiActivity[]>('/activities')) ?? [];
+  const res = await api<{
+    data: ApiActivity[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }>('/activities?limit=5000&page=1');
+  const rows = res?.data ?? [];
   return rows.map(mapApiActivityToActivity);
 }
 

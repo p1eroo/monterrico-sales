@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { OpportunitiesService } from './opportunities.service';
 import { CreateOpportunityDto } from './dto/create-opportunity.dto';
@@ -21,8 +22,26 @@ export class OpportunitiesController {
   }
 
   @Get()
-  findAll() {
-    return this.opportunitiesService.findAll();
+  findAll(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+    @Query('etapa') etapa?: string,
+    @Query('status') status?: string,
+    @Query('assignedTo') assignedTo?: string,
+  ) {
+    const pageNum = page ? (Number.parseInt(page, 10) || 1) : 1;
+    const limitNum = limit
+      ? Math.min(5000, Math.max(1, Number.parseInt(limit, 10) || 25))
+      : 25;
+    return this.opportunitiesService.findAll({
+      page: pageNum,
+      limit: limitNum,
+      search: search?.trim() || undefined,
+      etapa: etapa?.trim() || undefined,
+      status: status?.trim() || undefined,
+      assignedTo: assignedTo?.trim() || undefined,
+    });
   }
 
   @Get(':id')

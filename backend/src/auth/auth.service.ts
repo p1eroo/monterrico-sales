@@ -46,27 +46,46 @@ export class AuthService {
       );
     }
 
-    const existing = await this.prisma.user.findUnique({
-      where: { username },
+    const existingAccount = await this.prisma.account.findUnique({
+      where: {
+        provider_providerId: { provider: 'credentials', providerId: username },
+      },
     });
-    if (existing) {
+    if (existingAccount) {
       throw new ConflictException('Ese nombre de usuario ya existe');
     }
 
     const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
-    const role = (dto.role?.trim() || 'asesor').toLowerCase();
+    const roleSlug = (dto.role?.trim() || 'admin').toLowerCase();
+    let roleToUse = await this.prisma.role.findFirst({
+      where: { slug: roleSlug },
+    });
+    if (!roleToUse) {
+      roleToUse = await this.prisma.role.findFirst({
+        where: { slug: 'admin' },
+      });
+    }
+    if (!roleToUse) {
+      throw new BadRequestException('No existe el rol admin en la base de datos');
+    }
 
     const user = await this.prisma.user.create({
       data: {
-        username,
         name: dto.name.trim(),
-        passwordHash,
-        role,
+        roleId: roleToUse.id,
         status: 'activo',
+        accounts: {
+          create: {
+            provider: 'credentials',
+            providerId: username,
+            passwordHash,
+          },
+        },
       },
+      include: { role: true },
     });
 
-    return this.buildAuthResponse(user);
+    return this.buildAuthResponse(user, username);
   }
 
   async changePassword(
@@ -88,21 +107,25 @@ export class AuthService {
       );
     }
 
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
+    const credAccount = await this.prisma.account.findFirst({
+      where: {
+        userId,
+        provider: 'credentials',
+        passwordHash: { not: null },
+      },
     });
-    if (!user || !user.passwordHash) {
+    if (!credAccount?.passwordHash) {
       throw new BadRequestException('No se puede actualizar la contraseña');
     }
 
-    const ok = await bcrypt.compare(currentPassword, user.passwordHash);
+    const ok = await bcrypt.compare(currentPassword, credAccount.passwordHash);
     if (!ok) {
       throw new BadRequestException('La contraseña actual no es correcta');
     }
 
     const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
-    await this.prisma.user.update({
-      where: { id: userId },
+    await this.prisma.account.update({
+      where: { id: credAccount.id },
       data: { passwordHash },
     });
 
@@ -115,44 +138,46 @@ export class AuthService {
       throw new UnauthorizedException('Usuario y contraseña requeridos');
     }
 
-    const user = await this.prisma.user.findUnique({
-      where: { username },
+    const account = await this.prisma.account.findUnique({
+      where: {
+        provider_providerId: { provider: 'credentials', providerId: username },
+      },
+      include: { user: { include: { role: true } } },
     });
 
-    if (!user || user.status !== 'activo') {
+    if (!account?.user || account.user.status !== 'activo') {
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
-    if (!user.passwordHash) {
+    if (!account.passwordHash) {
       throw new UnauthorizedException(
         'Esta cuenta no tiene contraseña configurada. Usa registro o restablecimiento.',
       );
     }
 
-    const ok = await bcrypt.compare(password, user.passwordHash);
+    const ok = await bcrypt.compare(password, account.passwordHash);
     if (!ok) {
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
     await this.prisma.user.update({
-      where: { id: user.id },
+      where: { id: account.user.id },
       data: { lastActivity: new Date() },
     });
 
-    return this.buildAuthResponse(user);
+    return this.buildAuthResponse(account.user, account.providerId);
   }
 
-  private buildAuthResponse(user: {
-    id: string;
-    username: string;
-    name: string;
-    role: string;
-  }) {
+  private buildAuthResponse(
+    user: { id: string; name: string; role: { slug: string } },
+    username: string,
+  ) {
+    const roleSlug = user.role.slug;
     const payload = {
       sub: user.id,
-      username: user.username,
+      username,
       name: user.name,
-      role: user.role,
+      role: roleSlug,
     };
     const accessToken = this.jwtService.sign(payload);
 
@@ -160,9 +185,9 @@ export class AuthService {
       accessToken,
       user: {
         id: user.id,
-        username: user.username,
+        username,
         name: user.name,
-        role: user.role,
+        role: roleSlug,
       },
     };
   }

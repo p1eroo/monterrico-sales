@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils';
 interface CreateRoleDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (role: Omit<RBACRole, 'userCount'>) => void;
+  onSave: (role: Omit<RBACRole, 'userCount'>) => void | Promise<void>;
 }
 
 export function CreateRoleDialog({
@@ -64,7 +64,7 @@ export function CreateRoleDialog({
     setStep(1);
   }
 
-  function handleSave() {
+  async function handleSave() {
     const trimmedName = roleName.trim();
     if (!trimmedName) return;
 
@@ -75,8 +75,12 @@ export function CreateRoleDialog({
       templateId: templateId === 'personalizado' ? undefined : templateId,
       permissions: { ...permissions },
     };
-    onSave(newRole);
-    handleClose();
+    try {
+      await onSave(newRole);
+      handleClose();
+    } catch {
+      // Error ya manejado por el caller (toast)
+    }
   }
 
   function handleClose() {

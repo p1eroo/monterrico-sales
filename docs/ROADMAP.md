@@ -10,6 +10,7 @@ Estado actual del proyecto y mejoras sugeridas ordenadas por prioridad.
 
 - **API vs mock — Paso 1:** `crmStore` sin datos iniciales (contactos y oportunidades vacíos al iniciar). Listados (Contactos, Oportunidades, Empresas, Pipeline) usan API como fuente. Pipeline cargado desde `GET /contacts`; arrastrar y cambiar etapa/asignación llama a `PATCH /contacts/:id`.
 - **API vs mock — Paso 3:** Creación de contactos y oportunidades vía API: Empresas (Nueva Empresa) crea company → contact → opportunity en el servidor; EmpresaDetail (crear contacto/oportunidad) usa API cuando `fromApiById`; ContactoDetail y OportunidadDetail ya usaban API cuando `fromApi`. `contactCreate` en `contactApi.ts`. Empresas carga contactos desde API para el listado.
+- **Mejoras:** `opportunityApi.ts` usa `useUsersStore.getUserName()` en lugar de mock. EmpresaDetail por slug: `resolvedCompanyId` se obtiene de los contactos cargados (cuando la empresa tiene contactos en API), permitiendo crear contacto/oportunidad vía API también al entrar por nombre de empresa.
 - **Teléfono en Empresas:** Columna `telefono` en `Company` (Prisma + migración). Se guarda al crear/editar empresa desde formularios. Ver en EmpresaDetail (vista y edición).
 - **API Factiliza:** DNI/CEE/RUC con auto-llenado al pulsar Enter en formularios de contacto y empresa.
 - **Usuarios desde API:** Los selectores de asesor cargan usuarios reales de `GET /users`. Hook `useUsers()`, store `usersStore`. Migración completa en Audit, Settings, Clients, Reports, Team.

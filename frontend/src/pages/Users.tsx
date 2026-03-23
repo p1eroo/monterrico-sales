@@ -16,7 +16,8 @@ import {
   Filter,
 } from 'lucide-react';
 import type { User } from '@/types';
-import { INITIAL_ROLES } from '@/data/rbac';
+import { useRoles, type ApiRole } from '@/hooks/useRoles';
+import { PERMISSION_MODULES, PERMISSION_ACTIONS } from '@/data/rbac';
 import type { RBACRole, PermissionKey } from '@/types';
 
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -65,12 +66,25 @@ import { api } from '@/lib/api';
 import { apiUserRecordToUser, type ApiUserRecord } from '@/lib/userRoleMap';
 
 const PAGE_SIZE = 10;
-const roleLabels: Record<string, string> = {
-  r1: 'Administrador',
-  r2: 'Supervisor Comercial',
-  r3: 'Asesor Comercial',
-  r4: 'Solo lectura',
-};
+
+function apiRoleToRBACRole(r: ApiRole): RBACRole & { isSystem?: boolean } {
+  const allKeys = PERMISSION_MODULES.flatMap((mod) =>
+    PERMISSION_ACTIONS.map((act) => `${mod.id}.${act.id}` as PermissionKey),
+  );
+  const permissions = allKeys.reduce(
+    (acc, k) => ({ ...acc, [k]: r.permissions.includes(k) }),
+    {} as Record<PermissionKey, boolean>,
+  );
+  return {
+    id: r.id,
+    name: r.name,
+    description: r.description ?? '',
+    templateId: r.isSystem ? r.slug : undefined,
+    permissions,
+    userCount: r.userCount ?? 0,
+    isSystem: r.isSystem,
+  };
+}
 
 function getInitials(name: string) {
   return name
@@ -109,8 +123,13 @@ function formatLastActivity(isoStr?: string) {
 
 export default function UsersPage() {
   const navigate = useNavigate();
+  const { roles: apiRoles, loadRoles } = useRoles();
+  const roles = useMemo(() => apiRoles.map(apiRoleToRBACRole), [apiRoles]);
+  const roleLabels = useMemo(
+    () => Object.fromEntries(roles.map((r) => [r.id, r.name])),
+    [roles],
+  );
   const [users, setUsers] = useState<User[]>([]);
-  const [roles, setRoles] = useState<RBACRole[]>(INITIAL_ROLES);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('todos');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
@@ -119,7 +138,8 @@ export default function UsersPage() {
   const [userFormOpen, setUserFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [createRoleOpen, setCreateRoleOpen] = useState(false);
-  const [editingRole, setEditingRole] = useState<RBACRole | null>(null);
+  const [editingRole, setEditingRole] = useState<(RBACRole & { isSystem?: boolean }) | null>(null);
+  const [roleEditDraft, setRoleEditDraft] = useState<Record<PermissionKey, boolean> | null>(null);
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
 
@@ -130,12 +150,6 @@ export default function UsersPage() {
       const list = await api<ApiUserRecord[]>('/users');
       const mapped = list.map(apiUserRecordToUser);
       setUsers(mapped);
-      setRoles((prev) =>
-        prev.map((r) => ({
-          ...r,
-          userCount: mapped.filter((u) => (u.roleId ?? 'r3') === r.id).length,
-        })),
-      );
     } catch (e) {
       setUsers([]);
       setListError(e instanceof Error ? e.message : 'Error al cargar usuarios');
@@ -157,7 +171,7 @@ export default function UsersPage() {
         u.username.toLowerCase().includes(q) ||
         (u.email?.toLowerCase().includes(q) ?? false);
       const matchRole =
-        roleFilter === 'todos' || (u.roleId ?? 'r3') === roleFilter;
+        roleFilter === 'todos' || u.roleId === roleFilter;
       const matchStatus =
         statusFilter === 'todos' || u.status === statusFilter;
       return matchSearch && matchRole && matchStatus;
@@ -244,19 +258,63 @@ export default function UsersPage() {
     }
   }
 
-  function handleCreateRole(role: Omit<RBACRole, 'userCount'>) {
-    setRoles((prev) => [...prev, { ...role, userCount: 0 }]);
-    toast.success(`Rol "${role.name}" creado`);
+  async function handleCreateRole(role: Omit<RBACRole, 'userCount'>) {
+    const permissions = (Object.entries(role.permissions) as [PermissionKey, boolean][])
+      .filter(([, v]) => v)
+      .map(([k]) => k);
+    try {
+      await api<ApiRole>('/roles', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: role.name,
+          description: role.description || undefined,
+          permissions,
+        }),
+      });
+      await loadRoles();
+      toast.success(`Rol "${role.name}" creado`);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'No se pudo crear el rol';
+      toast.error(msg);
+      throw e;
+    }
   }
 
   function handleRolePermissionsChange(roleId: string, key: PermissionKey, value: boolean) {
-    setRoles((prev) =>
-      prev.map((r) =>
-        r.id === roleId
-          ? { ...r, permissions: { ...r.permissions, [key]: value } }
-          : r
-      )
-    );
+    setRoleEditDraft((prev) => {
+      const base = prev ?? roles.find((r) => r.id === roleId)?.permissions ?? {};
+      return { ...base, [key]: value };
+    });
+  }
+
+  function handleOpenEditRole(role: RBACRole & { isSystem?: boolean }) {
+    setEditingRole(role);
+    setRoleEditDraft({ ...role.permissions });
+  }
+
+  async function handleSaveRolePermissions() {
+    if (!editingRole || !roleEditDraft) return;
+    const r = roles.find((x) => x.id === editingRole.id) as (RBACRole & { isSystem?: boolean }) | undefined;
+    if (r?.isSystem) {
+      toast.error('No se pueden modificar los permisos de roles del sistema');
+      return;
+    }
+    const permissions = (Object.entries(roleEditDraft) as [PermissionKey, boolean][])
+      .filter(([, v]) => v)
+      .map(([k]) => k);
+    try {
+      await api(`/roles/${editingRole.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ permissions }),
+      });
+      await loadRoles();
+      setEditingRole(null);
+      setRoleEditDraft(null);
+      toast.success('Permisos actualizados');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'No se pudieron actualizar los permisos';
+      toast.error(msg);
+    }
   }
 
   return (
@@ -392,7 +450,7 @@ export default function UsersPage() {
                       <TableCell className="font-medium">{u.name}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-xs">
-                          {roleLabels[u.roleId ?? 'r3'] ?? u.roleId}
+                          {roleLabels[u.roleId ?? ''] ?? u.role ?? '—'}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -559,38 +617,46 @@ export default function UsersPage() {
               <RoleCard
                 key={role.id}
                 role={role}
-                onEdit={(r) => setEditingRole(r)}
-                isDefault={['r1', 'r2', 'r3', 'r4'].includes(role.id)}
+                onEdit={(r) => handleOpenEditRole(r)}
+                isDefault={!!(role as RBACRole & { isSystem?: boolean }).isSystem}
               />
             ))}
           </div>
 
           {editingRole && (() => {
             const currentRole = roles.find((r) => r.id === editingRole.id) ?? editingRole;
+            const effectivePermissions = roleEditDraft ?? currentRole.permissions;
+            const isSystem = !!(currentRole as RBACRole & { isSystem?: boolean }).isSystem;
             return (
               <Dialog
                 open={!!editingRole}
-                onOpenChange={(open) => !open && setEditingRole(null)}
+                onOpenChange={(open) => {
+                  if (!open) {
+                    setEditingRole(null);
+                    setRoleEditDraft(null);
+                  }
+                }}
               >
                 <DialogContent className="!max-w-[90vw] sm:!max-w-[90vw] lg:!max-w-6xl w-[90vw] sm:w-[90vw] max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Editar permisos: {currentRole.name}</DialogTitle>
                     <DialogDescription>
-                      Modifica los permisos de este rol. Los cambios afectarán a todos los usuarios con este rol.
+                      {isSystem
+                        ? 'Los roles del sistema no permiten modificar permisos.'
+                        : 'Modifica los permisos de este rol. Los cambios afectarán a todos los usuarios con este rol.'}
                     </DialogDescription>
                   </DialogHeader>
                   <PermissionMatrix
-                    permissions={currentRole.permissions}
+                    permissions={effectivePermissions}
                     onChange={(key, value) =>
                       handleRolePermissionsChange(currentRole.id, key, value)
                     }
+                    disabled={isSystem}
                   />
                   <DialogFooter>
                     <Button
-                      onClick={() => {
-                        setEditingRole(null);
-                        toast.success('Permisos actualizados');
-                      }}
+                      onClick={handleSaveRolePermissions}
+                      disabled={isSystem}
                       className="bg-[#13944C] hover:bg-[#0f7a3d]"
                     >
                       Guardar cambios

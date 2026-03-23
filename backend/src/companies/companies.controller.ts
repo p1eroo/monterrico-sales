@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { CompaniesService } from './companies.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
@@ -21,8 +22,24 @@ export class CompaniesController {
   }
 
   @Get()
-  findAll() {
-    return this.companiesService.findAll();
+  findAll(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+    @Query('rubro') rubro?: string,
+    @Query('tipo') tipo?: string,
+  ) {
+    const pageNum = page ? (Number.parseInt(page, 10) || 1) : 1;
+    const limitNum = limit
+      ? Math.min(5000, Math.max(1, Number.parseInt(limit, 10) || 25))
+      : 25;
+    return this.companiesService.findAll({
+      page: pageNum,
+      limit: limitNum,
+      search: search?.trim() || undefined,
+      rubro: rubro?.trim() || undefined,
+      tipo: tipo?.trim() || undefined,
+    });
   }
 
   @Get(':id')

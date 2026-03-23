@@ -54,6 +54,7 @@ import {
   contactRemoveCompany,
   isLikelyContactCuid,
   mapApiContactRowToContact,
+  contactListAll,
 } from '@/lib/contactApi';
 import {
   type ApiOpportunityListRow,
@@ -88,7 +89,7 @@ export default function EmpresaDetailPage() {
 
   const loadApiContacts = useCallback(async () => {
     try {
-      const list = await api<ApiContactListRow[]>('/contacts');
+      const list = await contactListAll();
       setApiContactRows(list);
     } catch {
       setApiContactRows([]);
@@ -162,6 +163,13 @@ export default function EmpresaDetailPage() {
       l.companies?.some((c) => c.name.trim().toLowerCase() === companyName.trim().toLowerCase()),
     );
   }, [contacts, companyName, fromApiById, apiRecord]);
+
+  /** companyId cuando viene de API (por cuid) o cuando lo resolvemos por slug desde contactos */
+  const resolvedCompanyId =
+    (fromApiById && apiRecord?.id) ??
+    companyContacts[0]?.companies?.find((c) =>
+      c.name?.trim().toLowerCase() === companyName.trim().toLowerCase(),
+    )?.id;
 
   const standaloneCompany = useMemo(
     () => (companyContacts.length === 0 ? getCompanyByName(companyName) : undefined),
@@ -354,7 +362,7 @@ export default function EmpresaDetailPage() {
   // --- Handlers ---
   async function handleCreateOpportunity(data: import('@/components/shared/NewOpportunityDialog').NewOpportunityData) {
     if (!firstContact) return;
-    if (fromApiById && apiRecord && isLikelyContactCuid(firstContact.id)) {
+    if (resolvedCompanyId && isLikelyContactCuid(firstContact.id)) {
       try {
         const body: Record<string, unknown> = {
           title: data.title,
@@ -364,7 +372,7 @@ export default function EmpresaDetailPage() {
           priority: data.priority,
           expectedCloseDate: data.expectedCloseDate,
           contactId: firstContact.id,
-          companyId: apiRecord.id,
+          companyId: resolvedCompanyId,
         };
         if (data.assignedTo && isLikelyContactCuid(data.assignedTo)) body.assignedTo = data.assignedTo;
         await api('/opportunities', { method: 'POST', body: JSON.stringify(body) });
@@ -436,16 +444,16 @@ export default function EmpresaDetailPage() {
 
   async function handleCreateNewContact(data: NewContactData) {
     const defaultAssignedTo = firstContact?.assignedTo ?? activeUsers[0]?.id ?? '';
-    if (fromApiById && apiRecord) {
+    if (resolvedCompanyId) {
       try {
         const body: Record<string, unknown> = {
           name: data.name.trim(),
-          phone: (data.phone || '').trim() || '—',
-          email: (data.email || '').trim() || '—',
+          phone: (data.phone || '').trim() || '000000000',
+          email: (data.email || '').trim() || `noreply-${Date.now()}@temp.local`,
           source: data.source,
           etapa: 'lead',
           estimatedValue: data.estimatedValue,
-          companyId: apiRecord.id,
+          companyId: resolvedCompanyId,
           cargo: data.cargo?.trim() || undefined,
           docType: data.docType || undefined,
           docNumber: data.docNumber?.trim() || undefined,

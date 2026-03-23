@@ -29,12 +29,12 @@ export function mapApiRoleStringToUserRole(r: string): User['role'] {
   return 'asesor';
 }
 
-/** Si la API no envía roleId, infiérelo desde role (compat. con registros antiguos). */
+/** roleId viene de la API como Role.id (cuid) o legacy r1–r4. */
 export function inferRoleIdFromApiUser(
   role: string,
   roleId: string | null | undefined,
 ): string {
-  if (roleId && ['r1', 'r2', 'r3', 'r4'].includes(roleId)) return roleId;
+  if (roleId?.trim()) return roleId;
   const x = role.trim().toLowerCase();
   if (x === 'admin') return 'r1';
   if (x === 'supervisor' || x === 'gerente') return 'r2';

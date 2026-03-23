@@ -47,13 +47,15 @@ import {
   type ApiOpportunityListRow,
   isLikelyOpportunityCuid,
   mapApiOpportunityToOpportunity,
+  opportunityListAll,
 } from '@/lib/opportunityApi';
 import {
   type ApiContactListRow,
   isLikelyContactCuid,
   mapApiContactRowToContact,
+  contactListAll,
 } from '@/lib/contactApi';
-import { type ApiCompanyRecord } from '@/lib/companyApi';
+import { type ApiCompanyRecord, companyListAll } from '@/lib/companyApi';
 
 const statusLabels: Record<OpportunityStatus, string> = {
   abierta: 'Abierta',
@@ -152,7 +154,7 @@ export default function OpportunitiesPage() {
 
   const loadApiOpportunities = useCallback(async () => {
     try {
-      const list = await api<ApiOpportunityListRow[]>('/opportunities');
+      const list = await opportunityListAll();
       setApiRows(list);
     } catch {
       setApiRows([]);
@@ -165,7 +167,7 @@ export default function OpportunitiesPage() {
 
   const loadApiContactsForForm = useCallback(async () => {
     try {
-      const list = await api<ApiContactListRow[]>('/contacts');
+      const list = await contactListAll();
       setApiContactRows(list);
     } catch {
       setApiContactRows([]);
@@ -207,7 +209,7 @@ export default function OpportunitiesPage() {
 
   const loadApiCompanies = useCallback(async () => {
     try {
-      const list = await api<ApiCompanyRecord[]>('/companies');
+      const list = await companyListAll();
       setApiCompanies(list);
     } catch {
       setApiCompanies([]);

@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
+import { Prisma } from '../generated/prisma';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateActivityDto } from './dto/create-activity.dto';
 import { UpdateActivityDto } from './dto/update-activity.dto';
@@ -15,6 +16,26 @@ const activityInclude = {
     include: {
       opportunity: { select: { id: true, title: true } },
     },
+  },
+} as const;
+
+/** Select slim para listado: omite assignedTo (=user.id) */
+const activitySelectListSlim = {
+  id: true,
+  type: true,
+  title: true,
+  description: true,
+  status: true,
+  dueDate: true,
+  startDate: true,
+  startTime: true,
+  completedAt: true,
+  createdAt: true,
+  user: { select: { id: true, name: true } },
+  contacts: { include: { contact: { select: { id: true, name: true } } } },
+  companies: { include: { company: { select: { id: true, name: true } } } },
+  opportunities: {
+    include: { opportunity: { select: { id: true, title: true } } },
   },
 } as const;
 
@@ -120,11 +141,40 @@ export class ActivitiesService {
     });
   }
 
-  findAll() {
-    return this.prisma.activity.findMany({
-      orderBy: { createdAt: 'desc' },
-      include: activityInclude,
-    });
+  async findAll(opts?: {
+    page?: number;
+    limit?: number;
+    type?: string;
+    status?: string;
+    assignedTo?: string;
+  }) {
+    const page = Math.max(1, opts?.page ?? 1);
+    const limit = Math.min(5000, Math.max(1, opts?.limit ?? 25));
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.ActivityWhereInput = {};
+    if (opts?.type?.trim()) where.type = opts.type.trim();
+    if (opts?.status?.trim()) where.status = opts.status.trim();
+    if (opts?.assignedTo?.trim()) where.assignedTo = opts.assignedTo.trim();
+
+    const [rows, total] = await Promise.all([
+      this.prisma.activity.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+        select: activitySelectListSlim,
+      }),
+      this.prisma.activity.count({ where }),
+    ]);
+
+    return {
+      data: rows,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findOne(id: string) {

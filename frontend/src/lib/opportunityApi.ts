@@ -6,7 +6,9 @@ import type {
   Opportunity,
   OpportunityStatus,
 } from '@/types';
-import { etapaLabels, users } from '@/data/mock';
+import { etapaLabels } from '@/data/mock';
+import { useUsersStore } from '@/store/usersStore';
+import { api } from '@/lib/api';
 
 /** Misma heurística que empresas (cuid Prisma) */
 export function isLikelyOpportunityCuid(value: string): boolean {
@@ -41,7 +43,7 @@ export type ApiOpportunityListRow = {
   status: string;
   priority?: string | null;
   expectedCloseDate: string | null;
-  assignedTo: string | null;
+  assignedTo?: string | null;
   createdAt: string;
   updatedAt: string;
   user?: { id: string; name: string } | null;
@@ -79,7 +81,8 @@ export function mapApiOpportunityToOpportunity(
   const close = row.expectedCloseDate
     ? row.expectedCloseDate.slice(0, 10)
     : '';
-  const assignedId = row.assignedTo ?? '';
+  const assignedId =
+    row.user?.id ?? (row as ApiOpportunityListRow).assignedTo ?? '';
   return {
     id: row.id,
     title: row.title,
@@ -94,10 +97,57 @@ export function mapApiOpportunityToOpportunity(
     assignedTo: assignedId,
     assignedToName:
       row.user?.name ??
-      users.find((u) => u.id === assignedId)?.name ??
-      'Sin asignar',
+      useUsersStore.getState().getUserName(assignedId),
     createdAt: row.createdAt.slice(0, 10),
   };
+}
+
+/** Respuesta paginada de GET /opportunities */
+export type OpportunityListPaginatedResponse = {
+  data: ApiOpportunityListRow[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
+
+/** Listar oportunidades paginado */
+export async function opportunityListPaginated(params?: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  etapa?: string;
+  status?: string;
+  assignedTo?: string;
+}): Promise<OpportunityListPaginatedResponse> {
+  const sp = new URLSearchParams();
+  if (params?.page != null) sp.set('page', String(params.page));
+  if (params?.limit != null) sp.set('limit', String(params.limit));
+  if (params?.search?.trim()) sp.set('search', params.search.trim());
+  if (params?.etapa?.trim()) sp.set('etapa', params.etapa.trim());
+  if (params?.status?.trim()) sp.set('status', params.status.trim());
+  if (params?.assignedTo?.trim()) sp.set('assignedTo', params.assignedTo.trim());
+  const qs = sp.toString();
+  const url = qs ? `/opportunities?${qs}` : '/opportunities';
+  return api<OpportunityListPaginatedResponse>(url);
+}
+
+/** Listar todas las oportunidades (hasta 5000) */
+export async function opportunityListAll(opts?: {
+  etapa?: string;
+  status?: string;
+  assignedTo?: string;
+}): Promise<ApiOpportunityListRow[]> {
+  const sp = new URLSearchParams();
+  sp.set('limit', '5000');
+  sp.set('page', '1');
+  if (opts?.etapa?.trim()) sp.set('etapa', opts.etapa.trim());
+  if (opts?.status?.trim()) sp.set('status', opts.status.trim());
+  if (opts?.assignedTo?.trim()) sp.set('assignedTo', opts.assignedTo.trim());
+  const res = await api<OpportunityListPaginatedResponse>(
+    `/opportunities?${sp.toString()}`,
+  );
+  return res.data;
 }
 
 export function mapApiContactToContact(c: ApiContactFromOpportunity): Contact {
@@ -112,7 +162,7 @@ export function mapApiContactToContact(c: ApiContactFromOpportunity): Contact {
     source: (c.source as ContactSource) || 'base',
     etapa: parseEtapa(c.etapa),
     assignedTo,
-    assignedToName: users.find((u) => u.id === assignedTo)?.name ?? 'Sin asignar',
+    assignedToName: useUsersStore.getState().getUserName(assignedTo),
     estimatedValue: c.estimatedValue,
     createdAt: c.createdAt.slice(0, 10),
     nextAction: c.nextAction ?? '',

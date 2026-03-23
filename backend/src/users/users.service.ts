@@ -15,29 +15,34 @@ function normalizeUsername(username: string): string {
   return username.trim().toLowerCase();
 }
 
-/** roleId del CRM (r1–r4) → campo `role` persistido (JWT / permisos). */
-export function roleFromRoleId(roleId: string): string {
-  if (roleId === 'r1') return 'admin';
-  if (roleId === 'r2') return 'supervisor';
-  if (roleId === 'r4') return 'solo_lectura';
-  return 'asesor';
+/** Obtiene username desde Account (provider=credentials) */
+function getUsernameFromAccounts(accounts?: { provider: string; providerId: string }[]): string {
+  const list = accounts ?? [];
+  const cred = list.find((a) => a.provider === 'credentials');
+  return cred?.providerId ?? '';
 }
 
-/** Si en BD falta roleId (datos antiguos), infiérelo desde `role`. */
-export function inferRoleIdFromRole(role: string): string {
-  const r = role.trim().toLowerCase();
-  if (r === 'admin') return 'r1';
-  if (r === 'supervisor' || r === 'gerente') return 'r2';
-  if (r === 'solo_lectura') return 'r4';
-  return 'r3';
-}
-
-function withResolvedRoleId<T extends { role: string; roleId: string | null }>(
-  row: T,
-): T & { roleId: string } {
+/** Formato API: role (slug), roleId (Role.id), username desde Account */
+function toApiUser(
+  row: {
+    id: string;
+    name: string;
+    role: { id: string; slug: string };
+    status: string;
+    lastActivity?: Date | null;
+    joinedAt?: Date | null;
+    accounts?: { provider: string; providerId: string }[];
+  },
+) {
   return {
-    ...row,
-    roleId: row.roleId ?? inferRoleIdFromRole(row.role),
+    id: row.id,
+    username: getUsernameFromAccounts(row.accounts),
+    name: row.name,
+    roleId: row.role.id,
+    role: row.role.slug,
+    status: row.status,
+    lastActivity: row.lastActivity,
+    joinedAt: row.joinedAt,
   };
 }
 
@@ -47,17 +52,23 @@ export class UsersService {
 
   async findAll() {
     const rows = await this.prisma.user.findMany({
-      omit: { passwordHash: true },
+      include: {
+        role: { select: { id: true, slug: true } },
+        accounts: { select: { provider: true, providerId: true } },
+      },
     });
-    return rows.map((u) => withResolvedRoleId(u));
+    return rows.map(toApiUser);
   }
 
   async findOne(id: string) {
     const row = await this.prisma.user.findUnique({
       where: { id },
-      omit: { passwordHash: true },
+      include: {
+        role: { select: { id: true, slug: true } },
+        accounts: { select: { provider: true, providerId: true } },
+      },
     });
-    return row ? withResolvedRoleId(row) : null;
+    return row ? toApiUser(row) : null;
   }
 
   async create(dto: CreateUserDto) {
@@ -77,31 +88,43 @@ export class UsersService {
       throw new BadRequestException('Rol requerido');
     }
 
-    const existing = await this.prisma.user.findUnique({
-      where: { username },
+    const roleRow = await this.prisma.role.findUnique({
+      where: { id: dto.roleId.trim() },
     });
-    if (existing) {
+    if (!roleRow) {
+      throw new BadRequestException('Rol no encontrado');
+    }
+
+    const existingAccount = await this.prisma.account.findUnique({
+      where: {
+        provider_providerId: { provider: 'credentials', providerId: username },
+      },
+    });
+    if (existingAccount) {
       throw new ConflictException('Ese nombre de usuario ya existe');
     }
 
     const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
-    const role = roleFromRoleId(dto.roleId);
     const status =
       dto.status === false ? 'inactivo' : 'activo';
 
     const user = await this.prisma.user.create({
       data: {
-        username,
         name: dto.name.trim(),
-        passwordHash,
-        role,
-        roleId: dto.roleId,
+        roleId: roleRow.id,
         status,
+        accounts: {
+          create: {
+            provider: 'credentials',
+            providerId: username,
+            passwordHash,
+          },
+        },
       },
-      omit: { passwordHash: true },
+      include: { role: true, accounts: true },
     });
 
-    return withResolvedRoleId(user);
+    return toApiUser(user);
   }
 
   async update(id: string, dto: UpdateUserDto) {
@@ -112,7 +135,6 @@ export class UsersService {
 
     const data: {
       name?: string;
-      role?: string;
       roleId?: string;
       status?: string;
     } = {};
@@ -129,8 +151,13 @@ export class UsersService {
       if (!dto.roleId.trim()) {
         throw new BadRequestException('roleId inválido');
       }
-      data.roleId = dto.roleId;
-      data.role = roleFromRoleId(dto.roleId);
+      const roleRow = await this.prisma.role.findUnique({
+        where: { id: dto.roleId.trim() },
+      });
+      if (!roleRow) {
+        throw new BadRequestException('Rol no encontrado');
+      }
+      data.roleId = roleRow.id;
     }
 
     if (dto.status !== undefined) {
@@ -146,9 +173,9 @@ export class UsersService {
     const user = await this.prisma.user.update({
       where: { id },
       data,
-      omit: { passwordHash: true },
+      include: { role: true, accounts: true },
     });
 
-    return withResolvedRoleId(user);
+    return toApiUser(user);
   }
 }

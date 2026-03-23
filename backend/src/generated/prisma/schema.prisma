@@ -12,15 +12,52 @@ datasource db {
   provider = "postgresql"
 }
 
+// ─── Roles y permisos (RBAC en BD) ───
+
+model Role {
+  id          String      @id @default(cuid())
+  name        String
+  slug        String      @unique
+  description String?
+  isSystem    Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  authorities Authority[]
+  users       User[]
+}
+
+model Authority {
+  id         String @id @default(cuid())
+  roleId     String
+  permission String
+  role       Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permission])
+}
+
+// ─── Autenticación (múltiples métodos de login por usuario) ───
+
+model Account {
+  id           String   @id @default(cuid())
+  userId       String
+  provider     String // "credentials" | "google" | "saml" | etc.
+  providerId   String // username para credentials; sub/email para oauth
+  passwordHash String? // solo para provider "credentials"
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerId])
+}
+
 // ─── Entidades principales ───
 
 model User {
   id                    String        @id @default(cuid())
-  username              String        @unique
   name                  String
-  passwordHash          String?
-  role                  String
-  roleId                String?
+  roleId                String
+  role                  Role          @relation(fields: [roleId], references: [id])
+  accounts              Account[]
   phone                 String?
   avatar                String?
   status                String        @default("activo")

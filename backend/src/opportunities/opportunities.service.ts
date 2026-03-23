@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
+import { Prisma } from '../generated/prisma';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOpportunityDto } from './dto/create-opportunity.dto';
 import { UpdateOpportunityDto } from './dto/update-opportunity.dto';
@@ -27,10 +28,21 @@ const ETAPA_PROBABILITY: Record<string, number> = {
 /** Estados de pipeline derivados de la etapa (no se usa `suspendida`). */
 type PipelineOpportunityStatus = 'abierta' | 'ganada' | 'perdida';
 
-const opportunityIncludeList = {
+/** Select slim para listado: omite assignedTo (=user.id) */
+const opportunitySelectListSlim = {
+  id: true,
+  title: true,
+  amount: true,
+  probability: true,
+  etapa: true,
+  status: true,
+  priority: true,
+  expectedCloseDate: true,
+  createdAt: true,
+  updatedAt: true,
   contacts: {
     take: 1,
-    include: { contact: { select: { id: true, name: true } } },
+    select: { contact: { select: { id: true, name: true } } },
   },
   user: { select: { id: true, name: true } },
 } as const;
@@ -172,11 +184,45 @@ export class OpportunitiesService {
     });
   }
 
-  findAll() {
-    return this.prisma.opportunity.findMany({
-      orderBy: { updatedAt: 'desc' },
-      include: opportunityIncludeList,
-    });
+  async findAll(opts?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    etapa?: string;
+    status?: string;
+    assignedTo?: string;
+  }) {
+    const page = Math.max(1, opts?.page ?? 1);
+    const limit = Math.min(5000, Math.max(1, opts?.limit ?? 25));
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.OpportunityWhereInput = {};
+    if (opts?.search?.trim()) {
+      const q = opts.search.trim();
+      where.title = { contains: q, mode: 'insensitive' };
+    }
+    if (opts?.etapa?.trim()) where.etapa = opts.etapa.trim();
+    if (opts?.status?.trim()) where.status = opts.status.trim();
+    if (opts?.assignedTo?.trim()) where.assignedTo = opts.assignedTo.trim();
+
+    const [rows, total] = await Promise.all([
+      this.prisma.opportunity.findMany({
+        where,
+        orderBy: { updatedAt: 'desc' },
+        skip,
+        take: limit,
+        select: opportunitySelectListSlim,
+      }),
+      this.prisma.opportunity.count({ where }),
+    ]);
+
+    return {
+      data: rows,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findOne(id: string) {

@@ -120,12 +120,35 @@ exports.Prisma.TransactionIsolationLevel = makeStrictEnum({
   Serializable: 'Serializable'
 });
 
+exports.Prisma.RoleScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  slug: 'slug',
+  description: 'description',
+  isSystem: 'isSystem',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.AuthorityScalarFieldEnum = {
+  id: 'id',
+  roleId: 'roleId',
+  permission: 'permission'
+};
+
+exports.Prisma.AccountScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  provider: 'provider',
+  providerId: 'providerId',
+  passwordHash: 'passwordHash',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.UserScalarFieldEnum = {
   id: 'id',
-  username: 'username',
   name: 'name',
-  passwordHash: 'passwordHash',
-  role: 'role',
   roleId: 'roleId',
   phone: 'phone',
   avatar: 'avatar',
@@ -293,6 +316,9 @@ exports.Prisma.JsonNullValueFilter = {
 
 
 exports.Prisma.ModelName = {
+  Role: 'Role',
+  Authority: 'Authority',
+  Account: 'Account',
   User: 'User',
   Contact: 'Contact',
   Company: 'Company',

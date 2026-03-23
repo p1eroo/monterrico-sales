@@ -150,7 +150,8 @@ function parseClienteRec(s: string | null | undefined): 'si' | 'no' | undefined 
 }
 
 export function mapApiContactRowToContact(row: ApiContactListRow | ApiContactNested): Contact {
-  const assignedId = row.assignedTo ?? '';
+  const assignedId =
+    (row as ApiContactListRow).user?.id ?? row.assignedTo ?? '';
   const nextFu = row.nextFollowUp
     ? row.nextFollowUp.slice(0, 10)
     : '';
@@ -297,4 +298,50 @@ export async function contactRemoveLinkedContact(
   return api<ApiContactDetail>(`/contacts/${contactId}/links/${linkedId}`, {
     method: 'DELETE',
   });
+}
+
+/** Respuesta paginada de GET /contacts */
+export type ContactListPaginatedResponse = {
+  data: ApiContactListRow[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
+
+/** Listar contactos paginado: GET /contacts?page=&limit=&search=&etapa=&source=&assignedTo= */
+export async function contactListPaginated(params?: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  etapa?: string;
+  source?: string;
+  assignedTo?: string;
+}): Promise<ContactListPaginatedResponse> {
+  const sp = new URLSearchParams();
+  if (params?.page != null) sp.set('page', String(params.page));
+  if (params?.limit != null) sp.set('limit', String(params.limit));
+  if (params?.search?.trim()) sp.set('search', params.search.trim());
+  if (params?.etapa?.trim()) sp.set('etapa', params.etapa.trim());
+  if (params?.source?.trim()) sp.set('source', params.source.trim());
+  if (params?.assignedTo?.trim()) sp.set('assignedTo', params.assignedTo.trim());
+  const qs = sp.toString();
+  const url = qs ? `/contacts?${qs}` : '/contacts';
+  return api<ContactListPaginatedResponse>(url);
+}
+
+/** Listar todos los contactos (hasta 5000) para Pipeline, Empresas, etc. */
+export async function contactListAll(opts?: {
+  etapa?: string;
+  source?: string;
+  assignedTo?: string;
+}): Promise<ApiContactListRow[]> {
+  const sp = new URLSearchParams();
+  sp.set('limit', '5000');
+  sp.set('page', '1');
+  if (opts?.etapa?.trim()) sp.set('etapa', opts.etapa.trim());
+  if (opts?.source?.trim()) sp.set('source', opts.source.trim());
+  if (opts?.assignedTo?.trim()) sp.set('assignedTo', opts.assignedTo.trim());
+  const res = await api<ContactListPaginatedResponse>(`/contacts?${sp.toString()}`);
+  return res.data;
 }

@@ -14,6 +14,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import type { User } from '@/types';
+import { useRoles } from '@/hooks/useRoles';
 import { contacts } from '@/data/mock';
 import { opportunities } from '@/data/mock';
 import { activities } from '@/data/mock';
@@ -27,13 +28,6 @@ import { UserFormModal, type UserFormData } from '@/components/users/UserFormMod
 import { formatDate } from '@/lib/formatters';
 import { api } from '@/lib/api';
 import { apiUserRecordToUser, type ApiUserRecord } from '@/lib/userRoleMap';
-
-const roleLabels: Record<string, string> = {
-  r1: 'Administrador',
-  r2: 'Supervisor Comercial',
-  r3: 'Asesor Comercial',
-  r4: 'Solo lectura',
-};
 
 function getInitials(name: string) {
   return name
@@ -59,6 +53,8 @@ function getAvatarColor(name: string) {
 export default function UserDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { roles } = useRoles();
+  const roleLabels = Object.fromEntries(roles.map((r) => [r.id, r.name]));
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -194,7 +190,16 @@ export default function UserDetailPage() {
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Badge variant="outline">
-                      {roleLabels[currentUser.roleId ?? 'r3'] ?? 'Asesor'}
+                      {roleLabels[currentUser.roleId ?? ''] ??
+  (currentUser.role === 'admin'
+    ? 'Administrador'
+    : currentUser.role === 'supervisor'
+      ? 'Supervisor Comercial'
+      : currentUser.role === 'solo_lectura'
+        ? 'Solo lectura'
+        : currentUser.role === 'asesor'
+          ? 'Asesor Comercial'
+          : '—')}
                     </Badge>
                     <Badge
                       variant={currentUser.status === 'activo' ? 'default' : 'secondary'}

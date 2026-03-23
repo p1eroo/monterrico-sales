@@ -62,9 +62,10 @@ import {
   mapApiContactDetailToContact,
   mapApiContactRowToContact,
   opportunitiesFromApiContactDetail,
+  contactListAll,
 } from '@/lib/contactApi';
 import { isLikelyOpportunityCuid } from '@/lib/opportunityApi';
-import { type ApiCompanyRecord } from '@/lib/companyApi';
+import { type ApiCompanyRecord, companyListAll } from '@/lib/companyApi';
 
 const initialNotes = [
   { id: 'n1', text: 'El cliente prefiere vehículos SUV para su equipo directivo. Requiere servicio 24/7.', author: 'Ana Torres', date: '2026-03-02' },
@@ -197,8 +198,8 @@ export default function ContactoDetailPage() {
     }
     let cancelled = false;
     Promise.all([
-      api<ApiContactListRow[]>('/contacts'),
-      api<ApiCompanyRecord[]>('/companies'),
+      contactListAll(),
+      companyListAll(),
     ])
       .then(([contactsList, companiesList]) => {
         if (!cancelled) {

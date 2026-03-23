@@ -28,12 +28,13 @@ import {
 } from '@/components/ui/select';
 import { formatCurrency } from '@/lib/formatters';
 import { api } from '@/lib/api';
-import { type ApiCompanyRecord } from '@/lib/companyApi';
+import { type ApiCompanyRecord, companyListAll } from '@/lib/companyApi';
 import {
   type ApiContactListRow,
   isLikelyContactCuid,
   mapApiContactRowToContact,
   contactCreate,
+  contactListAll,
 } from '@/lib/contactApi';
 
 const etapaOrder: Etapa[] = ['lead', 'contacto', 'reunion_agendada', 'reunion_efectiva', 'propuesta_economica', 'negociacion', 'licitacion', 'licitacion_etapa_final', 'cierre_ganado', 'firma_contrato', 'activo', 'cierre_perdido', 'inactivo'];
@@ -94,7 +95,7 @@ export default function EmpresasPage() {
 
   const loadApiCompanies = useCallback(async () => {
     try {
-      const list = await api<ApiCompanyRecord[]>('/companies');
+      const list = await companyListAll();
       setApiCompanies(list);
     } catch {
       setApiCompanies([]);
@@ -103,7 +104,7 @@ export default function EmpresasPage() {
 
   const loadApiContacts = useCallback(async () => {
     try {
-      const list = await api<ApiContactListRow[]>('/contacts');
+      const list = await contactListAll();
       setApiContactRows(list);
     } catch {
       setApiContactRows([]);

@@ -13,6 +13,32 @@ const contactIncludeList = {
   user: { select: { id: true, name: true } },
 } as const;
 
+/** Select explícito para listado: solo campos necesarios (sin etapaHistory, notes, doc, direcciones).
+ *  Omite redundancias: companyId (=company.id), assignedTo (=user.id) */
+const contactSelectListSlim = {
+  id: true,
+  name: true,
+  cargo: true,
+  phone: true,
+  email: true,
+  source: true,
+  etapa: true,
+  estimatedValue: true,
+  nextAction: true,
+  nextFollowUp: true,
+  clienteRecuperado: true,
+  createdAt: true,
+  updatedAt: true,
+  companies: {
+    select: {
+      id: true,
+      isPrimary: true,
+      company: { select: { id: true, name: true } },
+    },
+  },
+  user: { select: { id: true, name: true } },
+} as const;
+
 const contactIncludeDetail = {
   companies: { include: { company: true } },
   user: { select: { id: true, name: true } },
@@ -155,11 +181,59 @@ export class ContactsService {
     });
   }
 
-  findAll() {
-    return this.prisma.contact.findMany({
-      orderBy: { updatedAt: 'desc' },
-      include: contactIncludeList,
-    });
+  async findAll(opts?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    etapa?: string;
+    source?: string;
+    assignedTo?: string;
+  }) {
+    const page = Math.max(1, opts?.page ?? 1);
+    const limit = Math.min(5000, Math.max(1, opts?.limit ?? 25));
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.ContactWhereInput = {};
+    if (opts?.search?.trim()) {
+      const q = opts.search.trim();
+      where.OR = [
+        { name: { contains: q, mode: 'insensitive' } },
+        { email: { contains: q, mode: 'insensitive' } },
+        { phone: { contains: q } },
+        { cargo: { contains: q, mode: 'insensitive' } },
+        {
+          companies: {
+            some: {
+              company: {
+                name: { contains: q, mode: 'insensitive' },
+              },
+            },
+          },
+        },
+      ];
+    }
+    if (opts?.etapa?.trim()) where.etapa = opts.etapa.trim();
+    if (opts?.source?.trim()) where.source = opts.source.trim();
+    if (opts?.assignedTo?.trim()) where.assignedTo = opts.assignedTo.trim();
+
+    const [rows, total] = await Promise.all([
+      this.prisma.contact.findMany({
+        where,
+        orderBy: { updatedAt: 'desc' },
+        skip,
+        take: limit,
+        select: contactSelectListSlim,
+      }),
+      this.prisma.contact.count({ where }),
+    ]);
+
+    return {
+      data: rows,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findOne(id: string) {

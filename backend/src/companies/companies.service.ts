@@ -3,9 +3,24 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
+import { Prisma } from '../generated/prisma';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
+
+/** Select slim para listado: excluye linkedin, correo, direcciones */
+const companySelectListSlim = {
+  id: true,
+  name: true,
+  razonSocial: true,
+  ruc: true,
+  telefono: true,
+  domain: true,
+  rubro: true,
+  tipo: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
 
 @Injectable()
 export class CompaniesService {
@@ -36,10 +51,48 @@ export class CompaniesService {
     });
   }
 
-  findAll() {
-    return this.prisma.company.findMany({
-      orderBy: { updatedAt: 'desc' },
-    });
+  async findAll(opts?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    rubro?: string;
+    tipo?: string;
+  }) {
+    const page = Math.max(1, opts?.page ?? 1);
+    const limit = Math.min(5000, Math.max(1, opts?.limit ?? 25));
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.CompanyWhereInput = {};
+    if (opts?.search?.trim()) {
+      const q = opts.search.trim();
+      where.OR = [
+        { name: { contains: q, mode: 'insensitive' } },
+        { razonSocial: { contains: q, mode: 'insensitive' } },
+        { ruc: { contains: q } },
+        { domain: { contains: q, mode: 'insensitive' } },
+      ];
+    }
+    if (opts?.rubro?.trim()) where.rubro = opts.rubro.trim();
+    if (opts?.tipo?.trim()) where.tipo = opts.tipo.trim();
+
+    const [rows, total] = await Promise.all([
+      this.prisma.company.findMany({
+        where,
+        orderBy: { updatedAt: 'desc' },
+        skip,
+        take: limit,
+        select: companySelectListSlim,
+      }),
+      this.prisma.company.count({ where }),
+    ]);
+
+    return {
+      data: rows,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findOne(id: string) {

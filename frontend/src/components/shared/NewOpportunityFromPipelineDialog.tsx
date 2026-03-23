@@ -15,7 +15,7 @@ import {
   isLikelyContactCuid,
   mapApiContactRowToContact,
 } from '@/lib/contactApi';
-import { type ApiCompanyRecord, isLikelyCompanyCuid } from '@/lib/companyApi';
+import { type ApiCompanyRecord, isLikelyCompanyCuid, companyListAll } from '@/lib/companyApi';
 import { isLikelyOpportunityCuid } from '@/lib/opportunityApi';
 
 import { Button } from '@/components/ui/button';
@@ -90,7 +90,7 @@ export function NewOpportunityFromPipelineDialog({ open, onOpenChange }: NewOppo
 
   const loadApiCompanies = useCallback(async () => {
     try {
-      const list = await api<ApiCompanyRecord[]>('/companies');
+      const list = await companyListAll();
       setApiCompanies(list);
     } catch {
       setApiCompanies([]);

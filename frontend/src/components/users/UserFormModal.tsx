@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { User } from '@/types';
-import { INITIAL_ROLES } from '@/data/rbac';
+import { useRoles } from '@/hooks/useRoles';
 
 export function buildUserFormSchema(isEdit: boolean) {
   return z
@@ -70,7 +70,15 @@ export function UserFormModal({
   onSubmit,
 }: UserFormModalProps) {
   const isEdit = !!user;
+  const { roles, asesorRoleId } = useRoles();
   const schema = useMemo(() => buildUserFormSchema(isEdit), [isEdit]);
+  const defaultRoleId = asesorRoleId ?? roles[0]?.id ?? '';
+
+  useEffect(() => {
+    if (defaultRoleId && !form.getValues('roleId')) {
+      form.setValue('roleId', defaultRoleId);
+    }
+  }, [defaultRoleId, form]);
 
   const form = useForm<UserFormData>({
     resolver: zodResolver(schema),
@@ -78,7 +86,7 @@ export function UserFormModal({
       name: '',
       username: '',
       password: '',
-      roleId: 'r3',
+      roleId: defaultRoleId,
       status: true,
     },
   });
@@ -90,7 +98,7 @@ export function UserFormModal({
       form.reset({
         name: user.name,
         username: user.username ?? user.email?.split('@')[0] ?? '',
-        roleId: user.roleId ?? 'r3',
+        roleId: user.roleId ?? defaultRoleId,
         status: user.status === 'activo',
         password: '',
       });
@@ -99,7 +107,7 @@ export function UserFormModal({
         name: '',
         username: '',
         password: '',
-        roleId: 'r3',
+        roleId: defaultRoleId,
         status: true,
       });
     }
@@ -182,7 +190,7 @@ export function UserFormModal({
                 <SelectValue placeholder="Selecciona un rol" />
               </SelectTrigger>
               <SelectContent>
-                {INITIAL_ROLES.map((r) => (
+                {roles.map((r) => (
                   <SelectItem key={r.id} value={r.id}>
                     {r.name}
                   </SelectItem>

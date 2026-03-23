@@ -39,8 +39,7 @@ import { companyRubroLabels, etapaLabels, activities, activityTypeLabels } from 
 import { useUsers } from '@/hooks/useUsers';
 import { useCRMStore } from '@/store/crmStore';
 import { getPrimaryCompany } from '@/lib/utils';
-import { api } from '@/lib/api';
-import { type ApiContactListRow, isLikelyContactCuid, mapApiContactRowToContact, contactUpdate } from '@/lib/contactApi';
+import { type ApiContactListRow, isLikelyContactCuid, mapApiContactRowToContact, contactUpdate, contactListAll } from '@/lib/contactApi';
 import { NewOpportunityFromPipelineDialog } from '@/components/shared/NewOpportunityFromPipelineDialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -511,7 +510,7 @@ export default function Pipeline() {
 
   const loadApiContacts = useCallback(async () => {
     try {
-      const list = await api<ApiContactListRow[]>('/contacts');
+      const list = await contactListAll();
       setApiRows(list);
     } catch {
       setApiRows([]);
