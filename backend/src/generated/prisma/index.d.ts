@@ -2361,6 +2361,7 @@ export namespace Prisma {
     id: string | null
     username: string | null
     name: string | null
+    passwordHash: string | null
     role: string | null
     roleId: string | null
     phone: string | null
@@ -2376,6 +2377,7 @@ export namespace Prisma {
     id: string | null
     username: string | null
     name: string | null
+    passwordHash: string | null
     role: string | null
     roleId: string | null
     phone: string | null
@@ -2391,6 +2393,7 @@ export namespace Prisma {
     id: number
     username: number
     name: number
+    passwordHash: number
     role: number
     roleId: number
     phone: number
@@ -2408,6 +2411,7 @@ export namespace Prisma {
     id?: true
     username?: true
     name?: true
+    passwordHash?: true
     role?: true
     roleId?: true
     phone?: true
@@ -2423,6 +2427,7 @@ export namespace Prisma {
     id?: true
     username?: true
     name?: true
+    passwordHash?: true
     role?: true
     roleId?: true
     phone?: true
@@ -2438,6 +2443,7 @@ export namespace Prisma {
     id?: true
     username?: true
     name?: true
+    passwordHash?: true
     role?: true
     roleId?: true
     phone?: true
@@ -2526,6 +2532,7 @@ export namespace Prisma {
     id: string
     username: string
     name: string
+    passwordHash: string | null
     role: string
     roleId: string | null
     phone: string | null
@@ -2558,6 +2565,7 @@ export namespace Prisma {
     id?: boolean
     username?: boolean
     name?: boolean
+    passwordHash?: boolean
     role?: boolean
     roleId?: boolean
     phone?: boolean
@@ -2577,6 +2585,7 @@ export namespace Prisma {
     id?: boolean
     username?: boolean
     name?: boolean
+    passwordHash?: boolean
     role?: boolean
     roleId?: boolean
     phone?: boolean
@@ -2592,6 +2601,7 @@ export namespace Prisma {
     id?: boolean
     username?: boolean
     name?: boolean
+    passwordHash?: boolean
     role?: boolean
     roleId?: boolean
     phone?: boolean
@@ -2607,6 +2617,7 @@ export namespace Prisma {
     id?: boolean
     username?: boolean
     name?: boolean
+    passwordHash?: boolean
     role?: boolean
     roleId?: boolean
     phone?: boolean
@@ -2618,7 +2629,7 @@ export namespace Prisma {
     updatedAt?: boolean
   }
 
-  export type UserOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "username" | "name" | "role" | "roleId" | "phone" | "avatar" | "status" | "joinedAt" | "lastActivity" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
+  export type UserOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "username" | "name" | "passwordHash" | "role" | "roleId" | "phone" | "avatar" | "status" | "joinedAt" | "lastActivity" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
   export type UserInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     contactsAssigned?: boolean | User$contactsAssignedArgs<ExtArgs>
     opportunitiesAssigned?: boolean | User$opportunitiesAssignedArgs<ExtArgs>
@@ -2639,6 +2650,7 @@ export namespace Prisma {
       id: string
       username: string
       name: string
+      passwordHash: string | null
       role: string
       roleId: string | null
       phone: string | null
@@ -3077,6 +3089,7 @@ export namespace Prisma {
     readonly id: FieldRef<"User", 'String'>
     readonly username: FieldRef<"User", 'String'>
     readonly name: FieldRef<"User", 'String'>
+    readonly passwordHash: FieldRef<"User", 'String'>
     readonly role: FieldRef<"User", 'String'>
     readonly roleId: FieldRef<"User", 'String'>
     readonly phone: FieldRef<"User", 'String'>
@@ -18399,6 +18412,7 @@ export namespace Prisma {
     id: 'id',
     username: 'username',
     name: 'name',
+    passwordHash: 'passwordHash',
     role: 'role',
     roleId: 'roleId',
     phone: 'phone',
@@ -18714,6 +18728,7 @@ export namespace Prisma {
     id?: StringFilter<"User"> | string
     username?: StringFilter<"User"> | string
     name?: StringFilter<"User"> | string
+    passwordHash?: StringNullableFilter<"User"> | string | null
     role?: StringFilter<"User"> | string
     roleId?: StringNullableFilter<"User"> | string | null
     phone?: StringNullableFilter<"User"> | string | null
@@ -18732,6 +18747,7 @@ export namespace Prisma {
     id?: SortOrder
     username?: SortOrder
     name?: SortOrder
+    passwordHash?: SortOrderInput | SortOrder
     role?: SortOrder
     roleId?: SortOrderInput | SortOrder
     phone?: SortOrderInput | SortOrder
@@ -18753,6 +18769,7 @@ export namespace Prisma {
     OR?: UserWhereInput[]
     NOT?: UserWhereInput | UserWhereInput[]
     name?: StringFilter<"User"> | string
+    passwordHash?: StringNullableFilter<"User"> | string | null
     role?: StringFilter<"User"> | string
     roleId?: StringNullableFilter<"User"> | string | null
     phone?: StringNullableFilter<"User"> | string | null
@@ -18771,6 +18788,7 @@ export namespace Prisma {
     id?: SortOrder
     username?: SortOrder
     name?: SortOrder
+    passwordHash?: SortOrderInput | SortOrder
     role?: SortOrder
     roleId?: SortOrderInput | SortOrder
     phone?: SortOrderInput | SortOrder
@@ -18792,6 +18810,7 @@ export namespace Prisma {
     id?: StringWithAggregatesFilter<"User"> | string
     username?: StringWithAggregatesFilter<"User"> | string
     name?: StringWithAggregatesFilter<"User"> | string
+    passwordHash?: StringNullableWithAggregatesFilter<"User"> | string | null
     role?: StringWithAggregatesFilter<"User"> | string
     roleId?: StringNullableWithAggregatesFilter<"User"> | string | null
     phone?: StringNullableWithAggregatesFilter<"User"> | string | null
@@ -19738,6 +19757,7 @@ export namespace Prisma {
     id?: string
     username: string
     name: string
+    passwordHash?: string | null
     role: string
     roleId?: string | null
     phone?: string | null
@@ -19756,6 +19776,7 @@ export namespace Prisma {
     id?: string
     username: string
     name: string
+    passwordHash?: string | null
     role: string
     roleId?: string | null
     phone?: string | null
@@ -19774,6 +19795,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     username?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    passwordHash?: NullableStringFieldUpdateOperationsInput | string | null
     role?: StringFieldUpdateOperationsInput | string
     roleId?: NullableStringFieldUpdateOperationsInput | string | null
     phone?: NullableStringFieldUpdateOperationsInput | string | null
@@ -19792,6 +19814,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     username?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    passwordHash?: NullableStringFieldUpdateOperationsInput | string | null
     role?: StringFieldUpdateOperationsInput | string
     roleId?: NullableStringFieldUpdateOperationsInput | string | null
     phone?: NullableStringFieldUpdateOperationsInput | string | null
@@ -19810,6 +19833,7 @@ export namespace Prisma {
     id?: string
     username: string
     name: string
+    passwordHash?: string | null
     role: string
     roleId?: string | null
     phone?: string | null
@@ -19825,6 +19849,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     username?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    passwordHash?: NullableStringFieldUpdateOperationsInput | string | null
     role?: StringFieldUpdateOperationsInput | string
     roleId?: NullableStringFieldUpdateOperationsInput | string | null
     phone?: NullableStringFieldUpdateOperationsInput | string | null
@@ -19840,6 +19865,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     username?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    passwordHash?: NullableStringFieldUpdateOperationsInput | string | null
     role?: StringFieldUpdateOperationsInput | string
     roleId?: NullableStringFieldUpdateOperationsInput | string | null
     phone?: NullableStringFieldUpdateOperationsInput | string | null
@@ -20896,6 +20922,7 @@ export namespace Prisma {
     id?: SortOrder
     username?: SortOrder
     name?: SortOrder
+    passwordHash?: SortOrder
     role?: SortOrder
     roleId?: SortOrder
     phone?: SortOrder
@@ -20911,6 +20938,7 @@ export namespace Prisma {
     id?: SortOrder
     username?: SortOrder
     name?: SortOrder
+    passwordHash?: SortOrder
     role?: SortOrder
     roleId?: SortOrder
     phone?: SortOrder
@@ -20926,6 +20954,7 @@ export namespace Prisma {
     id?: SortOrder
     username?: SortOrder
     name?: SortOrder
+    passwordHash?: SortOrder
     role?: SortOrder
     roleId?: SortOrder
     phone?: SortOrder
@@ -23408,6 +23437,7 @@ export namespace Prisma {
     id?: string
     username: string
     name: string
+    passwordHash?: string | null
     role: string
     roleId?: string | null
     phone?: string | null
@@ -23425,6 +23455,7 @@ export namespace Prisma {
     id?: string
     username: string
     name: string
+    passwordHash?: string | null
     role: string
     roleId?: string | null
     phone?: string | null
@@ -23560,6 +23591,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     username?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    passwordHash?: NullableStringFieldUpdateOperationsInput | string | null
     role?: StringFieldUpdateOperationsInput | string
     roleId?: NullableStringFieldUpdateOperationsInput | string | null
     phone?: NullableStringFieldUpdateOperationsInput | string | null
@@ -23577,6 +23609,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     username?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    passwordHash?: NullableStringFieldUpdateOperationsInput | string | null
     role?: StringFieldUpdateOperationsInput | string
     roleId?: NullableStringFieldUpdateOperationsInput | string | null
     phone?: NullableStringFieldUpdateOperationsInput | string | null
@@ -23920,6 +23953,7 @@ export namespace Prisma {
     id?: string
     username: string
     name: string
+    passwordHash?: string | null
     role: string
     roleId?: string | null
     phone?: string | null
@@ -23937,6 +23971,7 @@ export namespace Prisma {
     id?: string
     username: string
     name: string
+    passwordHash?: string | null
     role: string
     roleId?: string | null
     phone?: string | null
@@ -24070,6 +24105,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     username?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    passwordHash?: NullableStringFieldUpdateOperationsInput | string | null
     role?: StringFieldUpdateOperationsInput | string
     roleId?: NullableStringFieldUpdateOperationsInput | string | null
     phone?: NullableStringFieldUpdateOperationsInput | string | null
@@ -24087,6 +24123,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     username?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    passwordHash?: NullableStringFieldUpdateOperationsInput | string | null
     role?: StringFieldUpdateOperationsInput | string
     roleId?: NullableStringFieldUpdateOperationsInput | string | null
     phone?: NullableStringFieldUpdateOperationsInput | string | null
@@ -24202,6 +24239,7 @@ export namespace Prisma {
     id?: string
     username: string
     name: string
+    passwordHash?: string | null
     role: string
     roleId?: string | null
     phone?: string | null
@@ -24219,6 +24257,7 @@ export namespace Prisma {
     id?: string
     username: string
     name: string
+    passwordHash?: string | null
     role: string
     roleId?: string | null
     phone?: string | null
@@ -24312,6 +24351,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     username?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    passwordHash?: NullableStringFieldUpdateOperationsInput | string | null
     role?: StringFieldUpdateOperationsInput | string
     roleId?: NullableStringFieldUpdateOperationsInput | string | null
     phone?: NullableStringFieldUpdateOperationsInput | string | null
@@ -24329,6 +24369,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     username?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    passwordHash?: NullableStringFieldUpdateOperationsInput | string | null
     role?: StringFieldUpdateOperationsInput | string
     roleId?: NullableStringFieldUpdateOperationsInput | string | null
     phone?: NullableStringFieldUpdateOperationsInput | string | null

@@ -872,8 +872,8 @@ export default function CampaignBuilderPage() {
             <Label>Email de prueba</Label>
             <Input
               type="email"
-              placeholder={currentUser.email}
-              defaultValue={currentUser.email}
+              placeholder={currentUser.username}
+              defaultValue={currentUser.username}
               className="mt-1"
             />
           </div>

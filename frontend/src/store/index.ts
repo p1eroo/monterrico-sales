@@ -9,8 +9,8 @@ interface AppState {
   setSidebarMobileOpen: (open: boolean) => void;
   currentUser: {
     id: string;
+    username: string;
     name: string;
-    email: string;
     role: string;
     avatar?: string;
     phone?: string;
@@ -57,8 +57,8 @@ export const useAppStore = create<AppState>()(
   setSidebarMobileOpen: (open) => set({ sidebarMobileOpen: open }),
   currentUser: {
     id: 'u1',
+    username: 'cmendoza',
     name: 'Carlos Mendoza',
-    email: 'carlos.mendoza@taximonterrico.com',
     role: 'Administrador',
     phone: '+51 999 111 222',
     cargo: 'Gerente Comercial',

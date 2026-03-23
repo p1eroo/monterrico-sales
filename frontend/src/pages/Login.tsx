@@ -15,7 +15,7 @@ import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import imgLogin from "@/assets/imglogin.png";
 
 const loginSchema = z.object({
-  email: z.string().min(1, "Usuario o email requerido"),
+  username: z.string().min(1, "Usuario requerido"),
   password: z.string().min(1, "La contraseña es requerida"),
   remember: z.boolean().optional(),
 });
@@ -38,15 +38,15 @@ export default function LoginPage() {
   } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: "",
+      username: "",
       password: "",
       remember: false,
     },
   });
 
-  const email = watch("email");
+  const username = watch("username");
   const password = watch("password");
-  const isFormValid = !!email?.trim() && !!password?.trim();
+  const isFormValid = !!username?.trim() && !!password?.trim();
 
   async function onSubmit(data: LoginForm) {
     setIsLoading(true);
@@ -57,8 +57,8 @@ export default function LoginPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          idacceso: data.email,
-          contraseña: data.password,
+          username: data.username.trim(),
+          password: data.password,
         }),
       });
 
@@ -70,15 +70,21 @@ export default function LoginPage() {
         if (user) {
           updateCurrentUser({
             id: user.id ?? "",
-            name: user.name ?? data.email,
-            email: user.email ?? data.email,
+            username: user.username ?? data.username,
+            name: user.name ?? user.username ?? data.username,
             role: user.role ?? "Usuario",
           });
         }
         login();
         navigate("/dashboard");
       } else {
-        setError(json.message || "Credenciales inválidas");
+        const msg =
+          typeof json.message === "string"
+            ? json.message
+            : Array.isArray(json.message)
+              ? json.message.map((m: { message?: string }) => m.message ?? "").join(" ")
+              : "Credenciales inválidas";
+        setError(msg);
       }
     } catch {
       setError("Error de conexión. Intenta de nuevo.");
@@ -196,23 +202,23 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="email">Usuario o Email</Label>
+              <Label htmlFor="username">Usuario</Label>
               <Input
-                id="email"
+                id="username"
                 type="text"
-                placeholder="usuario@taximonterrico.com"
-                {...register("email")}
-                aria-invalid={!!errors.email}
+                placeholder="Ej: admin"
+                {...register("username")}
+                aria-invalid={!!errors.username}
                 className={cn(
                   "h-11 rounded-lg transition-all duration-200",
-                  errors.email &&
+                  errors.username &&
                     "border-destructive focus-visible:ring-destructive",
                 )}
                 autoComplete="username"
               />
-              {errors.email && (
+              {errors.username && (
                 <p className="text-sm text-destructive transition-opacity">
-                  {errors.email.message}
+                  {errors.username.message}
                 </p>
               )}
             </div>
