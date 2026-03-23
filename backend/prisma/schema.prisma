@@ -41,7 +41,6 @@ model Contact {
   email              String
   source             String
   etapa              String    @default("lead")
-  priority           String    @default("media")
   assignedTo         String?
   estimatedValue     Float     @default(0)
   nextAction         String?
@@ -95,10 +94,12 @@ model Opportunity {
   amount            Float
   probability       Int       @default(0)
   etapa             String
-  status            String    @default("abierta")
+  /** abierto | ganado | perdido */
+  status            String    @default("abierto")
+  /** baja | media | alta */
+  priority          String    @default("media")
   expectedCloseDate DateTime?
   assignedTo        String?
-  description       String?
   createdAt         DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
   user              User?     @relation(fields: [assignedTo], references: [id], onDelete: SetNull)

@@ -3610,7 +3610,6 @@ export namespace Prisma {
     email: string | null
     source: string | null
     etapa: string | null
-    priority: string | null
     assignedTo: string | null
     estimatedValue: number | null
     nextAction: string | null
@@ -3635,7 +3634,6 @@ export namespace Prisma {
     email: string | null
     source: string | null
     etapa: string | null
-    priority: string | null
     assignedTo: string | null
     estimatedValue: number | null
     nextAction: string | null
@@ -3660,7 +3658,6 @@ export namespace Prisma {
     email: number
     source: number
     etapa: number
-    priority: number
     assignedTo: number
     estimatedValue: number
     nextAction: number
@@ -3697,7 +3694,6 @@ export namespace Prisma {
     email?: true
     source?: true
     etapa?: true
-    priority?: true
     assignedTo?: true
     estimatedValue?: true
     nextAction?: true
@@ -3722,7 +3718,6 @@ export namespace Prisma {
     email?: true
     source?: true
     etapa?: true
-    priority?: true
     assignedTo?: true
     estimatedValue?: true
     nextAction?: true
@@ -3747,7 +3742,6 @@ export namespace Prisma {
     email?: true
     source?: true
     etapa?: true
-    priority?: true
     assignedTo?: true
     estimatedValue?: true
     nextAction?: true
@@ -3861,7 +3855,6 @@ export namespace Prisma {
     email: string
     source: string
     etapa: string
-    priority: string
     assignedTo: string | null
     estimatedValue: number
     nextAction: string | null
@@ -3907,7 +3900,6 @@ export namespace Prisma {
     email?: boolean
     source?: boolean
     etapa?: boolean
-    priority?: boolean
     assignedTo?: boolean
     estimatedValue?: boolean
     nextAction?: boolean
@@ -3941,7 +3933,6 @@ export namespace Prisma {
     email?: boolean
     source?: boolean
     etapa?: boolean
-    priority?: boolean
     assignedTo?: boolean
     estimatedValue?: boolean
     nextAction?: boolean
@@ -3969,7 +3960,6 @@ export namespace Prisma {
     email?: boolean
     source?: boolean
     etapa?: boolean
-    priority?: boolean
     assignedTo?: boolean
     estimatedValue?: boolean
     nextAction?: boolean
@@ -3997,7 +3987,6 @@ export namespace Prisma {
     email?: boolean
     source?: boolean
     etapa?: boolean
-    priority?: boolean
     assignedTo?: boolean
     estimatedValue?: boolean
     nextAction?: boolean
@@ -4016,7 +4005,7 @@ export namespace Prisma {
     updatedAt?: boolean
   }
 
-  export type ContactOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "cargo" | "phone" | "email" | "source" | "etapa" | "priority" | "assignedTo" | "estimatedValue" | "nextAction" | "nextFollowUp" | "notes" | "tags" | "docType" | "docNumber" | "departamento" | "provincia" | "distrito" | "direccion" | "clienteRecuperado" | "etapaHistory" | "createdAt" | "updatedAt", ExtArgs["result"]["contact"]>
+  export type ContactOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "cargo" | "phone" | "email" | "source" | "etapa" | "assignedTo" | "estimatedValue" | "nextAction" | "nextFollowUp" | "notes" | "tags" | "docType" | "docNumber" | "departamento" | "provincia" | "distrito" | "direccion" | "clienteRecuperado" | "etapaHistory" | "createdAt" | "updatedAt", ExtArgs["result"]["contact"]>
   export type ContactInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     user?: boolean | Contact$userArgs<ExtArgs>
     companies?: boolean | Contact$companiesArgs<ExtArgs>
@@ -4051,7 +4040,6 @@ export namespace Prisma {
       email: string
       source: string
       etapa: string
-      priority: string
       assignedTo: string | null
       estimatedValue: number
       nextAction: string | null
@@ -4504,7 +4492,6 @@ export namespace Prisma {
     readonly email: FieldRef<"Contact", 'String'>
     readonly source: FieldRef<"Contact", 'String'>
     readonly etapa: FieldRef<"Contact", 'String'>
-    readonly priority: FieldRef<"Contact", 'String'>
     readonly assignedTo: FieldRef<"Contact", 'String'>
     readonly estimatedValue: FieldRef<"Contact", 'Float'>
     readonly nextAction: FieldRef<"Contact", 'String'>
@@ -6425,9 +6412,9 @@ export namespace Prisma {
     probability: number | null
     etapa: string | null
     status: string | null
+    priority: string | null
     expectedCloseDate: Date | null
     assignedTo: string | null
-    description: string | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -6439,9 +6426,9 @@ export namespace Prisma {
     probability: number | null
     etapa: string | null
     status: string | null
+    priority: string | null
     expectedCloseDate: Date | null
     assignedTo: string | null
-    description: string | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -6453,9 +6440,9 @@ export namespace Prisma {
     probability: number
     etapa: number
     status: number
+    priority: number
     expectedCloseDate: number
     assignedTo: number
-    description: number
     createdAt: number
     updatedAt: number
     _all: number
@@ -6479,9 +6466,9 @@ export namespace Prisma {
     probability?: true
     etapa?: true
     status?: true
+    priority?: true
     expectedCloseDate?: true
     assignedTo?: true
-    description?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -6493,9 +6480,9 @@ export namespace Prisma {
     probability?: true
     etapa?: true
     status?: true
+    priority?: true
     expectedCloseDate?: true
     assignedTo?: true
-    description?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -6507,9 +6494,9 @@ export namespace Prisma {
     probability?: true
     etapa?: true
     status?: true
+    priority?: true
     expectedCloseDate?: true
     assignedTo?: true
-    description?: true
     createdAt?: true
     updatedAt?: true
     _all?: true
@@ -6608,9 +6595,9 @@ export namespace Prisma {
     probability: number
     etapa: string
     status: string
+    priority: string
     expectedCloseDate: Date | null
     assignedTo: string | null
-    description: string | null
     createdAt: Date
     updatedAt: Date
     _count: OpportunityCountAggregateOutputType | null
@@ -6641,9 +6628,9 @@ export namespace Prisma {
     probability?: boolean
     etapa?: boolean
     status?: boolean
+    priority?: boolean
     expectedCloseDate?: boolean
     assignedTo?: boolean
-    description?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     user?: boolean | Opportunity$userArgs<ExtArgs>
@@ -6662,9 +6649,9 @@ export namespace Prisma {
     probability?: boolean
     etapa?: boolean
     status?: boolean
+    priority?: boolean
     expectedCloseDate?: boolean
     assignedTo?: boolean
-    description?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     user?: boolean | Opportunity$userArgs<ExtArgs>
@@ -6677,9 +6664,9 @@ export namespace Prisma {
     probability?: boolean
     etapa?: boolean
     status?: boolean
+    priority?: boolean
     expectedCloseDate?: boolean
     assignedTo?: boolean
-    description?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     user?: boolean | Opportunity$userArgs<ExtArgs>
@@ -6692,14 +6679,14 @@ export namespace Prisma {
     probability?: boolean
     etapa?: boolean
     status?: boolean
+    priority?: boolean
     expectedCloseDate?: boolean
     assignedTo?: boolean
-    description?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type OpportunityOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "title" | "amount" | "probability" | "etapa" | "status" | "expectedCloseDate" | "assignedTo" | "description" | "createdAt" | "updatedAt", ExtArgs["result"]["opportunity"]>
+  export type OpportunityOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "title" | "amount" | "probability" | "etapa" | "status" | "priority" | "expectedCloseDate" | "assignedTo" | "createdAt" | "updatedAt", ExtArgs["result"]["opportunity"]>
   export type OpportunityInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     user?: boolean | Opportunity$userArgs<ExtArgs>
     contacts?: boolean | Opportunity$contactsArgs<ExtArgs>
@@ -6733,9 +6720,12 @@ export namespace Prisma {
       probability: number
       etapa: string
       status: string
+      /**
+       * * baja | media | alta
+       */
+      priority: string
       expectedCloseDate: Date | null
       assignedTo: string | null
-      description: string | null
       createdAt: Date
       updatedAt: Date
     }, ExtArgs["result"]["opportunity"]>
@@ -7173,9 +7163,9 @@ export namespace Prisma {
     readonly probability: FieldRef<"Opportunity", 'Int'>
     readonly etapa: FieldRef<"Opportunity", 'String'>
     readonly status: FieldRef<"Opportunity", 'String'>
+    readonly priority: FieldRef<"Opportunity", 'String'>
     readonly expectedCloseDate: FieldRef<"Opportunity", 'DateTime'>
     readonly assignedTo: FieldRef<"Opportunity", 'String'>
-    readonly description: FieldRef<"Opportunity", 'String'>
     readonly createdAt: FieldRef<"Opportunity", 'DateTime'>
     readonly updatedAt: FieldRef<"Opportunity", 'DateTime'>
   }
@@ -18435,7 +18425,6 @@ export namespace Prisma {
     email: 'email',
     source: 'source',
     etapa: 'etapa',
-    priority: 'priority',
     assignedTo: 'assignedTo',
     estimatedValue: 'estimatedValue',
     nextAction: 'nextAction',
@@ -18485,9 +18474,9 @@ export namespace Prisma {
     probability: 'probability',
     etapa: 'etapa',
     status: 'status',
+    priority: 'priority',
     expectedCloseDate: 'expectedCloseDate',
     assignedTo: 'assignedTo',
-    description: 'description',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
   };
@@ -18833,7 +18822,6 @@ export namespace Prisma {
     email?: StringFilter<"Contact"> | string
     source?: StringFilter<"Contact"> | string
     etapa?: StringFilter<"Contact"> | string
-    priority?: StringFilter<"Contact"> | string
     assignedTo?: StringNullableFilter<"Contact"> | string | null
     estimatedValue?: FloatFilter<"Contact"> | number
     nextAction?: StringNullableFilter<"Contact"> | string | null
@@ -18866,7 +18854,6 @@ export namespace Prisma {
     email?: SortOrder
     source?: SortOrder
     etapa?: SortOrder
-    priority?: SortOrder
     assignedTo?: SortOrderInput | SortOrder
     estimatedValue?: SortOrder
     nextAction?: SortOrderInput | SortOrder
@@ -18902,7 +18889,6 @@ export namespace Prisma {
     email?: StringFilter<"Contact"> | string
     source?: StringFilter<"Contact"> | string
     etapa?: StringFilter<"Contact"> | string
-    priority?: StringFilter<"Contact"> | string
     assignedTo?: StringNullableFilter<"Contact"> | string | null
     estimatedValue?: FloatFilter<"Contact"> | number
     nextAction?: StringNullableFilter<"Contact"> | string | null
@@ -18935,7 +18921,6 @@ export namespace Prisma {
     email?: SortOrder
     source?: SortOrder
     etapa?: SortOrder
-    priority?: SortOrder
     assignedTo?: SortOrderInput | SortOrder
     estimatedValue?: SortOrder
     nextAction?: SortOrderInput | SortOrder
@@ -18970,7 +18955,6 @@ export namespace Prisma {
     email?: StringWithAggregatesFilter<"Contact"> | string
     source?: StringWithAggregatesFilter<"Contact"> | string
     etapa?: StringWithAggregatesFilter<"Contact"> | string
-    priority?: StringWithAggregatesFilter<"Contact"> | string
     assignedTo?: StringNullableWithAggregatesFilter<"Contact"> | string | null
     estimatedValue?: FloatWithAggregatesFilter<"Contact"> | number
     nextAction?: StringNullableWithAggregatesFilter<"Contact"> | string | null
@@ -19116,9 +19100,9 @@ export namespace Prisma {
     probability?: IntFilter<"Opportunity"> | number
     etapa?: StringFilter<"Opportunity"> | string
     status?: StringFilter<"Opportunity"> | string
+    priority?: StringFilter<"Opportunity"> | string
     expectedCloseDate?: DateTimeNullableFilter<"Opportunity"> | Date | string | null
     assignedTo?: StringNullableFilter<"Opportunity"> | string | null
-    description?: StringNullableFilter<"Opportunity"> | string | null
     createdAt?: DateTimeFilter<"Opportunity"> | Date | string
     updatedAt?: DateTimeFilter<"Opportunity"> | Date | string
     user?: XOR<UserNullableScalarRelationFilter, UserWhereInput> | null
@@ -19136,9 +19120,9 @@ export namespace Prisma {
     probability?: SortOrder
     etapa?: SortOrder
     status?: SortOrder
+    priority?: SortOrder
     expectedCloseDate?: SortOrderInput | SortOrder
     assignedTo?: SortOrderInput | SortOrder
-    description?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     user?: UserOrderByWithRelationInput
@@ -19159,9 +19143,9 @@ export namespace Prisma {
     probability?: IntFilter<"Opportunity"> | number
     etapa?: StringFilter<"Opportunity"> | string
     status?: StringFilter<"Opportunity"> | string
+    priority?: StringFilter<"Opportunity"> | string
     expectedCloseDate?: DateTimeNullableFilter<"Opportunity"> | Date | string | null
     assignedTo?: StringNullableFilter<"Opportunity"> | string | null
-    description?: StringNullableFilter<"Opportunity"> | string | null
     createdAt?: DateTimeFilter<"Opportunity"> | Date | string
     updatedAt?: DateTimeFilter<"Opportunity"> | Date | string
     user?: XOR<UserNullableScalarRelationFilter, UserWhereInput> | null
@@ -19179,9 +19163,9 @@ export namespace Prisma {
     probability?: SortOrder
     etapa?: SortOrder
     status?: SortOrder
+    priority?: SortOrder
     expectedCloseDate?: SortOrderInput | SortOrder
     assignedTo?: SortOrderInput | SortOrder
-    description?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     _count?: OpportunityCountOrderByAggregateInput
@@ -19201,9 +19185,9 @@ export namespace Prisma {
     probability?: IntWithAggregatesFilter<"Opportunity"> | number
     etapa?: StringWithAggregatesFilter<"Opportunity"> | string
     status?: StringWithAggregatesFilter<"Opportunity"> | string
+    priority?: StringWithAggregatesFilter<"Opportunity"> | string
     expectedCloseDate?: DateTimeNullableWithAggregatesFilter<"Opportunity"> | Date | string | null
     assignedTo?: StringNullableWithAggregatesFilter<"Opportunity"> | string | null
-    description?: StringNullableWithAggregatesFilter<"Opportunity"> | string | null
     createdAt?: DateTimeWithAggregatesFilter<"Opportunity"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"Opportunity"> | Date | string
   }
@@ -19885,7 +19869,6 @@ export namespace Prisma {
     email: string
     source: string
     etapa?: string
-    priority?: string
     estimatedValue?: number
     nextAction?: string | null
     nextFollowUp?: Date | string | null
@@ -19917,7 +19900,6 @@ export namespace Prisma {
     email: string
     source: string
     etapa?: string
-    priority?: string
     assignedTo?: string | null
     estimatedValue?: number
     nextAction?: string | null
@@ -19949,7 +19931,6 @@ export namespace Prisma {
     email?: StringFieldUpdateOperationsInput | string
     source?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
-    priority?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
     nextAction?: NullableStringFieldUpdateOperationsInput | string | null
     nextFollowUp?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -19981,7 +19962,6 @@ export namespace Prisma {
     email?: StringFieldUpdateOperationsInput | string
     source?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
-    priority?: StringFieldUpdateOperationsInput | string
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     estimatedValue?: FloatFieldUpdateOperationsInput | number
     nextAction?: NullableStringFieldUpdateOperationsInput | string | null
@@ -20013,7 +19993,6 @@ export namespace Prisma {
     email: string
     source: string
     etapa?: string
-    priority?: string
     assignedTo?: string | null
     estimatedValue?: number
     nextAction?: string | null
@@ -20040,7 +20019,6 @@ export namespace Prisma {
     email?: StringFieldUpdateOperationsInput | string
     source?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
-    priority?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
     nextAction?: NullableStringFieldUpdateOperationsInput | string | null
     nextFollowUp?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -20066,7 +20044,6 @@ export namespace Prisma {
     email?: StringFieldUpdateOperationsInput | string
     source?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
-    priority?: StringFieldUpdateOperationsInput | string
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     estimatedValue?: FloatFieldUpdateOperationsInput | number
     nextAction?: NullableStringFieldUpdateOperationsInput | string | null
@@ -20238,8 +20215,8 @@ export namespace Prisma {
     probability?: number
     etapa: string
     status?: string
+    priority?: string
     expectedCloseDate?: Date | string | null
-    description?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     user?: UserCreateNestedOneWithoutOpportunitiesAssignedInput
@@ -20257,9 +20234,9 @@ export namespace Prisma {
     probability?: number
     etapa: string
     status?: string
+    priority?: string
     expectedCloseDate?: Date | string | null
     assignedTo?: string | null
-    description?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     contacts?: ContactOpportunityUncheckedCreateNestedManyWithoutOpportunityInput
@@ -20276,8 +20253,8 @@ export namespace Prisma {
     probability?: IntFieldUpdateOperationsInput | number
     etapa?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
     expectedCloseDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    description?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     user?: UserUpdateOneWithoutOpportunitiesAssignedNestedInput
@@ -20295,9 +20272,9 @@ export namespace Prisma {
     probability?: IntFieldUpdateOperationsInput | number
     etapa?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
     expectedCloseDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
-    description?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     contacts?: ContactOpportunityUncheckedUpdateManyWithoutOpportunityNestedInput
@@ -20314,9 +20291,9 @@ export namespace Prisma {
     probability?: number
     etapa: string
     status?: string
+    priority?: string
     expectedCloseDate?: Date | string | null
     assignedTo?: string | null
-    description?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -20328,8 +20305,8 @@ export namespace Prisma {
     probability?: IntFieldUpdateOperationsInput | number
     etapa?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
     expectedCloseDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    description?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -20341,9 +20318,9 @@ export namespace Prisma {
     probability?: IntFieldUpdateOperationsInput | number
     etapa?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
     expectedCloseDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
-    description?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -21125,7 +21102,6 @@ export namespace Prisma {
     email?: SortOrder
     source?: SortOrder
     etapa?: SortOrder
-    priority?: SortOrder
     assignedTo?: SortOrder
     estimatedValue?: SortOrder
     nextAction?: SortOrder
@@ -21156,7 +21132,6 @@ export namespace Prisma {
     email?: SortOrder
     source?: SortOrder
     etapa?: SortOrder
-    priority?: SortOrder
     assignedTo?: SortOrder
     estimatedValue?: SortOrder
     nextAction?: SortOrder
@@ -21181,7 +21156,6 @@ export namespace Prisma {
     email?: SortOrder
     source?: SortOrder
     etapa?: SortOrder
-    priority?: SortOrder
     assignedTo?: SortOrder
     estimatedValue?: SortOrder
     nextAction?: SortOrder
@@ -21366,9 +21340,9 @@ export namespace Prisma {
     probability?: SortOrder
     etapa?: SortOrder
     status?: SortOrder
+    priority?: SortOrder
     expectedCloseDate?: SortOrder
     assignedTo?: SortOrder
-    description?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -21385,9 +21359,9 @@ export namespace Prisma {
     probability?: SortOrder
     etapa?: SortOrder
     status?: SortOrder
+    priority?: SortOrder
     expectedCloseDate?: SortOrder
     assignedTo?: SortOrder
-    description?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -21399,9 +21373,9 @@ export namespace Prisma {
     probability?: SortOrder
     etapa?: SortOrder
     status?: SortOrder
+    priority?: SortOrder
     expectedCloseDate?: SortOrder
     assignedTo?: SortOrder
-    description?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -23166,7 +23140,6 @@ export namespace Prisma {
     email: string
     source: string
     etapa?: string
-    priority?: string
     estimatedValue?: number
     nextAction?: string | null
     nextFollowUp?: Date | string | null
@@ -23197,7 +23170,6 @@ export namespace Prisma {
     email: string
     source: string
     etapa?: string
-    priority?: string
     estimatedValue?: number
     nextAction?: string | null
     nextFollowUp?: Date | string | null
@@ -23237,8 +23209,8 @@ export namespace Prisma {
     probability?: number
     etapa: string
     status?: string
+    priority?: string
     expectedCloseDate?: Date | string | null
-    description?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     contacts?: ContactOpportunityCreateNestedManyWithoutOpportunityInput
@@ -23255,8 +23227,8 @@ export namespace Prisma {
     probability?: number
     etapa: string
     status?: string
+    priority?: string
     expectedCloseDate?: Date | string | null
-    description?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     contacts?: ContactOpportunityUncheckedCreateNestedManyWithoutOpportunityInput
@@ -23347,7 +23319,6 @@ export namespace Prisma {
     email?: StringFilter<"Contact"> | string
     source?: StringFilter<"Contact"> | string
     etapa?: StringFilter<"Contact"> | string
-    priority?: StringFilter<"Contact"> | string
     assignedTo?: StringNullableFilter<"Contact"> | string | null
     estimatedValue?: FloatFilter<"Contact"> | number
     nextAction?: StringNullableFilter<"Contact"> | string | null
@@ -23392,9 +23363,9 @@ export namespace Prisma {
     probability?: IntFilter<"Opportunity"> | number
     etapa?: StringFilter<"Opportunity"> | string
     status?: StringFilter<"Opportunity"> | string
+    priority?: StringFilter<"Opportunity"> | string
     expectedCloseDate?: DateTimeNullableFilter<"Opportunity"> | Date | string | null
     assignedTo?: StringNullableFilter<"Opportunity"> | string | null
-    description?: StringNullableFilter<"Opportunity"> | string | null
     createdAt?: DateTimeFilter<"Opportunity"> | Date | string
     updatedAt?: DateTimeFilter<"Opportunity"> | Date | string
   }
@@ -24488,7 +24459,6 @@ export namespace Prisma {
     email: string
     source: string
     etapa?: string
-    priority?: string
     estimatedValue?: number
     nextAction?: string | null
     nextFollowUp?: Date | string | null
@@ -24519,7 +24489,6 @@ export namespace Prisma {
     email: string
     source: string
     etapa?: string
-    priority?: string
     assignedTo?: string | null
     estimatedValue?: number
     nextAction?: string | null
@@ -24621,7 +24590,6 @@ export namespace Prisma {
     email?: StringFieldUpdateOperationsInput | string
     source?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
-    priority?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
     nextAction?: NullableStringFieldUpdateOperationsInput | string | null
     nextFollowUp?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -24652,7 +24620,6 @@ export namespace Prisma {
     email?: StringFieldUpdateOperationsInput | string
     source?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
-    priority?: StringFieldUpdateOperationsInput | string
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     estimatedValue?: FloatFieldUpdateOperationsInput | number
     nextAction?: NullableStringFieldUpdateOperationsInput | string | null
@@ -24683,7 +24650,6 @@ export namespace Prisma {
     email: string
     source: string
     etapa?: string
-    priority?: string
     estimatedValue?: number
     nextAction?: string | null
     nextFollowUp?: Date | string | null
@@ -24714,7 +24680,6 @@ export namespace Prisma {
     email: string
     source: string
     etapa?: string
-    priority?: string
     assignedTo?: string | null
     estimatedValue?: number
     nextAction?: string | null
@@ -24750,7 +24715,6 @@ export namespace Prisma {
     email: string
     source: string
     etapa?: string
-    priority?: string
     estimatedValue?: number
     nextAction?: string | null
     nextFollowUp?: Date | string | null
@@ -24781,7 +24745,6 @@ export namespace Prisma {
     email: string
     source: string
     etapa?: string
-    priority?: string
     assignedTo?: string | null
     estimatedValue?: number
     nextAction?: string | null
@@ -24828,7 +24791,6 @@ export namespace Prisma {
     email?: StringFieldUpdateOperationsInput | string
     source?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
-    priority?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
     nextAction?: NullableStringFieldUpdateOperationsInput | string | null
     nextFollowUp?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -24859,7 +24821,6 @@ export namespace Prisma {
     email?: StringFieldUpdateOperationsInput | string
     source?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
-    priority?: StringFieldUpdateOperationsInput | string
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     estimatedValue?: FloatFieldUpdateOperationsInput | number
     nextAction?: NullableStringFieldUpdateOperationsInput | string | null
@@ -24901,7 +24862,6 @@ export namespace Prisma {
     email?: StringFieldUpdateOperationsInput | string
     source?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
-    priority?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
     nextAction?: NullableStringFieldUpdateOperationsInput | string | null
     nextFollowUp?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -24932,7 +24892,6 @@ export namespace Prisma {
     email?: StringFieldUpdateOperationsInput | string
     source?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
-    priority?: StringFieldUpdateOperationsInput | string
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     estimatedValue?: FloatFieldUpdateOperationsInput | number
     nextAction?: NullableStringFieldUpdateOperationsInput | string | null
@@ -24963,7 +24922,6 @@ export namespace Prisma {
     email: string
     source: string
     etapa?: string
-    priority?: string
     estimatedValue?: number
     nextAction?: string | null
     nextFollowUp?: Date | string | null
@@ -24994,7 +24952,6 @@ export namespace Prisma {
     email: string
     source: string
     etapa?: string
-    priority?: string
     assignedTo?: string | null
     estimatedValue?: number
     nextAction?: string | null
@@ -25029,8 +24986,8 @@ export namespace Prisma {
     probability?: number
     etapa: string
     status?: string
+    priority?: string
     expectedCloseDate?: Date | string | null
-    description?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     user?: UserCreateNestedOneWithoutOpportunitiesAssignedInput
@@ -25047,9 +25004,9 @@ export namespace Prisma {
     probability?: number
     etapa: string
     status?: string
+    priority?: string
     expectedCloseDate?: Date | string | null
     assignedTo?: string | null
-    description?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     companies?: CompanyOpportunityUncheckedCreateNestedManyWithoutOpportunityInput
@@ -25082,7 +25039,6 @@ export namespace Prisma {
     email?: StringFieldUpdateOperationsInput | string
     source?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
-    priority?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
     nextAction?: NullableStringFieldUpdateOperationsInput | string | null
     nextFollowUp?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -25113,7 +25069,6 @@ export namespace Prisma {
     email?: StringFieldUpdateOperationsInput | string
     source?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
-    priority?: StringFieldUpdateOperationsInput | string
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     estimatedValue?: FloatFieldUpdateOperationsInput | number
     nextAction?: NullableStringFieldUpdateOperationsInput | string | null
@@ -25154,8 +25109,8 @@ export namespace Prisma {
     probability?: IntFieldUpdateOperationsInput | number
     etapa?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
     expectedCloseDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    description?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     user?: UserUpdateOneWithoutOpportunitiesAssignedNestedInput
@@ -25172,9 +25127,9 @@ export namespace Prisma {
     probability?: IntFieldUpdateOperationsInput | number
     etapa?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
     expectedCloseDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
-    description?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     companies?: CompanyOpportunityUncheckedUpdateManyWithoutOpportunityNestedInput
@@ -25447,8 +25402,8 @@ export namespace Prisma {
     probability?: number
     etapa: string
     status?: string
+    priority?: string
     expectedCloseDate?: Date | string | null
-    description?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     user?: UserCreateNestedOneWithoutOpportunitiesAssignedInput
@@ -25465,9 +25420,9 @@ export namespace Prisma {
     probability?: number
     etapa: string
     status?: string
+    priority?: string
     expectedCloseDate?: Date | string | null
     assignedTo?: string | null
-    description?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     contacts?: ContactOpportunityUncheckedCreateNestedManyWithoutOpportunityInput
@@ -25554,8 +25509,8 @@ export namespace Prisma {
     probability?: IntFieldUpdateOperationsInput | number
     etapa?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
     expectedCloseDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    description?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     user?: UserUpdateOneWithoutOpportunitiesAssignedNestedInput
@@ -25572,9 +25527,9 @@ export namespace Prisma {
     probability?: IntFieldUpdateOperationsInput | number
     etapa?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
     expectedCloseDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
-    description?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     contacts?: ContactOpportunityUncheckedUpdateManyWithoutOpportunityNestedInput
@@ -25590,8 +25545,8 @@ export namespace Prisma {
     probability?: number
     etapa: string
     status?: string
+    priority?: string
     expectedCloseDate?: Date | string | null
-    description?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     user?: UserCreateNestedOneWithoutOpportunitiesAssignedInput
@@ -25608,9 +25563,9 @@ export namespace Prisma {
     probability?: number
     etapa: string
     status?: string
+    priority?: string
     expectedCloseDate?: Date | string | null
     assignedTo?: string | null
-    description?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     contacts?: ContactOpportunityUncheckedCreateNestedManyWithoutOpportunityInput
@@ -25631,8 +25586,8 @@ export namespace Prisma {
     probability?: number
     etapa: string
     status?: string
+    priority?: string
     expectedCloseDate?: Date | string | null
-    description?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     user?: UserCreateNestedOneWithoutOpportunitiesAssignedInput
@@ -25649,9 +25604,9 @@ export namespace Prisma {
     probability?: number
     etapa: string
     status?: string
+    priority?: string
     expectedCloseDate?: Date | string | null
     assignedTo?: string | null
-    description?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     contacts?: ContactOpportunityUncheckedCreateNestedManyWithoutOpportunityInput
@@ -25683,8 +25638,8 @@ export namespace Prisma {
     probability?: IntFieldUpdateOperationsInput | number
     etapa?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
     expectedCloseDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    description?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     user?: UserUpdateOneWithoutOpportunitiesAssignedNestedInput
@@ -25701,9 +25656,9 @@ export namespace Prisma {
     probability?: IntFieldUpdateOperationsInput | number
     etapa?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
     expectedCloseDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
-    description?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     contacts?: ContactOpportunityUncheckedUpdateManyWithoutOpportunityNestedInput
@@ -25730,8 +25685,8 @@ export namespace Prisma {
     probability?: IntFieldUpdateOperationsInput | number
     etapa?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
     expectedCloseDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    description?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     user?: UserUpdateOneWithoutOpportunitiesAssignedNestedInput
@@ -25748,9 +25703,9 @@ export namespace Prisma {
     probability?: IntFieldUpdateOperationsInput | number
     etapa?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
     expectedCloseDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
-    description?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     contacts?: ContactOpportunityUncheckedUpdateManyWithoutOpportunityNestedInput
@@ -25767,7 +25722,6 @@ export namespace Prisma {
     email: string
     source: string
     etapa?: string
-    priority?: string
     estimatedValue?: number
     nextAction?: string | null
     nextFollowUp?: Date | string | null
@@ -25798,7 +25752,6 @@ export namespace Prisma {
     email: string
     source: string
     etapa?: string
-    priority?: string
     assignedTo?: string | null
     estimatedValue?: number
     nextAction?: string | null
@@ -25884,7 +25837,6 @@ export namespace Prisma {
     email?: StringFieldUpdateOperationsInput | string
     source?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
-    priority?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
     nextAction?: NullableStringFieldUpdateOperationsInput | string | null
     nextFollowUp?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -25915,7 +25867,6 @@ export namespace Prisma {
     email?: StringFieldUpdateOperationsInput | string
     source?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
-    priority?: StringFieldUpdateOperationsInput | string
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     estimatedValue?: FloatFieldUpdateOperationsInput | number
     nextAction?: NullableStringFieldUpdateOperationsInput | string | null
@@ -26178,8 +26129,8 @@ export namespace Prisma {
     probability?: number
     etapa: string
     status?: string
+    priority?: string
     expectedCloseDate?: Date | string | null
-    description?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     user?: UserCreateNestedOneWithoutOpportunitiesAssignedInput
@@ -26196,9 +26147,9 @@ export namespace Prisma {
     probability?: number
     etapa: string
     status?: string
+    priority?: string
     expectedCloseDate?: Date | string | null
     assignedTo?: string | null
-    description?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     contacts?: ContactOpportunityUncheckedCreateNestedManyWithoutOpportunityInput
@@ -26269,8 +26220,8 @@ export namespace Prisma {
     probability?: IntFieldUpdateOperationsInput | number
     etapa?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
     expectedCloseDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    description?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     user?: UserUpdateOneWithoutOpportunitiesAssignedNestedInput
@@ -26287,9 +26238,9 @@ export namespace Prisma {
     probability?: IntFieldUpdateOperationsInput | number
     etapa?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
     expectedCloseDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
-    description?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     contacts?: ContactOpportunityUncheckedUpdateManyWithoutOpportunityNestedInput
@@ -26351,7 +26302,6 @@ export namespace Prisma {
     email: string
     source: string
     etapa?: string
-    priority?: string
     estimatedValue?: number
     nextAction?: string | null
     nextFollowUp?: Date | string | null
@@ -26376,8 +26326,8 @@ export namespace Prisma {
     probability?: number
     etapa: string
     status?: string
+    priority?: string
     expectedCloseDate?: Date | string | null
-    description?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -26404,7 +26354,6 @@ export namespace Prisma {
     email?: StringFieldUpdateOperationsInput | string
     source?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
-    priority?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
     nextAction?: NullableStringFieldUpdateOperationsInput | string | null
     nextFollowUp?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -26435,7 +26384,6 @@ export namespace Prisma {
     email?: StringFieldUpdateOperationsInput | string
     source?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
-    priority?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
     nextAction?: NullableStringFieldUpdateOperationsInput | string | null
     nextFollowUp?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -26466,7 +26414,6 @@ export namespace Prisma {
     email?: StringFieldUpdateOperationsInput | string
     source?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
-    priority?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
     nextAction?: NullableStringFieldUpdateOperationsInput | string | null
     nextFollowUp?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -26491,8 +26438,8 @@ export namespace Prisma {
     probability?: IntFieldUpdateOperationsInput | number
     etapa?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
     expectedCloseDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    description?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     contacts?: ContactOpportunityUpdateManyWithoutOpportunityNestedInput
@@ -26509,8 +26456,8 @@ export namespace Prisma {
     probability?: IntFieldUpdateOperationsInput | number
     etapa?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
     expectedCloseDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    description?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     contacts?: ContactOpportunityUncheckedUpdateManyWithoutOpportunityNestedInput
@@ -26527,8 +26474,8 @@ export namespace Prisma {
     probability?: IntFieldUpdateOperationsInput | number
     etapa?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
     expectedCloseDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    description?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }

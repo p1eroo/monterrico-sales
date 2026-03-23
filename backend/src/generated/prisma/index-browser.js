@@ -144,7 +144,6 @@ exports.Prisma.ContactScalarFieldEnum = {
   email: 'email',
   source: 'source',
   etapa: 'etapa',
-  priority: 'priority',
   assignedTo: 'assignedTo',
   estimatedValue: 'estimatedValue',
   nextAction: 'nextAction',
@@ -188,9 +187,9 @@ exports.Prisma.OpportunityScalarFieldEnum = {
   probability: 'probability',
   etapa: 'etapa',
   status: 'status',
+  priority: 'priority',
   expectedCloseDate: 'expectedCloseDate',
   assignedTo: 'assignedTo',
-  description: 'description',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };

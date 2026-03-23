@@ -8,8 +8,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
-
-const BCRYPT_ROUNDS = 10;
+import { BCRYPT_ROUNDS } from './auth.constants';
 
 @Injectable()
 export class AuthService {
@@ -68,6 +67,46 @@ export class AuthService {
     });
 
     return this.buildAuthResponse(user);
+  }
+
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ) {
+    if (!currentPassword || !newPassword) {
+      throw new BadRequestException('Contraseña actual y nueva son requeridas');
+    }
+    if (newPassword.length < 6) {
+      throw new BadRequestException(
+        'La nueva contraseña debe tener al menos 6 caracteres',
+      );
+    }
+    if (currentPassword === newPassword) {
+      throw new BadRequestException(
+        'La nueva contraseña debe ser distinta a la actual',
+      );
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+    if (!user || !user.passwordHash) {
+      throw new BadRequestException('No se puede actualizar la contraseña');
+    }
+
+    const ok = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!ok) {
+      throw new BadRequestException('La contraseña actual no es correcta');
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+
+    return { ok: true, message: 'Contraseña actualizada' };
   }
 
   async login(usernameRaw: string, password: string) {
