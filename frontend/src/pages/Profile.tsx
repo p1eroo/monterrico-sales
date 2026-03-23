@@ -36,6 +36,7 @@ import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { formatDateTime } from '@/lib/formatters';
+import { api } from '@/lib/api';
 import { WeeklyGoalCard } from '@/components/shared/WeeklyGoalCard';
 import { MonthlyGoalCard } from '@/components/shared/MonthlyGoalCard';
 
@@ -50,7 +51,7 @@ const profileSchema = z.object({
 const passwordSchema = z
   .object({
     currentPassword: z.string().min(1, 'Requerido'),
-    newPassword: z.string().min(8, 'Mínimo 8 caracteres'),
+    newPassword: z.string().min(6, 'Mínimo 6 caracteres (igual que al registrarte)'),
     confirmPassword: z.string().min(1, 'Confirma la contraseña'),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
@@ -64,7 +65,7 @@ type PasswordFormData = z.infer<typeof passwordSchema>;
 function getPasswordStrength(pwd: string): { label: string; value: number; color: string } {
   if (!pwd) return { label: '', value: 0, color: '' };
   let score = 0;
-  if (pwd.length >= 8) score++;
+  if (pwd.length >= 6) score++;
   if (pwd.length >= 12) score++;
   if (/[a-z]/.test(pwd) && /[A-Z]/.test(pwd)) score++;
   if (/\d/.test(pwd)) score++;
@@ -136,14 +137,27 @@ export default function ProfilePage() {
     toast.success('Perfil actualizado correctamente');
   });
 
-  const handlePasswordSubmit = passwordForm.handleSubmit(async () => {
+  const handlePasswordSubmit = passwordForm.handleSubmit(async (formData) => {
     setIsSavingPassword(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    passwordForm.reset();
-    setIsSavingPassword(false);
-    setPasswordSaved(true);
-    toast.success('Contraseña actualizada');
-    setTimeout(() => setPasswordSaved(false), 3000);
+    try {
+      await api<{ ok: boolean; message?: string }>('/auth/change-password', {
+        method: 'POST',
+        body: JSON.stringify({
+          currentPassword: formData.currentPassword,
+          newPassword: formData.newPassword,
+        }),
+      });
+      passwordForm.reset();
+      setPasswordSaved(true);
+      toast.success('Contraseña actualizada');
+      setTimeout(() => setPasswordSaved(false), 3000);
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : 'No se pudo cambiar la contraseña',
+      );
+    } finally {
+      setIsSavingPassword(false);
+    }
   });
 
   const handleAvatarClick = () => avatarInputRef.current?.click();
@@ -346,6 +360,9 @@ export default function ProfilePage() {
                 <form onSubmit={handlePasswordSubmit} className="space-y-6">
                   <div>
                     <CardTitle className="text-base mb-4">Cambiar contraseña</CardTitle>
+                    <p className="text-sm text-muted-foreground mb-4 max-w-md">
+                      Usa la misma cuenta con la que iniciaste sesión en el servidor (JWT). Mínimo 6 caracteres en la nueva clave.
+                    </p>
                     <div className="space-y-4 max-w-md">
                       <div>
                         <Label>Contraseña actual</Label>
@@ -564,7 +581,7 @@ export default function ProfilePage() {
                         {
                           key: 'reminders' as const,
                           label: 'Recordatorios',
-                          desc: 'Recordatorios de tareas y seguimientos',
+                          desc: 'Recordatorios de tareas',
                         },
                         {
                           key: 'activityAlerts' as const,

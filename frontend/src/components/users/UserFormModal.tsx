@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -23,22 +24,43 @@ import {
 import type { User } from '@/types';
 import { INITIAL_ROLES } from '@/data/rbac';
 
-const userFormSchema = z.object({
-  name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
-  email: z.string().email('Email inválido'),
-  password: z.string().optional(),
-  roleId: z.string().min(1, 'Selecciona un rol'),
-  status: z.boolean(),
-  phone: z.string().optional(),
-});
+export function buildUserFormSchema(isEdit: boolean) {
+  return z
+    .object({
+      name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
+      username: z
+        .string()
+        .min(2, 'El usuario debe tener al menos 2 caracteres')
+        .max(64, 'Máximo 64 caracteres')
+        .regex(
+          /^[a-zA-Z0-9._-]+$/,
+          'Solo letras, números, punto, guion y guion bajo',
+        ),
+      password: z.string().optional(),
+      roleId: z.string().min(1, 'Selecciona un rol'),
+      status: z.boolean(),
+    })
+    .superRefine((data, ctx) => {
+      if (!isEdit) {
+        const p = data.password ?? '';
+        if (p.length < 6) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Contraseña obligatoria (mínimo 6 caracteres, igual que el registro)',
+            path: ['password'],
+          });
+        }
+      }
+    });
+}
 
-export type UserFormData = z.infer<typeof userFormSchema>;
+export type UserFormData = z.infer<ReturnType<typeof buildUserFormSchema>>;
 
 interface UserFormModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   user?: User | null;
-  onSubmit: (data: UserFormData) => void;
+  onSubmit: (data: UserFormData) => void | Promise<void>;
 }
 
 export function UserFormModal({
@@ -48,16 +70,16 @@ export function UserFormModal({
   onSubmit,
 }: UserFormModalProps) {
   const isEdit = !!user;
+  const schema = useMemo(() => buildUserFormSchema(isEdit), [isEdit]);
 
   const form = useForm<UserFormData>({
-    resolver: zodResolver(userFormSchema),
+    resolver: zodResolver(schema),
     defaultValues: {
       name: '',
-      email: '',
+      username: '',
       password: '',
       roleId: 'r3',
       status: true,
-      phone: '',
     },
   });
 
@@ -67,18 +89,30 @@ export function UserFormModal({
     } else if (user) {
       form.reset({
         name: user.name,
-        email: user.email,
+        username: user.username ?? user.email?.split('@')[0] ?? '',
         roleId: user.roleId ?? 'r3',
         status: user.status === 'activo',
-        phone: user.phone ?? '',
+        password: '',
+      });
+    } else {
+      form.reset({
+        name: '',
+        username: '',
+        password: '',
+        roleId: 'r3',
+        status: true,
       });
     }
     onOpenChange(next);
   }
 
-  function handleSubmit(data: UserFormData) {
-    onSubmit(data);
-    handleOpenChange(false);
+  async function handleSubmit(data: UserFormData) {
+    try {
+      await Promise.resolve(onSubmit(data));
+      handleOpenChange(false);
+    } catch {
+      /* el padre muestra toast; el diálogo permanece abierto */
+    }
   }
 
   return (
@@ -89,7 +123,7 @@ export function UserFormModal({
           <DialogDescription>
             {isEdit
               ? 'Modifica los datos del usuario.'
-              : 'Añade un nuevo usuario al equipo. La contraseña se enviará por email (mock).'}
+              : 'El superior define usuario y contraseña inicial. El colaborador podrá cambiar su contraseña desde su perfil.'}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
@@ -107,29 +141,35 @@ export function UserFormModal({
             )}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="email">Email *</Label>
+            <Label htmlFor="username">Usuario *</Label>
             <Input
-              id="email"
-              type="email"
-              placeholder="usuario@taximonterrico.com"
-              {...form.register('email')}
+              id="username"
+              autoComplete="username"
+              placeholder="Ej: jperez"
+              {...form.register('username')}
               disabled={isEdit}
             />
-            {form.formState.errors.email && (
+            {form.formState.errors.username && (
               <p className="text-xs text-destructive">
-                {form.formState.errors.email.message}
+                {form.formState.errors.username.message}
               </p>
             )}
           </div>
           {!isEdit && (
             <div className="space-y-2">
-              <Label htmlFor="password">Contraseña (opcional)</Label>
+              <Label htmlFor="password">Contraseña inicial *</Label>
               <Input
                 id="password"
                 type="password"
-                placeholder="Se generará automáticamente si se deja vacío"
+                autoComplete="new-password"
+                placeholder="Mínimo 6 caracteres"
                 {...form.register('password')}
               />
+              {form.formState.errors.password && (
+                <p className="text-xs text-destructive">
+                  {form.formState.errors.password.message}
+                </p>
+              )}
             </div>
           )}
           <div className="space-y-2">
@@ -155,14 +195,6 @@ export function UserFormModal({
               </p>
             )}
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="phone">Teléfono</Label>
-            <Input
-              id="phone"
-              placeholder="+51 999 000 000"
-              {...form.register('phone')}
-            />
-          </div>
           <div className="flex items-center justify-between rounded-lg border p-4">
             <div>
               <Label htmlFor="status">Estado</Label>
@@ -180,8 +212,16 @@ export function UserFormModal({
             <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit" className="bg-[#13944C] hover:bg-[#0f7a3d]">
-              {isEdit ? 'Guardar cambios' : 'Crear usuario'}
+            <Button
+              type="submit"
+              className="bg-[#13944C] hover:bg-[#0f7a3d]"
+              disabled={form.formState.isSubmitting}
+            >
+              {form.formState.isSubmitting
+                ? 'Guardando…'
+                : isEdit
+                  ? 'Guardar cambios'
+                  : 'Crear usuario'}
             </Button>
           </DialogFooter>
         </form>

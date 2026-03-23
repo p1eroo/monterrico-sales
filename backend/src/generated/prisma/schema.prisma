@@ -70,6 +70,7 @@ model Company {
   name          String
   razonSocial   String?
   ruc           String?
+  telefono      String?
   domain        String?
   rubro         String?
   tipo          String?

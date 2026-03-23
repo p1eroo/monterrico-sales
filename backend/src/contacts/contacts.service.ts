@@ -289,4 +289,73 @@ export class ContactsService {
       where: { id },
     });
   }
+
+  async addCompany(contactId: string, companyId: string, isPrimary = false) {
+    await this.findOne(contactId);
+    const company = await this.prisma.company.findUnique({
+      where: { id: companyId },
+    });
+    if (!company) {
+      throw new BadRequestException('La empresa no existe');
+    }
+    const existing = await this.prisma.companyContact.findUnique({
+      where: {
+        companyId_contactId: { companyId, contactId },
+      },
+    });
+    if (existing) {
+      throw new BadRequestException('El contacto ya está vinculado a esta empresa');
+    }
+    await this.prisma.companyContact.create({
+      data: { contactId, companyId, isPrimary },
+    });
+    return this.findOne(contactId);
+  }
+
+  async removeCompany(contactId: string, companyId: string) {
+    await this.findOne(contactId);
+    const deleted = await this.prisma.companyContact.deleteMany({
+      where: { contactId, companyId },
+    });
+    if (deleted.count === 0) {
+      throw new BadRequestException('El vínculo no existe');
+    }
+    return this.findOne(contactId);
+  }
+
+  async addLinkedContact(contactId: string, linkedContactId: string) {
+    if (contactId === linkedContactId) {
+      throw new BadRequestException('Un contacto no puede vincularse consigo mismo');
+    }
+    await this.findOne(contactId);
+    const linked = await this.prisma.contact.findUnique({
+      where: { id: linkedContactId },
+    });
+    if (!linked) {
+      throw new BadRequestException('El contacto a vincular no existe');
+    }
+    const existing = await this.prisma.contactContact.findUnique({
+      where: {
+        contactId_linkedId: { contactId, linkedId: linkedContactId },
+      },
+    });
+    if (existing) {
+      throw new BadRequestException('Los contactos ya están vinculados');
+    }
+    await this.prisma.contactContact.create({
+      data: { contactId, linkedId: linkedContactId },
+    });
+    return this.findOne(contactId);
+  }
+
+  async removeLinkedContact(contactId: string, linkedId: string) {
+    await this.findOne(contactId);
+    const deleted = await this.prisma.contactContact.deleteMany({
+      where: { contactId, linkedId },
+    });
+    if (deleted.count === 0) {
+      throw new BadRequestException('El vínculo no existe');
+    }
+    return this.findOne(contactId);
+  }
 }

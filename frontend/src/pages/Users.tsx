@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -16,7 +16,6 @@ import {
   Filter,
 } from 'lucide-react';
 import type { User } from '@/types';
-import { users as mockUsers } from '@/data/mock';
 import { INITIAL_ROLES } from '@/data/rbac';
 import type { RBACRole, PermissionKey } from '@/types';
 
@@ -62,6 +61,8 @@ import {
 } from '@/components/ui/dialog';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { formatDate } from '@/lib/formatters';
+import { api } from '@/lib/api';
+import { apiUserRecordToUser, type ApiUserRecord } from '@/lib/userRoleMap';
 
 const PAGE_SIZE = 10;
 const roleLabels: Record<string, string> = {
@@ -108,24 +109,53 @@ function formatLastActivity(isoStr?: string) {
 
 export default function UsersPage() {
   const navigate = useNavigate();
-  const [users, setUsers] = useState<User[]>(mockUsers);
+  const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<RBACRole[]>(INITIAL_ROLES);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('todos');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
-  const [sortBy] = useState<'name' | 'email' | 'joinedAt' | 'lastActivity'>('name');
+  const [sortBy] = useState<'name' | 'username' | 'joinedAt' | 'lastActivity'>('name');
   const [page, setPage] = useState(1);
   const [userFormOpen, setUserFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [createRoleOpen, setCreateRoleOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<RBACRole | null>(null);
+  const [listLoading, setListLoading] = useState(true);
+  const [listError, setListError] = useState<string | null>(null);
+
+  const loadUsers = useCallback(async () => {
+    setListLoading(true);
+    setListError(null);
+    try {
+      const list = await api<ApiUserRecord[]>('/users');
+      const mapped = list.map(apiUserRecordToUser);
+      setUsers(mapped);
+      setRoles((prev) =>
+        prev.map((r) => ({
+          ...r,
+          userCount: mapped.filter((u) => (u.roleId ?? 'r3') === r.id).length,
+        })),
+      );
+    } catch (e) {
+      setUsers([]);
+      setListError(e instanceof Error ? e.message : 'Error al cargar usuarios');
+    } finally {
+      setListLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadUsers();
+  }, [loadUsers]);
 
   const filteredUsers = useMemo(() => {
+    const q = search.toLowerCase();
     return users.filter((u) => {
       const matchSearch =
         !search ||
-        u.name.toLowerCase().includes(search.toLowerCase()) ||
-        u.email.toLowerCase().includes(search.toLowerCase());
+        u.name.toLowerCase().includes(q) ||
+        u.username.toLowerCase().includes(q) ||
+        (u.email?.toLowerCase().includes(q) ?? false);
       const matchRole =
         roleFilter === 'todos' || (u.roleId ?? 'r3') === roleFilter;
       const matchStatus =
@@ -137,7 +167,8 @@ export default function UsersPage() {
   const sortedUsers = useMemo(() => {
     return [...filteredUsers].sort((a, b) => {
       if (sortBy === 'name') return a.name.localeCompare(b.name);
-      if (sortBy === 'email') return a.email.localeCompare(b.email);
+      if (sortBy === 'username')
+        return a.username.localeCompare(b.username);
       if (sortBy === 'joinedAt') return b.joinedAt.localeCompare(a.joinedAt);
       if (sortBy === 'lastActivity') {
         const aVal = a.lastActivity ?? '';
@@ -154,48 +185,63 @@ export default function UsersPage() {
     page * PAGE_SIZE
   );
 
-  function handleUserSubmit(data: UserFormData) {
+  async function handleUserSubmit(data: UserFormData) {
     if (editingUser) {
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.id === editingUser.id
-            ? {
-                ...u,
-                name: data.name,
-                roleId: data.roleId,
-                status: data.status ? 'activo' : 'inactivo',
-                phone: data.phone ?? u.phone,
-              }
-            : u
-        )
-      );
-      toast.success('Usuario actualizado');
-    } else {
-      const newUser: User = {
-        id: `u${Date.now()}`,
-        name: data.name,
-        email: data.email,
-        role: 'asesor',
-        roleId: data.roleId,
-        phone: data.phone ?? '',
-        status: data.status ? 'activo' : 'inactivo',
-        contactsAssigned: 0,
-        opportunitiesActive: 0,
-        salesClosed: 0,
-        conversionRate: 0,
-        joinedAt: new Date().toISOString().slice(0, 10),
-      };
-      setUsers((prev) => [...prev, newUser]);
-      setRoles((prev) =>
-        prev.map((r) =>
-          r.id === data.roleId
-            ? { ...r, userCount: r.userCount + 1 }
-            : r
-        )
-      );
-      toast.success('Usuario creado');
+      try {
+        await api<ApiUserRecord>(`/users/${editingUser.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            name: data.name.trim(),
+            roleId: data.roleId,
+            status: data.status,
+          }),
+        });
+        await loadUsers();
+        toast.success('Usuario actualizado');
+        setEditingUser(null);
+      } catch (e) {
+        const msg =
+          e instanceof Error ? e.message : 'No se pudo actualizar el usuario';
+        toast.error(msg);
+        throw e;
+      }
+      return;
     }
-    setEditingUser(null);
+
+    try {
+      await api<ApiUserRecord>('/users', {
+        method: 'POST',
+        body: JSON.stringify({
+          username: data.username.trim(),
+          name: data.name.trim(),
+          password: data.password,
+          roleId: data.roleId,
+          status: data.status,
+        }),
+      });
+      await loadUsers();
+      toast.success('Usuario creado en el servidor');
+      setEditingUser(null);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'No se pudo crear el usuario';
+      toast.error(msg);
+      throw e;
+    }
+  }
+
+  async function patchUserStatus(u: User, nextActive: boolean) {
+    try {
+      await api<ApiUserRecord>(`/users/${u.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: nextActive }),
+      });
+      await loadUsers();
+      toast.success(nextActive ? 'Usuario activado' : 'Usuario desactivado');
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : 'No se pudo cambiar el estado',
+      );
+    }
   }
 
   function handleCreateRole(role: Omit<RBACRole, 'userCount'>) {
@@ -233,12 +279,25 @@ export default function UsersPage() {
         </TabsList>
 
         <TabsContent value="usuarios" className="space-y-4">
+          {listError && (
+            <Card className="border-destructive/40 bg-destructive/5">
+              <CardContent className="pt-6">
+                <p className="text-sm text-destructive">
+                  {listError}{' '}
+                  <span className="text-muted-foreground">
+                    (inicia sesión como admin o revisa que el backend esté en marcha)
+                  </span>
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
               <div className="relative flex-1 max-w-sm">
                 <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="Buscar por nombre o email..."
+                  placeholder="Buscar por nombre o usuario..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="pl-9"
@@ -281,13 +340,25 @@ export default function UsersPage() {
             </Button>
           </div>
 
-          {paginatedUsers.length === 0 ? (
+          {listLoading ? (
+            <Card>
+              <CardContent className="py-12">
+                <p className="text-center text-sm text-muted-foreground">
+                  Cargando usuarios…
+                </p>
+              </CardContent>
+            </Card>
+          ) : paginatedUsers.length === 0 ? (
             <Card>
               <CardContent className="py-12">
                 <EmptyState
                   icon={Users}
                   title="Sin usuarios"
-                  description="No hay usuarios que coincidan con los filtros."
+                  description={
+                    listError
+                      ? 'No se pudo obtener la lista.'
+                      : 'No hay usuarios que coincidan con los filtros.'
+                  }
                 />
               </CardContent>
             </Card>
@@ -361,23 +432,12 @@ export default function UsersPage() {
                               Editar
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => {
-                                setUsers((prev) =>
-                                  prev.map((us) =>
-                                    us.id === u.id
-                                      ? {
-                                          ...us,
-                                          status: us.status === 'activo' ? 'inactivo' : 'activo',
-                                        }
-                                      : us
-                                  )
-                                );
-                                toast.success(
-                                  u.status === 'activo'
-                                    ? 'Usuario desactivado'
-                                    : 'Usuario activado'
-                                );
-                              }}
+                              onClick={() =>
+                                void patchUserStatus(
+                                  u,
+                                  u.status !== 'activo',
+                                )
+                              }
                             >
                               {u.status === 'activo' ? (
                                 <>

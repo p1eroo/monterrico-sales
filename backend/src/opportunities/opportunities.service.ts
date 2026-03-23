@@ -24,6 +24,9 @@ const ETAPA_PROBABILITY: Record<string, number> = {
   inactivo: -5,
 };
 
+/** Estados de pipeline derivados de la etapa (no se usa `suspendida`). */
+type PipelineOpportunityStatus = 'abierta' | 'ganada' | 'perdida';
+
 const opportunityIncludeList = {
   contacts: {
     take: 1,
@@ -55,6 +58,26 @@ export class OpportunitiesService {
       return p;
     }
     return 'media';
+  }
+
+  /** Deriva estado comercial solo a partir de la etapa (abierta | ganada | perdida). */
+  private statusFromEtapa(etapa: string): PipelineOpportunityStatus {
+    if (['activo', 'cierre_ganado', 'firma_contrato'].includes(etapa)) {
+      return 'ganada';
+    }
+    if (['cierre_perdido', 'inactivo'].includes(etapa)) {
+      return 'perdida';
+    }
+    return 'abierta';
+  }
+
+  /** PATCH explícito de `status` sin cambiar etapa: solo abierta | ganada | perdida. */
+  private normalizeManualStatus(raw: string): PipelineOpportunityStatus {
+    const s = raw.trim().toLowerCase();
+    if (s === 'ganada' || s === 'perdida' || s === 'abierta') {
+      return s;
+    }
+    return 'abierta';
   }
 
   private async assertUserExists(id: string): Promise<void> {
@@ -105,7 +128,7 @@ export class OpportunitiesService {
 
     const probability = this.probabilityForEtapa(etapa, dto.probability);
     const priority = this.normalizePriority(dto.priority);
-    const status = dto.status?.trim() || 'abierta';
+    const status = this.statusFromEtapa(etapa);
     const expectedCloseDate =
       dto.expectedCloseDate?.trim() != null && dto.expectedCloseDate.trim() !== ''
         ? new Date(dto.expectedCloseDate.trim())
@@ -194,12 +217,13 @@ export class OpportunitiesService {
       if (dto.probability === undefined) {
         data.probability = this.probabilityForEtapa(etapa);
       }
+      data.status = this.statusFromEtapa(etapa);
     }
     if (dto.probability !== undefined) {
       data.probability = Math.round(dto.probability);
     }
-    if (dto.status !== undefined) {
-      data.status = dto.status.trim() || 'abierta';
+    if (dto.status !== undefined && dto.etapa === undefined) {
+      data.status = this.normalizeManualStatus(dto.status);
     }
     if (dto.expectedCloseDate !== undefined) {
       if (

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   DndContext,
   closestCorners,
@@ -35,11 +35,13 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Contact, Etapa, PipelineColumn } from '@/types';
-import { companyRubroLabels, users, priorityLabels, etapaLabels, activities, activityTypeLabels } from '@/data/mock';
+import { companyRubroLabels, etapaLabels, activities, activityTypeLabels } from '@/data/mock';
+import { useUsers } from '@/hooks/useUsers';
 import { useCRMStore } from '@/store/crmStore';
 import { getPrimaryCompany } from '@/lib/utils';
+import { api } from '@/lib/api';
+import { type ApiContactListRow, isLikelyContactCuid, mapApiContactRowToContact, contactUpdate } from '@/lib/contactApi';
 import { NewOpportunityFromPipelineDialog } from '@/components/shared/NewOpportunityFromPipelineDialog';
-import { PriorityBadge } from '@/components/shared/PriorityBadge';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -107,7 +109,6 @@ const activityTypeIconMap: Record<ActivityType, typeof Phone> = {
   reunion: Users,
   tarea: CheckSquare,
   correo: Mail,
-  seguimiento: RefreshCw,
   whatsapp: MessageSquare,
 };
 
@@ -229,7 +230,6 @@ function LeadCard({ lead, isDragging, overlay, onCardClick }: LeadCardProps) {
           <span className="text-sm font-bold text-foreground">
             {formatCurrencyShort(opportunity?.amount ?? lead.estimatedValue)}
           </span>
-          <PriorityBadge priority={lead.priority} />
         </div>
 
         <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -350,10 +350,6 @@ function CardDetailDialog({ contact, open, onOpenChange, onOpenChangeEtapa, onOp
             </p>
           </div>
 
-          {opportunity?.description && (
-            <p className="line-clamp-2 text-xs text-muted-foreground">{opportunity.description}</p>
-          )}
-
           {recentActivities.length > 0 && (
             <div>
               <p className="mb-2 text-xs font-medium text-muted-foreground">Actividades recientes</p>
@@ -400,10 +396,6 @@ function CardDetailDialog({ contact, open, onOpenChange, onOpenChangeEtapa, onOp
                 )}
               </>
             )}
-            <div>
-              <p className="text-[10px] text-muted-foreground">Prioridad</p>
-              <PriorityBadge priority={contact.priority} />
-            </div>
             <div>
               <p className="text-[10px] text-muted-foreground">Asignado</p>
               <p className="text-sm">{contact.assignedToName}</p>
@@ -505,28 +497,76 @@ function KanbanColumn({ column, colorClass, onCardClick }: KanbanColumnProps) {
 
 interface PipelineFilters {
   assignedTo: string;
-  priority: string;
   rubro: string;
   etapas: Etapa[];
 }
 
-const emptyFilters: PipelineFilters = { assignedTo: '', priority: '', rubro: '', etapas: [] };
+const emptyFilters: PipelineFilters = { assignedTo: '', rubro: '', etapas: [] };
 
 export default function Pipeline() {
-  const { contacts: allContacts, updateContact, getOpportunitiesByContactId } = useCRMStore();
+  const { contacts: storeContacts, updateContact, getOpportunitiesByContactId } = useCRMStore();
+  const { users, activeUsers } = useUsers();
+  const [apiRows, setApiRows] = useState<ApiContactListRow[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+
+  const loadApiContacts = useCallback(async () => {
+    try {
+      const list = await api<ApiContactListRow[]>('/contacts');
+      setApiRows(list);
+    } catch {
+      setApiRows([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadApiContacts();
+  }, [loadApiContacts]);
+
+  const allContacts = useMemo(() => {
+    const apiIds = new Set(apiRows.map((r) => r.id));
+    const fromApi = apiRows.map(mapApiContactRowToContact);
+    const fromStore = storeContacts.filter((c) => !apiIds.has(c.id));
+    return [...fromApi, ...fromStore];
+  }, [apiRows, storeContacts]);
   const [newOpportunityOpen, setNewOpportunityOpen] = useState(false);
   const [filters, setFilters] = useState<PipelineFilters>(emptyFilters);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [changeEtapaOpen, setChangeEtapaOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
 
-  const activeFilterCount = [filters.assignedTo, filters.priority, filters.rubro].filter(Boolean).length + (filters.etapas.length > 0 ? 1 : 0);
+  async function applyEtapaUpdate(contactId: string, etapa: Etapa) {
+    if (isLikelyContactCuid(contactId)) {
+      try {
+        await contactUpdate(contactId, { etapa });
+        await loadApiContacts();
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Error al actualizar etapa');
+      }
+    } else {
+      updateContact(contactId, { etapa });
+    }
+  }
+
+  async function applyAssignUpdate(contactId: string, assignedTo: string) {
+    const newName = users.find((u) => u.id === assignedTo)?.name ?? 'Sin asignar';
+    if (isLikelyContactCuid(contactId)) {
+      try {
+        await contactUpdate(contactId, { assignedTo });
+        await loadApiContacts();
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Error al asignar');
+        return;
+      }
+    } else {
+      updateContact(contactId, { assignedTo, assignedToName: newName });
+    }
+  }
+
+  const activeFilterCount = [filters.assignedTo, filters.rubro].filter(Boolean).length + (filters.etapas.length > 0 ? 1 : 0);
 
   const filteredContacts = useMemo(() => {
     return allContacts.filter((c) => {
       if (filters.assignedTo && c.assignedTo !== filters.assignedTo) return false;
-      if (filters.priority && c.priority !== filters.priority) return false;
       if (filters.etapas.length > 0 && !filters.etapas.includes(c.etapa)) return false;
       if (filters.rubro) {
         const company = getPrimaryCompany(c);
@@ -575,7 +615,7 @@ export default function Pipeline() {
 
     if (!activeColumn || !overColumn || activeColumn === overColumn) return;
 
-    updateContact(activeContactId, { etapa: overColumn });
+    void applyEtapaUpdate(activeContactId, overColumn);
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -592,7 +632,7 @@ export default function Pipeline() {
 
     if (!overColumn) return;
 
-    updateContact(activeContactId, { etapa: overColumn });
+    void applyEtapaUpdate(activeContactId, overColumn);
   }
 
   return (
@@ -638,23 +678,8 @@ export default function Pipeline() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="_all">Todos</SelectItem>
-                      {users.filter((u) => u.status === 'activo').map((u) => (
+                      {activeUsers.map((u) => (
                         <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-xs">Prioridad</Label>
-                  <Select value={filters.priority} onValueChange={(v) => setFilters((f) => ({ ...f, priority: v === '_all' ? '' : v }))}>
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="Todas" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="_all">Todas</SelectItem>
-                      {Object.entries(priorityLabels).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>{label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -766,9 +791,10 @@ export default function Pipeline() {
             entityName={getOpportunitiesByContactId(selectedContact.id)[0]?.title ?? selectedContact.name}
             currentEtapa={freshContact.etapa}
             onEtapaChange={(newEtapa) => {
-              updateContact(selectedContact.id, { etapa: newEtapa as Etapa });
-              setChangeEtapaOpen(false);
-              toast.success('Etapa actualizada');
+              void applyEtapaUpdate(selectedContact.id, newEtapa as Etapa).then(() => {
+                setChangeEtapaOpen(false);
+                toast.success('Etapa actualizada');
+              });
             }}
           />
           <AssignDialog
@@ -777,10 +803,10 @@ export default function Pipeline() {
             entityName={getOpportunitiesByContactId(selectedContact.id)[0]?.title ?? selectedContact.name}
             currentAssigneeId={freshContact.assignedTo}
             onAssignChange={(newAssigneeId) => {
-              const newName = users.find((u) => u.id === newAssigneeId)?.name ?? 'Sin asignar';
-              updateContact(selectedContact.id, { assignedTo: newAssigneeId, assignedToName: newName });
-              setAssignOpen(false);
-              toast.success('Asesor asignado');
+              void applyAssignUpdate(selectedContact.id, newAssigneeId).then(() => {
+                setAssignOpen(false);
+                toast.success('Asesor asignado');
+              });
             }}
           />
         </>

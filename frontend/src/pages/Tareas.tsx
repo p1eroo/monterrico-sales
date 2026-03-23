@@ -7,7 +7,9 @@ import {
   RefreshCw, Check, Pencil, Trash2,
 } from 'lucide-react';
 import type { Activity, ActivityType, ActivityStatus } from '@/types';
-import { activities, users, contacts } from '@/data/mock';
+import { contacts } from '@/data/mock';
+import { useUsers } from '@/hooks/useUsers';
+import { useActivities } from '@/hooks/useActivities';
 import {
   format, isBefore, startOfDay, addDays, isWithinInterval,
 } from 'date-fns';
@@ -56,7 +58,6 @@ const activityIcons: Record<ActivityType, typeof Phone> = {
   reunion: Users,
   tarea: CheckSquare,
   correo: Mail,
-  seguimiento: Clock,
   whatsapp: MessageCircle,
 };
 
@@ -65,7 +66,6 @@ const activityIconColors: Record<ActivityType, string> = {
   reunion: 'bg-purple-100 text-purple-600',
   tarea: 'bg-emerald-100 text-emerald-600',
   correo: 'bg-amber-100 text-amber-600',
-  seguimiento: 'bg-cyan-100 text-cyan-600',
   whatsapp: 'bg-green-100 text-green-600',
 };
 
@@ -101,7 +101,25 @@ function TaskStatusBadge({ status }: { status: ActivityStatus }) {
   );
 }
 
+const TASK_TYPES = ['tarea', 'llamada', 'reunion', 'correo'];
+
 export default function TareasPage() {
+  const { users } = useUsers();
+  const {
+    activities,
+    loading: activitiesLoading,
+    error: activitiesError,
+    createActivity,
+    updateActivity,
+    deleteActivity,
+    refresh: refreshActivities,
+  } = useActivities();
+
+  const allTasks = useMemo(
+    () => activities.filter((a) => TASK_TYPES.includes(a.type)),
+    [activities],
+  );
+
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('todos');
   const [advisorFilter, setAdvisorFilter] = useState('todos');
@@ -116,13 +134,6 @@ export default function TareasPage() {
   const [selectedTaskDetail, setSelectedTaskDetail] = useState<Activity | null>(null);
   const [taskDetailOpen, setTaskDetailOpen] = useState(false);
   const [taskComments, setTaskComments] = useState<TaskDetailComment[]>([]);
-
-  const initialTasks = useMemo(
-    () => activities.filter((a) => ['tarea', 'llamada', 'reunion', 'correo'].includes(a.type)),
-    [],
-  );
-  const [tasks, setTasks] = useState<Activity[]>(initialTasks);
-  const allTasks = tasks;
 
   const stats = useMemo(() => {
     const total = allTasks.length;
@@ -244,7 +255,7 @@ export default function TareasPage() {
       dueDate: t.dueDate,
       startDate: t.startDate,
       startTime: t.startTime,
-      createdAt: tasks.find((a) => a.id === t.id)?.createdAt ?? new Date().toISOString().slice(0, 10),
+      createdAt: allTasks.find((a) => a.id === t.id)?.createdAt ?? new Date().toISOString().slice(0, 10),
     };
   }
 
@@ -267,25 +278,24 @@ export default function TareasPage() {
     );
   }, []);
 
-  function handleTaskToggle(taskId: string) {
+  async function handleTaskToggle(taskId: string) {
     const task = allTasks.find((t) => t.id === taskId);
     if (!task) return;
 
-    if (task.status === 'completada') {
-      setTasks((prev) =>
-        prev.map((t) => (t.id === taskId ? { ...t, status: 'pendiente' as ActivityStatus } : t)),
-      );
-      return;
-    }
-
-    setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, status: 'completada' as ActivityStatus } : t)),
-    );
-    toast.success('Tarea completada');
-
-    if (['llamada', 'reunion', 'correo'].includes(task.type)) {
-      setCompletedTask(task);
-      setActivityFromTaskOpen(true);
+    const newStatus = task.status === 'completada' ? 'pendiente' : 'completada';
+    try {
+      const payload: { status: string; completedAt?: string } = { status: newStatus };
+      if (newStatus === 'completada') {
+        payload.completedAt = new Date().toISOString().slice(0, 10);
+      }
+      await updateActivity(taskId, payload);
+      toast.success(newStatus === 'completada' ? 'Tarea completada' : 'Tarea reactivada');
+      if (newStatus === 'completada' && ['llamada', 'reunion', 'correo'].includes(task.type)) {
+        setCompletedTask({ ...task, status: 'completada' });
+        setActivityFromTaskOpen(true);
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al actualizar tarea');
     }
   }
 
@@ -293,35 +303,44 @@ export default function TareasPage() {
     toast.info(`Reprogramando tarea "${allTasks.find((a) => a.id === id)?.title}"`);
   }
 
-  function handleDelete(id: string) {
-    toast.success(`Tarea "${allTasks.find((a) => a.id === id)?.title}" eliminada`);
+  async function handleDelete(id: string) {
+    const title = allTasks.find((a) => a.id === id)?.title;
+    try {
+      await deleteActivity(id);
+      toast.success(`Tarea "${title}" eliminada`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al eliminar tarea');
+    }
   }
 
-  function handleTaskFormSave(data: TaskFormResult) {
+  async function handleTaskFormSave(data: TaskFormResult): Promise<void> {
     const contactAssoc = data.associations?.find((a) => a.type === 'contacto');
-    const empresaAssoc = data.associations?.find((a) => a.type === 'empresa');
     const negocioAssoc = data.associations?.find((a) => a.type === 'negocio');
-    const contactName = contactAssoc
-      ? (empresaAssoc ? `${contactAssoc.name} - ${empresaAssoc.name}` : contactAssoc.name)
-      : undefined;
-    const newTask: Activity = {
-      id: `a-${Date.now()}`,
-      type: (data.type ?? 'tarea') as Activity['type'],
-      title: data.title,
-      description: '',
-      contactId: contactAssoc?.id,
-      contactName,
-      opportunityId: negocioAssoc?.id,
-      assignedTo: data.assignee,
-      assignedToName: data.assigneeName,
-      status: data.status as ActivityStatus,
-      dueDate: data.dueDate,
-      startDate: data.startDate,
-      startTime: data.startTime,
-      createdAt: new Date().toISOString().slice(0, 10),
-    };
-    setTasks((prev) => [newTask, ...prev]);
-    setNewTaskOpen(false);
+    const empresaAssoc = data.associations?.find((a) => a.type === 'empresa');
+    const companyId = empresaAssoc?.id && /^c[a-z0-9]+$/i.test(empresaAssoc.id) ? empresaAssoc.id : undefined;
+
+    if (!contactAssoc && !companyId && !negocioAssoc) {
+      toast.error('Debes vincular la tarea a un contacto, empresa u oportunidad');
+      return;
+    }
+    try {
+      await createActivity({
+        type: (data.type ?? 'tarea') as string,
+        title: data.title,
+        description: '',
+        assignedTo: data.assignee,
+        dueDate: data.dueDate,
+        startDate: data.startDate,
+        startTime: data.startTime,
+        contactId: contactAssoc?.id,
+        companyId,
+        opportunityId: negocioAssoc?.id,
+      });
+      setNewTaskOpen(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al crear tarea');
+      throw e;
+    }
   }
 
   const statsCards = [
@@ -334,11 +353,25 @@ export default function TareasPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Tareas" description="Gestiona tus tareas pendientes y seguimientos">
-        <Button onClick={() => setNewTaskOpen(true)}>
-          <Plus /> Nueva Tarea
-        </Button>
+      <PageHeader title="Tareas" description="Gestiona tus tareas pendientes">
+        <div className="flex items-center gap-2">
+          {activitiesLoading && (
+            <span className="text-sm text-muted-foreground">Cargando…</span>
+          )}
+          <Button onClick={() => setNewTaskOpen(true)} disabled={activitiesLoading}>
+            <Plus /> Nueva Tarea
+          </Button>
+        </div>
       </PageHeader>
+
+      {activitiesError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {activitiesError}
+          <Button variant="link" size="sm" className="ml-2 h-auto p-0" onClick={() => refreshActivities()}>
+            Reintentar
+          </Button>
+        </div>
+      )}
 
       {/* Stats cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
@@ -706,9 +739,35 @@ export default function TareasPage() {
         task={selectedTaskDetail ? activityToTaskDetail(selectedTaskDetail) : null}
         statusLabels={tareasStatusLabels}
         statusColors={tareasStatusColors}
-        tasks={tasks.map(activityToTaskDetail)}
-        onTasksChange={(taskDetails) => {
-          setTasks(taskDetails.map(taskDetailToActivity));
+        tasks={allTasks.map(activityToTaskDetail)}
+        onTasksChange={async (taskDetails) => {
+          const current = allTasks.map(activityToTaskDetail);
+          const newIds = new Set(taskDetails.map((t) => t.id));
+          const deleted = current.filter((t) => !newIds.has(t.id));
+          for (const t of deleted) {
+            try {
+              await deleteActivity(t.id);
+            } catch (e) {
+              toast.error(e instanceof Error ? e.message : 'Error al eliminar');
+            }
+          }
+          const changed = taskDetails.find(
+            (nd) => {
+              const oldTask = current.find((c) => c.id === nd.id);
+              return oldTask && oldTask.status !== nd.status;
+            },
+          );
+          if (changed) {
+            try {
+              const payload: { status: string; completedAt?: string } = { status: changed.status };
+              if (changed.status === 'completada') {
+                payload.completedAt = new Date().toISOString().slice(0, 10);
+              }
+              await updateActivity(changed.id, payload);
+            } catch (e) {
+              toast.error(e instanceof Error ? e.message : 'Error al actualizar');
+            }
+          }
         }}
         taskComments={taskComments}
         onTaskCommentsChange={setTaskComments}
@@ -716,7 +775,7 @@ export default function TareasPage() {
         companies={companiesFromContacts}
         opportunities={opportunities}
         onCompleteWithActivity={(t) => {
-          const act = tasks.find((a) => a.id === t.id);
+          const act = allTasks.find((a) => a.id === t.id);
           if (act) {
             setCompletedTask(act);
             setTaskDetailOpen(false);
@@ -737,14 +796,14 @@ export default function TareasPage() {
               setActivityFromTaskOpen(open);
               if (!open) setCompletedTask(null);
             }}
-            onSave={(data) => {
+            onSave={async (data) => {
               const summary = data.description?.trim() || '';
               if (summary && completedTask) {
-                setTasks((prev) =>
-                  prev.map((t) =>
-                    t.id === completedTask.id ? { ...t, description: summary } : t
-                  )
-                );
+                try {
+                  await updateActivity(completedTask.id, { description: summary });
+                } catch (e) {
+                  toast.error(e instanceof Error ? e.message : 'Error al guardar');
+                }
               }
               setActivityFromTaskOpen(false);
               setLinkedTaskPromptOpen(true);
@@ -771,7 +830,7 @@ export default function TareasPage() {
       >
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Crear tarea de seguimiento</DialogTitle>
+            <DialogTitle>Crear tarea vinculada</DialogTitle>
             <DialogDescription>
               ¿Deseas crear una nueva tarea vinculada a esta actividad?
             </DialogDescription>
@@ -808,7 +867,7 @@ export default function TareasPage() {
           if (!open) setNewTaskDefaultTitle('');
         }}
         title="Nueva Tarea"
-        description="Crea una nueva tarea para dar seguimiento."
+        description="Crea una nueva tarea."
         contacts={contacts}
         companies={companiesFromContacts}
         opportunities={opportunities}

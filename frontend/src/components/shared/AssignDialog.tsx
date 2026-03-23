@@ -1,4 +1,4 @@
-import { users } from '@/data/mock';
+import { useUsers } from '@/hooks/useUsers';
 import { SelectDialog } from './SelectDialog';
 
 interface AssignDialogProps {
@@ -16,9 +16,8 @@ export function AssignDialog({
   currentAssigneeId,
   onAssignChange,
 }: AssignDialogProps) {
-  const options = users
-    .filter((u) => u.status === 'activo')
-    .map((u) => ({ value: u.id, label: u.name }));
+  const { activeUsers } = useUsers();
+  const options = activeUsers.map((u) => ({ value: u.id, label: u.name }));
 
   return (
     <SelectDialog

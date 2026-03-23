@@ -128,6 +128,23 @@ export const INITIAL_ROLES: RBACRole[] = [
   },
 ];
 
+/** Convierte el rol guardado en User (API/store) al templateId de RBAC. */
+export function roleStringToTemplateId(role: string): string {
+  const r = role.trim().toLowerCase();
+  if (r === 'admin' || r === 'administrador') return 'admin';
+  if (r === 'supervisor' || r === 'gerente') return 'supervisor';
+  if (r === 'asesor') return 'asesor';
+  if (
+    r === 'solo_lectura' ||
+    r === 'solo lectura' ||
+    r === 'sololectura' ||
+    r === 'lectura'
+  ) {
+    return 'solo_lectura';
+  }
+  return 'asesor';
+}
+
 export function getTemplatePermissions(templateId: string): Record<PermissionKey, boolean> {
   switch (templateId) {
     case 'admin':

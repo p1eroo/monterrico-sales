@@ -1,8 +1,10 @@
-import { useState } from 'react';
-import { Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Check, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { factilizaApi } from '@/lib/factilizaApi';
 import type { Etapa, CompanyRubro, CompanyTipo, ContactSource } from '@/types';
-import { companyRubroLabels, companyTipoLabels, etapaLabels, contactSourceLabels, users } from '@/data/mock';
+import { companyRubroLabels, companyTipoLabels, etapaLabels, contactSourceLabels } from '@/data/mock';
+import { useUsers } from '@/hooks/useUsers';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,6 +52,10 @@ interface NewCompanyWizardProps {
   onSubmit: (data: NewCompanyData) => void;
   title?: string;
   description?: string;
+  /** Valores iniciales (p. ej. desde el wizard de contacto) */
+  defaultValues?: Partial<NewCompanyData>;
+  /** Texto del botón final (default: Crear Empresa) */
+  confirmButtonLabel?: string;
 }
 
 const steps = [
@@ -58,15 +64,57 @@ const steps = [
   { label: 'Oportunidad' },
 ];
 
+function mergeCompanyForm(defaults?: Partial<NewCompanyData>): NewCompanyData {
+  return { ...emptyForm, ...defaults };
+}
+
 export function NewCompanyWizard({
   open,
   onOpenChange,
   onSubmit,
   title = 'Nueva Empresa',
   description = 'Registra una nueva empresa en el sistema.',
+  defaultValues,
+  confirmButtonLabel = 'Crear Empresa',
 }: NewCompanyWizardProps) {
   const [step, setStep] = useState(0);
-  const [form, setForm] = useState<NewCompanyData>({ ...emptyForm });
+  const [form, setForm] = useState<NewCompanyData>(() => mergeCompanyForm(defaultValues));
+  const [rucLookupLoading, setRucLookupLoading] = useState(false);
+  const { activeUsers } = useUsers();
+
+  async function handleRucLookup(rucValue?: string) {
+    const ruc = (rucValue ?? form.ruc).trim().replace(/\D/g, '');
+    if (!ruc || ruc.length !== 11) {
+      toast.error('Ingresa un RUC válido de 11 dígitos');
+      return;
+    }
+    setRucLookupLoading(true);
+    try {
+      const data = await factilizaApi.consultarRuc(ruc);
+      setForm((s) => ({
+        ...s,
+        razonSocial: data.nombre_o_razon_social ?? s.razonSocial,
+        nombreComercial: data.nombre_o_razon_social ?? s.nombreComercial,
+        departamento: data.departamento ?? s.departamento,
+        provincia: data.provincia ?? s.provincia,
+        distrito: data.distrito ?? s.distrito,
+        direccion: data.direccion_completa ?? data.direccion ?? s.direccion,
+      }));
+      toast.success('Datos de empresa cargados correctamente');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'No se pudo consultar el RUC');
+    } finally {
+      setRucLookupLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    setForm(mergeCompanyForm(defaultValues));
+    setStep(0);
+    // defaultValues se fija al abrir desde el padre; no incluir en deps para evitar resets por referencia nueva
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   function handleOpenChange(value: boolean) {
     onOpenChange(value);
@@ -81,6 +129,12 @@ export function NewCompanyWizard({
       toast.error('RUC y Nombre comercial son obligatorios');
       return;
     }
+    if (step === 1) {
+      setForm((s) => ({
+        ...s,
+        nombreNegocio: s.nombreNegocio.trim() || s.nombreComercial.trim(),
+      }));
+    }
     setStep((s) => s + 1);
   }
 
@@ -89,7 +143,8 @@ export function NewCompanyWizard({
       toast.error('RUC y Nombre comercial son obligatorios');
       return;
     }
-    onSubmit(form);
+    const nombreNegocio = form.nombreNegocio.trim() || form.nombreComercial.trim();
+    onSubmit({ ...form, nombreNegocio });
     setStep(0);
     setForm({ ...emptyForm });
     onOpenChange(false);
@@ -139,7 +194,24 @@ export function NewCompanyWizard({
             <div className="grid gap-4 grid-cols-2">
               <div className="space-y-2">
                 <Label>RUC <span className="text-destructive">*</span></Label>
-                <Input placeholder="20XXXXXXXXX" maxLength={11} value={form.ruc} onChange={(e) => set('ruc', e.target.value)} />
+                <div className="relative">
+                  <Input
+                    placeholder="20XXXXXXXXX — Enter para buscar"
+                    maxLength={11}
+                    value={form.ruc}
+                    onChange={(e) => set('ruc', e.target.value)}
+                    onKeyDown={(e) => {
+                      const val = (e.currentTarget as HTMLInputElement).value;
+                      if (e.key === 'Enter' && val.trim().replace(/\D/g, '').length === 11) {
+                        e.preventDefault();
+                        handleRucLookup(val);
+                      }
+                    }}
+                  />
+                  {rucLookupLoading && (
+                    <Loader2 className="absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+                  )}
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>Razón social</Label>
@@ -209,9 +281,9 @@ export function NewCompanyWizard({
                 <Input type="email" placeholder="contacto@empresa.com" value={form.correo} onChange={(e) => set('correo', e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>Origen del contacto</Label>
+                <Label>Fuente</Label>
                 <Select value={form.origenLead} onValueChange={(v) => set('origenLead', v as ContactSource)}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar origen" /></SelectTrigger>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar fuente" /></SelectTrigger>
                   <SelectContent>
                     {Object.entries(contactSourceLabels).map(([key, label]) => (
                       <SelectItem key={key} value={key}>{label}</SelectItem>
@@ -224,7 +296,7 @@ export function NewCompanyWizard({
                 <Select value={form.propietario} onValueChange={(v) => set('propietario', v)}>
                   <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar asesor" /></SelectTrigger>
                   <SelectContent>
-                    {users.filter((u) => u.status === 'activo').map((u) => (
+                    {activeUsers.map((u) => (
                       <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -288,7 +360,7 @@ export function NewCompanyWizard({
               </Button>
             ) : (
               <Button type="button" className="bg-[#13944C] hover:bg-[#0f7a3d]" onClick={handleSubmit}>
-                Crear Empresa
+                {confirmButtonLabel}
               </Button>
             )}
           </div>

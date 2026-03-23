@@ -4,7 +4,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCRMStore } from '@/store/crmStore';
-import { users } from '@/data/mock';
+import { useUsers } from '@/hooks/useUsers';
 import type { Contact, Opportunity, TaskAssociation } from '@/types';
 
 import { Button } from '@/components/ui/button';
@@ -65,6 +65,7 @@ export function QuickActionsWithDialogs({
   contactId,
 }: QuickActionsWithDialogsProps) {
   const { contacts: storeContacts } = useCRMStore();
+  const { activeUsers } = useUsers();
   const [activeDialog, setActiveDialog] = useState<string | null>(null);
 
   const [activityDialogType, setActivityDialogType] = useState<'llamada' | 'reunion' | 'correo' | null>(null);
@@ -104,7 +105,7 @@ export function QuickActionsWithDialogs({
     const dueDate = activityDialogType === 'reunion' && data.dateTime
       ? data.dateTime.slice(0, 10)
       : data.date || new Date().toISOString().slice(0, 10);
-    const defaultAssignee = users[0];
+    const defaultAssignee = activeUsers[0];
     onActivityCreated?.({
       id: `act-${Date.now()}`,
       type: activityDialogType,

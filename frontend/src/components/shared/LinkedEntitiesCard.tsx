@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,7 +8,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus } from 'lucide-react';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { Plus, Link2Off } from 'lucide-react';
 
 export interface LinkedEntitiesCardProps<T> {
   title: string;
@@ -18,9 +20,14 @@ export interface LinkedEntitiesCardProps<T> {
   createLabel?: string;
   onCreate?: () => void;
   onAddExisting?: () => void;
+  /** Si se proporciona, muestra ícono desvincular en la última fila de cada item */
+  onRemove?: (item: T) => void;
+  /** Nombre del item para el aviso de confirmación (ej: "Minera Los Andes SAC") */
+  getUnlinkLabel?: (item: T) => string;
   getItemKey: (item: T, index?: number) => string;
   onItemClick: (item: T) => void;
-  renderItem: (item: T) => React.ReactNode;
+  /** Segundo parámetro: botón desvincular para colocar en la última fila (cuando hay onRemove) */
+  renderItem: (item: T, unlinkButton?: React.ReactNode) => React.ReactNode;
 }
 
 /**
@@ -36,11 +43,25 @@ export function LinkedEntitiesCard<T>({
   createLabel = 'Crear nuevo',
   onCreate,
   onAddExisting,
+  onRemove,
+  getUnlinkLabel,
   getItemKey,
   onItemClick,
   renderItem,
 }: LinkedEntitiesCardProps<T>) {
+  const [pendingUnlink, setPendingUnlink] = useState<T | null>(null);
   const hasActions = onCreate || onAddExisting;
+
+  function handleUnlinkClick(item: T) {
+    setPendingUnlink(item);
+  }
+
+  function handleConfirmUnlink() {
+    if (pendingUnlink && onRemove) {
+      onRemove(pendingUnlink);
+      setPendingUnlink(null);
+    }
+  }
 
   return (
     <Card className="gap-2">
@@ -71,15 +92,33 @@ export function LinkedEntitiesCard<T>({
           </div>
         ) : (
           <div className="space-y-2.5">
-            {items.slice(0, maxItems).map((item, idx) => (
-              <div
-                key={getItemKey(item, idx)}
-                className="rounded-xl border bg-card p-3.5 hover:shadow-sm transition-shadow cursor-pointer"
-                onClick={() => onItemClick(item)}
-              >
-                {renderItem(item)}
-              </div>
-            ))}
+            {items.slice(0, maxItems).map((item, idx) => {
+              const unlinkBtn = onRemove ? (
+                <div
+                  className="shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                  title="Desvincular"
+                >
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 w-7 shrink-0 p-0 text-muted-foreground hover:text-destructive"
+                    onClick={() => handleUnlinkClick(item)}
+                  >
+                    <Link2Off className="size-4" />
+                  </Button>
+                </div>
+              ) : undefined;
+              return (
+                <div
+                  key={getItemKey(item, idx)}
+                  className="rounded-xl border bg-card p-3.5 hover:shadow-sm transition-shadow cursor-pointer"
+                  onClick={() => onItemClick(item)}
+                >
+                  {renderItem(item, unlinkBtn)}
+                </div>
+              );
+            })}
             {items.length > maxItems && (
               <p className="text-[11px] text-muted-foreground text-center pt-1">
                 +{items.length - maxItems} más
@@ -88,6 +127,21 @@ export function LinkedEntitiesCard<T>({
           </div>
         )}
       </CardContent>
+
+      <ConfirmDialog
+        open={pendingUnlink !== null}
+        onOpenChange={(open) => !open && setPendingUnlink(null)}
+        title="Desvincular"
+        description={
+          pendingUnlink
+            ? getUnlinkLabel
+              ? `¿Estás seguro de que deseas desvincular "${getUnlinkLabel(pendingUnlink)}"?`
+              : '¿Estás seguro de que deseas desvincular este elemento?'
+            : ''
+        }
+        onConfirm={handleConfirmUnlink}
+        variant="destructive"
+      />
     </Card>
   );
 }

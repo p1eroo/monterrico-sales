@@ -21,7 +21,10 @@ interface LinkExistingDialogProps {
   onOpenChange: (open: boolean) => void;
   title: string;
   searchPlaceholder: string;
-  leadName: string;
+  /** Nombre de la entidad a la que se vinculan los registros (texto descriptivo) */
+  leadName?: string;
+  /** Alias de `leadName` (misma finalidad; usado en varias pantallas) */
+  contactName?: string;
   items: LinkExistingItem[];
   selectedIds: string[];
   onSelectionChange: (ids: string[]) => void;
@@ -29,6 +32,12 @@ interface LinkExistingDialogProps {
   searchValue: string;
   onSearchChange: (value: string) => void;
   emptyMessage?: string;
+  /** `single`: solo un ítem a la vez (p. ej. empresa en nuevo contacto) */
+  selectionMode?: 'single' | 'multiple';
+  /** Texto del botón principal (default: Vincular) */
+  confirmLabel?: string;
+  /** p. ej. z-index cuando el diálogo se abre encima de otro modal */
+  contentClassName?: string;
 }
 
 export function LinkExistingDialog({
@@ -37,6 +46,7 @@ export function LinkExistingDialog({
   title,
   searchPlaceholder,
   leadName,
+  contactName,
   items,
   selectedIds,
   onSelectionChange,
@@ -44,8 +54,22 @@ export function LinkExistingDialog({
   searchValue,
   onSearchChange,
   emptyMessage = 'No hay registros disponibles para vincular.',
+  selectionMode = 'multiple',
+  confirmLabel = 'Vincular',
+  contentClassName,
 }: LinkExistingDialogProps) {
+  const displayLead =
+    (leadName?.trim() || contactName?.trim() || 'este registro');
+
   const toggleSelection = (id: string) => {
+    if (selectionMode === 'single') {
+      if (selectedIds.includes(id)) {
+        onSelectionChange([]);
+      } else {
+        onSelectionChange([id]);
+      }
+      return;
+    }
     if (selectedIds.includes(id)) {
       onSelectionChange(selectedIds.filter((i) => i !== id));
     } else {
@@ -61,14 +85,16 @@ export function LinkExistingDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg gap-0 p-0">
+      <DialogContent className={cn('max-w-lg gap-0 p-0', contentClassName)}>
         <DialogHeader className="px-6 pt-6 pb-4">
           <DialogTitle className="flex items-center gap-2 text-left">
             <Link2 className="size-5 text-[#13944C]" />
             {title}
           </DialogTitle>
           <DialogDescription className="text-left">
-            Selecciona los registros que deseas vincular a {leadName}.
+            {selectionMode === 'single'
+              ? `Selecciona el registro que deseas vincular a ${displayLead}.`
+              : `Selecciona los registros que deseas vincular a ${displayLead}.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -140,7 +166,7 @@ export function LinkExistingDialog({
               onClick={onConfirm}
               disabled={selectedIds.length === 0}
             >
-              Vincular
+              {confirmLabel}
             </Button>
           </div>
         </DialogFooter>

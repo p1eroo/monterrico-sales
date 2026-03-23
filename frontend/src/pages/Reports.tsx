@@ -3,7 +3,7 @@ import type { DateRange } from 'react-day-picker';
 import {
   leadsBySourceData, salesByMonthData, performanceByAdvisor, opportunitiesByStageData,
 } from '@/data/mock';
-import { users } from '@/data/mock';
+import { useUsers } from '@/hooks/useUsers';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -50,13 +50,13 @@ const conversionData = [
 ];
 
 const activitiesByTypeData = [
-  { name: 'Sep', llamadas: 25, reuniones: 12, correos: 18, seguimientos: 15 },
-  { name: 'Oct', llamadas: 30, reuniones: 15, correos: 22, seguimientos: 18 },
-  { name: 'Nov', llamadas: 28, reuniones: 10, correos: 20, seguimientos: 14 },
-  { name: 'Dic', llamadas: 35, reuniones: 18, correos: 25, seguimientos: 20 },
-  { name: 'Ene', llamadas: 22, reuniones: 14, correos: 19, seguimientos: 16 },
-  { name: 'Feb', llamadas: 32, reuniones: 16, correos: 24, seguimientos: 19 },
-  { name: 'Mar', llamadas: 20, reuniones: 8, correos: 15, seguimientos: 12 },
+  { name: 'Sep', llamadas: 25, reuniones: 12, correos: 18 },
+  { name: 'Oct', llamadas: 30, reuniones: 15, correos: 22 },
+  { name: 'Nov', llamadas: 28, reuniones: 10, correos: 20 },
+  { name: 'Dic', llamadas: 35, reuniones: 18, correos: 25 },
+  { name: 'Ene', llamadas: 22, reuniones: 14, correos: 19 },
+  { name: 'Feb', llamadas: 32, reuniones: 16, correos: 24 },
+  { name: 'Mar', llamadas: 20, reuniones: 8, correos: 15 },
 ];
 
 const followUpsData = [
@@ -89,6 +89,7 @@ function handleExport(format: string) {
 type DateRangePreset = '7d' | '1m' | '3m' | '1y' | 'custom';
 
 export default function Reports() {
+  const { activeUsers } = useUsers();
   const [dateRange, setDateRange] = useState<DateRangePreset>('3m');
   const [customRange, setCustomRange] = useState<DateRange | undefined>();
   const [advisorFilter, setAdvisorFilter] = useState('all');
@@ -136,7 +137,7 @@ export default function Reports() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos los asesores</SelectItem>
-              {users.filter((u) => u.status === 'activo').map((u) => (
+              {activeUsers.map((u) => (
                 <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
               ))}
             </SelectContent>
@@ -451,24 +452,17 @@ export default function Reports() {
                 <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
                 <Bar dataKey="llamadas" name="Llamadas" stackId="a" fill="#13944C" />
                 <Bar dataKey="reuniones" name="Reuniones" stackId="a" fill="#3b82f6" />
-                <Bar dataKey="correos" name="Correos" stackId="a" fill="#f59e0b" />
-                <Bar
-                  dataKey="seguimientos"
-                  name="Seguimientos"
-                  stackId="a"
-                  fill="#8b5cf6"
-                  radius={[4, 4, 0, 0]}
-                />
+                <Bar dataKey="correos" name="Correos" stackId="a" fill="#f59e0b" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        {/* 8. Seguimientos - LineChart */}
+        {/* 8. Tareas - LineChart */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Seguimientos</CardTitle>
-            <CardDescription>Comparativa de seguimientos completados vs pendientes</CardDescription>
+            <CardTitle className="text-base">Tareas</CardTitle>
+            <CardDescription>Comparativa de tareas completadas vs pendientes</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>

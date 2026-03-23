@@ -1,12 +1,13 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   Building2, Users, DollarSign, Globe, Briefcase, CalendarDays,
-  Edit, RefreshCw, UserPlus, Plus, FileArchive,
+  Edit, Phone, RefreshCw, UserPlus, Plus, FileArchive, Loader2,
 } from 'lucide-react';
 import { useCRMStore } from '@/store/crmStore';
 import { useCompaniesStore } from '@/store/companiesStore';
-import { companyRubroLabels, companyTipoLabels, etapaLabels, users, timelineEvents, activities } from '@/data/mock';
+import { companyRubroLabels, companyTipoLabels, etapaLabels, timelineEvents, activities } from '@/data/mock';
+import { useUsers } from '@/hooks/useUsers';
 import { getPrimaryCompany } from '@/lib/utils';
 import type { Etapa, CompanyRubro, CompanyTipo } from '@/types';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -42,21 +43,125 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { formatCurrency, formatDate } from '@/lib/formatters';
+import { api } from '@/lib/api';
+import {
+  type ApiCompanyRecord,
+  isLikelyCompanyCuid,
+} from '@/lib/companyApi';
+import {
+  type ApiContactListRow,
+  contactCreate,
+  contactRemoveCompany,
+  isLikelyContactCuid,
+  mapApiContactRowToContact,
+} from '@/lib/contactApi';
+import {
+  type ApiOpportunityListRow,
+  isLikelyOpportunityCuid,
+  mapApiOpportunityToOpportunity,
+} from '@/lib/opportunityApi';
+
+function parseRubroField(s: string | null | undefined): CompanyRubro | undefined {
+  if (!s) return undefined;
+  return s in companyRubroLabels ? (s as CompanyRubro) : undefined;
+}
+
+function parseTipoField(s: string | null | undefined): CompanyTipo | undefined {
+  if (!s) return undefined;
+  return s === 'A' || s === 'B' || s === 'C' ? s : undefined;
+}
 
 export default function EmpresaDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { contacts, opportunities } = useCRMStore();
+  const { contacts: storeContacts, opportunities: storeOpportunities } = useCRMStore();
   const { getCompanyByName, updateCompany, companies: standaloneCompanies } = useCompaniesStore();
 
-  const companyName = id ? decodeURIComponent(id) : '';
+  const routeId = id ? decodeURIComponent(id) : '';
+  const fromApiById = isLikelyCompanyCuid(routeId);
+  const [apiRecord, setApiRecord] = useState<ApiCompanyRecord | null>(null);
+  const [apiContactRows, setApiContactRows] = useState<ApiContactListRow[]>([]);
+  const [apiOpportunityRows, setApiOpportunityRows] = useState<ApiOpportunityListRow[]>([]);
+  const [apiLoading, setApiLoading] = useState(fromApiById);
+  const { users, activeUsers } = useUsers();
+  const [apiError, setApiError] = useState<string | null>(null);
+
+  const loadApiContacts = useCallback(async () => {
+    try {
+      const list = await api<ApiContactListRow[]>('/contacts');
+      setApiContactRows(list);
+    } catch {
+      setApiContactRows([]);
+    }
+  }, []);
+
+  const loadApiOpportunities = useCallback(async () => {
+    try {
+      const list = await api<ApiOpportunityListRow[]>('/opportunities');
+      setApiOpportunityRows(list);
+    } catch {
+      setApiOpportunityRows([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!fromApiById || !routeId) {
+      setApiLoading(false);
+      setApiRecord(null);
+      setApiError(null);
+      return;
+    }
+    let cancelled = false;
+    setApiLoading(true);
+    setApiError(null);
+    api<ApiCompanyRecord>(`/companies/${routeId}`)
+      .then((row) => {
+        if (!cancelled) setApiRecord(row);
+      })
+      .catch((e: Error) => {
+        if (!cancelled) {
+          setApiRecord(null);
+          setApiError(e.message);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setApiLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [fromApiById, routeId]);
+
+  useEffect(() => {
+    void loadApiContacts();
+    void loadApiOpportunities();
+  }, [loadApiContacts, loadApiOpportunities]);
+
+  const companyName =
+    fromApiById && apiRecord
+      ? apiRecord.name
+      : fromApiById
+        ? ''
+        : routeId;
+
+  const contacts = useMemo(() => {
+    const apiIds = new Set(apiContactRows.map((r) => r.id));
+    const fromApi = apiContactRows.map(mapApiContactRowToContact);
+    const fromStore = storeContacts.filter((c) => !apiIds.has(c.id));
+    return [...fromApi, ...fromStore];
+  }, [apiContactRows, storeContacts]);
 
   const companyContacts = useMemo(() => {
     if (!companyName) return [];
+    if (fromApiById && apiRecord) {
+      return contacts.filter((c) =>
+        c.companies?.some((comp) => comp.id === apiRecord.id || comp.name?.trim().toLowerCase() === companyName.trim().toLowerCase()),
+      );
+    }
     return contacts.filter((l) =>
       l.companies?.some((c) => c.name.trim().toLowerCase() === companyName.trim().toLowerCase()),
     );
-  }, [contacts, companyName]);
+  }, [contacts, companyName, fromApiById, apiRecord]);
 
   const standaloneCompany = useMemo(
     () => (companyContacts.length === 0 ? getCompanyByName(companyName) : undefined),
@@ -67,10 +172,35 @@ export default function EmpresaDetailPage() {
   const companyDataFromContact = firstContact?.companies?.find(
     (c) => c.name.trim().toLowerCase() === companyName.trim().toLowerCase(),
   );
-  const companyData = companyDataFromContact ?? (standaloneCompany
-    ? { name: standaloneCompany.name, domain: standaloneCompany.domain, rubro: standaloneCompany.rubro, tipo: standaloneCompany.tipo }
-    : undefined);
+  const companyDataFromApi =
+    fromApiById && apiRecord
+      ? {
+          name: apiRecord.name,
+          domain: apiRecord.domain ?? undefined,
+          telefono: apiRecord.telefono ?? undefined,
+          rubro: parseRubroField(apiRecord.rubro),
+          tipo: parseTipoField(apiRecord.tipo),
+        }
+      : undefined;
+  const companyData =
+    companyDataFromContact ??
+    (standaloneCompany
+      ? {
+          name: standaloneCompany.name,
+          domain: standaloneCompany.domain,
+          rubro: standaloneCompany.rubro,
+          tipo: standaloneCompany.tipo,
+        }
+      : undefined) ??
+    companyDataFromApi;
   const totalValue = companyContacts.reduce((sum: number, l) => sum + l.estimatedValue, 0);
+
+  const opportunities = useMemo(() => {
+    const apiIds = new Set(apiOpportunityRows.map((r) => r.id));
+    const fromApi = apiOpportunityRows.map(mapApiOpportunityToOpportunity);
+    const fromStore = storeOpportunities.filter((o) => !apiIds.has(o.id));
+    return [...fromApi, ...fromStore];
+  }, [apiOpportunityRows, storeOpportunities]);
 
   const companyOpportunities = useMemo(() => {
     const contactIds = new Set(companyContacts.map((l) => l.id));
@@ -91,7 +221,7 @@ export default function EmpresaDetailPage() {
         const key = comp.name.trim().toLowerCase();
         if (key === companyName.trim().toLowerCase() || seen.has(key)) continue;
         seen.add(key);
-        result.push({ name: comp.name, domain: comp.domain, rubro: comp.rubro, tipo: comp.tipo });
+        result.push({ name: comp.name, domain: comp.domain, rubro: comp.rubro, tipo: comp.tipo, id: comp.id });
       }
     }
     return result;
@@ -136,15 +266,19 @@ export default function EmpresaDetailPage() {
 
   // --- Edit / Etapa / Asignar dialogs ---
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editForm, setEditForm] = useState({ name: '', domain: '', rubro: '' as CompanyRubro | '', tipo: '' as CompanyTipo | '' });
+  const [editForm, setEditForm] = useState({
+    name: '', domain: '', telefono: '', rubro: '' as CompanyRubro | '', tipo: '' as CompanyTipo | '',
+  });
 
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
 
   function handleOpenEditDialog() {
+    const tel = (fromApiById && apiRecord?.telefono) ? (apiRecord.telefono ?? '') : '';
     setEditForm({
       name: companyData?.name ?? companyName,
       domain: companyData?.domain ?? '',
+      telefono: tel,
       rubro: companyData?.rubro ?? '',
       tipo: companyData?.tipo ?? '',
     });
@@ -152,6 +286,29 @@ export default function EmpresaDetailPage() {
   }
 
   function handleSaveEdit() {
+    if (fromApiById && apiRecord) {
+      void (async () => {
+        try {
+          await api<ApiCompanyRecord>(`/companies/${apiRecord.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+              name: editForm.name.trim(),
+              domain: editForm.domain?.trim() || undefined,
+              telefono: editForm.telefono?.trim() || undefined,
+              rubro: editForm.rubro || undefined,
+              tipo: editForm.tipo || undefined,
+            }),
+          });
+          const row = await api<ApiCompanyRecord>(`/companies/${apiRecord.id}`);
+          setApiRecord(row);
+          toast.success('Empresa actualizada en el servidor');
+          setEditDialogOpen(false);
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : 'Error al guardar');
+        }
+      })();
+      return;
+    }
     if (isStandalone && standaloneCompany) {
       updateCompany(standaloneCompany.id, {
         name: editForm.name,
@@ -195,18 +352,40 @@ export default function EmpresaDetailPage() {
   }
 
   // --- Handlers ---
-  function handleCreateOpportunity(data: import('@/components/shared/NewOpportunityDialog').NewOpportunityData) {
+  async function handleCreateOpportunity(data: import('@/components/shared/NewOpportunityDialog').NewOpportunityData) {
     if (!firstContact) return;
+    if (fromApiById && apiRecord && isLikelyContactCuid(firstContact.id)) {
+      try {
+        const body: Record<string, unknown> = {
+          title: data.title,
+          amount: data.amount,
+          etapa: data.etapa,
+          status: 'abierta',
+          priority: data.priority,
+          expectedCloseDate: data.expectedCloseDate,
+          contactId: firstContact.id,
+          companyId: apiRecord.id,
+        };
+        if (data.assignedTo && isLikelyContactCuid(data.assignedTo)) body.assignedTo = data.assignedTo;
+        await api('/opportunities', { method: 'POST', body: JSON.stringify(body) });
+        await loadApiOpportunities();
+        toast.success(`Oportunidad "${data.title}" creada`);
+        return;
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'No se pudo crear la oportunidad');
+        return;
+      }
+    }
     addOpportunity({
       title: data.title,
       contactId: firstContact.id,
       amount: data.amount,
       etapa: data.etapa as Etapa,
       status: 'abierta',
+      priority: data.priority,
       expectedCloseDate: data.expectedCloseDate,
       assignedTo: data.assignedTo,
       createdAt: new Date().toISOString().slice(0, 10),
-      description: data.description,
     });
     toast.success(`Oportunidad "${data.title}" creada`);
   }
@@ -255,8 +434,40 @@ export default function EmpresaDetailPage() {
     setAddExistingCompanyOpen(false);
   }
 
-  function handleCreateNewContact(data: NewContactData) {
-    const defaultAssignedTo = firstContact?.assignedTo ?? users[0]?.id ?? '';
+  async function handleCreateNewContact(data: NewContactData) {
+    const defaultAssignedTo = firstContact?.assignedTo ?? activeUsers[0]?.id ?? '';
+    if (fromApiById && apiRecord) {
+      try {
+        const body: Record<string, unknown> = {
+          name: data.name.trim(),
+          phone: (data.phone || '').trim() || '—',
+          email: (data.email || '').trim() || '—',
+          source: data.source,
+          etapa: 'lead',
+          estimatedValue: data.estimatedValue,
+          companyId: apiRecord.id,
+          cargo: data.cargo?.trim() || undefined,
+          docType: data.docType || undefined,
+          docNumber: data.docNumber?.trim() || undefined,
+          clienteRecuperado: data.clienteRecuperado,
+          departamento: data.departamento?.trim() || undefined,
+          provincia: data.provincia?.trim() || undefined,
+          distrito: data.distrito?.trim() || undefined,
+          direccion: data.direccion?.trim() || undefined,
+        };
+        if ((data.assignedTo || defaultAssignedTo) && isLikelyContactCuid(data.assignedTo || defaultAssignedTo)) {
+          body.assignedTo = data.assignedTo || defaultAssignedTo;
+        }
+        await contactCreate(body);
+        await loadApiContacts();
+        toast.success('Contacto creado y vinculado a la empresa');
+        setNewContactOpen(false);
+        return;
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'No se pudo crear el contacto');
+        return;
+      }
+    }
     addContact({
       name: data.name,
       cargo: data.cargo,
@@ -266,7 +477,6 @@ export default function EmpresaDetailPage() {
       phone: data.phone || '',
       email: data.email || '',
       source: data.source,
-      priority: data.priority,
       assignedTo: data.assignedTo || defaultAssignedTo,
       estimatedValue: data.estimatedValue,
       clienteRecuperado: data.clienteRecuperado,
@@ -294,6 +504,76 @@ export default function EmpresaDetailPage() {
     setLinkContactIds([]);
     setLinkContactSearch('');
     setAddExistingContactOpen(false);
+  }
+
+  async function handleRemoveOpportunity(opp: import('@/types').Opportunity) {
+    if (fromApiById && isLikelyOpportunityCuid(opp.id)) {
+      try {
+        await api(`/opportunities/${opp.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ contactId: null }),
+        });
+        toast.success('Oportunidad desvinculada');
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'No se pudo desvincular');
+      }
+      return;
+    }
+    updateOpportunity(opp.id, { contactId: '', contactName: '' });
+    toast.success('Oportunidad desvinculada');
+  }
+
+  async function handleRemoveCompany(company: import('@/types').LinkedCompany) {
+    const nameKey = company.name.trim().toLowerCase();
+    if (fromApiById && company.id) {
+      try {
+        for (const c of companyContacts) {
+          const hasCompany = (c.companies ?? []).some(
+            (co) => co.id === company.id || co.name.trim().toLowerCase() === nameKey,
+          );
+          if (hasCompany && isLikelyContactCuid(c.id)) {
+            await contactRemoveCompany(c.id, company.id);
+            const filtered = (c.companies ?? []).filter((co) => co.id !== company.id && co.name.trim().toLowerCase() !== nameKey);
+            updateContact(c.id, { companies: filtered });
+          }
+        }
+        toast.success('Empresa desvinculada');
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'No se pudo desvincular');
+      }
+      return;
+    }
+    for (const c of companyContacts) {
+      const hasCompany = (c.companies ?? []).some((co) => co.name.trim().toLowerCase() === nameKey);
+      if (hasCompany) {
+        const filtered = (c.companies ?? []).filter((co) => co.name.trim().toLowerCase() !== nameKey);
+        updateContact(c.id, { companies: filtered });
+      }
+    }
+    toast.success('Empresa desvinculada');
+  }
+
+  async function handleRemoveContact(contact: { id: string }) {
+    const c = companyContacts.find((l) => l.id === contact.id);
+    if (!c) return;
+    if (fromApiById && routeId && isLikelyContactCuid(contact.id)) {
+      try {
+        await contactRemoveCompany(contact.id, routeId);
+        const filtered = (c.companies ?? []).filter(
+          (co) => co.name.trim().toLowerCase() !== companyName.trim().toLowerCase(),
+        );
+        updateContact(contact.id, { companies: filtered });
+        toast.success('Contacto desvinculado de la empresa');
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'No se pudo desvincular');
+      }
+      return;
+    }
+    const filtered = (c.companies ?? []).filter(
+      (co) => co.name.trim().toLowerCase() !== companyName.trim().toLowerCase(),
+    );
+    updateContact(contact.id, { companies: filtered });
+    toast.success('Contacto desvinculado de la empresa');
   }
 
   // --- Link items ---
@@ -346,8 +626,25 @@ export default function EmpresaDetailPage() {
     icon: <Users className="size-4" />,
   }));
 
-  const hasCompany = companyContacts.length > 0 || standaloneCompany;
-  if (!companyName || !hasCompany) {
+  const hasCompany =
+    companyContacts.length > 0 ||
+    !!standaloneCompany ||
+    (fromApiById && !!apiRecord);
+
+  if (fromApiById && apiLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 py-16">
+        <Loader2 className="size-8 animate-spin text-muted-foreground" />
+        <p className="text-sm text-muted-foreground">Cargando empresa…</p>
+      </div>
+    );
+  }
+
+  if (
+    (!fromApiById && !companyName) ||
+    (fromApiById && !apiLoading && (!apiRecord || apiError)) ||
+    (!fromApiById && !hasCompany)
+  ) {
     return (
       <div className="space-y-6">
         <Button variant="ghost" onClick={() => navigate('/empresas')}>
@@ -356,7 +653,7 @@ export default function EmpresaDetailPage() {
         <EmptyState
           icon={Building2}
           title="Empresa no encontrada"
-          description="La empresa que buscas no existe."
+          description={apiError ?? 'La empresa que buscas no existe.'}
           actionLabel="Volver a Empresas"
           onAction={() => navigate('/empresas')}
         />
@@ -364,7 +661,9 @@ export default function EmpresaDetailPage() {
     );
   }
 
-  const isStandalone = companyContacts.length === 0 && !!standaloneCompany;
+  const isStandalone =
+    companyContacts.length === 0 &&
+    (!!standaloneCompany || (fromApiById && !!apiRecord));
 
   const subtitle = [
     companyData?.domain,
@@ -468,6 +767,9 @@ export default function EmpresaDetailPage() {
             title="Información de Empresa"
             fields={[
               { icon: Building2, value: companyData?.name ?? companyName },
+              ...(fromApiById && apiRecord?.telefono
+                ? [{ icon: Phone as typeof Building2, value: apiRecord.telefono, href: `tel:${apiRecord.telefono}` }]
+                : []),
               ...(companyData?.domain ? [{ icon: Globe as typeof Building2, value: companyData.domain, href: companyData.domain.startsWith('http') ? companyData.domain : `https://${companyData.domain}` }] : []),
               ...(companyData?.rubro ? [{ icon: Briefcase as typeof Building2, value: companyRubroLabels[companyData.rubro] }] : []),
               ...(companyData?.tipo ? [{ label: 'Tipo:', value: companyData.tipo }] : []),
@@ -480,12 +782,14 @@ export default function EmpresaDetailPage() {
                 opportunities={companyOpportunities}
                 onCreate={() => setNewOppOpen(true)}
                 onAddExisting={() => setAddExistingOppOpen(true)}
+                onRemove={handleRemoveOpportunity}
               />
 
               <LinkedCompaniesCard
                 companies={linkedCompanies}
                 onCreate={() => setNewCompanyDialogOpen(true)}
                 onAddExisting={() => setAddExistingCompanyOpen(true)}
+                onRemove={handleRemoveCompany}
               />
             </>
           )}
@@ -493,10 +797,10 @@ export default function EmpresaDetailPage() {
           <LinkedContactsCard
             contacts={companyContacts}
             title="Contactos"
-            variant="compact"
             maxItems={5}
             onCreate={() => setNewContactOpen(true)}
             onAddExisting={() => setAddExistingContactOpen(true)}
+            onRemove={handleRemoveContact}
           />
         </>
       }
@@ -566,11 +870,12 @@ export default function EmpresaDetailPage() {
           <TasksTab
             ref={tasksTabRef}
             contacts={companyContacts}
-            companies={(companyData ? [{ name: companyData.name }] : []).concat(linkedCompanies.map((c) => ({ name: c.name })))}
+            companies={(companyData ? [{ name: companyData.name, id: fromApiById && apiRecord ? apiRecord.id : undefined }] : []).concat(linkedCompanies.map((c) => ({ name: c.name, id: c.id })))}
             opportunities={companyOpportunities}
             defaultAssigneeId={firstContact?.assignedTo}
             onActivityCreated={(activity) => setCompanyActivities((prev) => [activity as any, ...prev])}
             contactId={firstContact?.id}
+            companyId={fromApiById && apiRecord ? apiRecord.id : undefined}
           />
         </TabsContent>
       </Tabs>
@@ -665,6 +970,12 @@ export default function EmpresaDetailPage() {
             <Label>Dominio web</Label>
             <Input placeholder="empresa.com" value={editForm.domain} onChange={(e) => setEditForm((f) => ({ ...f, domain: e.target.value }))} />
           </div>
+          {fromApiById && (
+            <div className="space-y-2">
+              <Label>Teléfono</Label>
+              <Input placeholder="+51 999 999 999" value={editForm.telefono} onChange={(e) => setEditForm((f) => ({ ...f, telefono: e.target.value }))} />
+            </div>
+          )}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Rubro</Label>

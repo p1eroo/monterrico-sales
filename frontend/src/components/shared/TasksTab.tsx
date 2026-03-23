@@ -1,8 +1,11 @@
-import { useState, forwardRef, useImperativeHandle } from 'react';
+import { useState, forwardRef, useImperativeHandle, useMemo } from 'react';
 import { CheckSquare, Phone, Mail, Users } from 'lucide-react';
 import { toast } from 'sonner';
-import { users, priorityLabels } from '@/data/mock';
+import { priorityLabels } from '@/data/mock';
+import { useUsers } from '@/hooks/useUsers';
+import { useActivities } from '@/hooks/useActivities';
 import type { Contact, Opportunity, TaskAssociation } from '@/types';
+import type { Activity } from '@/types';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -95,21 +98,38 @@ const taskTypeIconColors: Record<TaskType, string> = {
 
 interface TasksTabProps {
   contacts?: Contact[];
-  companies?: { name: string }[];
+  companies?: { name: string; id?: string }[];
   opportunities?: Opportunity[];
   defaultAssigneeId?: string;
-  initialTasks?: MockTask[];
   initialComments?: TaskComment[];
   onActivityCreated?: (activity: { id: string; type: string; title: string; description: string; assignedTo: string; assignedToName: string; status: string; dueDate: string; createdAt: string; contactId?: string }) => void;
   contactId?: string;
+  companyId?: string;
+  opportunityId?: string;
 }
 
-const defaultInitialTasks: MockTask[] = [
-  { id: 't1', title: 'Enviar propuesta comercial actualizada', status: 'completada', type: 'correo', priority: 'alta', company: 'Minera Los Andes', startDate: '2026-03-03', dueDate: '2026-03-05', startTime: '09:00', assignee: 'Carlos Mendoza', associations: [{ type: 'empresa', id: 'minera', name: 'Minera Los Andes' }, { type: 'contacto', id: 'l1', name: 'Pedro Castillo' }] },
-  { id: 't2', title: 'Coordinar visita a la flota ejecutiva', status: 'pendiente', type: 'reunion', priority: 'media', company: 'Hotel Libertador', startDate: '2026-03-06', dueDate: '2026-03-08', startTime: '14:00', assignee: 'José Ramírez', associations: [{ type: 'empresa', id: 'hotel', name: 'Hotel Libertador' }, { type: 'contacto', id: 'c1', name: 'Roberto Sánchez' }] },
-  { id: 't3', title: 'Preparar contrato borrador', status: 'pendiente', type: 'correo', priority: 'media', startDate: '2026-03-08', dueDate: '2026-03-10', startTime: '10:00', assignee: 'María García', associations: [{ type: 'contacto', id: 'l6', name: 'Patricia Huamán' }] },
-  { id: 't4', title: 'Confirmar disponibilidad de vehículos', status: 'en_progreso', type: 'llamada', priority: 'baja', startDate: '2026-03-05', dueDate: '2026-03-07', startTime: '11:30', assignee: 'Ana Torres', associations: [{ type: 'empresa', id: 'telefonica', name: 'Telefónica' }, { type: 'contacto', id: 'l9', name: 'Diego Sánchez' }] },
-];
+const TASK_TYPES = ['tarea', 'llamada', 'reunion', 'correo'];
+
+function activityToMockTask(a: Activity): MockTask {
+  const company = a.contactName?.includes(' - ') ? a.contactName.split(' - ')[1] : undefined;
+  const contactName = a.contactName?.includes(' - ') ? a.contactName.split(' - ')[0] : a.contactName;
+  const associations: TaskAssociation[] = [];
+  if (a.contactId && contactName) associations.push({ type: 'contacto', id: a.contactId, name: contactName });
+  return {
+    id: a.id,
+    title: a.title,
+    status: a.status as TaskStatus,
+    type: (a.type as TaskType) ?? 'tarea',
+    priority: 'media',
+    company,
+    startDate: a.startDate,
+    dueDate: a.dueDate,
+    startTime: a.startTime,
+    assignee: a.assignedToName,
+    associations: associations.length > 0 ? associations : undefined,
+    description: a.description || undefined,
+  };
+}
 
 const defaultInitialComments: TaskComment[] = [
   { id: 'tc1', taskId: 't2', author: 'Carlos Mendoza', text: 'Se confirmó la visita para el día 8, coordinar con recepción del hotel.', date: '2026-03-06T10:30:00' },
@@ -126,16 +146,54 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
   companies = [],
   opportunities = [],
   defaultAssigneeId,
-  initialTasks = defaultInitialTasks,
   initialComments = defaultInitialComments,
   onActivityCreated,
   contactId,
+  companyId,
+  opportunityId,
 }, ref) {
-  const [tasks, setTasks] = useState<MockTask[]>(initialTasks);
+  const { users, activeUsers } = useUsers();
+  const { activities, createActivity, updateActivity, deleteActivity } = useActivities();
+
+  const tasks = useMemo(() => {
+    const filtered = activities.filter((a) => {
+      if (!TASK_TYPES.includes(a.type)) return false;
+      if (contactId && a.contactId === contactId) return true;
+      if (companyId && a.companyId === companyId) return true;
+      if (opportunityId && a.opportunityId === opportunityId) return true;
+      return false;
+    });
+    return filtered.map(activityToMockTask);
+  }, [activities, contactId, companyId, opportunityId]);
 
   useImperativeHandle(ref, () => ({
-    addTask: (task) => {
-      setTasks((prev) => [...prev, task as MockTask]);
+    addTask: async (task) => {
+      const contactAssoc = task.associations?.find((a) => a.type === 'contacto');
+      const empresaAssoc = task.associations?.find((a) => a.type === 'empresa');
+      const negocioAssoc = task.associations?.find((a) => a.type === 'negocio');
+      const userId = users.find((u) => u.name === task.assignee)?.id ?? defaultAssigneeId ?? activeUsers[0]?.id;
+      if (!userId) return;
+      const contactIdToUse = contactAssoc?.id ?? contactId;
+      const companyIdToUse = empresaAssoc?.id && /^c[a-z0-9]+$/i.test(empresaAssoc.id) ? empresaAssoc.id : companyId;
+      const opportunityIdToUse = negocioAssoc?.id ?? opportunityId;
+      if (!contactIdToUse && !companyIdToUse && !opportunityIdToUse) return;
+      try {
+        await createActivity({
+          type: (task.type ?? 'tarea') as string,
+          title: task.title,
+          description: '',
+          assignedTo: userId,
+          dueDate: task.dueDate,
+          startDate: task.startDate,
+          startTime: task.startTime,
+          contactId: contactIdToUse,
+          companyId: companyIdToUse,
+          opportunityId: opportunityIdToUse,
+        });
+        toast.success('Tarea creada');
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Error al crear');
+      }
     },
   }));
   const [completedTask, setCompletedTask] = useState<MockTask | null>(null);
@@ -154,6 +212,21 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
   const [taskDetailOpen, setTaskDetailOpen] = useState(false);
   const [taskComments, setTaskComments] = useState<TaskComment[]>(initialComments);
 
+  const tasksAsDetailFormat = useMemo(() => tasks.map((t) => ({
+    id: t.id,
+    title: t.title,
+    status: t.status,
+    type: t.type,
+    priority: t.priority,
+    company: t.company,
+    startDate: t.startDate,
+    dueDate: t.dueDate,
+    startTime: t.startTime,
+    assignee: t.assignee,
+    associations: t.associations,
+    description: t.description,
+  })), [tasks]);
+
   function resetLinkedTaskForm() {
     setLinkedTaskTitle('');
     setLinkedTaskType('');
@@ -165,21 +238,22 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
     setLinkedTaskDueDate('');
   }
 
-  function handleTaskToggle(taskId: string) {
+  async function handleTaskToggle(taskId: string) {
     const task = tasks.find((t) => t.id === taskId);
     if (!task) return;
 
-    if (task.status === 'completada') {
-      setTasks((prev) => prev.map((t) => t.id === taskId ? { ...t, status: 'pendiente' as TaskStatus } : t));
-      return;
-    }
-
-    setTasks((prev) => prev.map((t) => t.id === taskId ? { ...t, status: 'completada' as TaskStatus } : t));
-    toast.success('Tarea completada');
-
-    if (task.type) {
-      setCompletedTask(task);
-      setActivityFromTaskOpen(true);
+    const newStatus = task.status === 'completada' ? 'pendiente' : 'completada';
+    try {
+      const payload: { status: string; completedAt?: string } = { status: newStatus };
+      if (newStatus === 'completada') payload.completedAt = new Date().toISOString().slice(0, 10);
+      await updateActivity(taskId, payload);
+      toast.success(newStatus === 'completada' ? 'Tarea completada' : 'Tarea reactivada');
+      if (newStatus === 'completada' && task.type && ['llamada', 'reunion', 'correo'].includes(task.type)) {
+        setCompletedTask(task);
+        setActivityFromTaskOpen(true);
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al actualizar');
     }
   }
 
@@ -269,30 +343,24 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
           type={completedTask.type as 'llamada' | 'reunion' | 'correo'}
           open={activityFromTaskOpen}
           onOpenChange={(open) => { setActivityFromTaskOpen(open); if (!open) setCompletedTask(null); }}
-          onSave={(data) => {
-            const title = data.title || completedTask.title;
-            const dueDate = completedTask.type === 'reunion' && data.dateTime
-              ? data.dateTime.slice(0, 10)
-              : data.date || new Date().toISOString().slice(0, 10);
-            const assignee = users[0];
+          onSave={async (data) => {
             const summary = data.description?.trim() || '';
-            // Actualizar la tarea con el resumen para que aparezca en la vista detallada
-            if (summary) {
-              setTasks((prev) =>
-                prev.map((t) =>
-                  t.id === completedTask.id ? { ...t, description: summary } : t
-                )
-              );
+            if (summary && completedTask) {
+              try {
+                await updateActivity(completedTask.id, { description: summary });
+              } catch (e) {
+                toast.error(e instanceof Error ? e.message : 'Error al guardar');
+              }
             }
             onActivityCreated?.({
-              id: `act-${Date.now()}`,
-              type: completedTask.type!,
-              title,
+              id: completedTask!.id,
+              type: completedTask!.type!,
+              title: completedTask!.title,
               description: summary,
-              assignedTo: assignee?.id ?? '',
-              assignedToName: assignee?.name ?? '',
+              assignedTo: '',
+              assignedToName: completedTask!.assignee,
               status: 'completada',
-              dueDate,
+              dueDate: completedTask!.dueDate,
               createdAt: new Date().toISOString().slice(0, 10),
               contactId,
             });
@@ -315,7 +383,7 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
       <Dialog open={linkedTaskPromptOpen} onOpenChange={(open) => { setLinkedTaskPromptOpen(open); if (!open) setCompletedTask(null); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Crear tarea de seguimiento</DialogTitle>
+            <DialogTitle>Crear tarea vinculada</DialogTitle>
             <DialogDescription>
               ¿Deseas crear una nueva tarea vinculada a esta actividad?
             </DialogDescription>
@@ -344,7 +412,7 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
               <CheckSquare className="size-5 text-amber-600" /> Nueva Tarea Vinculada
             </DialogTitle>
             <DialogDescription>
-              Crea una tarea de seguimiento para continuar con el proceso.
+              Crea una tarea para continuar con el proceso.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -360,7 +428,7 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
                     <SelectValue placeholder="Seleccionar asesor" />
                   </SelectTrigger>
                   <SelectContent>
-                    {users.filter((u) => u.status === 'activo').map((u) => (
+                    {activeUsers.map((u) => (
                       <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -423,25 +491,33 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
             <Button variant="outline" onClick={() => { setLinkedTaskOpen(false); setCompletedTask(null); resetLinkedTaskForm(); }}>
               Cancelar
             </Button>
-            <Button className="bg-[#13944C] hover:bg-[#0f7a3d]" onClick={() => {
+            <Button className="bg-[#13944C] hover:bg-[#0f7a3d]" onClick={async () => {
               if (!linkedTaskTitle.trim()) { toast.error('El título es requerido'); return; }
-              const assignee = users.find((u) => u.id === linkedTaskAssignee)?.name ?? 'Sin asignar';
-              const newTask: MockTask = {
-                id: `t-${Date.now()}`,
-                title: linkedTaskTitle.trim(),
-                status: linkedTaskStatus,
-                type: linkedTaskType || undefined,
-                priority: linkedTaskPriority,
-                dueDate: linkedTaskDueDate || new Date().toISOString().slice(0, 10),
-                startDate: linkedTaskStartDate || undefined,
-                startTime: linkedTaskTime || undefined,
-                assignee,
-              };
-              setTasks((prev) => [...prev, newTask]);
-              toast.success(`Tarea "${linkedTaskTitle}" creada exitosamente`);
-              setLinkedTaskOpen(false);
-              setCompletedTask(null);
-              resetLinkedTaskForm();
+              const dueDate = linkedTaskDueDate || new Date().toISOString().slice(0, 10);
+              if (!contactId && !companyId && !opportunityId) {
+                toast.error('No hay contacto, empresa u oportunidad vinculada');
+                return;
+              }
+              try {
+                await createActivity({
+                  type: (linkedTaskType as string) || 'tarea',
+                  title: linkedTaskTitle.trim(),
+                  description: '',
+                  assignedTo: linkedTaskAssignee || defaultAssigneeId || activeUsers[0]?.id || '',
+                  dueDate,
+                  startDate: linkedTaskStartDate || undefined,
+                  startTime: linkedTaskTime || undefined,
+                  contactId: contactId || undefined,
+                  companyId: companyId || undefined,
+                  opportunityId: opportunityId || undefined,
+                });
+                toast.success(`Tarea "${linkedTaskTitle}" creada`);
+                setLinkedTaskOpen(false);
+                setCompletedTask(null);
+                resetLinkedTaskForm();
+              } catch (e) {
+                toast.error(e instanceof Error ? e.message : 'Error al crear');
+              }
             }}>
               Crear tarea
             </Button>
@@ -456,18 +532,45 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
         task={selectedTask as TaskDetailTask | null}
         statusLabels={taskStatusLabels}
         statusColors={taskStatusColors}
-        tasks={tasks as TaskDetailTask[]}
-        onTasksChange={(tasks) => setTasks(tasks as MockTask[])}
+        tasks={tasksAsDetailFormat as TaskDetailTask[]}
+        onTasksChange={async (newTasks) => {
+          const current = tasksAsDetailFormat;
+          const newIds = new Set(newTasks.map((t) => t.id));
+          const deleted = current.filter((t) => !newIds.has(t.id));
+          for (const t of deleted) {
+            try { await deleteActivity(t.id); } catch (e) { toast.error(e instanceof Error ? e.message : 'Error al eliminar'); }
+          }
+          const changed = newTasks.find((nd) => {
+            const oldTask = current.find((c) => c.id === nd.id);
+            return oldTask && oldTask.status !== nd.status;
+          });
+          if (changed) {
+            try {
+              const payload: { status: string; completedAt?: string } = { status: changed.status };
+              if (changed.status === 'completada') payload.completedAt = new Date().toISOString().slice(0, 10);
+              await updateActivity(changed.id, payload);
+              if (changed.status === 'completada' && selectedTask?.id === changed.id && ['llamada', 'reunion', 'correo'].includes(changed.type ?? '')) {
+                setCompletedTask(tasks.find((ta) => ta.id === changed.id) as MockTask);
+                setTaskDetailOpen(false);
+                setSelectedTask(null);
+                setActivityFromTaskOpen(true);
+              }
+            } catch (e) { toast.error(e instanceof Error ? e.message : 'Error al actualizar'); }
+          }
+        }}
         taskComments={taskComments as TaskDetailComment[]}
         onTaskCommentsChange={(comments) => setTaskComments(comments as TaskComment[])}
         contacts={contacts}
         companies={companies}
         opportunities={opportunities}
         onCompleteWithActivity={(t) => {
-          setCompletedTask(t as MockTask);
-          setTaskDetailOpen(false);
-          setSelectedTask(null);
-          setActivityFromTaskOpen(true);
+          const mt = tasks.find((ta) => ta.id === t.id) as MockTask;
+          if (mt) {
+            setCompletedTask(mt);
+            setTaskDetailOpen(false);
+            setSelectedTask(null);
+            setActivityFromTaskOpen(true);
+          }
         }}
       />
     </>

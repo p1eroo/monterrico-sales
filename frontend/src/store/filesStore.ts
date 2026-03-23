@@ -1,13 +1,14 @@
 import { create } from 'zustand';
 import type { FileAttachment, FileEntityType } from '@/types';
-import { files as initialFiles, users } from '@/data/mock';
+import { files as initialFiles } from '@/data/mock';
+import { useUsersStore } from '@/store/usersStore';
 
 function generateId(): string {
   return `f_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 }
 
 function getUserName(userId: string): string {
-  return users.find((u) => u.id === userId)?.name ?? 'Desconocido';
+  return useUsersStore.getState().getUserName(userId);
 }
 
 interface FilesState {

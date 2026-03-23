@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Users, Phone, Mail } from 'lucide-react';
+import { Users, Mail } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { etapaLabels } from '@/data/mock';
 import { StatusBadge } from '@/components/shared/StatusBadge';
@@ -25,6 +25,7 @@ interface LinkedContactsCardProps {
   title?: string;
   onCreate?: () => void;
   onAddExisting?: () => void;
+  onRemove?: (contact: LinkedContact) => void;
   maxItems?: number;
   variant?: 'full' | 'compact';
 }
@@ -34,6 +35,7 @@ export function LinkedContactsCard({
   title = 'Contactos vinculados',
   onCreate,
   onAddExisting,
+  onRemove,
   maxItems = 3,
   variant = 'full',
 }: LinkedContactsCardProps) {
@@ -49,9 +51,11 @@ export function LinkedContactsCard({
       createLabel="Crear nuevo"
       onCreate={onCreate}
       onAddExisting={onAddExisting}
+      onRemove={onRemove}
+      getUnlinkLabel={(c) => c.name}
       getItemKey={(c) => c.id}
       onItemClick={(c) => navigate(`/contactos/${c.id}`)}
-      renderItem={(contact) => {
+      renderItem={(contact, unlinkButton) => {
         const primaryCompany = getPrimaryCompany(contact as Contact);
         return (
           <>
@@ -69,28 +73,25 @@ export function LinkedContactsCard({
               )}
             </div>
             {contact.cargo && (
-              <p className="text-[13px] text-muted-foreground mb-1">
-                {contact.cargo}
-                {primaryCompany ? ` · ${primaryCompany.name}` : ''}
-              </p>
+              <p className="text-[13px] text-muted-foreground mb-1">{contact.cargo}</p>
             )}
             {variant === 'full' ? (
-              <div className="flex items-center gap-4 text-[12px] text-muted-foreground">
-                {contact.phone && (
-                  <span className="flex items-center gap-1">
-                    <Phone className="size-3" />
-                    {contact.phone}
-                  </span>
-                )}
-                {contact.email && (
-                  <span className="flex items-center gap-1 truncate">
-                    <Mail className="size-3 shrink-0" />
-                    {contact.email}
-                  </span>
-                )}
+              <div className="flex items-center justify-between gap-2 text-[12px] text-muted-foreground">
+                <div className="flex items-center gap-4 min-w-0">
+                  {contact.email && (
+                    <span className="flex items-center gap-1 truncate">
+                      <Mail className="size-3 shrink-0" />
+                      {contact.email}
+                    </span>
+                  )}
+                </div>
+                {unlinkButton}
               </div>
             ) : (
-              <p className="text-[12px] text-muted-foreground">{formatCurrency(contact.estimatedValue)}</p>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[12px] text-muted-foreground">{formatCurrency(contact.estimatedValue)}</p>
+                {unlinkButton}
+              </div>
             )}
           </>
         );

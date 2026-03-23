@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import type { ActivityLog } from '@/types';
 import { activityLogs, auditLogs, actionLabels, moduleLabels } from '@/data/auditMock';
-import { users } from '@/data/mock';
+import { useUsers } from '@/hooks/useUsers';
 
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -86,6 +86,7 @@ function getActionBadgeVariant(action: string, isCritical?: boolean) {
 }
 
 export default function AuditPage() {
+  const { users } = useUsers();
   const [activeTab, setActiveTab] = useState<'actividad' | 'auditoria'>('actividad');
   const [search, setSearch] = useState('');
   const [userFilter, setUserFilter] = useState<string>('todos');

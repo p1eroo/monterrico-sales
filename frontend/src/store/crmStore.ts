@@ -1,13 +1,21 @@
 import { create } from 'zustand';
-import type { Contact, Opportunity } from '@/types';
-import { contacts as initialContacts, opportunities as initialOpportunities, users, etapaProbabilidad } from '@/data/mock';
+import type { Contact, Etapa, Opportunity, OpportunityStatus } from '@/types';
+import { etapaProbabilidad } from '@/data/mock';
+import { useUsersStore } from '@/store/usersStore';
+
+/** Alineado con `OpportunitiesService.statusFromEtapa` (sin `suspendida`). */
+function opportunityStatusFromEtapa(etapa: Etapa): OpportunityStatus {
+  if (['activo', 'cierre_ganado', 'firma_contrato'].includes(etapa)) return 'ganada';
+  if (['cierre_perdido', 'inactivo'].includes(etapa)) return 'perdida';
+  return 'abierta';
+}
 
 function generateId(prefix: string): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 }
 
 function getUserName(userId: string): string {
-  return users.find((u) => u.id === userId)?.name ?? 'Sin asignar';
+  return useUsersStore.getState().getUserName(userId);
 }
 
 interface CRMState {
@@ -16,14 +24,14 @@ interface CRMState {
   addContact: (contact: Omit<Contact, 'id' | 'assignedToName' | 'nextAction' | 'nextFollowUp' | 'createdAt' | 'etapa'> & Partial<Pick<Contact, 'notes' | 'tags' | 'etapa'>>) => Contact;
   updateContact: (id: string, updates: Partial<Contact>) => void;
   deleteContact: (id: string) => void;
-  addOpportunity: (opp: Omit<Opportunity, 'id' | 'assignedToName' | 'contactName' | 'probability'> & Partial<Pick<Opportunity, 'probability'>>) => Opportunity;
+  addOpportunity: (opp: Omit<Opportunity, 'id' | 'assignedToName' | 'contactName' | 'probability'> & Partial<Pick<Opportunity, 'probability' | 'contactName'>>) => Opportunity;
   updateOpportunity: (id: string, updates: Partial<Opportunity>) => void;
   getOpportunitiesByContactId: (contactId: string) => Opportunity[];
 }
 
 export const useCRMStore = create<CRMState>((set, get) => ({
-  contacts: [...initialContacts],
-  opportunities: [...initialOpportunities],
+  contacts: [],
+  opportunities: [],
 
   addContact: (contactData) => {
     const etapa = contactData.etapa ?? 'lead';
@@ -68,15 +76,19 @@ export const useCRMStore = create<CRMState>((set, get) => ({
 
   addOpportunity: (oppData) => {
     const etapa = oppData.etapa ?? 'lead';
+    const resolvedContactName =
+      oppData.contactName ??
+      (oppData.contactId
+        ? get().contacts.find((c) => c.id === oppData.contactId)?.name
+        : undefined);
     const newOpp: Opportunity = {
       ...oppData,
       id: generateId('o'),
       etapa,
+      status: opportunityStatusFromEtapa(etapa),
       probability: etapaProbabilidad[etapa] ?? 0,
       assignedToName: getUserName(oppData.assignedTo),
-      contactName: oppData.contactId
-        ? get().contacts.find((c) => c.id === oppData.contactId)?.name
-        : undefined,
+      contactName: resolvedContactName,
     };
     set((state) => ({ opportunities: [newOpp, ...state.opportunities] }));
     return newOpp;
@@ -87,13 +99,18 @@ export const useCRMStore = create<CRMState>((set, get) => ({
       const opp = state.opportunities.find((o) => o.id === id);
       if (!opp) return state;
 
-      const newStatus = updates.status ?? opp.status;
-      const newEtapa = updates.etapa ?? opp.etapa;
-
-      const merged = { ...updates };
+      const merged: Partial<Opportunity> = { ...updates };
       if (updates.etapa !== undefined) {
         merged.probability = etapaProbabilidad[updates.etapa];
+        merged.status = opportunityStatusFromEtapa(updates.etapa);
+      } else if (updates.status !== undefined) {
+        const s = updates.status;
+        merged.status =
+          s === 'ganada' || s === 'perdida' || s === 'abierta' ? s : 'abierta';
       }
+
+      const newEtapa = updates.etapa ?? opp.etapa;
+      const newStatus = (merged.status !== undefined ? merged.status : opp.status) as OpportunityStatus;
 
       let newContacts = state.contacts;
       if (opp.contactId) {

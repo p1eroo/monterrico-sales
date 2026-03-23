@@ -22,6 +22,7 @@ export class CompaniesService {
         name,
         razonSocial: dto.razonSocial?.trim() || null,
         ruc: dto.ruc?.trim() || null,
+        telefono: dto.telefono?.trim() || null,
         domain: dto.domain?.trim() || null,
         rubro: dto.rubro?.trim() || null,
         tipo: dto.tipo?.trim() || null,
@@ -67,6 +68,7 @@ export class CompaniesService {
       data.razonSocial = dto.razonSocial?.trim() || null;
     }
     if (dto.ruc !== undefined) data.ruc = dto.ruc?.trim() || null;
+    if (dto.telefono !== undefined) data.telefono = dto.telefono?.trim() || null;
     if (dto.domain !== undefined) data.domain = dto.domain?.trim() || null;
     if (dto.rubro !== undefined) data.rubro = dto.rubro?.trim() || null;
     if (dto.tipo !== undefined) data.tipo = dto.tipo?.trim() || null;

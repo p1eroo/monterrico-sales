@@ -3,6 +3,7 @@ export class CreateCompanyDto {
   name!: string;
   razonSocial?: string;
   ruc?: string;
+  telefono?: string;
   domain?: string;
   rubro?: string;
   tipo?: string;

@@ -62,7 +62,6 @@ const activityIconMap: Record<string, typeof Phone> = {
   correo: Mail,
   reunion: CalendarDays,
   tarea: FileText,
-  seguimiento: Clock,
   whatsapp: MessageSquare,
 };
 

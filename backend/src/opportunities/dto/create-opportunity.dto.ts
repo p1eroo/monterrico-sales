@@ -7,6 +7,7 @@ export class CreateOpportunityDto {
   priority?: string;
   /** Si no se envía, se calcula a partir de `etapa` */
   probability?: number;
+  /** Ignorado en create: el estado se deriva solo de `etapa` (abierta | ganada | perdida). */
   status?: string;
   /** Fecha ISO (YYYY-MM-DD o completa) */
   expectedCloseDate?: string;

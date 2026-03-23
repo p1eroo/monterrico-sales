@@ -1,7 +1,4 @@
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { toast } from 'sonner';
 import {
   Search, UserPlus, Phone, Users, Shield, UserCheck,
@@ -11,7 +8,9 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import type { User } from '@/types';
-import { users, activities } from '@/data/mock';
+import { activities } from '@/data/mock';
+import { useUsers } from '@/hooks/useUsers';
+import { UserFormModal, type UserFormData } from '@/components/users/UserFormModal';
 
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -20,29 +19,32 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
 import { formatDate } from '@/lib/formatters';
+import { api } from '@/lib/api';
+import {
+  mapApiRoleStringToUserRole,
+  joinedAtToDateString,
+  type ApiUserRecord,
+} from '@/lib/userRoleMap';
 
 const roleLabels: Record<string, string> = {
   admin: 'Administrador',
-  gerente: 'Gerente',
+  supervisor: 'Supervisor',
   asesor: 'Asesor',
+  solo_lectura: 'Solo lectura',
 };
 
 const roleColors: Record<string, string> = {
   admin: 'bg-purple-100 text-purple-700 border-purple-200',
-  gerente: 'bg-blue-100 text-blue-700 border-blue-200',
+  supervisor: 'bg-blue-100 text-blue-700 border-blue-200',
   asesor: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  solo_lectura: 'bg-slate-100 text-slate-700 border-slate-200',
 };
 
 function getInitials(name: string) {
@@ -56,22 +58,11 @@ function getAvatarColor(name: string) {
   return colors[Math.abs(hash) % colors.length];
 }
 
-const newUserSchema = z.object({
-  name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
-  email: z.string().email('Email inválido'),
-  phone: z.string().min(6, 'Teléfono inválido'),
-  role: z.enum(['admin', 'gerente', 'asesor']),
-  status: z.boolean(),
-});
-
-type NewUserForm = z.infer<typeof newUserSchema>;
-
 const activityTypeLabels: Record<string, string> = {
   llamada: 'Llamadas',
   reunion: 'Reuniones',
   tarea: 'Tareas',
   correo: 'Correos',
-  seguimiento: 'Seguimientos',
   whatsapp: 'WhatsApp',
 };
 
@@ -82,39 +73,64 @@ const mockActivity = [
 ];
 
 export default function TeamPage() {
+  const { users } = useUsers();
+  const [newUsersCreated, setNewUsersCreated] = useState<User[]>([]);
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [newUserOpen, setNewUserOpen] = useState(false);
 
-  const form = useForm<NewUserForm>({
-    resolver: zodResolver(newUserSchema) as import('react-hook-form').Resolver<NewUserForm>,
-    defaultValues: {
-      name: '',
-      email: '',
-      phone: '',
-      role: 'asesor',
-      status: true,
-    },
-  });
-
-  const filteredUsers = users.filter(
+  const teamUsers = [...users, ...newUsersCreated];
+  const filteredUsers = teamUsers.filter(
     (u) =>
       !search ||
       u.name.toLowerCase().includes(search.toLowerCase()) ||
-      u.email.toLowerCase().includes(search.toLowerCase()) ||
-      u.phone.includes(search),
+      u.username.toLowerCase().includes(search.toLowerCase()) ||
+      (u.email?.toLowerCase().includes(search.toLowerCase()) ?? false) ||
+      (u.phone?.includes(search) ?? false),
   );
 
-  const totalMembers = users.length;
-  const activeMembers = users.filter((u) => u.status === 'activo').length;
-  const adminGerentes = users.filter((u) => u.role === 'admin' || u.role === 'gerente').length;
-  const asesores = users.filter((u) => u.role === 'asesor').length;
+  const totalMembers = teamUsers.length;
+  const activeMembers = teamUsers.filter((u) => u.status === 'activo').length;
+  const adminSupervisores = teamUsers.filter(
+    (u) => u.role === 'admin' || u.role === 'supervisor',
+  ).length;
+  const asesores = teamUsers.filter((u) => u.role === 'asesor').length;
 
-  function onSubmitNewUser(data: NewUserForm) {
-    toast.success(`Usuario "${data.name}" creado correctamente`);
-    form.reset();
-    setNewUserOpen(false);
+  async function handleTeamUserSubmit(data: UserFormData) {
+    try {
+      const created = await api<ApiUserRecord>('/users', {
+        method: 'POST',
+        body: JSON.stringify({
+          username: data.username.trim(),
+          name: data.name.trim(),
+          password: data.password,
+          roleId: data.roleId,
+          status: data.status,
+        }),
+      });
+
+      const newUser: User = {
+        id: created.id,
+        name: created.name,
+        username: created.username,
+        role: mapApiRoleStringToUserRole(created.role),
+        roleId: data.roleId,
+        status: created.status === 'inactivo' ? 'inactivo' : 'activo',
+        contactsAssigned: 0,
+        opportunitiesActive: 0,
+        salesClosed: 0,
+        conversionRate: 0,
+        joinedAt: joinedAtToDateString(created.joinedAt),
+        lastActivity: created.lastActivity ?? undefined,
+      };
+      setNewUsersCreated((prev) => [...prev, newUser]);
+      toast.success(`Usuario "${data.name}" creado correctamente`);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'No se pudo crear el usuario';
+      toast.error(msg);
+      throw e;
+    }
   }
 
   const chartData = selectedUser
@@ -160,9 +176,9 @@ export default function TeamPage() {
           <CardContent className="p-0">
             <div className="flex items-center gap-2">
               <Shield className="size-5 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Admin + Gerentes</span>
+              <span className="text-sm text-muted-foreground">Admin + Supervisores</span>
             </div>
-            <p className="mt-1 text-2xl font-bold">{adminGerentes}</p>
+            <p className="mt-1 text-2xl font-bold">{adminSupervisores}</p>
           </CardContent>
         </Card>
         <Card className="p-4">
@@ -181,7 +197,7 @@ export default function TeamPage() {
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Buscar por nombre, email o teléfono..."
+            placeholder="Buscar por nombre, usuario o teléfono..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
@@ -441,70 +457,12 @@ export default function TeamPage() {
         </DialogContent>
       </Dialog>
 
-      {/* New User Dialog */}
-      <Dialog open={newUserOpen} onOpenChange={setNewUserOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Nuevo Usuario</DialogTitle>
-            <DialogDescription>Agrega un nuevo miembro al equipo comercial.</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={form.handleSubmit(onSubmitNewUser)} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nombre *</Label>
-              <Input id="name" {...form.register('name')} placeholder="Ej: Juan Pérez" />
-              {form.formState.errors.name && (
-                <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email *</Label>
-              <Input id="email" type="email" {...form.register('email')} placeholder="juan@taximonterrico.com" />
-              {form.formState.errors.email && (
-                <p className="text-xs text-destructive">{form.formState.errors.email.message}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="phone">Teléfono *</Label>
-              <Input id="phone" {...form.register('phone')} placeholder="+51 999 999 999" />
-              {form.formState.errors.phone && (
-                <p className="text-xs text-destructive">{form.formState.errors.phone.message}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label>Rol</Label>
-              <Select
-                value={form.watch('role')}
-                onValueChange={(v) => form.setValue('role', v as 'admin' | 'gerente' | 'asesor')}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">Administrador</SelectItem>
-                  <SelectItem value="gerente">Gerente</SelectItem>
-                  <SelectItem value="asesor">Asesor</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="status">Activo</Label>
-              <Switch
-                id="status"
-                checked={form.watch('status')}
-                onCheckedChange={(v) => form.setValue('status', !!v)}
-              />
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setNewUserOpen(false)}>
-                Cancelar
-              </Button>
-              <Button type="submit" className="bg-[#13944C] hover:bg-[#0f7a3d]">
-                Crear usuario
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <UserFormModal
+        open={newUserOpen}
+        onOpenChange={setNewUserOpen}
+        user={null}
+        onSubmit={handleTeamUserSubmit}
+      />
     </div>
   );
 }

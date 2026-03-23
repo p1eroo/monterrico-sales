@@ -70,15 +70,16 @@ model Company {
   name         String
   razonSocial  String?
   ruc          String?
+  telefono    String?
   domain       String?
-  rubro        String?
-  tipo         String?
-  linkedin     String?
-  correo       String?
-  distrito     String?
-  provincia    String?
+  rubro       String?
+  tipo        String?
+  linkedin    String?
+  correo      String?
+  distrito    String?
+  provincia   String?
   departamento String?
-  direccion    String?
+  direccion   String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   contacts     CompanyContact[]
@@ -94,8 +95,7 @@ model Opportunity {
   amount            Float
   probability       Int       @default(0)
   etapa             String
-  /** abierto | ganado | perdido */
-  status            String    @default("abierto")
+  status            String    @default("abierta")
   /** baja | media | alta */
   priority          String    @default("media")
   expectedCloseDate DateTime?

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -13,6 +13,9 @@ import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
 
 import imgLogin from "@/assets/imglogin.png";
+
+const API_BASE =
+  import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Usuario requerido"),
@@ -53,7 +56,7 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      const res = await fetch("http://localhost:3000/auth/login", {
+      const res = await fetch(`${API_BASE}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -62,7 +65,7 @@ export default function LoginPage() {
         }),
       });
 
-      const json = await res.json();
+      const json = await res.json().catch(() => ({}));
 
       if (res.ok) {
         const { accessToken, user } = json;
@@ -70,8 +73,8 @@ export default function LoginPage() {
         if (user) {
           updateCurrentUser({
             id: user.id ?? "",
-            username: user.username ?? data.username,
-            name: user.name ?? user.username ?? data.username,
+            username: user.username ?? data.username.trim(),
+            name: user.name ?? data.username.trim(),
             role: user.role ?? "Usuario",
           });
         }
@@ -82,7 +85,7 @@ export default function LoginPage() {
           typeof json.message === "string"
             ? json.message
             : Array.isArray(json.message)
-              ? json.message.map((m: { message?: string }) => m.message ?? "").join(" ")
+              ? json.message.join(", ")
               : "Credenciales inválidas";
         setError(msg);
       }
@@ -155,7 +158,7 @@ export default function LoginPage() {
 
             {/* Subtítulo centrado - parte inferior */}
             <p className="mt-12 max-w-md text-center text-sm leading-relaxed text-[#64748b] dark:text-[#94a3b8] xl:mt-16 xl:text-base">
-              Centraliza contactos, oportunidades y seguimientos. Accede desde
+              Centraliza contactos, oportunidades y tareas. Accede desde
               cualquier lugar y mantén tu equipo alineado.
             </p>
           </div>
@@ -206,7 +209,7 @@ export default function LoginPage() {
               <Input
                 id="username"
                 type="text"
-                placeholder="Ej: admin"
+                placeholder="tu_usuario"
                 {...register("username")}
                 aria-invalid={!!errors.username}
                 className={cn(
@@ -304,6 +307,16 @@ export default function LoginPage() {
             </Button>
             {error && <p className="text-sm text-destructive">{error}</p>}
           </form>
+
+          <p className="mt-6 text-center text-sm text-muted-foreground">
+            ¿Primera vez en el entorno?{" "}
+            <Link
+              to="/register"
+              className="font-medium text-[#13944C] hover:underline"
+            >
+              Crear cuenta
+            </Link>
+          </p>
         </div>
       </div>
     </div>

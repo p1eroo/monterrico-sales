@@ -3,7 +3,8 @@ import {
   User, Building2, Briefcase, Search, Link2, ChevronDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { users, priorityLabels } from '@/data/mock';
+import { priorityLabels } from '@/data/mock';
+import { useUsers } from '@/hooks/useUsers';
 import type { Contact, Opportunity, TaskAssociation } from '@/types';
 
 import { Button } from '@/components/ui/button';
@@ -59,14 +60,14 @@ export interface TaskFormDialogProps {
   opportunities: Opportunity[];
   defaultAssigneeId?: string;
   defaultTitle?: string;
-  onSave: (task: TaskFormResult) => void;
+  onSave: (task: TaskFormResult) => void | Promise<void>;
 }
 
 export function TaskFormDialog({
   open,
   onOpenChange,
   title = 'Crear Tarea',
-  description = 'Crea una nueva tarea para dar seguimiento.',
+  description = 'Crea una nueva tarea.',
   contacts,
   companies,
   opportunities,
@@ -74,6 +75,7 @@ export function TaskFormDialog({
   defaultTitle = '',
   onSave,
 }: TaskFormDialogProps) {
+  const { users, activeUsers } = useUsers();
   const today = new Date().toISOString().slice(0, 10);
   const [formTitle, setFormTitle] = useState(defaultTitle);
 
@@ -113,14 +115,14 @@ export function TaskFormDialog({
     setAssocSearch('');
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!formTitle.trim()) {
       toast.error('Ingresa un título para la tarea');
       return;
     }
     const assigneeUser = users.find((u) => u.id === formAssignee);
     const assigneeName = assigneeUser?.name ?? 'Sin asignar';
-    onSave({
+    const result = onSave({
       title: formTitle.trim(),
       type: formType || undefined,
       status: formStatus,
@@ -132,6 +134,7 @@ export function TaskFormDialog({
       dueDate: formDueDate,
       associations: associations.length > 0 ? [...associations] : undefined,
     });
+    await (result instanceof Promise ? result : Promise.resolve());
     resetForm();
     onOpenChange(false);
     toast.success('Tarea creada');
@@ -316,7 +319,7 @@ export function TaskFormDialog({
               <Select value={formAssignee} onValueChange={setFormAssignee}>
                 <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar asesor" /></SelectTrigger>
                 <SelectContent>
-                  {users.filter((u) => u.status === 'activo').map((u) => (
+                  {activeUsers.map((u) => (
                     <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
                   ))}
                 </SelectContent>

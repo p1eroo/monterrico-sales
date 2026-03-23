@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import type { Client, ClientStatus, CompanyRubro, CompanyTipo } from '@/types';
-import { clients as mockClients, users, timelineEvents, companyRubroLabels, companyTipoLabels } from '@/data/mock';
+import { clients as mockClients, timelineEvents, companyRubroLabels, companyTipoLabels } from '@/data/mock';
+import { useUsers } from '@/hooks/useUsers';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -104,6 +105,7 @@ function exportClientsToCSV(clients: Client[]) {
 
 export default function Clients() {
   const navigate = useNavigate();
+  const { users, activeUsers } = useUsers();
   const [clientList, setClientList] = useState<Client[]>(mockClients);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -156,7 +158,13 @@ export default function Clients() {
     });
   }, [clientList, searchTerm, statusFilter, assigneeFilter]);
 
-  const activeUsers = users.filter((u) => u.status === 'activo');
+  const selectedAssigneeUser = useMemo(
+    () =>
+      selectedClient
+        ? users.find((u) => u.id === selectedClient.assignedTo)
+        : undefined,
+    [selectedClient, users],
+  );
 
   function onSubmitNewClient(data: NewClientForm) {
     const assignedUser = users.find((u) => u.id === data.assignedTo);
@@ -497,7 +505,9 @@ export default function Clients() {
                       <div>
                         <p className="text-sm font-medium">{selectedClient.assignedToName}</p>
                         <p className="text-xs text-muted-foreground">
-                          {users.find((u) => u.id === selectedClient.assignedTo)?.email}
+                          {selectedAssigneeUser?.username ??
+                            selectedAssigneeUser?.email ??
+                            '—'}
                         </p>
                       </div>
                     </div>

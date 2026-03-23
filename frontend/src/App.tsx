@@ -1,10 +1,11 @@
-import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 import { useAppStore } from '@/store';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 
 const MainLayout = lazy(() => import('@/components/layout/MainLayout'));
 const Login = lazy(() => import('@/pages/Login'));
+const Register = lazy(() => import('@/pages/Register'));
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const Contactos = lazy(() => import('@/pages/Contactos'));
 const ContactoDetail = lazy(() => import('@/pages/ContactoDetail'));
@@ -12,10 +13,6 @@ const Empresas = lazy(() => import('@/pages/Empresas'));
 const EmpresaDetail = lazy(() => import('@/pages/EmpresaDetail'));
 const Pipeline = lazy(() => import('@/pages/Pipeline'));
 
-function RedirectLeadToContact() {
-  const { id } = useParams<{ id: string }>();
-  return <Navigate to={id ? `/contactos/${id}` : '/contactos'} replace />;
-}
 const Tareas = lazy(() => import('@/pages/Tareas'));
 const Calendario = lazy(() => import('@/pages/Calendario'));
 const Opportunities = lazy(() => import('@/pages/Opportunities'));
@@ -47,7 +44,9 @@ function LoadingFallback() {
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAppStore((s) => s.isAuthenticated);
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  const hasToken =
+    typeof window !== 'undefined' && !!localStorage.getItem('accessToken');
+  if (!isAuthenticated && !hasToken) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
 
@@ -72,6 +71,14 @@ export default function App() {
               }
             />
             <Route
+              path="/register"
+              element={
+                <PublicRoute>
+                  <Register />
+                </PublicRoute>
+              }
+            />
+            <Route
               element={
                 <ProtectedRoute>
                   <MainLayout />
@@ -79,8 +86,6 @@ export default function App() {
               }
             >
               <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/leads" element={<Navigate to="/contactos" replace />} />
-              <Route path="/leads/:id" element={<RedirectLeadToContact />} />
               <Route path="/contactos" element={<Contactos />} />
               <Route path="/contactos/:id" element={<ContactoDetail />} />
               <Route path="/empresas" element={<Empresas />} />

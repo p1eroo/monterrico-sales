@@ -14,8 +14,8 @@ export const notificationsData: NotificationItem[] = [
   },
   {
     id: 'n2',
-    title: 'Seguimiento vencido',
-    description: 'El seguimiento de Fernando Ochoa (BCP) está vencido.',
+    title: 'Tarea vencida',
+    description: 'La tarea de Fernando Ochoa (BCP) está vencida.',
     time: 'Hace 1 hora',
     createdAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
     read: false,
@@ -85,7 +85,7 @@ export const notificationsData: NotificationItem[] = [
   },
   {
     id: 'n8',
-    title: 'Seguimiento vencido',
+    title: 'Tarea vencida',
     description: 'Follow-up Southern Copper está vencido.',
     time: 'Hace 2 días',
     createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),

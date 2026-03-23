@@ -1,11 +1,12 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Briefcase, DollarSign, Target, CalendarDays, User, Building2,
-  Users, Edit, RefreshCw, UserPlus, Plus, FileArchive,
+  Users, Edit, RefreshCw, UserPlus, Plus, FileArchive, Loader2,
 } from 'lucide-react';
 import { useCRMStore } from '@/store/crmStore';
-import { etapaLabels, companyRubroLabels, users, timelineEvents, activities } from '@/data/mock';
+import { etapaLabels, companyRubroLabels, timelineEvents, activities } from '@/data/mock';
+import { useUsers } from '@/hooks/useUsers';
 import { getPrimaryCompany } from '@/lib/utils';
 import type { CompanyRubro, Etapa, OpportunityStatus } from '@/types';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -14,9 +15,11 @@ import { EntityInfoCard } from '@/components/shared/EntityInfoCard';
 import { TimelinePanel } from '@/components/shared/TimelinePanel';
 import { ActivityPanel } from '@/components/shared/ActivityPanel';
 import { QuickActionsWithDialogs } from '@/components/shared/QuickActionsWithDialogs';
+import { LinkedOpportunitiesCard } from '@/components/shared/LinkedOpportunitiesCard';
 import { LinkedContactsCard } from '@/components/shared/LinkedContactsCard';
 import { LinkedCompaniesCard } from '@/components/shared/LinkedCompaniesCard';
 import { NewCompanyWizard, type NewCompanyData } from '@/components/shared/NewCompanyWizard';
+import { NewOpportunityDialog, type NewOpportunityData } from '@/components/shared/NewOpportunityDialog';
 import { LinkExistingDialog, type LinkExistingItem } from '@/components/shared/LinkExistingDialog';
 import { NewContactWizard } from '@/components/shared/NewContactWizard';
 import type { NewContactData } from '@/components/shared/NewContactWizard';
@@ -40,6 +43,15 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { formatCurrency, formatDate } from '@/lib/formatters';
+import { api } from '@/lib/api';
+import {
+  type ApiOpportunityDetail,
+  isLikelyOpportunityCuid,
+  mapApiContactToContact,
+  mapApiOpportunityToOpportunity,
+} from '@/lib/opportunityApi';
+import { type ApiContactListRow, contactRemoveCompany, isLikelyContactCuid, mapApiContactRowToContact } from '@/lib/contactApi';
+import { type ApiCompanyRecord } from '@/lib/companyApi';
 
 const statusLabels: Record<string, string> = {
   abierta: 'Abierta',
@@ -58,13 +70,90 @@ const statusColors: Record<string, string> = {
 export default function OportunidadDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { opportunities, contacts } = useCRMStore();
+  const routeId = id ? decodeURIComponent(id) : '';
+  const fromApi = isLikelyOpportunityCuid(routeId);
+  const { opportunities, contacts, getOpportunitiesByContactId, addOpportunity, updateOpportunity, updateContact, addContact } = useCRMStore();
 
-  const opp = opportunities.find((o) => o.id === id);
+  const [apiRecord, setApiRecord] = useState<ApiOpportunityDetail | null>(null);
+  const [apiLoading, setApiLoading] = useState(fromApi);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [apiContactsList, setApiContactsList] = useState<ApiContactListRow[]>([]);
 
-  const linkedContact = opp?.contactId ? contacts.find((l) => l.id === opp.contactId) : null;
-  const primaryCompany = linkedContact ? getPrimaryCompany(linkedContact) : null;
-  const assignedUser = opp ? users.find((u) => u.id === opp.assignedTo) : null;
+  useEffect(() => {
+    if (!fromApi || !routeId) {
+      setApiLoading(false);
+      setApiRecord(null);
+      setApiError(null);
+      setApiContactsList([]);
+      return;
+    }
+    let cancelled = false;
+    setApiLoading(true);
+    setApiError(null);
+    Promise.all([
+      api<ApiOpportunityDetail>(`/opportunities/${routeId}`),
+      api<ApiContactListRow[]>('/contacts'),
+    ])
+      .then(([oppRow, contactsList]) => {
+        if (!cancelled) {
+          setApiRecord(oppRow);
+          setApiContactsList(contactsList);
+        }
+      })
+      .catch((e: Error) => {
+        if (!cancelled) {
+          setApiRecord(null);
+          setApiError(e.message);
+          setApiContactsList([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setApiLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [fromApi, routeId]);
+
+  const { users } = useUsers();
+  const storeOpp = opportunities.find((o) => o.id === routeId);
+
+  const opp = useMemo(() => {
+    if (fromApi) {
+      if (!apiRecord) return undefined;
+      return mapApiOpportunityToOpportunity(apiRecord);
+    }
+    return storeOpp;
+  }, [fromApi, apiRecord, storeOpp]);
+
+  const linkedContact = useMemo(() => {
+    if (!opp) return null;
+    if (fromApi && apiRecord?.contacts?.[0]?.contact) {
+      const c = apiRecord.contacts[0].contact;
+      const fromStore = contacts.find((l) => l.id === c.id);
+      return fromStore ?? mapApiContactToContact(c);
+    }
+    return opp.contactId ? contacts.find((l) => l.id === opp.contactId) ?? null : null;
+  }, [fromApi, apiRecord, opp, contacts]);
+
+  const primaryCompany = useMemo(() => {
+    if (!opp) return null;
+    if (fromApi && apiRecord?.companies?.[0]?.company) {
+      const comp = apiRecord.companies[0].company;
+      return { name: comp.name };
+    }
+    return linkedContact ? getPrimaryCompany(linkedContact) : null;
+  }, [fromApi, apiRecord, opp, linkedContact]);
+
+  const otherOpportunities = useMemo(() => {
+    if (!linkedContact) return [];
+    return getOpportunitiesByContactId(linkedContact.id).filter((o) => o.id !== routeId);
+  }, [linkedContact, routeId, getOpportunitiesByContactId]);
+
+  const assignedUser = useMemo(() => {
+    if (!opp) return undefined;
+    return users.find((u) => u.id === opp.assignedTo);
+  }, [opp, users]);
 
   const initialOppActivities = useMemo(() => {
     if (!opp?.contactId) return [];
@@ -72,13 +161,16 @@ export default function OportunidadDetailPage() {
   }, [opp]);
   const [oppActivities, setOppActivities] = useState(initialOppActivities);
 
-  const { updateContact, addContact, updateOpportunity } = useCRMStore();
-
   const tasksTabRef = useRef<TasksTabHandle>(null);
   const [newContactOpen, setNewContactOpen] = useState(false);
   const [addExistingContactOpen, setAddExistingContactOpen] = useState(false);
   const [linkContactIds, setLinkContactIds] = useState<string[]>([]);
   const [linkContactSearch, setLinkContactSearch] = useState('');
+
+  const [newOppOpen, setNewOppOpen] = useState(false);
+  const [addExistingOppOpen, setAddExistingOppOpen] = useState(false);
+  const [linkOppIds, setLinkOppIds] = useState<string[]>([]);
+  const [linkOppSearch, setLinkOppSearch] = useState('');
 
   const [newCompanyDialogOpen, setNewCompanyDialogOpen] = useState(false);
 
@@ -104,7 +196,7 @@ export default function OportunidadDetailPage() {
 
   // --- Edit / Etapa / Asignar dialogs ---
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editForm, setEditForm] = useState({ title: '', amount: 0, expectedCloseDate: '', description: '', status: '' as OpportunityStatus | '' });
+  const [editForm, setEditForm] = useState({ title: '', amount: 0, expectedCloseDate: '', status: '' as OpportunityStatus | '' });
 
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
@@ -115,7 +207,6 @@ export default function OportunidadDetailPage() {
       title: opp.title,
       amount: opp.amount,
       expectedCloseDate: opp.expectedCloseDate,
-      description: opp.description ?? '',
       status: opp.status,
     });
     setEditDialogOpen(true);
@@ -123,11 +214,31 @@ export default function OportunidadDetailPage() {
 
   function handleSaveEdit() {
     if (!opp) return;
+    if (fromApi && routeId) {
+      void (async () => {
+        try {
+          const updated = await api<ApiOpportunityDetail>(`/opportunities/${routeId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+              title: editForm.title.trim(),
+              amount: editForm.amount,
+              expectedCloseDate: editForm.expectedCloseDate || null,
+              status: editForm.status || undefined,
+            }),
+          });
+          setApiRecord(updated);
+          toast.success('Oportunidad actualizada correctamente');
+          setEditDialogOpen(false);
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : 'No se pudo guardar');
+        }
+      })();
+      return;
+    }
     updateOpportunity(opp.id, {
       title: editForm.title,
       amount: editForm.amount,
       expectedCloseDate: editForm.expectedCloseDate,
-      description: editForm.description || undefined,
       status: (editForm.status || undefined) as OpportunityStatus | undefined,
     });
     toast.success('Oportunidad actualizada correctamente');
@@ -136,6 +247,22 @@ export default function OportunidadDetailPage() {
 
   function handleEtapaChange(newEtapa: string) {
     if (!opp) return;
+    if (fromApi && routeId) {
+      void (async () => {
+        try {
+          const updated = await api<ApiOpportunityDetail>(`/opportunities/${routeId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ etapa: newEtapa }),
+          });
+          setApiRecord(updated);
+          toast.success('Etapa actualizada correctamente');
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : 'No se pudo actualizar la etapa');
+        }
+      })();
+      setStatusDialogOpen(false);
+      return;
+    }
     updateOpportunity(opp.id, { etapa: newEtapa as Etapa });
     toast.success('Etapa actualizada correctamente');
     setStatusDialogOpen(false);
@@ -143,14 +270,95 @@ export default function OportunidadDetailPage() {
 
   function handleAssignChange(newAssigneeId: string) {
     if (!opp) return;
+    if (fromApi && routeId) {
+      if (!isLikelyOpportunityCuid(newAssigneeId)) {
+        toast.error('El asesor debe ser un usuario del servidor (id válido en PostgreSQL).');
+        return;
+      }
+      void (async () => {
+        try {
+          const updated = await api<ApiOpportunityDetail>(`/opportunities/${routeId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ assignedTo: newAssigneeId }),
+          });
+          setApiRecord(updated);
+          toast.success('Asesor asignado correctamente');
+          setAssignDialogOpen(false);
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : 'No se pudo asignar');
+        }
+      })();
+      return;
+    }
     const user = users.find((u) => u.id === newAssigneeId);
     updateOpportunity(opp.id, { assignedTo: newAssigneeId, assignedToName: user?.name ?? 'Sin asignar' });
     toast.success('Asesor asignado correctamente');
     setAssignDialogOpen(false);
   }
 
-  function handleCreateNewContact(data: NewContactData) {
+  async function handleCreateNewContact(data: NewContactData) {
     if (!opp) return;
+    if (fromApi && routeId) {
+      try {
+        let companyId: string | undefined = data.companyId;
+        if (data.newCompanyWizardData) {
+          const created = await api<ApiCompanyRecord>('/companies', {
+            method: 'POST',
+            body: JSON.stringify({
+              name: data.newCompanyWizardData.nombreComercial.trim(),
+              razonSocial: data.newCompanyWizardData.razonSocial.trim() || undefined,
+              ruc: data.newCompanyWizardData.ruc.trim() || undefined,
+              telefono: data.newCompanyWizardData.telefono.trim() || undefined,
+              domain: data.newCompanyWizardData.dominio.trim() || undefined,
+              rubro: data.newCompanyWizardData.rubro || undefined,
+              tipo: data.newCompanyWizardData.tipoEmpresa || undefined,
+              linkedin: data.newCompanyWizardData.linkedin.trim() || undefined,
+              correo: data.newCompanyWizardData.correo.trim() || undefined,
+              distrito: data.newCompanyWizardData.distrito.trim() || undefined,
+              provincia: data.newCompanyWizardData.provincia.trim() || undefined,
+              departamento: data.newCompanyWizardData.departamento.trim() || undefined,
+              direccion: data.newCompanyWizardData.direccion.trim() || undefined,
+            }),
+          });
+          companyId = created.id;
+        }
+        const today = new Date().toISOString().slice(0, 10);
+        const createdContact = await api<{ id: string }>('/contacts', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: data.name.trim(),
+            phone: data.phone?.trim() || '',
+            email: data.email?.trim() || '',
+            source: data.source,
+            cargo: data.cargo?.trim() || undefined,
+            etapa: data.etapaCiclo,
+            assignedTo: data.assignedTo?.trim() || opp.assignedTo || undefined,
+            estimatedValue: data.estimatedValue ?? 0,
+            nextAction: 'Contactar',
+            notes: data.notes?.trim() || undefined,
+            docType: data.docType || undefined,
+            docNumber: data.docNumber?.trim() || undefined,
+            departamento: data.departamento?.trim() || undefined,
+            provincia: data.provincia?.trim() || undefined,
+            distrito: data.distrito?.trim() || undefined,
+            direccion: data.direccion?.trim() || undefined,
+            clienteRecuperado: data.clienteRecuperado || undefined,
+            etapaHistory: [{ etapa: data.etapaCiclo, fecha: today }],
+            companyId,
+          }),
+        });
+        const updated = await api<ApiOpportunityDetail>(`/opportunities/${routeId}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ contactId: createdContact.id }),
+        });
+        setApiRecord(updated);
+        setNewContactOpen(false);
+        toast.success('Contacto creado y vinculado a la oportunidad');
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'No se pudo crear el contacto');
+      }
+      return;
+    }
     const newContact = addContact({
       name: data.name,
       cargo: data.cargo,
@@ -160,7 +368,6 @@ export default function OportunidadDetailPage() {
       phone: data.phone || '',
       email: data.email || '',
       source: data.source,
-      priority: data.priority,
       assignedTo: data.assignedTo || opp.assignedTo,
       estimatedValue: data.estimatedValue,
       clienteRecuperado: data.clienteRecuperado,
@@ -170,14 +377,50 @@ export default function OportunidadDetailPage() {
     setNewContactOpen(false);
   }
 
-  function handleLinkContacts() {
+  async function handleLinkContacts() {
     if (linkContactIds.length === 0 || !opp) return;
+    if (fromApi && routeId) {
+      try {
+        const firstContactId = linkContactIds[0];
+        const updated = await api<ApiOpportunityDetail>(`/opportunities/${routeId}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ contactId: firstContactId }),
+        });
+        setApiRecord(updated);
+        toast.success('Contacto vinculado a la oportunidad');
+        setLinkContactIds([]);
+        setLinkContactSearch('');
+        setAddExistingContactOpen(false);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'No se pudo vincular');
+      }
+      return;
+    }
     const firstContactId = linkContactIds[0];
     updateOpportunity(opp.id, { contactId: firstContactId, contactName: contacts.find((l) => l.id === firstContactId)?.name });
     toast.success('Contacto vinculado a la oportunidad');
     setLinkContactIds([]);
     setLinkContactSearch('');
     setAddExistingContactOpen(false);
+  }
+
+  async function handleRemoveContact(_contact?: { id: string }) {
+    if (!opp || !linkedContact) return;
+    if (fromApi && routeId) {
+      try {
+        const updated = await api<ApiOpportunityDetail>(`/opportunities/${routeId}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ contactId: null }),
+        });
+        setApiRecord(updated);
+        toast.success('Contacto desvinculado de la oportunidad');
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'No se pudo desvincular');
+      }
+      return;
+    }
+    updateOpportunity(opp.id, { contactId: '', contactName: '' });
+    toast.success('Contacto desvinculado de la oportunidad');
   }
 
   function handleAddCompany(data: NewCompanyData) {
@@ -191,6 +434,114 @@ export default function OportunidadDetailPage() {
     }];
     updateContact(linkedContact.id, { companies });
     toast.success('Empresa agregada');
+  }
+
+  async function handleRemoveCompany(company: import('@/types').LinkedCompany) {
+    if (!linkedContact) return;
+    if (fromApi && linkedContact.id && company.id && isLikelyContactCuid(linkedContact.id)) {
+      try {
+        await contactRemoveCompany(linkedContact.id, company.id);
+        const filtered = (linkedContact.companies ?? []).filter((c) => c.id !== company.id && c.name !== company.name);
+        updateContact(linkedContact.id, { companies: filtered });
+        toast.success('Empresa desvinculada');
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'No se pudo desvincular');
+      }
+      return;
+    }
+    const filtered = (linkedContact.companies ?? []).filter((c) => c.name !== company.name);
+    updateContact(linkedContact.id, { companies: filtered });
+    toast.success('Empresa desvinculada');
+  }
+
+  async function handleRemoveOpportunity(oppItem: import('@/types').Opportunity) {
+    if (fromApi && isLikelyOpportunityCuid(oppItem.id)) {
+      try {
+        await api(`/opportunities/${oppItem.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ contactId: null }),
+        });
+        toast.success('Oportunidad desvinculada');
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'No se pudo desvincular');
+      }
+      return;
+    }
+    updateOpportunity(oppItem.id, { contactId: '', contactName: '' });
+    toast.success('Oportunidad desvinculada');
+  }
+
+  function handleCreateNewOpportunity(data: NewOpportunityData) {
+    if (!linkedContact) return;
+    if (fromApi && isLikelyContactCuid(linkedContact.id)) {
+      void (async () => {
+        try {
+          const body: Record<string, unknown> = {
+            title: data.title.trim(),
+            amount: data.amount,
+            etapa: data.etapa,
+            status: 'abierta',
+            priority: data.priority,
+            expectedCloseDate: data.expectedCloseDate,
+            contactId: linkedContact.id,
+          };
+          if (data.assignedTo) body.assignedTo = data.assignedTo;
+          await api('/opportunities', { method: 'POST', body: JSON.stringify(body) });
+          toast.success(`Oportunidad "${data.title}" creada correctamente`);
+          setNewOppOpen(false);
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : 'No se pudo crear la oportunidad');
+        }
+      })();
+      return;
+    }
+    addOpportunity({
+      title: data.title,
+      contactId: linkedContact.id,
+      amount: data.amount,
+      etapa: data.etapa as Etapa,
+      status: 'abierta',
+      priority: data.priority,
+      expectedCloseDate: data.expectedCloseDate,
+      assignedTo: data.assignedTo,
+      createdAt: new Date().toISOString().slice(0, 10),
+    });
+    toast.success(`Oportunidad "${data.title}" creada correctamente`);
+    setNewOppOpen(false);
+  }
+
+  function handleLinkOpportunities() {
+    if (linkOppIds.length === 0 || !linkedContact) return;
+    if (fromApi) {
+      void (async () => {
+        try {
+          for (const oppId of linkOppIds) {
+            if (isLikelyOpportunityCuid(oppId)) {
+              await api(`/opportunities/${oppId}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ contactId: linkedContact.id }),
+              });
+            } else {
+              updateOpportunity(oppId, { contactId: linkedContact.id, contactName: linkedContact.name });
+            }
+          }
+          toast.success(linkOppIds.length === 1 ? 'Oportunidad vinculada' : `${linkOppIds.length} oportunidades vinculadas`);
+          setLinkOppIds([]);
+          setLinkOppSearch('');
+          setAddExistingOppOpen(false);
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : 'No se pudo vincular');
+        }
+      })();
+      return;
+    }
+    for (const oppId of linkOppIds) {
+      updateOpportunity(oppId, { contactId: linkedContact.id, contactName: linkedContact.name });
+    }
+    toast.success(linkOppIds.length === 1 ? 'Oportunidad vinculada' : `${linkOppIds.length} oportunidades vinculadas`);
+    setLinkOppIds([]);
+    setLinkOppSearch('');
+    setAddExistingOppOpen(false);
   }
 
   function handleLinkCompanies() {
@@ -213,7 +564,26 @@ export default function OportunidadDetailPage() {
     setAddExistingCompanyOpen(false);
   }
 
-  const availableContacts = linkedContact ? contacts.filter((l) => l.id !== linkedContact.id) : contacts;
+  const availableOppsToLink = opportunities.filter(
+    (o) => o.id !== routeId && o.contactId !== linkedContact?.id,
+  );
+  const opportunityLinkItems: LinkExistingItem[] = availableOppsToLink.map((o) => ({
+    id: o.id,
+    title: o.title,
+    subtitle: `${formatCurrency(o.amount)} · ${etapaLabels[o.etapa]}`,
+    status: o.status,
+    icon: <DollarSign className="size-4" />,
+  }));
+
+  const availableContacts = (() => {
+    if (fromApi) {
+      const linkedId = apiRecord?.contacts?.[0]?.contact?.id;
+      return apiContactsList
+        .filter((c) => c.id !== linkedId)
+        .map((r) => mapApiContactRowToContact(r));
+    }
+    return linkedContact ? contacts.filter((l) => l.id !== linkedContact.id) : contacts;
+  })();
   const contactLinkItems: LinkExistingItem[] = availableContacts.map((c) => ({
     id: c.id,
     title: c.name,
@@ -245,6 +615,29 @@ export default function OportunidadDetailPage() {
     icon: <Building2 className="size-4" />,
   }));
 
+  if (fromApi && apiLoading) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground">
+        <Loader2 className="size-6 animate-spin" />
+        <span>Cargando oportunidad…</span>
+      </div>
+    );
+  }
+
+  if (fromApi && (apiError || !apiRecord)) {
+    return (
+      <div className="space-y-6">
+        <EmptyState
+          icon={Briefcase}
+          title="Oportunidad no encontrada"
+          description={apiError ?? 'La oportunidad que buscas no existe en el servidor.'}
+          actionLabel="Volver a Oportunidades"
+          onAction={() => navigate('/opportunities')}
+        />
+      </div>
+    );
+  }
+
   if (!opp) {
     return (
       <div className="space-y-6">
@@ -264,7 +657,6 @@ export default function OportunidadDetailPage() {
     <DetailLayout
       backPath="/opportunities"
       title={opp.title}
-      subtitle={opp.description}
       headerActions={
         <>
           <Badge variant="outline" className={`${statusColors[opp.status] ?? ''} border-0`}>
@@ -361,37 +753,28 @@ export default function OportunidadDetailPage() {
             ]}
           />
 
-          <LinkedContactsCard
-            contacts={linkedContact ? [linkedContact] : []}
-            title="Contacto vinculado"
-            onCreate={() => setNewContactOpen(true)}
-            onAddExisting={() => setAddExistingContactOpen(true)}
+          <LinkedOpportunitiesCard
+            opportunities={otherOpportunities}
+            onCreate={() => setNewOppOpen(true)}
+            onAddExisting={() => setAddExistingOppOpen(true)}
+            onRemove={handleRemoveOpportunity}
           />
 
           <LinkedCompaniesCard
             companies={primaryCompany ? [primaryCompany] : (linkedContact?.companies ?? [])}
             onCreate={() => setNewCompanyDialogOpen(true)}
             onAddExisting={() => setAddExistingCompanyOpen(true)}
+            onRemove={linkedContact ? handleRemoveCompany : undefined}
+            etapa={primaryCompany ? opp?.etapa : linkedContact?.etapa}
           />
 
-          {assignedUser && (
-            <Card className="gap-2">
-              <CardHeader className="flex flex-row items-center justify-between gap-2 pb-0 -mt-1">
-                <CardTitle className="flex items-center gap-1.5 text-[14px]">
-                  <User className="size-4.5 text-muted-foreground" />
-                  Responsable
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="rounded-xl border bg-card p-3.5">
-                  <p className="text-[14px] font-semibold">{assignedUser.name}</p>
-                  {assignedUser.phone && (
-                    <p className="text-[12px] text-muted-foreground">{assignedUser.phone}</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          <LinkedContactsCard
+            contacts={linkedContact ? [linkedContact] : []}
+            title="Contacto vinculado"
+            onCreate={() => setNewContactOpen(true)}
+            onAddExisting={() => setAddExistingContactOpen(true)}
+            onRemove={linkedContact ? handleRemoveContact : undefined}
+          />
         </>
       }
     >
@@ -465,6 +848,7 @@ export default function OportunidadDetailPage() {
             defaultAssigneeId={opp?.assignedTo}
             onActivityCreated={(activity) => setOppActivities((prev) => [activity as any, ...prev])}
             contactId={opp?.contactId}
+            opportunityId={opp?.id}
           />
         </TabsContent>
       </Tabs>
@@ -478,6 +862,29 @@ export default function OportunidadDetailPage() {
       title="Crear nuevo contacto"
       description={`Crea un nuevo contacto vinculado a la oportunidad "${opp.title}".`}
       submitLabel="Crear y vincular"
+    />
+
+    <NewOpportunityDialog
+      open={newOppOpen}
+      onOpenChange={setNewOppOpen}
+      entityName={linkedContact?.name ?? opp.title}
+      onSave={handleCreateNewOpportunity}
+    />
+
+    {/* Vincular oportunidad existente */}
+    <LinkExistingDialog
+      open={addExistingOppOpen}
+      onOpenChange={(open) => { setAddExistingOppOpen(open); if (!open) { setLinkOppIds([]); setLinkOppSearch(''); } }}
+      title="Vincular Oportunidad Existente"
+      searchPlaceholder="Buscar oportunidades..."
+      contactName={linkedContact?.name ?? opp.title}
+      items={opportunityLinkItems}
+      selectedIds={linkOppIds}
+      onSelectionChange={setLinkOppIds}
+      onConfirm={handleLinkOpportunities}
+      searchValue={linkOppSearch}
+      onSearchChange={setLinkOppSearch}
+      emptyMessage="No hay oportunidades disponibles para vincular."
     />
 
     {/* Vincular contacto existente */}
@@ -529,7 +936,7 @@ export default function OportunidadDetailPage() {
         </DialogHeader>
         <div className="grid gap-4 py-2">
           <div className="space-y-2">
-            <Label>Título *</Label>
+            <Label>Nombre *</Label>
             <Input value={editForm.title} onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))} />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -552,10 +959,6 @@ export default function OportunidadDetailPage() {
                 ))}
               </SelectContent>
             </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Descripción</Label>
-            <Textarea placeholder="Descripción de la oportunidad..." rows={3} value={editForm.description} onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))} />
           </div>
         </div>
         <DialogFooter>

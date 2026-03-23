@@ -167,6 +167,7 @@ exports.Prisma.CompanyScalarFieldEnum = {
   name: 'name',
   razonSocial: 'razonSocial',
   ruc: 'ruc',
+  telefono: 'telefono',
   domain: 'domain',
   rubro: 'rubro',
   tipo: 'tipo',

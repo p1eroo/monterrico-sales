@@ -12,13 +12,13 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { users } from '@/data/mock';
+import { useUsers } from '@/hooks/useUsers';
 import { eventTypeConfig } from './eventTypeConfig';
 import type { CalendarEvent } from '@/types';
 
 const eventFormSchema = z.object({
   title: z.string().min(2, 'El título es requerido'),
-  type: z.enum(['llamada', 'reunion', 'tarea', 'correo', 'seguimiento', 'whatsapp']),
+  type: z.enum(['llamada', 'reunion', 'tarea', 'correo', 'whatsapp']),
   date: z.string().min(1, 'La fecha es requerida'),
   startTime: z.string().min(1, 'La hora de inicio es requerida'),
   endTime: z.string().min(1, 'La hora de fin es requerida'),
@@ -37,7 +37,7 @@ export interface EventFormModalProps {
   onOpenChange: (open: boolean) => void;
   event?: CalendarEvent | null;
   relatedOptions: { type: 'contact' | 'company' | 'opportunity'; id: string; name: string }[];
-  onSave: (data: EventFormData) => void;
+  onSave: (data: EventFormData) => void | Promise<void>;
 }
 
 export function EventFormModal({
@@ -67,6 +67,8 @@ export function EventFormModal({
     },
   });
 
+  const { activeUsers } = useUsers();
+
   useEffect(() => {
     if (open) {
       if (event) {
@@ -90,17 +92,16 @@ export function EventFormModal({
           date: new Date().toISOString().slice(0, 10),
           startTime: '09:00',
           endTime: '09:30',
-          assignedTo: users[0]?.id ?? '',
+          assignedTo: activeUsers[0]?.id ?? '',
           status: 'pendiente',
         });
       }
     }
-  }, [open, event, reset]);
+  }, [open, event, reset, activeUsers]);
 
-  const activeUsers = users.filter((u) => u.status === 'activo');
-
-  function onSubmit(data: EventFormData) {
-    onSave(data);
+  async function onSubmit(data: EventFormData) {
+    const result = onSave(data);
+    await (result instanceof Promise ? result : Promise.resolve());
     onOpenChange(false);
   }
 

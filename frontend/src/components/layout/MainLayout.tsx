@@ -6,8 +6,10 @@ import { AppSidebar } from './AppSidebar';
 import { Topbar } from './Topbar';
 import { DailyBriefingPanel } from '@/components/shared/DailyBriefingPanel';
 import { shouldShowDailyBriefing } from '@/lib/dailyOverview';
+import { useUsers } from '@/hooks/useUsers';
 
 export default function MainLayout() {
+  useUsers(); // Precarga usuarios de la API para selects de asignación
   const [showBriefing, setShowBriefing] = useState(false);
   const [dontShowAgainToday, setDontShowAgainToday] = useState(false);
 

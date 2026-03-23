@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  Phone, Mail, Users, CheckSquare, RefreshCw, MessageSquare, ClipboardList,
+  Phone, Mail, Users, CheckSquare, MessageSquare, ClipboardList,
   Calendar, User, Clock,
 } from 'lucide-react';
 import type { Activity, ActivityType } from '@/types';
@@ -19,7 +19,6 @@ const activityTypeIconMap: Record<ActivityType, typeof Phone> = {
   reunion: Users,
   tarea: CheckSquare,
   correo: Mail,
-  seguimiento: RefreshCw,
   whatsapp: MessageSquare,
 };
 
@@ -28,7 +27,6 @@ const activityTypeLabelMap: Record<ActivityType, string> = {
   reunion: 'Reunión',
   tarea: 'Tarea',
   correo: 'Correo',
-  seguimiento: 'Seguimiento',
   whatsapp: 'WhatsApp',
 };
 
@@ -37,7 +35,6 @@ const activityTypeColorMap: Record<ActivityType, string> = {
   reunion: 'bg-emerald-100 text-emerald-700',
   tarea: 'bg-violet-100 text-violet-700',
   correo: 'bg-purple-100 text-purple-700',
-  seguimiento: 'bg-orange-100 text-orange-700',
   whatsapp: 'bg-green-100 text-green-700',
 };
 

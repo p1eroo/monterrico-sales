@@ -43,7 +43,7 @@ export function GoalCard({
 
   const isAdminOrGerente =
     currentUser.role?.toLowerCase().includes('admin') ||
-    currentUser.role?.toLowerCase().includes('gerente');
+    currentUser.role?.toLowerCase().includes('supervisor');
 
   const showGlobal = isAdminOrGerente;
 

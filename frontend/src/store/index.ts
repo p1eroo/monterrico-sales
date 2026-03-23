@@ -73,7 +73,12 @@ export const useAppStore = create<AppState>()(
         })),
   isAuthenticated: false,
   login: () => set({ isAuthenticated: true }),
-  logout: () => set({ isAuthenticated: false }),
+  logout: () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('accessToken');
+    }
+    set({ isAuthenticated: false });
+  },
   sentCampaigns: [],
       addSentCampaign: (c) => set((s) => ({ sentCampaigns: [...s.sentCampaigns, c] })),
       userTemplates: [],
@@ -105,6 +110,7 @@ export const useAppStore = create<AppState>()(
         currentUser: s.currentUser,
         preferences: s.preferences,
         gmailConnected: s.gmailConnected,
+        isAuthenticated: s.isAuthenticated,
       }),
     }
   )

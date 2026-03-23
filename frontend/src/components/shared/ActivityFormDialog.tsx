@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Phone, Users, Mail } from 'lucide-react';
 import { toast } from 'sonner';
-import { users } from '@/data/mock';
 import type { ActivityType, ActivityStatus } from '@/types';
 
 import { Button } from '@/components/ui/button';

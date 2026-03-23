@@ -25,7 +25,6 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   abierta: { label: 'Abierta', className: 'bg-blue-100 text-blue-700 border-blue-200' },
   ganada: { label: 'Ganada', className: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
   perdida: { label: 'Perdida', className: 'bg-red-100 text-red-700 border-red-200' },
-  suspendida: { label: 'Suspendida', className: 'bg-gray-100 text-gray-700 border-gray-200' },
 };
 
 interface StatusBadgeProps {

@@ -10,7 +10,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { calendarEvents, users } from '@/data/mock';
+import { useUsers } from '@/hooks/useUsers';
+import { useActivities } from '@/hooks/useActivities';
+import { activityToCalendarEvent } from '@/lib/activityApi';
 import { contacts } from '@/data/mock';
 import { opportunities } from '@/data/mock';
 import { CalendarEventCard } from '@/components/calendar/CalendarEventCard';
@@ -28,6 +30,17 @@ const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
 
 export default function CalendarioPage() {
+  const { users, activeUsers } = useUsers();
+  const { activities, loading: activitiesLoading, createActivity, updateActivity, deleteActivity, error: activitiesError } = useActivities();
+
+  const TASK_TYPES = ['tarea', 'llamada', 'reunion', 'correo'];
+  const events = useMemo(
+    () => activities
+      .filter((a) => TASK_TYPES.includes(a.type))
+      .map(activityToCalendarEvent),
+    [activities],
+  );
+
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [userFilter, setUserFilter] = useState<string>('all');
@@ -37,7 +50,6 @@ export default function CalendarioPage() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
-  const [events, setEvents] = useState<CalendarEvent[]>(calendarEvents);
 
   const relatedOptions = useMemo(() => {
     const opts: { type: 'contact' | 'company' | 'opportunity'; id: string; name: string }[] = [];
@@ -125,7 +137,7 @@ export default function CalendarioPage() {
     setCurrentDate(new Date());
   }
 
-  function handleSaveEvent(data: Parameters<EventFormModalProps['onSave']>[0]) {
+  async function handleSaveEvent(data: Parameters<EventFormModalProps['onSave']>[0]) {
     const d = data as {
       title: string;
       type: CalendarEvent['type'];
@@ -139,39 +151,51 @@ export default function CalendarioPage() {
       description?: string;
       status: CalendarEvent['status'];
     };
-    const assignedUser = users.find((u) => u.id === d.assignedTo);
-    const cleanData = {
-      ...d,
-      relatedEntityId: d.relatedEntityId && d.relatedEntityId !== 'none' ? d.relatedEntityId : undefined,
-      relatedEntityType: d.relatedEntityId && d.relatedEntityId !== 'none' ? d.relatedEntityType : undefined,
-      relatedEntityName: d.relatedEntityId && d.relatedEntityId !== 'none' ? d.relatedEntityName : undefined,
-    };
-    if (editingEvent) {
-      setEvents((prev) =>
-        prev.map((e) =>
-          e.id === editingEvent.id
-            ? {
-                ...e,
-                ...cleanData,
-                assignedToName: assignedUser?.name ?? e.assignedToName,
-              }
-            : e,
-        ),
-      );
-      toast.success('Evento actualizado');
-    } else {
-      const newEvent: CalendarEvent = {
-        id: `ce${Date.now()}`,
-        ...cleanData,
-        assignedToName: assignedUser?.name ?? '',
-      };
-      setEvents((prev) => [newEvent, ...prev]);
-      toast.success('Evento creado');
-    }
-    setEditingEvent(null);
-  }
+    const entityId = d.relatedEntityId && d.relatedEntityId !== 'none' ? d.relatedEntityId : undefined;
+    const entityType = entityId ? d.relatedEntityType : undefined;
+    const contactId = entityType === 'contact' ? entityId : undefined;
+    const opportunityId = entityType === 'opportunity' ? entityId : undefined;
+    const companyId = entityType === 'company' && entityId && /^c[a-z0-9]+$/i.test(entityId) ? entityId : undefined;
 
-  const activeUsers = users.filter((u) => u.status === 'activo');
+    if (!contactId && !companyId && !opportunityId) {
+      toast.error('Debes vincular la actividad a un contacto, empresa u oportunidad');
+      return;
+    }
+
+    try {
+      if (editingEvent) {
+        await updateActivity(editingEvent.id, {
+          type: d.type,
+          title: d.title,
+          description: d.description ?? '',
+          assignedTo: d.assignedTo,
+          status: d.status,
+          dueDate: d.date,
+          startDate: d.date,
+          startTime: d.startTime,
+        });
+        toast.success('Evento actualizado');
+      } else {
+        await createActivity({
+          type: d.type,
+          title: d.title,
+          description: d.description ?? '',
+          assignedTo: d.assignedTo,
+          dueDate: d.date,
+          startDate: d.date,
+          startTime: d.startTime,
+          contactId,
+          companyId,
+          opportunityId,
+        });
+        toast.success('Evento creado');
+      }
+      setEditingEvent(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al guardar');
+      throw e;
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -179,11 +203,21 @@ export default function CalendarioPage() {
         title="Calendario"
         description="Visualiza tus tareas y actividades por fecha."
       >
-        <Button className="bg-[#13944C] hover:bg-[#0f7a3d]" onClick={() => { setEditingEvent(null); setFormOpen(true); }}>
+        <Button
+          className="bg-[#13944C] hover:bg-[#0f7a3d]"
+          onClick={() => { setEditingEvent(null); setFormOpen(true); }}
+          disabled={activitiesLoading}
+        >
           <Plus className="mr-2 size-4" />
           Nueva Actividad
         </Button>
       </PageHeader>
+
+      {activitiesError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {activitiesError}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -516,6 +550,16 @@ export default function CalendarioPage() {
           setDetailOpen(false);
           setEditingEvent(ev);
           setFormOpen(true);
+        }}
+        onDelete={async (ev) => {
+          try {
+            await deleteActivity(ev.id);
+            setDetailOpen(false);
+            setSelectedEvent(null);
+            toast.success('Actividad eliminada');
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : 'Error al eliminar');
+          }
         }}
       />
 

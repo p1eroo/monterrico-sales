@@ -1,20 +1,19 @@
 import { useMemo } from 'react';
 import { useAppStore } from '@/store';
 import type { PermissionKey } from '@/types';
-import { INITIAL_ROLES } from '@/data/rbac';
+import { getTemplatePermissions, roleStringToTemplateId } from '@/data/rbac';
 
 /**
- * Hook para simular permisos en frontend.
- * En producción, vendría del backend según el rol del usuario.
+ * Permisos según el rol del usuario autenticado (string del backend / store).
+ * Mapea a plantillas de `rbac.ts` (admin, supervisor, asesor, solo_lectura).
  */
 export function usePermissions() {
   const currentUser = useAppStore((s) => s.currentUser);
 
   const permissions = useMemo(() => {
-    const roleId = currentUser.id === 'u1' ? 'r1' : 'r3';
-    const role = INITIAL_ROLES.find((r) => r.id === roleId);
-    return role?.permissions ?? ({} as Record<PermissionKey, boolean>);
-  }, [currentUser.id]);
+    const templateId = roleStringToTemplateId(currentUser.role ?? '');
+    return getTemplatePermissions(templateId);
+  }, [currentUser.role]);
 
   function hasPermission(key: PermissionKey): boolean {
     return permissions[key] ?? false;

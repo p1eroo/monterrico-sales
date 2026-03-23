@@ -5081,6 +5081,7 @@ export namespace Prisma {
     name: string | null
     razonSocial: string | null
     ruc: string | null
+    telefono: string | null
     domain: string | null
     rubro: string | null
     tipo: string | null
@@ -5099,6 +5100,7 @@ export namespace Prisma {
     name: string | null
     razonSocial: string | null
     ruc: string | null
+    telefono: string | null
     domain: string | null
     rubro: string | null
     tipo: string | null
@@ -5117,6 +5119,7 @@ export namespace Prisma {
     name: number
     razonSocial: number
     ruc: number
+    telefono: number
     domain: number
     rubro: number
     tipo: number
@@ -5137,6 +5140,7 @@ export namespace Prisma {
     name?: true
     razonSocial?: true
     ruc?: true
+    telefono?: true
     domain?: true
     rubro?: true
     tipo?: true
@@ -5155,6 +5159,7 @@ export namespace Prisma {
     name?: true
     razonSocial?: true
     ruc?: true
+    telefono?: true
     domain?: true
     rubro?: true
     tipo?: true
@@ -5173,6 +5178,7 @@ export namespace Prisma {
     name?: true
     razonSocial?: true
     ruc?: true
+    telefono?: true
     domain?: true
     rubro?: true
     tipo?: true
@@ -5264,6 +5270,7 @@ export namespace Prisma {
     name: string
     razonSocial: string | null
     ruc: string | null
+    telefono: string | null
     domain: string | null
     rubro: string | null
     tipo: string | null
@@ -5299,6 +5306,7 @@ export namespace Prisma {
     name?: boolean
     razonSocial?: boolean
     ruc?: boolean
+    telefono?: boolean
     domain?: boolean
     rubro?: boolean
     tipo?: boolean
@@ -5323,6 +5331,7 @@ export namespace Prisma {
     name?: boolean
     razonSocial?: boolean
     ruc?: boolean
+    telefono?: boolean
     domain?: boolean
     rubro?: boolean
     tipo?: boolean
@@ -5341,6 +5350,7 @@ export namespace Prisma {
     name?: boolean
     razonSocial?: boolean
     ruc?: boolean
+    telefono?: boolean
     domain?: boolean
     rubro?: boolean
     tipo?: boolean
@@ -5359,6 +5369,7 @@ export namespace Prisma {
     name?: boolean
     razonSocial?: boolean
     ruc?: boolean
+    telefono?: boolean
     domain?: boolean
     rubro?: boolean
     tipo?: boolean
@@ -5372,7 +5383,7 @@ export namespace Prisma {
     updatedAt?: boolean
   }
 
-  export type CompanyOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "razonSocial" | "ruc" | "domain" | "rubro" | "tipo" | "linkedin" | "correo" | "distrito" | "provincia" | "departamento" | "direccion" | "createdAt" | "updatedAt", ExtArgs["result"]["company"]>
+  export type CompanyOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "razonSocial" | "ruc" | "telefono" | "domain" | "rubro" | "tipo" | "linkedin" | "correo" | "distrito" | "provincia" | "departamento" | "direccion" | "createdAt" | "updatedAt", ExtArgs["result"]["company"]>
   export type CompanyInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     contacts?: boolean | Company$contactsArgs<ExtArgs>
     companies?: boolean | Company$companiesArgs<ExtArgs>
@@ -5398,6 +5409,7 @@ export namespace Prisma {
       name: string
       razonSocial: string | null
       ruc: string | null
+      telefono: string | null
       domain: string | null
       rubro: string | null
       tipo: string | null
@@ -5841,6 +5853,7 @@ export namespace Prisma {
     readonly name: FieldRef<"Company", 'String'>
     readonly razonSocial: FieldRef<"Company", 'String'>
     readonly ruc: FieldRef<"Company", 'String'>
+    readonly telefono: FieldRef<"Company", 'String'>
     readonly domain: FieldRef<"Company", 'String'>
     readonly rubro: FieldRef<"Company", 'String'>
     readonly tipo: FieldRef<"Company", 'String'>
@@ -18451,6 +18464,7 @@ export namespace Prisma {
     name: 'name',
     razonSocial: 'razonSocial',
     ruc: 'ruc',
+    telefono: 'telefono',
     domain: 'domain',
     rubro: 'rubro',
     tipo: 'tipo',
@@ -18981,6 +18995,7 @@ export namespace Prisma {
     name?: StringFilter<"Company"> | string
     razonSocial?: StringNullableFilter<"Company"> | string | null
     ruc?: StringNullableFilter<"Company"> | string | null
+    telefono?: StringNullableFilter<"Company"> | string | null
     domain?: StringNullableFilter<"Company"> | string | null
     rubro?: StringNullableFilter<"Company"> | string | null
     tipo?: StringNullableFilter<"Company"> | string | null
@@ -19004,6 +19019,7 @@ export namespace Prisma {
     name?: SortOrder
     razonSocial?: SortOrderInput | SortOrder
     ruc?: SortOrderInput | SortOrder
+    telefono?: SortOrderInput | SortOrder
     domain?: SortOrderInput | SortOrder
     rubro?: SortOrderInput | SortOrder
     tipo?: SortOrderInput | SortOrder
@@ -19030,6 +19046,7 @@ export namespace Prisma {
     name?: StringFilter<"Company"> | string
     razonSocial?: StringNullableFilter<"Company"> | string | null
     ruc?: StringNullableFilter<"Company"> | string | null
+    telefono?: StringNullableFilter<"Company"> | string | null
     domain?: StringNullableFilter<"Company"> | string | null
     rubro?: StringNullableFilter<"Company"> | string | null
     tipo?: StringNullableFilter<"Company"> | string | null
@@ -19053,6 +19070,7 @@ export namespace Prisma {
     name?: SortOrder
     razonSocial?: SortOrderInput | SortOrder
     ruc?: SortOrderInput | SortOrder
+    telefono?: SortOrderInput | SortOrder
     domain?: SortOrderInput | SortOrder
     rubro?: SortOrderInput | SortOrder
     tipo?: SortOrderInput | SortOrder
@@ -19077,6 +19095,7 @@ export namespace Prisma {
     name?: StringWithAggregatesFilter<"Company"> | string
     razonSocial?: StringNullableWithAggregatesFilter<"Company"> | string | null
     ruc?: StringNullableWithAggregatesFilter<"Company"> | string | null
+    telefono?: StringNullableWithAggregatesFilter<"Company"> | string | null
     domain?: StringNullableWithAggregatesFilter<"Company"> | string | null
     rubro?: StringNullableWithAggregatesFilter<"Company"> | string | null
     tipo?: StringNullableWithAggregatesFilter<"Company"> | string | null
@@ -20067,6 +20086,7 @@ export namespace Prisma {
     name: string
     razonSocial?: string | null
     ruc?: string | null
+    telefono?: string | null
     domain?: string | null
     rubro?: string | null
     tipo?: string | null
@@ -20090,6 +20110,7 @@ export namespace Prisma {
     name: string
     razonSocial?: string | null
     ruc?: string | null
+    telefono?: string | null
     domain?: string | null
     rubro?: string | null
     tipo?: string | null
@@ -20113,6 +20134,7 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     razonSocial?: NullableStringFieldUpdateOperationsInput | string | null
     ruc?: NullableStringFieldUpdateOperationsInput | string | null
+    telefono?: NullableStringFieldUpdateOperationsInput | string | null
     domain?: NullableStringFieldUpdateOperationsInput | string | null
     rubro?: NullableStringFieldUpdateOperationsInput | string | null
     tipo?: NullableStringFieldUpdateOperationsInput | string | null
@@ -20136,6 +20158,7 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     razonSocial?: NullableStringFieldUpdateOperationsInput | string | null
     ruc?: NullableStringFieldUpdateOperationsInput | string | null
+    telefono?: NullableStringFieldUpdateOperationsInput | string | null
     domain?: NullableStringFieldUpdateOperationsInput | string | null
     rubro?: NullableStringFieldUpdateOperationsInput | string | null
     tipo?: NullableStringFieldUpdateOperationsInput | string | null
@@ -20159,6 +20182,7 @@ export namespace Prisma {
     name: string
     razonSocial?: string | null
     ruc?: string | null
+    telefono?: string | null
     domain?: string | null
     rubro?: string | null
     tipo?: string | null
@@ -20177,6 +20201,7 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     razonSocial?: NullableStringFieldUpdateOperationsInput | string | null
     ruc?: NullableStringFieldUpdateOperationsInput | string | null
+    telefono?: NullableStringFieldUpdateOperationsInput | string | null
     domain?: NullableStringFieldUpdateOperationsInput | string | null
     rubro?: NullableStringFieldUpdateOperationsInput | string | null
     tipo?: NullableStringFieldUpdateOperationsInput | string | null
@@ -20195,6 +20220,7 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     razonSocial?: NullableStringFieldUpdateOperationsInput | string | null
     ruc?: NullableStringFieldUpdateOperationsInput | string | null
+    telefono?: NullableStringFieldUpdateOperationsInput | string | null
     domain?: NullableStringFieldUpdateOperationsInput | string | null
     rubro?: NullableStringFieldUpdateOperationsInput | string | null
     tipo?: NullableStringFieldUpdateOperationsInput | string | null
@@ -21253,6 +21279,7 @@ export namespace Prisma {
     name?: SortOrder
     razonSocial?: SortOrder
     ruc?: SortOrder
+    telefono?: SortOrder
     domain?: SortOrder
     rubro?: SortOrder
     tipo?: SortOrder
@@ -21271,6 +21298,7 @@ export namespace Prisma {
     name?: SortOrder
     razonSocial?: SortOrder
     ruc?: SortOrder
+    telefono?: SortOrder
     domain?: SortOrder
     rubro?: SortOrder
     tipo?: SortOrder
@@ -21289,6 +21317,7 @@ export namespace Prisma {
     name?: SortOrder
     razonSocial?: SortOrder
     ruc?: SortOrder
+    telefono?: SortOrder
     domain?: SortOrder
     rubro?: SortOrder
     tipo?: SortOrder
@@ -24407,6 +24436,7 @@ export namespace Prisma {
     name: string
     razonSocial?: string | null
     ruc?: string | null
+    telefono?: string | null
     domain?: string | null
     rubro?: string | null
     tipo?: string | null
@@ -24429,6 +24459,7 @@ export namespace Prisma {
     name: string
     razonSocial?: string | null
     ruc?: string | null
+    telefono?: string | null
     domain?: string | null
     rubro?: string | null
     tipo?: string | null
@@ -24532,6 +24563,7 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     razonSocial?: NullableStringFieldUpdateOperationsInput | string | null
     ruc?: NullableStringFieldUpdateOperationsInput | string | null
+    telefono?: NullableStringFieldUpdateOperationsInput | string | null
     domain?: NullableStringFieldUpdateOperationsInput | string | null
     rubro?: NullableStringFieldUpdateOperationsInput | string | null
     tipo?: NullableStringFieldUpdateOperationsInput | string | null
@@ -24554,6 +24586,7 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     razonSocial?: NullableStringFieldUpdateOperationsInput | string | null
     ruc?: NullableStringFieldUpdateOperationsInput | string | null
+    telefono?: NullableStringFieldUpdateOperationsInput | string | null
     domain?: NullableStringFieldUpdateOperationsInput | string | null
     rubro?: NullableStringFieldUpdateOperationsInput | string | null
     tipo?: NullableStringFieldUpdateOperationsInput | string | null
@@ -25143,6 +25176,7 @@ export namespace Prisma {
     name: string
     razonSocial?: string | null
     ruc?: string | null
+    telefono?: string | null
     domain?: string | null
     rubro?: string | null
     tipo?: string | null
@@ -25165,6 +25199,7 @@ export namespace Prisma {
     name: string
     razonSocial?: string | null
     ruc?: string | null
+    telefono?: string | null
     domain?: string | null
     rubro?: string | null
     tipo?: string | null
@@ -25192,6 +25227,7 @@ export namespace Prisma {
     name: string
     razonSocial?: string | null
     ruc?: string | null
+    telefono?: string | null
     domain?: string | null
     rubro?: string | null
     tipo?: string | null
@@ -25214,6 +25250,7 @@ export namespace Prisma {
     name: string
     razonSocial?: string | null
     ruc?: string | null
+    telefono?: string | null
     domain?: string | null
     rubro?: string | null
     tipo?: string | null
@@ -25252,6 +25289,7 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     razonSocial?: NullableStringFieldUpdateOperationsInput | string | null
     ruc?: NullableStringFieldUpdateOperationsInput | string | null
+    telefono?: NullableStringFieldUpdateOperationsInput | string | null
     domain?: NullableStringFieldUpdateOperationsInput | string | null
     rubro?: NullableStringFieldUpdateOperationsInput | string | null
     tipo?: NullableStringFieldUpdateOperationsInput | string | null
@@ -25274,6 +25312,7 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     razonSocial?: NullableStringFieldUpdateOperationsInput | string | null
     ruc?: NullableStringFieldUpdateOperationsInput | string | null
+    telefono?: NullableStringFieldUpdateOperationsInput | string | null
     domain?: NullableStringFieldUpdateOperationsInput | string | null
     rubro?: NullableStringFieldUpdateOperationsInput | string | null
     tipo?: NullableStringFieldUpdateOperationsInput | string | null
@@ -25307,6 +25346,7 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     razonSocial?: NullableStringFieldUpdateOperationsInput | string | null
     ruc?: NullableStringFieldUpdateOperationsInput | string | null
+    telefono?: NullableStringFieldUpdateOperationsInput | string | null
     domain?: NullableStringFieldUpdateOperationsInput | string | null
     rubro?: NullableStringFieldUpdateOperationsInput | string | null
     tipo?: NullableStringFieldUpdateOperationsInput | string | null
@@ -25329,6 +25369,7 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     razonSocial?: NullableStringFieldUpdateOperationsInput | string | null
     ruc?: NullableStringFieldUpdateOperationsInput | string | null
+    telefono?: NullableStringFieldUpdateOperationsInput | string | null
     domain?: NullableStringFieldUpdateOperationsInput | string | null
     rubro?: NullableStringFieldUpdateOperationsInput | string | null
     tipo?: NullableStringFieldUpdateOperationsInput | string | null
@@ -25351,6 +25392,7 @@ export namespace Prisma {
     name: string
     razonSocial?: string | null
     ruc?: string | null
+    telefono?: string | null
     domain?: string | null
     rubro?: string | null
     tipo?: string | null
@@ -25373,6 +25415,7 @@ export namespace Prisma {
     name: string
     razonSocial?: string | null
     ruc?: string | null
+    telefono?: string | null
     domain?: string | null
     rubro?: string | null
     tipo?: string | null
@@ -25452,6 +25495,7 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     razonSocial?: NullableStringFieldUpdateOperationsInput | string | null
     ruc?: NullableStringFieldUpdateOperationsInput | string | null
+    telefono?: NullableStringFieldUpdateOperationsInput | string | null
     domain?: NullableStringFieldUpdateOperationsInput | string | null
     rubro?: NullableStringFieldUpdateOperationsInput | string | null
     tipo?: NullableStringFieldUpdateOperationsInput | string | null
@@ -25474,6 +25518,7 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     razonSocial?: NullableStringFieldUpdateOperationsInput | string | null
     ruc?: NullableStringFieldUpdateOperationsInput | string | null
+    telefono?: NullableStringFieldUpdateOperationsInput | string | null
     domain?: NullableStringFieldUpdateOperationsInput | string | null
     rubro?: NullableStringFieldUpdateOperationsInput | string | null
     tipo?: NullableStringFieldUpdateOperationsInput | string | null
@@ -25939,6 +25984,7 @@ export namespace Prisma {
     name: string
     razonSocial?: string | null
     ruc?: string | null
+    telefono?: string | null
     domain?: string | null
     rubro?: string | null
     tipo?: string | null
@@ -25961,6 +26007,7 @@ export namespace Prisma {
     name: string
     razonSocial?: string | null
     ruc?: string | null
+    telefono?: string | null
     domain?: string | null
     rubro?: string | null
     tipo?: string | null
@@ -26038,6 +26085,7 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     razonSocial?: NullableStringFieldUpdateOperationsInput | string | null
     ruc?: NullableStringFieldUpdateOperationsInput | string | null
+    telefono?: NullableStringFieldUpdateOperationsInput | string | null
     domain?: NullableStringFieldUpdateOperationsInput | string | null
     rubro?: NullableStringFieldUpdateOperationsInput | string | null
     tipo?: NullableStringFieldUpdateOperationsInput | string | null
@@ -26060,6 +26108,7 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     razonSocial?: NullableStringFieldUpdateOperationsInput | string | null
     ruc?: NullableStringFieldUpdateOperationsInput | string | null
+    telefono?: NullableStringFieldUpdateOperationsInput | string | null
     domain?: NullableStringFieldUpdateOperationsInput | string | null
     rubro?: NullableStringFieldUpdateOperationsInput | string | null
     tipo?: NullableStringFieldUpdateOperationsInput | string | null

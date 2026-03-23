@@ -1,13 +1,13 @@
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { etapaLabels, users } from '@/data/mock';
-import type { Etapa } from '@/types';
+import { etapaLabels } from '@/data/mock';
+import { useUsers } from '@/hooks/useUsers';
+import type { ContactPriority, Etapa } from '@/types';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -22,12 +22,12 @@ const etapasParaOportunidad: Etapa[] = [
 ];
 
 const schema = z.object({
-  title: z.string().min(2, 'El título debe tener al menos 2 caracteres'),
+  title: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
   amount: z.coerce.number().min(0, 'El monto debe ser positivo'),
   etapa: z.enum(['lead', 'contacto', 'reunion_agendada', 'reunion_efectiva', 'propuesta_economica', 'negociacion', 'licitacion', 'licitacion_etapa_final', 'cierre_ganado', 'firma_contrato', 'activo', 'cierre_perdido', 'inactivo'] as const),
   expectedCloseDate: z.string().min(1, 'Selecciona una fecha'),
-  assignedTo: z.string().min(1, 'Selecciona un responsable'),
-  description: z.string().optional(),
+  assignedTo: z.string().min(1, 'Selecciona un asesor'),
+  priority: z.enum(['baja', 'media', 'alta']),
 });
 
 export type NewOpportunityData = z.infer<typeof schema>;
@@ -40,6 +40,7 @@ interface NewOpportunityDialogProps {
 }
 
 export function NewOpportunityDialog({ open, onOpenChange, entityName, onSave }: NewOpportunityDialogProps) {
+  const { activeUsers } = useUsers();
   const form = useForm<NewOpportunityData>({
     resolver: zodResolver(schema) as import('react-hook-form').Resolver<NewOpportunityData>,
     defaultValues: {
@@ -48,7 +49,7 @@ export function NewOpportunityDialog({ open, onOpenChange, entityName, onSave }:
       etapa: 'lead',
       expectedCloseDate: '',
       assignedTo: '',
-      description: '',
+      priority: 'media',
     },
   });
 
@@ -75,7 +76,7 @@ export function NewOpportunityDialog({ open, onOpenChange, entityName, onSave }:
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="opp-title">Título *</Label>
+              <Label htmlFor="opp-title">Nombre *</Label>
               <Input
                 id="opp-title"
                 {...form.register('title')}
@@ -123,14 +124,28 @@ export function NewOpportunityDialog({ open, onOpenChange, entityName, onSave }:
               )}
             </div>
             <div className="space-y-2">
-              <Label>Responsable *</Label>
+              <Label>Prioridad *</Label>
+              <Select
+                value={form.watch('priority')}
+                onValueChange={(v) => form.setValue('priority', v as ContactPriority)}
+              >
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="baja">Baja</SelectItem>
+                  <SelectItem value="media">Media</SelectItem>
+                  <SelectItem value="alta">Alta</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Asesor *</Label>
               <Select
                 value={form.watch('assignedTo')}
                 onValueChange={(v) => form.setValue('assignedTo', v)}
               >
-                <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar responsable" /></SelectTrigger>
+                <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar asesor" /></SelectTrigger>
                 <SelectContent>
-                  {users.filter((u) => u.status === 'activo').map((u) => (
+                  {activeUsers.map((u) => (
                     <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -139,15 +154,6 @@ export function NewOpportunityDialog({ open, onOpenChange, entityName, onSave }:
                 <p className="text-xs text-destructive">{form.formState.errors.assignedTo.message}</p>
               )}
             </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="opp-description">Descripción</Label>
-            <Textarea
-              id="opp-description"
-              {...form.register('description')}
-              placeholder="Detalles adicionales sobre la oportunidad..."
-              rows={3}
-            />
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Cancelar</Button>

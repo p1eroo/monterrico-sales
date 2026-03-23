@@ -5,7 +5,8 @@ import {
   MessageCircle, Search, Link2, ChevronDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { users, priorityLabels } from '@/data/mock';
+import { priorityLabels } from '@/data/mock';
+import { useUsers } from '@/hooks/useUsers';
 import type { Contact, Opportunity, TaskAssociation } from '@/types';
 
 import { Button } from '@/components/ui/button';
@@ -98,6 +99,7 @@ export function TaskDetailDialog({
   opportunities = [],
   onCompleteWithActivity,
 }: TaskDetailDialogProps) {
+  const { users, activeUsers } = useUsers();
   const [taskEditMode, setTaskEditMode] = useState(false);
   const [taskEditForm, setTaskEditForm] = useState<TaskDetailTask | null>(null);
   const [newCommentText, setNewCommentText] = useState('');
@@ -463,7 +465,7 @@ export function TaskDetailDialog({
                   <Label>Asignar a</Label>
                   <Select value={users.find((u) => u.name === taskEditForm.assignee)?.id ?? ''} onValueChange={(v) => { const u = users.find((usr) => usr.id === v); if (u) setTaskEditForm({ ...taskEditForm, assignee: u.name }); }}>
                     <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar asesor" /></SelectTrigger>
-                    <SelectContent>{users.filter((u) => u.status === 'activo').map((u) => (<SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>))}</SelectContent>
+                    <SelectContent>{activeUsers.map((u) => (<SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>))}</SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -11,9 +11,9 @@ import {
   Users,
   Target,
   Activity,
+  Loader2,
 } from 'lucide-react';
 import type { User } from '@/types';
-import { users as mockUsers } from '@/data/mock';
 import { contacts } from '@/data/mock';
 import { opportunities } from '@/data/mock';
 import { activities } from '@/data/mock';
@@ -25,6 +25,8 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { UserFormModal, type UserFormData } from '@/components/users/UserFormModal';
 import { formatDate } from '@/lib/formatters';
+import { api } from '@/lib/api';
+import { apiUserRecordToUser, type ApiUserRecord } from '@/lib/userRoleMap';
 
 const roleLabels: Record<string, string> = {
   r1: 'Administrador',
@@ -57,19 +59,49 @@ function getAvatarColor(name: string) {
 export default function UserDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [users, setUsers] = useState<User[]>(mockUsers);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
 
-  const user = users.find((u) => u.id === id);
+  const loadUser = useCallback(async () => {
+    if (!id) return;
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const row = await api<ApiUserRecord>(`/users/${id}`);
+      setUser(apiUserRecordToUser(row));
+    } catch (e) {
+      setUser(null);
+      setLoadError(e instanceof Error ? e.message : 'Error al cargar');
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
 
-  if (!user) {
+  useEffect(() => {
+    void loadUser();
+  }, [loadUser]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 py-16">
+        <Loader2 className="size-8 animate-spin text-muted-foreground" />
+        <p className="text-sm text-muted-foreground">Cargando usuario…</p>
+      </div>
+    );
+  }
+
+  if (!user || loadError) {
     return (
       <div className="space-y-6">
         <Button variant="ghost" onClick={() => navigate('/users')}>
           <ArrowLeft className="size-4" />
           Volver
         </Button>
-        <p className="text-muted-foreground">Usuario no encontrado.</p>
+        <p className="text-muted-foreground">
+          {loadError ?? 'Usuario no encontrado.'}
+        </p>
       </div>
     );
   }
@@ -81,38 +113,44 @@ export default function UserDetailPage() {
     .filter((a) => a.assignedTo === currentUser.id)
     .slice(0, 10);
 
-  function handleUserSubmit(data: UserFormData) {
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === currentUser.id
-          ? {
-              ...u,
-              name: data.name,
-              roleId: data.roleId,
-              status: data.status ? 'activo' : 'inactivo',
-              phone: data.phone ?? u.phone,
-            }
-          : u
-      )
-    );
-    toast.success('Usuario actualizado');
-    setEditOpen(false);
+  async function handleUserSubmit(data: UserFormData) {
+    try {
+      await api<ApiUserRecord>(`/users/${currentUser.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          name: data.name.trim(),
+          roleId: data.roleId,
+          status: data.status,
+        }),
+      });
+      await loadUser();
+      toast.success('Usuario actualizado');
+      setEditOpen(false);
+    } catch (e) {
+      const msg =
+        e instanceof Error ? e.message : 'No se pudo actualizar el usuario';
+      toast.error(msg);
+      throw e;
+    }
   }
 
-  function handleToggleStatus() {
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === currentUser.id
-          ? {
-              ...u,
-              status: u.status === 'activo' ? 'inactivo' : 'activo',
-            }
-          : u
-      )
-    );
-    toast.success(
-      currentUser.status === 'activo' ? 'Usuario desactivado' : 'Usuario activado'
-    );
+  async function handleToggleStatus() {
+    try {
+      await api<ApiUserRecord>(`/users/${currentUser.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          status: currentUser.status !== 'activo',
+        }),
+      });
+      await loadUser();
+      toast.success(
+        currentUser.status === 'activo' ? 'Usuario desactivado' : 'Usuario activado',
+      );
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : 'No se pudo cambiar el estado',
+      );
+    }
   }
 
   return (
@@ -143,6 +181,10 @@ export default function UserDetailPage() {
                 <div className="min-w-0 flex-1 space-y-4">
                   <div>
                     <h2 className="text-lg font-semibold">{currentUser.name}</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      @{currentUser.username}
+                      {currentUser.email ? ` · ${currentUser.email}` : ''}
+                    </p>
                     {currentUser.phone && (
                       <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
                         <Phone className="size-4" />
@@ -172,7 +214,7 @@ export default function UserDetailPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={handleToggleStatus}
+                      onClick={() => void handleToggleStatus()}
                     >
                       {currentUser.status === 'activo' ? (
                         <>

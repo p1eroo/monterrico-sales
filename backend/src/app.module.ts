@@ -11,9 +11,10 @@ import { OpportunitiesModule } from './opportunities/opportunities.module';
 import { ActivitiesModule } from './activities/activities.module';
 import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
+import { FactilizaModule } from './factiliza/factiliza.module';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), PrismaModule, UsersModule, CompaniesModule, ContactsModule, OpportunitiesModule, ActivitiesModule, AuthModule],
+  imports: [ConfigModule.forRoot({ isGlobal: true }), PrismaModule, UsersModule, CompaniesModule, ContactsModule, OpportunitiesModule, ActivitiesModule, AuthModule, FactilizaModule],
   controllers: [AppController],
   providers: [
     AppService,

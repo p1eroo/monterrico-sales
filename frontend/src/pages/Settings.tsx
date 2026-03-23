@@ -4,13 +4,13 @@ import {
   Building2, Globe, GitBranch, Flag,
   Activity, Tag, Settings as SettingsIcon,
   Plus, Trash2, GripVertical, Phone, Mail,
-  MapPin, Save, Video, FileText, RefreshCw,
+  MapPin, Save, Video, FileText,
   MessageCircle, Bell, Moon, Link2, CheckCircle2,
   Target, CalendarDays, Calendar,
 } from 'lucide-react';
 import { useAppStore } from '@/store';
 import { useGoalsStore } from '@/store/goalsStore';
-import { users } from '@/data/mock';
+import { useUsers } from '@/hooks/useUsers';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
 import {
@@ -80,7 +80,6 @@ const ACTIVITY_TYPE_ICONS: Record<string, typeof Phone> = {
   reunion: Video,
   tarea: FileText,
   correo: Mail,
-  seguimiento: RefreshCw,
   whatsapp: MessageCircle,
 };
 
@@ -89,11 +88,11 @@ const INITIAL_ACTIVITY_TYPES = [
   { id: 'reunion', name: 'Reunión', enabled: true },
   { id: 'tarea', name: 'Tarea', enabled: true },
   { id: 'correo', name: 'Correo', enabled: true },
-  { id: 'seguimiento', name: 'Seguimiento', enabled: true },
   { id: 'whatsapp', name: 'WhatsApp', enabled: true },
 ];
 
 function GoalsSettingsCard() {
+  const { users } = useUsers();
   const { currentUser } = useAppStore();
   const {
     globalWeeklyGoal,
@@ -107,7 +106,7 @@ function GoalsSettingsCard() {
   } = useGoalsStore();
   const isAdminOrGerente =
     currentUser.role?.toLowerCase().includes('admin') ||
-    currentUser.role?.toLowerCase().includes('gerente');
+    currentUser.role?.toLowerCase().includes('supervisor');
 
   if (!isAdminOrGerente) {
     return (
@@ -115,14 +114,16 @@ function GoalsSettingsCard() {
         <CardHeader>
           <CardTitle>Metas</CardTitle>
           <CardDescription>
-            Solo administradores y gerentes pueden configurar las metas. Ve a Mi perfil para ver tu meta personal.
+            Solo administradores y supervisores pueden configurar las metas. Ve a Mi perfil para ver tu meta personal.
           </CardDescription>
         </CardHeader>
       </Card>
     );
   }
 
-  const roleUsers = users.filter((u) => ['asesor', 'admin', 'gerente'].includes(u.role));
+  const roleUsers = users.filter((u) =>
+    ['asesor', 'admin', 'supervisor'].includes(u.role),
+  );
 
   return (
     <Card>

@@ -21,6 +21,8 @@ export type CompanyTipo = 'A' | 'B' | 'C';
 
 export interface LinkedCompany {
   name: string;
+  /** ID de empresa cuando viene del API (para desvincular) */
+  id?: string;
   /** Dominio web de la empresa (ej: empresa.com) */
   domain?: string;
   rubro?: CompanyRubro;
@@ -38,7 +40,7 @@ export interface Company {
   createdAt: string;
 }
 
-export type ActivityType = 'llamada' | 'reunion' | 'tarea' | 'correo' | 'seguimiento' | 'whatsapp';
+export type ActivityType = 'llamada' | 'reunion' | 'tarea' | 'correo' | 'whatsapp';
 export type ActivityStatus = 'pendiente' | 'completada' | 'en_progreso' | 'vencida';
 
 /** Asociación de tarea con contacto, empresa u oportunidad */
@@ -48,7 +50,7 @@ export interface TaskAssociation {
   name: string;
 }
 
-export type CalendarEventType = 'llamada' | 'reunion' | 'tarea' | 'correo' | 'seguimiento' | 'whatsapp';
+export type CalendarEventType = 'llamada' | 'reunion' | 'tarea' | 'correo' | 'whatsapp';
 export type CalendarEventStatus = 'pendiente' | 'completada' | 'en_progreso' | 'vencida';
 export type RelatedEntityType = 'contact' | 'company' | 'opportunity';
 
@@ -71,7 +73,7 @@ export interface CalendarEvent {
 export type OpportunityStatus = 'abierta' | 'ganada' | 'perdida' | 'suspendida';
 
 export type ClientStatus = 'activo' | 'inactivo' | 'potencial';
-export type UserRole = 'admin' | 'gerente' | 'asesor';
+export type UserRole = 'admin' | 'supervisor' | 'asesor' | 'solo_lectura';
 
 /** RBAC: Módulos del CRM para permisos */
 export type PermissionModule =
@@ -105,12 +107,15 @@ export interface RBACRole {
 export interface User {
   id: string;
   name: string;
-  email: string;
+  /** Identificador de inicio de sesión (mismo criterio que el backend). */
+  username: string;
+  /** Email de contacto opcional (datos históricos / UI). */
+  email?: string;
   role: UserRole;
   /** ID del rol RBAC (para nuevo sistema) */
   roleId?: string;
   avatar?: string;
-  phone: string;
+  phone?: string;
   status: 'activo' | 'inactivo';
   contactsAssigned: number;
   opportunitiesActive: number;
@@ -132,7 +137,6 @@ export interface Contact {
   email: string;
   source: ContactSource;
   etapa: Etapa;
-  priority: ContactPriority;
   assignedTo: string;
   assignedToName: string;
   estimatedValue: number;
@@ -162,7 +166,9 @@ export interface Activity {
   description: string;
   contactId?: string;
   contactName?: string;
+  companyId?: string;
   opportunityId?: string;
+  opportunityTitle?: string;
   assignedTo: string;
   assignedToName: string;
   status: ActivityStatus;
@@ -187,11 +193,12 @@ export interface Opportunity {
   probability: number;
   etapa: Etapa;
   status: OpportunityStatus;
+  /** Prioridad comercial (mismos valores que en contactos/tareas) */
+  priority?: ContactPriority;
   expectedCloseDate: string;
   assignedTo: string;
   assignedToName: string;
   createdAt: string;
-  description?: string;
 }
 
 export interface Client {

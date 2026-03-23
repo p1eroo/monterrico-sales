@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -7,14 +7,15 @@ import {
   Phone, Mail, Building2, DollarSign, Users, ChevronLeft, ChevronRight,
   Upload, Download, FileSpreadsheet,
 } from 'lucide-react';
-import { users, contactSourceLabels, etapaLabels, priorityLabels } from '@/data/mock';
+import { contactSourceLabels, etapaLabels } from '@/data/mock';
+import { useUsers } from '@/hooks/useUsers';
 import { NewContactWizard, type NewContactData } from '@/components/shared/NewContactWizard';
+import { isLikelyOpportunityCuid } from '@/lib/opportunityApi';
 import { useCRMStore } from '@/store/crmStore';
 import { getPrimaryCompany } from '@/lib/utils';
 
 import { PageHeader } from '@/components/shared/PageHeader';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { PriorityBadge } from '@/components/shared/PriorityBadge';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 
@@ -34,6 +35,13 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { formatCurrency } from '@/lib/formatters';
+import { api } from '@/lib/api';
+import { type ApiCompanyRecord } from '@/lib/companyApi';
+import {
+  type ApiContactListRow,
+  isLikelyContactCuid,
+  mapApiContactRowToContact,
+} from '@/lib/contactApi';
 
 const ITEMS_PER_PAGE = 8;
 
@@ -56,11 +64,32 @@ const etapaTabs: { value: string; label: string }[] = [
 
 export default function ContactosPage() {
   const navigate = useNavigate();
-  const { contacts, addContact, deleteContact } = useCRMStore();
+  const { contacts, deleteContact } = useCRMStore();
+  const { users } = useUsers();
+  const [apiRows, setApiRows] = useState<ApiContactListRow[]>([]);
+
+  const loadApiContacts = useCallback(async () => {
+    try {
+      const list = await api<ApiContactListRow[]>('/contacts');
+      setApiRows(list);
+    } catch {
+      setApiRows([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadApiContacts();
+  }, [loadApiContacts]);
+
+  const mergedContacts = useMemo(() => {
+    const apiIds = new Set(apiRows.map((r) => r.id));
+    const fromApi = apiRows.map(mapApiContactRowToContact);
+    const fromStore = contacts.filter((c) => !apiIds.has(c.id));
+    return [...fromApi, ...fromStore];
+  }, [apiRows, contacts]);
 
   const [search, setSearch] = useState('');
   const [etapaFilter, setEtapaFilter] = useState<string>('todos');
-  const [priorityFilter, setPriorityFilter] = useState<string>('todos');
   const [sourceFilter, setSourceFilter] = useState<string>('todos');
   const [advisorFilter, setAdvisorFilter] = useState<string>('todos');
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
@@ -71,7 +100,7 @@ export default function ContactosPage() {
   const [contactToDelete, setContactToDelete] = useState<string | null>(null);
 
   const filteredContacts = useMemo(() => {
-    return contacts.filter((contact) => {
+    return mergedContacts.filter((contact) => {
       const matchesSearch =
         !search ||
         contact.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -81,33 +110,31 @@ export default function ContactosPage() {
         contact.phone.includes(search);
 
       const matchesEtapa = etapaFilter === 'todos' || contact.etapa === etapaFilter;
-      const matchesPriority = priorityFilter === 'todos' || contact.priority === priorityFilter;
       const matchesSource = sourceFilter === 'todos' || contact.source === sourceFilter;
       const matchesAdvisor = advisorFilter === 'todos' || contact.assignedTo === advisorFilter;
 
-      return matchesSearch && matchesEtapa && matchesPriority && matchesSource && matchesAdvisor;
+      return matchesSearch && matchesEtapa && matchesSource && matchesAdvisor;
     });
-  }, [search, etapaFilter, priorityFilter, sourceFilter, advisorFilter]);
+  }, [mergedContacts, search, etapaFilter, sourceFilter, advisorFilter]);
 
   const totalPages = Math.ceil(filteredContacts.length / ITEMS_PER_PAGE);
   const paginatedContacts = filteredContacts.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
   const startIndex = (page - 1) * ITEMS_PER_PAGE + 1;
   const endIndex = Math.min(page * ITEMS_PER_PAGE, filteredContacts.length);
 
-  const hasActiveFilters = etapaFilter !== 'todos' || priorityFilter !== 'todos' || sourceFilter !== 'todos' || advisorFilter !== 'todos' || search !== '';
+  const hasActiveFilters = etapaFilter !== 'todos' || sourceFilter !== 'todos' || advisorFilter !== 'todos' || search !== '';
 
   const etapaCounts = useMemo(() => {
-    const counts: Record<string, number> = { todos: contacts.length };
-    for (const contact of contacts) {
+    const counts: Record<string, number> = { todos: mergedContacts.length };
+    for (const contact of mergedContacts) {
       counts[contact.etapa] = (counts[contact.etapa] ?? 0) + 1;
     }
     return counts;
-  }, [contacts]);
+  }, [mergedContacts]);
 
   function clearFilters() {
     setSearch('');
     setEtapaFilter('todos');
-    setPriorityFilter('todos');
     setSourceFilter('todos');
     setAdvisorFilter('todos');
     setPage(1);
@@ -127,35 +154,191 @@ export default function ContactosPage() {
     );
   }
 
-  function handleDelete() {
-    if (contactToDelete) {
+  async function handleDelete() {
+    if (!contactToDelete) return;
+    if (isLikelyContactCuid(contactToDelete)) {
+      try {
+        await api(`/contacts/${contactToDelete}`, { method: 'DELETE' });
+        await loadApiContacts();
+        toast.success('Contacto eliminado correctamente');
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'No se pudo eliminar en el servidor');
+      }
+    } else {
       deleteContact(contactToDelete);
       toast.success('Contacto eliminado correctamente');
-      setContactToDelete(null);
     }
+    setContactToDelete(null);
   }
 
-  function onSubmitNewContact(data: NewContactData) {
-    addContact({
-      name: data.name,
-      cargo: data.cargo,
-      docType: data.docType,
-      docNumber: data.docNumber,
-      companies: [{ name: data.company, isPrimary: true }],
-      phone: data.phone,
-      email: data.email,
+  async function onSubmitNewContact(data: NewContactData) {
+    if (data.newCompanyWizardData) {
+      const w = data.newCompanyWizardData;
+      let companyId: string;
+      try {
+        const comp = await api<ApiCompanyRecord>('/companies', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: w.nombreComercial.trim(),
+            razonSocial: w.razonSocial.trim() || undefined,
+            ruc: w.ruc.trim() || undefined,
+            telefono: w.telefono.trim() || undefined,
+            domain: w.dominio.trim() || undefined,
+            rubro: w.rubro || undefined,
+            tipo: w.tipoEmpresa || undefined,
+            linkedin: w.linkedin.trim() || undefined,
+            correo: w.correo.trim() || undefined,
+            distrito: w.distrito.trim() || undefined,
+            provincia: w.provincia.trim() || undefined,
+            departamento: w.departamento.trim() || undefined,
+            direccion: w.direccion.trim() || undefined,
+          }),
+        });
+        companyId = comp.id;
+      } catch (e) {
+        toast.error(
+          e instanceof Error ? e.message : 'No se pudo crear la empresa en el servidor',
+        );
+        return;
+      }
+
+      const body: Record<string, unknown> = {
+        name: data.name.trim(),
+        phone: data.phone.trim(),
+        email: data.email.trim(),
+        source: data.source,
+        etapa: data.etapaCiclo,
+        estimatedValue: data.estimatedValue,
+        cargo: data.cargo?.trim() || undefined,
+        docType: data.docType || undefined,
+        docNumber: data.docNumber?.trim() || undefined,
+        notes: data.notes?.trim() || undefined,
+        departamento: data.departamento?.trim() || undefined,
+        provincia: data.provincia?.trim() || undefined,
+        distrito: data.distrito?.trim() || undefined,
+        direccion: data.direccion?.trim() || undefined,
+        clienteRecuperado: data.clienteRecuperado,
+        companyId,
+      };
+      if (data.assignedTo && isLikelyContactCuid(data.assignedTo)) {
+        body.assignedTo = data.assignedTo;
+      }
+
+      let contactId: string;
+      try {
+        const created = await api<{ id: string }>('/contacts', {
+          method: 'POST',
+          body: JSON.stringify(body),
+        });
+        contactId = created.id;
+      } catch (e) {
+        toast.error(
+          e instanceof Error ? e.message : 'No se pudo crear el contacto en el servidor',
+        );
+        return;
+      }
+
+      if (w.nombreNegocio.trim()) {
+        const monto = Number(w.facturacion) || 0;
+        const oppBody: Record<string, unknown> = {
+          title: w.nombreNegocio.trim(),
+          amount: monto,
+          etapa: w.etapa,
+          status: 'abierta',
+          priority: 'media',
+          expectedCloseDate:
+            w.fechaCierre.trim() ||
+            new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+          contactId,
+          companyId,
+        };
+        if (w.propietario && isLikelyOpportunityCuid(w.propietario)) {
+          oppBody.assignedTo = w.propietario;
+        }
+        try {
+          await api('/opportunities', {
+            method: 'POST',
+            body: JSON.stringify(oppBody),
+          });
+        } catch (e) {
+          toast.error(
+            e instanceof Error
+              ? `${e.message} (contacto y empresa ya creados)`
+              : 'No se pudo crear la oportunidad; el contacto y la empresa ya están registrados',
+          );
+        }
+      }
+
+      await loadApiContacts();
+      const msgParts = [`Contacto "${data.name}"`, `empresa "${w.nombreComercial.trim()}"`];
+      if (w.nombreNegocio.trim()) msgParts.push('oportunidad vinculada');
+      toast.success(`${msgParts.join(' · ')} — creados correctamente`);
+      setNewContactOpen(false);
+      return;
+    }
+
+    let companyId: string | undefined;
+    if (data.companyId) {
+      companyId = data.companyId;
+    } else if (data.company.trim()) {
+      try {
+        const all = await api<ApiCompanyRecord[]>('/companies');
+        const key = data.company.trim().toLowerCase();
+        const found = all.find((c) => c.name.trim().toLowerCase() === key);
+        if (found) {
+          companyId = found.id;
+        } else {
+          const created = await api<ApiCompanyRecord>('/companies', {
+            method: 'POST',
+            body: JSON.stringify({ name: data.company.trim() }),
+          });
+          companyId = created.id;
+        }
+      } catch (e) {
+        toast.error(
+          e instanceof Error ? e.message : 'No se pudo resolver la empresa en el servidor',
+        );
+        return;
+      }
+    }
+
+    const body: Record<string, unknown> = {
+      name: data.name.trim(),
+      phone: data.phone.trim(),
+      email: data.email.trim(),
       source: data.source,
-      priority: data.priority,
-      assignedTo: data.assignedTo,
-      estimatedValue: data.estimatedValue,
       etapa: data.etapaCiclo,
+      estimatedValue: data.estimatedValue,
+      cargo: data.cargo?.trim() || undefined,
+      docType: data.docType || undefined,
+      docNumber: data.docNumber?.trim() || undefined,
+      notes: data.notes?.trim() || undefined,
+      departamento: data.departamento?.trim() || undefined,
+      provincia: data.provincia?.trim() || undefined,
+      distrito: data.distrito?.trim() || undefined,
+      direccion: data.direccion?.trim() || undefined,
       clienteRecuperado: data.clienteRecuperado,
-      notes: data.notes,
-      departamento: data.departamento,
-      provincia: data.provincia,
-      distrito: data.distrito,
-      direccion: data.direccion,
-    });
+    };
+    if (data.assignedTo && isLikelyContactCuid(data.assignedTo)) {
+      body.assignedTo = data.assignedTo;
+    }
+    if (companyId) {
+      body.companyId = companyId;
+    }
+
+    try {
+      await api('/contacts', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
+      await loadApiContacts();
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : 'No se pudo crear el contacto en el servidor',
+      );
+      return;
+    }
+
     toast.success(`Contacto "${data.name}" creado exitosamente`);
     setNewContactOpen(false);
   }
@@ -163,6 +346,11 @@ export default function ContactosPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Contactos" description="Gestiona y da seguimiento a tus prospectos de venta">
+        {apiRows.length > 0 && (
+          <Badge variant="secondary" className="mr-2 font-normal">
+            <Users className="size-3.5" /> {apiRows.length} en servidor
+          </Badge>
+        )}
         <Button variant="outline" size="sm" onClick={() => toast.info('Descargando plantilla...')}>
           <FileSpreadsheet className="size-4" /> Plantilla
         </Button>
@@ -184,7 +372,7 @@ export default function ContactosPage() {
           className="cursor-pointer gap-1.5 px-3 py-1.5 text-sm transition-colors hover:bg-accent"
           onClick={() => { setEtapaFilter('todos'); setPage(1); }}
         >
-          <Users className="size-3.5" /> Total: {contacts.length}
+          <Users className="size-3.5" /> Total: {mergedContacts.length}
         </Badge>
         {etapaTabs.slice(1).filter((tab) => (etapaCounts[tab.value] ?? 0) > 0).map((tab) => (
           <Badge
@@ -229,18 +417,6 @@ export default function ContactosPage() {
             <SelectContent>
               <SelectItem value="todos">Todas las etapas</SelectItem>
               {Object.entries(etapaLabels).map(([key, label]) => (
-                <SelectItem key={key} value={key}>{label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={priorityFilter} onValueChange={(v) => { setPriorityFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-[130px]">
-              <SelectValue placeholder="Prioridad" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todas</SelectItem>
-              {Object.entries(priorityLabels).map(([key, label]) => (
                 <SelectItem key={key} value={key}>{label}</SelectItem>
               ))}
             </SelectContent>
@@ -406,7 +582,6 @@ function ContactsTable({
             <TableHead className="hidden lg:table-cell">Fuente</TableHead>
             <TableHead className="hidden lg:table-cell">Cliente Recuperado</TableHead>
             <TableHead>Etapa</TableHead>
-            <TableHead className="hidden sm:table-cell">Prioridad</TableHead>
             <TableHead className="hidden xl:table-cell">Asesor</TableHead>
             <TableHead className="hidden md:table-cell">
               <button className="flex items-center gap-1 font-medium">
@@ -431,7 +606,14 @@ function ContactsTable({
               </TableCell>
               <TableCell>
                 <div>
-                  <p className="font-medium">{contact.name}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-medium">{contact.name}</p>
+                    {isLikelyContactCuid(contact.id) && (
+                      <Badge variant="outline" className="text-[10px] font-normal">
+                        Servidor
+                      </Badge>
+                    )}
+                  </div>
                   {contact.cargo && <p className="text-xs text-muted-foreground">{contact.cargo}</p>}
                 </div>
               </TableCell>
@@ -445,7 +627,6 @@ function ContactsTable({
                 {contact.clienteRecuperado === 'si' ? 'Sí' : contact.clienteRecuperado === 'no' ? 'No' : '—'}
               </TableCell>
               <TableCell><StatusBadge status={contact.etapa} /></TableCell>
-              <TableCell className="hidden sm:table-cell"><PriorityBadge priority={contact.priority} /></TableCell>
               <TableCell className="hidden xl:table-cell text-muted-foreground">{contact.assignedToName}</TableCell>
               <TableCell className="hidden md:table-cell text-muted-foreground">
                 {new Date(contact.createdAt).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}
@@ -499,7 +680,14 @@ function ContactsGrid({ contacts: data, onView, onDelete }: ContactsGridProps) {
           <CardContent className="p-5">
             <div className="flex items-start justify-between">
               <div className="flex-1 min-w-0">
-                <h3 className="font-semibold truncate">{contact.name}</h3>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="font-semibold truncate">{contact.name}</h3>
+                  {isLikelyContactCuid(contact.id) && (
+                    <Badge variant="outline" className="shrink-0 text-[10px] font-normal">
+                      Servidor
+                    </Badge>
+                  )}
+                </div>
                 {contact.cargo && <p className="text-xs text-muted-foreground truncate">{contact.cargo}</p>}
                 <p className="mt-0.5 flex items-center gap-1 text-sm text-muted-foreground truncate">
                   <Building2 className="size-3 shrink-0" /> {getPrimaryCompany(contact)?.name ?? '—'}
@@ -525,7 +713,6 @@ function ContactsGrid({ contacts: data, onView, onDelete }: ContactsGridProps) {
 
             <div className="mt-3 flex flex-wrap gap-1.5">
               <StatusBadge status={contact.etapa} />
-              <PriorityBadge priority={contact.priority} />
               {contact.clienteRecuperado === 'si' && (
                 <Badge variant="secondary" className="text-xs">Cliente Recuperado</Badge>
               )}

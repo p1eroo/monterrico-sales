@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { Phone, Video, FileText, Mail, RefreshCw, MessageSquare } from 'lucide-react';
+import { Phone, Video, FileText, Mail, MessageSquare } from 'lucide-react';
 import type { CalendarEventType } from '@/types';
 
 export const eventTypeConfig: Record<
@@ -10,7 +10,6 @@ export const eventTypeConfig: Record<
   reunion: { label: 'Reunión', icon: Video, color: 'text-emerald-600', bgColor: 'bg-emerald-100' },
   tarea: { label: 'Tarea', icon: FileText, color: 'text-violet-600', bgColor: 'bg-violet-100' },
   correo: { label: 'Correo', icon: Mail, color: 'text-amber-600', bgColor: 'bg-amber-100' },
-  seguimiento: { label: 'Seguimiento', icon: RefreshCw, color: 'text-orange-600', bgColor: 'bg-orange-100' },
   whatsapp: { label: 'WhatsApp', icon: MessageSquare, color: 'text-green-600', bgColor: 'bg-green-100' },
 };
 

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -6,7 +6,8 @@ import {
   FileSpreadsheet, Upload, Download, Plus, List, Grid3X3, DollarSign,
 } from 'lucide-react';
 import type { Contact, Etapa, CompanyRubro, CompanyTipo, ContactSource } from '@/types';
-import { companyRubroLabels, companyTipoLabels, etapaLabels, etapaProbabilidad, contactSourceLabels, users } from '@/data/mock';
+import { companyRubroLabels, companyTipoLabels, etapaLabels, etapaProbabilidad, contactSourceLabels } from '@/data/mock';
+import { useUsers } from '@/hooks/useUsers';
 import { useCRMStore } from '@/store/crmStore';
 import { useCompaniesStore } from '@/store/companiesStore';
 
@@ -26,6 +27,14 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { formatCurrency } from '@/lib/formatters';
+import { api } from '@/lib/api';
+import { type ApiCompanyRecord } from '@/lib/companyApi';
+import {
+  type ApiContactListRow,
+  isLikelyContactCuid,
+  mapApiContactRowToContact,
+  contactCreate,
+} from '@/lib/contactApi';
 
 const etapaOrder: Etapa[] = ['lead', 'contacto', 'reunion_agendada', 'reunion_efectiva', 'propuesta_economica', 'negociacion', 'licitacion', 'licitacion_etapa_final', 'cierre_ganado', 'firma_contrato', 'activo', 'cierre_perdido', 'inactivo'];
 
@@ -45,19 +54,32 @@ interface EmpresaGroup {
   etapa: Etapa;
   /** Cliente recuperado: Sí si algún contacto lo tiene */
   clienteRecuperado?: 'si' | 'no';
+  /** Si viene de PostgreSQL (detalle por id cuid) */
+  apiCompanyId?: string;
 }
 
 function slugifyCompany(company: string): string {
   return encodeURIComponent(company.trim());
 }
 
+function parseRubroFromApi(s: string | null | undefined): CompanyRubro | undefined {
+  if (!s) return undefined;
+  return s in companyRubroLabels ? (s as CompanyRubro) : undefined;
+}
+
+function parseTipoFromApi(s: string | null | undefined): CompanyTipo | undefined {
+  if (!s) return undefined;
+  return s === 'A' || s === 'B' || s === 'C' ? s : undefined;
+}
+
 const ITEMS_PER_PAGE = 8;
 
 export default function EmpresasPage() {
   const navigate = useNavigate();
-  const { contacts, addContact, addOpportunity } = useCRMStore();
+  const { contacts: storeContacts } = useCRMStore();
   const { companies: standaloneCompanies } = useCompaniesStore();
 
+  const [apiContactRows, setApiContactRows] = useState<ApiContactListRow[]>([]);
   const [search, setSearch] = useState('');
   const [sourceFilter, setSourceFilter] = useState<string>('todos');
   const [etapaFilter, setEtapaFilter] = useState<string>('todos');
@@ -67,42 +89,130 @@ export default function EmpresasPage() {
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [page, setPage] = useState(1);
   const [newEmpresaOpen, setNewEmpresaOpen] = useState(false);
+  const [apiCompanies, setApiCompanies] = useState<ApiCompanyRecord[]>([]);
+  const { users, activeUsers } = useUsers();
 
-  function handleNewEmpresaSubmit(data: NewCompanyData) {
-    const monto = Number(data.facturacion) || 0;
+  const loadApiCompanies = useCallback(async () => {
+    try {
+      const list = await api<ApiCompanyRecord[]>('/companies');
+      setApiCompanies(list);
+    } catch {
+      setApiCompanies([]);
+    }
+  }, []);
 
-    const newLead = addContact({
-      name: data.nombreComercial,
-      companies: [{
-        name: data.nombreComercial,
-        rubro: (data.rubro || undefined) as CompanyRubro | undefined,
-        tipo: (data.tipoEmpresa || undefined) as CompanyTipo | undefined,
-        domain: data.dominio || undefined,
-        isPrimary: true,
-      }],
-      phone: data.telefono || '',
-      email: data.correo || '',
-      source: (data.origenLead || 'base') as ContactSource,
-      priority: 'media',
-      assignedTo: data.propietario || users[0]?.id || '',
-      estimatedValue: monto,
-      etapa: data.etapa,
-      clienteRecuperado: data.clienteRecuperado,
-    });
+  const loadApiContacts = useCallback(async () => {
+    try {
+      const list = await api<ApiContactListRow[]>('/contacts');
+      setApiContactRows(list);
+    } catch {
+      setApiContactRows([]);
+    }
+  }, []);
 
-    if (data.nombreNegocio.trim()) {
-      addOpportunity({
-        title: data.nombreNegocio,
-        contactId: newLead.id,
-        amount: monto,
-        etapa: data.etapa,
-        expectedCloseDate: data.fechaCierre || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-        assignedTo: data.propietario || users[0]?.id || '',
-        description: '',
+  useEffect(() => {
+    void loadApiCompanies();
+    void loadApiContacts();
+  }, [loadApiCompanies, loadApiContacts]);
+
+  const contacts = useMemo(() => {
+    const apiIds = new Set(apiContactRows.map((r) => r.id));
+    const fromApi = apiContactRows.map(mapApiContactRowToContact);
+    const fromStore = storeContacts.filter((c) => !apiIds.has(c.id));
+    return [...fromApi, ...fromStore];
+  }, [apiContactRows, storeContacts]);
+
+  async function handleNewEmpresaSubmit(data: NewCompanyData) {
+    let created: ApiCompanyRecord;
+    try {
+      created = await api<ApiCompanyRecord>('/companies', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: data.nombreComercial.trim(),
+          razonSocial: data.razonSocial.trim() || undefined,
+          ruc: data.ruc.trim() || undefined,
+          telefono: data.telefono.trim() || undefined,
+          domain: data.dominio.trim() || undefined,
+          rubro: data.rubro || undefined,
+          tipo: data.tipoEmpresa || undefined,
+          linkedin: data.linkedin.trim() || undefined,
+          correo: data.correo.trim() || undefined,
+          distrito: data.distrito.trim() || undefined,
+          provincia: data.provincia.trim() || undefined,
+          departamento: data.departamento.trim() || undefined,
+          direccion: data.direccion.trim() || undefined,
+        }),
       });
+      await loadApiCompanies();
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : 'No se pudo guardar la empresa en el servidor',
+      );
+      return;
     }
 
-    toast.success(`Empresa "${data.nombreComercial}" creada exitosamente${data.nombreNegocio.trim() ? ' con oportunidad vinculada' : ''}`);
+    const monto = Number(data.facturacion) || 0;
+    const oppTitle =
+      data.nombreNegocio.trim() || data.nombreComercial.trim() || 'Sin título';
+    const expectedCloseDate =
+      data.fechaCierre.trim() ||
+      new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const assignedTo = data.propietario?.trim() || activeUsers[0]?.id || '';
+
+    let contactId: string | undefined;
+    try {
+      const contactBody: Record<string, unknown> = {
+        name: data.nombreComercial.trim(),
+        phone: (data.telefono || '').trim() || '000000000',
+        email: (data.correo || '').trim() || `lead-${created.id}@temp.local`,
+        source: (data.origenLead || 'base') as ContactSource,
+        etapa: data.etapa,
+        estimatedValue: monto,
+        companyId: created.id,
+      };
+      if (assignedTo && isLikelyContactCuid(assignedTo)) {
+        contactBody.assignedTo = assignedTo;
+      }
+      const createdContact = await contactCreate(contactBody);
+      contactId = createdContact.id;
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : 'No se pudo crear el contacto en el servidor',
+      );
+      return;
+    }
+
+    await loadApiContacts();
+
+    let opportunityApiError: string | null = null;
+    try {
+      await api('/opportunities', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: oppTitle,
+          amount: monto,
+          etapa: data.etapa,
+          expectedCloseDate,
+          companyId: created.id,
+          contactId,
+          priority: 'media',
+          ...(assignedTo && isLikelyContactCuid(assignedTo) ? { assignedTo } : {}),
+        }),
+      });
+    } catch (e) {
+      opportunityApiError =
+        e instanceof Error
+          ? e.message
+          : 'No se pudo crear la oportunidad en el servidor';
+    }
+
+    if (!opportunityApiError) {
+      toast.success(`Empresa "${data.nombreComercial}" creada con contacto y oportunidad "${oppTitle}"`);
+    } else {
+      toast.warning(
+        `Empresa y contacto guardados. ${opportunityApiError} (la oportunidad quedó pendiente).`,
+      );
+    }
   }
 
   const empresas = useMemo(() => {
@@ -150,8 +260,33 @@ export default function EmpresasPage() {
         });
       }
     }
+
+    for (const co of apiCompanies) {
+      const key = co.name.trim().toLowerCase();
+      const rubro = parseRubroFromApi(co.rubro);
+      const tipo = parseTipoFromApi(co.tipo);
+      const existing = map.get(key);
+      if (existing) {
+        if (!existing.apiCompanyId) existing.apiCompanyId = co.id;
+        if (!existing.domain && co.domain) existing.domain = co.domain ?? undefined;
+        if (!existing.companyRubro && rubro) existing.companyRubro = rubro;
+        if (!existing.companyTipo && tipo) existing.companyTipo = tipo;
+      } else {
+        map.set(key, {
+          company: co.name,
+          domain: co.domain ?? undefined,
+          companyRubro: rubro,
+          companyTipo: tipo,
+          contacts: [],
+          totalValue: 0,
+          etapa: 'lead',
+          apiCompanyId: co.id,
+        });
+      }
+    }
+
     return Array.from(map.values()).sort((a, b) => b.totalValue - a.totalValue);
-  }, [contacts, standaloneCompanies]);
+  }, [contacts, standaloneCompanies, apiCompanies]);
 
   const filteredEmpresas = useMemo(() => {
     return empresas.filter((emp) => {
@@ -226,6 +361,9 @@ export default function EmpresasPage() {
             {tab.label}: {etapaCounts[tab.value] ?? 0}
           </Badge>
         ))}
+        <Badge variant="outline" className="gap-1.5 px-3 py-1.5 text-sm">
+          <Building2 className="size-3.5" /> {apiCompanies.length} en servidor
+        </Badge>
         <Badge variant="outline" className="gap-1.5 px-3 py-1.5 text-sm">
           <Users className="size-3.5" /> {contacts.length} contactos
         </Badge>
@@ -350,9 +488,13 @@ export default function EmpresasPage() {
               <TableBody>
                 {paginatedEmpresas.map((emp) => (
                   <TableRow
-                    key={emp.company}
+                    key={emp.apiCompanyId ?? emp.company}
                     className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => navigate(`/empresas/${slugifyCompany(emp.company)}`)}
+                    onClick={() =>
+                      navigate(
+                        `/empresas/${emp.apiCompanyId ? encodeURIComponent(emp.apiCompanyId) : slugifyCompany(emp.company)}`,
+                      )
+                    }
                   >
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -379,12 +521,14 @@ export default function EmpresasPage() {
                       <StatusBadge status={emp.etapa} />
                     </TableCell>
                     <TableCell className="hidden lg:table-cell text-muted-foreground">
-                      {(() => {
-                        const primary = emp.contacts.reduce((a, b) =>
-                          etapaProbabilidad[a.etapa] > etapaProbabilidad[b.etapa] ? a : b,
-                        );
-                        return primary.source ? contactSourceLabels[primary.source] : '—';
-                      })()}
+                      {emp.contacts.length === 0
+                        ? '—'
+                        : (() => {
+                            const primary = emp.contacts.reduce((a, b) =>
+                              etapaProbabilidad[a.etapa] > etapaProbabilidad[b.etapa] ? a : b,
+                            );
+                            return primary.source ? contactSourceLabels[primary.source] : '—';
+                          })()}
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-muted-foreground">
                       {emp.companyRubro ? companyRubroLabels[emp.companyRubro] : '—'}
@@ -396,12 +540,14 @@ export default function EmpresasPage() {
                       {emp.clienteRecuperado === 'si' ? 'Sí' : emp.clienteRecuperado === 'no' ? 'No' : '—'}
                     </TableCell>
                     <TableCell className="hidden xl:table-cell text-muted-foreground">
-                      {(() => {
-                        const primary = emp.contacts.reduce((a, b) =>
-                          etapaProbabilidad[a.etapa] > etapaProbabilidad[b.etapa] ? a : b,
-                        );
-                        return primary.assignedToName ?? '—';
-                      })()}
+                      {emp.contacts.length === 0
+                        ? '—'
+                        : (() => {
+                            const primary = emp.contacts.reduce((a, b) =>
+                              etapaProbabilidad[a.etapa] > etapaProbabilidad[b.etapa] ? a : b,
+                            );
+                            return primary.assignedToName ?? '—';
+                          })()}
                     </TableCell>
                     <TableCell className="text-center">
                       <Badge variant="secondary">{emp.contacts.length}</Badge>
@@ -423,9 +569,13 @@ export default function EmpresasPage() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {paginatedEmpresas.map((emp) => (
               <Card
-                key={emp.company}
+                key={emp.apiCompanyId ?? emp.company}
                 className="cursor-pointer transition-shadow hover:shadow-md"
-                onClick={() => navigate(`/empresas/${slugifyCompany(emp.company)}`)}
+                onClick={() =>
+                  navigate(
+                    `/empresas/${emp.apiCompanyId ? encodeURIComponent(emp.apiCompanyId) : slugifyCompany(emp.company)}`,
+                  )
+                }
               >
                 <CardContent className="p-5">
                   <div className="flex items-start gap-3">
@@ -465,12 +615,14 @@ export default function EmpresasPage() {
                       {formatCurrency(emp.totalValue)}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {(() => {
-                        const primary = emp.contacts.reduce((a, b) =>
-                          etapaProbabilidad[a.etapa] > etapaProbabilidad[b.etapa] ? a : b,
-                        );
-                        return primary.assignedToName ?? '—';
-                      })()}
+                      {emp.contacts.length === 0
+                        ? '—'
+                        : (() => {
+                            const primary = emp.contacts.reduce((a, b) =>
+                              etapaProbabilidad[a.etapa] > etapaProbabilidad[b.etapa] ? a : b,
+                            );
+                            return primary.assignedToName ?? '—';
+                          })()}
                     </span>
                   </div>
                 </CardContent>

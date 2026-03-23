@@ -4,7 +4,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Pencil } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CalendarEvent } from '@/types';
 import { eventTypeConfig, eventStatusConfig } from './eventTypeConfig';
@@ -14,6 +14,7 @@ interface EventDetailModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onEdit?: (event: CalendarEvent) => void;
+  onDelete?: (event: CalendarEvent) => void;
 }
 
 function getEntityLink(event: CalendarEvent): string | null {
@@ -30,7 +31,7 @@ function getEntityLink(event: CalendarEvent): string | null {
   }
 }
 
-export function EventDetailModal({ event, open, onOpenChange, onEdit }: EventDetailModalProps) {
+export function EventDetailModal({ event, open, onOpenChange, onEdit, onDelete }: EventDetailModalProps) {
   const navigate = useNavigate();
 
   if (!event) return null;
@@ -107,12 +108,20 @@ export function EventDetailModal({ event, open, onOpenChange, onEdit }: EventDet
           )}
         </div>
 
-        {onEdit && (
-          <div className="flex justify-end pt-4 border-t">
-            <Button variant="outline" size="sm" onClick={() => onEdit(event)}>
-              <Pencil className="size-4 mr-1.5" />
-              Editar
-            </Button>
+        {(onEdit || onDelete) && (
+          <div className="flex justify-end gap-2 pt-4 border-t">
+            {onDelete && (
+              <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700" onClick={() => onDelete(event)}>
+                <Trash2 className="size-4 mr-1.5" />
+                Eliminar
+              </Button>
+            )}
+            {onEdit && (
+              <Button variant="outline" size="sm" onClick={() => onEdit(event)}>
+                <Pencil className="size-4 mr-1.5" />
+                Editar
+              </Button>
+            )}
           </div>
         )}
       </DialogContent>
