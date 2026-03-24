@@ -69,6 +69,7 @@ model User {
   opportunitiesAssigned Opportunity[]
   companiesAssigned     Company[]
   activitiesAssigned    Activity[]
+  campaignsCreated      Campaign[]
 }
 
 model Contact {
@@ -147,7 +148,6 @@ model Opportunity {
   id                String                   @id @default(cuid())
   title             String
   amount            Float
-  fuente            String?
   probability       Int                      @default(0)
   etapa             String
   status            String                   @default("abierta")
@@ -292,4 +292,47 @@ model OpportunityActivity {
   activity      Activity    @relation(fields: [activityId], references: [id], onDelete: Cascade)
 
   @@unique([opportunityId, activityId])
+}
+
+// Envíos de campaña por SMTP: historial para límite anti-spam por destinatario / hora
+model CampaignEmailSendLog {
+  id      String   @id @default(cuid())
+  toEmail String
+  sentAt  DateTime @default(now())
+
+  @@index([toEmail, sentAt])
+}
+
+// Campaña de mensajería masiva persistida (CRM)
+model Campaign {
+  id                String    @id @default(cuid())
+  name              String
+  status            String
+  channel           String
+  /**
+   * Contenido completo solo en borrador; en `sent` suele ser mínimo o null
+   */
+  messageJson       Json?
+  recipientsJson    Json?
+  /**
+   * Asunto guardado para campañas enviadas (sin cuerpo en BD)
+   */
+  subjectSnapshot   String?
+  resultsJson       Json?
+  recipientCount    Int       @default(0)
+  sentCount         Int       @default(0)
+  deliveredCount    Int       @default(0)
+  openedCount       Int       @default(0)
+  clickedCount      Int       @default(0)
+  failedCount       Int       @default(0)
+  bounceCount       Int       @default(0)
+  relatedContactIds String[]  @default([])
+  createdAt         DateTime  @default(now())
+  sentAt            DateTime?
+  createdById       String
+  createdByName     String
+  createdBy         User      @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([createdById])
+  @@index([createdAt])
 }

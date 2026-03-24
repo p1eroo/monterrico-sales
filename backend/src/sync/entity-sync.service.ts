@@ -144,7 +144,6 @@ export class EntitySyncService {
       await this.updateOppCommercial(tx, opportunityId, {
         amount: fact,
         etapa,
-        fuente,
         assignedTo,
       });
     }
@@ -189,7 +188,6 @@ export class EntitySyncService {
       await this.updateOppCommercial(tx, opportunityId, {
         amount: fact,
         etapa,
-        fuente,
         assignedTo,
       });
     }
@@ -199,16 +197,29 @@ export class EntitySyncService {
     tx: Tx,
     companyId: string,
     opp: {
+      id: string;
       amount: number;
       etapa: string;
-      fuente: string | null;
       assignedTo: string | null;
     },
   ) {
     const fact = opp.amount;
-    const fuente = opp.fuente ?? 'base';
     const etapa = opp.etapa;
     const assignedTo = opp.assignedTo;
+
+    const firstLink = await tx.contactOpportunity.findFirst({
+      where: { opportunityId: opp.id },
+      include: { contact: { select: { fuente: true } } },
+    });
+    let fuente = firstLink?.contact?.fuente?.trim() ?? '';
+    if (!fuente) {
+      const comp = await tx.company.findUnique({
+        where: { id: companyId },
+        select: { fuente: true },
+      });
+      fuente = comp?.fuente?.trim() ?? 'base';
+    }
+    if (!fuente) fuente = 'base';
 
     await tx.company.update({
       where: { id: companyId },
@@ -244,7 +255,6 @@ export class EntitySyncService {
       await this.updateOppCommercial(tx, opportunityId, {
         amount: fact,
         etapa,
-        fuente,
         assignedTo,
       });
     }
@@ -256,7 +266,6 @@ export class EntitySyncService {
     patch: {
       amount: number;
       etapa: string;
-      fuente: string | null;
       assignedTo: string | null;
     },
   ) {
@@ -267,7 +276,6 @@ export class EntitySyncService {
       data: {
         amount: patch.amount,
         etapa: patch.etapa,
-        fuente: patch.fuente,
         assignedTo: patch.assignedTo,
         status,
         probability,
@@ -314,7 +322,6 @@ export class EntitySyncService {
       title: string;
       amount: number;
       etapa: string;
-      fuente: string;
       assignedTo: string | null;
       expectedCloseDate: Date | null;
     },
@@ -339,7 +346,6 @@ export class EntitySyncService {
           title: defaults.title,
           amount: defaults.amount,
           etapa: defaults.etapa,
-          fuente: defaults.fuente,
           status,
           probability,
           priority: 'media',

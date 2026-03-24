@@ -22,8 +22,14 @@ export { MetricCard } from './MetricCard';
 export { MonthlyGoalCard } from './MonthlyGoalCard';
 export { NewCompanyWizard, type NewCompanyData } from './NewCompanyWizard';
 export { NewContactWizard, type NewContactData } from './NewContactWizard';
-export { NewOpportunityDialog, type NewOpportunityData } from './NewOpportunityDialog';
-export { NewOpportunityFromPipelineDialog, type NewOpportunityFromPipelineData } from './NewOpportunityFromPipelineDialog';
+export {
+  NewOpportunityFormDialog,
+  newOpportunityFormSchema,
+  newOpportunityFormDefaults,
+  buildOpportunityCreateBody,
+  type NewOpportunityFormValues,
+  type NewOpportunityFormDialogProps,
+} from './NewOpportunityFormDialog';
 export { PageHeader } from './PageHeader';
 export { PriorityBadge } from './PriorityBadge';
 export { QuickActionsBar } from './QuickActionsBar';

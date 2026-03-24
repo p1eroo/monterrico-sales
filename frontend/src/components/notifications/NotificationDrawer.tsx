@@ -21,8 +21,9 @@ import { NotificationCard } from './NotificationCard';
 import { EmpresasInactivasCard } from './EmpresasInactivasCard';
 import { InactiveCompaniesPanel } from './InactiveCompaniesPanel';
 import { useNotificationStore } from '@/store/notificationStore';
-import { useCRMStore } from '@/store/crmStore';
 import { getInactiveCompanies } from '@/lib/inactiveCompanies';
+import { contactListAll, mapApiContactRowToContact } from '@/lib/contactApi';
+import type { Contact } from '@/types';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Bell } from 'lucide-react';
 import type { NotificationItem } from '@/types';
@@ -73,7 +74,20 @@ export function NotificationDrawer({
   initialView = 'notifications',
 }: NotificationDrawerProps) {
   const { notifications } = useNotificationStore();
-  const { contacts } = useCRMStore();
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  useEffect(() => {
+    let c = true;
+    void contactListAll()
+      .then((rows) => {
+        if (c) setContacts(rows.map(mapApiContactRowToContact));
+      })
+      .catch(() => {
+        if (c) setContacts([]);
+      });
+    return () => {
+      c = false;
+    };
+  }, []);
   const [activeTab, setActiveTab] = useState<TabValue>('no-leidas');
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');

@@ -17,7 +17,11 @@ import {
 } from 'lucide-react';
 import type { User } from '@/types';
 import { useRoles, type ApiRole } from '@/hooks/useRoles';
-import { PERMISSION_MODULES, PERMISSION_ACTIONS } from '@/data/rbac';
+import { usePermissions } from '@/hooks/usePermissions';
+import {
+  buildPermissionRecordFromGrantedList,
+  sanitizeGrantedPermissionKeys,
+} from '@/data/rbac';
 import type { RBACRole, PermissionKey } from '@/types';
 
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -68,13 +72,7 @@ import { apiUserRecordToUser, type ApiUserRecord } from '@/lib/userRoleMap';
 const PAGE_SIZE = 10;
 
 function apiRoleToRBACRole(r: ApiRole): RBACRole & { isSystem?: boolean } {
-  const allKeys = PERMISSION_MODULES.flatMap((mod) =>
-    PERMISSION_ACTIONS.map((act) => `${mod.id}.${act.id}` as PermissionKey),
-  );
-  const permissions = allKeys.reduce(
-    (acc, k) => ({ ...acc, [k]: r.permissions.includes(k) }),
-    {} as Record<PermissionKey, boolean>,
-  );
+  const permissions = buildPermissionRecordFromGrantedList(r.permissions);
   return {
     id: r.id,
     name: r.name,
@@ -123,12 +121,16 @@ function formatLastActivity(isoStr?: string) {
 
 export default function UsersPage() {
   const navigate = useNavigate();
-  const { roles: apiRoles, loadRoles } = useRoles();
+  const { hasPermission } = usePermissions();
+  const canViewRoles = hasPermission('roles.ver');
+  const canCreateUser = hasPermission('usuarios.crear');
+  const canEditUser = hasPermission('usuarios.editar');
+  const canCreateRole = hasPermission('roles.crear');
+  const canEditRole = hasPermission('roles.editar');
+
+  const { roles: apiRoles, loadRoles } = useRoles({ enabled: canViewRoles });
   const roles = useMemo(() => apiRoles.map(apiRoleToRBACRole), [apiRoles]);
-  const roleLabels = useMemo(
-    () => Object.fromEntries(roles.map((r) => [r.id, r.name])),
-    [roles],
-  );
+
   const [users, setUsers] = useState<User[]>([]);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('todos');
@@ -142,6 +144,22 @@ export default function UsersPage() {
   const [roleEditDraft, setRoleEditDraft] = useState<Record<PermissionKey, boolean> | null>(null);
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
+
+  const roleFilterOptions = useMemo(() => {
+    if (roles.length > 0) {
+      return roles.map((r) => ({ id: r.id, label: r.name }));
+    }
+    const m = new Map<string, string>();
+    for (const u of users) {
+      if (u.roleId) m.set(u.roleId, u.role);
+    }
+    return Array.from(m.entries()).map(([id, label]) => ({ id, label }));
+  }, [roles, users]);
+
+  const roleLabels = useMemo(
+    () => Object.fromEntries(roleFilterOptions.map((o) => [o.id, o.label])),
+    [roleFilterOptions],
+  );
 
   const loadUsers = useCallback(async () => {
     setListLoading(true);
@@ -259,9 +277,11 @@ export default function UsersPage() {
   }
 
   async function handleCreateRole(role: Omit<RBACRole, 'userCount'>) {
-    const permissions = (Object.entries(role.permissions) as [PermissionKey, boolean][])
-      .filter(([, v]) => v)
-      .map(([k]) => k);
+    const permissions = sanitizeGrantedPermissionKeys(
+      (Object.entries(role.permissions) as [PermissionKey, boolean][])
+        .filter(([, v]) => v)
+        .map(([k]) => k),
+    );
     try {
       await api<ApiRole>('/roles', {
         method: 'POST',
@@ -295,15 +315,18 @@ export default function UsersPage() {
   }
 
   async function handleSaveRolePermissions() {
+    if (!canEditRole) return;
     if (!editingRole || !roleEditDraft) return;
     const r = roles.find((x) => x.id === editingRole.id) as (RBACRole & { isSystem?: boolean }) | undefined;
     if (r?.isSystem) {
       toast.error('No se pueden modificar los permisos de roles del sistema');
       return;
     }
-    const permissions = (Object.entries(roleEditDraft) as [PermissionKey, boolean][])
-      .filter(([, v]) => v)
-      .map(([k]) => k);
+    const permissions = sanitizeGrantedPermissionKeys(
+      (Object.entries(roleEditDraft) as [PermissionKey, boolean][])
+        .filter(([, v]) => v)
+        .map(([k]) => k),
+    );
     try {
       await api(`/roles/${editingRole.id}`, {
         method: 'PATCH',
@@ -332,10 +355,12 @@ export default function UsersPage() {
             <Users className="size-4" />
             Usuarios
           </TabsTrigger>
-          <TabsTrigger value="roles" className="gap-2">
-            <Shield className="size-4" />
-            Roles y Permisos
-          </TabsTrigger>
+          {canViewRoles && (
+            <TabsTrigger value="roles" className="gap-2">
+              <Shield className="size-4" />
+              Roles y Permisos
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="usuarios" className="space-y-4">
@@ -370,9 +395,9 @@ export default function UsersPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos los roles</SelectItem>
-                  {roles.map((r) => (
+                  {roleFilterOptions.map((r) => (
                     <SelectItem key={r.id} value={r.id}>
-                      {r.name}
+                      {r.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -388,16 +413,18 @@ export default function UsersPage() {
                 </SelectContent>
               </Select>
             </div>
-            <Button
-              className="bg-[#13944C] hover:bg-[#0f7a3d] shrink-0"
-              onClick={() => {
-                setEditingUser(null);
-                setUserFormOpen(true);
-              }}
-            >
-              <UserPlus className="size-4" />
-              Crear usuario
-            </Button>
+            {canCreateUser && (
+              <Button
+                className="bg-[#13944C] hover:bg-[#0f7a3d] shrink-0"
+                onClick={() => {
+                  setEditingUser(null);
+                  setUserFormOpen(true);
+                }}
+              >
+                <UserPlus className="size-4" />
+                Crear usuario
+              </Button>
+            )}
           </div>
 
           {listLoading ? (
@@ -482,35 +509,39 @@ export default function UsersPage() {
                               <Eye className="size-4" />
                               Ver perfil
                             </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setEditingUser(u);
-                                setUserFormOpen(true);
-                              }}
-                            >
-                              <Pencil className="size-4" />
-                              Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                void patchUserStatus(
-                                  u,
-                                  u.status !== 'activo',
-                                )
-                              }
-                            >
-                              {u.status === 'activo' ? (
-                                <>
-                                  <UserX className="size-4" />
-                                  Desactivar
-                                </>
-                              ) : (
-                                <>
-                                  <UserCheck className="size-4" />
-                                  Activar
-                                </>
-                              )}
-                            </DropdownMenuItem>
+                            {canEditUser && (
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setEditingUser(u);
+                                  setUserFormOpen(true);
+                                }}
+                              >
+                                <Pencil className="size-4" />
+                                Editar
+                              </DropdownMenuItem>
+                            )}
+                            {canEditUser && (
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  void patchUserStatus(
+                                    u,
+                                    u.status !== 'activo',
+                                  )
+                                }
+                              >
+                                {u.status === 'activo' ? (
+                                  <>
+                                    <UserX className="size-4" />
+                                    Desactivar
+                                  </>
+                                ) : (
+                                  <>
+                                    <UserCheck className="size-4" />
+                                    Activar
+                                  </>
+                                )}
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -583,15 +614,17 @@ export default function UsersPage() {
                             <Eye className="size-4" />
                             Ver perfil
                           </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setEditingUser(u);
-                              setUserFormOpen(true);
-                            }}
-                          >
-                            <Pencil className="size-4" />
-                            Editar
-                          </DropdownMenuItem>
+                          {canEditUser && (
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setEditingUser(u);
+                                setUserFormOpen(true);
+                              }}
+                            >
+                              <Pencil className="size-4" />
+                              Editar
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -603,15 +636,18 @@ export default function UsersPage() {
           )}
         </TabsContent>
 
+        {canViewRoles && (
         <TabsContent value="roles" className="space-y-4">
           <div className="flex justify-end">
-            <Button
-              className="bg-[#13944C] hover:bg-[#0f7a3d]"
-              onClick={() => setCreateRoleOpen(true)}
-            >
-              <Shield className="size-4" />
-              Crear rol
-            </Button>
+            {canCreateRole && (
+              <Button
+                className="bg-[#13944C] hover:bg-[#0f7a3d]"
+                onClick={() => setCreateRoleOpen(true)}
+              >
+                <Shield className="size-4" />
+                Crear rol
+              </Button>
+            )}
           </div>
 
           <div className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -619,7 +655,7 @@ export default function UsersPage() {
               <RoleCard
                 key={role.id}
                 role={role}
-                onEdit={(r) => handleOpenEditRole(r)}
+                onEdit={canEditRole ? (r) => handleOpenEditRole(r) : undefined}
                 isDefault={!!(role as RBACRole & { isSystem?: boolean }).isSystem}
               />
             ))}
@@ -658,7 +694,7 @@ export default function UsersPage() {
                   <DialogFooter>
                     <Button
                       onClick={handleSaveRolePermissions}
-                      disabled={isSystem}
+                      disabled={isSystem || !canEditRole}
                       className="bg-[#13944C] hover:bg-[#0f7a3d]"
                     >
                       Guardar cambios
@@ -669,6 +705,7 @@ export default function UsersPage() {
             );
           })()}
         </TabsContent>
+        )}
       </Tabs>
 
       <UserFormModal

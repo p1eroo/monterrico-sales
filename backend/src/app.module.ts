@@ -13,9 +13,22 @@ import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
 import { FactilizaModule } from './factiliza/factiliza.module';
 import { RolesModule } from './roles/roles.module';
+import { CampaignsModule } from './campaigns/campaigns.module';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), PrismaModule, UsersModule, RolesModule, CompaniesModule, ContactsModule, OpportunitiesModule, ActivitiesModule, AuthModule, FactilizaModule],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    PrismaModule,
+    UsersModule,
+    RolesModule,
+    CompaniesModule,
+    ContactsModule,
+    OpportunitiesModule,
+    ActivitiesModule,
+    AuthModule,
+    FactilizaModule,
+    CampaignsModule,
+  ],
   controllers: [AppController],
   providers: [
     AppService,

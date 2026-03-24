@@ -1,16 +1,73 @@
-import type { RBACRole, PermissionKey, PermissionModule } from '@/types';
+import type {
+  RBACRole,
+  PermissionKey,
+  PermissionModule,
+  PermissionAction,
+} from '@/types';
 
 /** Módulos y acciones para construir la matriz de permisos */
 export const PERMISSION_MODULES: { id: PermissionModule; label: string }[] = [
+  { id: 'dashboard', label: 'Dashboard' },
   { id: 'contactos', label: 'Contactos' },
   { id: 'empresas', label: 'Empresas' },
   { id: 'oportunidades', label: 'Oportunidades' },
   { id: 'pipeline', label: 'Pipeline' },
-  { id: 'actividades', label: 'Actividades' },
+  { id: 'actividades', label: 'Tareas' },
   { id: 'reportes', label: 'Reportes' },
+  { id: 'clientes', label: 'Clientes' },
+  { id: 'correo', label: 'Correo' },
+  { id: 'campanas', label: 'Campañas' },
+  { id: 'archivos', label: 'Archivos' },
+  { id: 'equipo', label: 'Equipo' },
   { id: 'usuarios', label: 'Usuarios' },
+  { id: 'roles', label: 'Roles' },
+  { id: 'auditoria', label: 'Auditoría' },
   { id: 'configuracion', label: 'Configuración' },
 ];
+
+/**
+ * Acciones permitidas por módulo (alineado con lo que la app puede hacer).
+ * La matriz solo muestra estas casillas; el resto se muestra como N/A.
+ */
+export const MODULE_ALLOWED_ACTIONS: Record<
+  PermissionModule,
+  readonly PermissionAction[]
+> = {
+  dashboard: ['ver', 'exportar'],
+  contactos: ['ver', 'crear', 'editar', 'eliminar', 'asignar', 'exportar'],
+  empresas: ['ver', 'crear', 'editar', 'eliminar', 'asignar', 'exportar'],
+  oportunidades: ['ver', 'crear', 'editar', 'eliminar', 'asignar'],
+  pipeline: ['ver', 'editar', 'asignar'],
+  actividades: ['ver', 'crear', 'editar', 'eliminar', 'asignar'],
+  reportes: ['ver', 'exportar'],
+  clientes: ['ver', 'crear', 'editar', 'eliminar', 'asignar', 'exportar'],
+  correo: ['ver', 'crear', 'editar', 'eliminar'],
+  campanas: ['ver', 'crear', 'editar', 'eliminar', 'exportar'],
+  archivos: ['ver', 'crear', 'editar', 'eliminar'],
+  equipo: ['ver'],
+  usuarios: ['ver', 'crear', 'editar', 'eliminar', 'asignar'],
+  roles: ['ver', 'crear', 'editar', 'eliminar'],
+  auditoria: ['ver'],
+  configuracion: ['ver', 'editar'],
+};
+
+export function moduleAllowsAction(
+  moduleId: PermissionModule,
+  action: PermissionAction,
+): boolean {
+  return MODULE_ALLOWED_ACTIONS[moduleId].includes(action);
+}
+
+/** Claves que pueden enviarse a la API / guardarse en un rol. */
+export function allValidPermissionKeys(): PermissionKey[] {
+  const keys: PermissionKey[] = [];
+  for (const mod of PERMISSION_MODULES) {
+    for (const act of MODULE_ALLOWED_ACTIONS[mod.id]) {
+      keys.push(`${mod.id}.${act}` as PermissionKey);
+    }
+  }
+  return keys;
+}
 
 export const PERMISSION_ACTIONS = [
   { id: 'ver', label: 'Ver', tooltip: 'Ver y listar registros' },
@@ -18,27 +75,38 @@ export const PERMISSION_ACTIONS = [
   { id: 'editar', label: 'Editar', tooltip: 'Modificar registros existentes' },
   { id: 'eliminar', label: 'Eliminar', tooltip: 'Eliminar registros' },
   { id: 'asignar', label: 'Asignar', tooltip: 'Asignar registros a usuarios' },
+  {
+    id: 'exportar',
+    label: 'Exportar',
+    tooltip: 'Descargar plantillas, exportar datos o informes',
+  },
 ] as const;
-
-function allPermissions(): PermissionKey[] {
-  const keys: PermissionKey[] = [];
-  for (const mod of PERMISSION_MODULES) {
-    for (const act of PERMISSION_ACTIONS) {
-      keys.push(`${mod.id}.${act.id}` as PermissionKey);
-    }
-  }
-  return keys;
-}
 
 function createPermissionSet(
   granted: string[]
 ): Record<PermissionKey, boolean> {
-  const all = allPermissions();
   const set = {} as Record<PermissionKey, boolean>;
-  for (const k of all) {
-    set[k] = granted.includes(k);
+  for (const mod of PERMISSION_MODULES) {
+    for (const act of PERMISSION_ACTIONS) {
+      const k = `${mod.id}.${act.id}` as PermissionKey;
+      set[k] =
+        moduleAllowsAction(mod.id, act.id) && granted.includes(k);
+    }
   }
   return set;
+}
+
+/** Mapa completo de permisos a partir de la lista que devuelve la API. */
+export function buildPermissionRecordFromGrantedList(
+  granted: readonly string[],
+): Record<PermissionKey, boolean> {
+  return createPermissionSet(Array.from(granted));
+}
+
+/** Solo claves reconocidas por el modelo actual (por si la BD trae permisos legacy). */
+export function sanitizeGrantedPermissionKeys(keys: readonly string[]): string[] {
+  const v = new Set<string>(allValidPermissionKeys());
+  return keys.filter((k) => v.has(k));
 }
 
 /** Templates base para crear roles */
@@ -71,17 +139,28 @@ export const ROLE_TEMPLATES = [
 ] as const;
 
 /** Permisos por template */
-const ADMIN_PERMISSIONS = allPermissions();
-const SUPERVISOR_PERMISSIONS = allPermissions().filter(
-  (k) => !k.startsWith('configuracion.') && k !== 'usuarios.crear' && k !== 'usuarios.editar' && k !== 'usuarios.eliminar'
-);
+const ADMIN_PERMISSIONS = allValidPermissionKeys();
+const SUPERVISOR_PERMISSIONS = allValidPermissionKeys().filter((k) => {
+  if (k.startsWith('configuracion.')) return false;
+  if (['usuarios.crear', 'usuarios.editar', 'usuarios.eliminar'].includes(k)) {
+    return false;
+  }
+  if (['roles.crear', 'roles.editar', 'roles.eliminar'].includes(k)) {
+    return false;
+  }
+  return true;
+});
 const ASESOR_PERMISSIONS = [
+  'dashboard.ver',
+  'dashboard.exportar',
   'contactos.ver',
   'contactos.crear',
   'contactos.editar',
+  'contactos.exportar',
   'empresas.ver',
   'empresas.crear',
   'empresas.editar',
+  'empresas.exportar',
   'oportunidades.ver',
   'oportunidades.crear',
   'oportunidades.editar',
@@ -90,8 +169,18 @@ const ASESOR_PERMISSIONS = [
   'actividades.crear',
   'actividades.editar',
   'reportes.ver',
+  'clientes.ver',
+  'clientes.exportar',
+  'correo.ver',
+  'campanas.ver',
+  'campanas.exportar',
+  'archivos.ver',
+  'equipo.ver',
+  'usuarios.ver',
 ];
-const SOLO_LECTURA_PERMISSIONS = allPermissions().filter((k) => k.endsWith('.ver'));
+const SOLO_LECTURA_PERMISSIONS = allValidPermissionKeys().filter((k) =>
+  k.endsWith('.ver'),
+);
 
 export const INITIAL_ROLES: RBACRole[] = [
   {

@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/popover';
 import { formatCurrency } from '@/lib/formatters';
 import { api } from '@/lib/api';
+import { usePermissions } from '@/hooks/usePermissions';
 import {
   type ApiCompanyRecord,
   type CompanySummaryRow,
@@ -227,6 +228,7 @@ export default function EmpresasPage() {
   const [page, setPage] = useState(1);
   const [newEmpresaOpen, setNewEmpresaOpen] = useState(false);
   const { users, activeUsers } = useUsers();
+  const { hasPermission } = usePermissions();
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search), 400);
@@ -418,17 +420,23 @@ export default function EmpresasPage() {
     <div className="space-y-6">
       <PageHeader
         title="Empresas"
-        description="Empresas derivadas de tus contactos y prospectos"
+        description="Gestiona empresas y cuentas comerciales"
       >
-        <Button variant="outline" size="sm" onClick={() => toast.info('Descargando plantilla...')}>
-          <FileSpreadsheet className="size-4" /> Plantilla
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => toast.info('Selecciona un archivo para importar')}>
-          <Upload className="size-4" /> Importar
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => toast.info('Exportando empresas...')}>
-          <Download className="size-4" /> Exportar
-        </Button>
+        {hasPermission('empresas.exportar') && (
+          <Button variant="outline" size="sm" onClick={() => toast.info('Descargando plantilla...')}>
+            <FileSpreadsheet className="size-4" /> Plantilla
+          </Button>
+        )}
+        {hasPermission('empresas.crear') && (
+          <Button variant="outline" size="sm" onClick={() => toast.info('Selecciona un archivo para importar')}>
+            <Upload className="size-4" /> Importar
+          </Button>
+        )}
+        {hasPermission('empresas.exportar') && (
+          <Button variant="outline" size="sm" onClick={() => toast.info('Exportando empresas...')}>
+            <Download className="size-4" /> Exportar
+          </Button>
+        )}
         <Button className="bg-[#13944C] hover:bg-[#0f7a3d]" onClick={() => setNewEmpresaOpen(true)}>
           <Plus className="size-4" /> Nueva Empresa
         </Button>
@@ -557,9 +565,9 @@ export default function EmpresasPage() {
           <EmptyState
             icon={Briefcase}
             title="No se encontraron empresas"
-            description="Las empresas se generan automáticamente a partir de tus contactos. Crea contactos para ver sus empresas aquí."
-            actionLabel="Ir a Contactos"
-            onAction={() => navigate('/contactos')}
+            description="Intenta ajustar los filtros o crea una nueva empresa."
+            actionLabel="Nueva empresa"
+            onAction={() => setNewEmpresaOpen(true)}
           />
         ) : viewMode === 'table' ? (
           <div className="rounded-md border">

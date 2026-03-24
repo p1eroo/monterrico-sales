@@ -22,7 +22,11 @@ import { LinkedOpportunitiesCard } from '@/components/shared/LinkedOpportunities
 import { LinkedCompaniesCard } from '@/components/shared/LinkedCompaniesCard';
 import { LinkedContactsCard } from '@/components/shared/LinkedContactsCard';
 import { NewCompanyWizard, type NewCompanyData } from '@/components/shared/NewCompanyWizard';
-import { NewOpportunityDialog } from '@/components/shared/NewOpportunityDialog';
+import {
+  NewOpportunityFormDialog,
+  buildOpportunityCreateBody,
+  type NewOpportunityFormValues,
+} from '@/components/shared/NewOpportunityFormDialog';
 import { LinkExistingDialog, type LinkExistingItem } from '@/components/shared/LinkExistingDialog';
 import { NewContactWizard } from '@/components/shared/NewContactWizard';
 import type { NewContactData } from '@/components/shared/NewContactWizard';
@@ -148,11 +152,14 @@ export default function EmpresaDetailPage() {
         : routeId;
 
   const contacts = useMemo(() => {
-    const apiIds = new Set(apiContactRows.map((r) => r.id));
     const fromApi = apiContactRows.map(mapApiContactRowToContact);
+    if (fromApiById) {
+      return fromApi;
+    }
+    const apiIds = new Set(apiContactRows.map((r) => r.id));
     const fromStore = storeContacts.filter((c) => !apiIds.has(c.id));
     return [...fromApi, ...fromStore];
-  }, [apiContactRows, storeContacts]);
+  }, [apiContactRows, storeContacts, fromApiById]);
 
   const companyContacts = useMemo(() => {
     if (!companyName) return [];
@@ -229,11 +236,14 @@ export default function EmpresaDetailPage() {
         : '—';
 
   const opportunities = useMemo(() => {
-    const apiIds = new Set(apiOpportunityRows.map((r) => r.id));
     const fromApi = apiOpportunityRows.map(mapApiOpportunityToOpportunity);
+    if (fromApiById) {
+      return fromApi;
+    }
+    const apiIds = new Set(apiOpportunityRows.map((r) => r.id));
     const fromStore = storeOpportunities.filter((o) => !apiIds.has(o.id));
     return [...fromApi, ...fromStore];
-  }, [apiOpportunityRows, storeOpportunities]);
+  }, [apiOpportunityRows, storeOpportunities, fromApiById]);
 
   const companyOpportunities = useMemo(() => {
     const contactIds = new Set(companyContacts.map((l) => l.id));
@@ -421,44 +431,44 @@ export default function EmpresaDetailPage() {
   }
 
   // --- Handlers ---
-  async function handleCreateOpportunity(data: import('@/components/shared/NewOpportunityDialog').NewOpportunityData) {
-    if (!firstContact) return;
+  async function handleCreateOpportunity(data: NewOpportunityFormValues) {
+    if (!firstContact) {
+      toast.error('Añade al menos un contacto vinculado a la empresa.');
+      throw new Error('no contact');
+    }
+    const companyIdStr = typeof resolvedCompanyId === 'string' ? resolvedCompanyId : '';
+    const merged: NewOpportunityFormValues = {
+      ...data,
+      contactId: firstContact.id,
+      companyId: companyIdStr || data.companyId,
+    };
     if (resolvedCompanyId && isLikelyContactCuid(firstContact.id)) {
       try {
-        const body: Record<string, unknown> = {
-          title: data.title,
-          amount: data.amount,
-          etapa: data.etapa,
-          status: 'abierta',
-          priority: data.priority,
-          expectedCloseDate: data.expectedCloseDate,
-          fuente: data.fuente,
-          contactId: firstContact.id,
-          companyId: resolvedCompanyId,
-        };
-        if (data.assignedTo && isLikelyContactCuid(data.assignedTo)) body.assignedTo = data.assignedTo;
+        const body = buildOpportunityCreateBody(merged);
         await api('/opportunities', { method: 'POST', body: JSON.stringify(body) });
         await loadApiOpportunities();
-        toast.success(`Oportunidad "${data.title}" creada`);
-        return;
+        toast.success(`Oportunidad "${data.title.trim()}" creada`);
       } catch (e) {
         toast.error(e instanceof Error ? e.message : 'No se pudo crear la oportunidad');
-        return;
+        throw e;
       }
+      return;
     }
     addOpportunity({
-      title: data.title,
+      title: data.title.trim(),
       contactId: firstContact.id,
+      contactName: firstContact.name,
+      clientId: companyIdStr || data.companyId?.trim(),
+      clientName: companyData?.name,
       amount: data.amount,
       etapa: data.etapa as Etapa,
       status: 'abierta',
       priority: data.priority,
       expectedCloseDate: data.expectedCloseDate,
-      assignedTo: data.assignedTo,
+      assignedTo: data.assignedTo ?? '',
       createdAt: new Date().toISOString().slice(0, 10),
-      fuente: data.fuente,
     });
-    toast.success(`Oportunidad "${data.title}" creada`);
+    toast.success(`Oportunidad "${data.title.trim()}" creada`);
   }
 
   function handleLinkOpportunities() {
@@ -955,12 +965,16 @@ export default function EmpresaDetailPage() {
       </Tabs>
     </DetailLayout>
 
-    <NewOpportunityDialog
+    <NewOpportunityFormDialog
       open={newOppOpen}
       onOpenChange={setNewOppOpen}
-      entityName={companyName}
-      onSave={handleCreateOpportunity}
-      defaultFuente={firstContact?.fuente}
+      title="Nueva Oportunidad"
+      description={`Registra una oportunidad para ${companyName}.`}
+      defaultContactId={firstContact?.id ?? ''}
+      defaultCompanyId={typeof resolvedCompanyId === 'string' ? resolvedCompanyId : ''}
+      lockContactSelection={!!firstContact}
+      lockCompanySelection={!!resolvedCompanyId}
+      onCreate={handleCreateOpportunity}
     />
 
     {/* Vincular oportunidad existente */}

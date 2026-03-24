@@ -160,3 +160,36 @@
         display: none;
     }
 }
+
+/* Tiptap: placeholder en editor de campaña (email) */
+.campaign-email-editor .tiptap p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    color: var(--muted-foreground);
+    pointer-events: none;
+    height: 0;
+}
+
+/* Tiptap: asas de redimensionado de imagen (ResizableNodeView no define tamaño por defecto) */
+.campaign-email-editor .tiptap [data-resize-handle] {
+    width: 11px;
+    height: 11px;
+    box-sizing: border-box;
+    background: var(--primary);
+    border: 2px solid var(--background);
+    border-radius: 2px;
+    z-index: 4;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.2);
+}
+.campaign-email-editor .tiptap [data-resize-handle='top-left'] {
+    cursor: nwse-resize;
+}
+.campaign-email-editor .tiptap [data-resize-handle='top-right'] {
+    cursor: nesw-resize;
+}
+.campaign-email-editor .tiptap [data-resize-handle='bottom-left'] {
+    cursor: nesw-resize;
+}
+.campaign-email-editor .tiptap [data-resize-handle='bottom-right'] {
+    cursor: nwse-resize;
+}

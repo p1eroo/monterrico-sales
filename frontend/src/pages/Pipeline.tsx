@@ -34,13 +34,22 @@ import {
   CheckSquare,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import type { Contact, Etapa, PipelineColumn } from '@/types';
+import type { Contact, Etapa, Opportunity, PipelineColumn } from '@/types';
 import { companyRubroLabels, etapaLabels, activities, activityTypeLabels } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
-import { useCRMStore } from '@/store/crmStore';
+import { api } from '@/lib/api';
 import { getPrimaryCompany } from '@/lib/utils';
 import { type ApiContactListRow, isLikelyContactCuid, mapApiContactRowToContact, contactUpdate, contactListAll } from '@/lib/contactApi';
-import { NewOpportunityFromPipelineDialog } from '@/components/shared/NewOpportunityFromPipelineDialog';
+import {
+  type ApiOpportunityListRow,
+  mapApiOpportunityToOpportunity,
+  opportunityListAll,
+} from '@/lib/opportunityApi';
+import {
+  NewOpportunityFormDialog,
+  buildOpportunityCreateBody,
+  type NewOpportunityFormValues,
+} from '@/components/shared/NewOpportunityFormDialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -117,9 +126,11 @@ interface SortableLeadCardProps {
   lead: Contact;
   overlay?: boolean;
   onCardClick?: (contact: Contact) => void;
+  /** Primera oportunidad API vinculada a este contacto (si existe). */
+  pipelineOpportunity?: Opportunity | null;
 }
 
-function SortableLeadCard({ lead, overlay, onCardClick }: SortableLeadCardProps) {
+function SortableLeadCard({ lead, overlay, onCardClick, pipelineOpportunity }: SortableLeadCardProps) {
   const {
     attributes,
     listeners,
@@ -142,7 +153,13 @@ function SortableLeadCard({ lead, overlay, onCardClick }: SortableLeadCardProps)
       {...attributes}
       {...listeners}
     >
-      <LeadCard lead={lead} isDragging={isDragging} overlay={overlay} onCardClick={onCardClick} />
+      <LeadCard
+        lead={lead}
+        isDragging={isDragging}
+        overlay={overlay}
+        onCardClick={onCardClick}
+        pipelineOpportunity={pipelineOpportunity}
+      />
     </div>
   );
 }
@@ -154,12 +171,12 @@ interface LeadCardProps {
   isDragging?: boolean;
   overlay?: boolean;
   onCardClick?: (contact: Contact) => void;
+  pipelineOpportunity?: Opportunity | null;
 }
 
-function LeadCard({ lead, isDragging, overlay, onCardClick }: LeadCardProps) {
+function LeadCard({ lead, isDragging, overlay, onCardClick, pipelineOpportunity }: LeadCardProps) {
   const navigate = useNavigate();
-  const { getOpportunitiesByContactId } = useCRMStore();
-  const opportunity = getOpportunitiesByContactId(lead.id)[0];
+  const opportunity = pipelineOpportunity;
   const company = getPrimaryCompany(lead);
 
   const handleNameClick = (e: React.MouseEvent) => {
@@ -252,16 +269,24 @@ function LeadCard({ lead, isDragging, overlay, onCardClick }: LeadCardProps) {
 
 interface CardDetailDialogProps {
   contact: Contact | null;
+  /** Oportunidad desde API (primera vinculada al contacto), si existe. */
+  pipelineOpportunity?: Opportunity | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onOpenChangeEtapa: () => void;
   onOpenAssign: () => void;
 }
 
-function CardDetailDialog({ contact, open, onOpenChange, onOpenChangeEtapa, onOpenAssign }: CardDetailDialogProps) {
+function CardDetailDialog({
+  contact,
+  pipelineOpportunity,
+  open,
+  onOpenChange,
+  onOpenChangeEtapa,
+  onOpenAssign,
+}: CardDetailDialogProps) {
   const navigate = useNavigate();
-  const { getOpportunitiesByContactId } = useCRMStore();
-  const opportunity = contact ? getOpportunitiesByContactId(contact.id)[0] : undefined;
+  const opportunity = pipelineOpportunity;
   const company = contact ? getPrimaryCompany(contact) : undefined;
 
   if (!contact) return null;
@@ -448,9 +473,10 @@ interface KanbanColumnProps {
   column: PipelineColumn;
   colorClass: string;
   onCardClick?: (contact: Contact) => void;
+  pipelineOpportunityFor: (contactId: string) => Opportunity | undefined;
 }
 
-function KanbanColumn({ column, colorClass, onCardClick }: KanbanColumnProps) {
+function KanbanColumn({ column, colorClass, onCardClick, pipelineOpportunityFor }: KanbanColumnProps) {
   const { setNodeRef } = useDroppable({ id: column.id });
 
   return (
@@ -478,7 +504,12 @@ function KanbanColumn({ column, colorClass, onCardClick }: KanbanColumnProps) {
           strategy={verticalListSortingStrategy}
         >
           {column.contacts.map((contact) => (
-            <SortableLeadCard key={contact.id} lead={contact} onCardClick={onCardClick} />
+            <SortableLeadCard
+              key={contact.id}
+              lead={contact}
+              onCardClick={onCardClick}
+              pipelineOpportunity={pipelineOpportunityFor(contact.id)}
+            />
           ))}
         </SortableContext>
 
@@ -502,62 +533,100 @@ interface PipelineFilters {
 
 const emptyFilters: PipelineFilters = { assignedTo: '', rubro: '', etapas: [] };
 
+/** Primera oportunidad de la lista API por contacto (orden de `opportunityListAll`). */
+function buildOpportunityByContactId(rows: ApiOpportunityListRow[]): Map<string, Opportunity> {
+  const map = new Map<string, Opportunity>();
+  for (const row of rows) {
+    const o = mapApiOpportunityToOpportunity(row);
+    const cid = o.contactId;
+    if (cid && !map.has(cid)) {
+      map.set(cid, o);
+    }
+  }
+  return map;
+}
+
 export default function Pipeline() {
-  const { contacts: storeContacts, updateContact, getOpportunitiesByContactId } = useCRMStore();
-  const { users, activeUsers } = useUsers();
+  const { activeUsers } = useUsers();
   const [apiRows, setApiRows] = useState<ApiContactListRow[]>([]);
+  const [oppsApiRows, setOppsApiRows] = useState<ApiOpportunityListRow[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
 
-  const loadApiContacts = useCallback(async () => {
+  const loadPipelineData = useCallback(async () => {
     try {
-      const list = await contactListAll();
-      setApiRows(list);
+      const [contacts, opps] = await Promise.all([contactListAll(), opportunityListAll()]);
+      setApiRows(contacts);
+      setOppsApiRows(opps);
     } catch {
       setApiRows([]);
+      setOppsApiRows([]);
     }
   }, []);
 
   useEffect(() => {
-    void loadApiContacts();
-  }, [loadApiContacts]);
+    void loadPipelineData();
+  }, [loadPipelineData]);
 
-  const allContacts = useMemo(() => {
-    const apiIds = new Set(apiRows.map((r) => r.id));
-    const fromApi = apiRows.map(mapApiContactRowToContact);
-    const fromStore = storeContacts.filter((c) => !apiIds.has(c.id));
-    return [...fromApi, ...fromStore];
-  }, [apiRows, storeContacts]);
+  const opportunityByContactId = useMemo(
+    () => buildOpportunityByContactId(oppsApiRows),
+    [oppsApiRows],
+  );
+
+  const pipelineOpportunityFor = useCallback(
+    (contactId: string) => opportunityByContactId.get(contactId),
+    [opportunityByContactId],
+  );
+
+  const allContacts = useMemo(
+    () => apiRows.map(mapApiContactRowToContact),
+    [apiRows],
+  );
   const [newOpportunityOpen, setNewOpportunityOpen] = useState(false);
+
+  async function handleCreateOpportunityFromPipeline(data: NewOpportunityFormValues) {
+    const body = buildOpportunityCreateBody(data);
+    try {
+      await api('/opportunities', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
+      await loadPipelineData();
+      toast.success(`Oportunidad "${data.title.trim()}" creada exitosamente`);
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : 'No se pudo crear la oportunidad en el servidor',
+      );
+      throw e;
+    }
+  }
   const [filters, setFilters] = useState<PipelineFilters>(emptyFilters);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [changeEtapaOpen, setChangeEtapaOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
 
   async function applyEtapaUpdate(contactId: string, etapa: Etapa) {
-    if (isLikelyContactCuid(contactId)) {
-      try {
-        await contactUpdate(contactId, { etapa });
-        await loadApiContacts();
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'Error al actualizar etapa');
-      }
-    } else {
-      updateContact(contactId, { etapa });
+    if (!isLikelyContactCuid(contactId)) {
+      toast.error('Solo se puede actualizar la etapa de contactos guardados en el servidor');
+      return;
+    }
+    try {
+      await contactUpdate(contactId, { etapa });
+      await loadPipelineData();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al actualizar etapa');
     }
   }
 
   async function applyAssignUpdate(contactId: string, assignedTo: string) {
-    const newName = users.find((u) => u.id === assignedTo)?.name ?? 'Sin asignar';
-    if (isLikelyContactCuid(contactId)) {
-      try {
-        await contactUpdate(contactId, { assignedTo });
-        await loadApiContacts();
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'Error al asignar');
-        return;
-      }
-    } else {
-      updateContact(contactId, { assignedTo, assignedToName: newName });
+    if (!isLikelyContactCuid(contactId)) {
+      toast.error('Solo se puede asignar contactos guardados en el servidor');
+      return;
+    }
+    try {
+      await contactUpdate(contactId, { assignedTo });
+      await loadPipelineData();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al asignar');
     }
   }
 
@@ -753,6 +822,7 @@ export default function Pipeline() {
                 column={column}
                 colorClass={colConfig.color}
                 onCardClick={(c) => setSelectedContact(c)}
+                pipelineOpportunityFor={pipelineOpportunityFor}
               />
             );
           })}
@@ -761,19 +831,29 @@ export default function Pipeline() {
         <DragOverlay dropAnimation={null}>
           {activeLead ? (
             <div className="w-[280px]">
-              <LeadCard lead={activeLead} overlay />
+              <LeadCard
+                lead={activeLead}
+                overlay
+                pipelineOpportunity={pipelineOpportunityFor(activeLead.id)}
+              />
             </div>
           ) : null}
         </DragOverlay>
       </DndContext>
 
-      <NewOpportunityFromPipelineDialog
+      <NewOpportunityFormDialog
         open={newOpportunityOpen}
         onOpenChange={setNewOpportunityOpen}
+        title="Nueva Oportunidad"
+        description="Registra una oportunidad en el pipeline. Vincula contacto y empresa ya existentes; no se crean desde aquí."
+        onCreate={handleCreateOpportunityFromPipeline}
       />
 
       <CardDetailDialog
         contact={selectedContact ? allContacts.find((c) => c.id === selectedContact.id) ?? selectedContact : null}
+        pipelineOpportunity={
+          selectedContact ? pipelineOpportunityFor(selectedContact.id) : undefined
+        }
         open={!!selectedContact}
         onOpenChange={(open) => !open && setSelectedContact(null)}
         onOpenChangeEtapa={() => setChangeEtapaOpen(true)}
@@ -787,7 +867,7 @@ export default function Pipeline() {
           <ChangeEtapaDialog
             open={changeEtapaOpen}
             onOpenChange={setChangeEtapaOpen}
-            entityName={getOpportunitiesByContactId(selectedContact.id)[0]?.title ?? selectedContact.name}
+            entityName={pipelineOpportunityFor(selectedContact.id)?.title ?? selectedContact.name}
             currentEtapa={freshContact.etapa}
             onEtapaChange={(newEtapa) => {
               void applyEtapaUpdate(selectedContact.id, newEtapa as Etapa).then(() => {
@@ -799,7 +879,7 @@ export default function Pipeline() {
           <AssignDialog
             open={assignOpen}
             onOpenChange={setAssignOpen}
-            entityName={getOpportunitiesByContactId(selectedContact.id)[0]?.title ?? selectedContact.name}
+            entityName={pipelineOpportunityFor(selectedContact.id)?.title ?? selectedContact.name}
             currentAssigneeId={freshContact.assignedTo}
             onAssignChange={(newAssigneeId) => {
               void applyAssignUpdate(selectedContact.id, newAssigneeId).then(() => {

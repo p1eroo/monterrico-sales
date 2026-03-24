@@ -19,6 +19,8 @@ import {
   Send,
   FileArchive,
 } from 'lucide-react';
+import type { PermissionKey } from '@/types';
+import { usePermissions } from '@/hooks/usePermissions';
 import {
   Sidebar,
   SidebarContent,
@@ -34,28 +36,56 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAppStore } from '@/store';
 
-const navItems = [
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/contactos', label: 'Contactos', icon: UserPlus },
-  { to: '/empresas', label: 'Empresas', icon: Briefcase },
-  { to: '/opportunities', label: 'Oportunidades', icon: Target },
-  { to: '/pipeline', label: 'Pipeline', icon: Kanban },
-  { to: '/tareas', label: 'Tareas', icon: CalendarCheck },
-  { to: '/calendario', label: 'Calendario', icon: Calendar },
-  { to: '/inbox', label: 'Correo', icon: Mail },
-  { to: '/campaigns', label: 'Campañas', icon: Send },
-  { to: '/clients', label: 'Clientes', icon: Building2 },
-  { to: '/reports', label: 'Reportes', icon: BarChart3 },
-  { to: '/archivos', label: 'Archivos', icon: FileArchive },
-  { to: '/team', label: 'Equipo', icon: Users },
-  { to: '/users', label: 'Usuarios y Roles', icon: Shield },
-  { to: '/audit', label: 'Auditoría', icon: FileSearch },
-  { to: '/settings', label: 'Configuración', icon: Settings },
-] as const;
+type NavDef = {
+  to: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  permission?: PermissionKey;
+  anyOf?: readonly PermissionKey[];
+};
+
+const navItems: NavDef[] = [
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'dashboard.ver' },
+  { to: '/contactos', label: 'Contactos', icon: UserPlus, permission: 'contactos.ver' },
+  { to: '/empresas', label: 'Empresas', icon: Briefcase, permission: 'empresas.ver' },
+  { to: '/opportunities', label: 'Oportunidades', icon: Target, permission: 'oportunidades.ver' },
+  { to: '/pipeline', label: 'Pipeline', icon: Kanban, permission: 'pipeline.ver' },
+  { to: '/tareas', label: 'Tareas', icon: CalendarCheck, permission: 'actividades.ver' },
+  { to: '/calendario', label: 'Calendario', icon: Calendar, permission: 'actividades.ver' },
+  { to: '/inbox', label: 'Correo', icon: Mail, permission: 'correo.ver' },
+  { to: '/campaigns', label: 'Campañas', icon: Send, permission: 'campanas.ver' },
+  { to: '/clients', label: 'Clientes', icon: Building2, permission: 'clientes.ver' },
+  { to: '/reports', label: 'Reportes', icon: BarChart3, permission: 'reportes.ver' },
+  { to: '/archivos', label: 'Archivos', icon: FileArchive, permission: 'archivos.ver' },
+  { to: '/team', label: 'Equipo', icon: Users, permission: 'equipo.ver' },
+  {
+    to: '/users',
+    label: 'Usuarios y Roles',
+    icon: Shield,
+    anyOf: ['usuarios.ver', 'roles.ver'],
+  },
+  { to: '/audit', label: 'Auditoría', icon: FileSearch, permission: 'auditoria.ver' },
+  { to: '/settings', label: 'Configuración', icon: Settings, permission: 'configuracion.ver' },
+];
+
+function navItemVisible(
+  item: NavDef,
+  hasPermission: (k: PermissionKey) => boolean,
+): boolean {
+  if (item.anyOf?.length) {
+    return item.anyOf.some((p) => hasPermission(p));
+  }
+  if (item.permission) {
+    return hasPermission(item.permission);
+  }
+  return true;
+}
 
 export function AppSidebar() {
   const location = useLocation();
   const { currentUser, logout } = useAppStore();
+  const { hasPermission } = usePermissions();
+  const visibleNav = navItems.filter((item) => navItemVisible(item, hasPermission));
 
   const initials = currentUser.name
     .split(' ')
@@ -87,7 +117,7 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => {
+              {visibleNav.map((item) => {
                 const isActive = location.pathname.startsWith(item.to);
 
                 return (

@@ -8,6 +8,8 @@ export type JwtPayload = {
   username: string;
   name: string;
   role: string;
+  /** Presente en tokens emitidos tras esta versión; si falta, el guard resuelve por userId. */
+  roleId?: string;
 };
 
 @Injectable()
@@ -26,6 +28,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       username: payload.username,
       name: payload.name,
       role: payload.role,
+      roleId: payload.roleId,
     };
   }
 }

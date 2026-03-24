@@ -7,21 +7,27 @@ import {
   Param,
   Delete,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { CompaniesService } from './companies.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 
 @Controller('companies')
+@UseGuards(PermissionsGuard)
 export class CompaniesController {
   constructor(private readonly companiesService: CompaniesService) {}
 
   @Post()
+  @RequirePermissions('empresas.crear')
   create(@Body() createCompanyDto: CreateCompanyDto) {
     return this.companiesService.create(createCompanyDto);
   }
 
   @Get()
+  @RequirePermissions('empresas.ver')
   findAll(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
@@ -44,6 +50,7 @@ export class CompaniesController {
 
   /** Debe ir antes de @Get(':id') para no capturar "summary" como id. */
   @Get('summary')
+  @RequirePermissions('empresas.ver')
   findAllSummary(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
@@ -71,16 +78,19 @@ export class CompaniesController {
   }
 
   @Get(':id')
+  @RequirePermissions('empresas.ver')
   findOne(@Param('id') id: string) {
     return this.companiesService.findOne(id);
   }
 
   @Patch(':id')
+  @RequirePermissions('empresas.editar')
   update(@Param('id') id: string, @Body() updateCompanyDto: UpdateCompanyDto) {
     return this.companiesService.update(id, updateCompanyDto);
   }
 
   @Delete(':id')
+  @RequirePermissions('empresas.eliminar')
   remove(@Param('id') id: string) {
     return this.companiesService.remove(id);
   }

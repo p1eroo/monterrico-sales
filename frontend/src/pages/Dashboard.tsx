@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { DateRange } from 'react-day-picker';
 import {
   Users,
@@ -49,10 +49,12 @@ import {
   funnelData,
   performanceByAdvisor,
 } from '@/data/mock';
-import { useCRMStore } from '@/store/crmStore';
+import type { Contact } from '@/types';
+import { contactListAll, mapApiContactRowToContact } from '@/lib/contactApi';
 import { WeeklyGoalCard } from '@/components/shared/WeeklyGoalCard';
 import { MonthlyGoalCard } from '@/components/shared/MonthlyGoalCard';
 import { formatDateShort } from '@/lib/formatters';
+import { usePermissions } from '@/hooks/usePermissions';
 
 const PIE_COLORS = ['#13944C', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899'];
 const FUNNEL_COLORS = ['#13944C', '#22c55e', '#3b82f6', '#f59e0b', '#8b5cf6', '#06b6d4'];
@@ -68,9 +70,23 @@ const activityIconMap: Record<string, typeof Phone> = {
 type DateRangePreset = '7d' | '1m' | '3m' | '1y' | 'custom';
 
 export default function Dashboard() {
+  const { hasPermission } = usePermissions();
   const [dateRange, setDateRange] = useState<DateRangePreset>('1m');
   const [customRange, setCustomRange] = useState<DateRange | undefined>();
-  const { contacts } = useCRMStore();
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  useEffect(() => {
+    let c = true;
+    void contactListAll()
+      .then((rows) => {
+        if (c) setContacts(rows.map(mapApiContactRowToContact));
+      })
+      .catch(() => {
+        if (c) setContacts([]);
+      });
+    return () => {
+      c = false;
+    };
+  }, []);
   const latestContacts = contacts.slice(0, 5);
   const pendingActivities = activities
     .filter((a) => a.status === 'pendiente' || a.status === 'vencida')
@@ -104,10 +120,12 @@ export default function Dashboard() {
             />
           )}
         </div>
-        <Button size="sm" className="bg-[#13944C] text-white hover:bg-[#0f7a3d]">
-          <FileText className="size-4" />
-          Exportar
-        </Button>
+        {hasPermission('dashboard.exportar') && (
+          <Button size="sm" className="bg-[#13944C] text-white hover:bg-[#0f7a3d]">
+            <FileText className="size-4" />
+            Exportar
+          </Button>
+        )}
       </PageHeader>
 
       {/* Metas semanal y mensual */}

@@ -5,58 +5,43 @@ import {
   Patch,
   Param,
   Body,
-  Req,
-  ForbiddenException,
+  UseGuards,
   NotFoundException,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-
-type RequestUser = {
-  userId: string;
-  username: string;
-  name: string;
-  role: string;
-};
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 
 @Controller('users')
+@UseGuards(PermissionsGuard)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get()
+  @RequirePermissions('usuarios.ver')
   findAll() {
     return this.usersService.findAll();
   }
 
   @Post()
-  async create(
-    @Body() dto: CreateUserDto,
-    @Req() req: { user: RequestUser },
-  ) {
-    if (req.user.role !== 'admin') {
-      throw new ForbiddenException(
-        'Solo administradores pueden crear usuarios',
-      );
-    }
+  @RequirePermissions('usuarios.crear')
+  async create(@Body() dto: CreateUserDto) {
     return this.usersService.create(dto);
   }
 
   @Patch(':id')
+  @RequirePermissions('usuarios.editar')
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateUserDto,
-    @Req() req: { user: RequestUser },
   ) {
-    if (req.user.role !== 'admin') {
-      throw new ForbiddenException(
-        'Solo administradores pueden modificar usuarios',
-      );
-    }
     return this.usersService.update(id, dto);
   }
 
   @Get(':id')
+  @RequirePermissions('usuarios.ver')
   async findOne(@Param('id') id: string) {
     const user = await this.usersService.findOne(id);
     if (!user) {

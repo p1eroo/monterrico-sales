@@ -1,9 +1,11 @@
 import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { Building2, ChevronLeft, Globe, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useCRMStore } from '@/store/crmStore';
 import { getInactiveCompanies, slugifyCompany } from '@/lib/inactiveCompanies';
+import { contactListAll, mapApiContactRowToContact } from '@/lib/contactApi';
+import type { Contact } from '@/types';
 import { etapaLabels, companyRubroLabels, companyTipoLabels } from '@/data/mock';
 import { cn } from '@/lib/utils';
 import type { Etapa } from '@/types';
@@ -26,7 +28,20 @@ const etapaBadgeColors: Record<string, string> = {
 
 export function InactiveCompaniesPanel({ onBack, onClose }: InactiveCompaniesPanelProps) {
   const navigate = useNavigate();
-  const { contacts } = useCRMStore();
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  useEffect(() => {
+    let c = true;
+    void contactListAll()
+      .then((rows) => {
+        if (c) setContacts(rows.map(mapApiContactRowToContact));
+      })
+      .catch(() => {
+        if (c) setContacts([]);
+      });
+    return () => {
+      c = false;
+    };
+  }, []);
   const inactiveCompanies = getInactiveCompanies(contacts);
 
   const handleCompanyClick = (company: string) => {

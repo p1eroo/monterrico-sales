@@ -7,23 +7,29 @@ import {
   Param,
   Delete,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { ContactsService } from './contacts.service';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
 import { LinkCompanyDto } from './dto/link-company.dto';
 import { LinkContactDto } from './dto/link-contact.dto';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 
 @Controller('contacts')
+@UseGuards(PermissionsGuard)
 export class ContactsController {
   constructor(private readonly contactsService: ContactsService) {}
 
   @Post()
+  @RequirePermissions('contactos.crear')
   create(@Body() createContactDto: CreateContactDto) {
     return this.contactsService.create(createContactDto);
   }
 
   @Get()
+  @RequirePermissions('contactos.ver')
   findAll(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
@@ -45,6 +51,7 @@ export class ContactsController {
   }
 
   @Post(':id/companies')
+  @RequirePermissions('contactos.editar')
   addCompany(
     @Param('id') id: string,
     @Body() dto: LinkCompanyDto,
@@ -57,6 +64,7 @@ export class ContactsController {
   }
 
   @Delete(':id/companies/:companyId')
+  @RequirePermissions('contactos.editar')
   removeCompany(
     @Param('id') id: string,
     @Param('companyId') companyId: string,
@@ -65,6 +73,7 @@ export class ContactsController {
   }
 
   @Post(':id/links')
+  @RequirePermissions('contactos.editar')
   addLinkedContact(
     @Param('id') id: string,
     @Body() dto: LinkContactDto,
@@ -73,6 +82,7 @@ export class ContactsController {
   }
 
   @Delete(':id/links/:linkedId')
+  @RequirePermissions('contactos.editar')
   removeLinkedContact(
     @Param('id') id: string,
     @Param('linkedId') linkedId: string,
@@ -81,16 +91,19 @@ export class ContactsController {
   }
 
   @Get(':id')
+  @RequirePermissions('contactos.ver')
   findOne(@Param('id') id: string) {
     return this.contactsService.findOne(id);
   }
 
   @Patch(':id')
+  @RequirePermissions('contactos.editar')
   update(@Param('id') id: string, @Body() updateContactDto: UpdateContactDto) {
     return this.contactsService.update(id, updateContactDto);
   }
 
   @Delete(':id')
+  @RequirePermissions('contactos.eliminar')
   remove(@Param('id') id: string) {
     return this.contactsService.remove(id);
   }

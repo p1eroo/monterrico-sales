@@ -10,7 +10,9 @@ import type { PermissionKey } from '@/types';
 import {
   PERMISSION_MODULES,
   PERMISSION_ACTIONS,
+  moduleAllowsAction,
 } from '@/data/rbac';
+import type { PermissionModule, PermissionAction } from '@/types';
 import { cn } from '@/lib/utils';
 
 interface PermissionMatrixProps {
@@ -59,10 +61,12 @@ export function PermissionMatrix({
           </thead>
           <tbody>
             {PERMISSION_MODULES.map((mod) => {
-              const modKeys = PERMISSION_ACTIONS.map(
-                (a) => `${mod.id}.${a.id}` as PermissionKey
-              );
-              const allChecked = modKeys.every((k) => permissions[k]);
+              const modId = mod.id as PermissionModule;
+              const modKeys = PERMISSION_ACTIONS.filter((a) =>
+                moduleAllowsAction(modId, a.id as PermissionAction),
+              ).map((a) => `${mod.id}.${a.id}` as PermissionKey);
+              const allChecked =
+                modKeys.length > 0 && modKeys.every((k) => permissions[k]);
 
               return (
                 <tr
@@ -77,6 +81,20 @@ export function PermissionMatrix({
                   </td>
                   {PERMISSION_ACTIONS.map((act) => {
                     const key = `${mod.id}.${act.id}` as PermissionKey;
+                    const allowed = moduleAllowsAction(
+                      modId,
+                      act.id as PermissionAction,
+                    );
+                    if (!allowed) {
+                      return (
+                        <td
+                          key={key}
+                          className="px-3 py-2.5 text-center text-muted-foreground"
+                        >
+                          <span className="text-xs tabular-nums">—</span>
+                        </td>
+                      );
+                    }
                     return (
                       <td key={key} className="px-3 py-2.5 text-center">
                         <div className="flex justify-center">
@@ -93,14 +111,18 @@ export function PermissionMatrix({
                   })}
                   {!compact && (
                     <td className="px-3 py-2.5 text-center">
-                      <Checkbox
-                        checked={allChecked}
-                        onCheckedChange={() => {
-                          const val = !allChecked;
-                          modKeys.forEach((k) => onChange(k, val));
-                        }}
-                        disabled={disabled}
-                      />
+                      {modKeys.length > 0 ? (
+                        <Checkbox
+                          checked={allChecked}
+                          onCheckedChange={() => {
+                            const val = !allChecked;
+                            modKeys.forEach((k) => onChange(k, val));
+                          }}
+                          disabled={disabled}
+                        />
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
                     </td>
                   )}
                 </tr>

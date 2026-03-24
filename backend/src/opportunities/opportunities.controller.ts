@@ -7,21 +7,27 @@ import {
   Param,
   Delete,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { OpportunitiesService } from './opportunities.service';
 import { CreateOpportunityDto } from './dto/create-opportunity.dto';
 import { UpdateOpportunityDto } from './dto/update-opportunity.dto';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 
 @Controller('opportunities')
+@UseGuards(PermissionsGuard)
 export class OpportunitiesController {
   constructor(private readonly opportunitiesService: OpportunitiesService) {}
 
   @Post()
+  @RequirePermissions('oportunidades.crear')
   create(@Body() createOpportunityDto: CreateOpportunityDto) {
     return this.opportunitiesService.create(createOpportunityDto);
   }
 
   @Get()
+  @RequirePermissions('oportunidades.ver')
   findAll(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
@@ -45,11 +51,13 @@ export class OpportunitiesController {
   }
 
   @Get(':id')
+  @RequirePermissions('oportunidades.ver')
   findOne(@Param('id') id: string) {
     return this.opportunitiesService.findOne(id);
   }
 
   @Patch(':id')
+  @RequirePermissions('oportunidades.editar')
   update(
     @Param('id') id: string,
     @Body() updateOpportunityDto: UpdateOpportunityDto,
@@ -58,6 +66,7 @@ export class OpportunitiesController {
   }
 
   @Delete(':id')
+  @RequirePermissions('oportunidades.eliminar')
   remove(@Param('id') id: string) {
     return this.opportunitiesService.remove(id);
   }

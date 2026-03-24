@@ -38,7 +38,6 @@ export type ApiOpportunityListRow = {
   id: string;
   title: string;
   amount: number;
-  fuente?: string | null;
   probability: number;
   etapa: string;
   status: string;
@@ -106,7 +105,7 @@ export function mapApiOpportunityToOpportunity(
       row.user?.name ??
       useUsersStore.getState().getUserName(assignedId),
     createdAt: row.createdAt.slice(0, 10),
-    fuente: parseFuente(row.fuente),
+    fuente: parseFuente((first as ApiContactFromOpportunity | undefined)?.fuente),
   };
 }
 

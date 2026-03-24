@@ -131,8 +131,8 @@ export const campaigns: Campaign[] = [
   },
   {
     id: 'camp4',
-    name: 'Campaña Interbank - Programada',
-    status: 'scheduled',
+    name: 'Campaña Interbank - Borrador',
+    status: 'draft',
     channel: 'email',
     message: {
       channel: 'email',
@@ -142,7 +142,6 @@ export const campaigns: Campaign[] = [
     },
     recipients: getRecipientsFromContacts().filter((r) => r.company?.toLowerCase().includes('interbank')),
     createdAt: '2026-03-06',
-    scheduledFor: '2026-03-08T09:00:00',
     createdBy: 'u1',
     createdByName: 'Carlos Mendoza',
     relatedContactIds: ['l10'],

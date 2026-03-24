@@ -11,7 +11,11 @@ export type ApiRole = {
   userCount?: number;
 };
 
-export function useRoles() {
+type UseRolesOptions = { enabled?: boolean };
+
+export function useRoles(options?: UseRolesOptions) {
+  const enabled = options?.enabled !== false;
+
   const [state, setState] = useState<{
     roles: ApiRole[];
     loading: boolean;
@@ -19,6 +23,7 @@ export function useRoles() {
   }>({ roles: [], loading: false, error: null });
 
   const loadRoles = useCallback(async () => {
+    if (!enabled) return;
     setState((s) => ({ ...s, loading: true, error: null }));
     try {
       const list = await api<ApiRole[]>('/roles');
@@ -30,11 +35,13 @@ export function useRoles() {
         loading: false,
       }));
     }
-  }, []);
+  }, [enabled]);
 
   useEffect(() => {
-    void loadRoles();
-  }, [loadRoles]);
+    if (enabled) {
+      void loadRoles();
+    }
+  }, [enabled, loadRoles]);
 
   return {
     roles: state.roles,

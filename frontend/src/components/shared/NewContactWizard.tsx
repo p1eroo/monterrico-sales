@@ -4,8 +4,7 @@ import { Check, ChevronLeft, ChevronRight, ChevronsUpDown, Loader2, Plus, Buildi
 import type { Etapa, ContactSource } from '@/types';
 import { contactSourceLabels, etapaLabels, companyRubroLabels } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
-import { api } from '@/lib/api';
-import type { ApiCompanyRecord } from '@/lib/companyApi';
+import { companyListAll, type ApiCompanyRecord } from '@/lib/companyApi';
 import { factilizaApi } from '@/lib/factilizaApi';
 import { cn } from '@/lib/utils';
 
@@ -245,7 +244,7 @@ export function NewContactWizard({
     if (!open) return;
     let cancelled = false;
     setCompaniesLoading(true);
-    api<ApiCompanyRecord[]>('/companies')
+    companyListAll()
       .then((list) => {
         if (!cancelled) setApiCompanies(list);
       })
@@ -596,7 +595,6 @@ export function NewContactWizard({
       onSubmit={handleCompanyWizardSubmit}
       defaultValues={companyWizardDefaults}
       title="Nueva empresa (vinculada al contacto)"
-      description="Completa el formulario; los datos se enviarán al servidor al pulsar «Crear contacto» en el asistente de contacto. RUC y nombre comercial son obligatorios."
       confirmButtonLabel="Usar estos datos"
     />
     <LinkExistingDialog

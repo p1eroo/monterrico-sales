@@ -3,7 +3,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Pencil } from 'lucide-react';
-import type { RBACRole } from '@/types';
+import type { RBACRole, PermissionKey } from '@/types';
+import { allValidPermissionKeys } from '@/data/rbac';
 import { cn } from '@/lib/utils';
 
 interface RoleCardProps {
@@ -13,8 +14,11 @@ interface RoleCardProps {
 }
 
 export function RoleCard({ role, onEdit, isDefault }: RoleCardProps) {
-  const grantedCount = Object.values(role.permissions).filter(Boolean).length;
-  const totalCount = Object.keys(role.permissions).length;
+  const validKeys = allValidPermissionKeys();
+  const grantedCount = validKeys.filter(
+    (k) => role.permissions[k as PermissionKey],
+  ).length;
+  const totalCount = validKeys.length;
   const summary = `${grantedCount}/${totalCount} permisos`;
 
   return (

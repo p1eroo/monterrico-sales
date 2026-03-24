@@ -1,8 +1,8 @@
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
-import type { RecipientStatus } from '@/types';
-import { campaigns } from '@/data/campaignMock';
-import { useAppStore } from '@/store';
+import type { Campaign, RecipientStatus } from '@/types';
+import { getCampaignApi } from '@/lib/campaignApi';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,9 +39,39 @@ const STATUS_LABELS: Record<RecipientStatus, string> = {
 export default function CampaignResultsPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const sentCampaigns = useAppStore((s) => s.sentCampaigns);
-  const allCampaigns = [...sentCampaigns, ...campaigns];
-  const campaign = allCampaigns.find((c) => c.id === id);
+  const [campaign, setCampaign] = useState<Campaign | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!id) {
+      setCampaign(null);
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const c = await getCampaignApi(id);
+        if (!cancelled) setCampaign(c);
+      } catch {
+        if (!cancelled) setCampaign(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 p-12">
+        <p className="text-muted-foreground">Cargando resultados…</p>
+      </div>
+    );
+  }
 
   if (!campaign) {
     return (
@@ -189,7 +219,7 @@ export default function CampaignResultsPage() {
                           : ''
                       }
                     >
-                      {STATUS_LABELS[r.status]}
+                      {STATUS_LABELS[r.status] ?? r.status}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm">

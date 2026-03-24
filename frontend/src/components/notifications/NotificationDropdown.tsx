@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Bell, CheckCheck, ChevronRight } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
@@ -7,8 +7,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { NotificationCard } from './NotificationCard';
 import { EmpresasInactivasCard } from './EmpresasInactivasCard';
 import { useNotificationStore } from '@/store/notificationStore';
-import { useCRMStore } from '@/store/crmStore';
 import { getInactiveCompanies } from '@/lib/inactiveCompanies';
+import { contactListAll, mapApiContactRowToContact } from '@/lib/contactApi';
+import type { Contact } from '@/types';
 
 interface NotificationDropdownProps {
   onOpenDrawer: () => void;
@@ -22,7 +23,20 @@ export function NotificationDropdown({
   trigger,
 }: NotificationDropdownProps) {
   const { notifications, markAllAsRead } = useNotificationStore();
-  const { contacts } = useCRMStore();
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  useEffect(() => {
+    let c = true;
+    void contactListAll()
+      .then((rows) => {
+        if (c) setContacts(rows.map(mapApiContactRowToContact));
+      })
+      .catch(() => {
+        if (c) setContacts([]);
+      });
+    return () => {
+      c = false;
+    };
+  }, []);
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('todas');
 

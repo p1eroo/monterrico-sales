@@ -5,13 +5,12 @@ import {
   Plus, Search, Grid3X3, List, MoreHorizontal,
   Eye, Pencil, Trash2, X, ArrowUpDown,
   Phone, Mail, Building2, DollarSign, Users, ChevronLeft, ChevronRight,
-  Upload, Download, FileSpreadsheet,
+  Upload, Download, FileSpreadsheet, Loader2,
 } from 'lucide-react';
 import { contactSourceLabels, etapaLabels } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
 import { NewContactWizard, type NewContactData } from '@/components/shared/NewContactWizard';
 import { isLikelyOpportunityCuid } from '@/lib/opportunityApi';
-import { useCRMStore } from '@/store/crmStore';
 import { getPrimaryCompany } from '@/lib/utils';
 
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -43,6 +42,12 @@ import {
   mapApiContactRowToContact,
   contactListPaginated,
 } from '@/lib/contactApi';
+import { buildOptimisticContact } from '@/lib/optimisticEntities';
+import {
+  generateOptimisticId,
+  useOptimisticCrmStore,
+} from '@/store/optimisticCrmStore';
+import { usePermissions } from '@/hooks/usePermissions';
 
 const ITEMS_PER_PAGE = 25;
 
@@ -65,8 +70,12 @@ const etapaTabs: { value: string; label: string }[] = [
 
 export default function ContactosPage() {
   const navigate = useNavigate();
-  const { contacts, deleteContact } = useCRMStore();
   const { users } = useUsers();
+  const { hasPermission } = usePermissions();
+  const pendingContacts = useOptimisticCrmStore((s) => s.pendingContacts);
+  const addPendingContact = useOptimisticCrmStore((s) => s.addPendingContact);
+  const removePendingContact = useOptimisticCrmStore((s) => s.removePendingContact);
+  const isPendingContactId = useOptimisticCrmStore((s) => s.isPendingContactId);
   const [apiRows, setApiRows] = useState<ApiContactListRow[]>([]);
   const [totalContacts, setTotalContacts] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -116,14 +125,24 @@ export default function ContactosPage() {
     void loadApiContacts();
   }, [loadApiContacts]);
 
-  const mergedContacts = useMemo(() => {
-    const apiIds = new Set(apiRows.map((r) => r.id));
-    const fromApi = apiRows.map(mapApiContactRowToContact);
-    const fromStore = contacts.filter((c) => !apiIds.has(c.id));
-    return [...fromApi, ...fromStore];
-  }, [apiRows, contacts]);
+  const paginatedContacts = useMemo(
+    () => apiRows.map(mapApiContactRowToContact),
+    [apiRows],
+  );
 
-  const paginatedContacts = mergedContacts;
+  const displayedContacts = useMemo(() => {
+    const apiIds = new Set(paginatedContacts.map((c) => c.id));
+    const pending = pendingContacts.filter((c) => !apiIds.has(c.id));
+    return [...pending, ...paginatedContacts];
+  }, [paginatedContacts, pendingContacts]);
+
+  function openContactDetail(id: string) {
+    if (isPendingContactId(id)) {
+      toast.info('Guardando contacto en el servidor…');
+      return;
+    }
+    navigate(`/contactos/${id}`);
+  }
   const startIndex = totalContacts === 0 ? 0 : (page - 1) * ITEMS_PER_PAGE + 1;
   const endIndex = Math.min(page * ITEMS_PER_PAGE, totalContacts);
 
@@ -138,10 +157,10 @@ export default function ContactosPage() {
   }
 
   function toggleSelectAll() {
-    if (selectedContacts.length === paginatedContacts.length) {
+    if (selectedContacts.length === displayedContacts.length) {
       setSelectedContacts([]);
     } else {
-      setSelectedContacts(paginatedContacts.map((l) => l.id));
+      setSelectedContacts(displayedContacts.map((l) => l.id));
     }
   }
 
@@ -153,17 +172,22 @@ export default function ContactosPage() {
 
   async function handleDelete() {
     if (!contactToDelete) return;
-    if (isLikelyContactCuid(contactToDelete)) {
-      try {
-        await api(`/contacts/${contactToDelete}`, { method: 'DELETE' });
-        await loadApiContacts();
-        toast.success('Contacto eliminado correctamente');
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'No se pudo eliminar en el servidor');
-      }
-    } else {
-      deleteContact(contactToDelete);
+    if (isPendingContactId(contactToDelete)) {
+      toast.error('Espera a que termine de guardarse el contacto');
+      setContactToDelete(null);
+      return;
+    }
+    if (!isLikelyContactCuid(contactToDelete)) {
+      toast.error('Solo se pueden eliminar contactos guardados en el servidor');
+      setContactToDelete(null);
+      return;
+    }
+    try {
+      await api(`/contacts/${contactToDelete}`, { method: 'DELETE' });
+      await loadApiContacts();
       toast.success('Contacto eliminado correctamente');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'No se pudo eliminar en el servidor');
     }
     setContactToDelete(null);
   }
@@ -246,6 +270,13 @@ export default function ContactosPage() {
         body.assignedTo = data.assignedTo;
       }
 
+      const optId = generateOptimisticId('c');
+      addPendingContact(
+        buildOptimisticContact(optId, data, {
+          companyDisplayName: w.nombreComercial.trim(),
+        }),
+      );
+
       let contactId: string;
       try {
         const created = await api<{ id: string }>('/contacts', {
@@ -254,6 +285,7 @@ export default function ContactosPage() {
         });
         contactId = created.id;
       } catch (e) {
+        removePendingContact(optId);
         toast.error(
           e instanceof Error ? e.message : 'No se pudo crear el contacto en el servidor',
         );
@@ -292,6 +324,7 @@ export default function ContactosPage() {
         }
       }
 
+      removePendingContact(optId);
       await loadApiContacts();
       const msgParts = [`Contacto "${data.name}"`, `empresa "${w.nombreComercial.trim()}"`];
       if (w.nombreNegocio.trim()) msgParts.push('oportunidad vinculada');
@@ -357,19 +390,28 @@ export default function ContactosPage() {
       body.companyId = companyId;
     }
 
+    const optIdSimple = generateOptimisticId('c');
+    addPendingContact(
+      buildOptimisticContact(optIdSimple, data, {
+        companyDisplayName: data.company.trim() || undefined,
+      }),
+    );
+
     try {
       await api('/contacts', {
         method: 'POST',
         body: JSON.stringify(body),
       });
-      await loadApiContacts();
     } catch (e) {
+      removePendingContact(optIdSimple);
       toast.error(
         e instanceof Error ? e.message : 'No se pudo crear el contacto en el servidor',
       );
       return;
     }
 
+    removePendingContact(optIdSimple);
+    await loadApiContacts();
     toast.success(`Contacto "${data.name}" creado exitosamente`);
     setNewContactOpen(false);
   }
@@ -377,20 +419,33 @@ export default function ContactosPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Contactos" description="Gestiona y da seguimiento a tus prospectos de venta">
-        {totalContacts > 0 && (
+        {(totalContacts > 0 || pendingContacts.length > 0) && (
           <Badge variant="secondary" className="mr-2 font-normal">
-            <Users className="size-3.5" /> {totalContacts} contactos
+            <Users className="size-3.5" />{' '}
+            {totalContacts > 0 ? `${totalContacts} contactos` : `${pendingContacts.length} nuevos`}
+            {pendingContacts.length > 0 && totalContacts > 0 && (
+              <span className="ml-1 opacity-80">· {pendingContacts.length} guardándose</span>
+            )}
+            {pendingContacts.length > 0 && totalContacts === 0 && (
+              <span className="ml-1 opacity-80">· sincronizando</span>
+            )}
           </Badge>
         )}
-        <Button variant="outline" size="sm" onClick={() => toast.info('Descargando plantilla...')}>
-          <FileSpreadsheet className="size-4" /> Plantilla
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => toast.info('Selecciona un archivo para importar')}>
-          <Upload className="size-4" /> Importar
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => toast.info('Exportando contactos...')}>
-          <Download className="size-4" /> Exportar
-        </Button>
+        {hasPermission('contactos.exportar') && (
+          <Button variant="outline" size="sm" onClick={() => toast.info('Descargando plantilla...')}>
+            <FileSpreadsheet className="size-4" /> Plantilla
+          </Button>
+        )}
+        {hasPermission('contactos.crear') && (
+          <Button variant="outline" size="sm" onClick={() => toast.info('Selecciona un archivo para importar')}>
+            <Upload className="size-4" /> Importar
+          </Button>
+        )}
+        {hasPermission('contactos.exportar') && (
+          <Button variant="outline" size="sm" onClick={() => toast.info('Exportando contactos...')}>
+            <Download className="size-4" /> Exportar
+          </Button>
+        )}
         <Button onClick={() => setNewContactOpen(true)}>
           <Plus /> Nuevo Contacto
         </Button>
@@ -498,7 +553,7 @@ export default function ContactosPage() {
           <div className="flex items-center justify-center py-16 text-muted-foreground">
             Cargando contactos...
           </div>
-        ) : totalContacts === 0 && mergedContacts.length === 0 ? (
+        ) : totalContacts === 0 && apiRows.length === 0 && pendingContacts.length === 0 ? (
           <EmptyState
             icon={Users}
             title="No se encontraron contactos"
@@ -508,50 +563,65 @@ export default function ContactosPage() {
           />
         ) : viewMode === 'table' ? (
           <ContactsTable
-            contacts={paginatedContacts}
+            contacts={displayedContacts}
             selectedContacts={selectedContacts}
             onToggleSelectAll={toggleSelectAll}
             onToggleSelect={toggleSelectContact}
-            allSelected={selectedContacts.length === paginatedContacts.length && paginatedContacts.length > 0}
-            onView={(id) => navigate(`/contactos/${id}`)}
+            allSelected={
+              selectedContacts.length === displayedContacts.length && displayedContacts.length > 0
+            }
+            isPendingContactId={isPendingContactId}
+            onView={openContactDetail}
             onDelete={(id) => { setContactToDelete(id); setDeleteDialogOpen(true); }}
           />
         ) : (
           <ContactsGrid
-            contacts={paginatedContacts}
-            onView={(id) => navigate(`/contactos/${id}`)}
+            contacts={displayedContacts}
+            isPendingContactId={isPendingContactId}
+            onView={openContactDetail}
             onDelete={(id) => { setContactToDelete(id); setDeleteDialogOpen(true); }}
           />
         )}
       </div>
 
       {/* Pagination */}
-      {!loading && (totalContacts > 0 || mergedContacts.length > 0) && (
-        <div className="flex items-center justify-between">
+      {!loading && (totalContacts > 0 || pendingContacts.length > 0) && (
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm text-muted-foreground">
-            Mostrando {startIndex}-{endIndex} de {totalContacts || mergedContacts.length} contactos
+            {totalContacts > 0 ? (
+              <>
+                Mostrando {startIndex}-{endIndex} de {totalContacts} contactos
+                {pendingContacts.length > 0 && (
+                  <span className="ml-1">· {pendingContacts.length} guardándose</span>
+                )}
+              </>
+            ) : (
+              <>Contactos nuevos aparecerán aquí al sincronizar con el servidor.</>
+            )}
           </p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page <= 1 || loading}
-              onClick={() => setPage((p) => p - 1)}
-            >
-              <ChevronLeft className="size-4" /> Anterior
-            </Button>
-            <span className="px-2 text-sm text-muted-foreground">
-              {page} / {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page >= totalPages || loading}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              Siguiente <ChevronRight className="size-4" />
-            </Button>
-          </div>
+          {totalContacts > 0 && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page <= 1 || loading}
+                onClick={() => setPage((p) => p - 1)}
+              >
+                <ChevronLeft className="size-4" /> Anterior
+              </Button>
+              <span className="px-2 text-sm text-muted-foreground">
+                {page} / {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page >= totalPages || loading}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Siguiente <ChevronRight className="size-4" />
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
@@ -582,6 +652,7 @@ interface ContactsTableProps {
   allSelected: boolean;
   onToggleSelectAll: () => void;
   onToggleSelect: (id: string) => void;
+  isPendingContactId: (id: string) => boolean;
   onView: (id: string) => void;
   onDelete: (id: string) => void;
 }
@@ -592,6 +663,7 @@ function ContactsTable({
   allSelected,
   onToggleSelectAll,
   onToggleSelect,
+  isPendingContactId,
   onView,
   onDelete,
 }: ContactsTableProps) {
@@ -627,10 +699,12 @@ function ContactsTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {data.map((contact) => (
+          {data.map((contact) => {
+            const pending = isPendingContactId(contact.id);
+            return (
             <TableRow
               key={contact.id}
-              className="cursor-pointer"
+              className={pending ? 'bg-muted/40' : 'cursor-pointer'}
               onClick={() => onView(contact.id)}
             >
               <TableCell onClick={(e) => e.stopPropagation()}>
@@ -643,9 +717,10 @@ function ContactsTable({
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-medium">{contact.name}</p>
-                    {isLikelyContactCuid(contact.id) && (
-                      <Badge variant="outline" className="text-[10px] font-normal">
-                        Servidor
+                    {pending && (
+                      <Badge variant="secondary" className="gap-1 font-normal">
+                        <Loader2 className="size-3 animate-spin" />
+                        Guardando…
                       </Badge>
                     )}
                   </div>
@@ -688,7 +763,8 @@ function ContactsTable({
                 </DropdownMenu>
               </TableCell>
             </TableRow>
-          ))}
+          );
+          })}
         </TableBody>
       </Table>
     </div>
@@ -699,17 +775,20 @@ function ContactsTable({
 
 interface ContactsGridProps {
   contacts: import('@/types').Contact[];
+  isPendingContactId: (id: string) => boolean;
   onView: (id: string) => void;
   onDelete: (id: string) => void;
 }
 
-function ContactsGrid({ contacts: data, onView, onDelete }: ContactsGridProps) {
+function ContactsGrid({ contacts: data, isPendingContactId, onView, onDelete }: ContactsGridProps) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {data.map((contact) => (
+      {data.map((contact) => {
+        const pending = isPendingContactId(contact.id);
+        return (
         <Card
           key={contact.id}
-          className="cursor-pointer transition-shadow hover:shadow-md"
+          className={pending ? 'border-dashed bg-muted/30' : 'cursor-pointer transition-shadow hover:shadow-md'}
           onClick={() => onView(contact.id)}
         >
           <CardContent className="p-5">
@@ -717,9 +796,10 @@ function ContactsGrid({ contacts: data, onView, onDelete }: ContactsGridProps) {
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <h3 className="font-semibold truncate">{contact.name}</h3>
-                  {isLikelyContactCuid(contact.id) && (
-                    <Badge variant="outline" className="shrink-0 text-[10px] font-normal">
-                      Servidor
+                  {pending && (
+                    <Badge variant="secondary" className="shrink-0 gap-1 text-[10px] font-normal">
+                      <Loader2 className="size-3 animate-spin" />
+                      Guardando…
                     </Badge>
                   )}
                 </div>
@@ -771,7 +851,8 @@ function ContactsGrid({ contacts: data, onView, onDelete }: ContactsGridProps) {
             </div>
           </CardContent>
         </Card>
-      ))}
+      );
+      })}
     </div>
   );
 }

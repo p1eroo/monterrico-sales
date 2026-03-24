@@ -3,7 +3,6 @@ import {
   MessageSquare, Phone, Calendar, Mail, Paperclip, ClipboardList,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useCRMStore } from '@/store/crmStore';
 import { useUsers } from '@/hooks/useUsers';
 import type { Contact, Opportunity, TaskAssociation } from '@/types';
 
@@ -64,7 +63,6 @@ export function QuickActionsWithDialogs({
   onActivityCreated,
   contactId,
 }: QuickActionsWithDialogsProps) {
-  const { contacts: storeContacts } = useCRMStore();
   const { activeUsers } = useUsers();
   const [activeDialog, setActiveDialog] = useState<string | null>(null);
 
@@ -193,7 +191,7 @@ export function QuickActionsWithDialogs({
         onOpenChange={setTaskFormOpen}
         title="Crear Tarea"
         description={`Crea una tarea relacionada a ${entityName}.`}
-        contacts={contacts.length > 0 ? contacts : storeContacts}
+        contacts={contacts}
         companies={companies}
         opportunities={opportunities}
         onSave={handleTaskFormSave}

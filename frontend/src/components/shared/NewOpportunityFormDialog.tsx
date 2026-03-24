@@ -2,22 +2,15 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { toast } from 'sonner';
-import { Building2, ChevronsUpDown, User, X } from 'lucide-react';
-import { etapaLabels, contactSourceLabels } from '@/data/mock';
+import {
+  User, Building2, ChevronsUpDown, X,
+} from 'lucide-react';
+import type { ContactPriority, Etapa } from '@/types';
+import { etapaLabels } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
-import type { ContactSource, Etapa } from '@/types';
 import { useCRMStore } from '@/store/crmStore';
 import { getPrimaryCompany, cn } from '@/lib/utils';
-import { api } from '@/lib/api';
-import {
-  type ApiContactListRow,
-  isLikelyContactCuid,
-  mapApiContactRowToContact,
-} from '@/lib/contactApi';
-import { type ApiCompanyRecord, isLikelyCompanyCuid, companyListAll } from '@/lib/companyApi';
-import { isLikelyOpportunityCuid } from '@/lib/opportunityApi';
-
+import { LinkExistingDialog } from '@/components/shared/LinkExistingDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -27,12 +20,18 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { LinkExistingDialog } from '@/components/shared/LinkExistingDialog';
+import {
+  type ApiContactListRow,
+  isLikelyContactCuid,
+  mapApiContactRowToContact,
+  contactListAll,
+} from '@/lib/contactApi';
+import { type ApiCompanyRecord, companyListAll, isLikelyCompanyCuid } from '@/lib/companyApi';
 
-const etapasParaOportunidad: Etapa[] = [
-  'lead', 'contacto', 'reunion_agendada', 'reunion_efectiva',
-  'propuesta_economica', 'negociacion', 'licitacion', 'licitacion_etapa_final',
-  'cierre_ganado', 'firma_contrato', 'activo', 'cierre_perdido', 'inactivo',
+const etapas: Etapa[] = [
+  'lead', 'contacto', 'reunion_agendada', 'reunion_efectiva', 'propuesta_economica',
+  'negociacion', 'licitacion', 'licitacion_etapa_final', 'cierre_ganado', 'firma_contrato',
+  'activo', 'cierre_perdido', 'inactivo',
 ];
 
 const etapaEnum = z.enum([
@@ -41,43 +40,57 @@ const etapaEnum = z.enum([
   'activo', 'cierre_perdido', 'inactivo',
 ] as const);
 
-const contactFuenteValues = [
-  'referido', 'base', 'entorno', 'feria', 'masivo',
-] as const satisfies readonly ContactSource[];
-
-const fuenteEnum = z.enum(contactFuenteValues);
-
-const schema = z.object({
-  title: z.string().min(2, 'El título debe tener al menos 2 caracteres'),
+export const newOpportunityFormSchema = z.object({
+  title: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
+  contactId: z.string().optional(),
+  companyId: z.string().optional(),
   amount: z.coerce.number().min(0, 'El monto debe ser positivo'),
   etapa: etapaEnum,
   expectedCloseDate: z.string().min(1, 'Selecciona una fecha'),
-  assignedTo: z.string().min(1, 'Selecciona un responsable'),
-  fuente: fuenteEnum,
-  contactId: z.string().optional(),
-  companyId: z.string().optional(),
+  assignedTo: z.string().optional(),
+  priority: z.enum(['baja', 'media', 'alta']),
 });
 
-export type NewOpportunityFromPipelineData = z.infer<typeof schema>;
+export type NewOpportunityFormValues = z.infer<typeof newOpportunityFormSchema>;
 
-const defaultValues: NewOpportunityFromPipelineData = {
+export const newOpportunityFormDefaults: NewOpportunityFormValues = {
   title: '',
+  contactId: '',
+  companyId: '',
   amount: 0,
   etapa: 'lead',
   expectedCloseDate: '',
-  assignedTo: '',
-  fuente: 'base',
-  contactId: '',
-  companyId: '',
+  assignedTo: undefined,
+  priority: 'media',
 };
 
-interface NewOpportunityFromPipelineDialogProps {
+export interface NewOpportunityFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onCreate: (data: NewOpportunityFormValues) => void | Promise<void>;
+  title?: string;
+  description?: string;
+  defaultContactId?: string;
+  defaultCompanyId?: string;
+  /** Si true, no se puede cambiar el contacto elegido */
+  lockContactSelection?: boolean;
+  /** Si true, no se puede cambiar la empresa elegida */
+  lockCompanySelection?: boolean;
 }
 
-export function NewOpportunityFromPipelineDialog({ open, onOpenChange }: NewOpportunityFromPipelineDialogProps) {
-  const { contacts, addOpportunity } = useCRMStore();
+export function NewOpportunityFormDialog({
+  open,
+  onOpenChange,
+  onCreate,
+  title = 'Nueva Oportunidad',
+  description = 'Registra una nueva oportunidad de venta en el pipeline.',
+  defaultContactId = '',
+  defaultCompanyId = '',
+  lockContactSelection = false,
+  lockCompanySelection = false,
+}: NewOpportunityFormDialogProps) {
+  const { contacts } = useCRMStore();
+  const { activeUsers } = useUsers();
   const [apiContactRows, setApiContactRows] = useState<ApiContactListRow[]>([]);
   const [apiCompanies, setApiCompanies] = useState<ApiCompanyRecord[]>([]);
   const [linkContactOpen, setLinkContactOpen] = useState(false);
@@ -89,8 +102,7 @@ export function NewOpportunityFromPipelineDialog({ open, onOpenChange }: NewOppo
 
   const loadApiContacts = useCallback(async () => {
     try {
-      const list = await api<ApiContactListRow[]>('/contacts');
-      setApiContactRows(list);
+      setApiContactRows(await contactListAll());
     } catch {
       setApiContactRows([]);
     }
@@ -98,14 +110,11 @@ export function NewOpportunityFromPipelineDialog({ open, onOpenChange }: NewOppo
 
   const loadApiCompanies = useCallback(async () => {
     try {
-      const list = await companyListAll();
-      setApiCompanies(list);
+      setApiCompanies(await companyListAll());
     } catch {
       setApiCompanies([]);
     }
   }, []);
-
-  const { activeUsers } = useUsers();
 
   useEffect(() => {
     if (!open) return;
@@ -140,22 +149,26 @@ export function NewOpportunityFromPipelineDialog({ open, onOpenChange }: NewOppo
     [apiCompanies],
   );
 
-  const form = useForm<NewOpportunityFromPipelineData>({
-    resolver: zodResolver(schema) as import('react-hook-form').Resolver<NewOpportunityFromPipelineData>,
-    defaultValues: { ...defaultValues },
+  const form = useForm<NewOpportunityFormValues>({
+    resolver: zodResolver(newOpportunityFormSchema) as import('react-hook-form').Resolver<NewOpportunityFormValues>,
+    defaultValues: { ...newOpportunityFormDefaults },
   });
+
+  useEffect(() => {
+    if (!open) return;
+    form.reset({
+      ...newOpportunityFormDefaults,
+      contactId: defaultContactId || '',
+      companyId: defaultCompanyId || '',
+    });
+    setLinkContactSearch('');
+    setLinkCompanySearch('');
+    setLinkContactSelectedIds([]);
+    setLinkCompanySelectedIds([]);
+  }, [open, defaultContactId, defaultCompanyId, form]);
 
   const watchContactId = form.watch('contactId');
   const watchCompanyId = form.watch('companyId');
-
-  useEffect(() => {
-    const cid = watchContactId?.trim();
-    if (!cid) return;
-    const c = mergedContactsForForm.find((x) => x.id === cid);
-    if (c?.fuente && contactFuenteValues.includes(c.fuente)) {
-      form.setValue('fuente', c.fuente);
-    }
-  }, [watchContactId, mergedContactsForForm, form]);
 
   const contactLinkedLabel = useMemo(() => {
     if (!watchContactId?.trim()) return null;
@@ -178,69 +191,21 @@ export function NewOpportunityFromPipelineDialog({ open, onOpenChange }: NewOppo
     setLinkCompanySelectedIds([]);
   }
 
-  async function handleSubmit(data: NewOpportunityFromPipelineData) {
-    const resolvedContactId = data.contactId?.trim() || undefined;
-    const resolvedCompanyId = data.companyId?.trim() || undefined;
-
-    const body: Record<string, unknown> = {
-      title: data.title.trim(),
-      amount: data.amount,
-      etapa: data.etapa,
-      status: 'abierta',
-      expectedCloseDate: data.expectedCloseDate,
-      priority: 'media',
-      fuente: data.fuente,
-    };
-    if (data.assignedTo && isLikelyOpportunityCuid(data.assignedTo)) {
-      body.assignedTo = data.assignedTo;
-    }
-    if (resolvedContactId && isLikelyContactCuid(resolvedContactId)) {
-      body.contactId = resolvedContactId;
-    }
-    if (resolvedCompanyId && isLikelyCompanyCuid(resolvedCompanyId)) {
-      body.companyId = resolvedCompanyId;
-    }
-
-    try {
-      await api('/opportunities', {
-        method: 'POST',
-        body: JSON.stringify(body),
-      });
-      toast.success(`Oportunidad "${data.title.trim()}" creada exitosamente`);
-    } catch (e) {
-      const contact = mergedContactsForForm.find((c) => c.id === resolvedContactId);
-      const company = apiCompanies.find((c) => c.id === resolvedCompanyId);
-      addOpportunity({
-        title: data.title.trim(),
-        contactId: resolvedContactId,
-        contactName: contact?.name,
-        clientId: resolvedCompanyId,
-        clientName: company?.name,
-        amount: data.amount,
-        etapa: data.etapa as Etapa,
-        status: 'abierta',
-        priority: 'media',
-        expectedCloseDate: data.expectedCloseDate,
-        assignedTo: data.assignedTo,
-        createdAt: new Date().toISOString().slice(0, 10),
-        fuente: data.fuente,
-      });
-      toast.success(`Oportunidad "${data.title.trim()}" guardada en modo local`, {
-        description: e instanceof Error ? e.message : 'No se pudo crear en el servidor',
-      });
-    }
-
-    form.reset({ ...defaultValues });
-    resetLinkState();
-    onOpenChange(false);
-  }
-
-  function handleOpenChange(value: boolean) {
-    if (!value) {
-      form.reset({ ...defaultValues });
+  function handleDialogOpenChange(next: boolean) {
+    if (!next) {
+      form.reset({ ...newOpportunityFormDefaults });
       resetLinkState();
     }
-    onOpenChange(value);
+    onOpenChange(next);
+  }
+
+  async function handleSubmit(data: NewOpportunityFormValues) {
+    try {
+      await onCreate(data);
+      handleDialogOpenChange(false);
+    } catch {
+      /* toast / error en el padre */
+    }
   }
 
   return (
@@ -292,31 +257,29 @@ export function NewOpportunityFromPipelineDialog({ open, onOpenChange }: NewOppo
         }}
       />
 
-      <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+      <Dialog open={open} onOpenChange={handleDialogOpenChange}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Nueva Oportunidad</DialogTitle>
-            <DialogDescription>
-              Registra una oportunidad en el pipeline. Vincula contacto y empresa ya existentes; no se crean desde aquí.
-            </DialogDescription>
+            <DialogTitle>{title}</DialogTitle>
+            <DialogDescription>{description}</DialogDescription>
           </DialogHeader>
-          <form onSubmit={form.handleSubmit((d) => void handleSubmit(d))} className="space-y-4">
+          <form
+            onSubmit={form.handleSubmit((d) => void handleSubmit(d))}
+            className="space-y-4"
+          >
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="opp-title">Título *</Label>
-                <Input
-                  id="opp-title"
-                  {...form.register('title')}
-                  placeholder="Ej: Servicio Corporativo Empresa X"
-                />
+                <Label htmlFor="opp-form-title">Nombre *</Label>
+                <Input id="opp-form-title" {...form.register('title')} placeholder="Ej: Servicio Corporativo Empresa X" />
                 {form.formState.errors.title && (
                   <p className="text-xs text-destructive">{form.formState.errors.title.message}</p>
                 )}
               </div>
+
               <div className="space-y-2">
-                <Label htmlFor="opp-amount">Monto (S/) *</Label>
+                <Label htmlFor="opp-form-amount">Monto (S/) *</Label>
                 <Input
-                  id="opp-amount"
+                  id="opp-form-amount"
                   type="number"
                   {...form.register('amount', { valueAsNumber: true })}
                   placeholder="0"
@@ -326,21 +289,19 @@ export function NewOpportunityFromPipelineDialog({ open, onOpenChange }: NewOppo
                 )}
               </div>
 
-              <p className="text-xs text-muted-foreground sm:col-span-2">
-                Contacto (API + locales) y empresa (servidor). Pulsa cada campo para elegir de la lista.
-              </p>
-
               <div className="space-y-2">
                 <Label>Contacto</Label>
                 <div className="relative">
                   <Button
                     type="button"
                     variant="outline"
+                    disabled={lockContactSelection}
                     className={cn(
                       'h-10 w-full justify-start gap-2 px-3 pr-14 font-normal',
                       !contactLinkedLabel && 'text-muted-foreground',
                     )}
                     onClick={() => {
+                      if (lockContactSelection) return;
                       setLinkContactSearch('');
                       setLinkContactSelectedIds(watchContactId ? [watchContactId] : []);
                       setLinkContactOpen(true);
@@ -352,7 +313,7 @@ export function NewOpportunityFromPipelineDialog({ open, onOpenChange }: NewOppo
                     </span>
                     <ChevronsUpDown className="pointer-events-none absolute right-3 top-1/2 size-4 shrink-0 -translate-y-1/2 opacity-50" />
                   </Button>
-                  {watchContactId ? (
+                  {watchContactId && !lockContactSelection ? (
                     <button
                       type="button"
                       className="absolute right-9 top-1/2 z-[1] -translate-y-1/2 rounded-sm p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -375,11 +336,13 @@ export function NewOpportunityFromPipelineDialog({ open, onOpenChange }: NewOppo
                   <Button
                     type="button"
                     variant="outline"
+                    disabled={lockCompanySelection}
                     className={cn(
                       'h-10 w-full justify-start gap-2 px-3 pr-14 font-normal',
                       !companyLinkedLabel && 'text-muted-foreground',
                     )}
                     onClick={() => {
+                      if (lockCompanySelection) return;
                       setLinkCompanySearch('');
                       setLinkCompanySelectedIds(watchCompanyId ? [watchCompanyId] : []);
                       setLinkCompanyOpen(true);
@@ -391,7 +354,7 @@ export function NewOpportunityFromPipelineDialog({ open, onOpenChange }: NewOppo
                     </span>
                     <ChevronsUpDown className="pointer-events-none absolute right-3 top-1/2 size-4 shrink-0 -translate-y-1/2 opacity-50" />
                   </Button>
-                  {watchCompanyId ? (
+                  {watchCompanyId && !lockCompanySelection ? (
                     <button
                       type="button"
                       className="absolute right-9 top-1/2 z-[1] -translate-y-1/2 rounded-sm p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -409,9 +372,26 @@ export function NewOpportunityFromPipelineDialog({ open, onOpenChange }: NewOppo
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="opp-expectedCloseDate">Fecha estimada de cierre *</Label>
+                <Label>Prioridad *</Label>
+                <Select
+                  value={form.watch('priority')}
+                  onValueChange={(v) => form.setValue('priority', v as ContactPriority)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="baja">Baja</SelectItem>
+                    <SelectItem value="media">Media</SelectItem>
+                    <SelectItem value="alta">Alta</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="opp-form-close">Fecha estimada de cierre *</Label>
                 <Input
-                  id="opp-expectedCloseDate"
+                  id="opp-form-close"
                   type="date"
                   {...form.register('expectedCloseDate')}
                 />
@@ -419,57 +399,48 @@ export function NewOpportunityFromPipelineDialog({ open, onOpenChange }: NewOppo
                   <p className="text-xs text-destructive">{form.formState.errors.expectedCloseDate.message}</p>
                 )}
               </div>
+
               <div className="space-y-2">
-                <Label>Etapa *</Label>
+                <Label>Etapa * (define probabilidad)</Label>
                 <Select
                   value={form.watch('etapa')}
                   onValueChange={(v) => form.setValue('etapa', v as Etapa)}
                 >
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
-                    {etapasParaOportunidad.map((e) => (
-                      <SelectItem key={e} value={e}>{etapaLabels[e]}</SelectItem>
+                    {etapas.map((e) => (
+                      <SelectItem key={e} value={e}>
+                        {etapaLabels[e]}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              <div className="space-y-2 sm:col-span-2">
-                <Label>Fuente *</Label>
+              <div className="space-y-2">
+                <Label>Asesor (servidor)</Label>
                 <Select
-                  value={form.watch('fuente')}
-                  onValueChange={(v) => form.setValue('fuente', v as ContactSource)}
+                  value={form.watch('assignedTo') ?? 'none'}
+                  onValueChange={(v) => form.setValue('assignedTo', v === 'none' ? undefined : v)}
                 >
-                  <SelectTrigger className="w-full"><SelectValue placeholder="Fuente" /></SelectTrigger>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Sin asignar en servidor" />
+                  </SelectTrigger>
                   <SelectContent>
-                    {contactFuenteValues.map((k) => (
-                      <SelectItem key={k} value={k}>{contactSourceLabels[k]}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2 sm:col-span-2">
-                <Label>Responsable *</Label>
-                <Select
-                  value={form.watch('assignedTo')}
-                  onValueChange={(v) => form.setValue('assignedTo', v)}
-                >
-                  <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar responsable" /></SelectTrigger>
-                  <SelectContent>
+                    <SelectItem value="none">Sin asignar en servidor</SelectItem>
                     {activeUsers.map((u) => (
                       <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {form.formState.errors.assignedTo && (
-                  <p className="text-xs text-destructive">{form.formState.errors.assignedTo.message}</p>
-                )}
               </div>
             </div>
-
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Cancelar</Button>
+              <Button type="button" variant="outline" onClick={() => handleDialogOpenChange(false)}>
+                Cancelar
+              </Button>
               <Button type="submit">Crear Oportunidad</Button>
             </DialogFooter>
           </form>
@@ -477,4 +448,28 @@ export function NewOpportunityFromPipelineDialog({ open, onOpenChange }: NewOppo
       </Dialog>
     </>
   );
+}
+
+/** Cuerpo JSON estándar para POST /opportunities (ids validados como cuid) */
+export function buildOpportunityCreateBody(data: NewOpportunityFormValues): Record<string, unknown> {
+  const resolvedContactId = data.contactId?.trim() || undefined;
+  const resolvedCompanyId = data.companyId?.trim() || undefined;
+  const body: Record<string, unknown> = {
+    title: data.title.trim(),
+    amount: data.amount,
+    etapa: data.etapa,
+    status: 'abierta',
+    expectedCloseDate: data.expectedCloseDate,
+    priority: data.priority,
+  };
+  if (data.assignedTo && isLikelyContactCuid(data.assignedTo)) {
+    body.assignedTo = data.assignedTo;
+  }
+  if (resolvedContactId && isLikelyContactCuid(resolvedContactId)) {
+    body.contactId = resolvedContactId;
+  }
+  if (resolvedCompanyId && isLikelyCompanyCuid(resolvedCompanyId)) {
+    body.companyId = resolvedCompanyId;
+  }
+  return body;
 }

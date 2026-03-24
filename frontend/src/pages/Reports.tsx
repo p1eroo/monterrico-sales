@@ -26,6 +26,7 @@ import {
 import { toast } from 'sonner';
 import { useChartTheme } from '@/hooks/useChartTheme';
 import { formatCurrency } from '@/lib/formatters';
+import { usePermissions } from '@/hooks/usePermissions';
 
 const COLORS = ['#13944C', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];
 
@@ -90,6 +91,7 @@ type DateRangePreset = '7d' | '1m' | '3m' | '1y' | 'custom';
 
 export default function Reports() {
   const { activeUsers } = useUsers();
+  const { hasPermission } = usePermissions();
   const [dateRange, setDateRange] = useState<DateRangePreset>('3m');
   const [customRange, setCustomRange] = useState<DateRange | undefined>();
   const [advisorFilter, setAdvisorFilter] = useState('all');
@@ -154,20 +156,22 @@ export default function Reports() {
             </SelectContent>
           </Select>
 
-        <div className="flex gap-2 md:ml-auto">
-          <Button variant="outline" size="sm" onClick={() => handleExport('PDF')}>
-            <FileText className="mr-1.5 size-4" />
-            PDF
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => handleExport('Excel')}>
-            <FileSpreadsheet className="mr-1.5 size-4" />
-            Excel
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => handleExport('CSV')}>
-            <FileDown className="mr-1.5 size-4" />
-            CSV
-          </Button>
-        </div>
+        {hasPermission('reportes.exportar') && (
+          <div className="flex gap-2 md:ml-auto">
+            <Button variant="outline" size="sm" onClick={() => handleExport('PDF')}>
+              <FileText className="mr-1.5 size-4" />
+              PDF
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => handleExport('Excel')}>
+              <FileSpreadsheet className="mr-1.5 size-4" />
+              Excel
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => handleExport('CSV')}>
+              <FileDown className="mr-1.5 size-4" />
+              CSV
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Summary Cards */}

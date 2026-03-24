@@ -1,4 +1,14 @@
-import { useState, useMemo, useCallback } from 'react';
+import {
+  useState,
+  useMemo,
+  useCallback,
+  useRef,
+  useEffect,
+  lazy,
+  Suspense,
+  type ChangeEvent,
+} from 'react';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import {
   Users,
   Mail,
@@ -9,11 +19,11 @@ import {
   ChevronLeft,
   AlertTriangle,
   Send,
-  Calendar,
   Smartphone,
   Monitor,
   FileSpreadsheet,
   Save,
+  Loader2,
 } from 'lucide-react';
 import type {
   Campaign,
@@ -22,6 +32,7 @@ import type {
   CampaignMessageTemplate,
   CampaignChannel,
   Etapa,
+  RecipientStatus,
 } from '@/types';
 import { contacts } from '@/data/mock';
 import {
@@ -29,6 +40,7 @@ import {
   getRecipientsFromContacts,
 } from '@/data/campaignMock';
 import { useAppStore } from '@/store';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -61,6 +73,33 @@ import {
 } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+import {
+  parseCampaignRecipientsFromCsv,
+  parseCampaignRecipientsFromXlsx,
+} from '@/lib/campaignImport';
+import {
+  plainTextToHtmlForEmail,
+  htmlToPlainText,
+  isCampaignBodyEmpty,
+  sanitizeCampaignEmailHtml,
+} from '@/lib/campaignMessageHtml';
+import {
+  buildCreateCampaignPayload,
+  buildSentCampaignPersistPayload,
+  createCampaignApi,
+  deleteCampaignApi,
+  getCampaignApi,
+  sendCampaignEmailApi,
+  updateCampaignApi,
+} from '@/lib/campaignApi';
+import { CampaignEmailAttachments } from '@/components/shared/CampaignEmailAttachments';
+
+const CampaignEmailEditor = lazy(() =>
+  import('@/components/shared/CampaignEmailEditor').then((m) => ({
+    default: m.CampaignEmailEditor,
+  })),
+);
 
 const STEPS = [
   { id: 1, label: 'Audiencia', icon: Users },
@@ -111,7 +150,11 @@ function getVariableValue(recipient: CampaignRecipient, varName: string): string
 }
 
 export default function CampaignBuilderPage() {
-  const { currentUser, addSentCampaign, userTemplates, addUserTemplate } = useAppStore();
+  const { currentUser, userTemplates, addUserTemplate } = useAppStore();
+  const { hasPermission } = usePermissions();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const audienceFileInputRef = useRef<HTMLInputElement>(null);
   const [step, setStep] = useState(1);
   const [campaignName, setCampaignName] = useState('');
   const [recipients, setRecipients] = useState<CampaignRecipient[]>([]);
@@ -121,20 +164,70 @@ export default function CampaignBuilderPage() {
     subject: '',
     body: '',
     variables: [],
+    attachments: [],
   });
+  const [emailEditorResetKey, setEmailEditorResetKey] = useState(0);
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
   const [campaignSent, setCampaignSent] = useState<Campaign | null>(null);
   const [confirmSendOpen, setConfirmSendOpen] = useState(false);
   const [testSendOpen, setTestSendOpen] = useState(false);
-  const [scheduleOpen, setScheduleOpen] = useState(false);
   const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState('');
+  const [isSendingCampaign, setIsSendingCampaign] = useState(false);
+  const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [isLoadingCampaign, setIsLoadingCampaign] = useState(false);
   const [audienceFilters, setAudienceFilters] = useState({
     etapa: '' as Etapa | '',
     empresa: '',
     asesor: '',
     search: '',
   });
+
+  const draftIdFromState = (location.state as { draftId?: string } | null)?.draftId;
+  const duplicateId = searchParams.get('duplicate');
+
+  useEffect(() => {
+    if (!draftIdFromState && !duplicateId) return;
+    let cancelled = false;
+    const idToLoad = draftIdFromState ?? duplicateId!;
+    setIsLoadingCampaign(true);
+    (async () => {
+      try {
+        const c = await getCampaignApi(idToLoad);
+        if (cancelled) return;
+        if (draftIdFromState && c.status !== 'draft') {
+          toast.error('Esta campaña ya no es editable.');
+          return;
+        }
+        setCampaignName(c.name);
+        setRecipients(c.recipients);
+        setMessage({
+          ...c.message,
+          attachments:
+            c.message.attachments?.map((a) => ({
+              ...a,
+              dataUrl: a.dataUrl ?? '',
+            })) ?? [],
+        });
+        setEmailEditorResetKey((k) => k + 1);
+        setEditingCampaignId(draftIdFromState ? c.id : null);
+        setStep(1);
+        setCampaignSent(null);
+      } catch (e) {
+        if (!cancelled) {
+          toast.error(
+            e instanceof Error ? e.message : 'No se pudo cargar la campaña.',
+          );
+        }
+      } finally {
+        if (!cancelled) setIsLoadingCampaign(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [draftIdFromState, duplicateId, location.key]);
 
   const crmContacts = useMemo(() => getRecipientsFromContacts(), []);
   const allTemplates = useMemo(
@@ -186,6 +279,57 @@ export default function CampaignBuilderPage() {
     return unique.filter((v) => !getVariableValue(sample, v));
   }, [message, recipients]);
 
+  const campaignEntityFromForm = useCallback(
+    (status: Campaign['status']): Campaign => {
+      const defaultName =
+        status === 'draft' ? 'Borrador sin nombre' : 'Campaña sin nombre';
+      return {
+        id: editingCampaignId ?? 'temp',
+        name: campaignName.trim() || defaultName,
+        status,
+        channel: message.channel,
+        message,
+        recipients,
+        results: [],
+        sentCount: 0,
+        deliveredCount: 0,
+        openedCount: 0,
+        clickedCount: 0,
+        failedCount: 0,
+        bounceCount: 0,
+        createdAt: new Date().toISOString().slice(0, 10),
+        createdBy: currentUser.id,
+        createdByName: currentUser.name,
+        relatedContactIds: recipients.map((r) => r.contactId).filter(Boolean) as string[],
+      };
+    },
+    [campaignName, message, recipients, currentUser.id, currentUser.name, editingCampaignId],
+  );
+
+  const handleSaveDraft = async () => {
+    if (!hasPermission('campanas.crear')) {
+      toast.error('No tienes permiso para guardar borradores.');
+      return;
+    }
+    setIsSavingDraft(true);
+    try {
+      const c = campaignEntityFromForm('draft');
+      const payload = buildCreateCampaignPayload(c);
+      if (editingCampaignId) {
+        await updateCampaignApi(editingCampaignId, payload);
+        toast.success('Borrador actualizado.');
+      } else {
+        const saved = await createCampaignApi(payload);
+        setEditingCampaignId(saved.id);
+        toast.success('Borrador guardado.');
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'No se pudo guardar el borrador.');
+    } finally {
+      setIsSavingDraft(false);
+    }
+  };
+
   const addFromCrm = useCallback((ids: string[]) => {
     const toAdd = crmContacts.filter((c) => ids.includes(c.id) && !recipients.some((r) => r.id === c.id));
     setRecipients((prev) => [...prev, ...toAdd]);
@@ -208,20 +352,132 @@ export default function CampaignBuilderPage() {
     }
   };
 
-  const loadTemplate = (t: (typeof campaignTemplates)[0]) => {
+  const loadTemplate = (t: CampaignMessageTemplate) => {
     const matches = t.body.match(/\{\{\w+\}\}/g) ?? [];
     const vars = [...new Set(matches.map((v) => v.slice(2, -2)))];
+    const body =
+      t.channel === 'email' ? plainTextToHtmlForEmail(t.body) : t.body;
     setMessage({
       channel: t.channel,
       subject: t.subject,
-      body: t.body,
+      body,
       variables: vars,
+      attachments: t.channel === 'email' ? [] : undefined,
     });
+    setEmailEditorResetKey((k) => k + 1);
+  };
+
+  const handleAudienceFileChange = useCallback(
+    async (e: ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      e.target.value = '';
+      if (!file) return;
+      const lower = file.name.toLowerCase();
+      try {
+        let result;
+        if (lower.endsWith('.csv')) {
+          const text = await file.text();
+          result = parseCampaignRecipientsFromCsv(text);
+        } else if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) {
+          const buf = await file.arrayBuffer();
+          result = parseCampaignRecipientsFromXlsx(buf);
+        } else {
+          toast.error('Usa un archivo CSV o Excel (.xlsx / .xls).');
+          return;
+        }
+        if (result.errors.length > 0) {
+          toast.error(result.errors[0]);
+          return;
+        }
+        if (result.recipients.length === 0) {
+          toast.message('No se importaron filas', {
+            description: 'Incluye columnas nombre y email con al menos una fila de datos.',
+          });
+          return;
+        }
+        let added = 0;
+        let skippedDup = 0;
+        setRecipients((prev) => {
+          const emailSet = new Set(prev.map((p) => p.email.toLowerCase()));
+          const next = [...prev];
+          const batchSeen = new Set<string>();
+          for (const r of result.recipients) {
+            const k = r.email.toLowerCase();
+            if (batchSeen.has(k)) {
+              skippedDup++;
+              continue;
+            }
+            batchSeen.add(k);
+            if (emailSet.has(k)) {
+              skippedDup++;
+              continue;
+            }
+            emailSet.add(k);
+            next.push(r);
+            added++;
+          }
+          return next;
+        });
+        const descParts: string[] = [];
+        if (result.skipped > 0) {
+          descParts.push(`${result.skipped} fila(s) sin nombre o email omitidas.`);
+        }
+        if (skippedDup > 0) {
+          descParts.push(`${skippedDup} omitido(s) (duplicado en archivo o ya en la lista).`);
+        }
+        toast.success(
+          added > 0
+            ? `Se agregaron ${added} destinatario(s) desde el archivo.`
+            : 'Ninguna fila nueva (todos duplicados o ya en la lista).',
+          descParts.length > 0 ? { description: descParts.join(' ') } : undefined,
+        );
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'No se pudo leer el archivo.');
+      }
+    },
+    [],
+  );
+
+  const finalizeCampaignSend = (newCampaign: Campaign) => {
+    setCampaignSent(newCampaign);
+    setConfirmSendOpen(false);
+    setStep(4);
+  };
+
+  const persistCampaignAfterSend = async (draft: Campaign, messageWithAttachments: CampaignMessage) => {
+    const previousDraftId = editingCampaignId;
+    try {
+      const saved = await createCampaignApi(
+        buildSentCampaignPersistPayload({
+          ...draft,
+          message: messageWithAttachments,
+        }),
+      );
+      if (previousDraftId) {
+        try {
+          await deleteCampaignApi(previousDraftId);
+        } catch {
+          /* el envío ya quedó registrado */
+        }
+      }
+      setEditingCampaignId(null);
+      finalizeCampaignSend({ ...saved, message: messageWithAttachments });
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo guardar la campaña en el historial.',
+      );
+      finalizeCampaignSend({
+        ...draft,
+        message: messageWithAttachments,
+      });
+    }
   };
 
   const handleMockSend = () => {
-    const newCampaign: Campaign = {
-      id: `camp-${Date.now()}`,
+    const draft: Campaign = {
+      id: `temp-${Date.now()}`,
       name: campaignName || 'Campaña sin nombre',
       status: 'sent',
       channel: message.channel,
@@ -248,15 +504,97 @@ export default function CampaignBuilderPage() {
       createdByName: currentUser.name,
       relatedContactIds: recipients.map((r) => r.contactId).filter(Boolean) as string[],
     };
-    addSentCampaign(newCampaign);
-    setCampaignSent(newCampaign);
-    setConfirmSendOpen(false);
-    setStep(4);
+    void persistCampaignAfterSend(draft, message);
   };
 
-  const previewBody = recipients[0]
-    ? replaceVariables(message.body, recipients[0])
-    : message.body.replace(/\{\{(\w+)\}\}/g, '[variable]');
+  const handleSendEmailCampaign = async () => {
+    const subject = (message.subject ?? '').trim();
+    if (!subject) {
+      toast.error('Indica un asunto antes de enviar.');
+      return;
+    }
+    setIsSendingCampaign(true);
+    try {
+      const res = await sendCampaignEmailApi({
+        campaignName: campaignName.trim() || undefined,
+        subject,
+        htmlBody: message.body,
+        recipients: recipients.map((r) => ({
+          id: r.id,
+          email: r.email,
+          name: r.name,
+          company: r.company,
+          contactId: r.contactId,
+        })),
+        attachments: message.attachments,
+      });
+
+      const delivered = res.results.filter((r) => r.status === 'entregado').length;
+      const failed = res.results.filter((r) => r.status === 'fallido').length;
+
+      const draft: Campaign = {
+        id: `temp-${Date.now()}`,
+        name: campaignName || 'Campaña sin nombre',
+        status: 'sent',
+        channel: 'email',
+        message,
+        recipients,
+        results: res.results.map((r) => ({
+          recipientId: r.recipientId,
+          contactId: r.contactId,
+          name: r.name,
+          email: r.email,
+          status: r.status as RecipientStatus,
+          sentAt: r.sentAt,
+          deliveredAt: r.status === 'entregado' ? r.sentAt : undefined,
+          errorMessage: r.errorMessage,
+        })),
+        sentCount: recipients.length,
+        deliveredCount: delivered,
+        openedCount: 0,
+        clickedCount: 0,
+        failedCount: failed,
+        bounceCount: 0,
+        createdAt: new Date().toISOString().slice(0, 10),
+        sentAt: new Date().toISOString(),
+        createdBy: currentUser.id,
+        createdByName: currentUser.name,
+        relatedContactIds: recipients.map((r) => r.contactId).filter(Boolean) as string[],
+      };
+      await persistCampaignAfterSend(draft, message);
+      if (failed > 0) {
+        toast.message('Envío completado con errores', {
+          description: `${delivered} correos aceptados por el servidor, ${failed} fallidos.`,
+        });
+      } else {
+        toast.success(`Se enviaron ${delivered} correo(s).`);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'No se pudo enviar la campaña.');
+    } finally {
+      setIsSendingCampaign(false);
+    }
+  };
+
+  const handleConfirmSend = () => {
+    if (message.channel === 'email') {
+      void handleSendEmailCampaign();
+    } else {
+      handleMockSend();
+    }
+  };
+
+  const previewBodyRaw = useMemo(() => {
+    return recipients[0]
+      ? replaceVariables(message.body, recipients[0])
+      : message.body.replace(/\{\{(\w+)\}\}/g, '[variable]');
+  }, [message.body, recipients]);
+
+  const previewBodyHtml =
+    message.channel === 'email'
+      ? sanitizeCampaignEmailHtml(previewBodyRaw)
+      : '';
+
   const previewSubject = recipients[0] && message.subject
     ? replaceVariables(message.subject, recipients[0])
     : (message.subject ?? '').replace(/\{\{(\w+)\}\}/g, '[variable]');
@@ -268,12 +606,30 @@ export default function CampaignBuilderPage() {
       <div className="border-b bg-card px-6 py-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Crear campaña</h1>
+            <h1 className="text-2xl font-bold tracking-tight">
+              {editingCampaignId ? 'Editar campaña' : 'Crear campaña'}
+            </h1>
             <p className="text-sm text-muted-foreground">
               Paso {step} de 4: {STEPS[step - 1].label}
             </p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-2 lg:gap-4">
+            {hasPermission('campanas.crear') && step < 4 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isSavingDraft || isLoadingCampaign}
+                onClick={() => void handleSaveDraft()}
+              >
+                {isSavingDraft ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Save className="size-4" />
+                )}
+                Guardar borrador
+              </Button>
+            )}
             <div className="hidden w-48 sm:block">
               <Progress value={progress} className="h-2" />
             </div>
@@ -303,7 +659,12 @@ export default function CampaignBuilderPage() {
         </div>
       </div>
 
-      <ScrollArea className="flex-1">
+      <ScrollArea className="relative flex-1">
+        {isLoadingCampaign && (
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-background/70">
+            <Loader2 className="size-8 animate-spin text-muted-foreground" />
+          </div>
+        )}
         <div className="p-6">
           {/* STEP 1 — Audience */}
           {step === 1 && (
@@ -337,11 +698,33 @@ export default function CampaignBuilderPage() {
                         <Users className="size-4" />
                         CRM
                       </Button>
-                      <Button variant="outline" size="sm" className="flex-1" disabled>
-                        <FileSpreadsheet className="size-4" />
-                        XLSX/CSV
-                      </Button>
+                      {hasPermission('campanas.crear') && (
+                        <>
+                          <input
+                            ref={audienceFileInputRef}
+                            type="file"
+                            accept=".csv,.xlsx,.xls,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                            className="sr-only"
+                            onChange={handleAudienceFileChange}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => audienceFileInputRef.current?.click()}
+                          >
+                            <FileSpreadsheet className="size-4" />
+                            XLSX/CSV
+                          </Button>
+                        </>
+                      )}
                     </div>
+                    <p className="text-xs text-muted-foreground">
+                      Archivo: columnas <span className="font-medium">nombre</span> y{' '}
+                      <span className="font-medium">email</span> (o correo). Opcional: empresa, etapa,
+                      teléfono.
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <Label>Filtros CRM</Label>
@@ -495,7 +878,6 @@ export default function CampaignBuilderPage() {
                           <TableHead>Nombre</TableHead>
                           <TableHead>Email</TableHead>
                           <TableHead>Empresa</TableHead>
-                          <TableHead>Estado</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -517,13 +899,6 @@ export default function CampaignBuilderPage() {
                               </span>
                             </TableCell>
                             <TableCell>{r.company ?? '-'}</TableCell>
-                            <TableCell>
-                              {r.etapa ? (
-                                <Badge variant="outline">{ETAPA_LABELS[r.etapa] ?? r.etapa}</Badge>
-                              ) : (
-                                '-'
-                              )}
-                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -551,7 +926,30 @@ export default function CampaignBuilderPage() {
                         key={ch}
                         variant={message.channel === ch ? 'default' : 'outline'}
                         size="sm"
-                        onClick={() => setMessage((m) => ({ ...m, channel: ch }))}
+                        onClick={() => {
+                          setMessage((m) => {
+                            if (m.channel === 'email' && ch !== 'email') {
+                              return {
+                                ...m,
+                                channel: ch,
+                                body: htmlToPlainText(m.body),
+                                attachments: undefined,
+                              };
+                            }
+                            if (m.channel !== 'email' && ch === 'email') {
+                              return {
+                                ...m,
+                                channel: ch,
+                                body: plainTextToHtmlForEmail(m.body),
+                                attachments: [],
+                              };
+                            }
+                            return { ...m, channel: ch };
+                          });
+                          if (ch === 'email') {
+                            setEmailEditorResetKey((k) => k + 1);
+                          }
+                        }}
                         style={message.channel === ch ? { backgroundColor: '#13944C' } : undefined}
                       >
                         {ch === 'email' && <Mail className="size-4" />}
@@ -583,7 +981,7 @@ export default function CampaignBuilderPage() {
                         setNewTemplateName('');
                         setSaveTemplateOpen(true);
                       }}
-                      disabled={!message.body.trim()}
+                      disabled={isCampaignBodyEmpty(message.channel, message.body)}
                       className="border-dashed border-[#13944C] text-[#13944C] hover:bg-[#13944C]/10"
                     >
                       <Save className="size-4" />
@@ -603,13 +1001,43 @@ export default function CampaignBuilderPage() {
                   )}
                   <div>
                     <Label>Cuerpo del mensaje</Label>
-                    <Textarea
-                      placeholder="Escribe tu mensaje. Usa {{nombre}} para personalizar."
-                      value={message.body}
-                      onChange={(e) => setMessage((m) => ({ ...m, body: e.target.value }))}
-                      rows={12}
-                      className="mt-1 font-mono text-sm"
-                    />
+                    {message.channel === 'email' ? (
+                      <div className="mt-1 space-y-3">
+                        <Suspense
+                          fallback={
+                            <div className="flex min-h-[320px] items-center justify-center rounded-md border bg-muted/30 text-sm text-muted-foreground">
+                              Cargando editor…
+                            </div>
+                          }
+                        >
+                          <CampaignEmailEditor
+                            initialHtml={
+                              message.body.trim() ? message.body : '<p></p>'
+                            }
+                            resetKey={emailEditorResetKey}
+                            onChange={(html) =>
+                              setMessage((m) => ({ ...m, body: html }))
+                            }
+                          />
+                        </Suspense>
+                        <CampaignEmailAttachments
+                          attachments={message.attachments ?? []}
+                          onChange={(next) =>
+                            setMessage((m) => ({ ...m, attachments: next }))
+                          }
+                        />
+                      </div>
+                    ) : (
+                      <Textarea
+                        placeholder="Escribe tu mensaje. Usa {{nombre}} para personalizar."
+                        value={message.body}
+                        onChange={(e) =>
+                          setMessage((m) => ({ ...m, body: e.target.value }))
+                        }
+                        rows={12}
+                        className="mt-1 font-mono text-sm"
+                      />
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -644,7 +1072,31 @@ export default function CampaignBuilderPage() {
                     {message.channel === 'email' && previewSubject && (
                       <p className="mb-2 text-sm font-medium">Asunto: {previewSubject}</p>
                     )}
-                    <div className="whitespace-pre-wrap text-sm">{previewBody || 'Sin contenido'}</div>
+                    {message.channel === 'email' ? (
+                      previewBodyHtml.trim() ? (
+                        <div
+                          className="email-preview text-sm leading-relaxed [&_a]:text-[#13944C] [&_img]:max-w-full [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
+                          dangerouslySetInnerHTML={{ __html: previewBodyHtml }}
+                        />
+                      ) : (
+                        <p className="text-sm text-muted-foreground">Sin contenido</p>
+                      )
+                    ) : (
+                      <div className="whitespace-pre-wrap text-sm">
+                        {previewBodyRaw || 'Sin contenido'}
+                      </div>
+                    )}
+                    {message.channel === 'email' &&
+                      (message.attachments?.length ?? 0) > 0 && (
+                        <div className="mt-3 rounded-md border border-dashed bg-muted/20 p-3 text-sm">
+                          <p className="mb-1 font-medium text-muted-foreground">Adjuntos</p>
+                          <ul className="list-inside list-disc space-y-0.5 text-muted-foreground">
+                            {message.attachments!.map((a) => (
+                              <li key={a.id}>{a.fileName}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                   </div>
                 </CardContent>
               </Card>
@@ -691,22 +1143,47 @@ export default function CampaignBuilderPage() {
                     {message.channel === 'email' && message.subject && (
                       <p className="font-medium">Asunto: {previewSubject}</p>
                     )}
-                    <div className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">
-                      {previewBody}
-                    </div>
+                    {message.channel === 'email' ? (
+                      previewBodyHtml.trim() ? (
+                        <div
+                          className="email-preview mt-2 text-sm leading-relaxed text-muted-foreground [&_a]:text-[#13944C] [&_img]:max-w-full [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
+                          dangerouslySetInnerHTML={{ __html: previewBodyHtml }}
+                        />
+                      ) : (
+                        <p className="mt-2 text-sm text-muted-foreground">Sin contenido</p>
+                      )
+                    ) : (
+                      <div className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">
+                        {previewBodyRaw}
+                      </div>
+                    )}
+                    {message.channel === 'email' &&
+                      (message.attachments?.length ?? 0) > 0 && (
+                        <div className="mt-3 rounded-md border border-dashed bg-muted/30 p-3 text-sm">
+                          <p className="mb-1 font-medium text-muted-foreground">Adjuntos</p>
+                          <ul className="list-inside list-disc space-y-0.5">
+                            {message.attachments!.map((a) => (
+                              <li key={a.id}>{a.fileName}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button
                       className="bg-[#13944C] hover:bg-[#0f7a3d]"
                       onClick={() => setConfirmSendOpen(true)}
-                      disabled={recipients.length === 0}
+                      disabled={
+                        recipients.length === 0 || !hasPermission('campanas.crear')
+                      }
+                      title={
+                        !hasPermission('campanas.crear')
+                          ? 'No tienes permiso para enviar campañas'
+                          : undefined
+                      }
                     >
                       <Send className="size-4" />
                       Enviar ahora
-                    </Button>
-                    <Button variant="outline" onClick={() => setScheduleOpen(true)}>
-                      <Calendar className="size-4" />
-                      Programar envío
                     </Button>
                     <Button variant="outline" onClick={() => setTestSendOpen(true)}>
                       Envío de prueba
@@ -813,7 +1290,7 @@ export default function CampaignBuilderPage() {
             onClick={() => setStep((s) => s + 1)}
             disabled={
               (step === 1 && recipients.length === 0) ||
-              (step === 2 && !message.body.trim())
+              (step === 2 && isCampaignBodyEmpty(message.channel, message.body))
             }
           >
             Siguiente
@@ -826,7 +1303,14 @@ export default function CampaignBuilderPage() {
               setStep(1);
               setCampaignName('');
               setRecipients([]);
-              setMessage({ channel: 'email', subject: '', body: '' });
+              setMessage({
+                channel: 'email',
+                subject: '',
+                body: '<p></p>',
+                variables: [],
+                attachments: [],
+              });
+              setEmailEditorResetKey((k) => k + 1);
               setCampaignSent(null);
             }}
           >
@@ -836,24 +1320,37 @@ export default function CampaignBuilderPage() {
       </div>
 
       {/* Confirm Send Modal */}
-      <Dialog open={confirmSendOpen} onOpenChange={setConfirmSendOpen}>
+      <Dialog
+        open={confirmSendOpen}
+        onOpenChange={(open) => {
+          if (!isSendingCampaign) setConfirmSendOpen(open);
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirmar envío</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Se enviará la campaña a {recipients.length} destinatarios. Esta acción no se puede deshacer.
+            {message.channel === 'email'
+              ? `Se enviarán correos reales a ${recipients.length} destinatario(s) usando el servidor SMTP configurado.`
+              : `Se registrará el envío (simulado) a ${recipients.length} destinatarios.`}{' '}
+            Esta acción no se puede deshacer.
           </p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmSendOpen(false)}>
+            <Button
+              variant="outline"
+              disabled={isSendingCampaign}
+              onClick={() => setConfirmSendOpen(false)}
+            >
               Cancelar
             </Button>
             <Button
               className="bg-[#13944C] hover:bg-[#0f7a3d]"
-              onClick={handleMockSend}
+              disabled={isSendingCampaign}
+              onClick={handleConfirmSend}
             >
               <Send className="size-4" />
-              Enviar
+              {isSendingCampaign ? 'Enviando…' : 'Enviar'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -883,36 +1380,6 @@ export default function CampaignBuilderPage() {
             </Button>
             <Button className="bg-[#13944C] hover:bg-[#0f7a3d]">
               Enviar prueba
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Schedule Modal */}
-      <Dialog open={scheduleOpen} onOpenChange={setScheduleOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Programar envío</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Elige la fecha y hora para enviar la campaña automáticamente.
-          </p>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <Label>Fecha</Label>
-              <Input type="date" className="mt-1" />
-            </div>
-            <div>
-              <Label>Hora</Label>
-              <Input type="time" className="mt-1" defaultValue="09:00" />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setScheduleOpen(false)}>
-              Cancelar
-            </Button>
-            <Button className="bg-[#13944C] hover:bg-[#0f7a3d]">
-              Programar
             </Button>
           </DialogFooter>
         </DialogContent>

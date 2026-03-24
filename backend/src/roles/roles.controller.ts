@@ -6,23 +6,19 @@ import {
   Delete,
   Param,
   Body,
-  Req,
-  ForbiddenException,
+  UseGuards,
   NotFoundException,
 } from '@nestjs/common';
 import { RolesService } from './roles.service';
-
-type RequestUser = {
-  userId: string;
-  username: string;
-  name: string;
-  role: string;
-};
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 
 @Controller('roles')
+@UseGuards(PermissionsGuard)
 export class RolesController {
   constructor(private readonly rolesService: RolesService) {}
 
+  /** Listado y detalle: cualquier usuario autenticado (selectores de rol en formularios). */
   @Get()
   findAll() {
     return this.rolesService.findAll();
@@ -38,33 +34,25 @@ export class RolesController {
   }
 
   @Post()
+  @RequirePermissions('roles.crear')
   async create(
     @Body() dto: { name: string; slug?: string; description?: string; permissions?: string[] },
-    @Req() req: { user: RequestUser },
   ) {
-    if (req.user.role !== 'admin') {
-      throw new ForbiddenException('Solo administradores pueden crear roles');
-    }
     return this.rolesService.create(dto);
   }
 
   @Patch(':id')
+  @RequirePermissions('roles.editar')
   async update(
     @Param('id') id: string,
     @Body() dto: { name?: string; description?: string; permissions?: string[] },
-    @Req() req: { user: RequestUser },
   ) {
-    if (req.user.role !== 'admin') {
-      throw new ForbiddenException('Solo administradores pueden modificar roles');
-    }
     return this.rolesService.update(id, dto);
   }
 
   @Delete(':id')
-  async remove(@Param('id') id: string, @Req() req: { user: RequestUser }) {
-    if (req.user.role !== 'admin') {
-      throw new ForbiddenException('Solo administradores pueden eliminar roles');
-    }
+  @RequirePermissions('roles.eliminar')
+  async remove(@Param('id') id: string) {
     return this.rolesService.remove(id);
   }
 }

@@ -34,7 +34,6 @@ const opportunitySelectListSlim = {
   id: true,
   title: true,
   amount: true,
-  fuente: true,
   probability: true,
   etapa: true,
   status: true,
@@ -148,25 +147,6 @@ export class OpportunitiesService {
     const contactId = dto.contactId?.trim();
     const companyId = dto.companyId?.trim();
 
-    let fuenteResolved = dto.fuente?.trim() ?? '';
-    if (!fuenteResolved && contactId) {
-      const c = await this.prisma.contact.findUnique({
-        where: { id: contactId },
-        select: { fuente: true },
-      });
-      fuenteResolved = c?.fuente?.trim() ?? '';
-    }
-    if (!fuenteResolved && companyId) {
-      const comp = await this.prisma.company.findUnique({
-        where: { id: companyId },
-        select: { fuente: true },
-      });
-      fuenteResolved = comp?.fuente?.trim() ?? '';
-    }
-    if (!fuenteResolved) {
-      fuenteResolved = 'base';
-    }
-
     const probability = this.probabilityForEtapa(etapa, dto.probability);
     const priority = this.normalizePriority(dto.priority);
     const status = this.statusFromEtapa(etapa);
@@ -197,7 +177,6 @@ export class OpportunitiesService {
         data: {
           title,
           amount: dto.amount,
-          fuente: fuenteResolved,
           probability,
           etapa,
           status,
@@ -339,13 +318,6 @@ export class OpportunitiesService {
     if (dto.priority !== undefined) {
       data.priority = this.normalizePriority(dto.priority);
     }
-    if (dto.fuente !== undefined) {
-      const f = dto.fuente?.trim();
-      if (!f) {
-        throw new BadRequestException('La fuente no puede estar vacía');
-      }
-      data.fuente = f;
-    }
 
     const hasContactLinkUpdate = dto.contactId !== undefined;
 
@@ -389,7 +361,6 @@ export class OpportunitiesService {
     const touchedCommercial =
       dto.amount !== undefined ||
       dto.etapa !== undefined ||
-      dto.fuente !== undefined ||
       dto.assignedTo !== undefined;
     if (touchedCommercial) {
       await this.entitySync.propagateFromOpportunityAllCompanies(id);

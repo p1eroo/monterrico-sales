@@ -208,7 +208,6 @@ export class ContactsService {
             : name,
           amount: dto.estimatedValue!,
           etapa,
-          fuente,
           assignedTo,
           expectedCloseDate: expectedClose,
         },

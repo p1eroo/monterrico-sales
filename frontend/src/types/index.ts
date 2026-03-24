@@ -75,19 +75,33 @@ export type OpportunityStatus = 'abierta' | 'ganada' | 'perdida' | 'suspendida';
 export type ClientStatus = 'activo' | 'inactivo' | 'potencial';
 export type UserRole = 'admin' | 'supervisor' | 'asesor' | 'solo_lectura';
 
-/** RBAC: Módulos del CRM para permisos */
+/** RBAC: Módulos del CRM para permisos (alineados con menú y API) */
 export type PermissionModule =
+  | 'dashboard'
   | 'contactos'
   | 'empresas'
   | 'oportunidades'
   | 'pipeline'
   | 'actividades'
   | 'reportes'
+  | 'clientes'
+  | 'correo'
+  | 'campanas'
+  | 'archivos'
+  | 'equipo'
   | 'usuarios'
+  | 'roles'
+  | 'auditoria'
   | 'configuracion';
 
 /** RBAC: Tipos de permiso por módulo */
-export type PermissionAction = 'ver' | 'crear' | 'editar' | 'eliminar' | 'asignar';
+export type PermissionAction =
+  | 'ver'
+  | 'crear'
+  | 'editar'
+  | 'eliminar'
+  | 'asignar'
+  | 'exportar';
 
 /** RBAC: Permiso = módulo + acción (ej: contactos.ver) */
 export type PermissionKey = `${PermissionModule}.${PermissionAction}`;
@@ -425,7 +439,7 @@ export interface EmailThread {
 
 /** Campaign: bulk messaging module */
 export type CampaignChannel = 'email' | 'sms' | 'whatsapp';
-export type CampaignStatus = 'draft' | 'scheduled' | 'sending' | 'sent' | 'failed' | 'cancelled';
+export type CampaignStatus = 'draft' | 'sending' | 'sent' | 'failed' | 'cancelled';
 export type RecipientStatus = 'pendiente' | 'enviado' | 'entregado' | 'abierto' | 'clic' | 'fallido' | 'rebote';
 
 export interface CampaignRecipient {
@@ -451,12 +465,23 @@ export interface CampaignMessageTemplate {
   createdAt: string;
 }
 
+/** Adjunto del correo en el constructor de campaña (mock: data URL; en producción, URL tras subida) */
+export interface CampaignAttachment {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  dataUrl: string;
+}
+
 export interface CampaignMessage {
   channel: CampaignChannel;
   subject?: string;
   body: string;
   /** Variables used: {{nombre}}, {{empresa}}, etc. */
   variables?: string[];
+  /** Solo canal email: archivos adjuntos al envío */
+  attachments?: CampaignAttachment[];
 }
 
 export interface CampaignRecipientResult {
@@ -479,6 +504,8 @@ export interface Campaign {
   channel: CampaignChannel;
   message: CampaignMessage;
   recipients: CampaignRecipient[];
+  /** Asunto persistido en BD para campañas enviadas sin cuerpo completo */
+  subjectSnapshot?: string;
   results?: CampaignRecipientResult[];
   /** Metrics (computed from results) */
   sentCount?: number;
@@ -487,13 +514,32 @@ export interface Campaign {
   clickedCount?: number;
   failedCount?: number;
   bounceCount?: number;
+  /** Presente en respuestas de listado API (sin array `recipients`) */
+  recipientCount?: number;
   createdAt: string;
   sentAt?: string;
-  scheduledFor?: string;
   createdBy: string;
   createdByName: string;
   /** CRM links */
   relatedContactIds?: string[];
   relatedCompanyIds?: string[];
   relatedOpportunityIds?: string[];
+}
+
+/** Fila de GET /campaigns (resumen; sin mensaje ni destinatarios completos) */
+export interface CampaignListItem {
+  id: string;
+  name: string;
+  status: CampaignStatus;
+  channel: CampaignChannel;
+  recipientCount: number;
+  sentCount?: number;
+  deliveredCount?: number;
+  openedCount?: number;
+  clickedCount?: number;
+  failedCount?: number;
+  bounceCount?: number;
+  createdAt: string;
+  sentAt?: string;
+  createdByName: string;
 }

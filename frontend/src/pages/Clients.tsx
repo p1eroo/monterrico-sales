@@ -31,6 +31,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { usePermissions } from '@/hooks/usePermissions';
 import {
   Building2, Users, UserX, DollarSign, Search, Plus, Eye,
   Phone, Mail, Calendar, FileText, Clock, User, RefreshCw, Download, ExternalLink,
@@ -106,6 +107,7 @@ function exportClientsToCSV(clients: Client[]) {
 export default function Clients() {
   const navigate = useNavigate();
   const { users, activeUsers } = useUsers();
+  const { hasPermission } = usePermissions();
   const [clientList, setClientList] = useState<Client[]>(mockClients);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -214,18 +216,20 @@ export default function Clients() {
   return (
     <div className="space-y-6">
       <PageHeader title="Clientes" description="Gestión y seguimiento de clientes corporativos">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            exportClientsToCSV(filteredClients);
-            toast.success('Exportación completada', {
-              description: `Se exportaron ${filteredClients.length} clientes.`,
-            });
-          }}
-        >
-          <Download className="size-4" /> Exportar
-        </Button>
+        {hasPermission('clientes.exportar') && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              exportClientsToCSV(filteredClients);
+              toast.success('Exportación completada', {
+                description: `Se exportaron ${filteredClients.length} clientes.`,
+              });
+            }}
+          >
+            <Download className="size-4" /> Exportar
+          </Button>
+        )}
         <Button onClick={() => setIsNewClientOpen(true)} className="bg-[#13944C] hover:bg-[#0f7a3d]">
           <Plus className="mr-2 size-4" />
           Nuevo Cliente

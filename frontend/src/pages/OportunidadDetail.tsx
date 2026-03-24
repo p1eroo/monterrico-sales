@@ -19,7 +19,11 @@ import { LinkedOpportunitiesCard } from '@/components/shared/LinkedOpportunities
 import { LinkedContactsCard } from '@/components/shared/LinkedContactsCard';
 import { LinkedCompaniesCard } from '@/components/shared/LinkedCompaniesCard';
 import { NewCompanyWizard, type NewCompanyData } from '@/components/shared/NewCompanyWizard';
-import { NewOpportunityDialog, type NewOpportunityData } from '@/components/shared/NewOpportunityDialog';
+import {
+  NewOpportunityFormDialog,
+  buildOpportunityCreateBody,
+  type NewOpportunityFormValues,
+} from '@/components/shared/NewOpportunityFormDialog';
 import { LinkExistingDialog, type LinkExistingItem } from '@/components/shared/LinkExistingDialog';
 import { NewContactWizard } from '@/components/shared/NewContactWizard';
 import type { NewContactData } from '@/components/shared/NewContactWizard';
@@ -46,9 +50,11 @@ import { formatCurrency, formatDate } from '@/lib/formatters';
 import { api } from '@/lib/api';
 import {
   type ApiOpportunityDetail,
+  type ApiOpportunityListRow,
   isLikelyOpportunityCuid,
   mapApiContactToContact,
   mapApiOpportunityToOpportunity,
+  opportunityListAll,
 } from '@/lib/opportunityApi';
 import { type ApiContactListRow, contactListAll, contactRemoveCompany, isLikelyContactCuid, mapApiContactRowToContact } from '@/lib/contactApi';
 import { type ApiCompanyRecord } from '@/lib/companyApi';
@@ -78,6 +84,7 @@ export default function OportunidadDetailPage() {
   const [apiLoading, setApiLoading] = useState(fromApi);
   const [apiError, setApiError] = useState<string | null>(null);
   const [apiContactsList, setApiContactsList] = useState<ApiContactListRow[]>([]);
+  const [allApiOpportunities, setAllApiOpportunities] = useState<ApiOpportunityListRow[]>([]);
 
   useEffect(() => {
     if (!fromApi || !routeId) {
@@ -85,6 +92,7 @@ export default function OportunidadDetailPage() {
       setApiRecord(null);
       setApiError(null);
       setApiContactsList([]);
+      setAllApiOpportunities([]);
       return;
     }
     let cancelled = false;
@@ -93,11 +101,13 @@ export default function OportunidadDetailPage() {
     Promise.all([
       api<ApiOpportunityDetail>(`/opportunities/${routeId}`),
       contactListAll(),
+      opportunityListAll(),
     ])
-      .then(([oppRow, contactsList]) => {
+      .then(([oppRow, contactsList, oppsList]) => {
         if (!cancelled) {
           setApiRecord(oppRow);
           setApiContactsList(contactsList);
+          setAllApiOpportunities(oppsList);
         }
       })
       .catch((e: Error) => {
@@ -105,6 +115,7 @@ export default function OportunidadDetailPage() {
           setApiRecord(null);
           setApiError(e.message);
           setApiContactsList([]);
+          setAllApiOpportunities([]);
         }
       })
       .finally(() => {
@@ -129,9 +140,7 @@ export default function OportunidadDetailPage() {
   const linkedContact = useMemo(() => {
     if (!opp) return null;
     if (fromApi && apiRecord?.contacts?.[0]?.contact) {
-      const c = apiRecord.contacts[0].contact;
-      const fromStore = contacts.find((l) => l.id === c.id);
-      return fromStore ?? mapApiContactToContact(c);
+      return mapApiContactToContact(apiRecord.contacts[0].contact);
     }
     return opp.contactId ? contacts.find((l) => l.id === opp.contactId) ?? null : null;
   }, [fromApi, apiRecord, opp, contacts]);
@@ -140,15 +149,27 @@ export default function OportunidadDetailPage() {
     if (!opp) return null;
     if (fromApi && apiRecord?.companies?.[0]?.company) {
       const comp = apiRecord.companies[0].company;
-      return { name: comp.name };
+      return { id: comp.id, name: comp.name };
     }
     return linkedContact ? getPrimaryCompany(linkedContact) : null;
   }, [fromApi, apiRecord, opp, linkedContact]);
 
+  const defaultCompanyIdForNewOpp = useMemo(() => {
+    if (primaryCompany && 'id' in primaryCompany && primaryCompany.id) {
+      return primaryCompany.id;
+    }
+    return '';
+  }, [primaryCompany]);
+
   const otherOpportunities = useMemo(() => {
     if (!linkedContact) return [];
+    if (fromApi) {
+      return allApiOpportunities
+        .map(mapApiOpportunityToOpportunity)
+        .filter((o) => o.contactId === linkedContact.id && o.id !== routeId);
+    }
     return getOpportunitiesByContactId(linkedContact.id).filter((o) => o.id !== routeId);
-  }, [linkedContact, routeId, getOpportunitiesByContactId]);
+  }, [linkedContact, routeId, fromApi, allApiOpportunities, getOpportunitiesByContactId]);
 
   const initialOppActivities = useMemo(() => {
     if (!opp?.contactId) return [];
@@ -489,42 +510,43 @@ export default function OportunidadDetailPage() {
     toast.success('Oportunidad desvinculada');
   }
 
-  function handleCreateNewOpportunity(data: NewOpportunityData) {
-    if (!linkedContact) return;
+  async function handleCreateNewOpportunity(data: NewOpportunityFormValues) {
+    if (!linkedContact) {
+      toast.error('Vincula un contacto antes de crear otra oportunidad.');
+      throw new Error('no contact');
+    }
+    const merged: NewOpportunityFormValues = {
+      ...data,
+      contactId: linkedContact.id,
+      companyId: defaultCompanyIdForNewOpp || data.companyId,
+    };
     if (fromApi && isLikelyContactCuid(linkedContact.id)) {
-      void (async () => {
-        try {
-          const body: Record<string, unknown> = {
-            title: data.title.trim(),
-            amount: data.amount,
-            etapa: data.etapa,
-            status: 'abierta',
-            priority: data.priority,
-            expectedCloseDate: data.expectedCloseDate,
-            contactId: linkedContact.id,
-          };
-          if (data.assignedTo) body.assignedTo = data.assignedTo;
-          await api('/opportunities', { method: 'POST', body: JSON.stringify(body) });
-          toast.success(`Oportunidad "${data.title}" creada correctamente`);
-          setNewOppOpen(false);
-        } catch (e) {
-          toast.error(e instanceof Error ? e.message : 'No se pudo crear la oportunidad');
-        }
-      })();
+      try {
+        const body = buildOpportunityCreateBody(merged);
+        await api('/opportunities', { method: 'POST', body: JSON.stringify(body) });
+        toast.success(`Oportunidad "${data.title.trim()}" creada correctamente`);
+        setNewOppOpen(false);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'No se pudo crear la oportunidad');
+        throw e;
+      }
       return;
     }
     addOpportunity({
-      title: data.title,
+      title: data.title.trim(),
       contactId: linkedContact.id,
+      contactName: linkedContact.name,
+      clientId: merged.companyId?.trim(),
+      clientName: primaryCompany?.name,
       amount: data.amount,
       etapa: data.etapa as Etapa,
       status: 'abierta',
       priority: data.priority,
       expectedCloseDate: data.expectedCloseDate,
-      assignedTo: data.assignedTo,
+      assignedTo: data.assignedTo ?? '',
       createdAt: new Date().toISOString().slice(0, 10),
     });
-    toast.success(`Oportunidad "${data.title}" creada correctamente`);
+    toast.success(`Oportunidad "${data.title.trim()}" creada correctamente`);
     setNewOppOpen(false);
   }
 
@@ -566,9 +588,12 @@ export default function OportunidadDetailPage() {
     if (linkCompanyNames.length === 0 || !linkedContact) return;
     const currentNames = new Set(linkedContact.companies?.map((c) => c.name) ?? []);
     let companies = [...(linkedContact.companies ?? [])];
+    const contactsForLinkCompanies = fromApi
+      ? apiContactsList.map(mapApiContactRowToContact)
+      : contacts;
     for (const name of linkCompanyNames) {
       if (currentNames.has(name)) continue;
-      const sourceContact = contacts.find((l) => l.companies?.some((c) => c.name === name));
+      const sourceContact = contactsForLinkCompanies.find((l) => l.companies?.some((c) => c.name === name));
       const sourceCompany = sourceContact?.companies?.find((c) => c.name === name);
       companies.push({ name, rubro: sourceCompany?.rubro, tipo: sourceCompany?.tipo, isPrimary: false });
       currentNames.add(name);
@@ -582,7 +607,10 @@ export default function OportunidadDetailPage() {
     setAddExistingCompanyOpen(false);
   }
 
-  const availableOppsToLink = opportunities.filter(
+  const allOppsForLink = fromApi
+    ? allApiOpportunities.map(mapApiOpportunityToOpportunity)
+    : opportunities;
+  const availableOppsToLink = allOppsForLink.filter(
     (o) => o.id !== routeId && o.contactId !== linkedContact?.id,
   );
   const opportunityLinkItems: LinkExistingItem[] = availableOppsToLink.map((o) => ({
@@ -612,9 +640,12 @@ export default function OportunidadDetailPage() {
 
   const currentCompanyNames = new Set((linkedContact?.companies ?? []).map((c) => c.name.trim().toLowerCase()));
   const availableCompanies = (() => {
+    const contactsForCompanies = fromApi
+      ? apiContactsList.map(mapApiContactRowToContact)
+      : contacts;
     const seen = new Set<string>();
     const result: { name: string; rubro?: CompanyRubro }[] = [];
-    for (const l of contacts) {
+    for (const l of contactsForCompanies) {
       for (const c of l.companies ?? []) {
         const key = c.name.trim().toLowerCase();
         if (!currentCompanyNames.has(key) && !seen.has(key)) {
@@ -882,11 +913,20 @@ export default function OportunidadDetailPage() {
       submitLabel="Crear y vincular"
     />
 
-    <NewOpportunityDialog
+    <NewOpportunityFormDialog
       open={newOppOpen}
       onOpenChange={setNewOppOpen}
-      entityName={linkedContact?.name ?? opp.title}
-      onSave={handleCreateNewOpportunity}
+      title="Nueva oportunidad"
+      description={
+        linkedContact
+          ? `Registra otra oportunidad para ${linkedContact.name}.`
+          : `Registra una oportunidad relacionada con "${opp?.title ?? 'esta oportunidad'}".`
+      }
+      defaultContactId={linkedContact?.id ?? ''}
+      defaultCompanyId={defaultCompanyIdForNewOpp}
+      lockContactSelection={!!linkedContact}
+      lockCompanySelection={!!defaultCompanyIdForNewOpp}
+      onCreate={handleCreateNewOpportunity}
     />
 
     {/* Vincular oportunidad existente */}

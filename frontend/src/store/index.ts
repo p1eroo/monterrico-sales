@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Campaign, CampaignMessageTemplate } from '@/types';
+import type { CampaignMessageTemplate } from '@/types';
 
 interface AppState {
   sidebarCollapsed: boolean;
@@ -24,9 +24,6 @@ interface AppState {
   isAuthenticated: boolean;
   login: () => void;
   logout: () => void;
-  /** Campañas enviadas en esta sesión (se agregan al mock) */
-  sentCampaigns: Campaign[];
-  addSentCampaign: (c: Campaign) => void;
   /** Plantillas creadas por el usuario (persisten en localStorage) */
   userTemplates: CampaignMessageTemplate[];
   addUserTemplate: (t: CampaignMessageTemplate) => void;
@@ -79,9 +76,7 @@ export const useAppStore = create<AppState>()(
     }
     set({ isAuthenticated: false });
   },
-  sentCampaigns: [],
-      addSentCampaign: (c) => set((s) => ({ sentCampaigns: [...s.sentCampaigns, c] })),
-      userTemplates: [],
+  userTemplates: [],
       addUserTemplate: (t) =>
         set((s) => ({ userTemplates: [...s.userTemplates.filter((x) => x.id !== t.id), t] })),
       removeUserTemplate: (id) =>

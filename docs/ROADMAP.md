@@ -16,22 +16,25 @@ Estado actual del proyecto y mejoras sugeridas ordenadas por prioridad.
 - **Usuarios desde API:** Los selectores de asesor cargan usuarios reales de `GET /users`. Hook `useUsers()`, store `usersStore`. Migración completa en Audit, Settings, Clients, Reports, Team.
 - **Enlaces vía API:** Backend expone `POST/DELETE /contacts/:id/companies` y `POST/DELETE /contacts/:id/links`. ContactoDetail y OportunidadDetail usan la API para vincular empresas, contactos y oportunidades (fromApi).
 - **Actividades reales:** `ActivitiesService` con Prisma. **Tareas** y **Calendario** usan `useActivities()` y el endpoint `/activities` (CRUD). Mapper `activityToCalendarEvent` para la vista de calendario.
+- **API vs mock — Listados y pipeline (2026-03):** Sin merge con `crmStore` en **Contactos**, **Oportunidades** y **Pipeline**; la fuente es la API. Pipeline carga `opportunityListAll()` y asocia la primera oportunidad por `contactId` a cada tarjeta. Eliminado el fallback “modo local” al fallar `POST /opportunities` desde pipeline. **Dashboard** y **notificaciones** (empresas inactivas) usan `contactListAll()` en lugar del store. Detalle por **cuid** (`ContactoDetail`, `OportunidadDetail`, `EmpresaDetail` por id): listas y vínculos priorizan API; `crmStore` queda sobre todo para rutas mock y mutaciones locales heredadas.
+- **UI optimista (altas):** `optimisticCrmStore` (Zustand) + `buildOptimisticContact` / `buildOptimisticOpportunity`: la fila aparece al instante en **Contactos** y **Oportunidades** mientras se completa el `POST`; reconciliación al éxito o error (`removePending*` + recarga API).
+- **Autorización CRM en backend:** `PermissionsGuard` + `@RequirePermissions(...)` en `contacts`, `companies`, `opportunities`, `activities` y **Factiliza** (DNI/CEE → `contactos.ver`, RUC → `empresas.ver`). Se validan filas `Authority` del rol del usuario (JWT incluye `roleId`). Cerrar sesión y volver a entrar tras desplegar para obtener token con `roleId`.
 
 ---
 
-## 1. Prioridad media — Reducir API vs mock
+## 1. Prioridad media — Reducir API vs mock (restante)
 
-El store Zustand sigue con contactos/oportunidades mock que conviven con datos del servidor.
+**Hecho:** Listados principales, pipeline, dashboard/notificaciones, UI optimista en altas (ver arriba).
 
-**Acción:** Definir política clara: tras login, usar solo API o sincronizar bien; evitar merge indefinido en listados para reducir duplicados y bugs.
+**Siguiente paso:** Deprecar o documentar como demo las rutas/mutaciones solo-mock en detalle. Revisar pantallas que aún usan `@/data/mock` para **datos de negocio** (informes, campañas, `UserDetail`, gráficos Dashboard, `weeklySales`/`monthlySales`, etc.); las importaciones de **etiquetas** (`etapaLabels`, `contactSourceLabels`, …) pueden quedarse como catálogo UI.
 
 ---
 
-## 3. Prioridad media — Autorización en backend
+## 3. Prioridad media — Autorización en backend (ampliar)
 
-En `EMPRESAS_API.md` se menciona restringir POST/PATCH/DELETE por rol.
+**Hecho:** CRM principal + actividades + Factiliza según permisos en `Authority`.
 
-**Acción:** Aplicar guards/permisos en backend para empresas, contactos, oportunidades según rol; alinear con `usePermissions` del frontend.
+**Siguiente:** Alinear **roles** (`GET/POST/PATCH/DELETE /roles`) y otros endpoints con la misma convención `módulo.acción`; revisar `GET /users` (¿solo admin o `usuarios.ver`?).
 
 ---
 
@@ -46,7 +49,7 @@ En `EMPRESAS_API.md` se menciona restringir POST/PATCH/DELETE por rol.
 
 - OpenAPI/Swagger en backend
 - Tests e2e de flujos auth + CRUD principal
-- Documentar en `docs/README.md` qué pantallas usan API vs mock
+- Ampliar matriz API vs mock en `docs/README.md` cuando se migren informes/campañas
 
 ---
 

@@ -169,7 +169,7 @@ export class AuthService {
   }
 
   private buildAuthResponse(
-    user: { id: string; name: string; role: { slug: string } },
+    user: { id: string; name: string; roleId: string; role: { slug: string } },
     username: string,
   ) {
     const roleSlug = user.role.slug;
@@ -178,6 +178,7 @@ export class AuthService {
       username,
       name: user.name,
       role: roleSlug,
+      roleId: user.roleId,
     };
     const accessToken = this.jwtService.sign(payload);
 

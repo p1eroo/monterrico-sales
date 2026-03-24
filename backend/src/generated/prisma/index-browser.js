@@ -213,7 +213,6 @@ exports.Prisma.OpportunityScalarFieldEnum = {
   id: 'id',
   title: 'title',
   amount: 'amount',
-  fuente: 'fuente',
   probability: 'probability',
   etapa: 'etapa',
   status: 'status',
@@ -294,6 +293,35 @@ exports.Prisma.OpportunityActivityScalarFieldEnum = {
   activityId: 'activityId'
 };
 
+exports.Prisma.CampaignEmailSendLogScalarFieldEnum = {
+  id: 'id',
+  toEmail: 'toEmail',
+  sentAt: 'sentAt'
+};
+
+exports.Prisma.CampaignScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  status: 'status',
+  channel: 'channel',
+  messageJson: 'messageJson',
+  recipientsJson: 'recipientsJson',
+  subjectSnapshot: 'subjectSnapshot',
+  resultsJson: 'resultsJson',
+  recipientCount: 'recipientCount',
+  sentCount: 'sentCount',
+  deliveredCount: 'deliveredCount',
+  openedCount: 'openedCount',
+  clickedCount: 'clickedCount',
+  failedCount: 'failedCount',
+  bounceCount: 'bounceCount',
+  relatedContactIds: 'relatedContactIds',
+  createdAt: 'createdAt',
+  sentAt: 'sentAt',
+  createdById: 'createdById',
+  createdByName: 'createdByName'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -338,7 +366,9 @@ exports.Prisma.ModelName = {
   OpportunityOpportunity: 'OpportunityOpportunity',
   ContactActivity: 'ContactActivity',
   CompanyActivity: 'CompanyActivity',
-  OpportunityActivity: 'OpportunityActivity'
+  OpportunityActivity: 'OpportunityActivity',
+  CampaignEmailSendLog: 'CampaignEmailSendLog',
+  Campaign: 'Campaign'
 };
 
 /**
