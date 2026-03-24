@@ -281,8 +281,10 @@ export default function UsersPage() {
   }
 
   function handleRolePermissionsChange(roleId: string, key: PermissionKey, value: boolean) {
-    setRoleEditDraft((prev) => {
-      const base = prev ?? roles.find((r) => r.id === roleId)?.permissions ?? {};
+    setRoleEditDraft((prev): Record<PermissionKey, boolean> | null => {
+      const base = (prev ??
+        roles.find((r) => r.id === roleId)?.permissions ??
+        {}) as Record<PermissionKey, boolean>;
       return { ...base, [key]: value };
     });
   }

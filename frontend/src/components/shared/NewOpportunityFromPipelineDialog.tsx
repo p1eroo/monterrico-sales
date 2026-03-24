@@ -4,9 +4,9 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Building2, ChevronsUpDown, User, X } from 'lucide-react';
-import { etapaLabels } from '@/data/mock';
+import { etapaLabels, contactSourceLabels } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
-import type { Etapa } from '@/types';
+import type { ContactSource, Etapa } from '@/types';
 import { useCRMStore } from '@/store/crmStore';
 import { getPrimaryCompany, cn } from '@/lib/utils';
 import { api } from '@/lib/api';
@@ -41,12 +41,19 @@ const etapaEnum = z.enum([
   'activo', 'cierre_perdido', 'inactivo',
 ] as const);
 
+const contactFuenteValues = [
+  'referido', 'base', 'entorno', 'feria', 'masivo',
+] as const satisfies readonly ContactSource[];
+
+const fuenteEnum = z.enum(contactFuenteValues);
+
 const schema = z.object({
   title: z.string().min(2, 'El título debe tener al menos 2 caracteres'),
   amount: z.coerce.number().min(0, 'El monto debe ser positivo'),
   etapa: etapaEnum,
   expectedCloseDate: z.string().min(1, 'Selecciona una fecha'),
   assignedTo: z.string().min(1, 'Selecciona un responsable'),
+  fuente: fuenteEnum,
   contactId: z.string().optional(),
   companyId: z.string().optional(),
 });
@@ -59,6 +66,7 @@ const defaultValues: NewOpportunityFromPipelineData = {
   etapa: 'lead',
   expectedCloseDate: '',
   assignedTo: '',
+  fuente: 'base',
   contactId: '',
   companyId: '',
 };
@@ -140,6 +148,15 @@ export function NewOpportunityFromPipelineDialog({ open, onOpenChange }: NewOppo
   const watchContactId = form.watch('contactId');
   const watchCompanyId = form.watch('companyId');
 
+  useEffect(() => {
+    const cid = watchContactId?.trim();
+    if (!cid) return;
+    const c = mergedContactsForForm.find((x) => x.id === cid);
+    if (c?.fuente && contactFuenteValues.includes(c.fuente)) {
+      form.setValue('fuente', c.fuente);
+    }
+  }, [watchContactId, mergedContactsForForm, form]);
+
   const contactLinkedLabel = useMemo(() => {
     if (!watchContactId?.trim()) return null;
     const c = mergedContactsForForm.find((x) => x.id === watchContactId);
@@ -172,6 +189,7 @@ export function NewOpportunityFromPipelineDialog({ open, onOpenChange }: NewOppo
       status: 'abierta',
       expectedCloseDate: data.expectedCloseDate,
       priority: 'media',
+      fuente: data.fuente,
     };
     if (data.assignedTo && isLikelyOpportunityCuid(data.assignedTo)) {
       body.assignedTo = data.assignedTo;
@@ -205,6 +223,7 @@ export function NewOpportunityFromPipelineDialog({ open, onOpenChange }: NewOppo
         expectedCloseDate: data.expectedCloseDate,
         assignedTo: data.assignedTo,
         createdAt: new Date().toISOString().slice(0, 10),
+        fuente: data.fuente,
       });
       toast.success(`Oportunidad "${data.title.trim()}" guardada en modo local`, {
         description: e instanceof Error ? e.message : 'No se pudo crear en el servidor',
@@ -410,6 +429,21 @@ export function NewOpportunityFromPipelineDialog({ open, onOpenChange }: NewOppo
                   <SelectContent>
                     {etapasParaOportunidad.map((e) => (
                       <SelectItem key={e} value={e}>{etapaLabels[e]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2 sm:col-span-2">
+                <Label>Fuente *</Label>
+                <Select
+                  value={form.watch('fuente')}
+                  onValueChange={(v) => form.setValue('fuente', v as ContactSource)}
+                >
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Fuente" /></SelectTrigger>
+                  <SelectContent>
+                    {contactFuenteValues.map((k) => (
+                      <SelectItem key={k} value={k}>{contactSourceLabels[k]}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

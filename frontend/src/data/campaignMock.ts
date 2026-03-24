@@ -11,8 +11,8 @@ export function getRecipientsFromContacts(): CampaignRecipient[] {
   return contacts.slice(0, 12).map((c) => ({
     id: `r-${c.id}`,
     name: c.name,
-    email: c.email,
-    phone: c.phone,
+    email: c.correo,
+    phone: c.telefono,
     company: c.companies[0]?.name,
     etapa: c.etapa,
     contactId: c.id,

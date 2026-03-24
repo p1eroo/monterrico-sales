@@ -21,9 +21,9 @@ export type ApiContactFromOpportunity = {
   id: string;
   name: string;
   cargo?: string | null;
-  phone: string;
-  email: string;
-  source: string;
+  telefono: string;
+  correo: string;
+  fuente: string;
   etapa: string;
   priority?: string | null;
   assignedTo?: string | null;
@@ -38,6 +38,7 @@ export type ApiOpportunityListRow = {
   id: string;
   title: string;
   amount: number;
+  fuente?: string | null;
   probability: number;
   etapa: string;
   status: string;
@@ -74,6 +75,12 @@ function parseOpportunityPriority(raw: string | null | undefined): ContactPriori
   return 'media';
 }
 
+function parseFuente(raw: string | null | undefined): ContactSource {
+  const valid: ContactSource[] = ['referido', 'base', 'entorno', 'feria', 'masivo'];
+  const v = raw?.trim() ?? '';
+  return valid.includes(v as ContactSource) ? (v as ContactSource) : 'base';
+}
+
 export function mapApiOpportunityToOpportunity(
   row: ApiOpportunityListRow | ApiOpportunityDetail,
 ): Opportunity {
@@ -99,6 +106,7 @@ export function mapApiOpportunityToOpportunity(
       row.user?.name ??
       useUsersStore.getState().getUserName(assignedId),
     createdAt: row.createdAt.slice(0, 10),
+    fuente: parseFuente(row.fuente),
   };
 }
 
@@ -157,9 +165,9 @@ export function mapApiContactToContact(c: ApiContactFromOpportunity): Contact {
     name: c.name,
     cargo: c.cargo ?? undefined,
     companies: [],
-    phone: c.phone,
-    email: c.email,
-    source: (c.source as ContactSource) || 'base',
+    telefono: c.telefono,
+    correo: c.correo,
+    fuente: (c.fuente as ContactSource) || 'base',
     etapa: parseEtapa(c.etapa),
     assignedTo,
     assignedToName: useUsersStore.getState().getUserName(assignedTo),

@@ -30,7 +30,7 @@ const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
 
 export default function CalendarioPage() {
-  const { users, activeUsers } = useUsers();
+  const { activeUsers } = useUsers();
   const { activities, loading: activitiesLoading, createActivity, updateActivity, deleteActivity, error: activitiesError } = useActivities();
 
   const TASK_TYPES = ['tarea', 'llamada', 'reunion', 'correo'];

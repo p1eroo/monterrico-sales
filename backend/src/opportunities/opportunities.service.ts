@@ -7,6 +7,7 @@ import { Prisma } from '../generated/prisma';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOpportunityDto } from './dto/create-opportunity.dto';
 import { UpdateOpportunityDto } from './dto/update-opportunity.dto';
+import { EntitySyncService } from '../sync/entity-sync.service';
 
 /** Misma lógica que el mock del frontend (`etapaProbabilidad`) */
 const ETAPA_PROBABILITY: Record<string, number> = {
@@ -33,6 +34,7 @@ const opportunitySelectListSlim = {
   id: true,
   title: true,
   amount: true,
+  fuente: true,
   probability: true,
   etapa: true,
   status: true,
@@ -55,7 +57,10 @@ const opportunityIncludeDetail = {
 
 @Injectable()
 export class OpportunitiesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly entitySync: EntitySyncService,
+  ) {}
 
   private probabilityForEtapa(etapa: string, explicit?: number): number {
     if (explicit !== undefined && Number.isFinite(explicit)) {
@@ -107,8 +112,10 @@ export class OpportunitiesService {
     if (dto.amount === undefined || dto.amount === null || Number.isNaN(dto.amount)) {
       throw new BadRequestException('El monto es obligatorio');
     }
-    if (dto.amount < 0) {
-      throw new BadRequestException('El monto no puede ser negativo');
+    if (dto.amount <= 0) {
+      throw new BadRequestException(
+        'El monto estimado es obligatorio y debe ser mayor que 0',
+      );
     }
     const etapa = dto.etapa?.trim();
     if (!etapa) {
@@ -138,6 +145,28 @@ export class OpportunitiesService {
       }
     }
 
+    const contactId = dto.contactId?.trim();
+    const companyId = dto.companyId?.trim();
+
+    let fuenteResolved = dto.fuente?.trim() ?? '';
+    if (!fuenteResolved && contactId) {
+      const c = await this.prisma.contact.findUnique({
+        where: { id: contactId },
+        select: { fuente: true },
+      });
+      fuenteResolved = c?.fuente?.trim() ?? '';
+    }
+    if (!fuenteResolved && companyId) {
+      const comp = await this.prisma.company.findUnique({
+        where: { id: companyId },
+        select: { fuente: true },
+      });
+      fuenteResolved = comp?.fuente?.trim() ?? '';
+    }
+    if (!fuenteResolved) {
+      fuenteResolved = 'base';
+    }
+
     const probability = this.probabilityForEtapa(etapa, dto.probability);
     const priority = this.normalizePriority(dto.priority);
     const status = this.statusFromEtapa(etapa);
@@ -149,14 +178,26 @@ export class OpportunitiesService {
       throw new BadRequestException('Fecha de cierre inválida');
     }
 
-    const contactId = dto.contactId?.trim();
-    const companyId = dto.companyId?.trim();
+    if (contactId && companyId) {
+      const existing = await this.prisma.opportunity.findFirst({
+        where: {
+          AND: [
+            { contacts: { some: { contactId } } },
+            { companies: { some: { companyId } } },
+          ],
+        },
+      });
+      if (existing) {
+        return this.findOne(existing.id);
+      }
+    }
 
-    return this.prisma.$transaction(async (tx) => {
+    const created = await this.prisma.$transaction(async (tx) => {
       const opp = await tx.opportunity.create({
         data: {
           title,
           amount: dto.amount,
+          fuente: fuenteResolved,
           probability,
           etapa,
           status,
@@ -182,6 +223,9 @@ export class OpportunitiesService {
         include: opportunityIncludeDetail,
       });
     });
+
+    await this.entitySync.propagateFromOpportunityAllCompanies(created.id);
+    return created;
   }
 
   async findAll(opts?: {
@@ -295,6 +339,13 @@ export class OpportunitiesService {
     if (dto.priority !== undefined) {
       data.priority = this.normalizePriority(dto.priority);
     }
+    if (dto.fuente !== undefined) {
+      const f = dto.fuente?.trim();
+      if (!f) {
+        throw new BadRequestException('La fuente no puede estar vacía');
+      }
+      data.fuente = f;
+    }
 
     const hasContactLinkUpdate = dto.contactId !== undefined;
 
@@ -305,7 +356,7 @@ export class OpportunitiesService {
     if (Object.keys(data).length > 0) {
       await this.prisma.opportunity.update({
         where: { id },
-        data,
+        data: data as Prisma.OpportunityUpdateInput,
       });
     }
 
@@ -333,6 +384,15 @@ export class OpportunitiesService {
           });
         });
       }
+    }
+
+    const touchedCommercial =
+      dto.amount !== undefined ||
+      dto.etapa !== undefined ||
+      dto.fuente !== undefined ||
+      dto.assignedTo !== undefined;
+    if (touchedCommercial) {
+      await this.entitySync.propagateFromOpportunityAllCompanies(id);
     }
 
     return this.findOne(id);

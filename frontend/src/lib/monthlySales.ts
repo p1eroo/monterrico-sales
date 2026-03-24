@@ -15,7 +15,7 @@ export function getMonthlySalesByUser(): Record<string, number> {
   const byUser: Record<string, number> = {};
 
   for (const opp of opportunities) {
-    if (opp.status !== 'ganado') continue;
+    if (opp.status !== 'ganada') continue;
     try {
       const closeDate = parseISO(opp.expectedCloseDate + 'T12:00:00');
       if (!isWithinInterval(closeDate, { start: monthStart, end: monthEnd })) continue;

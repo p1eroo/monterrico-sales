@@ -24,7 +24,6 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { PageHeader } from '@/components/shared/PageHeader';
-import { cn } from '@/lib/utils';
 import { formatDateTime } from '@/lib/formatters';
 
 const STATUS_LABELS: Record<RecipientStatus, string> = {

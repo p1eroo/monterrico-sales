@@ -65,6 +65,7 @@ model User {
   updatedAt     DateTime  @updatedAt
   contactsAssigned     Contact[]
   opportunitiesAssigned Opportunity[]
+  companiesAssigned    Company[]
   activitiesAssigned   Activity[]
 }
 
@@ -72,9 +73,9 @@ model Contact {
   id                 String    @id @default(cuid())
   name               String
   cargo              String?
-  phone              String
-  email              String
-  source             String
+  telefono           String
+  correo             String
+  fuente             String
   etapa              String    @default("lead")
   assignedTo         String?
   estimatedValue     Float     @default(0)
@@ -119,19 +120,30 @@ model Company {
   provincia   String?
   departamento String?
   direccion   String?
+  /** Facturación / ingreso estimado a nivel cuenta (sincronizado con contactos/oportunidades vinculadas) */
+  facturacionEstimada Float    @default(0)
+  fuente              String?
+  clienteRecuperado   String?
+  etapa               String    @default("lead")
+  assignedTo          String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  user         User?     @relation(fields: [assignedTo], references: [id], onDelete: SetNull)
   contacts     CompanyContact[]
   companies    CompanyCompany[]  @relation("CompanyLinks")
   linkedBy     CompanyCompany[]  @relation("LinkedCompanies")
   opportunities CompanyOpportunity[]
   activities   CompanyActivity[]
+
+  @@index([assignedTo])
+  @@index([etapa])
 }
 
 model Opportunity {
   id                String    @id @default(cuid())
   title             String
   amount            Float
+  fuente            String?
   probability       Int       @default(0)
   etapa             String
   status            String    @default("abierta")

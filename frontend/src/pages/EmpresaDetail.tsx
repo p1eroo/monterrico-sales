@@ -6,10 +6,12 @@ import {
 } from 'lucide-react';
 import { useCRMStore } from '@/store/crmStore';
 import { useCompaniesStore } from '@/store/companiesStore';
-import { companyRubroLabels, companyTipoLabels, etapaLabels, timelineEvents, activities } from '@/data/mock';
+import {
+  companyRubroLabels, companyTipoLabels, etapaLabels, contactSourceLabels, timelineEvents, activities,
+} from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
 import { getPrimaryCompany } from '@/lib/utils';
-import type { Etapa, CompanyRubro, CompanyTipo } from '@/types';
+import type { Etapa, CompanyRubro, CompanyTipo, ContactSource } from '@/types';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { DetailLayout } from '@/components/shared/DetailLayout';
 import { EntityInfoCard } from '@/components/shared/EntityInfoCard';
@@ -202,6 +204,29 @@ export default function EmpresaDetailPage() {
       : undefined) ??
     companyDataFromApi;
   const totalValue = companyContacts.reduce((sum: number, l) => sum + l.estimatedValue, 0);
+  const displayFacturacion =
+    fromApiById && apiRecord && typeof apiRecord.facturacionEstimada === 'number'
+      ? apiRecord.facturacionEstimada
+      : totalValue;
+  const displayEtapaLabel =
+    fromApiById && apiRecord?.etapa
+      ? (etapaLabels[apiRecord.etapa as Etapa] ?? apiRecord.etapa)
+      : firstContact
+        ? etapaLabels[firstContact.etapa]
+        : '—';
+  const displayAdvisorName =
+    fromApiById && apiRecord
+      ? (apiRecord.user?.name ??
+        users.find((u) => u.id === apiRecord.assignedTo)?.name ??
+        '—')
+      : (firstContact?.assignedToName ?? '—');
+  const displayFuenteLabel =
+    fromApiById && apiRecord?.fuente
+      ? (contactSourceLabels[apiRecord.fuente as ContactSource] ??
+        apiRecord.fuente)
+      : firstContact?.fuente
+        ? (contactSourceLabels[firstContact.fuente] ?? firstContact.fuente)
+        : '—';
 
   const opportunities = useMemo(() => {
     const apiIds = new Set(apiOpportunityRows.map((r) => r.id));
@@ -343,6 +368,24 @@ export default function EmpresaDetailPage() {
   }
 
   function handleEtapaChange(newEtapa: string) {
+    if (fromApiById && apiRecord) {
+      void (async () => {
+        try {
+          await api(`/companies/${apiRecord.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ etapa: newEtapa }),
+          });
+          const row = await api<ApiCompanyRecord>(`/companies/${apiRecord.id}`);
+          setApiRecord(row);
+          await loadApiContacts();
+          toast.success('Etapa actualizada correctamente');
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : 'Error al actualizar etapa');
+        }
+      })();
+      setStatusDialogOpen(false);
+      return;
+    }
     for (const contact of companyContacts) {
       updateContact(contact.id, { etapa: newEtapa as Etapa });
     }
@@ -351,6 +394,24 @@ export default function EmpresaDetailPage() {
   }
 
   function handleAssignChange(newAssigneeId: string) {
+    if (fromApiById && apiRecord) {
+      void (async () => {
+        try {
+          await api(`/companies/${apiRecord.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ assignedTo: newAssigneeId }),
+          });
+          const row = await api<ApiCompanyRecord>(`/companies/${apiRecord.id}`);
+          setApiRecord(row);
+          await loadApiContacts();
+          toast.success('Asesor asignado correctamente');
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : 'Error al asignar');
+        }
+      })();
+      setAssignDialogOpen(false);
+      return;
+    }
     const user = users.find((u) => u.id === newAssigneeId);
     for (const contact of companyContacts) {
       updateContact(contact.id, { assignedTo: newAssigneeId, assignedToName: user?.name ?? 'Sin asignar' });
@@ -371,6 +432,7 @@ export default function EmpresaDetailPage() {
           status: 'abierta',
           priority: data.priority,
           expectedCloseDate: data.expectedCloseDate,
+          fuente: data.fuente,
           contactId: firstContact.id,
           companyId: resolvedCompanyId,
         };
@@ -394,6 +456,7 @@ export default function EmpresaDetailPage() {
       expectedCloseDate: data.expectedCloseDate,
       assignedTo: data.assignedTo,
       createdAt: new Date().toISOString().slice(0, 10),
+      fuente: data.fuente,
     });
     toast.success(`Oportunidad "${data.title}" creada`);
   }
@@ -448,9 +511,9 @@ export default function EmpresaDetailPage() {
       try {
         const body: Record<string, unknown> = {
           name: data.name.trim(),
-          phone: (data.phone || '').trim() || '000000000',
-          email: (data.email || '').trim() || `noreply-${Date.now()}@temp.local`,
-          source: data.source,
+          telefono: (data.phone || '').trim() || '000000000',
+          correo: (data.email || '').trim() || `noreply-${Date.now()}@temp.local`,
+          fuente: data.source,
           etapa: 'lead',
           estimatedValue: data.estimatedValue,
           companyId: resolvedCompanyId,
@@ -482,9 +545,9 @@ export default function EmpresaDetailPage() {
       docType: data.docType,
       docNumber: data.docNumber,
       companies: [{ name: companyName, rubro: companyData?.rubro, tipo: companyData?.tipo }],
-      phone: data.phone || '',
-      email: data.email || '',
-      source: data.source,
+      telefono: data.phone || '',
+      correo: data.email || '',
+      fuente: data.source,
       assignedTo: data.assignedTo || defaultAssignedTo,
       estimatedValue: data.estimatedValue,
       clienteRecuperado: data.clienteRecuperado,
@@ -629,7 +692,7 @@ export default function EmpresaDetailPage() {
   const contactLinkItems: LinkExistingItem[] = availableContacts.map((c) => ({
     id: c.id,
     title: c.name,
-    subtitle: [c.cargo, getPrimaryCompany(c)?.name].filter(Boolean).join(' · ') || c.phone,
+    subtitle: [c.cargo, getPrimaryCompany(c)?.name].filter(Boolean).join(' · ') || c.telefono,
     status: 'Activo',
     icon: <Users className="size-4" />,
   }));
@@ -722,8 +785,8 @@ export default function EmpresaDetailPage() {
                   <DollarSign className="size-5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm text-muted-foreground">Valor estimado</p>
-                  <p className="text-l font-semibold">{formatCurrency(totalValue)}</p>
+                  <p className="text-sm text-muted-foreground">Facturación estimada</p>
+                  <p className="text-l font-semibold">{formatCurrency(displayFacturacion)}</p>
                 </div>
               </div>
             </CardContent>
@@ -736,7 +799,7 @@ export default function EmpresaDetailPage() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm text-muted-foreground">Etapa actual</p>
-                  <p className="text-l font-semibold">{firstContact ? etapaLabels[firstContact.etapa] : '—'}</p>
+                  <p className="text-l font-semibold">{displayEtapaLabel}</p>
                 </div>
               </div>
             </CardContent>
@@ -762,7 +825,7 @@ export default function EmpresaDetailPage() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm text-muted-foreground">Asesor asignado</p>
-                  <p className="text-l font-semibold truncate">{firstContact?.assignedToName ?? '—'}</p>
+                  <p className="text-l font-semibold truncate">{displayAdvisorName}</p>
                 </div>
               </div>
             </CardContent>
@@ -781,6 +844,9 @@ export default function EmpresaDetailPage() {
               ...(companyData?.domain ? [{ icon: Globe as typeof Building2, value: companyData.domain, href: companyData.domain.startsWith('http') ? companyData.domain : `https://${companyData.domain}` }] : []),
               ...(companyData?.rubro ? [{ icon: Briefcase as typeof Building2, value: companyRubroLabels[companyData.rubro] }] : []),
               ...(companyData?.tipo ? [{ label: 'Tipo:', value: companyData.tipo }] : []),
+              ...(fromApiById && apiRecord?.fuente
+                ? [{ label: 'Fuente:', value: displayFuenteLabel }]
+                : []),
             ]}
           />
 
@@ -894,6 +960,7 @@ export default function EmpresaDetailPage() {
       onOpenChange={setNewOppOpen}
       entityName={companyName}
       onSave={handleCreateOpportunity}
+      defaultFuente={firstContact?.fuente}
     />
 
     {/* Vincular oportunidad existente */}
@@ -1020,7 +1087,9 @@ export default function EmpresaDetailPage() {
       open={statusDialogOpen}
       onOpenChange={setStatusDialogOpen}
       entityName={companyName}
-      currentEtapa={firstContact?.etapa ?? ''}
+      currentEtapa={
+        (fromApiById && apiRecord?.etapa) ? apiRecord.etapa : (firstContact?.etapa ?? '')
+      }
       onEtapaChange={handleEtapaChange}
     />
 
@@ -1028,7 +1097,11 @@ export default function EmpresaDetailPage() {
       open={assignDialogOpen}
       onOpenChange={setAssignDialogOpen}
       entityName={companyName}
-      currentAssigneeId={firstContact?.assignedTo ?? ''}
+      currentAssigneeId={
+        (fromApiById && apiRecord?.assignedTo != null)
+          ? (apiRecord.assignedTo ?? '')
+          : (firstContact?.assignedTo ?? '')
+      }
       onAssignChange={handleAssignChange}
     />
     </>

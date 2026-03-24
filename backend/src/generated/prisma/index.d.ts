@@ -2365,6 +2365,7 @@ export namespace Prisma {
     accounts: number
     contactsAssigned: number
     opportunitiesAssigned: number
+    companiesAssigned: number
     activitiesAssigned: number
   }
 
@@ -2372,6 +2373,7 @@ export namespace Prisma {
     accounts?: boolean | UserCountOutputTypeCountAccountsArgs
     contactsAssigned?: boolean | UserCountOutputTypeCountContactsAssignedArgs
     opportunitiesAssigned?: boolean | UserCountOutputTypeCountOpportunitiesAssignedArgs
+    companiesAssigned?: boolean | UserCountOutputTypeCountCompaniesAssignedArgs
     activitiesAssigned?: boolean | UserCountOutputTypeCountActivitiesAssignedArgs
   }
 
@@ -2405,6 +2407,13 @@ export namespace Prisma {
    */
   export type UserCountOutputTypeCountOpportunitiesAssignedArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: OpportunityWhereInput
+  }
+
+  /**
+   * UserCountOutputType without action
+   */
+  export type UserCountOutputTypeCountCompaniesAssignedArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: CompanyWhereInput
   }
 
   /**
@@ -6132,6 +6141,7 @@ export namespace Prisma {
     accounts?: boolean | User$accountsArgs<ExtArgs>
     contactsAssigned?: boolean | User$contactsAssignedArgs<ExtArgs>
     opportunitiesAssigned?: boolean | User$opportunitiesAssignedArgs<ExtArgs>
+    companiesAssigned?: boolean | User$companiesAssignedArgs<ExtArgs>
     activitiesAssigned?: boolean | User$activitiesAssignedArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["user"]>
@@ -6183,6 +6193,7 @@ export namespace Prisma {
     accounts?: boolean | User$accountsArgs<ExtArgs>
     contactsAssigned?: boolean | User$contactsAssignedArgs<ExtArgs>
     opportunitiesAssigned?: boolean | User$opportunitiesAssignedArgs<ExtArgs>
+    companiesAssigned?: boolean | User$companiesAssignedArgs<ExtArgs>
     activitiesAssigned?: boolean | User$activitiesAssignedArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
   }
@@ -6200,6 +6211,7 @@ export namespace Prisma {
       accounts: Prisma.$AccountPayload<ExtArgs>[]
       contactsAssigned: Prisma.$ContactPayload<ExtArgs>[]
       opportunitiesAssigned: Prisma.$OpportunityPayload<ExtArgs>[]
+      companiesAssigned: Prisma.$CompanyPayload<ExtArgs>[]
       activitiesAssigned: Prisma.$ActivityPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
@@ -6611,6 +6623,7 @@ export namespace Prisma {
     accounts<T extends User$accountsArgs<ExtArgs> = {}>(args?: Subset<T, User$accountsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AccountPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     contactsAssigned<T extends User$contactsAssignedArgs<ExtArgs> = {}>(args?: Subset<T, User$contactsAssignedArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ContactPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     opportunitiesAssigned<T extends User$opportunitiesAssignedArgs<ExtArgs> = {}>(args?: Subset<T, User$opportunitiesAssignedArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$OpportunityPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    companiesAssigned<T extends User$companiesAssignedArgs<ExtArgs> = {}>(args?: Subset<T, User$companiesAssignedArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CompanyPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     activitiesAssigned<T extends User$activitiesAssignedArgs<ExtArgs> = {}>(args?: Subset<T, User$activitiesAssignedArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ActivityPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
@@ -7124,6 +7137,30 @@ export namespace Prisma {
   }
 
   /**
+   * User.companiesAssigned
+   */
+  export type User$companiesAssignedArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Company
+     */
+    select?: CompanySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Company
+     */
+    omit?: CompanyOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CompanyInclude<ExtArgs> | null
+    where?: CompanyWhereInput
+    orderBy?: CompanyOrderByWithRelationInput | CompanyOrderByWithRelationInput[]
+    cursor?: CompanyWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: CompanyScalarFieldEnum | CompanyScalarFieldEnum[]
+  }
+
+  /**
    * User.activitiesAssigned
    */
   export type User$activitiesAssignedArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -7190,9 +7227,9 @@ export namespace Prisma {
     id: string | null
     name: string | null
     cargo: string | null
-    phone: string | null
-    email: string | null
-    source: string | null
+    telefono: string | null
+    correo: string | null
+    fuente: string | null
     etapa: string | null
     assignedTo: string | null
     estimatedValue: number | null
@@ -7214,9 +7251,9 @@ export namespace Prisma {
     id: string | null
     name: string | null
     cargo: string | null
-    phone: string | null
-    email: string | null
-    source: string | null
+    telefono: string | null
+    correo: string | null
+    fuente: string | null
     etapa: string | null
     assignedTo: string | null
     estimatedValue: number | null
@@ -7238,9 +7275,9 @@ export namespace Prisma {
     id: number
     name: number
     cargo: number
-    phone: number
-    email: number
-    source: number
+    telefono: number
+    correo: number
+    fuente: number
     etapa: number
     assignedTo: number
     estimatedValue: number
@@ -7274,9 +7311,9 @@ export namespace Prisma {
     id?: true
     name?: true
     cargo?: true
-    phone?: true
-    email?: true
-    source?: true
+    telefono?: true
+    correo?: true
+    fuente?: true
     etapa?: true
     assignedTo?: true
     estimatedValue?: true
@@ -7298,9 +7335,9 @@ export namespace Prisma {
     id?: true
     name?: true
     cargo?: true
-    phone?: true
-    email?: true
-    source?: true
+    telefono?: true
+    correo?: true
+    fuente?: true
     etapa?: true
     assignedTo?: true
     estimatedValue?: true
@@ -7322,9 +7359,9 @@ export namespace Prisma {
     id?: true
     name?: true
     cargo?: true
-    phone?: true
-    email?: true
-    source?: true
+    telefono?: true
+    correo?: true
+    fuente?: true
     etapa?: true
     assignedTo?: true
     estimatedValue?: true
@@ -7435,9 +7472,9 @@ export namespace Prisma {
     id: string
     name: string
     cargo: string | null
-    phone: string
-    email: string
-    source: string
+    telefono: string
+    correo: string
+    fuente: string
     etapa: string
     assignedTo: string | null
     estimatedValue: number
@@ -7480,9 +7517,9 @@ export namespace Prisma {
     id?: boolean
     name?: boolean
     cargo?: boolean
-    phone?: boolean
-    email?: boolean
-    source?: boolean
+    telefono?: boolean
+    correo?: boolean
+    fuente?: boolean
     etapa?: boolean
     assignedTo?: boolean
     estimatedValue?: boolean
@@ -7513,9 +7550,9 @@ export namespace Prisma {
     id?: boolean
     name?: boolean
     cargo?: boolean
-    phone?: boolean
-    email?: boolean
-    source?: boolean
+    telefono?: boolean
+    correo?: boolean
+    fuente?: boolean
     etapa?: boolean
     assignedTo?: boolean
     estimatedValue?: boolean
@@ -7540,9 +7577,9 @@ export namespace Prisma {
     id?: boolean
     name?: boolean
     cargo?: boolean
-    phone?: boolean
-    email?: boolean
-    source?: boolean
+    telefono?: boolean
+    correo?: boolean
+    fuente?: boolean
     etapa?: boolean
     assignedTo?: boolean
     estimatedValue?: boolean
@@ -7567,9 +7604,9 @@ export namespace Prisma {
     id?: boolean
     name?: boolean
     cargo?: boolean
-    phone?: boolean
-    email?: boolean
-    source?: boolean
+    telefono?: boolean
+    correo?: boolean
+    fuente?: boolean
     etapa?: boolean
     assignedTo?: boolean
     estimatedValue?: boolean
@@ -7589,7 +7626,7 @@ export namespace Prisma {
     updatedAt?: boolean
   }
 
-  export type ContactOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "cargo" | "phone" | "email" | "source" | "etapa" | "assignedTo" | "estimatedValue" | "nextAction" | "nextFollowUp" | "notes" | "tags" | "docType" | "docNumber" | "departamento" | "provincia" | "distrito" | "direccion" | "clienteRecuperado" | "etapaHistory" | "createdAt" | "updatedAt", ExtArgs["result"]["contact"]>
+  export type ContactOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "cargo" | "telefono" | "correo" | "fuente" | "etapa" | "assignedTo" | "estimatedValue" | "nextAction" | "nextFollowUp" | "notes" | "tags" | "docType" | "docNumber" | "departamento" | "provincia" | "distrito" | "direccion" | "clienteRecuperado" | "etapaHistory" | "createdAt" | "updatedAt", ExtArgs["result"]["contact"]>
   export type ContactInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     user?: boolean | Contact$userArgs<ExtArgs>
     companies?: boolean | Contact$companiesArgs<ExtArgs>
@@ -7620,9 +7657,9 @@ export namespace Prisma {
       id: string
       name: string
       cargo: string | null
-      phone: string
-      email: string
-      source: string
+      telefono: string
+      correo: string
+      fuente: string
       etapa: string
       assignedTo: string | null
       estimatedValue: number
@@ -8072,9 +8109,9 @@ export namespace Prisma {
     readonly id: FieldRef<"Contact", 'String'>
     readonly name: FieldRef<"Contact", 'String'>
     readonly cargo: FieldRef<"Contact", 'String'>
-    readonly phone: FieldRef<"Contact", 'String'>
-    readonly email: FieldRef<"Contact", 'String'>
-    readonly source: FieldRef<"Contact", 'String'>
+    readonly telefono: FieldRef<"Contact", 'String'>
+    readonly correo: FieldRef<"Contact", 'String'>
+    readonly fuente: FieldRef<"Contact", 'String'>
     readonly etapa: FieldRef<"Contact", 'String'>
     readonly assignedTo: FieldRef<"Contact", 'String'>
     readonly estimatedValue: FieldRef<"Contact", 'Float'>
@@ -8656,8 +8693,18 @@ export namespace Prisma {
 
   export type AggregateCompany = {
     _count: CompanyCountAggregateOutputType | null
+    _avg: CompanyAvgAggregateOutputType | null
+    _sum: CompanySumAggregateOutputType | null
     _min: CompanyMinAggregateOutputType | null
     _max: CompanyMaxAggregateOutputType | null
+  }
+
+  export type CompanyAvgAggregateOutputType = {
+    facturacionEstimada: number | null
+  }
+
+  export type CompanySumAggregateOutputType = {
+    facturacionEstimada: number | null
   }
 
   export type CompanyMinAggregateOutputType = {
@@ -8675,6 +8722,11 @@ export namespace Prisma {
     provincia: string | null
     departamento: string | null
     direccion: string | null
+    facturacionEstimada: number | null
+    fuente: string | null
+    clienteRecuperado: string | null
+    etapa: string | null
+    assignedTo: string | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -8694,6 +8746,11 @@ export namespace Prisma {
     provincia: string | null
     departamento: string | null
     direccion: string | null
+    facturacionEstimada: number | null
+    fuente: string | null
+    clienteRecuperado: string | null
+    etapa: string | null
+    assignedTo: string | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -8713,11 +8770,24 @@ export namespace Prisma {
     provincia: number
     departamento: number
     direccion: number
+    facturacionEstimada: number
+    fuente: number
+    clienteRecuperado: number
+    etapa: number
+    assignedTo: number
     createdAt: number
     updatedAt: number
     _all: number
   }
 
+
+  export type CompanyAvgAggregateInputType = {
+    facturacionEstimada?: true
+  }
+
+  export type CompanySumAggregateInputType = {
+    facturacionEstimada?: true
+  }
 
   export type CompanyMinAggregateInputType = {
     id?: true
@@ -8734,6 +8804,11 @@ export namespace Prisma {
     provincia?: true
     departamento?: true
     direccion?: true
+    facturacionEstimada?: true
+    fuente?: true
+    clienteRecuperado?: true
+    etapa?: true
+    assignedTo?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -8753,6 +8828,11 @@ export namespace Prisma {
     provincia?: true
     departamento?: true
     direccion?: true
+    facturacionEstimada?: true
+    fuente?: true
+    clienteRecuperado?: true
+    etapa?: true
+    assignedTo?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -8772,6 +8852,11 @@ export namespace Prisma {
     provincia?: true
     departamento?: true
     direccion?: true
+    facturacionEstimada?: true
+    fuente?: true
+    clienteRecuperado?: true
+    etapa?: true
+    assignedTo?: true
     createdAt?: true
     updatedAt?: true
     _all?: true
@@ -8815,6 +8900,18 @@ export namespace Prisma {
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
      * 
+     * Select which fields to average
+    **/
+    _avg?: CompanyAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: CompanySumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
      * Select which fields to find the minimum value
     **/
     _min?: CompanyMinAggregateInputType
@@ -8845,6 +8942,8 @@ export namespace Prisma {
     take?: number
     skip?: number
     _count?: CompanyCountAggregateInputType | true
+    _avg?: CompanyAvgAggregateInputType
+    _sum?: CompanySumAggregateInputType
     _min?: CompanyMinAggregateInputType
     _max?: CompanyMaxAggregateInputType
   }
@@ -8864,9 +8963,16 @@ export namespace Prisma {
     provincia: string | null
     departamento: string | null
     direccion: string | null
+    facturacionEstimada: number
+    fuente: string | null
+    clienteRecuperado: string | null
+    etapa: string
+    assignedTo: string | null
     createdAt: Date
     updatedAt: Date
     _count: CompanyCountAggregateOutputType | null
+    _avg: CompanyAvgAggregateOutputType | null
+    _sum: CompanySumAggregateOutputType | null
     _min: CompanyMinAggregateOutputType | null
     _max: CompanyMaxAggregateOutputType | null
   }
@@ -8900,8 +9006,14 @@ export namespace Prisma {
     provincia?: boolean
     departamento?: boolean
     direccion?: boolean
+    facturacionEstimada?: boolean
+    fuente?: boolean
+    clienteRecuperado?: boolean
+    etapa?: boolean
+    assignedTo?: boolean
     createdAt?: boolean
     updatedAt?: boolean
+    user?: boolean | Company$userArgs<ExtArgs>
     contacts?: boolean | Company$contactsArgs<ExtArgs>
     companies?: boolean | Company$companiesArgs<ExtArgs>
     linkedBy?: boolean | Company$linkedByArgs<ExtArgs>
@@ -8925,8 +9037,14 @@ export namespace Prisma {
     provincia?: boolean
     departamento?: boolean
     direccion?: boolean
+    facturacionEstimada?: boolean
+    fuente?: boolean
+    clienteRecuperado?: boolean
+    etapa?: boolean
+    assignedTo?: boolean
     createdAt?: boolean
     updatedAt?: boolean
+    user?: boolean | Company$userArgs<ExtArgs>
   }, ExtArgs["result"]["company"]>
 
   export type CompanySelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
@@ -8944,8 +9062,14 @@ export namespace Prisma {
     provincia?: boolean
     departamento?: boolean
     direccion?: boolean
+    facturacionEstimada?: boolean
+    fuente?: boolean
+    clienteRecuperado?: boolean
+    etapa?: boolean
+    assignedTo?: boolean
     createdAt?: boolean
     updatedAt?: boolean
+    user?: boolean | Company$userArgs<ExtArgs>
   }, ExtArgs["result"]["company"]>
 
   export type CompanySelectScalar = {
@@ -8963,12 +9087,18 @@ export namespace Prisma {
     provincia?: boolean
     departamento?: boolean
     direccion?: boolean
+    facturacionEstimada?: boolean
+    fuente?: boolean
+    clienteRecuperado?: boolean
+    etapa?: boolean
+    assignedTo?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type CompanyOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "razonSocial" | "ruc" | "telefono" | "domain" | "rubro" | "tipo" | "linkedin" | "correo" | "distrito" | "provincia" | "departamento" | "direccion" | "createdAt" | "updatedAt", ExtArgs["result"]["company"]>
+  export type CompanyOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "razonSocial" | "ruc" | "telefono" | "domain" | "rubro" | "tipo" | "linkedin" | "correo" | "distrito" | "provincia" | "departamento" | "direccion" | "facturacionEstimada" | "fuente" | "clienteRecuperado" | "etapa" | "assignedTo" | "createdAt" | "updatedAt", ExtArgs["result"]["company"]>
   export type CompanyInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | Company$userArgs<ExtArgs>
     contacts?: boolean | Company$contactsArgs<ExtArgs>
     companies?: boolean | Company$companiesArgs<ExtArgs>
     linkedBy?: boolean | Company$linkedByArgs<ExtArgs>
@@ -8976,12 +9106,17 @@ export namespace Prisma {
     activities?: boolean | Company$activitiesArgs<ExtArgs>
     _count?: boolean | CompanyCountOutputTypeDefaultArgs<ExtArgs>
   }
-  export type CompanyIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
-  export type CompanyIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
+  export type CompanyIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | Company$userArgs<ExtArgs>
+  }
+  export type CompanyIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | Company$userArgs<ExtArgs>
+  }
 
   export type $CompanyPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "Company"
     objects: {
+      user: Prisma.$UserPayload<ExtArgs> | null
       contacts: Prisma.$CompanyContactPayload<ExtArgs>[]
       companies: Prisma.$CompanyCompanyPayload<ExtArgs>[]
       linkedBy: Prisma.$CompanyCompanyPayload<ExtArgs>[]
@@ -9003,6 +9138,14 @@ export namespace Prisma {
       provincia: string | null
       departamento: string | null
       direccion: string | null
+      /**
+       * * Facturación / ingreso estimado a nivel cuenta (sincronizado con contactos/oportunidades vinculadas)
+       */
+      facturacionEstimada: number
+      fuente: string | null
+      clienteRecuperado: string | null
+      etapa: string
+      assignedTo: string | null
       createdAt: Date
       updatedAt: Date
     }, ExtArgs["result"]["company"]>
@@ -9399,6 +9542,7 @@ export namespace Prisma {
    */
   export interface Prisma__CompanyClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
+    user<T extends Company$userArgs<ExtArgs> = {}>(args?: Subset<T, Company$userArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     contacts<T extends Company$contactsArgs<ExtArgs> = {}>(args?: Subset<T, Company$contactsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CompanyContactPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     companies<T extends Company$companiesArgs<ExtArgs> = {}>(args?: Subset<T, Company$companiesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CompanyCompanyPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     linkedBy<T extends Company$linkedByArgs<ExtArgs> = {}>(args?: Subset<T, Company$linkedByArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CompanyCompanyPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -9447,6 +9591,11 @@ export namespace Prisma {
     readonly provincia: FieldRef<"Company", 'String'>
     readonly departamento: FieldRef<"Company", 'String'>
     readonly direccion: FieldRef<"Company", 'String'>
+    readonly facturacionEstimada: FieldRef<"Company", 'Float'>
+    readonly fuente: FieldRef<"Company", 'String'>
+    readonly clienteRecuperado: FieldRef<"Company", 'String'>
+    readonly etapa: FieldRef<"Company", 'String'>
+    readonly assignedTo: FieldRef<"Company", 'String'>
     readonly createdAt: FieldRef<"Company", 'DateTime'>
     readonly updatedAt: FieldRef<"Company", 'DateTime'>
   }
@@ -9703,6 +9852,10 @@ export namespace Prisma {
      */
     data: CompanyCreateManyInput | CompanyCreateManyInput[]
     skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CompanyIncludeCreateManyAndReturn<ExtArgs> | null
   }
 
   /**
@@ -9773,6 +9926,10 @@ export namespace Prisma {
      * Limit how many Companies to update.
      */
     limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CompanyIncludeUpdateManyAndReturn<ExtArgs> | null
   }
 
   /**
@@ -9839,6 +9996,25 @@ export namespace Prisma {
      * Limit how many Companies to delete.
      */
     limit?: number
+  }
+
+  /**
+   * Company.user
+   */
+  export type Company$userArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the User
+     */
+    select?: UserSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the User
+     */
+    omit?: UserOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserInclude<ExtArgs> | null
+    where?: UserWhereInput
   }
 
   /**
@@ -10006,6 +10182,7 @@ export namespace Prisma {
     id: string | null
     title: string | null
     amount: number | null
+    fuente: string | null
     probability: number | null
     etapa: string | null
     status: string | null
@@ -10020,6 +10197,7 @@ export namespace Prisma {
     id: string | null
     title: string | null
     amount: number | null
+    fuente: string | null
     probability: number | null
     etapa: string | null
     status: string | null
@@ -10034,6 +10212,7 @@ export namespace Prisma {
     id: number
     title: number
     amount: number
+    fuente: number
     probability: number
     etapa: number
     status: number
@@ -10060,6 +10239,7 @@ export namespace Prisma {
     id?: true
     title?: true
     amount?: true
+    fuente?: true
     probability?: true
     etapa?: true
     status?: true
@@ -10074,6 +10254,7 @@ export namespace Prisma {
     id?: true
     title?: true
     amount?: true
+    fuente?: true
     probability?: true
     etapa?: true
     status?: true
@@ -10088,6 +10269,7 @@ export namespace Prisma {
     id?: true
     title?: true
     amount?: true
+    fuente?: true
     probability?: true
     etapa?: true
     status?: true
@@ -10189,6 +10371,7 @@ export namespace Prisma {
     id: string
     title: string
     amount: number
+    fuente: string | null
     probability: number
     etapa: string
     status: string
@@ -10222,6 +10405,7 @@ export namespace Prisma {
     id?: boolean
     title?: boolean
     amount?: boolean
+    fuente?: boolean
     probability?: boolean
     etapa?: boolean
     status?: boolean
@@ -10243,6 +10427,7 @@ export namespace Prisma {
     id?: boolean
     title?: boolean
     amount?: boolean
+    fuente?: boolean
     probability?: boolean
     etapa?: boolean
     status?: boolean
@@ -10258,6 +10443,7 @@ export namespace Prisma {
     id?: boolean
     title?: boolean
     amount?: boolean
+    fuente?: boolean
     probability?: boolean
     etapa?: boolean
     status?: boolean
@@ -10273,6 +10459,7 @@ export namespace Prisma {
     id?: boolean
     title?: boolean
     amount?: boolean
+    fuente?: boolean
     probability?: boolean
     etapa?: boolean
     status?: boolean
@@ -10283,7 +10470,7 @@ export namespace Prisma {
     updatedAt?: boolean
   }
 
-  export type OpportunityOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "title" | "amount" | "probability" | "etapa" | "status" | "priority" | "expectedCloseDate" | "assignedTo" | "createdAt" | "updatedAt", ExtArgs["result"]["opportunity"]>
+  export type OpportunityOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "title" | "amount" | "fuente" | "probability" | "etapa" | "status" | "priority" | "expectedCloseDate" | "assignedTo" | "createdAt" | "updatedAt", ExtArgs["result"]["opportunity"]>
   export type OpportunityInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     user?: boolean | Opportunity$userArgs<ExtArgs>
     contacts?: boolean | Opportunity$contactsArgs<ExtArgs>
@@ -10314,6 +10501,7 @@ export namespace Prisma {
       id: string
       title: string
       amount: number
+      fuente: string | null
       probability: number
       etapa: string
       status: string
@@ -10757,6 +10945,7 @@ export namespace Prisma {
     readonly id: FieldRef<"Opportunity", 'String'>
     readonly title: FieldRef<"Opportunity", 'String'>
     readonly amount: FieldRef<"Opportunity", 'Float'>
+    readonly fuente: FieldRef<"Opportunity", 'String'>
     readonly probability: FieldRef<"Opportunity", 'Int'>
     readonly etapa: FieldRef<"Opportunity", 'String'>
     readonly status: FieldRef<"Opportunity", 'String'>
@@ -22050,9 +22239,9 @@ export namespace Prisma {
     id: 'id',
     name: 'name',
     cargo: 'cargo',
-    phone: 'phone',
-    email: 'email',
-    source: 'source',
+    telefono: 'telefono',
+    correo: 'correo',
+    fuente: 'fuente',
     etapa: 'etapa',
     assignedTo: 'assignedTo',
     estimatedValue: 'estimatedValue',
@@ -22090,6 +22279,11 @@ export namespace Prisma {
     provincia: 'provincia',
     departamento: 'departamento',
     direccion: 'direccion',
+    facturacionEstimada: 'facturacionEstimada',
+    fuente: 'fuente',
+    clienteRecuperado: 'clienteRecuperado',
+    etapa: 'etapa',
+    assignedTo: 'assignedTo',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
   };
@@ -22101,6 +22295,7 @@ export namespace Prisma {
     id: 'id',
     title: 'title',
     amount: 'amount',
+    fuente: 'fuente',
     probability: 'probability',
     etapa: 'etapa',
     status: 'status',
@@ -22538,6 +22733,7 @@ export namespace Prisma {
     accounts?: AccountListRelationFilter
     contactsAssigned?: ContactListRelationFilter
     opportunitiesAssigned?: OpportunityListRelationFilter
+    companiesAssigned?: CompanyListRelationFilter
     activitiesAssigned?: ActivityListRelationFilter
   }
 
@@ -22556,6 +22752,7 @@ export namespace Prisma {
     accounts?: AccountOrderByRelationAggregateInput
     contactsAssigned?: ContactOrderByRelationAggregateInput
     opportunitiesAssigned?: OpportunityOrderByRelationAggregateInput
+    companiesAssigned?: CompanyOrderByRelationAggregateInput
     activitiesAssigned?: ActivityOrderByRelationAggregateInput
   }
 
@@ -22577,6 +22774,7 @@ export namespace Prisma {
     accounts?: AccountListRelationFilter
     contactsAssigned?: ContactListRelationFilter
     opportunitiesAssigned?: OpportunityListRelationFilter
+    companiesAssigned?: CompanyListRelationFilter
     activitiesAssigned?: ActivityListRelationFilter
   }, "id">
 
@@ -22619,9 +22817,9 @@ export namespace Prisma {
     id?: StringFilter<"Contact"> | string
     name?: StringFilter<"Contact"> | string
     cargo?: StringNullableFilter<"Contact"> | string | null
-    phone?: StringFilter<"Contact"> | string
-    email?: StringFilter<"Contact"> | string
-    source?: StringFilter<"Contact"> | string
+    telefono?: StringFilter<"Contact"> | string
+    correo?: StringFilter<"Contact"> | string
+    fuente?: StringFilter<"Contact"> | string
     etapa?: StringFilter<"Contact"> | string
     assignedTo?: StringNullableFilter<"Contact"> | string | null
     estimatedValue?: FloatFilter<"Contact"> | number
@@ -22651,9 +22849,9 @@ export namespace Prisma {
     id?: SortOrder
     name?: SortOrder
     cargo?: SortOrderInput | SortOrder
-    phone?: SortOrder
-    email?: SortOrder
-    source?: SortOrder
+    telefono?: SortOrder
+    correo?: SortOrder
+    fuente?: SortOrder
     etapa?: SortOrder
     assignedTo?: SortOrderInput | SortOrder
     estimatedValue?: SortOrder
@@ -22686,9 +22884,9 @@ export namespace Prisma {
     NOT?: ContactWhereInput | ContactWhereInput[]
     name?: StringFilter<"Contact"> | string
     cargo?: StringNullableFilter<"Contact"> | string | null
-    phone?: StringFilter<"Contact"> | string
-    email?: StringFilter<"Contact"> | string
-    source?: StringFilter<"Contact"> | string
+    telefono?: StringFilter<"Contact"> | string
+    correo?: StringFilter<"Contact"> | string
+    fuente?: StringFilter<"Contact"> | string
     etapa?: StringFilter<"Contact"> | string
     assignedTo?: StringNullableFilter<"Contact"> | string | null
     estimatedValue?: FloatFilter<"Contact"> | number
@@ -22718,9 +22916,9 @@ export namespace Prisma {
     id?: SortOrder
     name?: SortOrder
     cargo?: SortOrderInput | SortOrder
-    phone?: SortOrder
-    email?: SortOrder
-    source?: SortOrder
+    telefono?: SortOrder
+    correo?: SortOrder
+    fuente?: SortOrder
     etapa?: SortOrder
     assignedTo?: SortOrderInput | SortOrder
     estimatedValue?: SortOrder
@@ -22752,9 +22950,9 @@ export namespace Prisma {
     id?: StringWithAggregatesFilter<"Contact"> | string
     name?: StringWithAggregatesFilter<"Contact"> | string
     cargo?: StringNullableWithAggregatesFilter<"Contact"> | string | null
-    phone?: StringWithAggregatesFilter<"Contact"> | string
-    email?: StringWithAggregatesFilter<"Contact"> | string
-    source?: StringWithAggregatesFilter<"Contact"> | string
+    telefono?: StringWithAggregatesFilter<"Contact"> | string
+    correo?: StringWithAggregatesFilter<"Contact"> | string
+    fuente?: StringWithAggregatesFilter<"Contact"> | string
     etapa?: StringWithAggregatesFilter<"Contact"> | string
     assignedTo?: StringNullableWithAggregatesFilter<"Contact"> | string | null
     estimatedValue?: FloatWithAggregatesFilter<"Contact"> | number
@@ -22792,8 +22990,14 @@ export namespace Prisma {
     provincia?: StringNullableFilter<"Company"> | string | null
     departamento?: StringNullableFilter<"Company"> | string | null
     direccion?: StringNullableFilter<"Company"> | string | null
+    facturacionEstimada?: FloatFilter<"Company"> | number
+    fuente?: StringNullableFilter<"Company"> | string | null
+    clienteRecuperado?: StringNullableFilter<"Company"> | string | null
+    etapa?: StringFilter<"Company"> | string
+    assignedTo?: StringNullableFilter<"Company"> | string | null
     createdAt?: DateTimeFilter<"Company"> | Date | string
     updatedAt?: DateTimeFilter<"Company"> | Date | string
+    user?: XOR<UserNullableScalarRelationFilter, UserWhereInput> | null
     contacts?: CompanyContactListRelationFilter
     companies?: CompanyCompanyListRelationFilter
     linkedBy?: CompanyCompanyListRelationFilter
@@ -22816,8 +23020,14 @@ export namespace Prisma {
     provincia?: SortOrderInput | SortOrder
     departamento?: SortOrderInput | SortOrder
     direccion?: SortOrderInput | SortOrder
+    facturacionEstimada?: SortOrder
+    fuente?: SortOrderInput | SortOrder
+    clienteRecuperado?: SortOrderInput | SortOrder
+    etapa?: SortOrder
+    assignedTo?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
+    user?: UserOrderByWithRelationInput
     contacts?: CompanyContactOrderByRelationAggregateInput
     companies?: CompanyCompanyOrderByRelationAggregateInput
     linkedBy?: CompanyCompanyOrderByRelationAggregateInput
@@ -22843,8 +23053,14 @@ export namespace Prisma {
     provincia?: StringNullableFilter<"Company"> | string | null
     departamento?: StringNullableFilter<"Company"> | string | null
     direccion?: StringNullableFilter<"Company"> | string | null
+    facturacionEstimada?: FloatFilter<"Company"> | number
+    fuente?: StringNullableFilter<"Company"> | string | null
+    clienteRecuperado?: StringNullableFilter<"Company"> | string | null
+    etapa?: StringFilter<"Company"> | string
+    assignedTo?: StringNullableFilter<"Company"> | string | null
     createdAt?: DateTimeFilter<"Company"> | Date | string
     updatedAt?: DateTimeFilter<"Company"> | Date | string
+    user?: XOR<UserNullableScalarRelationFilter, UserWhereInput> | null
     contacts?: CompanyContactListRelationFilter
     companies?: CompanyCompanyListRelationFilter
     linkedBy?: CompanyCompanyListRelationFilter
@@ -22867,11 +23083,18 @@ export namespace Prisma {
     provincia?: SortOrderInput | SortOrder
     departamento?: SortOrderInput | SortOrder
     direccion?: SortOrderInput | SortOrder
+    facturacionEstimada?: SortOrder
+    fuente?: SortOrderInput | SortOrder
+    clienteRecuperado?: SortOrderInput | SortOrder
+    etapa?: SortOrder
+    assignedTo?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     _count?: CompanyCountOrderByAggregateInput
+    _avg?: CompanyAvgOrderByAggregateInput
     _max?: CompanyMaxOrderByAggregateInput
     _min?: CompanyMinOrderByAggregateInput
+    _sum?: CompanySumOrderByAggregateInput
   }
 
   export type CompanyScalarWhereWithAggregatesInput = {
@@ -22892,6 +23115,11 @@ export namespace Prisma {
     provincia?: StringNullableWithAggregatesFilter<"Company"> | string | null
     departamento?: StringNullableWithAggregatesFilter<"Company"> | string | null
     direccion?: StringNullableWithAggregatesFilter<"Company"> | string | null
+    facturacionEstimada?: FloatWithAggregatesFilter<"Company"> | number
+    fuente?: StringNullableWithAggregatesFilter<"Company"> | string | null
+    clienteRecuperado?: StringNullableWithAggregatesFilter<"Company"> | string | null
+    etapa?: StringWithAggregatesFilter<"Company"> | string
+    assignedTo?: StringNullableWithAggregatesFilter<"Company"> | string | null
     createdAt?: DateTimeWithAggregatesFilter<"Company"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"Company"> | Date | string
   }
@@ -22903,6 +23131,7 @@ export namespace Prisma {
     id?: StringFilter<"Opportunity"> | string
     title?: StringFilter<"Opportunity"> | string
     amount?: FloatFilter<"Opportunity"> | number
+    fuente?: StringNullableFilter<"Opportunity"> | string | null
     probability?: IntFilter<"Opportunity"> | number
     etapa?: StringFilter<"Opportunity"> | string
     status?: StringFilter<"Opportunity"> | string
@@ -22923,6 +23152,7 @@ export namespace Prisma {
     id?: SortOrder
     title?: SortOrder
     amount?: SortOrder
+    fuente?: SortOrderInput | SortOrder
     probability?: SortOrder
     etapa?: SortOrder
     status?: SortOrder
@@ -22946,6 +23176,7 @@ export namespace Prisma {
     NOT?: OpportunityWhereInput | OpportunityWhereInput[]
     title?: StringFilter<"Opportunity"> | string
     amount?: FloatFilter<"Opportunity"> | number
+    fuente?: StringNullableFilter<"Opportunity"> | string | null
     probability?: IntFilter<"Opportunity"> | number
     etapa?: StringFilter<"Opportunity"> | string
     status?: StringFilter<"Opportunity"> | string
@@ -22966,6 +23197,7 @@ export namespace Prisma {
     id?: SortOrder
     title?: SortOrder
     amount?: SortOrder
+    fuente?: SortOrderInput | SortOrder
     probability?: SortOrder
     etapa?: SortOrder
     status?: SortOrder
@@ -22988,6 +23220,7 @@ export namespace Prisma {
     id?: StringWithAggregatesFilter<"Opportunity"> | string
     title?: StringWithAggregatesFilter<"Opportunity"> | string
     amount?: FloatWithAggregatesFilter<"Opportunity"> | number
+    fuente?: StringNullableWithAggregatesFilter<"Opportunity"> | string | null
     probability?: IntWithAggregatesFilter<"Opportunity"> | number
     etapa?: StringWithAggregatesFilter<"Opportunity"> | string
     status?: StringWithAggregatesFilter<"Opportunity"> | string
@@ -23745,6 +23978,7 @@ export namespace Prisma {
     accounts?: AccountCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactCreateNestedManyWithoutUserInput
     opportunitiesAssigned?: OpportunityCreateNestedManyWithoutUserInput
+    companiesAssigned?: CompanyCreateNestedManyWithoutUserInput
     activitiesAssigned?: ActivityCreateNestedManyWithoutUserInput
   }
 
@@ -23762,6 +23996,7 @@ export namespace Prisma {
     accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactUncheckedCreateNestedManyWithoutUserInput
     opportunitiesAssigned?: OpportunityUncheckedCreateNestedManyWithoutUserInput
+    companiesAssigned?: CompanyUncheckedCreateNestedManyWithoutUserInput
     activitiesAssigned?: ActivityUncheckedCreateNestedManyWithoutUserInput
   }
 
@@ -23779,6 +24014,7 @@ export namespace Prisma {
     accounts?: AccountUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUpdateManyWithoutUserNestedInput
     opportunitiesAssigned?: OpportunityUpdateManyWithoutUserNestedInput
+    companiesAssigned?: CompanyUpdateManyWithoutUserNestedInput
     activitiesAssigned?: ActivityUpdateManyWithoutUserNestedInput
   }
 
@@ -23796,6 +24032,7 @@ export namespace Prisma {
     accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUncheckedUpdateManyWithoutUserNestedInput
     opportunitiesAssigned?: OpportunityUncheckedUpdateManyWithoutUserNestedInput
+    companiesAssigned?: CompanyUncheckedUpdateManyWithoutUserNestedInput
     activitiesAssigned?: ActivityUncheckedUpdateManyWithoutUserNestedInput
   }
 
@@ -23841,9 +24078,9 @@ export namespace Prisma {
     id?: string
     name: string
     cargo?: string | null
-    phone: string
-    email: string
-    source: string
+    telefono: string
+    correo: string
+    fuente: string
     etapa?: string
     estimatedValue?: number
     nextAction?: string | null
@@ -23872,9 +24109,9 @@ export namespace Prisma {
     id?: string
     name: string
     cargo?: string | null
-    phone: string
-    email: string
-    source: string
+    telefono: string
+    correo: string
+    fuente: string
     etapa?: string
     assignedTo?: string | null
     estimatedValue?: number
@@ -23903,9 +24140,9 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     cargo?: NullableStringFieldUpdateOperationsInput | string | null
-    phone?: StringFieldUpdateOperationsInput | string
-    email?: StringFieldUpdateOperationsInput | string
-    source?: StringFieldUpdateOperationsInput | string
+    telefono?: StringFieldUpdateOperationsInput | string
+    correo?: StringFieldUpdateOperationsInput | string
+    fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
     nextAction?: NullableStringFieldUpdateOperationsInput | string | null
@@ -23934,9 +24171,9 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     cargo?: NullableStringFieldUpdateOperationsInput | string | null
-    phone?: StringFieldUpdateOperationsInput | string
-    email?: StringFieldUpdateOperationsInput | string
-    source?: StringFieldUpdateOperationsInput | string
+    telefono?: StringFieldUpdateOperationsInput | string
+    correo?: StringFieldUpdateOperationsInput | string
+    fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     estimatedValue?: FloatFieldUpdateOperationsInput | number
@@ -23965,9 +24202,9 @@ export namespace Prisma {
     id?: string
     name: string
     cargo?: string | null
-    phone: string
-    email: string
-    source: string
+    telefono: string
+    correo: string
+    fuente: string
     etapa?: string
     assignedTo?: string | null
     estimatedValue?: number
@@ -23991,9 +24228,9 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     cargo?: NullableStringFieldUpdateOperationsInput | string | null
-    phone?: StringFieldUpdateOperationsInput | string
-    email?: StringFieldUpdateOperationsInput | string
-    source?: StringFieldUpdateOperationsInput | string
+    telefono?: StringFieldUpdateOperationsInput | string
+    correo?: StringFieldUpdateOperationsInput | string
+    fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
     nextAction?: NullableStringFieldUpdateOperationsInput | string | null
@@ -24016,9 +24253,9 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     cargo?: NullableStringFieldUpdateOperationsInput | string | null
-    phone?: StringFieldUpdateOperationsInput | string
-    email?: StringFieldUpdateOperationsInput | string
-    source?: StringFieldUpdateOperationsInput | string
+    telefono?: StringFieldUpdateOperationsInput | string
+    correo?: StringFieldUpdateOperationsInput | string
+    fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     estimatedValue?: FloatFieldUpdateOperationsInput | number
@@ -24053,8 +24290,13 @@ export namespace Prisma {
     provincia?: string | null
     departamento?: string | null
     direccion?: string | null
+    facturacionEstimada?: number
+    fuente?: string | null
+    clienteRecuperado?: string | null
+    etapa?: string
     createdAt?: Date | string
     updatedAt?: Date | string
+    user?: UserCreateNestedOneWithoutCompaniesAssignedInput
     contacts?: CompanyContactCreateNestedManyWithoutCompanyInput
     companies?: CompanyCompanyCreateNestedManyWithoutCompanyInput
     linkedBy?: CompanyCompanyCreateNestedManyWithoutLinkedInput
@@ -24077,6 +24319,11 @@ export namespace Prisma {
     provincia?: string | null
     departamento?: string | null
     direccion?: string | null
+    facturacionEstimada?: number
+    fuente?: string | null
+    clienteRecuperado?: string | null
+    etapa?: string
+    assignedTo?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     contacts?: CompanyContactUncheckedCreateNestedManyWithoutCompanyInput
@@ -24101,8 +24348,13 @@ export namespace Prisma {
     provincia?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
     direccion?: NullableStringFieldUpdateOperationsInput | string | null
+    facturacionEstimada?: FloatFieldUpdateOperationsInput | number
+    fuente?: NullableStringFieldUpdateOperationsInput | string | null
+    clienteRecuperado?: NullableStringFieldUpdateOperationsInput | string | null
+    etapa?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    user?: UserUpdateOneWithoutCompaniesAssignedNestedInput
     contacts?: CompanyContactUpdateManyWithoutCompanyNestedInput
     companies?: CompanyCompanyUpdateManyWithoutCompanyNestedInput
     linkedBy?: CompanyCompanyUpdateManyWithoutLinkedNestedInput
@@ -24125,6 +24377,11 @@ export namespace Prisma {
     provincia?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
     direccion?: NullableStringFieldUpdateOperationsInput | string | null
+    facturacionEstimada?: FloatFieldUpdateOperationsInput | number
+    fuente?: NullableStringFieldUpdateOperationsInput | string | null
+    clienteRecuperado?: NullableStringFieldUpdateOperationsInput | string | null
+    etapa?: StringFieldUpdateOperationsInput | string
+    assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     contacts?: CompanyContactUncheckedUpdateManyWithoutCompanyNestedInput
@@ -24149,6 +24406,11 @@ export namespace Prisma {
     provincia?: string | null
     departamento?: string | null
     direccion?: string | null
+    facturacionEstimada?: number
+    fuente?: string | null
+    clienteRecuperado?: string | null
+    etapa?: string
+    assignedTo?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -24168,6 +24430,10 @@ export namespace Prisma {
     provincia?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
     direccion?: NullableStringFieldUpdateOperationsInput | string | null
+    facturacionEstimada?: FloatFieldUpdateOperationsInput | number
+    fuente?: NullableStringFieldUpdateOperationsInput | string | null
+    clienteRecuperado?: NullableStringFieldUpdateOperationsInput | string | null
+    etapa?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -24187,6 +24453,11 @@ export namespace Prisma {
     provincia?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
     direccion?: NullableStringFieldUpdateOperationsInput | string | null
+    facturacionEstimada?: FloatFieldUpdateOperationsInput | number
+    fuente?: NullableStringFieldUpdateOperationsInput | string | null
+    clienteRecuperado?: NullableStringFieldUpdateOperationsInput | string | null
+    etapa?: StringFieldUpdateOperationsInput | string
+    assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -24195,6 +24466,7 @@ export namespace Prisma {
     id?: string
     title: string
     amount: number
+    fuente?: string | null
     probability?: number
     etapa: string
     status?: string
@@ -24214,6 +24486,7 @@ export namespace Prisma {
     id?: string
     title: string
     amount: number
+    fuente?: string | null
     probability?: number
     etapa: string
     status?: string
@@ -24233,6 +24506,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     amount?: FloatFieldUpdateOperationsInput | number
+    fuente?: NullableStringFieldUpdateOperationsInput | string | null
     probability?: IntFieldUpdateOperationsInput | number
     etapa?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
@@ -24252,6 +24526,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     amount?: FloatFieldUpdateOperationsInput | number
+    fuente?: NullableStringFieldUpdateOperationsInput | string | null
     probability?: IntFieldUpdateOperationsInput | number
     etapa?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
@@ -24271,6 +24546,7 @@ export namespace Prisma {
     id?: string
     title: string
     amount: number
+    fuente?: string | null
     probability?: number
     etapa: string
     status?: string
@@ -24285,6 +24561,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     amount?: FloatFieldUpdateOperationsInput | number
+    fuente?: NullableStringFieldUpdateOperationsInput | string | null
     probability?: IntFieldUpdateOperationsInput | number
     etapa?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
@@ -24298,6 +24575,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     amount?: FloatFieldUpdateOperationsInput | number
+    fuente?: NullableStringFieldUpdateOperationsInput | string | null
     probability?: IntFieldUpdateOperationsInput | number
     etapa?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
@@ -25047,6 +25325,12 @@ export namespace Prisma {
     none?: OpportunityWhereInput
   }
 
+  export type CompanyListRelationFilter = {
+    every?: CompanyWhereInput
+    some?: CompanyWhereInput
+    none?: CompanyWhereInput
+  }
+
   export type ActivityListRelationFilter = {
     every?: ActivityWhereInput
     some?: ActivityWhereInput
@@ -25062,6 +25346,10 @@ export namespace Prisma {
   }
 
   export type OpportunityOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type CompanyOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -25213,9 +25501,9 @@ export namespace Prisma {
     id?: SortOrder
     name?: SortOrder
     cargo?: SortOrder
-    phone?: SortOrder
-    email?: SortOrder
-    source?: SortOrder
+    telefono?: SortOrder
+    correo?: SortOrder
+    fuente?: SortOrder
     etapa?: SortOrder
     assignedTo?: SortOrder
     estimatedValue?: SortOrder
@@ -25243,9 +25531,9 @@ export namespace Prisma {
     id?: SortOrder
     name?: SortOrder
     cargo?: SortOrder
-    phone?: SortOrder
-    email?: SortOrder
-    source?: SortOrder
+    telefono?: SortOrder
+    correo?: SortOrder
+    fuente?: SortOrder
     etapa?: SortOrder
     assignedTo?: SortOrder
     estimatedValue?: SortOrder
@@ -25267,9 +25555,9 @@ export namespace Prisma {
     id?: SortOrder
     name?: SortOrder
     cargo?: SortOrder
-    phone?: SortOrder
-    email?: SortOrder
-    source?: SortOrder
+    telefono?: SortOrder
+    correo?: SortOrder
+    fuente?: SortOrder
     etapa?: SortOrder
     assignedTo?: SortOrder
     estimatedValue?: SortOrder
@@ -25378,8 +25666,17 @@ export namespace Prisma {
     provincia?: SortOrder
     departamento?: SortOrder
     direccion?: SortOrder
+    facturacionEstimada?: SortOrder
+    fuente?: SortOrder
+    clienteRecuperado?: SortOrder
+    etapa?: SortOrder
+    assignedTo?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
+  }
+
+  export type CompanyAvgOrderByAggregateInput = {
+    facturacionEstimada?: SortOrder
   }
 
   export type CompanyMaxOrderByAggregateInput = {
@@ -25397,6 +25694,11 @@ export namespace Prisma {
     provincia?: SortOrder
     departamento?: SortOrder
     direccion?: SortOrder
+    facturacionEstimada?: SortOrder
+    fuente?: SortOrder
+    clienteRecuperado?: SortOrder
+    etapa?: SortOrder
+    assignedTo?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -25416,8 +25718,17 @@ export namespace Prisma {
     provincia?: SortOrder
     departamento?: SortOrder
     direccion?: SortOrder
+    facturacionEstimada?: SortOrder
+    fuente?: SortOrder
+    clienteRecuperado?: SortOrder
+    etapa?: SortOrder
+    assignedTo?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
+  }
+
+  export type CompanySumOrderByAggregateInput = {
+    facturacionEstimada?: SortOrder
   }
 
   export type IntFilter<$PrismaModel = never> = {
@@ -25455,6 +25766,7 @@ export namespace Prisma {
     id?: SortOrder
     title?: SortOrder
     amount?: SortOrder
+    fuente?: SortOrder
     probability?: SortOrder
     etapa?: SortOrder
     status?: SortOrder
@@ -25474,6 +25786,7 @@ export namespace Prisma {
     id?: SortOrder
     title?: SortOrder
     amount?: SortOrder
+    fuente?: SortOrder
     probability?: SortOrder
     etapa?: SortOrder
     status?: SortOrder
@@ -25488,6 +25801,7 @@ export namespace Prisma {
     id?: SortOrder
     title?: SortOrder
     amount?: SortOrder
+    fuente?: SortOrder
     probability?: SortOrder
     etapa?: SortOrder
     status?: SortOrder
@@ -25949,6 +26263,13 @@ export namespace Prisma {
     connect?: OpportunityWhereUniqueInput | OpportunityWhereUniqueInput[]
   }
 
+  export type CompanyCreateNestedManyWithoutUserInput = {
+    create?: XOR<CompanyCreateWithoutUserInput, CompanyUncheckedCreateWithoutUserInput> | CompanyCreateWithoutUserInput[] | CompanyUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: CompanyCreateOrConnectWithoutUserInput | CompanyCreateOrConnectWithoutUserInput[]
+    createMany?: CompanyCreateManyUserInputEnvelope
+    connect?: CompanyWhereUniqueInput | CompanyWhereUniqueInput[]
+  }
+
   export type ActivityCreateNestedManyWithoutUserInput = {
     create?: XOR<ActivityCreateWithoutUserInput, ActivityUncheckedCreateWithoutUserInput> | ActivityCreateWithoutUserInput[] | ActivityUncheckedCreateWithoutUserInput[]
     connectOrCreate?: ActivityCreateOrConnectWithoutUserInput | ActivityCreateOrConnectWithoutUserInput[]
@@ -25975,6 +26296,13 @@ export namespace Prisma {
     connectOrCreate?: OpportunityCreateOrConnectWithoutUserInput | OpportunityCreateOrConnectWithoutUserInput[]
     createMany?: OpportunityCreateManyUserInputEnvelope
     connect?: OpportunityWhereUniqueInput | OpportunityWhereUniqueInput[]
+  }
+
+  export type CompanyUncheckedCreateNestedManyWithoutUserInput = {
+    create?: XOR<CompanyCreateWithoutUserInput, CompanyUncheckedCreateWithoutUserInput> | CompanyCreateWithoutUserInput[] | CompanyUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: CompanyCreateOrConnectWithoutUserInput | CompanyCreateOrConnectWithoutUserInput[]
+    createMany?: CompanyCreateManyUserInputEnvelope
+    connect?: CompanyWhereUniqueInput | CompanyWhereUniqueInput[]
   }
 
   export type ActivityUncheckedCreateNestedManyWithoutUserInput = {
@@ -26038,6 +26366,20 @@ export namespace Prisma {
     deleteMany?: OpportunityScalarWhereInput | OpportunityScalarWhereInput[]
   }
 
+  export type CompanyUpdateManyWithoutUserNestedInput = {
+    create?: XOR<CompanyCreateWithoutUserInput, CompanyUncheckedCreateWithoutUserInput> | CompanyCreateWithoutUserInput[] | CompanyUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: CompanyCreateOrConnectWithoutUserInput | CompanyCreateOrConnectWithoutUserInput[]
+    upsert?: CompanyUpsertWithWhereUniqueWithoutUserInput | CompanyUpsertWithWhereUniqueWithoutUserInput[]
+    createMany?: CompanyCreateManyUserInputEnvelope
+    set?: CompanyWhereUniqueInput | CompanyWhereUniqueInput[]
+    disconnect?: CompanyWhereUniqueInput | CompanyWhereUniqueInput[]
+    delete?: CompanyWhereUniqueInput | CompanyWhereUniqueInput[]
+    connect?: CompanyWhereUniqueInput | CompanyWhereUniqueInput[]
+    update?: CompanyUpdateWithWhereUniqueWithoutUserInput | CompanyUpdateWithWhereUniqueWithoutUserInput[]
+    updateMany?: CompanyUpdateManyWithWhereWithoutUserInput | CompanyUpdateManyWithWhereWithoutUserInput[]
+    deleteMany?: CompanyScalarWhereInput | CompanyScalarWhereInput[]
+  }
+
   export type ActivityUpdateManyWithoutUserNestedInput = {
     create?: XOR<ActivityCreateWithoutUserInput, ActivityUncheckedCreateWithoutUserInput> | ActivityCreateWithoutUserInput[] | ActivityUncheckedCreateWithoutUserInput[]
     connectOrCreate?: ActivityCreateOrConnectWithoutUserInput | ActivityCreateOrConnectWithoutUserInput[]
@@ -26092,6 +26434,20 @@ export namespace Prisma {
     update?: OpportunityUpdateWithWhereUniqueWithoutUserInput | OpportunityUpdateWithWhereUniqueWithoutUserInput[]
     updateMany?: OpportunityUpdateManyWithWhereWithoutUserInput | OpportunityUpdateManyWithWhereWithoutUserInput[]
     deleteMany?: OpportunityScalarWhereInput | OpportunityScalarWhereInput[]
+  }
+
+  export type CompanyUncheckedUpdateManyWithoutUserNestedInput = {
+    create?: XOR<CompanyCreateWithoutUserInput, CompanyUncheckedCreateWithoutUserInput> | CompanyCreateWithoutUserInput[] | CompanyUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: CompanyCreateOrConnectWithoutUserInput | CompanyCreateOrConnectWithoutUserInput[]
+    upsert?: CompanyUpsertWithWhereUniqueWithoutUserInput | CompanyUpsertWithWhereUniqueWithoutUserInput[]
+    createMany?: CompanyCreateManyUserInputEnvelope
+    set?: CompanyWhereUniqueInput | CompanyWhereUniqueInput[]
+    disconnect?: CompanyWhereUniqueInput | CompanyWhereUniqueInput[]
+    delete?: CompanyWhereUniqueInput | CompanyWhereUniqueInput[]
+    connect?: CompanyWhereUniqueInput | CompanyWhereUniqueInput[]
+    update?: CompanyUpdateWithWhereUniqueWithoutUserInput | CompanyUpdateWithWhereUniqueWithoutUserInput[]
+    updateMany?: CompanyUpdateManyWithWhereWithoutUserInput | CompanyUpdateManyWithWhereWithoutUserInput[]
+    deleteMany?: CompanyScalarWhereInput | CompanyScalarWhereInput[]
   }
 
   export type ActivityUncheckedUpdateManyWithoutUserNestedInput = {
@@ -26351,6 +26707,12 @@ export namespace Prisma {
     deleteMany?: ContactActivityScalarWhereInput | ContactActivityScalarWhereInput[]
   }
 
+  export type UserCreateNestedOneWithoutCompaniesAssignedInput = {
+    create?: XOR<UserCreateWithoutCompaniesAssignedInput, UserUncheckedCreateWithoutCompaniesAssignedInput>
+    connectOrCreate?: UserCreateOrConnectWithoutCompaniesAssignedInput
+    connect?: UserWhereUniqueInput
+  }
+
   export type CompanyContactCreateNestedManyWithoutCompanyInput = {
     create?: XOR<CompanyContactCreateWithoutCompanyInput, CompanyContactUncheckedCreateWithoutCompanyInput> | CompanyContactCreateWithoutCompanyInput[] | CompanyContactUncheckedCreateWithoutCompanyInput[]
     connectOrCreate?: CompanyContactCreateOrConnectWithoutCompanyInput | CompanyContactCreateOrConnectWithoutCompanyInput[]
@@ -26419,6 +26781,16 @@ export namespace Prisma {
     connectOrCreate?: CompanyActivityCreateOrConnectWithoutCompanyInput | CompanyActivityCreateOrConnectWithoutCompanyInput[]
     createMany?: CompanyActivityCreateManyCompanyInputEnvelope
     connect?: CompanyActivityWhereUniqueInput | CompanyActivityWhereUniqueInput[]
+  }
+
+  export type UserUpdateOneWithoutCompaniesAssignedNestedInput = {
+    create?: XOR<UserCreateWithoutCompaniesAssignedInput, UserUncheckedCreateWithoutCompaniesAssignedInput>
+    connectOrCreate?: UserCreateOrConnectWithoutCompaniesAssignedInput
+    upsert?: UserUpsertWithoutCompaniesAssignedInput
+    disconnect?: UserWhereInput | boolean
+    delete?: UserWhereInput | boolean
+    connect?: UserWhereUniqueInput
+    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutCompaniesAssignedInput, UserUpdateWithoutCompaniesAssignedInput>, UserUncheckedUpdateWithoutCompaniesAssignedInput>
   }
 
   export type CompanyContactUpdateManyWithoutCompanyNestedInput = {
@@ -27433,6 +27805,7 @@ export namespace Prisma {
     accounts?: AccountCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactCreateNestedManyWithoutUserInput
     opportunitiesAssigned?: OpportunityCreateNestedManyWithoutUserInput
+    companiesAssigned?: CompanyCreateNestedManyWithoutUserInput
     activitiesAssigned?: ActivityCreateNestedManyWithoutUserInput
   }
 
@@ -27449,6 +27822,7 @@ export namespace Prisma {
     accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactUncheckedCreateNestedManyWithoutUserInput
     opportunitiesAssigned?: OpportunityUncheckedCreateNestedManyWithoutUserInput
+    companiesAssigned?: CompanyUncheckedCreateNestedManyWithoutUserInput
     activitiesAssigned?: ActivityUncheckedCreateNestedManyWithoutUserInput
   }
 
@@ -27592,6 +27966,7 @@ export namespace Prisma {
     role: RoleCreateNestedOneWithoutUsersInput
     contactsAssigned?: ContactCreateNestedManyWithoutUserInput
     opportunitiesAssigned?: OpportunityCreateNestedManyWithoutUserInput
+    companiesAssigned?: CompanyCreateNestedManyWithoutUserInput
     activitiesAssigned?: ActivityCreateNestedManyWithoutUserInput
   }
 
@@ -27608,6 +27983,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     contactsAssigned?: ContactUncheckedCreateNestedManyWithoutUserInput
     opportunitiesAssigned?: OpportunityUncheckedCreateNestedManyWithoutUserInput
+    companiesAssigned?: CompanyUncheckedCreateNestedManyWithoutUserInput
     activitiesAssigned?: ActivityUncheckedCreateNestedManyWithoutUserInput
   }
 
@@ -27640,6 +28016,7 @@ export namespace Prisma {
     role?: RoleUpdateOneRequiredWithoutUsersNestedInput
     contactsAssigned?: ContactUpdateManyWithoutUserNestedInput
     opportunitiesAssigned?: OpportunityUpdateManyWithoutUserNestedInput
+    companiesAssigned?: CompanyUpdateManyWithoutUserNestedInput
     activitiesAssigned?: ActivityUpdateManyWithoutUserNestedInput
   }
 
@@ -27656,6 +28033,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     contactsAssigned?: ContactUncheckedUpdateManyWithoutUserNestedInput
     opportunitiesAssigned?: OpportunityUncheckedUpdateManyWithoutUserNestedInput
+    companiesAssigned?: CompanyUncheckedUpdateManyWithoutUserNestedInput
     activitiesAssigned?: ActivityUncheckedUpdateManyWithoutUserNestedInput
   }
 
@@ -27718,9 +28096,9 @@ export namespace Prisma {
     id?: string
     name: string
     cargo?: string | null
-    phone: string
-    email: string
-    source: string
+    telefono: string
+    correo: string
+    fuente: string
     etapa?: string
     estimatedValue?: number
     nextAction?: string | null
@@ -27748,9 +28126,9 @@ export namespace Prisma {
     id?: string
     name: string
     cargo?: string | null
-    phone: string
-    email: string
-    source: string
+    telefono: string
+    correo: string
+    fuente: string
     etapa?: string
     estimatedValue?: number
     nextAction?: string | null
@@ -27788,6 +28166,7 @@ export namespace Prisma {
     id?: string
     title: string
     amount: number
+    fuente?: string | null
     probability?: number
     etapa: string
     status?: string
@@ -27806,6 +28185,7 @@ export namespace Prisma {
     id?: string
     title: string
     amount: number
+    fuente?: string | null
     probability?: number
     etapa: string
     status?: string
@@ -27827,6 +28207,72 @@ export namespace Prisma {
 
   export type OpportunityCreateManyUserInputEnvelope = {
     data: OpportunityCreateManyUserInput | OpportunityCreateManyUserInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type CompanyCreateWithoutUserInput = {
+    id?: string
+    name: string
+    razonSocial?: string | null
+    ruc?: string | null
+    telefono?: string | null
+    domain?: string | null
+    rubro?: string | null
+    tipo?: string | null
+    linkedin?: string | null
+    correo?: string | null
+    distrito?: string | null
+    provincia?: string | null
+    departamento?: string | null
+    direccion?: string | null
+    facturacionEstimada?: number
+    fuente?: string | null
+    clienteRecuperado?: string | null
+    etapa?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    contacts?: CompanyContactCreateNestedManyWithoutCompanyInput
+    companies?: CompanyCompanyCreateNestedManyWithoutCompanyInput
+    linkedBy?: CompanyCompanyCreateNestedManyWithoutLinkedInput
+    opportunities?: CompanyOpportunityCreateNestedManyWithoutCompanyInput
+    activities?: CompanyActivityCreateNestedManyWithoutCompanyInput
+  }
+
+  export type CompanyUncheckedCreateWithoutUserInput = {
+    id?: string
+    name: string
+    razonSocial?: string | null
+    ruc?: string | null
+    telefono?: string | null
+    domain?: string | null
+    rubro?: string | null
+    tipo?: string | null
+    linkedin?: string | null
+    correo?: string | null
+    distrito?: string | null
+    provincia?: string | null
+    departamento?: string | null
+    direccion?: string | null
+    facturacionEstimada?: number
+    fuente?: string | null
+    clienteRecuperado?: string | null
+    etapa?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    contacts?: CompanyContactUncheckedCreateNestedManyWithoutCompanyInput
+    companies?: CompanyCompanyUncheckedCreateNestedManyWithoutCompanyInput
+    linkedBy?: CompanyCompanyUncheckedCreateNestedManyWithoutLinkedInput
+    opportunities?: CompanyOpportunityUncheckedCreateNestedManyWithoutCompanyInput
+    activities?: CompanyActivityUncheckedCreateNestedManyWithoutCompanyInput
+  }
+
+  export type CompanyCreateOrConnectWithoutUserInput = {
+    where: CompanyWhereUniqueInput
+    create: XOR<CompanyCreateWithoutUserInput, CompanyUncheckedCreateWithoutUserInput>
+  }
+
+  export type CompanyCreateManyUserInputEnvelope = {
+    data: CompanyCreateManyUserInput | CompanyCreateManyUserInput[]
     skipDuplicates?: boolean
   }
 
@@ -27959,9 +28405,9 @@ export namespace Prisma {
     id?: StringFilter<"Contact"> | string
     name?: StringFilter<"Contact"> | string
     cargo?: StringNullableFilter<"Contact"> | string | null
-    phone?: StringFilter<"Contact"> | string
-    email?: StringFilter<"Contact"> | string
-    source?: StringFilter<"Contact"> | string
+    telefono?: StringFilter<"Contact"> | string
+    correo?: StringFilter<"Contact"> | string
+    fuente?: StringFilter<"Contact"> | string
     etapa?: StringFilter<"Contact"> | string
     assignedTo?: StringNullableFilter<"Contact"> | string | null
     estimatedValue?: FloatFilter<"Contact"> | number
@@ -28004,6 +28450,7 @@ export namespace Prisma {
     id?: StringFilter<"Opportunity"> | string
     title?: StringFilter<"Opportunity"> | string
     amount?: FloatFilter<"Opportunity"> | number
+    fuente?: StringNullableFilter<"Opportunity"> | string | null
     probability?: IntFilter<"Opportunity"> | number
     etapa?: StringFilter<"Opportunity"> | string
     status?: StringFilter<"Opportunity"> | string
@@ -28012,6 +28459,49 @@ export namespace Prisma {
     assignedTo?: StringNullableFilter<"Opportunity"> | string | null
     createdAt?: DateTimeFilter<"Opportunity"> | Date | string
     updatedAt?: DateTimeFilter<"Opportunity"> | Date | string
+  }
+
+  export type CompanyUpsertWithWhereUniqueWithoutUserInput = {
+    where: CompanyWhereUniqueInput
+    update: XOR<CompanyUpdateWithoutUserInput, CompanyUncheckedUpdateWithoutUserInput>
+    create: XOR<CompanyCreateWithoutUserInput, CompanyUncheckedCreateWithoutUserInput>
+  }
+
+  export type CompanyUpdateWithWhereUniqueWithoutUserInput = {
+    where: CompanyWhereUniqueInput
+    data: XOR<CompanyUpdateWithoutUserInput, CompanyUncheckedUpdateWithoutUserInput>
+  }
+
+  export type CompanyUpdateManyWithWhereWithoutUserInput = {
+    where: CompanyScalarWhereInput
+    data: XOR<CompanyUpdateManyMutationInput, CompanyUncheckedUpdateManyWithoutUserInput>
+  }
+
+  export type CompanyScalarWhereInput = {
+    AND?: CompanyScalarWhereInput | CompanyScalarWhereInput[]
+    OR?: CompanyScalarWhereInput[]
+    NOT?: CompanyScalarWhereInput | CompanyScalarWhereInput[]
+    id?: StringFilter<"Company"> | string
+    name?: StringFilter<"Company"> | string
+    razonSocial?: StringNullableFilter<"Company"> | string | null
+    ruc?: StringNullableFilter<"Company"> | string | null
+    telefono?: StringNullableFilter<"Company"> | string | null
+    domain?: StringNullableFilter<"Company"> | string | null
+    rubro?: StringNullableFilter<"Company"> | string | null
+    tipo?: StringNullableFilter<"Company"> | string | null
+    linkedin?: StringNullableFilter<"Company"> | string | null
+    correo?: StringNullableFilter<"Company"> | string | null
+    distrito?: StringNullableFilter<"Company"> | string | null
+    provincia?: StringNullableFilter<"Company"> | string | null
+    departamento?: StringNullableFilter<"Company"> | string | null
+    direccion?: StringNullableFilter<"Company"> | string | null
+    facturacionEstimada?: FloatFilter<"Company"> | number
+    fuente?: StringNullableFilter<"Company"> | string | null
+    clienteRecuperado?: StringNullableFilter<"Company"> | string | null
+    etapa?: StringFilter<"Company"> | string
+    assignedTo?: StringNullableFilter<"Company"> | string | null
+    createdAt?: DateTimeFilter<"Company"> | Date | string
+    updatedAt?: DateTimeFilter<"Company"> | Date | string
   }
 
   export type ActivityUpsertWithWhereUniqueWithoutUserInput = {
@@ -28061,6 +28551,7 @@ export namespace Prisma {
     role: RoleCreateNestedOneWithoutUsersInput
     accounts?: AccountCreateNestedManyWithoutUserInput
     opportunitiesAssigned?: OpportunityCreateNestedManyWithoutUserInput
+    companiesAssigned?: CompanyCreateNestedManyWithoutUserInput
     activitiesAssigned?: ActivityCreateNestedManyWithoutUserInput
   }
 
@@ -28077,6 +28568,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
     opportunitiesAssigned?: OpportunityUncheckedCreateNestedManyWithoutUserInput
+    companiesAssigned?: CompanyUncheckedCreateNestedManyWithoutUserInput
     activitiesAssigned?: ActivityUncheckedCreateNestedManyWithoutUserInput
   }
 
@@ -28211,6 +28703,7 @@ export namespace Prisma {
     role?: RoleUpdateOneRequiredWithoutUsersNestedInput
     accounts?: AccountUpdateManyWithoutUserNestedInput
     opportunitiesAssigned?: OpportunityUpdateManyWithoutUserNestedInput
+    companiesAssigned?: CompanyUpdateManyWithoutUserNestedInput
     activitiesAssigned?: ActivityUpdateManyWithoutUserNestedInput
   }
 
@@ -28227,6 +28720,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
     opportunitiesAssigned?: OpportunityUncheckedUpdateManyWithoutUserNestedInput
+    companiesAssigned?: CompanyUncheckedUpdateManyWithoutUserNestedInput
     activitiesAssigned?: ActivityUncheckedUpdateManyWithoutUserNestedInput
   }
 
@@ -28347,6 +28841,45 @@ export namespace Prisma {
     activityId?: StringFilter<"ContactActivity"> | string
   }
 
+  export type UserCreateWithoutCompaniesAssignedInput = {
+    id?: string
+    name: string
+    phone?: string | null
+    avatar?: string | null
+    status?: string
+    joinedAt?: Date | string
+    lastActivity?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    role: RoleCreateNestedOneWithoutUsersInput
+    accounts?: AccountCreateNestedManyWithoutUserInput
+    contactsAssigned?: ContactCreateNestedManyWithoutUserInput
+    opportunitiesAssigned?: OpportunityCreateNestedManyWithoutUserInput
+    activitiesAssigned?: ActivityCreateNestedManyWithoutUserInput
+  }
+
+  export type UserUncheckedCreateWithoutCompaniesAssignedInput = {
+    id?: string
+    name: string
+    roleId: string
+    phone?: string | null
+    avatar?: string | null
+    status?: string
+    joinedAt?: Date | string
+    lastActivity?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
+    contactsAssigned?: ContactUncheckedCreateNestedManyWithoutUserInput
+    opportunitiesAssigned?: OpportunityUncheckedCreateNestedManyWithoutUserInput
+    activitiesAssigned?: ActivityUncheckedCreateNestedManyWithoutUserInput
+  }
+
+  export type UserCreateOrConnectWithoutCompaniesAssignedInput = {
+    where: UserWhereUniqueInput
+    create: XOR<UserCreateWithoutCompaniesAssignedInput, UserUncheckedCreateWithoutCompaniesAssignedInput>
+  }
+
   export type CompanyContactCreateWithoutCompanyInput = {
     id?: string
     isPrimary?: boolean
@@ -28447,6 +28980,51 @@ export namespace Prisma {
   export type CompanyActivityCreateManyCompanyInputEnvelope = {
     data: CompanyActivityCreateManyCompanyInput | CompanyActivityCreateManyCompanyInput[]
     skipDuplicates?: boolean
+  }
+
+  export type UserUpsertWithoutCompaniesAssignedInput = {
+    update: XOR<UserUpdateWithoutCompaniesAssignedInput, UserUncheckedUpdateWithoutCompaniesAssignedInput>
+    create: XOR<UserCreateWithoutCompaniesAssignedInput, UserUncheckedCreateWithoutCompaniesAssignedInput>
+    where?: UserWhereInput
+  }
+
+  export type UserUpdateToOneWithWhereWithoutCompaniesAssignedInput = {
+    where?: UserWhereInput
+    data: XOR<UserUpdateWithoutCompaniesAssignedInput, UserUncheckedUpdateWithoutCompaniesAssignedInput>
+  }
+
+  export type UserUpdateWithoutCompaniesAssignedInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
+    avatar?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: StringFieldUpdateOperationsInput | string
+    joinedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    role?: RoleUpdateOneRequiredWithoutUsersNestedInput
+    accounts?: AccountUpdateManyWithoutUserNestedInput
+    contactsAssigned?: ContactUpdateManyWithoutUserNestedInput
+    opportunitiesAssigned?: OpportunityUpdateManyWithoutUserNestedInput
+    activitiesAssigned?: ActivityUpdateManyWithoutUserNestedInput
+  }
+
+  export type UserUncheckedUpdateWithoutCompaniesAssignedInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    roleId?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
+    avatar?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: StringFieldUpdateOperationsInput | string
+    joinedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
+    contactsAssigned?: ContactUncheckedUpdateManyWithoutUserNestedInput
+    opportunitiesAssigned?: OpportunityUncheckedUpdateManyWithoutUserNestedInput
+    activitiesAssigned?: ActivityUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type CompanyContactUpsertWithWhereUniqueWithoutCompanyInput = {
@@ -28569,6 +29147,7 @@ export namespace Prisma {
     role: RoleCreateNestedOneWithoutUsersInput
     accounts?: AccountCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactCreateNestedManyWithoutUserInput
+    companiesAssigned?: CompanyCreateNestedManyWithoutUserInput
     activitiesAssigned?: ActivityCreateNestedManyWithoutUserInput
   }
 
@@ -28585,6 +29164,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactUncheckedCreateNestedManyWithoutUserInput
+    companiesAssigned?: CompanyUncheckedCreateNestedManyWithoutUserInput
     activitiesAssigned?: ActivityUncheckedCreateNestedManyWithoutUserInput
   }
 
@@ -28717,6 +29297,7 @@ export namespace Prisma {
     role?: RoleUpdateOneRequiredWithoutUsersNestedInput
     accounts?: AccountUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUpdateManyWithoutUserNestedInput
+    companiesAssigned?: CompanyUpdateManyWithoutUserNestedInput
     activitiesAssigned?: ActivityUpdateManyWithoutUserNestedInput
   }
 
@@ -28733,6 +29314,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUncheckedUpdateManyWithoutUserNestedInput
+    companiesAssigned?: CompanyUncheckedUpdateManyWithoutUserNestedInput
     activitiesAssigned?: ActivityUncheckedUpdateManyWithoutUserNestedInput
   }
 
@@ -28848,6 +29430,7 @@ export namespace Prisma {
     accounts?: AccountCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactCreateNestedManyWithoutUserInput
     opportunitiesAssigned?: OpportunityCreateNestedManyWithoutUserInput
+    companiesAssigned?: CompanyCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutActivitiesAssignedInput = {
@@ -28864,6 +29447,7 @@ export namespace Prisma {
     accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactUncheckedCreateNestedManyWithoutUserInput
     opportunitiesAssigned?: OpportunityUncheckedCreateNestedManyWithoutUserInput
+    companiesAssigned?: CompanyUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutActivitiesAssignedInput = {
@@ -28956,6 +29540,7 @@ export namespace Prisma {
     accounts?: AccountUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUpdateManyWithoutUserNestedInput
     opportunitiesAssigned?: OpportunityUpdateManyWithoutUserNestedInput
+    companiesAssigned?: CompanyUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutActivitiesAssignedInput = {
@@ -28972,6 +29557,7 @@ export namespace Prisma {
     accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUncheckedUpdateManyWithoutUserNestedInput
     opportunitiesAssigned?: OpportunityUncheckedUpdateManyWithoutUserNestedInput
+    companiesAssigned?: CompanyUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type ContactActivityUpsertWithWhereUniqueWithoutActivityInput = {
@@ -29037,8 +29623,13 @@ export namespace Prisma {
     provincia?: string | null
     departamento?: string | null
     direccion?: string | null
+    facturacionEstimada?: number
+    fuente?: string | null
+    clienteRecuperado?: string | null
+    etapa?: string
     createdAt?: Date | string
     updatedAt?: Date | string
+    user?: UserCreateNestedOneWithoutCompaniesAssignedInput
     companies?: CompanyCompanyCreateNestedManyWithoutCompanyInput
     linkedBy?: CompanyCompanyCreateNestedManyWithoutLinkedInput
     opportunities?: CompanyOpportunityCreateNestedManyWithoutCompanyInput
@@ -29060,6 +29651,11 @@ export namespace Prisma {
     provincia?: string | null
     departamento?: string | null
     direccion?: string | null
+    facturacionEstimada?: number
+    fuente?: string | null
+    clienteRecuperado?: string | null
+    etapa?: string
+    assignedTo?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     companies?: CompanyCompanyUncheckedCreateNestedManyWithoutCompanyInput
@@ -29077,9 +29673,9 @@ export namespace Prisma {
     id?: string
     name: string
     cargo?: string | null
-    phone: string
-    email: string
-    source: string
+    telefono: string
+    correo: string
+    fuente: string
     etapa?: string
     estimatedValue?: number
     nextAction?: string | null
@@ -29107,9 +29703,9 @@ export namespace Prisma {
     id?: string
     name: string
     cargo?: string | null
-    phone: string
-    email: string
-    source: string
+    telefono: string
+    correo: string
+    fuente: string
     etapa?: string
     assignedTo?: string | null
     estimatedValue?: number
@@ -29164,8 +29760,13 @@ export namespace Prisma {
     provincia?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
     direccion?: NullableStringFieldUpdateOperationsInput | string | null
+    facturacionEstimada?: FloatFieldUpdateOperationsInput | number
+    fuente?: NullableStringFieldUpdateOperationsInput | string | null
+    clienteRecuperado?: NullableStringFieldUpdateOperationsInput | string | null
+    etapa?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    user?: UserUpdateOneWithoutCompaniesAssignedNestedInput
     companies?: CompanyCompanyUpdateManyWithoutCompanyNestedInput
     linkedBy?: CompanyCompanyUpdateManyWithoutLinkedNestedInput
     opportunities?: CompanyOpportunityUpdateManyWithoutCompanyNestedInput
@@ -29187,6 +29788,11 @@ export namespace Prisma {
     provincia?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
     direccion?: NullableStringFieldUpdateOperationsInput | string | null
+    facturacionEstimada?: FloatFieldUpdateOperationsInput | number
+    fuente?: NullableStringFieldUpdateOperationsInput | string | null
+    clienteRecuperado?: NullableStringFieldUpdateOperationsInput | string | null
+    etapa?: StringFieldUpdateOperationsInput | string
+    assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     companies?: CompanyCompanyUncheckedUpdateManyWithoutCompanyNestedInput
@@ -29210,9 +29816,9 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     cargo?: NullableStringFieldUpdateOperationsInput | string | null
-    phone?: StringFieldUpdateOperationsInput | string
-    email?: StringFieldUpdateOperationsInput | string
-    source?: StringFieldUpdateOperationsInput | string
+    telefono?: StringFieldUpdateOperationsInput | string
+    correo?: StringFieldUpdateOperationsInput | string
+    fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
     nextAction?: NullableStringFieldUpdateOperationsInput | string | null
@@ -29240,9 +29846,9 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     cargo?: NullableStringFieldUpdateOperationsInput | string | null
-    phone?: StringFieldUpdateOperationsInput | string
-    email?: StringFieldUpdateOperationsInput | string
-    source?: StringFieldUpdateOperationsInput | string
+    telefono?: StringFieldUpdateOperationsInput | string
+    correo?: StringFieldUpdateOperationsInput | string
+    fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     estimatedValue?: FloatFieldUpdateOperationsInput | number
@@ -29270,9 +29876,9 @@ export namespace Prisma {
     id?: string
     name: string
     cargo?: string | null
-    phone: string
-    email: string
-    source: string
+    telefono: string
+    correo: string
+    fuente: string
     etapa?: string
     estimatedValue?: number
     nextAction?: string | null
@@ -29300,9 +29906,9 @@ export namespace Prisma {
     id?: string
     name: string
     cargo?: string | null
-    phone: string
-    email: string
-    source: string
+    telefono: string
+    correo: string
+    fuente: string
     etapa?: string
     assignedTo?: string | null
     estimatedValue?: number
@@ -29335,9 +29941,9 @@ export namespace Prisma {
     id?: string
     name: string
     cargo?: string | null
-    phone: string
-    email: string
-    source: string
+    telefono: string
+    correo: string
+    fuente: string
     etapa?: string
     estimatedValue?: number
     nextAction?: string | null
@@ -29365,9 +29971,9 @@ export namespace Prisma {
     id?: string
     name: string
     cargo?: string | null
-    phone: string
-    email: string
-    source: string
+    telefono: string
+    correo: string
+    fuente: string
     etapa?: string
     assignedTo?: string | null
     estimatedValue?: number
@@ -29411,9 +30017,9 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     cargo?: NullableStringFieldUpdateOperationsInput | string | null
-    phone?: StringFieldUpdateOperationsInput | string
-    email?: StringFieldUpdateOperationsInput | string
-    source?: StringFieldUpdateOperationsInput | string
+    telefono?: StringFieldUpdateOperationsInput | string
+    correo?: StringFieldUpdateOperationsInput | string
+    fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
     nextAction?: NullableStringFieldUpdateOperationsInput | string | null
@@ -29441,9 +30047,9 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     cargo?: NullableStringFieldUpdateOperationsInput | string | null
-    phone?: StringFieldUpdateOperationsInput | string
-    email?: StringFieldUpdateOperationsInput | string
-    source?: StringFieldUpdateOperationsInput | string
+    telefono?: StringFieldUpdateOperationsInput | string
+    correo?: StringFieldUpdateOperationsInput | string
+    fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     estimatedValue?: FloatFieldUpdateOperationsInput | number
@@ -29482,9 +30088,9 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     cargo?: NullableStringFieldUpdateOperationsInput | string | null
-    phone?: StringFieldUpdateOperationsInput | string
-    email?: StringFieldUpdateOperationsInput | string
-    source?: StringFieldUpdateOperationsInput | string
+    telefono?: StringFieldUpdateOperationsInput | string
+    correo?: StringFieldUpdateOperationsInput | string
+    fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
     nextAction?: NullableStringFieldUpdateOperationsInput | string | null
@@ -29512,9 +30118,9 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     cargo?: NullableStringFieldUpdateOperationsInput | string | null
-    phone?: StringFieldUpdateOperationsInput | string
-    email?: StringFieldUpdateOperationsInput | string
-    source?: StringFieldUpdateOperationsInput | string
+    telefono?: StringFieldUpdateOperationsInput | string
+    correo?: StringFieldUpdateOperationsInput | string
+    fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     estimatedValue?: FloatFieldUpdateOperationsInput | number
@@ -29542,9 +30148,9 @@ export namespace Prisma {
     id?: string
     name: string
     cargo?: string | null
-    phone: string
-    email: string
-    source: string
+    telefono: string
+    correo: string
+    fuente: string
     etapa?: string
     estimatedValue?: number
     nextAction?: string | null
@@ -29572,9 +30178,9 @@ export namespace Prisma {
     id?: string
     name: string
     cargo?: string | null
-    phone: string
-    email: string
-    source: string
+    telefono: string
+    correo: string
+    fuente: string
     etapa?: string
     assignedTo?: string | null
     estimatedValue?: number
@@ -29607,6 +30213,7 @@ export namespace Prisma {
     id?: string
     title: string
     amount: number
+    fuente?: string | null
     probability?: number
     etapa: string
     status?: string
@@ -29625,6 +30232,7 @@ export namespace Prisma {
     id?: string
     title: string
     amount: number
+    fuente?: string | null
     probability?: number
     etapa: string
     status?: string
@@ -29659,9 +30267,9 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     cargo?: NullableStringFieldUpdateOperationsInput | string | null
-    phone?: StringFieldUpdateOperationsInput | string
-    email?: StringFieldUpdateOperationsInput | string
-    source?: StringFieldUpdateOperationsInput | string
+    telefono?: StringFieldUpdateOperationsInput | string
+    correo?: StringFieldUpdateOperationsInput | string
+    fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
     nextAction?: NullableStringFieldUpdateOperationsInput | string | null
@@ -29689,9 +30297,9 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     cargo?: NullableStringFieldUpdateOperationsInput | string | null
-    phone?: StringFieldUpdateOperationsInput | string
-    email?: StringFieldUpdateOperationsInput | string
-    source?: StringFieldUpdateOperationsInput | string
+    telefono?: StringFieldUpdateOperationsInput | string
+    correo?: StringFieldUpdateOperationsInput | string
+    fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     estimatedValue?: FloatFieldUpdateOperationsInput | number
@@ -29730,6 +30338,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     amount?: FloatFieldUpdateOperationsInput | number
+    fuente?: NullableStringFieldUpdateOperationsInput | string | null
     probability?: IntFieldUpdateOperationsInput | number
     etapa?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
@@ -29748,6 +30357,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     amount?: FloatFieldUpdateOperationsInput | number
+    fuente?: NullableStringFieldUpdateOperationsInput | string | null
     probability?: IntFieldUpdateOperationsInput | number
     etapa?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
@@ -29777,8 +30387,13 @@ export namespace Prisma {
     provincia?: string | null
     departamento?: string | null
     direccion?: string | null
+    facturacionEstimada?: number
+    fuente?: string | null
+    clienteRecuperado?: string | null
+    etapa?: string
     createdAt?: Date | string
     updatedAt?: Date | string
+    user?: UserCreateNestedOneWithoutCompaniesAssignedInput
     contacts?: CompanyContactCreateNestedManyWithoutCompanyInput
     linkedBy?: CompanyCompanyCreateNestedManyWithoutLinkedInput
     opportunities?: CompanyOpportunityCreateNestedManyWithoutCompanyInput
@@ -29800,6 +30415,11 @@ export namespace Prisma {
     provincia?: string | null
     departamento?: string | null
     direccion?: string | null
+    facturacionEstimada?: number
+    fuente?: string | null
+    clienteRecuperado?: string | null
+    etapa?: string
+    assignedTo?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     contacts?: CompanyContactUncheckedCreateNestedManyWithoutCompanyInput
@@ -29828,8 +30448,13 @@ export namespace Prisma {
     provincia?: string | null
     departamento?: string | null
     direccion?: string | null
+    facturacionEstimada?: number
+    fuente?: string | null
+    clienteRecuperado?: string | null
+    etapa?: string
     createdAt?: Date | string
     updatedAt?: Date | string
+    user?: UserCreateNestedOneWithoutCompaniesAssignedInput
     contacts?: CompanyContactCreateNestedManyWithoutCompanyInput
     companies?: CompanyCompanyCreateNestedManyWithoutCompanyInput
     opportunities?: CompanyOpportunityCreateNestedManyWithoutCompanyInput
@@ -29851,6 +30476,11 @@ export namespace Prisma {
     provincia?: string | null
     departamento?: string | null
     direccion?: string | null
+    facturacionEstimada?: number
+    fuente?: string | null
+    clienteRecuperado?: string | null
+    etapa?: string
+    assignedTo?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     contacts?: CompanyContactUncheckedCreateNestedManyWithoutCompanyInput
@@ -29890,8 +30520,13 @@ export namespace Prisma {
     provincia?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
     direccion?: NullableStringFieldUpdateOperationsInput | string | null
+    facturacionEstimada?: FloatFieldUpdateOperationsInput | number
+    fuente?: NullableStringFieldUpdateOperationsInput | string | null
+    clienteRecuperado?: NullableStringFieldUpdateOperationsInput | string | null
+    etapa?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    user?: UserUpdateOneWithoutCompaniesAssignedNestedInput
     contacts?: CompanyContactUpdateManyWithoutCompanyNestedInput
     linkedBy?: CompanyCompanyUpdateManyWithoutLinkedNestedInput
     opportunities?: CompanyOpportunityUpdateManyWithoutCompanyNestedInput
@@ -29913,6 +30548,11 @@ export namespace Prisma {
     provincia?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
     direccion?: NullableStringFieldUpdateOperationsInput | string | null
+    facturacionEstimada?: FloatFieldUpdateOperationsInput | number
+    fuente?: NullableStringFieldUpdateOperationsInput | string | null
+    clienteRecuperado?: NullableStringFieldUpdateOperationsInput | string | null
+    etapa?: StringFieldUpdateOperationsInput | string
+    assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     contacts?: CompanyContactUncheckedUpdateManyWithoutCompanyNestedInput
@@ -29947,8 +30587,13 @@ export namespace Prisma {
     provincia?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
     direccion?: NullableStringFieldUpdateOperationsInput | string | null
+    facturacionEstimada?: FloatFieldUpdateOperationsInput | number
+    fuente?: NullableStringFieldUpdateOperationsInput | string | null
+    clienteRecuperado?: NullableStringFieldUpdateOperationsInput | string | null
+    etapa?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    user?: UserUpdateOneWithoutCompaniesAssignedNestedInput
     contacts?: CompanyContactUpdateManyWithoutCompanyNestedInput
     companies?: CompanyCompanyUpdateManyWithoutCompanyNestedInput
     opportunities?: CompanyOpportunityUpdateManyWithoutCompanyNestedInput
@@ -29970,6 +30615,11 @@ export namespace Prisma {
     provincia?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
     direccion?: NullableStringFieldUpdateOperationsInput | string | null
+    facturacionEstimada?: FloatFieldUpdateOperationsInput | number
+    fuente?: NullableStringFieldUpdateOperationsInput | string | null
+    clienteRecuperado?: NullableStringFieldUpdateOperationsInput | string | null
+    etapa?: StringFieldUpdateOperationsInput | string
+    assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     contacts?: CompanyContactUncheckedUpdateManyWithoutCompanyNestedInput
@@ -29993,8 +30643,13 @@ export namespace Prisma {
     provincia?: string | null
     departamento?: string | null
     direccion?: string | null
+    facturacionEstimada?: number
+    fuente?: string | null
+    clienteRecuperado?: string | null
+    etapa?: string
     createdAt?: Date | string
     updatedAt?: Date | string
+    user?: UserCreateNestedOneWithoutCompaniesAssignedInput
     contacts?: CompanyContactCreateNestedManyWithoutCompanyInput
     companies?: CompanyCompanyCreateNestedManyWithoutCompanyInput
     linkedBy?: CompanyCompanyCreateNestedManyWithoutLinkedInput
@@ -30016,6 +30671,11 @@ export namespace Prisma {
     provincia?: string | null
     departamento?: string | null
     direccion?: string | null
+    facturacionEstimada?: number
+    fuente?: string | null
+    clienteRecuperado?: string | null
+    etapa?: string
+    assignedTo?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     contacts?: CompanyContactUncheckedCreateNestedManyWithoutCompanyInput
@@ -30033,6 +30693,7 @@ export namespace Prisma {
     id?: string
     title: string
     amount: number
+    fuente?: string | null
     probability?: number
     etapa: string
     status?: string
@@ -30051,6 +30712,7 @@ export namespace Prisma {
     id?: string
     title: string
     amount: number
+    fuente?: string | null
     probability?: number
     etapa: string
     status?: string
@@ -30096,8 +30758,13 @@ export namespace Prisma {
     provincia?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
     direccion?: NullableStringFieldUpdateOperationsInput | string | null
+    facturacionEstimada?: FloatFieldUpdateOperationsInput | number
+    fuente?: NullableStringFieldUpdateOperationsInput | string | null
+    clienteRecuperado?: NullableStringFieldUpdateOperationsInput | string | null
+    etapa?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    user?: UserUpdateOneWithoutCompaniesAssignedNestedInput
     contacts?: CompanyContactUpdateManyWithoutCompanyNestedInput
     companies?: CompanyCompanyUpdateManyWithoutCompanyNestedInput
     linkedBy?: CompanyCompanyUpdateManyWithoutLinkedNestedInput
@@ -30119,6 +30786,11 @@ export namespace Prisma {
     provincia?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
     direccion?: NullableStringFieldUpdateOperationsInput | string | null
+    facturacionEstimada?: FloatFieldUpdateOperationsInput | number
+    fuente?: NullableStringFieldUpdateOperationsInput | string | null
+    clienteRecuperado?: NullableStringFieldUpdateOperationsInput | string | null
+    etapa?: StringFieldUpdateOperationsInput | string
+    assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     contacts?: CompanyContactUncheckedUpdateManyWithoutCompanyNestedInput
@@ -30142,6 +30814,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     amount?: FloatFieldUpdateOperationsInput | number
+    fuente?: NullableStringFieldUpdateOperationsInput | string | null
     probability?: IntFieldUpdateOperationsInput | number
     etapa?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
@@ -30160,6 +30833,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     amount?: FloatFieldUpdateOperationsInput | number
+    fuente?: NullableStringFieldUpdateOperationsInput | string | null
     probability?: IntFieldUpdateOperationsInput | number
     etapa?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
@@ -30178,6 +30852,7 @@ export namespace Prisma {
     id?: string
     title: string
     amount: number
+    fuente?: string | null
     probability?: number
     etapa: string
     status?: string
@@ -30196,6 +30871,7 @@ export namespace Prisma {
     id?: string
     title: string
     amount: number
+    fuente?: string | null
     probability?: number
     etapa: string
     status?: string
@@ -30219,6 +30895,7 @@ export namespace Prisma {
     id?: string
     title: string
     amount: number
+    fuente?: string | null
     probability?: number
     etapa: string
     status?: string
@@ -30237,6 +30914,7 @@ export namespace Prisma {
     id?: string
     title: string
     amount: number
+    fuente?: string | null
     probability?: number
     etapa: string
     status?: string
@@ -30271,6 +30949,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     amount?: FloatFieldUpdateOperationsInput | number
+    fuente?: NullableStringFieldUpdateOperationsInput | string | null
     probability?: IntFieldUpdateOperationsInput | number
     etapa?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
@@ -30289,6 +30968,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     amount?: FloatFieldUpdateOperationsInput | number
+    fuente?: NullableStringFieldUpdateOperationsInput | string | null
     probability?: IntFieldUpdateOperationsInput | number
     etapa?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
@@ -30318,6 +30998,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     amount?: FloatFieldUpdateOperationsInput | number
+    fuente?: NullableStringFieldUpdateOperationsInput | string | null
     probability?: IntFieldUpdateOperationsInput | number
     etapa?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
@@ -30336,6 +31017,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     amount?: FloatFieldUpdateOperationsInput | number
+    fuente?: NullableStringFieldUpdateOperationsInput | string | null
     probability?: IntFieldUpdateOperationsInput | number
     etapa?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
@@ -30354,9 +31036,9 @@ export namespace Prisma {
     id?: string
     name: string
     cargo?: string | null
-    phone: string
-    email: string
-    source: string
+    telefono: string
+    correo: string
+    fuente: string
     etapa?: string
     estimatedValue?: number
     nextAction?: string | null
@@ -30384,9 +31066,9 @@ export namespace Prisma {
     id?: string
     name: string
     cargo?: string | null
-    phone: string
-    email: string
-    source: string
+    telefono: string
+    correo: string
+    fuente: string
     etapa?: string
     assignedTo?: string | null
     estimatedValue?: number
@@ -30469,9 +31151,9 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     cargo?: NullableStringFieldUpdateOperationsInput | string | null
-    phone?: StringFieldUpdateOperationsInput | string
-    email?: StringFieldUpdateOperationsInput | string
-    source?: StringFieldUpdateOperationsInput | string
+    telefono?: StringFieldUpdateOperationsInput | string
+    correo?: StringFieldUpdateOperationsInput | string
+    fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
     nextAction?: NullableStringFieldUpdateOperationsInput | string | null
@@ -30499,9 +31181,9 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     cargo?: NullableStringFieldUpdateOperationsInput | string | null
-    phone?: StringFieldUpdateOperationsInput | string
-    email?: StringFieldUpdateOperationsInput | string
-    source?: StringFieldUpdateOperationsInput | string
+    telefono?: StringFieldUpdateOperationsInput | string
+    correo?: StringFieldUpdateOperationsInput | string
+    fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     estimatedValue?: FloatFieldUpdateOperationsInput | number
@@ -30585,8 +31267,13 @@ export namespace Prisma {
     provincia?: string | null
     departamento?: string | null
     direccion?: string | null
+    facturacionEstimada?: number
+    fuente?: string | null
+    clienteRecuperado?: string | null
+    etapa?: string
     createdAt?: Date | string
     updatedAt?: Date | string
+    user?: UserCreateNestedOneWithoutCompaniesAssignedInput
     contacts?: CompanyContactCreateNestedManyWithoutCompanyInput
     companies?: CompanyCompanyCreateNestedManyWithoutCompanyInput
     linkedBy?: CompanyCompanyCreateNestedManyWithoutLinkedInput
@@ -30608,6 +31295,11 @@ export namespace Prisma {
     provincia?: string | null
     departamento?: string | null
     direccion?: string | null
+    facturacionEstimada?: number
+    fuente?: string | null
+    clienteRecuperado?: string | null
+    etapa?: string
+    assignedTo?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     contacts?: CompanyContactUncheckedCreateNestedManyWithoutCompanyInput
@@ -30686,8 +31378,13 @@ export namespace Prisma {
     provincia?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
     direccion?: NullableStringFieldUpdateOperationsInput | string | null
+    facturacionEstimada?: FloatFieldUpdateOperationsInput | number
+    fuente?: NullableStringFieldUpdateOperationsInput | string | null
+    clienteRecuperado?: NullableStringFieldUpdateOperationsInput | string | null
+    etapa?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    user?: UserUpdateOneWithoutCompaniesAssignedNestedInput
     contacts?: CompanyContactUpdateManyWithoutCompanyNestedInput
     companies?: CompanyCompanyUpdateManyWithoutCompanyNestedInput
     linkedBy?: CompanyCompanyUpdateManyWithoutLinkedNestedInput
@@ -30709,6 +31406,11 @@ export namespace Prisma {
     provincia?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
     direccion?: NullableStringFieldUpdateOperationsInput | string | null
+    facturacionEstimada?: FloatFieldUpdateOperationsInput | number
+    fuente?: NullableStringFieldUpdateOperationsInput | string | null
+    clienteRecuperado?: NullableStringFieldUpdateOperationsInput | string | null
+    etapa?: StringFieldUpdateOperationsInput | string
+    assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     contacts?: CompanyContactUncheckedUpdateManyWithoutCompanyNestedInput
@@ -30766,6 +31468,7 @@ export namespace Prisma {
     id?: string
     title: string
     amount: number
+    fuente?: string | null
     probability?: number
     etapa: string
     status?: string
@@ -30784,6 +31487,7 @@ export namespace Prisma {
     id?: string
     title: string
     amount: number
+    fuente?: string | null
     probability?: number
     etapa: string
     status?: string
@@ -30857,6 +31561,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     amount?: FloatFieldUpdateOperationsInput | number
+    fuente?: NullableStringFieldUpdateOperationsInput | string | null
     probability?: IntFieldUpdateOperationsInput | number
     etapa?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
@@ -30875,6 +31580,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     amount?: FloatFieldUpdateOperationsInput | number
+    fuente?: NullableStringFieldUpdateOperationsInput | string | null
     probability?: IntFieldUpdateOperationsInput | number
     etapa?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
@@ -30979,6 +31685,7 @@ export namespace Prisma {
     accounts?: AccountUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUpdateManyWithoutUserNestedInput
     opportunitiesAssigned?: OpportunityUpdateManyWithoutUserNestedInput
+    companiesAssigned?: CompanyUpdateManyWithoutUserNestedInput
     activitiesAssigned?: ActivityUpdateManyWithoutUserNestedInput
   }
 
@@ -30995,6 +31702,7 @@ export namespace Prisma {
     accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUncheckedUpdateManyWithoutUserNestedInput
     opportunitiesAssigned?: OpportunityUncheckedUpdateManyWithoutUserNestedInput
+    companiesAssigned?: CompanyUncheckedUpdateManyWithoutUserNestedInput
     activitiesAssigned?: ActivityUncheckedUpdateManyWithoutUserNestedInput
   }
 
@@ -31023,9 +31731,9 @@ export namespace Prisma {
     id?: string
     name: string
     cargo?: string | null
-    phone: string
-    email: string
-    source: string
+    telefono: string
+    correo: string
+    fuente: string
     etapa?: string
     estimatedValue?: number
     nextAction?: string | null
@@ -31048,11 +31756,35 @@ export namespace Prisma {
     id?: string
     title: string
     amount: number
+    fuente?: string | null
     probability?: number
     etapa: string
     status?: string
     priority?: string
     expectedCloseDate?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type CompanyCreateManyUserInput = {
+    id?: string
+    name: string
+    razonSocial?: string | null
+    ruc?: string | null
+    telefono?: string | null
+    domain?: string | null
+    rubro?: string | null
+    tipo?: string | null
+    linkedin?: string | null
+    correo?: string | null
+    distrito?: string | null
+    provincia?: string | null
+    departamento?: string | null
+    direccion?: string | null
+    facturacionEstimada?: number
+    fuente?: string | null
+    clienteRecuperado?: string | null
+    etapa?: string
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -31102,9 +31834,9 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     cargo?: NullableStringFieldUpdateOperationsInput | string | null
-    phone?: StringFieldUpdateOperationsInput | string
-    email?: StringFieldUpdateOperationsInput | string
-    source?: StringFieldUpdateOperationsInput | string
+    telefono?: StringFieldUpdateOperationsInput | string
+    correo?: StringFieldUpdateOperationsInput | string
+    fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
     nextAction?: NullableStringFieldUpdateOperationsInput | string | null
@@ -31132,9 +31864,9 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     cargo?: NullableStringFieldUpdateOperationsInput | string | null
-    phone?: StringFieldUpdateOperationsInput | string
-    email?: StringFieldUpdateOperationsInput | string
-    source?: StringFieldUpdateOperationsInput | string
+    telefono?: StringFieldUpdateOperationsInput | string
+    correo?: StringFieldUpdateOperationsInput | string
+    fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
     nextAction?: NullableStringFieldUpdateOperationsInput | string | null
@@ -31162,9 +31894,9 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     cargo?: NullableStringFieldUpdateOperationsInput | string | null
-    phone?: StringFieldUpdateOperationsInput | string
-    email?: StringFieldUpdateOperationsInput | string
-    source?: StringFieldUpdateOperationsInput | string
+    telefono?: StringFieldUpdateOperationsInput | string
+    correo?: StringFieldUpdateOperationsInput | string
+    fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
     nextAction?: NullableStringFieldUpdateOperationsInput | string | null
@@ -31187,6 +31919,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     amount?: FloatFieldUpdateOperationsInput | number
+    fuente?: NullableStringFieldUpdateOperationsInput | string | null
     probability?: IntFieldUpdateOperationsInput | number
     etapa?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
@@ -31205,6 +31938,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     amount?: FloatFieldUpdateOperationsInput | number
+    fuente?: NullableStringFieldUpdateOperationsInput | string | null
     probability?: IntFieldUpdateOperationsInput | number
     etapa?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
@@ -31223,11 +31957,91 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     amount?: FloatFieldUpdateOperationsInput | number
+    fuente?: NullableStringFieldUpdateOperationsInput | string | null
     probability?: IntFieldUpdateOperationsInput | number
     etapa?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     priority?: StringFieldUpdateOperationsInput | string
     expectedCloseDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CompanyUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    razonSocial?: NullableStringFieldUpdateOperationsInput | string | null
+    ruc?: NullableStringFieldUpdateOperationsInput | string | null
+    telefono?: NullableStringFieldUpdateOperationsInput | string | null
+    domain?: NullableStringFieldUpdateOperationsInput | string | null
+    rubro?: NullableStringFieldUpdateOperationsInput | string | null
+    tipo?: NullableStringFieldUpdateOperationsInput | string | null
+    linkedin?: NullableStringFieldUpdateOperationsInput | string | null
+    correo?: NullableStringFieldUpdateOperationsInput | string | null
+    distrito?: NullableStringFieldUpdateOperationsInput | string | null
+    provincia?: NullableStringFieldUpdateOperationsInput | string | null
+    departamento?: NullableStringFieldUpdateOperationsInput | string | null
+    direccion?: NullableStringFieldUpdateOperationsInput | string | null
+    facturacionEstimada?: FloatFieldUpdateOperationsInput | number
+    fuente?: NullableStringFieldUpdateOperationsInput | string | null
+    clienteRecuperado?: NullableStringFieldUpdateOperationsInput | string | null
+    etapa?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    contacts?: CompanyContactUpdateManyWithoutCompanyNestedInput
+    companies?: CompanyCompanyUpdateManyWithoutCompanyNestedInput
+    linkedBy?: CompanyCompanyUpdateManyWithoutLinkedNestedInput
+    opportunities?: CompanyOpportunityUpdateManyWithoutCompanyNestedInput
+    activities?: CompanyActivityUpdateManyWithoutCompanyNestedInput
+  }
+
+  export type CompanyUncheckedUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    razonSocial?: NullableStringFieldUpdateOperationsInput | string | null
+    ruc?: NullableStringFieldUpdateOperationsInput | string | null
+    telefono?: NullableStringFieldUpdateOperationsInput | string | null
+    domain?: NullableStringFieldUpdateOperationsInput | string | null
+    rubro?: NullableStringFieldUpdateOperationsInput | string | null
+    tipo?: NullableStringFieldUpdateOperationsInput | string | null
+    linkedin?: NullableStringFieldUpdateOperationsInput | string | null
+    correo?: NullableStringFieldUpdateOperationsInput | string | null
+    distrito?: NullableStringFieldUpdateOperationsInput | string | null
+    provincia?: NullableStringFieldUpdateOperationsInput | string | null
+    departamento?: NullableStringFieldUpdateOperationsInput | string | null
+    direccion?: NullableStringFieldUpdateOperationsInput | string | null
+    facturacionEstimada?: FloatFieldUpdateOperationsInput | number
+    fuente?: NullableStringFieldUpdateOperationsInput | string | null
+    clienteRecuperado?: NullableStringFieldUpdateOperationsInput | string | null
+    etapa?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    contacts?: CompanyContactUncheckedUpdateManyWithoutCompanyNestedInput
+    companies?: CompanyCompanyUncheckedUpdateManyWithoutCompanyNestedInput
+    linkedBy?: CompanyCompanyUncheckedUpdateManyWithoutLinkedNestedInput
+    opportunities?: CompanyOpportunityUncheckedUpdateManyWithoutCompanyNestedInput
+    activities?: CompanyActivityUncheckedUpdateManyWithoutCompanyNestedInput
+  }
+
+  export type CompanyUncheckedUpdateManyWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    razonSocial?: NullableStringFieldUpdateOperationsInput | string | null
+    ruc?: NullableStringFieldUpdateOperationsInput | string | null
+    telefono?: NullableStringFieldUpdateOperationsInput | string | null
+    domain?: NullableStringFieldUpdateOperationsInput | string | null
+    rubro?: NullableStringFieldUpdateOperationsInput | string | null
+    tipo?: NullableStringFieldUpdateOperationsInput | string | null
+    linkedin?: NullableStringFieldUpdateOperationsInput | string | null
+    correo?: NullableStringFieldUpdateOperationsInput | string | null
+    distrito?: NullableStringFieldUpdateOperationsInput | string | null
+    provincia?: NullableStringFieldUpdateOperationsInput | string | null
+    departamento?: NullableStringFieldUpdateOperationsInput | string | null
+    direccion?: NullableStringFieldUpdateOperationsInput | string | null
+    facturacionEstimada?: FloatFieldUpdateOperationsInput | number
+    fuente?: NullableStringFieldUpdateOperationsInput | string | null
+    clienteRecuperado?: NullableStringFieldUpdateOperationsInput | string | null
+    etapa?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }

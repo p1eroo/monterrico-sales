@@ -74,12 +74,6 @@ export function UserFormModal({
   const schema = useMemo(() => buildUserFormSchema(isEdit), [isEdit]);
   const defaultRoleId = asesorRoleId ?? roles[0]?.id ?? '';
 
-  useEffect(() => {
-    if (defaultRoleId && !form.getValues('roleId')) {
-      form.setValue('roleId', defaultRoleId);
-    }
-  }, [defaultRoleId, form]);
-
   const form = useForm<UserFormData>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -90,6 +84,12 @@ export function UserFormModal({
       status: true,
     },
   });
+
+  useEffect(() => {
+    if (defaultRoleId && !form.getValues('roleId')) {
+      form.setValue('roleId', defaultRoleId);
+    }
+  }, [defaultRoleId, form]);
 
   function handleOpenChange(next: boolean) {
     if (!next) {

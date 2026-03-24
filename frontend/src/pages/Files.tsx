@@ -6,8 +6,6 @@ import {
   List,
   FileArchive,
   User,
-  Building2,
-  Target,
   Filter,
 } from 'lucide-react';
 import { useFilesStore } from '@/store/filesStore';

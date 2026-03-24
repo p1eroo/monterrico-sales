@@ -238,27 +238,6 @@ export default function TareasPage() {
     };
   }
 
-  function taskDetailToActivity(t: TaskDetailTask): Activity {
-    const contactName = t.associations?.find((a) => a.type === 'contacto')?.name;
-    const contactId = t.associations?.find((a) => a.type === 'contacto')?.id;
-    const type = (t.type ?? 'tarea') as Activity['type'];
-    return {
-      id: t.id,
-      type,
-      title: t.title,
-      description: t.description ?? '',
-      contactId,
-      contactName,
-      assignedTo: users.find((u) => u.name === t.assignee)?.id ?? '',
-      assignedToName: t.assignee,
-      status: t.status as ActivityStatus,
-      dueDate: t.dueDate,
-      startDate: t.startDate,
-      startTime: t.startTime,
-      createdAt: allTasks.find((a) => a.id === t.id)?.createdAt ?? new Date().toISOString().slice(0, 10),
-    };
-  }
-
   const tareasStatusLabels: Record<string, string> = Object.fromEntries(
     Object.entries(activityStatusConfig).map(([k, v]) => [k, v.label]),
   );

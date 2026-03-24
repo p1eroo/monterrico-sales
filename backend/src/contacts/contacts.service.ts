@@ -7,6 +7,7 @@ import { Prisma } from '../generated/prisma';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
+import { EntitySyncService } from '../sync/entity-sync.service';
 
 const contactIncludeList = {
   companies: { include: { company: true } },
@@ -19,9 +20,9 @@ const contactSelectListSlim = {
   id: true,
   name: true,
   cargo: true,
-  phone: true,
-  email: true,
-  source: true,
+  telefono: true,
+  correo: true,
+  fuente: true,
   etapa: true,
   estimatedValue: true,
   nextAction: true,
@@ -77,7 +78,10 @@ const contactIncludeDetail = {
 
 @Injectable()
 export class ContactsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly entitySync: EntitySyncService,
+  ) {}
 
   private async assertUserExists(id: string): Promise<void> {
     const u = await this.prisma.user.findUnique({ where: { id } });
@@ -91,17 +95,28 @@ export class ContactsService {
     if (!name) {
       throw new BadRequestException('El nombre es obligatorio');
     }
-    const phone = dto.phone?.trim();
-    if (!phone) {
+    const telefono = dto.telefono?.trim();
+    if (!telefono) {
       throw new BadRequestException('El teléfono es obligatorio');
     }
-    const email = dto.email?.trim();
-    if (!email) {
-      throw new BadRequestException('El email es obligatorio');
+    const correo = dto.correo?.trim();
+    if (!correo) {
+      throw new BadRequestException('El correo es obligatorio');
     }
-    const source = dto.source?.trim();
-    if (!source) {
+    const fuente = dto.fuente?.trim();
+    if (!fuente) {
       throw new BadRequestException('La fuente es obligatoria');
+    }
+
+    if (
+      dto.estimatedValue === undefined ||
+      dto.estimatedValue === null ||
+      Number.isNaN(dto.estimatedValue) ||
+      dto.estimatedValue <= 0
+    ) {
+      throw new BadRequestException(
+        'El valor estimado es obligatorio y debe ser mayor que 0',
+      );
     }
 
     const assignedTo = dto.assignedTo?.trim() || null;
@@ -138,17 +153,17 @@ export class ContactsService {
 
     const tags = Array.isArray(dto.tags) ? dto.tags.filter((t) => typeof t === 'string') : [];
 
-    return this.prisma.$transaction(async (tx) => {
-      const row = await tx.contact.create({
+    const row = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.contact.create({
         data: {
           name,
-          phone,
-          email,
-          source,
+          telefono,
+          correo,
+          fuente,
           cargo: dto.cargo?.trim() || null,
           etapa,
           assignedTo,
-          estimatedValue: dto.estimatedValue ?? 0,
+          estimatedValue: dto.estimatedValue,
           nextAction: dto.nextAction?.trim() || 'Contactar',
           nextFollowUp,
           notes: dto.notes?.trim() || null,
@@ -167,18 +182,41 @@ export class ContactsService {
       if (companyId) {
         await tx.companyContact.create({
           data: {
-            contactId: row.id,
+            contactId: created.id,
             companyId,
             isPrimary: true,
           },
         });
       }
 
-      return tx.contact.findUniqueOrThrow({
-        where: { id: row.id },
-        include: contactIncludeDetail,
-      });
+      return created;
     });
+
+    if (companyId) {
+      const company = await this.prisma.company.findUnique({
+        where: { id: companyId },
+        select: { name: true },
+      });
+      const expectedClose = new Date();
+      expectedClose.setDate(expectedClose.getDate() + 30);
+      await this.entitySync.ensureOpportunityForContactCompany(
+        row.id,
+        companyId,
+        {
+          title: company?.name
+            ? `${name} · ${company.name}`
+            : name,
+          amount: dto.estimatedValue!,
+          etapa,
+          fuente,
+          assignedTo,
+          expectedCloseDate: expectedClose,
+        },
+      );
+      await this.entitySync.propagateFromContact(companyId, row.id);
+    }
+
+    return this.findOne(row.id);
   }
 
   async findAll(opts?: {
@@ -186,7 +224,7 @@ export class ContactsService {
     limit?: number;
     search?: string;
     etapa?: string;
-    source?: string;
+    fuente?: string;
     assignedTo?: string;
   }) {
     const page = Math.max(1, opts?.page ?? 1);
@@ -198,8 +236,8 @@ export class ContactsService {
       const q = opts.search.trim();
       where.OR = [
         { name: { contains: q, mode: 'insensitive' } },
-        { email: { contains: q, mode: 'insensitive' } },
-        { phone: { contains: q } },
+        { correo: { contains: q, mode: 'insensitive' } },
+        { telefono: { contains: q } },
         { cargo: { contains: q, mode: 'insensitive' } },
         {
           companies: {
@@ -213,7 +251,7 @@ export class ContactsService {
       ];
     }
     if (opts?.etapa?.trim()) where.etapa = opts.etapa.trim();
-    if (opts?.source?.trim()) where.source = opts.source.trim();
+    if (opts?.fuente?.trim()) where.fuente = opts.fuente.trim();
     if (opts?.assignedTo?.trim()) where.assignedTo = opts.assignedTo.trim();
 
     const [rows, total] = await Promise.all([
@@ -259,26 +297,26 @@ export class ContactsService {
       }
       data.name = name;
     }
-    if (dto.phone !== undefined) {
-      const phone = dto.phone.trim();
-      if (!phone) {
+    if (dto.telefono !== undefined) {
+      const telefono = dto.telefono.trim();
+      if (!telefono) {
         throw new BadRequestException('El teléfono no puede estar vacío');
       }
-      data.phone = phone;
+      data.telefono = telefono;
     }
-    if (dto.email !== undefined) {
-      const email = dto.email.trim();
-      if (!email) {
-        throw new BadRequestException('El email no puede estar vacío');
+    if (dto.correo !== undefined) {
+      const correo = dto.correo.trim();
+      if (!correo) {
+        throw new BadRequestException('El correo no puede estar vacío');
       }
-      data.email = email;
+      data.correo = correo;
     }
-    if (dto.source !== undefined) {
-      const source = dto.source.trim();
-      if (!source) {
+    if (dto.fuente !== undefined) {
+      const fuente = dto.fuente.trim();
+      if (!fuente) {
         throw new BadRequestException('La fuente no puede estar vacía');
       }
-      data.source = source;
+      data.fuente = fuente;
     }
     if (dto.cargo !== undefined) data.cargo = dto.cargo?.trim() || null;
     if (dto.etapa !== undefined) {
@@ -296,6 +334,15 @@ export class ContactsService {
       data.assignedTo = assignedTo;
     }
     if (dto.estimatedValue !== undefined) {
+      if (
+        dto.estimatedValue === null ||
+        Number.isNaN(dto.estimatedValue) ||
+        dto.estimatedValue <= 0
+      ) {
+        throw new BadRequestException(
+          'El valor estimado debe ser mayor que 0',
+        );
+      }
       data.estimatedValue = dto.estimatedValue;
     }
     if (dto.nextAction !== undefined) {
@@ -354,6 +401,14 @@ export class ContactsService {
       data: data as Prisma.ContactUpdateInput,
     });
 
+    const links = await this.prisma.companyContact.findMany({
+      where: { contactId: id },
+      select: { companyId: true },
+    });
+    for (const { companyId } of links) {
+      await this.entitySync.propagateFromContact(companyId, id);
+    }
+
     return this.findOne(id);
   }
 
@@ -383,6 +438,7 @@ export class ContactsService {
     await this.prisma.companyContact.create({
       data: { contactId, companyId, isPrimary },
     });
+    await this.entitySync.propagateFromContact(companyId, contactId);
     return this.findOne(contactId);
   }
 

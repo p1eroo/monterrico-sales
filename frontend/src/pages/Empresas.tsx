@@ -5,10 +5,9 @@ import {
   Search, Building2, Users, ChevronRight, ChevronLeft, Briefcase,
   FileSpreadsheet, Upload, Download, Plus, List, Grid3X3, DollarSign,
 } from 'lucide-react';
-import type { Contact, Etapa, CompanyRubro, CompanyTipo, ContactSource } from '@/types';
-import { companyRubroLabels, companyTipoLabels, etapaLabels, etapaProbabilidad, contactSourceLabels } from '@/data/mock';
+import type { Etapa, CompanyRubro, CompanyTipo, Company, ContactSource } from '@/types';
+import { companyRubroLabels, companyTipoLabels, etapaLabels, contactSourceLabels } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
-import { useCRMStore } from '@/store/crmStore';
 import { useCompaniesStore } from '@/store/companiesStore';
 
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -26,16 +25,20 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { formatCurrency } from '@/lib/formatters';
 import { api } from '@/lib/api';
-import { type ApiCompanyRecord, companyListAll } from '@/lib/companyApi';
 import {
-  type ApiContactListRow,
-  isLikelyContactCuid,
-  mapApiContactRowToContact,
-  contactCreate,
-  contactListAll,
-} from '@/lib/contactApi';
+  type ApiCompanyRecord,
+  type CompanySummaryRow,
+  companyListSummaryPaginated,
+  isLikelyCompanyCuid,
+} from '@/lib/companyApi';
+import { isLikelyContactCuid, contactCreate } from '@/lib/contactApi';
 
 const etapaOrder: Etapa[] = ['lead', 'contacto', 'reunion_agendada', 'reunion_efectiva', 'propuesta_economica', 'negociacion', 'licitacion', 'licitacion_etapa_final', 'cierre_ganado', 'firma_contrato', 'activo', 'cierre_perdido', 'inactivo'];
 
@@ -44,23 +47,145 @@ const etapaTabs: { value: string; label: string }[] = [
   ...etapaOrder.map((e) => ({ value: e, label: etapaLabels[e] })),
 ];
 
-interface EmpresaGroup {
-  company: string;
-  domain?: string;
-  companyRubro?: CompanyRubro;
-  companyTipo?: CompanyTipo;
-  contacts: Contact[];
-  totalValue: number;
-  /** Etapa más avanzada entre los contactos (por orden en etapaOrder) */
-  etapa: Etapa;
-  /** Cliente recuperado: Sí si algún contacto lo tiene */
-  clienteRecuperado?: 'si' | 'no';
-  /** Si viene de PostgreSQL (detalle por id cuid) */
-  apiCompanyId?: string;
-}
+type EmpresaSummaryRow = CompanySummaryRow & { isLocalOnly?: boolean };
 
 function slugifyCompany(company: string): string {
   return encodeURIComponent(company.trim());
+}
+
+function empresaDetailPath(row: EmpresaSummaryRow): string {
+  if (row.isLocalOnly || !isLikelyCompanyCuid(row.id)) {
+    return `/empresas/${slugifyCompany(row.name)}`;
+  }
+  return `/empresas/${encodeURIComponent(row.id)}`;
+}
+
+function localCompanyToSummary(c: Company): EmpresaSummaryRow {
+  return {
+    id: c.id,
+    name: c.name,
+    razonSocial: null,
+    ruc: null,
+    telefono: null,
+    domain: c.domain ?? null,
+    rubro: c.rubro ?? null,
+    tipo: c.tipo ?? null,
+    facturacionEstimada: 0,
+    fuente: null,
+    etapa: 'lead',
+    assignedTo: null,
+    createdAt: c.createdAt,
+    updatedAt: c.createdAt,
+    contactCount: 0,
+    totalEstimatedValue: 0,
+    displayEtapa: 'lead',
+    displayFuente: null,
+    displayAdvisorUserId: null,
+    displayAdvisorName: null,
+    clienteRecuperado: null,
+    contactsPreview: [],
+    isLocalOnly: true,
+  };
+}
+
+function EmpresaContactsList({
+  items,
+  totalCount,
+  onPick,
+}: {
+  items: { id: string; name: string }[];
+  totalCount: number;
+  onPick: (id: string) => void;
+}) {
+  return (
+    <>
+      <div className="border-b px-3 py-2">
+        <p className="text-xs font-medium text-muted-foreground">
+          Contactos vinculados ({totalCount}
+          {items.length < totalCount ? ` · mostrando ${items.length}` : ''})
+        </p>
+      </div>
+      <ul className="max-h-60 overflow-y-auto py-1">
+        {items.map((c) => (
+          <li key={c.id}>
+            <button
+              type="button"
+              className="w-full px-3 py-2 text-left text-sm hover:bg-muted"
+              onClick={() => onPick(c.id)}
+            >
+              {c.name}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
+/** Clic en el contador / fila abre lista de contactos (evita navegar con la fila/tarjeta). */
+function EmpresaContactsPopover({
+  contactCount,
+  preview,
+  variant = 'table',
+}: {
+  contactCount: number;
+  preview: { id: string; name: string }[];
+  variant?: 'table' | 'card';
+}) {
+  const navigate = useNavigate();
+  const n = contactCount;
+  const go = (id: string) => navigate(`/contactos/${id}`);
+
+  if (n === 0) {
+    if (variant === 'card') {
+      return (
+        <p className="flex items-center gap-2">
+          <Users className="size-3 shrink-0" /> Sin contactos
+        </p>
+      );
+    }
+    return <span className="text-sm text-muted-foreground">—</span>;
+  }
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        {variant === 'table' ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 gap-1 px-2 font-normal"
+            onClick={(e) => e.stopPropagation()}
+            aria-label={`Ver ${n} contacto${n !== 1 ? 's' : ''}`}
+          >
+            <Badge variant="secondary" className="tabular-nums">
+              {n}
+            </Badge>
+          </Button>
+        ) : (
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 rounded-md text-left hover:bg-muted/80 -mx-1 px-1 py-0.5"
+            onClick={(e) => e.stopPropagation()}
+            aria-label={`Ver ${n} contacto${n !== 1 ? 's' : ''}`}
+          >
+            <Users className="size-3 shrink-0" />
+            <span>
+              {n} contacto{n !== 1 ? 's' : ''}
+              <span className="ml-1 text-xs text-primary">· ver</span>
+            </span>
+          </button>
+        )}
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-72 p-0"
+        align={variant === 'table' ? 'center' : 'start'}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <EmpresaContactsList items={preview} totalCount={n} onPick={go} />
+      </PopoverContent>
+    </Popover>
+  );
 }
 
 function parseRubroFromApi(s: string | null | undefined): CompanyRubro | undefined {
@@ -73,15 +198,26 @@ function parseTipoFromApi(s: string | null | undefined): CompanyTipo | undefined
   return s === 'A' || s === 'B' || s === 'C' ? s : undefined;
 }
 
-const ITEMS_PER_PAGE = 8;
+function sourceLabelFromApi(s: string | null | undefined): string {
+  if (!s) return '—';
+  return s in contactSourceLabels
+    ? contactSourceLabels[s as ContactSource]
+    : s;
+}
+
+const ITEMS_PER_PAGE = 25;
 
 export default function EmpresasPage() {
   const navigate = useNavigate();
-  const { contacts: storeContacts } = useCRMStore();
   const { companies: standaloneCompanies } = useCompaniesStore();
 
-  const [apiContactRows, setApiContactRows] = useState<ApiContactListRow[]>([]);
+  const [summaryRows, setSummaryRows] = useState<CompanySummaryRow[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(true);
+
   const [search, setSearch] = useState('');
+  const [searchDebounced, setSearchDebounced] = useState('');
   const [sourceFilter, setSourceFilter] = useState<string>('todos');
   const [etapaFilter, setEtapaFilter] = useState<string>('todos');
   const [rubroFilter, setRubroFilter] = useState<string>('todos');
@@ -90,40 +226,84 @@ export default function EmpresasPage() {
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [page, setPage] = useState(1);
   const [newEmpresaOpen, setNewEmpresaOpen] = useState(false);
-  const [apiCompanies, setApiCompanies] = useState<ApiCompanyRecord[]>([]);
   const { users, activeUsers } = useUsers();
 
-  const loadApiCompanies = useCallback(async () => {
-    try {
-      const list = await companyListAll();
-      setApiCompanies(list);
-    } catch {
-      setApiCompanies([]);
-    }
-  }, []);
+  useEffect(() => {
+    const t = setTimeout(() => setSearchDebounced(search), 400);
+    return () => clearTimeout(t);
+  }, [search]);
 
-  const loadApiContacts = useCallback(async () => {
+  const loadSummary = useCallback(async () => {
+    setLoading(true);
     try {
-      const list = await contactListAll();
-      setApiContactRows(list);
+      const res = await companyListSummaryPaginated({
+        page,
+        limit: ITEMS_PER_PAGE,
+        search: searchDebounced || undefined,
+        etapa: etapaFilter === 'todos' ? undefined : etapaFilter,
+        fuente: sourceFilter === 'todos' ? undefined : sourceFilter,
+        assignedTo: advisorFilter === 'todos' ? undefined : advisorFilter,
+        rubro: rubroFilter === 'todos' ? undefined : rubroFilter,
+        tipo: tipoFilter === 'todos' ? undefined : tipoFilter,
+      });
+      setSummaryRows(res.data);
+      setTotal(res.total);
+      setTotalPages(Math.max(1, res.totalPages));
     } catch {
-      setApiContactRows([]);
+      setSummaryRows([]);
+      setTotal(0);
+      setTotalPages(1);
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  }, [
+    page,
+    searchDebounced,
+    etapaFilter,
+    sourceFilter,
+    advisorFilter,
+    rubroFilter,
+    tipoFilter,
+  ]);
 
   useEffect(() => {
-    void loadApiCompanies();
-    void loadApiContacts();
-  }, [loadApiCompanies, loadApiContacts]);
+    void loadSummary();
+  }, [loadSummary]);
 
-  const contacts = useMemo(() => {
-    const apiIds = new Set(apiContactRows.map((r) => r.id));
-    const fromApi = apiContactRows.map(mapApiContactRowToContact);
-    const fromStore = storeContacts.filter((c) => !apiIds.has(c.id));
-    return [...fromApi, ...fromStore];
-  }, [apiContactRows, storeContacts]);
+  const filtersDefault =
+    !searchDebounced &&
+    sourceFilter === 'todos' &&
+    etapaFilter === 'todos' &&
+    rubroFilter === 'todos' &&
+    tipoFilter === 'todos' &&
+    advisorFilter === 'todos';
+
+  const displayRows = useMemo((): EmpresaSummaryRow[] => {
+    if (page !== 1 || !filtersDefault || standaloneCompanies.length === 0) {
+      return summaryRows;
+    }
+    const names = new Set(
+      summaryRows.map((r) => r.name.trim().toLowerCase()),
+    );
+    const locals = standaloneCompanies
+      .filter((c) => !names.has(c.name.trim().toLowerCase()))
+      .map(localCompanyToSummary);
+    return [...locals, ...summaryRows];
+  }, [summaryRows, page, filtersDefault, standaloneCompanies]);
 
   async function handleNewEmpresaSubmit(data: NewCompanyData) {
+    const monto = Number(data.facturacion);
+    if (!Number.isFinite(monto) || monto <= 0) {
+      toast.error('La facturación estimada debe ser mayor que 0');
+      return;
+    }
+    if (!data.origenLead) {
+      toast.error('Selecciona la fuente del lead');
+      return;
+    }
+
+    const assignedTo = data.propietario?.trim() || activeUsers[0]?.id || '';
+
     let created: ApiCompanyRecord;
     try {
       created = await api<ApiCompanyRecord>('/companies', {
@@ -142,34 +322,38 @@ export default function EmpresasPage() {
           provincia: data.provincia.trim() || undefined,
           departamento: data.departamento.trim() || undefined,
           direccion: data.direccion.trim() || undefined,
+          facturacionEstimada: monto,
+          fuente: data.origenLead,
+          clienteRecuperado: data.clienteRecuperado,
+          etapa: data.etapa,
+          ...(assignedTo && isLikelyContactCuid(assignedTo)
+            ? { assignedTo }
+            : {}),
         }),
       });
-      await loadApiCompanies();
+      await loadSummary();
     } catch (e) {
       toast.error(
         e instanceof Error ? e.message : 'No se pudo guardar la empresa en el servidor',
       );
       return;
     }
-
-    const monto = Number(data.facturacion) || 0;
     const oppTitle =
       data.nombreNegocio.trim() || data.nombreComercial.trim() || 'Sin título';
     const expectedCloseDate =
       data.fechaCierre.trim() ||
       new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-    const assignedTo = data.propietario?.trim() || activeUsers[0]?.id || '';
-
     let contactId: string | undefined;
     try {
       const contactBody: Record<string, unknown> = {
         name: data.nombreComercial.trim(),
-        phone: (data.telefono || '').trim() || '000000000',
-        email: (data.correo || '').trim() || `lead-${created.id}@temp.local`,
-        source: (data.origenLead || 'base') as ContactSource,
+        telefono: (data.telefono || '').trim() || '000000000',
+        correo: (data.correo || '').trim() || `lead-${created.id}@temp.local`,
+        fuente: (data.origenLead || 'base') as ContactSource,
         etapa: data.etapa,
         estimatedValue: monto,
         companyId: created.id,
+        clienteRecuperado: data.clienteRecuperado,
       };
       if (assignedTo && isLikelyContactCuid(assignedTo)) {
         contactBody.assignedTo = assignedTo;
@@ -183,8 +367,6 @@ export default function EmpresasPage() {
       return;
     }
 
-    await loadApiContacts();
-
     let opportunityApiError: string | null = null;
     try {
       await api('/opportunities', {
@@ -193,6 +375,7 @@ export default function EmpresasPage() {
           title: oppTitle,
           amount: monto,
           etapa: data.etapa,
+          fuente: data.origenLead,
           expectedCloseDate,
           companyId: created.id,
           contactId,
@@ -207,6 +390,8 @@ export default function EmpresasPage() {
           : 'No se pudo crear la oportunidad en el servidor';
     }
 
+    await loadSummary();
+
     if (!opportunityApiError) {
       toast.success(`Empresa "${data.nombreComercial}" creada con contacto y oportunidad "${oppTitle}"`);
     } else {
@@ -216,112 +401,18 @@ export default function EmpresasPage() {
     }
   }
 
-  const empresas = useMemo(() => {
-    const map = new Map<string, EmpresaGroup>();
-    for (const lead of contacts) {
-      for (const comp of lead.companies ?? []) {
-        const key = comp.name.trim().toLowerCase();
-        const existing = map.get(key);
-        const leadProb = etapaProbabilidad[lead.etapa];
-        if (existing) {
-          if (!existing.contacts.some((c) => c.id === lead.id)) {
-            existing.contacts.push(lead);
-            existing.totalValue += lead.estimatedValue;
-          }
-          if (comp.domain && !existing.domain) existing.domain = comp.domain;
-          if (comp.rubro && !existing.companyRubro) existing.companyRubro = comp.rubro;
-          if (comp.tipo && !existing.companyTipo) existing.companyTipo = comp.tipo;
-          if (leadProb > etapaProbabilidad[existing.etapa]) existing.etapa = lead.etapa;
-          if (lead.clienteRecuperado === 'si') existing.clienteRecuperado = 'si';
-        } else {
-          map.set(key, {
-            company: comp.name,
-            domain: comp.domain,
-            companyRubro: comp.rubro,
-            companyTipo: comp.tipo,
-            contacts: [lead],
-            totalValue: lead.estimatedValue,
-            etapa: lead.etapa,
-            clienteRecuperado: lead.clienteRecuperado,
-          });
-        }
-      }
-    }
-    for (const comp of standaloneCompanies) {
-      const key = comp.name.trim().toLowerCase();
-      if (!map.has(key)) {
-        map.set(key, {
-          company: comp.name,
-          domain: comp.domain,
-          companyRubro: comp.rubro,
-          companyTipo: comp.tipo,
-          contacts: [],
-          totalValue: 0,
-          etapa: 'lead',
-        });
-      }
-    }
-
-    for (const co of apiCompanies) {
-      const key = co.name.trim().toLowerCase();
-      const rubro = parseRubroFromApi(co.rubro);
-      const tipo = parseTipoFromApi(co.tipo);
-      const existing = map.get(key);
-      if (existing) {
-        if (!existing.apiCompanyId) existing.apiCompanyId = co.id;
-        if (!existing.domain && co.domain) existing.domain = co.domain ?? undefined;
-        if (!existing.companyRubro && rubro) existing.companyRubro = rubro;
-        if (!existing.companyTipo && tipo) existing.companyTipo = tipo;
-      } else {
-        map.set(key, {
-          company: co.name,
-          domain: co.domain ?? undefined,
-          companyRubro: rubro,
-          companyTipo: tipo,
-          contacts: [],
-          totalValue: 0,
-          etapa: 'lead',
-          apiCompanyId: co.id,
-        });
-      }
-    }
-
-    return Array.from(map.values()).sort((a, b) => b.totalValue - a.totalValue);
-  }, [contacts, standaloneCompanies, apiCompanies]);
-
-  const filteredEmpresas = useMemo(() => {
-    return empresas.filter((emp) => {
-      const matchesSearch =
-        !search ||
-        emp.company.toLowerCase().includes(search.toLowerCase()) ||
-        emp.domain?.toLowerCase().includes(search.toLowerCase()) ||
-        emp.contacts.some((c) =>
-          c.name.toLowerCase().includes(search.toLowerCase()) ||
-          c.email.toLowerCase().includes(search.toLowerCase()),
-        );
-
-      const matchesSource = sourceFilter === 'todos' || emp.contacts.some((c) => c.source === sourceFilter);
-      const matchesEtapa = etapaFilter === 'todos' || emp.etapa === etapaFilter;
-      const matchesRubro = rubroFilter === 'todos' || emp.companyRubro === rubroFilter;
-      const matchesTipo = tipoFilter === 'todos' || emp.companyTipo === tipoFilter;
-      const matchesAdvisor = advisorFilter === 'todos' || emp.contacts.some((c) => c.assignedTo === advisorFilter);
-
-      return matchesSearch && matchesSource && matchesEtapa && matchesRubro && matchesTipo && matchesAdvisor;
-    });
-  }, [empresas, search, sourceFilter, etapaFilter, rubroFilter, tipoFilter, advisorFilter]);
-
-  const etapaCounts = useMemo(() => {
-    const counts: Record<string, number> = { todos: empresas.length };
-    for (const emp of empresas) {
-      counts[emp.etapa] = (counts[emp.etapa] ?? 0) + 1;
-    }
-    return counts;
-  }, [empresas]);
-
-  const totalPages = Math.ceil(filteredEmpresas.length / ITEMS_PER_PAGE);
-  const paginatedEmpresas = filteredEmpresas.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
-  const startIndex = (page - 1) * ITEMS_PER_PAGE + 1;
-  const endIndex = Math.min(page * ITEMS_PER_PAGE, filteredEmpresas.length);
+  const startIndex = total === 0 ? 0 : (page - 1) * ITEMS_PER_PAGE + 1;
+  const endIndex = Math.min(page * ITEMS_PER_PAGE, total);
+  const localExtraOnPage =
+    page === 1 && filtersDefault
+      ? standaloneCompanies.filter(
+          (c) =>
+            !summaryRows.some(
+              (r) =>
+                r.name.trim().toLowerCase() === c.name.trim().toLowerCase(),
+            ),
+        ).length
+      : 0;
 
   return (
     <div className="space-y-6">
@@ -343,31 +434,25 @@ export default function EmpresasPage() {
         </Button>
       </PageHeader>
 
-      {/* Stats */}
+      {/* Stats (conteos por etapa solo en servidor filtrado; aquí filtros como en Contactos) */}
       <div className="flex flex-wrap gap-2">
         <Badge
           variant={etapaFilter === 'todos' ? 'secondary' : 'outline'}
           className="cursor-pointer gap-1.5 px-3 py-1.5 text-sm transition-colors hover:bg-accent"
           onClick={() => { setEtapaFilter('todos'); setPage(1); }}
         >
-          <Briefcase className="size-3.5" /> Total: {empresas.length} empresas
+          <Briefcase className="size-3.5" /> Total: {total}
         </Badge>
-        {etapaTabs.slice(1).filter((tab) => (etapaCounts[tab.value] ?? 0) > 0).map((tab) => (
+        {etapaTabs.slice(1).map((tab) => (
           <Badge
             key={tab.value}
             variant={etapaFilter === tab.value ? 'secondary' : 'outline'}
             className="cursor-pointer gap-1.5 px-3 py-1.5 text-sm transition-colors hover:bg-accent"
             onClick={() => { setEtapaFilter(tab.value); setPage(1); }}
           >
-            {tab.label}: {etapaCounts[tab.value] ?? 0}
+            {tab.label}
           </Badge>
         ))}
-        <Badge variant="outline" className="gap-1.5 px-3 py-1.5 text-sm">
-          <Building2 className="size-3.5" /> {apiCompanies.length} en servidor
-        </Badge>
-        <Badge variant="outline" className="gap-1.5 px-3 py-1.5 text-sm">
-          <Users className="size-3.5" /> {contacts.length} contactos
-        </Badge>
       </div>
 
       {/* Filters */}
@@ -377,7 +462,10 @@ export default function EmpresasPage() {
           <Input
             placeholder="Buscar por empresa o contacto..."
             value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             className="pl-9"
           />
         </div>
@@ -461,7 +549,11 @@ export default function EmpresasPage() {
 
       {/* Content */}
       <div className="mt-4">
-        {filteredEmpresas.length === 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center py-16 text-muted-foreground">
+            Cargando empresas...
+          </div>
+        ) : displayRows.length === 0 ? (
           <EmptyState
             icon={Briefcase}
             title="No se encontraron empresas"
@@ -487,15 +579,15 @@ export default function EmpresasPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginatedEmpresas.map((emp) => (
+                {displayRows.map((emp) => {
+                  const rubro = parseRubroFromApi(emp.rubro);
+                  const tipo = parseTipoFromApi(emp.tipo);
+                  const rowKey = emp.isLocalOnly ? `local-${emp.id}` : emp.id;
+                  return (
                   <TableRow
-                    key={emp.apiCompanyId ?? emp.company}
+                    key={rowKey}
                     className="cursor-pointer hover:bg-muted/50"
-                    onClick={() =>
-                      navigate(
-                        `/empresas/${emp.apiCompanyId ? encodeURIComponent(emp.apiCompanyId) : slugifyCompany(emp.company)}`,
-                      )
-                    }
+                    onClick={() => navigate(empresaDetailPath(emp))}
                   >
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -503,7 +595,7 @@ export default function EmpresasPage() {
                           <Building2 className="size-4 text-muted-foreground" />
                         </div>
                         <div>
-                          <p className="font-medium">{emp.company}</p>
+                          <p className="font-medium">{emp.name}</p>
                           {emp.domain && (
                             <a
                               href={emp.domain.startsWith('http') ? emp.domain : `https://${emp.domain}`}
@@ -519,42 +611,34 @@ export default function EmpresasPage() {
                       </div>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
-                      <StatusBadge status={emp.etapa} />
+                      <StatusBadge status={emp.displayEtapa as Etapa} />
                     </TableCell>
                     <TableCell className="hidden lg:table-cell text-muted-foreground">
-                      {emp.contacts.length === 0
-                        ? '—'
-                        : (() => {
-                            const primary = emp.contacts.reduce((a, b) =>
-                              etapaProbabilidad[a.etapa] > etapaProbabilidad[b.etapa] ? a : b,
-                            );
-                            return primary.source ? contactSourceLabels[primary.source] : '—';
-                          })()}
+                      {sourceLabelFromApi(emp.displayFuente)}
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-muted-foreground">
-                      {emp.companyRubro ? companyRubroLabels[emp.companyRubro] : '—'}
+                      {rubro ? companyRubroLabels[rubro] : '—'}
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-muted-foreground">
-                      {emp.companyTipo ?? '—'}
+                      {tipo ?? '—'}
                     </TableCell>
                     <TableCell className="hidden lg:table-cell text-muted-foreground">
                       {emp.clienteRecuperado === 'si' ? 'Sí' : emp.clienteRecuperado === 'no' ? 'No' : '—'}
                     </TableCell>
                     <TableCell className="hidden xl:table-cell text-muted-foreground">
-                      {emp.contacts.length === 0
-                        ? '—'
-                        : (() => {
-                            const primary = emp.contacts.reduce((a, b) =>
-                              etapaProbabilidad[a.etapa] > etapaProbabilidad[b.etapa] ? a : b,
-                            );
-                            return primary.assignedToName ?? '—';
-                          })()}
+                      {emp.displayAdvisorName ?? '—'}
                     </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="secondary">{emp.contacts.length}</Badge>
+                    <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex justify-center">
+                        <EmpresaContactsPopover
+                          contactCount={emp.contactCount}
+                          preview={emp.contactsPreview}
+                          variant="table"
+                        />
+                      </div>
                     </TableCell>
                     <TableCell className="text-right font-medium text-emerald-600">
-                      {formatCurrency(emp.totalValue)}
+                      {formatCurrency(emp.totalEstimatedValue)}
                     </TableCell>
                     <TableCell>
                       <Button variant="ghost" size="icon-sm">
@@ -562,21 +646,22 @@ export default function EmpresasPage() {
                       </Button>
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {paginatedEmpresas.map((emp) => (
+            {displayRows.map((emp) => {
+              const rubro = parseRubroFromApi(emp.rubro);
+              const tipo = parseTipoFromApi(emp.tipo);
+              const rowKey = emp.isLocalOnly ? `local-${emp.id}` : emp.id;
+              return (
               <Card
-                key={emp.apiCompanyId ?? emp.company}
+                key={rowKey}
                 className="cursor-pointer transition-shadow hover:shadow-md"
-                onClick={() =>
-                  navigate(
-                    `/empresas/${emp.apiCompanyId ? encodeURIComponent(emp.apiCompanyId) : slugifyCompany(emp.company)}`,
-                  )
-                }
+                onClick={() => navigate(empresaDetailPath(emp))}
               >
                 <CardContent className="p-5">
                   <div className="flex items-start gap-3">
@@ -584,7 +669,7 @@ export default function EmpresasPage() {
                       <Building2 className="size-5 text-muted-foreground" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold truncate">{emp.company}</h3>
+                      <h3 className="font-semibold truncate">{emp.name}</h3>
                       {emp.domain && (
                         <p className="text-xs text-muted-foreground truncate">{emp.domain}</p>
                       )}
@@ -592,58 +677,62 @@ export default function EmpresasPage() {
                   </div>
 
                   <div className="mt-3 flex flex-wrap gap-1.5">
-                    <StatusBadge status={emp.etapa} />
-                    {emp.companyRubro && (
-                      <Badge variant="outline" className="text-xs">{companyRubroLabels[emp.companyRubro]}</Badge>
+                    <StatusBadge status={emp.displayEtapa as Etapa} />
+                    {rubro && (
+                      <Badge variant="outline" className="text-xs">{companyRubroLabels[rubro]}</Badge>
                     )}
-                    {emp.companyTipo && (
-                      <Badge variant="outline" className="text-xs">Tipo {emp.companyTipo}</Badge>
+                    {tipo && (
+                      <Badge variant="outline" className="text-xs">Tipo {tipo}</Badge>
                     )}
                     {emp.clienteRecuperado === 'si' && (
                       <Badge variant="secondary" className="text-xs">Cliente Recuperado</Badge>
                     )}
                   </div>
 
-                  <div className="mt-3 space-y-1.5 text-sm text-muted-foreground">
-                    <p className="flex items-center gap-2">
-                      <Users className="size-3 shrink-0" /> {emp.contacts.length} contacto{emp.contacts.length !== 1 ? 's' : ''}
-                    </p>
+                  <div
+                    className="mt-3 text-sm text-muted-foreground"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <EmpresaContactsPopover
+                      contactCount={emp.contactCount}
+                      preview={emp.contactsPreview}
+                      variant="card"
+                    />
                   </div>
 
                   <div className="mt-3 flex items-center justify-between border-t pt-3">
                     <span className="flex items-center gap-1 text-sm font-semibold text-emerald-600">
                       <DollarSign className="size-3.5" />
-                      {formatCurrency(emp.totalValue)}
+                      {formatCurrency(emp.totalEstimatedValue)}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {emp.contacts.length === 0
-                        ? '—'
-                        : (() => {
-                            const primary = emp.contacts.reduce((a, b) =>
-                              etapaProbabilidad[a.etapa] > etapaProbabilidad[b.etapa] ? a : b,
-                            );
-                            return primary.assignedToName ?? '—';
-                          })()}
+                      {emp.displayAdvisorName ?? '—'}
                     </span>
                   </div>
                 </CardContent>
               </Card>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
 
       {/* Pagination */}
-      {filteredEmpresas.length > 0 && (
+      {!loading && (total > 0 || displayRows.length > 0) && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Mostrando {startIndex}-{endIndex} de {filteredEmpresas.length} empresas
+            {total > 0
+              ? `Mostrando ${startIndex}-${endIndex} de ${total} en servidor`
+              : `${displayRows.length} empresa${displayRows.length !== 1 ? 's' : ''} (solo en dispositivo)`}
+            {localExtraOnPage > 0 && total > 0
+              ? ` · +${localExtraOnPage} local${localExtraOnPage !== 1 ? 'es' : ''}`
+              : ''}
           </p>
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
-              disabled={page <= 1}
+              disabled={page <= 1 || loading}
               onClick={() => setPage((p) => p - 1)}
             >
               <ChevronLeft className="size-4" /> Anterior
@@ -654,7 +743,7 @@ export default function EmpresasPage() {
             <Button
               variant="outline"
               size="sm"
-              disabled={page >= totalPages}
+              disabled={page >= totalPages || loading}
               onClick={() => setPage((p) => p + 1)}
             >
               Siguiente <ChevronRight className="size-4" />

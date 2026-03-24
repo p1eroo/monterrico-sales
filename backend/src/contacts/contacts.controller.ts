@@ -29,7 +29,7 @@ export class ContactsController {
     @Query('limit') limit?: string,
     @Query('search') search?: string,
     @Query('etapa') etapa?: string,
-    @Query('source') source?: string,
+    @Query('fuente') fuente?: string,
     @Query('assignedTo') assignedTo?: string,
   ) {
     const pageNum = page ? (Number.parseInt(page, 10) || 1) : 1;
@@ -39,7 +39,7 @@ export class ContactsController {
       limit: limitNum,
       search: search?.trim() || undefined,
       etapa: etapa?.trim() || undefined,
-      source: source?.trim() || undefined,
+      fuente: fuente?.trim() || undefined,
       assignedTo: assignedTo?.trim() || undefined,
     });
   }

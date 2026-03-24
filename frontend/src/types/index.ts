@@ -133,9 +133,9 @@ export interface Contact {
   cargo?: string;
   /** Empresas vinculadas al contacto. Al menos una. La primera o con isPrimary es la principal. */
   companies: LinkedCompany[];
-  phone: string;
-  email: string;
-  source: ContactSource;
+  telefono: string;
+  correo: string;
+  fuente: ContactSource;
   etapa: Etapa;
   assignedTo: string;
   assignedToName: string;
@@ -199,6 +199,7 @@ export interface Opportunity {
   assignedTo: string;
   assignedToName: string;
   createdAt: string;
+  fuente?: ContactSource;
 }
 
 export interface Client {

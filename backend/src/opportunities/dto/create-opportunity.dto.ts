@@ -16,4 +16,9 @@ export class CreateOpportunityDto {
   contactId?: string;
   /** Vincular a empresa existente (tabla `CompanyOpportunity`) */
   companyId?: string;
+  /**
+   * Fuente del negocio. Si se omite o viene vacío, el servidor asigna:
+   * contacto vinculado → empresa vinculada → 'base'.
+   */
+  fuente?: string;
 }

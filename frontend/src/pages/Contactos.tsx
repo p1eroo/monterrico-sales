@@ -97,7 +97,7 @@ export default function ContactosPage() {
         limit: ITEMS_PER_PAGE,
         search: searchDebounced || undefined,
         etapa: etapaFilter === 'todos' ? undefined : etapaFilter,
-        source: sourceFilter === 'todos' ? undefined : sourceFilter,
+        fuente: sourceFilter === 'todos' ? undefined : sourceFilter,
         assignedTo: advisorFilter === 'todos' ? undefined : advisorFilter,
       });
       setApiRows(res.data);
@@ -169,8 +169,26 @@ export default function ContactosPage() {
   }
 
   async function onSubmitNewContact(data: NewContactData) {
+    if (data.estimatedValue <= 0) {
+      toast.error('El valor estimado debe ser mayor que 0');
+      return;
+    }
     if (data.newCompanyWizardData) {
       const w = data.newCompanyWizardData;
+      const factEmpresa = (() => {
+        const f = Number(w.facturacion);
+        if (Number.isFinite(f) && f > 0) return f;
+        return data.estimatedValue > 0 ? data.estimatedValue : 0;
+      })();
+      if (factEmpresa <= 0) {
+        toast.error('Indica facturación estimada en el paso de oportunidad o un valor estimado del contacto mayor que 0');
+        return;
+      }
+      if (!w.origenLead) {
+        toast.error('Selecciona la fuente del lead en el wizard de empresa');
+        return;
+      }
+
       let companyId: string;
       try {
         const comp = await api<ApiCompanyRecord>('/companies', {
@@ -189,6 +207,13 @@ export default function ContactosPage() {
             provincia: w.provincia.trim() || undefined,
             departamento: w.departamento.trim() || undefined,
             direccion: w.direccion.trim() || undefined,
+            facturacionEstimada: factEmpresa,
+            fuente: w.origenLead,
+            clienteRecuperado: w.clienteRecuperado,
+            etapa: w.etapa,
+            ...(w.propietario && isLikelyContactCuid(w.propietario)
+              ? { assignedTo: w.propietario }
+              : {}),
           }),
         });
         companyId = comp.id;
@@ -201,9 +226,9 @@ export default function ContactosPage() {
 
       const body: Record<string, unknown> = {
         name: data.name.trim(),
-        phone: data.phone.trim(),
-        email: data.email.trim(),
-        source: data.source,
+        telefono: data.phone.trim(),
+        correo: data.email.trim(),
+        fuente: data.source,
         etapa: data.etapaCiclo,
         estimatedValue: data.estimatedValue,
         cargo: data.cargo?.trim() || undefined,
@@ -236,11 +261,12 @@ export default function ContactosPage() {
       }
 
       if (w.nombreNegocio.trim()) {
-        const monto = Number(w.facturacion) || 0;
+        const monto = factEmpresa;
         const oppBody: Record<string, unknown> = {
           title: w.nombreNegocio.trim(),
           amount: monto,
           etapa: w.etapa,
+          fuente: w.origenLead,
           status: 'abierta',
           priority: 'media',
           expectedCloseDate:
@@ -287,7 +313,15 @@ export default function ContactosPage() {
         } else {
           const created = await api<ApiCompanyRecord>('/companies', {
             method: 'POST',
-            body: JSON.stringify({ name: data.company.trim() }),
+            body: JSON.stringify({
+              name: data.company.trim(),
+              facturacionEstimada: data.estimatedValue,
+              fuente: data.source,
+              etapa: data.etapaCiclo,
+              ...(data.assignedTo && isLikelyContactCuid(data.assignedTo)
+                ? { assignedTo: data.assignedTo }
+                : {}),
+            }),
           });
           companyId = created.id;
         }
@@ -301,9 +335,9 @@ export default function ContactosPage() {
 
     const body: Record<string, unknown> = {
       name: data.name.trim(),
-      phone: data.phone.trim(),
-      email: data.email.trim(),
-      source: data.source,
+      telefono: data.phone.trim(),
+      correo: data.email.trim(),
+      fuente: data.source,
       etapa: data.etapaCiclo,
       estimatedValue: data.estimatedValue,
       cargo: data.cargo?.trim() || undefined,
@@ -619,10 +653,10 @@ function ContactsTable({
                 </div>
               </TableCell>
               <TableCell className="hidden md:table-cell text-muted-foreground">{getPrimaryCompany(contact)?.name ?? '—'}</TableCell>
-              <TableCell className="hidden lg:table-cell text-muted-foreground">{contact.phone}</TableCell>
-              <TableCell className="hidden xl:table-cell text-muted-foreground">{contact.email}</TableCell>
+              <TableCell className="hidden lg:table-cell text-muted-foreground">{contact.telefono}</TableCell>
+              <TableCell className="hidden xl:table-cell text-muted-foreground">{contact.correo}</TableCell>
               <TableCell className="hidden lg:table-cell">
-                <Badge variant="outline" className="text-xs">{contactSourceLabels[contact.source]}</Badge>
+                <Badge variant="outline" className="text-xs">{contactSourceLabels[contact.fuente]}</Badge>
               </TableCell>
               <TableCell className="hidden lg:table-cell text-muted-foreground">
                 {contact.clienteRecuperado === 'si' ? 'Sí' : contact.clienteRecuperado === 'no' ? 'No' : '—'}
@@ -721,10 +755,10 @@ function ContactsGrid({ contacts: data, onView, onDelete }: ContactsGridProps) {
 
             <div className="mt-3 space-y-1.5 text-sm text-muted-foreground">
               <p className="flex items-center gap-2 truncate">
-                <Phone className="size-3 shrink-0" /> {contact.phone}
+                <Phone className="size-3 shrink-0" /> {contact.telefono}
               </p>
               <p className="flex items-center gap-2 truncate">
-                <Mail className="size-3 shrink-0" /> {contact.email}
+                <Mail className="size-3 shrink-0" /> {contact.correo}
               </p>
             </div>
 

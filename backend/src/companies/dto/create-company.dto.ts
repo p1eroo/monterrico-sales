@@ -13,4 +13,12 @@ export class CreateCompanyDto {
   provincia?: string;
   departamento?: string;
   direccion?: string;
+  /** Facturación / ingreso estimado (obligatorio en alta) */
+  facturacionEstimada!: number;
+  /** Origen del lead a nivel cuenta */
+  fuente!: string;
+  /** Cliente recuperado a nivel cuenta (si | no) */
+  clienteRecuperado?: string;
+  etapa?: string;
+  assignedTo?: string;
 }

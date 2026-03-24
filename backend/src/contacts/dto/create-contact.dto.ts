@@ -1,13 +1,14 @@
 /** Campos alineados con el modelo Prisma `Contact` (+ companyId para vínculo inicial) */
 export class CreateContactDto {
   name!: string;
-  phone!: string;
-  email!: string;
-  source!: string;
+  telefono!: string;
+  correo!: string;
+  fuente!: string;
   cargo?: string;
   etapa?: string;
   assignedTo?: string;
-  estimatedValue?: number;
+  /** Obligatorio en alta; debe ser > 0 */
+  estimatedValue!: number;
   nextAction?: string;
   nextFollowUp?: string;
   notes?: string;

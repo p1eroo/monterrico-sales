@@ -1,9 +1,10 @@
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { etapaLabels } from '@/data/mock';
+import { etapaLabels, contactSourceLabels } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
-import type { ContactPriority, Etapa } from '@/types';
+import type { ContactPriority, ContactSource, Etapa } from '@/types';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +22,10 @@ const etapasParaOportunidad: Etapa[] = [
   'cierre_ganado', 'firma_contrato', 'activo', 'cierre_perdido', 'inactivo',
 ];
 
+const contactFuenteValues = [
+  'referido', 'base', 'entorno', 'feria', 'masivo',
+] as const satisfies readonly ContactSource[];
+
 const schema = z.object({
   title: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
   amount: z.coerce.number().min(0, 'El monto debe ser positivo'),
@@ -28,6 +33,7 @@ const schema = z.object({
   expectedCloseDate: z.string().min(1, 'Selecciona una fecha'),
   assignedTo: z.string().min(1, 'Selecciona un asesor'),
   priority: z.enum(['baja', 'media', 'alta']),
+  fuente: z.enum(contactFuenteValues),
 });
 
 export type NewOpportunityData = z.infer<typeof schema>;
@@ -37,9 +43,17 @@ interface NewOpportunityDialogProps {
   onOpenChange: (open: boolean) => void;
   entityName: string;
   onSave: (data: NewOpportunityData) => void;
+  /** Sugerencia inicial (p. ej. fuente del contacto principal). */
+  defaultFuente?: ContactSource;
 }
 
-export function NewOpportunityDialog({ open, onOpenChange, entityName, onSave }: NewOpportunityDialogProps) {
+export function NewOpportunityDialog({
+  open,
+  onOpenChange,
+  entityName,
+  onSave,
+  defaultFuente,
+}: NewOpportunityDialogProps) {
   const { activeUsers } = useUsers();
   const form = useForm<NewOpportunityData>({
     resolver: zodResolver(schema) as import('react-hook-form').Resolver<NewOpportunityData>,
@@ -50,8 +64,15 @@ export function NewOpportunityDialog({ open, onOpenChange, entityName, onSave }:
       expectedCloseDate: '',
       assignedTo: '',
       priority: 'media',
+      fuente: 'base',
     },
   });
+
+  useEffect(() => {
+    if (!open) return;
+    const f = defaultFuente && contactFuenteValues.includes(defaultFuente) ? defaultFuente : 'base';
+    form.setValue('fuente', f);
+  }, [open, defaultFuente, form]);
 
   function handleSubmit(data: NewOpportunityData) {
     onSave(data);
@@ -134,6 +155,20 @@ export function NewOpportunityDialog({ open, onOpenChange, entityName, onSave }:
                   <SelectItem value="baja">Baja</SelectItem>
                   <SelectItem value="media">Media</SelectItem>
                   <SelectItem value="alta">Alta</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Fuente *</Label>
+              <Select
+                value={form.watch('fuente')}
+                onValueChange={(v) => form.setValue('fuente', v as ContactSource)}
+              >
+                <SelectTrigger className="w-full"><SelectValue placeholder="Fuente" /></SelectTrigger>
+                <SelectContent>
+                  {contactFuenteValues.map((k) => (
+                    <SelectItem key={k} value={k}>{contactSourceLabels[k]}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

@@ -290,6 +290,10 @@ export function NewContactWizard({
 
   function handleSubmit() {
     if (!name.trim() || !company.trim()) return;
+    if (estimatedValue <= 0) {
+      toast.error('El valor estimado debe ser mayor que 0');
+      return;
+    }
     onSubmit({
       name: name.trim(),
       cargo: cargo.trim() || undefined,

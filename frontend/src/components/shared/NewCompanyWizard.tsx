@@ -130,6 +130,10 @@ export function NewCompanyWizard({
       return;
     }
     if (step === 1) {
+      if (!form.origenLead) {
+        toast.error('Selecciona la fuente del lead');
+        return;
+      }
       setForm((s) => ({
         ...s,
         nombreNegocio: s.nombreNegocio.trim() || s.nombreComercial.trim(),
@@ -141,6 +145,15 @@ export function NewCompanyWizard({
   function handleSubmit() {
     if (!form.ruc.trim() || !form.nombreComercial.trim()) {
       toast.error('RUC y Nombre comercial son obligatorios');
+      return;
+    }
+    if (!form.origenLead) {
+      toast.error('Selecciona la fuente del lead');
+      return;
+    }
+    const fact = Number(form.facturacion);
+    if (!Number.isFinite(fact) || fact <= 0) {
+      toast.error('La facturación estimada es obligatoria y debe ser mayor que 0');
       return;
     }
     const nombreNegocio = form.nombreNegocio.trim() || form.nombreComercial.trim();
@@ -281,7 +294,7 @@ export function NewCompanyWizard({
                 <Input type="email" placeholder="contacto@empresa.com" value={form.correo} onChange={(e) => set('correo', e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>Fuente</Label>
+                <Label>Fuente <span className="text-destructive">*</span></Label>
                 <Select value={form.origenLead} onValueChange={(v) => set('origenLead', v as ContactSource)}>
                   <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar fuente" /></SelectTrigger>
                   <SelectContent>
@@ -333,8 +346,8 @@ export function NewCompanyWizard({
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Facturación (S/)</Label>
-                <Input type="number" placeholder="S/" value={form.facturacion} onChange={(e) => set('facturacion', e.target.value)} />
+                <Label>Facturación estimada (S/) <span className="text-destructive">*</span></Label>
+                <Input type="number" min={0.01} step="0.01" placeholder="Mayor que 0" value={form.facturacion} onChange={(e) => set('facturacion', e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>Fecha de Cierre</Label>

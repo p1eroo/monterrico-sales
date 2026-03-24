@@ -101,10 +101,10 @@ function ContactoSidebar({ contact, contactOpportunities, linkedContactsOverride
       <EntityInfoCard
         title="Información de Contacto"
         fields={[
-          { icon: Phone, value: contact.phone, href: `tel:${contact.phone}` },
-          { icon: Mail, value: contact.email, href: `mailto:${contact.email}` },
+          { icon: Phone, value: contact.telefono, href: `tel:${contact.telefono}` },
+          { icon: Mail, value: contact.correo, href: `mailto:${contact.correo}` },
           { icon: Building2, value: getPrimaryCompany(contact)?.name ?? '—' },
-          { icon: Globe, value: contactSourceLabels[contact.source] },
+          { icon: Globe, value: contactSourceLabels[contact.fuente] },
           { icon: CalendarDays, value: `Fecha de creación: ${formatDate(contact.createdAt)}` },
           ...(contact.departamento ? [{ icon: MapPin as typeof Phone, value: contact.departamento }] : []),
           ...(contact.provincia ? [{ label: 'Provincia:', value: contact.provincia, indent: true }] : []),
@@ -286,9 +286,9 @@ export default function ContactoDetailPage() {
   const [editForm, setEditForm] = useState({
     name: '',
     cargo: '',
-    phone: '',
-    email: '',
-    source: '' as ContactSource,
+    telefono: '',
+    correo: '',
+    fuente: '' as ContactSource,
     estimatedValue: 0,
     nextAction: '',
     nextFollowUp: '',
@@ -357,9 +357,9 @@ export default function ContactoDetailPage() {
     setEditForm({
       name: contact.name,
       cargo: contact.cargo ?? '',
-      phone: contact.phone,
-      email: contact.email,
-      source: contact.source,
+      telefono: contact.telefono,
+      correo: contact.correo,
+      fuente: contact.fuente,
       estimatedValue: contact.estimatedValue,
       nextAction: contact.nextAction,
       nextFollowUp: contact.nextFollowUp,
@@ -377,9 +377,9 @@ export default function ContactoDetailPage() {
             body: JSON.stringify({
               name: editForm.name.trim(),
               cargo: editForm.cargo.trim() || null,
-              phone: editForm.phone.trim(),
-              email: editForm.email.trim(),
-              source: editForm.source,
+              telefono: editForm.telefono.trim(),
+              correo: editForm.correo.trim(),
+              fuente: editForm.fuente,
               estimatedValue: editForm.estimatedValue,
               nextAction: editForm.nextAction.trim() || null,
               nextFollowUp: editForm.nextFollowUp.trim() || null,
@@ -397,9 +397,9 @@ export default function ContactoDetailPage() {
     updateContact(contact.id, {
       name: editForm.name,
       cargo: editForm.cargo || undefined,
-      phone: editForm.phone,
-      email: editForm.email,
-      source: editForm.source,
+      telefono: editForm.telefono,
+      correo: editForm.correo,
+      fuente: editForm.fuente,
       estimatedValue: editForm.estimatedValue,
       nextAction: editForm.nextAction,
       nextFollowUp: editForm.nextFollowUp,
@@ -527,6 +527,14 @@ export default function ContactoDetailPage() {
             provincia: data.provincia.trim() || undefined,
             departamento: data.departamento.trim() || undefined,
             direccion: data.direccion.trim() || undefined,
+            facturacionEstimada: (() => {
+              const f = Number(data.facturacion);
+              if (Number.isFinite(f) && f > 0) return f;
+              return Math.max(contact.estimatedValue, 1);
+            })(),
+            fuente: data.origenLead || contact.fuente,
+            etapa: data.etapa || contact.etapa,
+            clienteRecuperado: data.clienteRecuperado,
           }),
         });
         const isPrimary = !(apiRecord?.companies?.length);
@@ -695,9 +703,9 @@ export default function ContactoDetailPage() {
           method: 'POST',
           body: JSON.stringify({
             name: data.name.trim(),
-            phone: data.phone?.trim() || contact.phone,
-            email: data.email?.trim() || contact.email,
-            source: data.source,
+            telefono: data.phone?.trim() || contact.telefono,
+            correo: data.email?.trim() || contact.correo,
+            fuente: data.source,
             cargo: data.cargo?.trim() || undefined,
             etapa: data.etapaCiclo,
             assignedTo: data.assignedTo?.trim() || undefined,
@@ -731,9 +739,9 @@ export default function ContactoDetailPage() {
       docType: data.docType,
       docNumber: data.docNumber,
       companies: [{ name: data.company }],
-      phone: data.phone || contact.phone,
-      email: data.email || contact.email,
-      source: data.source,
+      telefono: data.phone || contact.telefono,
+      correo: data.email || contact.correo,
+      fuente: data.source,
       assignedTo: data.assignedTo || contact.assignedTo,
       estimatedValue: data.estimatedValue,
       clienteRecuperado: data.clienteRecuperado,
@@ -844,7 +852,7 @@ export default function ContactoDetailPage() {
             rubro: c.rubro,
             tipo: c.tipo,
             contactName: l.name,
-            contactPhone: l.phone,
+            contactPhone: l.telefono,
           });
         }
       }
@@ -886,7 +894,7 @@ export default function ContactoDetailPage() {
   const contactLinkItems: LinkExistingItem[] = availableContactsToLink.map((c) => ({
     id: c.id,
     title: c.name,
-    subtitle: [c.cargo, getPrimaryCompany(c)?.name].filter(Boolean).join(' · ') || c.phone,
+    subtitle: [c.cargo, getPrimaryCompany(c)?.name].filter(Boolean).join(' · ') || c.telefono,
     status: 'Activo',
     icon: <Users className="size-4" />,
   }));
@@ -1082,16 +1090,16 @@ export default function ContactoDetailPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-phone">Teléfono</Label>
-                <Input id="edit-phone" value={editForm.phone} onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))} />
+                <Input id="edit-phone" value={editForm.telefono} onChange={(e) => setEditForm((f) => ({ ...f, telefono: e.target.value }))} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-email">Email</Label>
-                <Input id="edit-email" type="email" value={editForm.email} onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))} />
+                <Label htmlFor="edit-email">Correo</Label>
+                <Input id="edit-email" type="email" value={editForm.correo} onChange={(e) => setEditForm((f) => ({ ...f, correo: e.target.value }))} />
               </div>
             </div>
             <div className="space-y-2">
               <Label>Fuente</Label>
-              <Select value={editForm.source} onValueChange={(v) => setEditForm((f) => ({ ...f, source: v as ContactSource }))}>
+              <Select value={editForm.fuente} onValueChange={(v) => setEditForm((f) => ({ ...f, fuente: v as ContactSource }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {Object.entries(contactSourceLabels).map(([key, label]) => (

@@ -195,12 +195,12 @@ export function ActivityPanel({ activities, onRegisterActivity }: ActivityPanelP
                     )}
                   </div>
 
-                  {selectedActivity.leadName && (
+                  {selectedActivity.contactName && (
                     <div className="flex items-center gap-2.5 rounded-lg border p-3">
                       <User className="size-4 text-muted-foreground shrink-0" />
                       <div className="min-w-0">
                         <p className="text-xs text-muted-foreground">Contacto asociado</p>
-                        <p className="text-sm font-medium">{selectedActivity.leadName}</p>
+                        <p className="text-sm font-medium">{selectedActivity.contactName}</p>
                       </div>
                     </div>
                   )}

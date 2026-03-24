@@ -67,6 +67,7 @@ model User {
   updatedAt             DateTime      @updatedAt
   contactsAssigned      Contact[]
   opportunitiesAssigned Opportunity[]
+  companiesAssigned     Company[]
   activitiesAssigned    Activity[]
 }
 
@@ -74,9 +75,9 @@ model Contact {
   id                String               @id @default(cuid())
   name              String
   cargo             String?
-  phone             String
-  email             String
-  source            String
+  telefono          String
+  correo            String
+  fuente            String
   etapa             String               @default("lead")
   assignedTo        String?
   estimatedValue    Float                @default(0)
@@ -100,36 +101,53 @@ model Contact {
   linkedBy          ContactContact[]     @relation("LinkedContacts")
   opportunities     ContactOpportunity[]
   activities        ContactActivity[]
+
+  @@index([assignedTo])
+  @@index([etapa])
+  @@index([assignedTo, etapa])
 }
 
 model Company {
-  id            String               @id @default(cuid())
-  name          String
-  razonSocial   String?
-  ruc           String?
-  telefono      String?
-  domain        String?
-  rubro         String?
-  tipo          String?
-  linkedin      String?
-  correo        String?
-  distrito      String?
-  provincia     String?
-  departamento  String?
-  direccion     String?
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
-  contacts      CompanyContact[]
-  companies     CompanyCompany[]     @relation("CompanyLinks")
-  linkedBy      CompanyCompany[]     @relation("LinkedCompanies")
-  opportunities CompanyOpportunity[]
-  activities    CompanyActivity[]
+  id                  String               @id @default(cuid())
+  name                String
+  razonSocial         String?
+  ruc                 String? // TODO: añadir @unique cuando se resuelvan RUC duplicados (ej: 20000000000)
+  telefono            String?
+  domain              String?
+  rubro               String?
+  tipo                String?
+  linkedin            String?
+  correo              String?
+  distrito            String?
+  provincia           String?
+  departamento        String?
+  direccion           String?
+  /**
+   * Facturación / ingreso estimado a nivel cuenta (sincronizado con contactos/oportunidades vinculadas)
+   */
+  facturacionEstimada Float                @default(0)
+  fuente              String?
+  clienteRecuperado   String?
+  etapa               String               @default("lead")
+  assignedTo          String?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  user                User?                @relation(fields: [assignedTo], references: [id], onDelete: SetNull)
+  contacts            CompanyContact[]
+  companies           CompanyCompany[]     @relation("CompanyLinks")
+  linkedBy            CompanyCompany[]     @relation("LinkedCompanies")
+  opportunities       CompanyOpportunity[]
+  activities          CompanyActivity[]
+
+  @@index([assignedTo])
+  @@index([etapa])
 }
 
 model Opportunity {
   id                String                   @id @default(cuid())
   title             String
   amount            Float
+  fuente            String?
   probability       Int                      @default(0)
   etapa             String
   status            String                   @default("abierta")
@@ -147,6 +165,12 @@ model Opportunity {
   opportunities     OpportunityOpportunity[] @relation("OpportunityLinks")
   linkedBy          OpportunityOpportunity[] @relation("LinkedOpportunities")
   activities        OpportunityActivity[]
+
+  @@index([assignedTo])
+  @@index([etapa])
+  @@index([status])
+  @@index([assignedTo, etapa])
+  @@index([expectedCloseDate])
 }
 
 // ─── Activity: puede vincularse a muchos Contact, Company, Opportunity ───
@@ -168,6 +192,11 @@ model Activity {
   contacts      ContactActivity[]
   companies     CompanyActivity[]
   opportunities OpportunityActivity[]
+
+  @@index([assignedTo])
+  @@index([dueDate])
+  @@index([status])
+  @@index([assignedTo, dueDate])
 }
 
 // ─── Tablas de unión entre entidades principales ───

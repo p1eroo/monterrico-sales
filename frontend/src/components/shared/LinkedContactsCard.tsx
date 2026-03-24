@@ -5,7 +5,6 @@ import { etapaLabels } from '@/data/mock';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { formatCurrency } from '@/lib/formatters';
 import { etapaColors } from '@/lib/etapaConfig';
-import { getPrimaryCompany } from '@/lib/utils';
 import { LinkedEntitiesCard } from './LinkedEntitiesCard';
 import type { Contact } from '@/types';
 
@@ -14,8 +13,8 @@ export interface LinkedContact {
   name: string;
   cargo?: string;
   etapa: string;
-  phone?: string;
-  email?: string;
+  telefono?: string;
+  correo?: string;
   estimatedValue: number;
   companies?: Contact['companies'];
 }
@@ -56,7 +55,6 @@ export function LinkedContactsCard({
       getItemKey={(c) => c.id}
       onItemClick={(c) => navigate(`/contactos/${c.id}`)}
       renderItem={(contact, unlinkButton) => {
-        const primaryCompany = getPrimaryCompany(contact as Contact);
         return (
           <>
             <div className="flex items-start justify-between gap-2 mb-1">
@@ -78,10 +76,10 @@ export function LinkedContactsCard({
             {variant === 'full' ? (
               <div className="flex items-center justify-between gap-2 text-[12px] text-muted-foreground">
                 <div className="flex items-center gap-4 min-w-0">
-                  {contact.email && (
+                  {contact.correo && (
                     <span className="flex items-center gap-1 truncate">
                       <Mail className="size-3 shrink-0" />
-                      {contact.email}
+                      {contact.correo}
                     </span>
                   )}
                 </div>

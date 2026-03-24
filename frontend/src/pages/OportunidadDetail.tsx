@@ -150,11 +150,6 @@ export default function OportunidadDetailPage() {
     return getOpportunitiesByContactId(linkedContact.id).filter((o) => o.id !== routeId);
   }, [linkedContact, routeId, getOpportunitiesByContactId]);
 
-  const assignedUser = useMemo(() => {
-    if (!opp) return undefined;
-    return users.find((u) => u.id === opp.assignedTo);
-  }, [opp, users]);
-
   const initialOppActivities = useMemo(() => {
     if (!opp?.contactId) return [];
     return activities.filter((a) => a.contactId === opp.contactId);
@@ -302,22 +297,45 @@ export default function OportunidadDetailPage() {
       try {
         let companyId: string | undefined = data.companyId;
         if (data.newCompanyWizardData) {
+          const w = data.newCompanyWizardData;
+          const factEmpresa = (() => {
+            const f = Number(w.facturacion);
+            if (Number.isFinite(f) && f > 0) return f;
+            return data.estimatedValue > 0 ? data.estimatedValue : 0;
+          })();
+          if (factEmpresa <= 0) {
+            toast.error(
+              'Indica facturación estimada en el paso de oportunidad o un valor estimado del contacto mayor que 0',
+            );
+            return;
+          }
+          if (!w.origenLead) {
+            toast.error('Selecciona la fuente del lead en el wizard de empresa');
+            return;
+          }
           const created = await api<ApiCompanyRecord>('/companies', {
             method: 'POST',
             body: JSON.stringify({
-              name: data.newCompanyWizardData.nombreComercial.trim(),
-              razonSocial: data.newCompanyWizardData.razonSocial.trim() || undefined,
-              ruc: data.newCompanyWizardData.ruc.trim() || undefined,
-              telefono: data.newCompanyWizardData.telefono.trim() || undefined,
-              domain: data.newCompanyWizardData.dominio.trim() || undefined,
-              rubro: data.newCompanyWizardData.rubro || undefined,
-              tipo: data.newCompanyWizardData.tipoEmpresa || undefined,
-              linkedin: data.newCompanyWizardData.linkedin.trim() || undefined,
-              correo: data.newCompanyWizardData.correo.trim() || undefined,
-              distrito: data.newCompanyWizardData.distrito.trim() || undefined,
-              provincia: data.newCompanyWizardData.provincia.trim() || undefined,
-              departamento: data.newCompanyWizardData.departamento.trim() || undefined,
-              direccion: data.newCompanyWizardData.direccion.trim() || undefined,
+              name: w.nombreComercial.trim(),
+              razonSocial: w.razonSocial.trim() || undefined,
+              ruc: w.ruc.trim() || undefined,
+              telefono: w.telefono.trim() || undefined,
+              domain: w.dominio.trim() || undefined,
+              rubro: w.rubro || undefined,
+              tipo: w.tipoEmpresa || undefined,
+              linkedin: w.linkedin.trim() || undefined,
+              correo: w.correo.trim() || undefined,
+              distrito: w.distrito.trim() || undefined,
+              provincia: w.provincia.trim() || undefined,
+              departamento: w.departamento.trim() || undefined,
+              direccion: w.direccion.trim() || undefined,
+              facturacionEstimada: factEmpresa,
+              fuente: w.origenLead,
+              clienteRecuperado: w.clienteRecuperado,
+              etapa: w.etapa,
+              ...(w.propietario && isLikelyContactCuid(w.propietario)
+                ? { assignedTo: w.propietario }
+                : {}),
             }),
           });
           companyId = created.id;
@@ -327,9 +345,9 @@ export default function OportunidadDetailPage() {
           method: 'POST',
           body: JSON.stringify({
             name: data.name.trim(),
-            phone: data.phone?.trim() || '',
-            email: data.email?.trim() || '',
-            source: data.source,
+            telefono: data.phone?.trim() || '',
+            correo: data.email?.trim() || '',
+            fuente: data.source,
             cargo: data.cargo?.trim() || undefined,
             etapa: data.etapaCiclo,
             assignedTo: data.assignedTo?.trim() || opp.assignedTo || undefined,
@@ -365,9 +383,9 @@ export default function OportunidadDetailPage() {
       docType: data.docType,
       docNumber: data.docNumber,
       companies: data.company ? [{ name: data.company }] : [],
-      phone: data.phone || '',
-      email: data.email || '',
-      source: data.source,
+      telefono: data.phone || '',
+      correo: data.email || '',
+      fuente: data.source,
       assignedTo: data.assignedTo || opp.assignedTo,
       estimatedValue: data.estimatedValue,
       clienteRecuperado: data.clienteRecuperado,
@@ -587,7 +605,7 @@ export default function OportunidadDetailPage() {
   const contactLinkItems: LinkExistingItem[] = availableContacts.map((c) => ({
     id: c.id,
     title: c.name,
-    subtitle: [c.cargo, getPrimaryCompany(c)?.name].filter(Boolean).join(' · ') || c.phone,
+    subtitle: [c.cargo, getPrimaryCompany(c)?.name].filter(Boolean).join(' · ') || c.telefono,
     status: 'Activo',
     icon: <Users className="size-4" />,
   }));

@@ -36,9 +36,9 @@ export type ApiContactNested = {
   id: string;
   name: string;
   cargo?: string | null;
-  phone: string;
-  email: string;
-  source: string;
+  telefono: string;
+  correo: string;
+  fuente: string;
   etapa: string;
   assignedTo?: string | null;
   estimatedValue: number;
@@ -62,9 +62,9 @@ export type ApiContactListRow = {
   id: string;
   name: string;
   cargo?: string | null;
-  phone: string;
-  email: string;
-  source: string;
+  telefono: string;
+  correo: string;
+  fuente: string;
   etapa: string;
   assignedTo?: string | null;
   estimatedValue: number;
@@ -160,9 +160,9 @@ export function mapApiContactRowToContact(row: ApiContactListRow | ApiContactNes
     name: row.name,
     cargo: row.cargo ?? undefined,
     companies: mapCompanies(row.companies),
-    phone: row.phone,
-    email: row.email,
-    source: parseSource(row.source),
+    telefono: row.telefono,
+    correo: row.correo,
+    fuente: parseSource(row.fuente),
     etapa: parseEtapa(row.etapa),
     assignedTo: assignedId,
     assignedToName:
@@ -309,13 +309,13 @@ export type ContactListPaginatedResponse = {
   totalPages: number;
 };
 
-/** Listar contactos paginado: GET /contacts?page=&limit=&search=&etapa=&source=&assignedTo= */
+/** Listar contactos paginado: GET /contacts?page=&limit=&search=&etapa=&fuente=&assignedTo= */
 export async function contactListPaginated(params?: {
   page?: number;
   limit?: number;
   search?: string;
   etapa?: string;
-  source?: string;
+  fuente?: string;
   assignedTo?: string;
 }): Promise<ContactListPaginatedResponse> {
   const sp = new URLSearchParams();
@@ -323,7 +323,7 @@ export async function contactListPaginated(params?: {
   if (params?.limit != null) sp.set('limit', String(params.limit));
   if (params?.search?.trim()) sp.set('search', params.search.trim());
   if (params?.etapa?.trim()) sp.set('etapa', params.etapa.trim());
-  if (params?.source?.trim()) sp.set('source', params.source.trim());
+  if (params?.fuente?.trim()) sp.set('fuente', params.fuente.trim());
   if (params?.assignedTo?.trim()) sp.set('assignedTo', params.assignedTo.trim());
   const qs = sp.toString();
   const url = qs ? `/contacts?${qs}` : '/contacts';
@@ -333,14 +333,14 @@ export async function contactListPaginated(params?: {
 /** Listar todos los contactos (hasta 5000) para Pipeline, Empresas, etc. */
 export async function contactListAll(opts?: {
   etapa?: string;
-  source?: string;
+  fuente?: string;
   assignedTo?: string;
 }): Promise<ApiContactListRow[]> {
   const sp = new URLSearchParams();
   sp.set('limit', '5000');
   sp.set('page', '1');
   if (opts?.etapa?.trim()) sp.set('etapa', opts.etapa.trim());
-  if (opts?.source?.trim()) sp.set('source', opts.source.trim());
+  if (opts?.fuente?.trim()) sp.set('fuente', opts.fuente.trim());
   if (opts?.assignedTo?.trim()) sp.set('assignedTo', opts.assignedTo.trim());
   const res = await api<ContactListPaginatedResponse>(`/contacts?${sp.toString()}`);
   return res.data;
