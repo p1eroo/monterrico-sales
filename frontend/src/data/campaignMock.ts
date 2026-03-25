@@ -8,7 +8,8 @@ import { contacts } from './mock';
 
 /** Recipients derived from CRM contacts */
 export function getRecipientsFromContacts(): CampaignRecipient[] {
-  return contacts.slice(0, 12).map((c) => ({
+  const list = Array.isArray(contacts) ? contacts : [];
+  return list.slice(0, 12).map((c) => ({
     id: `r-${c.id}`,
     name: c.name,
     email: c.correo,

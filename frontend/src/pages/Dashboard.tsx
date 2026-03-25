@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { DateRange } from 'react-day-picker';
 import {
   Users,
@@ -42,19 +42,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  activities,
-  salesByMonthData,
-  leadsBySourceData,
-  funnelData,
-  performanceByAdvisor,
-} from '@/data/mock';
+import { contactSourceLabels } from '@/data/mock';
 import type { Contact } from '@/types';
 import { contactListAll, mapApiContactRowToContact } from '@/lib/contactApi';
 import { WeeklyGoalCard } from '@/components/shared/WeeklyGoalCard';
 import { MonthlyGoalCard } from '@/components/shared/MonthlyGoalCard';
-import { formatDateShort } from '@/lib/formatters';
+import { formatCurrency, formatDateShort } from '@/lib/formatters';
 import { usePermissions } from '@/hooks/usePermissions';
+import {
+  fetchAnalyticsSummary,
+  analyticsRangeFromPreset,
+  type AnalyticsSummary,
+} from '@/lib/analyticsApi';
+import { useCrmConfigStore, getStageLabelFromCatalog, getSourceLabelFromCatalog } from '@/store/crmConfigStore';
 
 const PIE_COLORS = ['#13944C', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899'];
 const FUNNEL_COLORS = ['#13944C', '#22c55e', '#3b82f6', '#f59e0b', '#8b5cf6', '#06b6d4'];
@@ -69,11 +69,22 @@ const activityIconMap: Record<string, typeof Phone> = {
 
 type DateRangePreset = '7d' | '1m' | '3m' | '1y' | 'custom';
 
+function changeTone(s: string): 'positive' | 'negative' | 'neutral' {
+  const t = s.trim();
+  if (t.startsWith('-')) return 'negative';
+  if (t.startsWith('+')) return 'positive';
+  return 'neutral';
+}
+
 export default function Dashboard() {
   const { hasPermission } = usePermissions();
+  const bundle = useCrmConfigStore((s) => s.bundle);
   const [dateRange, setDateRange] = useState<DateRangePreset>('1m');
   const [customRange, setCustomRange] = useState<DateRange | undefined>();
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+
   useEffect(() => {
     let c = true;
     void contactListAll()
@@ -87,10 +98,63 @@ export default function Dashboard() {
       c = false;
     };
   }, []);
-  const latestContacts = contacts.slice(0, 5);
-  const pendingActivities = activities
-    .filter((a) => a.status === 'pendiente' || a.status === 'vencida')
-    .slice(0, 5);
+
+  useEffect(() => {
+    if (dateRange === 'custom' && (!customRange?.from || !customRange?.to)) {
+      setSummary(null);
+      return;
+    }
+    const { from, to } = analyticsRangeFromPreset(dateRange, customRange);
+    let cancelled = false;
+    setSummaryLoading(true);
+    void fetchAnalyticsSummary({ from, to })
+      .then((data) => {
+        if (!cancelled) setSummary(data);
+      })
+      .catch(() => {
+        if (!cancelled) setSummary(null);
+      })
+      .finally(() => {
+        if (!cancelled) setSummaryLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [dateRange, customRange?.from, customRange?.to]);
+
+  const latestContacts = useMemo(() => {
+    return [...contacts]
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      )
+      .slice(0, 5);
+  }, [contacts]);
+
+  const pendingActivities = useMemo(() => {
+    return (summary?.pendingActivities ?? []).slice(0, 5);
+  }, [summary]);
+
+  const leadsBySourceData = useMemo(() => {
+    if (!summary) return [];
+    return summary.contactsBySource.map((x) => ({
+      ...x,
+      name: getSourceLabelFromCatalog(x.name, bundle, contactSourceLabels),
+    }));
+  }, [summary, bundle]);
+
+  const funnelData = useMemo(() => {
+    if (!summary) return [];
+    return summary.funnelByStage.map((x) => ({
+      ...x,
+      name: getStageLabelFromCatalog(x.name, bundle),
+    }));
+  }, [summary, bundle]);
+
+  const performanceByAdvisor = summary?.performanceByAdvisor ?? [];
+  const salesByMonthData = summary?.salesByMonth ?? [];
+
+  const kpis = summary?.kpis;
 
   return (
     <div className="space-y-6">
@@ -119,6 +183,9 @@ export default function Dashboard() {
               className="h-9 w-[240px]"
             />
           )}
+          {summaryLoading && (
+            <span className="text-xs text-muted-foreground">Cargando métricas…</span>
+          )}
         </div>
         {hasPermission('dashboard.exportar') && (
           <Button size="sm" className="bg-[#13944C] text-white hover:bg-[#0f7a3d]">
@@ -138,30 +205,28 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           title="Total Contactos"
-          value={156}
-          change="+12.5%"
-          changeType="positive"
+          value={kpis?.totalContacts ?? '—'}
+          change={kpis ? `${kpis.changes.contacts} vs periodo anterior` : undefined}
+          changeType={kpis ? changeTone(kpis.changes.contacts) : 'neutral'}
           icon={Users}
         />
         <MetricCard
           title="Oportunidades Activas"
-          value={34}
-          change="+8.3%"
-          changeType="positive"
+          value={kpis?.activeOpportunities ?? '—'}
+          changeType="neutral"
           icon={Target}
         />
         <MetricCard
           title="Ventas Cerradas"
-          value="S/ 245,000"
-          change="+15.2%"
-          changeType="positive"
+          value={kpis ? formatCurrency(kpis.closedSalesAmount) : '—'}
+          change={kpis ? `${kpis.changes.sales} vs periodo anterior` : undefined}
+          changeType={kpis ? changeTone(kpis.changes.sales) : 'neutral'}
           icon={TrendingUp}
         />
         <MetricCard
           title="Tasa de Conversión"
-          value="32.5%"
-          change="-2.1%"
-          changeType="negative"
+          value={kpis ? `${kpis.conversionPct}%` : '—'}
+          changeType="neutral"
           icon={Percent}
         />
       </div>
@@ -170,29 +235,31 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           title="Contactos Nuevos"
-          value={23}
-          change="+18%"
-          changeType="positive"
+          value={kpis?.newContactsInRange ?? '—'}
+          changeType="neutral"
           icon={UserPlus}
         />
         <MetricCard
           title="Actividades Pendientes"
-          value={28}
+          value={kpis?.pendingActivities ?? '—'}
           changeType="neutral"
           icon={CalendarCheck}
         />
         <MetricCard
           title="Seguimientos Vencidos"
-          value={7}
-          change="Requiere atención"
-          changeType="warning"
+          value={kpis?.overdueFollowUps ?? '—'}
+          change={
+            kpis && kpis.overdueFollowUps > 0 ? 'Requiere atención' : undefined
+          }
+          changeType={
+            kpis && kpis.overdueFollowUps > 0 ? 'warning' : 'neutral'
+          }
           icon={AlertTriangle}
         />
         <MetricCard
           title="Valor Pipeline"
-          value="S/ 875,000"
-          change="+5.4%"
-          changeType="positive"
+          value={kpis ? formatCurrency(kpis.pipelineValue) : '—'}
+          changeType="neutral"
           icon={DollarSign}
         />
       </div>
@@ -354,15 +421,16 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Actividades del Día */}
+        {/* Actividades pendientes / vencidas */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Actividades del Día</CardTitle>
+            <CardTitle className="text-base">Actividades pendientes</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {pendingActivities.map((activity) => {
-                const IconComp = activityIconMap[activity.type] ?? Clock;
+                const t = (activity.type ?? '').toLowerCase();
+                const IconComp = activityIconMap[t] ?? Clock;
                 return (
                   <div
                     key={activity.id}

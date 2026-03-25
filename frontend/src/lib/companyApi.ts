@@ -3,6 +3,7 @@ import { api } from '@/lib/api';
 /** Respuesta JSON de GET/POST/PATCH /companies */
 export type ApiCompanyRecord = {
   id: string;
+  urlSlug: string;
   name: string;
   razonSocial?: string | null;
   ruc?: string | null;
@@ -57,6 +58,8 @@ export async function companyListPaginated(params?: {
 /** Fila de GET /companies/summary (agregados en servidor). */
 export type CompanySummaryRow = {
   id: string;
+  /** Presente en filas del API; ausente en filas solo locales del store. */
+  urlSlug?: string;
   name: string;
   razonSocial?: string | null;
   ruc?: string | null;
@@ -77,7 +80,7 @@ export type CompanySummaryRow = {
   displayAdvisorUserId: string | null;
   displayAdvisorName: string | null;
   clienteRecuperado: 'si' | 'no' | null;
-  contactsPreview: { id: string; name: string }[];
+  contactsPreview: { id: string; name: string; urlSlug?: string }[];
 };
 
 export type CompanySummaryListResponse = {

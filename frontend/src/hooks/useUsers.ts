@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useUsersStore } from '@/store/usersStore';
 
 /**
@@ -14,11 +14,16 @@ export function useUsers() {
     }
   }, [loaded, loading, loadUsers]);
 
+  const activeUsers = useMemo(
+    () => users.filter((u) => u.status === 'activo'),
+    [users],
+  );
+
   return {
     users,
     loading,
     error,
     /** Solo usuarios activos (para selects de asignación) */
-    activeUsers: users.filter((u) => u.status === 'activo'),
+    activeUsers,
   };
 }

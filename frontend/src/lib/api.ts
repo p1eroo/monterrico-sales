@@ -8,10 +8,80 @@ function getAccessToken(): string | null {
 
 export type ApiErrorBody = { message?: string | string[]; statusCode?: number };
 
+/** Si la API devuelve un solo ítem o un array, devuelve siempre un array. */
+export function asArray<T>(value: T | T[] | null | undefined): T[] {
+  if (value == null) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
 /**
  * fetch al backend Nest con JSON y Authorization Bearer si hay token.
  * Lanza Error con mensaje legible si !res.ok.
  */
+export type AuthMeResponse = {
+  id: string;
+  username: string;
+  name: string;
+  phone: string;
+  avatar: string;
+  role: string;
+  roleId: string;
+  roleName: string;
+  permissions: string[];
+  joinedAt: string;
+  lastActivity: string | null;
+};
+
+/** Perfil y permisos reales (tabla Authority). Requiere Bearer. */
+export async function fetchAuthMe(): Promise<AuthMeResponse> {
+  return api<AuthMeResponse>('/auth/me');
+}
+
+export async function patchAuthProfile(body: {
+  name?: string;
+  phone?: string;
+}): Promise<AuthMeResponse> {
+  return api<AuthMeResponse>('/auth/me', {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function uploadAuthAvatar(file: File): Promise<AuthMeResponse> {
+  const token = getAccessToken();
+  const fd = new FormData();
+  fd.append('file', file);
+  const res = await fetch(
+    `${API_BASE}/auth/me/avatar`,
+    {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: fd,
+    },
+  );
+  const text = await res.text();
+  let body: unknown = {};
+  if (text) {
+    try {
+      body = JSON.parse(text) as unknown;
+    } catch {
+      body = { message: text };
+    }
+  }
+  if (!res.ok) {
+    const err = body as ApiErrorBody;
+    const msg = Array.isArray(err.message)
+      ? err.message.join(', ')
+      : typeof err.message === 'string'
+        ? err.message
+        : res.statusText || 'Error al subir avatar';
+    const error = new Error(msg);
+    (error as Error & { status?: number }).status = res.status;
+    throw error;
+  }
+  return body as AuthMeResponse;
+}
+
 export async function api<T>(
   path: string,
   init: RequestInit = {},

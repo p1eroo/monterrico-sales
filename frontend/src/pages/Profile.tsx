@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -36,16 +36,20 @@ import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { formatDateTime } from '@/lib/formatters';
-import { api } from '@/lib/api';
+import {
+  api,
+  patchAuthProfile,
+  uploadAuthAvatar,
+} from '@/lib/api';
+import { fetchCrmConfig } from '@/lib/crmConfigApi';
+import { useCrmConfigStore } from '@/store/crmConfigStore';
+import { hydrateGoalsFromBundle } from '@/store/goalsStore';
 import { WeeklyGoalCard } from '@/components/shared/WeeklyGoalCard';
 import { MonthlyGoalCard } from '@/components/shared/MonthlyGoalCard';
 
 const profileSchema = z.object({
   name: z.string().min(2, 'Mínimo 2 caracteres'),
   phone: z.string().optional(),
-  cargo: z.string().optional(),
-  empresa: z.string().optional(),
-  role: z.string().optional(),
 });
 
 const passwordSchema = z
@@ -91,8 +95,32 @@ export default function ProfilePage() {
   const defaultTab = tabFromUrl && PROFILE_TABS.includes(tabFromUrl as (typeof PROFILE_TABS)[number])
     ? tabFromUrl
     : 'profile';
-  const { currentUser, updateCurrentUser, preferences, updatePreferences, gmailConnected, setGmailConnected } = useAppStore();
+  const {
+    currentUser,
+    updateCurrentUser,
+    setPermissionKeys,
+    preferences,
+    updatePreferences,
+    gmailConnected,
+    setGmailConnected,
+  } = useAppStore();
+  const setCrmBundle = useCrmConfigStore((s) => s.setBundle);
   const { setTheme } = useTheme();
+
+  useEffect(() => {
+    if (!currentUser.id) return;
+    let cancelled = false;
+    void fetchCrmConfig()
+      .then((b) => {
+        if (cancelled) return;
+        setCrmBundle(b);
+        hydrateGoalsFromBundle(b, currentUser.id);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser.id, setCrmBundle]);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
@@ -105,11 +133,16 @@ export default function ProfilePage() {
     defaultValues: {
       name: currentUser.name,
       phone: currentUser.phone ?? '',
-      cargo: (currentUser as { cargo?: string }).cargo ?? '',
-      empresa: (currentUser as { empresa?: string }).empresa ?? 'Taxi Monterrico',
-      role: currentUser.role,
     },
   });
+
+  useEffect(() => {
+    profileForm.reset({
+      name: currentUser.name,
+      phone: currentUser.phone ?? '',
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo sincronizar con datos de sesión
+  }, [currentUser.id, currentUser.name, currentUser.phone]);
 
   const passwordForm = useForm<PasswordFormData>({
     resolver: zodResolver(passwordSchema),
@@ -131,10 +164,30 @@ export default function ProfilePage() {
 
   const handleProfileSubmit = profileForm.handleSubmit(async (data) => {
     setIsSavingProfile(true);
-    await new Promise((r) => setTimeout(r, 800));
-    updateCurrentUser(data);
-    setIsSavingProfile(false);
-    toast.success('Perfil actualizado correctamente');
+    try {
+      const me = await patchAuthProfile({
+        name: data.name.trim(),
+        phone: data.phone?.trim() ?? '',
+      });
+      updateCurrentUser({
+        name: me.name,
+        phone: me.phone || undefined,
+        avatar: me.avatar || undefined,
+        role: me.role,
+        roleId: me.roleId,
+        roleName: me.roleName,
+        createdAt: me.joinedAt?.slice(0, 10),
+        lastActivity: me.lastActivity ?? undefined,
+      });
+      setPermissionKeys(me.permissions);
+      toast.success('Perfil actualizado correctamente');
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : 'No se pudo guardar el perfil',
+      );
+    } finally {
+      setIsSavingProfile(false);
+    }
   });
 
   const handlePasswordSubmit = passwordForm.handleSubmit(async (formData) => {
@@ -163,11 +216,32 @@ export default function ProfilePage() {
   const handleAvatarClick = () => avatarInputRef.current?.click();
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file && file.type.startsWith('image/')) {
-      const url = URL.createObjectURL(file);
-      updateCurrentUser({ avatar: url });
-      toast.success('Foto actualizada');
+    if (!file || !file.type.startsWith('image/')) {
+      if (file) toast.error('Selecciona una imagen (JPEG, PNG, WebP o GIF)');
+      return;
     }
+    void (async () => {
+      try {
+        const me = await uploadAuthAvatar(file);
+        if (currentUser.avatar?.startsWith('blob:')) {
+          URL.revokeObjectURL(currentUser.avatar);
+        }
+        updateCurrentUser({
+          avatar: me.avatar || undefined,
+          name: me.name,
+          phone: me.phone || undefined,
+          roleName: me.roleName,
+        });
+        setPermissionKeys(me.permissions);
+        toast.success('Foto actualizada');
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : 'No se pudo subir la foto',
+        );
+      } finally {
+        e.target.value = '';
+      }
+    })();
   };
 
   return (
@@ -204,7 +278,7 @@ export default function ProfilePage() {
                 <input
                   ref={avatarInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
                   className="hidden"
                   onChange={handleAvatarChange}
                 />
@@ -215,7 +289,7 @@ export default function ProfilePage() {
                   variant="outline"
                   className="mt-2 border-[#13944C] text-[#13944C]"
                 >
-                  {currentUser.role}
+                  {currentUser.roleName || currentUser.role}
                 </Badge>
                 <p className="mt-2 text-xs text-muted-foreground">
                   {(currentUser as { status?: string }).status === 'activo'
@@ -291,29 +365,34 @@ export default function ProfilePage() {
                       <div>
                         <Label>Cargo</Label>
                         <Input
-                          {...profileForm.register('cargo')}
-                          className="mt-1"
-                          placeholder="Ej: Gerente Comercial"
-                        />
-                      </div>
-                      <div>
-                        <Label>Empresa</Label>
-                        <Input
-                          {...profileForm.register('empresa')}
-                          className="mt-1"
-                          placeholder="Taxi Monterrico"
-                        />
-                      </div>
-                      <div>
-                        <Label>Rol</Label>
-                        <Input
-                          {...profileForm.register('role')}
                           className="mt-1"
                           disabled
-                          placeholder="Administrador"
+                          value={currentUser.roleName || currentUser.role}
+                          readOnly
                         />
                         <p className="mt-1 text-xs text-muted-foreground">
-                          El rol lo asigna un administrador
+                          Corresponde al nombre del rol asignado (solo lectura)
+                        </p>
+                      </div>
+                      <div>
+                        <Label>Organización</Label>
+                        <Input
+                          className="mt-1"
+                          disabled
+                          value="Taxi Monterrico"
+                          readOnly
+                        />
+                      </div>
+                      <div>
+                        <Label>Rol (identificador)</Label>
+                        <Input
+                          className="mt-1"
+                          disabled
+                          value={currentUser.role}
+                          readOnly
+                        />
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Lo asigna un administrador; define permisos en el sistema
                         </p>
                       </div>
                     </div>
@@ -701,6 +780,9 @@ export default function ProfilePage() {
                 <div className="space-y-6">
                   <div>
                     <CardTitle className="text-base mb-4">Integraciones activas</CardTitle>
+                    <p className="text-sm text-amber-800 dark:text-amber-200 bg-amber-500/10 border border-amber-500/20 rounded-md px-3 py-2 mb-4">
+                      Vista de demostración: la conexión real con servicios externos se implementará más adelante.
+                    </p>
                     <p className="text-sm text-muted-foreground mb-4">
                       Conecta tus cuentas para sincronizar datos con el CRM. Cada usuario conecta su propia cuenta.
                     </p>

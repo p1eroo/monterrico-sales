@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -6,6 +6,7 @@ import {
   Eye, Pencil, Trash2,
   DollarSign, Target, TrendingUp, Trophy,
   Calendar, X, User, Loader2,
+  FileSpreadsheet, Upload, Download,
 } from 'lucide-react';
 import type { Etapa, OpportunityStatus, Opportunity } from '@/types';
 import { etapaLabels } from '@/data/mock';
@@ -39,6 +40,7 @@ import {
 import { etapaColorsWithBorder } from '@/lib/etapaConfig';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { api } from '@/lib/api';
+import { opportunityDetailHref } from '@/lib/detailRoutes';
 import {
   type ApiOpportunityListRow,
   mapApiOpportunityToOpportunity,
@@ -49,6 +51,11 @@ import {
   generateOptimisticId,
   useOptimisticCrmStore,
 } from '@/store/optimisticCrmStore';
+import { usePermissions } from '@/hooks/usePermissions';
+import {
+  downloadImportExportCsv,
+  uploadImportCsv,
+} from '@/lib/importExportApi';
 
 const statusLabels: Record<OpportunityStatus, string> = {
   abierta: 'Abierta',
@@ -141,12 +148,12 @@ export default function OpportunitiesPage() {
 
   const navigate = useNavigate();
 
-  function openOpportunityDetail(id: string) {
-    if (isPendingOpportunityId(id)) {
+  function openOpportunityDetail(opp: Opportunity) {
+    if (isPendingOpportunityId(opp.id)) {
       toast.info('Guardando oportunidad en el servidor…');
       return;
     }
-    navigate(`/opportunities/${id}`);
+    navigate(opportunityDetailHref(opp));
   }
 
   const [search, setSearch] = useState('');
@@ -156,6 +163,10 @@ export default function OpportunitiesPage() {
   const [activeTab, setActiveTab] = useState('todas');
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [newDialogOpen, setNewDialogOpen] = useState(false);
+  const { hasPermission } = usePermissions();
+  const importInputRef = useRef<HTMLInputElement>(null);
+  const [importBusy, setImportBusy] = useState(false);
+  const [exportBusy, setExportBusy] = useState(false);
 
   const filteredOpportunities = useMemo(() => {
     return allOpportunities.filter((opp) => {
@@ -229,14 +240,109 @@ export default function OpportunitiesPage() {
     toast.success(`Oportunidad "${data.title.trim()}" creada exitosamente`);
   }
 
+  async function handleOppTemplate() {
+    try {
+      setExportBusy(true);
+      await downloadImportExportCsv('opportunities', 'template');
+      toast.success('Plantilla descargada');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'No se pudo descargar la plantilla');
+    } finally {
+      setExportBusy(false);
+    }
+  }
+
+  async function handleOppExport() {
+    try {
+      setExportBusy(true);
+      await downloadImportExportCsv('opportunities', 'export');
+      toast.success('Exportación descargada');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'No se pudo exportar');
+    } finally {
+      setExportBusy(false);
+    }
+  }
+
+  function openOppImport() {
+    importInputRef.current?.click();
+  }
+
+  async function onOppImportChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setImportBusy(true);
+    try {
+      const r = await uploadImportCsv('opportunities', file);
+      const errMsg =
+        r.errors.length > 0
+          ? r.errors
+              .slice(0, 5)
+              .map((x) => `Fila ${x.row}: ${x.message}`)
+              .join('\n') + (r.errors.length > 5 ? `\n…y ${r.errors.length - 5} más` : '')
+          : undefined;
+      if (r.created === 0 && r.errors.length > 0) {
+        toast.error('No se crearon oportunidades', { description: errMsg });
+      } else {
+        toast.success(
+          `Importación: ${r.created} oportunidad(es) creada(s)${
+            r.skipped ? ` · ${r.skipped} fila(s) vacía(s) omitidas` : ''
+          }`,
+          errMsg ? { description: errMsg } : undefined,
+        );
+      }
+      await loadApiOpportunities();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error al importar');
+    } finally {
+      setImportBusy(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
+      <input
+        ref={importInputRef}
+        type="file"
+        accept=".csv,text/csv"
+        className="hidden"
+        onChange={onOppImportChange}
+      />
       <PageHeader title="Oportunidades" description="Gestiona el pipeline de ventas y oportunidades comerciales">
         <div className="flex flex-wrap items-center gap-2">
           {allOpportunities.length > 0 && (
             <Badge variant="secondary" className="font-normal">
               <Target className="size-3.5" /> {allOpportunities.length} oportunidades
             </Badge>
+          )}
+          {hasPermission('oportunidades.exportar') && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={exportBusy}
+              onClick={() => void handleOppTemplate()}
+            >
+              {exportBusy ? <Loader2 className="size-4 animate-spin" /> : <FileSpreadsheet className="size-4" />}{' '}
+              Plantilla
+            </Button>
+          )}
+          {hasPermission('oportunidades.crear') && (
+            <Button variant="outline" size="sm" disabled={importBusy} onClick={openOppImport}>
+              {importBusy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}{' '}
+              Importar
+            </Button>
+          )}
+          {hasPermission('oportunidades.exportar') && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={exportBusy}
+              onClick={() => void handleOppExport()}
+            >
+              {exportBusy ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}{' '}
+              Exportar
+            </Button>
           )}
           <Button onClick={() => setNewDialogOpen(true)}>
             <Plus /> Nueva Oportunidad
@@ -428,7 +534,7 @@ function OpportunitiesTable({
 }: {
   data: Opportunity[];
   isPendingOpportunityId: (id: string) => boolean;
-  onOpenDetail: (id: string) => void;
+  onOpenDetail: (opp: Opportunity) => void;
 }) {
   return (
     <div className="rounded-lg border">
@@ -454,7 +560,7 @@ function OpportunitiesTable({
             <TableRow
               key={opp.id}
               className={pending ? 'group bg-muted/40' : 'group cursor-pointer hover:bg-muted/50'}
-              onClick={() => onOpenDetail(opp.id)}
+              onClick={() => onOpenDetail(opp)}
             >
               <TableCell>
                 <div>
@@ -504,7 +610,7 @@ function OpportunitiesTable({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onOpenDetail(opp.id); }}>
+                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onOpenDetail(opp); }}>
                       <Eye /> Ver detalle
                     </DropdownMenuItem>
                     <DropdownMenuItem>
@@ -535,7 +641,7 @@ function OpportunitiesGrid({
 }: {
   data: Opportunity[];
   isPendingOpportunityId: (id: string) => boolean;
-  onOpenDetail: (id: string) => void;
+  onOpenDetail: (opp: Opportunity) => void;
 }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -549,7 +655,7 @@ function OpportunitiesGrid({
               ? 'group border-dashed bg-muted/30'
               : 'group cursor-pointer transition-all hover:shadow-md hover:border-[#13944C]/30'
           }
-          onClick={() => onOpenDetail(opp.id)}
+          onClick={() => onOpenDetail(opp)}
         >
           <CardContent className="p-5">
             <div className="flex items-start justify-between gap-2">
@@ -574,7 +680,7 @@ function OpportunitiesGrid({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onOpenDetail(opp.id); }}><Eye /> Ver</DropdownMenuItem>
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onOpenDetail(opp); }}><Eye /> Ver</DropdownMenuItem>
                   <DropdownMenuItem><Pencil /> Editar</DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem variant="destructive"><Trash2 /> Eliminar</DropdownMenuItem>

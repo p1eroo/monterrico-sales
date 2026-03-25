@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search,
@@ -8,7 +8,6 @@ import {
   User,
   Filter,
 } from 'lucide-react';
-import { useFilesStore } from '@/store/filesStore';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { FileListItem } from '@/components/files';
 import { FilePreviewModal } from '@/components/files';
@@ -23,6 +22,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { FileAttachment, FileEntityType } from '@/types';
+import {
+  companyDetailHref,
+  contactDetailHref,
+  opportunityDetailHref,
+} from '@/lib/detailRoutes';
+import { usePermissions } from '@/hooks/usePermissions';
+import { fetchFiles, deleteFileApi, fetchFileContentBlobUrl } from '@/lib/fileApi';
+import { toast } from 'sonner';
 
 const ENTITY_TYPE_LABELS: Record<FileEntityType, string> = {
   contact: 'Contacto',
@@ -51,7 +58,11 @@ function matchesFileType(file: FileAttachment, filter: string): boolean {
 
 export default function FilesPage() {
   const navigate = useNavigate();
-  const { getAllFiles, deleteFile } = useFilesStore();
+  const { hasPermission } = usePermissions();
+  const canDelete = hasPermission('archivos.eliminar');
+
+  const [allFiles, setAllFiles] = useState<FileAttachment[]>([]);
+  const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
@@ -60,7 +71,22 @@ export default function FilesPage() {
   const [previewFile, setPreviewFile] = useState<FileAttachment | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
 
-  const allFiles = getAllFiles();
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const rows = await fetchFiles();
+      setAllFiles(rows);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'No se pudieron cargar los archivos');
+      setAllFiles([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const filteredFiles = useMemo(() => {
     return allFiles.filter((file) => {
@@ -88,31 +114,42 @@ export default function FilesPage() {
     setPreviewOpen(true);
   };
 
-  const handleDownload = (file: FileAttachment) => {
-    const blob = new Blob(['Mock file content'], { type: file.mimeType });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = file.name;
-    a.click();
-    URL.revokeObjectURL(url);
+  const handleDownload = async (file: FileAttachment) => {
+    try {
+      const url = await fetchFileContentBlobUrl(file.id, 'attachment');
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = file.name;
+      a.rel = 'noopener noreferrer';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'No se pudo descargar');
+    }
   };
 
-  const handleDelete = (file: FileAttachment) => {
-    deleteFile(file.id);
-    if (previewFile?.id === file.id) {
-      setPreviewOpen(false);
-      setPreviewFile(null);
+  const handleDelete = async (file: FileAttachment) => {
+    if (!canDelete) return;
+    try {
+      await deleteFileApi(file.id);
+      toast.success('Archivo eliminado');
+      if (previewFile?.id === file.id) {
+        setPreviewOpen(false);
+        setPreviewFile(null);
+      }
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'No se pudo eliminar');
     }
   };
 
   const handleNavigateToEntity = (file: FileAttachment) => {
     if (file.entityType === 'contact') {
-      navigate(`/contactos/${file.entityId}`);
+      navigate(contactDetailHref({ id: file.entityId }));
     } else if (file.entityType === 'company') {
-      navigate(`/empresas/${encodeURIComponent(file.entityId)}`);
+      navigate(companyDetailHref({ id: file.entityId }));
     } else if (file.entityType === 'opportunity') {
-      navigate(`/opportunities/${file.entityId}`);
+      navigate(opportunityDetailHref({ id: file.entityId }));
     }
     setPreviewOpen(false);
   };
@@ -121,10 +158,9 @@ export default function FilesPage() {
     <div className="space-y-6">
       <PageHeader
         title="Archivos"
-        description="Todos los archivos adjuntos del CRM"
+        description="Todos los archivos adjuntos del CRM (almacenamiento seguro vía API)"
       />
 
-      {/* Filters */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -193,15 +229,16 @@ export default function FilesPage() {
         </div>
       </div>
 
-      {/* Content */}
-      {filteredFiles.length === 0 ? (
+      {loading ? (
+        <p className="text-sm text-muted-foreground py-12 text-center">Cargando archivos…</p>
+      ) : filteredFiles.length === 0 ? (
         <EmptyState
           icon={FileArchive}
           title="No hay archivos"
           description={
             search || typeFilter !== 'all' || entityFilter !== 'all' || userFilter !== 'all'
               ? 'No se encontraron archivos con los filtros aplicados'
-              : 'Los archivos adjuntos a contactos y empresas aparecerán aquí'
+              : 'Sube archivos desde el detalle de un contacto, empresa u oportunidad'
           }
         />
       ) : viewMode === 'grid' ? (
@@ -213,8 +250,8 @@ export default function FilesPage() {
               variant="card"
               onView={handleView}
               onDownload={handleDownload}
-              onDelete={handleDelete}
-              canDelete
+              onDelete={canDelete ? handleDelete : undefined}
+              canDelete={canDelete}
             />
           ))}
         </div>
@@ -227,8 +264,8 @@ export default function FilesPage() {
               variant="list"
               onView={handleView}
               onDownload={handleDownload}
-              onDelete={handleDelete}
-              canDelete
+              onDelete={canDelete ? handleDelete : undefined}
+              canDelete={canDelete}
             />
           ))}
         </div>

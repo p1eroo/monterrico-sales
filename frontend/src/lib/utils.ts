@@ -16,3 +16,16 @@ export function getPrimaryCompany(contact: Contact): LinkedCompany | undefined {
 export function getPrimaryCompanyName(contact: Contact): string {
   return getPrimaryCompany(contact)?.name ?? ''
 }
+
+/** Iniciales para avatar (hasta 2 caracteres). Tolera nombre vacío o ausente. */
+export function initialsFromName(name: string | null | undefined): string {
+  const raw = (name ?? '').trim()
+  if (!raw) return '?'
+  return raw
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((p) => p[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+}

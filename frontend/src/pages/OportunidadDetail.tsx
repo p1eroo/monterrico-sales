@@ -48,6 +48,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { api } from '@/lib/api';
+import { isEntityDetailApiParam } from '@/lib/detailRoutes';
 import {
   type ApiOpportunityDetail,
   type ApiOpportunityListRow,
@@ -56,8 +57,14 @@ import {
   mapApiOpportunityToOpportunity,
   opportunityListAll,
 } from '@/lib/opportunityApi';
-import { type ApiContactListRow, contactListAll, contactRemoveCompany, isLikelyContactCuid, mapApiContactRowToContact } from '@/lib/contactApi';
-import { type ApiCompanyRecord } from '@/lib/companyApi';
+import {
+  type ApiContactDetail,
+  type ApiContactListRow,
+  contactListAll,
+  contactRemoveCompany,
+  isLikelyContactCuid,
+  mapApiContactRowToContact,
+} from '@/lib/contactApi';
 
 const statusLabels: Record<string, string> = {
   abierta: 'Abierta',
@@ -77,7 +84,7 @@ export default function OportunidadDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const routeId = id ? decodeURIComponent(id) : '';
-  const fromApi = isLikelyOpportunityCuid(routeId);
+  const fromApi = isEntityDetailApiParam(routeId);
   const { opportunities, contacts, getOpportunitiesByContactId, addOpportunity, updateOpportunity, updateContact, addContact } = useCRMStore();
 
   const [apiRecord, setApiRecord] = useState<ApiOpportunityDetail | null>(null);
@@ -162,14 +169,15 @@ export default function OportunidadDetailPage() {
   }, [primaryCompany]);
 
   const otherOpportunities = useMemo(() => {
-    if (!linkedContact) return [];
+    if (!linkedContact || !opp) return [];
+    // Excluir por id real de la oportunidad, no por routeId (puede ser urlSlug ≠ id).
     if (fromApi) {
       return allApiOpportunities
         .map(mapApiOpportunityToOpportunity)
-        .filter((o) => o.contactId === linkedContact.id && o.id !== routeId);
+        .filter((o) => o.contactId === linkedContact.id && o.id !== opp.id);
     }
-    return getOpportunitiesByContactId(linkedContact.id).filter((o) => o.id !== routeId);
-  }, [linkedContact, routeId, fromApi, allApiOpportunities, getOpportunitiesByContactId]);
+    return getOpportunitiesByContactId(linkedContact.id).filter((o) => o.id !== opp.id);
+  }, [linkedContact, opp, fromApi, allApiOpportunities, getOpportunitiesByContactId]);
 
   const initialOppActivities = useMemo(() => {
     if (!opp?.contactId) return [];
@@ -316,9 +324,28 @@ export default function OportunidadDetailPage() {
     if (!opp) return;
     if (fromApi && routeId) {
       try {
-        let companyId: string | undefined = data.companyId;
-        if (data.newCompanyWizardData) {
-          const w = data.newCompanyWizardData;
+        const w = data.newCompanyWizardData;
+        const today = new Date().toISOString().slice(0, 10);
+        const baseBody: Record<string, unknown> = {
+          name: data.name.trim(),
+          telefono: data.phone?.trim() || '',
+          correo: data.email?.trim() || '',
+          fuente: data.source,
+          cargo: data.cargo?.trim() || undefined,
+          etapa: data.etapaCiclo,
+          assignedTo: data.assignedTo?.trim() || opp.assignedTo || undefined,
+          estimatedValue: data.estimatedValue ?? 0,
+          docType: data.docType || undefined,
+          docNumber: data.docNumber?.trim() || undefined,
+          departamento: data.departamento?.trim() || undefined,
+          provincia: data.provincia?.trim() || undefined,
+          distrito: data.distrito?.trim() || undefined,
+          direccion: data.direccion?.trim() || undefined,
+          clienteRecuperado: data.clienteRecuperado || undefined,
+          etapaHistory: [{ etapa: data.etapaCiclo, fecha: today }],
+        };
+
+        if (w) {
           const factEmpresa = (() => {
             const f = Number(w.facturacion);
             if (Number.isFinite(f) && f > 0) return f;
@@ -334,57 +361,35 @@ export default function OportunidadDetailPage() {
             toast.error('Selecciona la fuente del lead en el wizard de empresa');
             return;
           }
-          const created = await api<ApiCompanyRecord>('/companies', {
-            method: 'POST',
-            body: JSON.stringify({
-              name: w.nombreComercial.trim(),
-              razonSocial: w.razonSocial.trim() || undefined,
-              ruc: w.ruc.trim() || undefined,
-              telefono: w.telefono.trim() || undefined,
-              domain: w.dominio.trim() || undefined,
-              rubro: w.rubro || undefined,
-              tipo: w.tipoEmpresa || undefined,
-              linkedin: w.linkedin.trim() || undefined,
-              correo: w.correo.trim() || undefined,
-              distrito: w.distrito.trim() || undefined,
-              provincia: w.provincia.trim() || undefined,
-              departamento: w.departamento.trim() || undefined,
-              direccion: w.direccion.trim() || undefined,
-              facturacionEstimada: factEmpresa,
-              fuente: w.origenLead,
-              clienteRecuperado: w.clienteRecuperado,
-              etapa: w.etapa,
-              ...(w.propietario && isLikelyContactCuid(w.propietario)
-                ? { assignedTo: w.propietario }
-                : {}),
-            }),
-          });
-          companyId = created.id;
+          baseBody.newCompany = {
+            name: w.nombreComercial.trim(),
+            razonSocial: w.razonSocial.trim() || undefined,
+            ruc: w.ruc.trim() || undefined,
+            telefono: w.telefono.trim() || undefined,
+            domain: w.dominio.trim() || undefined,
+            rubro: w.rubro || undefined,
+            tipo: w.tipoEmpresa || undefined,
+            linkedin: w.linkedin.trim() || undefined,
+            correo: w.correo.trim() || undefined,
+            distrito: w.distrito.trim() || undefined,
+            provincia: w.provincia.trim() || undefined,
+            departamento: w.departamento.trim() || undefined,
+            direccion: w.direccion.trim() || undefined,
+            facturacionEstimada: factEmpresa,
+            fuente: w.origenLead,
+            clienteRecuperado: w.clienteRecuperado,
+            etapa: w.etapa,
+            ...(w.propietario && isLikelyContactCuid(w.propietario)
+              ? { assignedTo: w.propietario }
+              : {}),
+          };
+        } else if (data.companyId) {
+          baseBody.companyId = data.companyId;
         }
-        const today = new Date().toISOString().slice(0, 10);
-        const createdContact = await api<{ id: string }>('/contacts', {
+
+        const createdContact = await api<ApiContactDetail>('/contacts', {
           method: 'POST',
-          body: JSON.stringify({
-            name: data.name.trim(),
-            telefono: data.phone?.trim() || '',
-            correo: data.email?.trim() || '',
-            fuente: data.source,
-            cargo: data.cargo?.trim() || undefined,
-            etapa: data.etapaCiclo,
-            assignedTo: data.assignedTo?.trim() || opp.assignedTo || undefined,
-            estimatedValue: data.estimatedValue ?? 0,
-            nextAction: 'Contactar',
-            notes: data.notes?.trim() || undefined,
-            docType: data.docType || undefined,
-            docNumber: data.docNumber?.trim() || undefined,
-            departamento: data.departamento?.trim() || undefined,
-            provincia: data.provincia?.trim() || undefined,
-            distrito: data.distrito?.trim() || undefined,
-            direccion: data.direccion?.trim() || undefined,
-            clienteRecuperado: data.clienteRecuperado || undefined,
-            etapaHistory: [{ etapa: data.etapaCiclo, fecha: today }],
-            companyId,
-          }),
+          body: JSON.stringify(baseBody),
         });
         const updated = await api<ApiOpportunityDetail>(`/opportunities/${routeId}`, {
           method: 'PATCH',

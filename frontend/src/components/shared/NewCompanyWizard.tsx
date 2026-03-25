@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useCrmConfigStore } from '@/store/crmConfigStore';
 import { Check, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { factilizaApi } from '@/lib/factilizaApi';
@@ -81,6 +82,27 @@ export function NewCompanyWizard({
   const [form, setForm] = useState<NewCompanyData>(() => mergeCompanyForm(defaultValues));
   const [rucLookupLoading, setRucLookupLoading] = useState(false);
   const { activeUsers } = useUsers();
+  const bundle = useCrmConfigStore((s) => s.bundle);
+
+  const stageOptions = useMemo(() => {
+    const stages = bundle?.catalog.stages
+      .filter((x) => x.enabled)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+    if (stages?.length) {
+      return stages.map((s) => ({ value: s.slug, label: s.name }));
+    }
+    return Object.entries(etapaLabels).map(([value, label]) => ({ value, label }));
+  }, [bundle]);
+
+  const sourceOptions = useMemo(() => {
+    const src = bundle?.catalog.leadSources
+      .filter((x) => x.enabled)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+    if (src?.length) {
+      return src.map((s) => ({ value: s.slug, label: s.name }));
+    }
+    return Object.entries(contactSourceLabels).map(([value, label]) => ({ value, label }));
+  }, [bundle]);
 
   async function handleRucLookup(rucValue?: string) {
     const ruc = (rucValue ?? form.ruc).trim().replace(/\D/g, '');
@@ -298,8 +320,8 @@ export function NewCompanyWizard({
                 <Select value={form.origenLead} onValueChange={(v) => set('origenLead', v as ContactSource)}>
                   <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar fuente" /></SelectTrigger>
                   <SelectContent>
-                    {Object.entries(contactSourceLabels).map(([key, label]) => (
-                      <SelectItem key={key} value={key}>{label}</SelectItem>
+                    {sourceOptions.map(({ value, label }) => (
+                      <SelectItem key={value} value={value}>{label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -339,8 +361,8 @@ export function NewCompanyWizard({
                 <Select value={form.etapa} onValueChange={(v) => set('etapa', v as Etapa)}>
                   <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {Object.entries(etapaLabels).map(([key, label]) => (
-                      <SelectItem key={key} value={key}>{label}</SelectItem>
+                    {stageOptions.map(({ value, label }) => (
+                      <SelectItem key={value} value={value}>{label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

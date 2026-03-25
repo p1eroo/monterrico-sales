@@ -14,6 +14,11 @@ import { ConfigModule } from '@nestjs/config';
 import { FactilizaModule } from './factiliza/factiliza.module';
 import { RolesModule } from './roles/roles.module';
 import { CampaignsModule } from './campaigns/campaigns.module';
+import { ClientsModule } from './clients/clients.module';
+import { FilesModule } from './files/files.module';
+import { CrmConfigModule } from './crm-config/crm-config.module';
+import { AnalyticsModule } from './analytics/analytics.module';
+import { ImportExportModule } from './import-export/import-export.module';
 
 @Module({
   imports: [
@@ -28,6 +33,11 @@ import { CampaignsModule } from './campaigns/campaigns.module';
     AuthModule,
     FactilizaModule,
     CampaignsModule,
+    ClientsModule,
+    FilesModule,
+    CrmConfigModule,
+    AnalyticsModule,
+    ImportExportModule,
   ],
   controllers: [AppController],
   providers: [

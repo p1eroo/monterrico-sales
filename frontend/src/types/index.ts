@@ -1,21 +1,9 @@
-/** Etapa unificada para Contactos, Empresas y Oportunidades */
-export type Etapa =
-  | 'lead'                    // 0%
-  | 'contacto'                // 10%
-  | 'reunion_agendada'        // 30%
-  | 'reunion_efectiva'        // 40%
-  | 'propuesta_economica'     // 50%
-  | 'negociacion'             // 70%
-  | 'licitacion'              // 75%
-  | 'licitacion_etapa_final'  // 85%
-  | 'cierre_ganado'           // 90%
-  | 'firma_contrato'          // 95%
-  | 'activo'                  // 100%
-  | 'cierre_perdido'          // -1%
-  | 'inactivo';               // -5%
+/** Slug de etapa (catálogo en BD vía /crm-config). */
+export type Etapa = string;
 
 export type ContactPriority = 'alta' | 'media' | 'baja';
-export type ContactSource = 'referido' | 'base' | 'entorno' | 'feria' | 'masivo';
+/** Slug de fuente (catálogo en BD). */
+export type ContactSource = string;
 export type CompanyRubro = 'mineria' | 'hoteleria' | 'banca' | 'construccion' | 'salud' | 'retail' | 'telecomunicaciones' | 'educacion' | 'energia' | 'consultoria' | 'diplomatico' | 'aviacion' | 'consumo_masivo' | 'otros';
 export type CompanyTipo = 'A' | 'B' | 'C';
 
@@ -23,6 +11,8 @@ export interface LinkedCompany {
   name: string;
   /** ID de empresa cuando viene del API (para desvincular) */
   id?: string;
+  /** Slug para URL /empresas/:slug */
+  urlSlug?: string;
   /** Dominio web de la empresa (ej: empresa.com) */
   domain?: string;
   rubro?: CompanyRubro;
@@ -40,7 +30,17 @@ export interface Company {
   createdAt: string;
 }
 
-export type ActivityType = 'llamada' | 'reunion' | 'tarea' | 'correo' | 'whatsapp';
+export type ActivityType = string;
+/** Modalidad obligatoria para filas con type = 'tarea' (módulo Tareas). No existe “tipo de tarea” genérico. */
+export type TaskKind = 'llamada' | 'reunion' | 'correo' | 'whatsapp';
+
+export const TASK_KINDS: readonly TaskKind[] = [
+  'llamada',
+  'reunion',
+  'correo',
+  'whatsapp',
+];
+
 export type ActivityStatus = 'pendiente' | 'completada' | 'en_progreso' | 'vencida';
 
 /** Asociación de tarea con contacto, empresa u oportunidad */
@@ -57,7 +57,12 @@ export type RelatedEntityType = 'contact' | 'company' | 'opportunity';
 export interface CalendarEvent {
   id: string;
   title: string;
+  /** Tipo mostrado en UI; para tareas con modalidad coincide con `taskKind`, no con `'tarea'`. */
   type: CalendarEventType;
+  /** `type` del registro en actividades (p. ej. `'tarea'` o `'llamada'`). */
+  activityRecordType: ActivityType;
+  /** Si el registro es tarea: modalidad (llamada, reunión, correo, WhatsApp). */
+  taskKind?: TaskKind;
   date: string;
   startTime: string;
   endTime: string;
@@ -142,6 +147,8 @@ export interface User {
 
 export interface Contact {
   id: string;
+  /** Slug para URL /contactos/:slug (API) */
+  urlSlug?: string;
   name: string;
   /** Cargo o puesto del contacto en la empresa */
   cargo?: string;
@@ -155,10 +162,6 @@ export interface Contact {
   assignedToName: string;
   estimatedValue: number;
   createdAt: string;
-  nextAction: string;
-  nextFollowUp: string;
-  notes?: string;
-  tags?: string[];
   docType?: 'dni' | 'cee';
   docNumber?: string;
   departamento?: string;
@@ -176,6 +179,8 @@ export interface Contact {
 export interface Activity {
   id: string;
   type: ActivityType;
+  /** Set cuando type es 'tarea': llamada, reunion, correo o whatsapp */
+  taskKind?: TaskKind;
   title: string;
   description: string;
   contactId?: string;
@@ -197,6 +202,8 @@ export interface Activity {
 
 export interface Opportunity {
   id: string;
+  /** Slug para URL /opportunities/:slug (API) */
+  urlSlug?: string;
   title: string;
   contactId?: string;
   contactName?: string;
@@ -219,8 +226,12 @@ export interface Opportunity {
 export interface Client {
   id: string;
   company: string;
+  /** Id/slug de empresa en API (detalle y navegación). */
+  companyId?: string;
+  companyUrlSlug?: string;
   companyRubro?: CompanyRubro;
   companyTipo?: CompanyTipo;
+  /** Contacto priorizado por mayor monto en negocios vinculados (solo detalle / búsqueda). */
   contactName: string;
   phone: string;
   email: string;

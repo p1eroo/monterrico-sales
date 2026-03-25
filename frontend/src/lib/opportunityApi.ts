@@ -19,6 +19,7 @@ export function isLikelyOpportunityCuid(value: string): boolean {
 
 export type ApiContactFromOpportunity = {
   id: string;
+  urlSlug?: string;
   name: string;
   cargo?: string | null;
   telefono: string;
@@ -36,6 +37,7 @@ export type ApiContactFromOpportunity = {
 
 export type ApiOpportunityListRow = {
   id: string;
+  urlSlug: string;
   title: string;
   amount: number;
   probability: number;
@@ -91,6 +93,7 @@ export function mapApiOpportunityToOpportunity(
     row.user?.id ?? (row as ApiOpportunityListRow).assignedTo ?? '';
   return {
     id: row.id,
+    urlSlug: row.urlSlug,
     title: row.title,
     contactId: first?.id,
     contactName: first?.name,
@@ -161,6 +164,7 @@ export function mapApiContactToContact(c: ApiContactFromOpportunity): Contact {
   const assignedTo = c.assignedTo ?? '';
   return {
     id: c.id,
+    urlSlug: c.urlSlug,
     name: c.name,
     cargo: c.cargo ?? undefined,
     companies: [],
@@ -172,8 +176,5 @@ export function mapApiContactToContact(c: ApiContactFromOpportunity): Contact {
     assignedToName: useUsersStore.getState().getUserName(assignedTo),
     estimatedValue: c.estimatedValue,
     createdAt: c.createdAt.slice(0, 10),
-    nextAction: c.nextAction ?? '',
-    nextFollowUp: c.nextFollowUp ? c.nextFollowUp.slice(0, 10) : '',
-    notes: c.notes ?? undefined,
   };
 }

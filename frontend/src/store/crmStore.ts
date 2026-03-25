@@ -21,7 +21,7 @@ function getUserName(userId: string): string {
 interface CRMState {
   contacts: Contact[];
   opportunities: Opportunity[];
-  addContact: (contact: Omit<Contact, 'id' | 'assignedToName' | 'nextAction' | 'nextFollowUp' | 'createdAt' | 'etapa'> & Partial<Pick<Contact, 'notes' | 'tags' | 'etapa'>>) => Contact;
+  addContact: (contact: Omit<Contact, 'id' | 'assignedToName' | 'createdAt' | 'etapa'> & Partial<Pick<Contact, 'etapa'>>) => Contact;
   updateContact: (id: string, updates: Partial<Contact>) => void;
   deleteContact: (id: string) => void;
   addOpportunity: (opp: Omit<Opportunity, 'id' | 'assignedToName' | 'contactName' | 'probability'> & Partial<Pick<Opportunity, 'probability' | 'contactName'>>) => Opportunity;
@@ -41,11 +41,7 @@ export const useCRMStore = create<CRMState>((set, get) => ({
       id: generateId('c'),
       etapa,
       assignedToName: getUserName(contactData.assignedTo),
-      nextAction: 'Contactar',
-      nextFollowUp: '',
       createdAt,
-      notes: contactData.notes,
-      tags: contactData.tags,
       etapaHistory: [{ etapa, fecha: createdAt }],
     };
     set((state) => ({ contacts: [newContact, ...state.contacts] }));

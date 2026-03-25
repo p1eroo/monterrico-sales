@@ -1,5 +1,7 @@
+import { useMemo } from 'react';
 import { etapaLabels } from '@/data/mock';
 import { SelectDialog } from './SelectDialog';
+import { useCrmConfigStore } from '@/store/crmConfigStore';
 
 interface ChangeEtapaDialogProps {
   open: boolean;
@@ -16,10 +18,16 @@ export function ChangeEtapaDialog({
   currentEtapa,
   onEtapaChange,
 }: ChangeEtapaDialogProps) {
-  const options = Object.entries(etapaLabels).map(([value, label]) => ({
-    value,
-    label,
-  }));
+  const bundle = useCrmConfigStore((s) => s.bundle);
+  const options = useMemo(() => {
+    const st = bundle?.catalog.stages
+      ?.filter((x) => x.enabled)
+      ?.sort((a, b) => a.sortOrder - b.sortOrder);
+    if (st?.length) {
+      return st.map((s) => ({ value: s.slug, label: s.name }));
+    }
+    return Object.entries(etapaLabels).map(([value, label]) => ({ value, label }));
+  }, [bundle]);
 
   return (
     <SelectDialog

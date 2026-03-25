@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { User } from '@/types';
-import { api } from '@/lib/api';
+import { api, asArray } from '@/lib/api';
 import { apiUserRecordToUser, type ApiUserRecord } from '@/lib/userRoleMap';
 
 interface UsersState {
@@ -24,7 +24,7 @@ export const useUsersStore = create<UsersState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const rows = await api<ApiUserRecord[]>('/users');
-      const users = rows.map(apiUserRecordToUser);
+      const users = asArray<ApiUserRecord>(rows).map(apiUserRecordToUser);
       set({ users, loaded: true, error: null });
     } catch (e) {
       set({

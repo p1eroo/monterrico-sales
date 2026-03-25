@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useCrmConfigStore } from '@/store/crmConfigStore';
 import { toast } from 'sonner';
 import { Check, ChevronLeft, ChevronRight, ChevronsUpDown, Loader2, Plus, Building2 } from 'lucide-react';
 import type { Etapa, ContactSource } from '@/types';
@@ -31,7 +32,6 @@ function toTitleCase(s: string): string {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -58,7 +58,6 @@ export interface NewContactData {
   assignedTo: string;
   estimatedValue: number;
   clienteRecuperado?: 'si' | 'no';
-  notes?: string;
   departamento?: string;
   provincia?: string;
   distrito?: string;
@@ -92,6 +91,9 @@ export function NewContactWizard({
   submitLabel = 'Crear Contacto',
   defaultValues,
 }: NewContactWizardProps) {
+  const defaultValuesRef = useRef(defaultValues);
+  defaultValuesRef.current = defaultValues;
+
   const [step, setStep] = useState(0);
   const [name, setName] = useState(defaultValues?.name ?? '');
   const [cargo, setCargo] = useState(defaultValues?.cargo ?? '');
@@ -113,47 +115,71 @@ export function NewContactWizard({
   const [assignedTo, setAssignedTo] = useState(defaultValues?.assignedTo ?? '');
   const [estimatedValue, setEstimatedValue] = useState(defaultValues?.estimatedValue ?? 0);
   const [clienteRecuperado, setClienteRecuperado] = useState<'si' | 'no'>(defaultValues?.clienteRecuperado ?? 'no');
-  const [notes, setNotes] = useState(defaultValues?.notes ?? '');
   const [departamento, setDepartamento] = useState(defaultValues?.departamento ?? '');
   const [provincia, setProvincia] = useState(defaultValues?.provincia ?? '');
   const [distrito, setDistrito] = useState(defaultValues?.distrito ?? '');
   const [direccion, setDireccion] = useState(defaultValues?.direccion ?? '');
   const [docLookupLoading, setDocLookupLoading] = useState(false);
   const { activeUsers } = useUsers();
+  const bundle = useCrmConfigStore((s) => s.bundle);
+
+  const stageOptions = useMemo(() => {
+    const stages = bundle?.catalog.stages
+      .filter((x) => x.enabled)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+    if (stages?.length) {
+      return stages.map((s) => ({ value: s.slug, label: s.name }));
+    }
+    return Object.entries(etapaLabels).map(([value, label]) => ({ value, label }));
+  }, [bundle]);
+
+  const sourceOptions = useMemo(() => {
+    const src = bundle?.catalog.leadSources
+      .filter((x) => x.enabled)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+    if (src?.length) {
+      return src.map((s) => ({ value: s.slug, label: s.name }));
+    }
+    return Object.entries(contactSourceLabels).map(([value, label]) => ({ value, label }));
+  }, [bundle]);
 
   const [pendingNewCompany, setPendingNewCompany] = useState<NewCompanyData | null>(null);
   const [companyWizardOpen, setCompanyWizardOpen] = useState(false);
   const [companyWizardDefaults, setCompanyWizardDefaults] = useState<Partial<NewCompanyData>>({});
 
-  function reset() {
+  const reset = useCallback(() => {
+    const d = defaultValuesRef.current;
     setStep(0);
-    setName(defaultValues?.name ?? '');
-    setCargo(defaultValues?.cargo ?? '');
-    setDocType(defaultValues?.docType ?? '');
-    setDocNumber(defaultValues?.docNumber ?? '');
-    setCompany(defaultValues?.company ?? '');
-    setCompanyId(defaultValues?.companyId ?? null);
+    setName(d?.name ?? '');
+    setCargo(d?.cargo ?? '');
+    setDocType(d?.docType ?? '');
+    setDocNumber(d?.docNumber ?? '');
+    setCompany(d?.company ?? '');
+    setCompanyId(d?.companyId ?? null);
     setCompanySearch('');
     setCompanyOpen(false);
     setLinkExistingCompanyOpen(false);
     setLinkCompanySearch('');
     setLinkCompanySelectedIds([]);
-    setEtapaCiclo(defaultValues?.etapaCiclo ?? 'lead');
-    setPhone(defaultValues?.phone ?? '');
-    setEmail(defaultValues?.email ?? '');
-    setSource(defaultValues?.source ?? 'base');
-    setAssignedTo(defaultValues?.assignedTo ?? '');
-    setEstimatedValue(defaultValues?.estimatedValue ?? 0);
-    setClienteRecuperado(defaultValues?.clienteRecuperado ?? 'no');
-    setNotes(defaultValues?.notes ?? '');
-    setDepartamento(defaultValues?.departamento ?? '');
-    setProvincia(defaultValues?.provincia ?? '');
-    setDistrito(defaultValues?.distrito ?? '');
-    setDireccion(defaultValues?.direccion ?? '');
+    setEtapaCiclo(d?.etapaCiclo ?? 'lead');
+    setPhone(d?.phone ?? '');
+    setEmail(d?.email ?? '');
+    setSource(d?.source ?? 'base');
+    setAssignedTo(d?.assignedTo ?? '');
+    setEstimatedValue(d?.estimatedValue ?? 0);
+    setClienteRecuperado(d?.clienteRecuperado ?? 'no');
+    setDepartamento(d?.departamento ?? '');
+    setProvincia(d?.provincia ?? '');
+    setDistrito(d?.distrito ?? '');
+    setDireccion(d?.direccion ?? '');
     setPendingNewCompany(null);
     setCompanyWizardOpen(false);
     setCompanyWizardDefaults({});
-  }
+  }, []);
+
+  useEffect(() => {
+    if (!open) reset();
+  }, [open, reset]);
 
   /** Abre el asistente de nueva empresa (nombre sugerido opcional desde búsqueda o valor ya elegido) */
   function openCompanyWizardForCreate() {
@@ -208,7 +234,6 @@ export function NewContactWizard({
 
   function handleOpenChange(next: boolean) {
     onOpenChange(next);
-    if (!next) reset();
   }
 
   async function handleDocLookup() {
@@ -280,15 +305,36 @@ export function NewContactWizard({
   }, [apiCompanies]);
 
   function handleNext() {
-    if (step === 0 && (!name.trim() || !company.trim())) {
-      toast.error('Nombre y empresa son requeridos');
-      return;
+    if (step === 0) {
+      if (!name.trim() || !company.trim()) {
+        toast.error('Nombre y empresa son requeridos');
+        return;
+      }
+      if (!phone.trim()) {
+        toast.error('El teléfono es obligatorio');
+        return;
+      }
+      if (!email.trim()) {
+        toast.error('El correo es obligatorio');
+        return;
+      }
     }
     setStep((s) => s + 1);
   }
 
   function handleSubmit() {
-    if (!name.trim() || !company.trim()) return;
+    if (!name.trim() || !company.trim()) {
+      toast.error('Nombre y empresa son requeridos');
+      return;
+    }
+    if (!phone.trim()) {
+      toast.error('El teléfono es obligatorio');
+      return;
+    }
+    if (!email.trim()) {
+      toast.error('El correo es obligatorio');
+      return;
+    }
     if (estimatedValue <= 0) {
       toast.error('El valor estimado debe ser mayor que 0');
       return;
@@ -307,14 +353,12 @@ export function NewContactWizard({
       assignedTo,
       estimatedValue,
       clienteRecuperado,
-      notes: notes.trim() || undefined,
       departamento: departamento.trim() || undefined,
       provincia: provincia.trim() || undefined,
       distrito: distrito.trim() || undefined,
       direccion: direccion.trim() || undefined,
       ...(pendingNewCompany ? { newCompanyWizardData: pendingNewCompany } : {}),
     });
-    reset();
   }
 
   return (
@@ -475,8 +519,8 @@ export function NewContactWizard({
                 <Select value={etapaCiclo} onValueChange={(v) => setEtapaCiclo(v as Etapa)}>
                   <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {Object.entries(etapaLabels).map(([key, label]) => (
-                      <SelectItem key={key} value={key}>{label}</SelectItem>
+                    {stageOptions.map(({ value, label }) => (
+                      <SelectItem key={value} value={value}>{label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -499,8 +543,8 @@ export function NewContactWizard({
                 <Select value={source} onValueChange={(v) => setSource(v as ContactSource)}>
                   <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {Object.entries(contactSourceLabels).map(([key, label]) => (
-                      <SelectItem key={key} value={key}>{label}</SelectItem>
+                    {sourceOptions.map(({ value, label }) => (
+                      <SelectItem key={value} value={value}>{label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -529,10 +573,6 @@ export function NewContactWizard({
                     <SelectItem value="si">Sí</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label>Notas</Label>
-                <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Información adicional sobre el contacto..." rows={3} />
               </div>
             </div>
           )}

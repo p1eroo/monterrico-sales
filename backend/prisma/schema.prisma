@@ -68,10 +68,76 @@ model User {
   companiesAssigned    Company[]
   activitiesAssigned   Activity[]
   campaignsCreated     Campaign[]
+  crmFilesUploaded     CrmFile[]
+  crmSalesGoal         CrmUserSalesGoal?
+}
+
+// ─── Configuración CRM (singleton + catálogos + metas por usuario) ───
+
+model CrmOrganizationProfile {
+  id                String   @id @default("default")
+  name              String   @default("Taxi Monterrico")
+  description       String   @default("")
+  contactEmail      String   @default("")
+  contactPhone      String   @default("")
+  address           String   @default("")
+  globalWeeklyGoal  Float    @default(0)
+  globalMonthlyGoal Float    @default(0)
+  updatedAt         DateTime @updatedAt
+}
+
+model CrmLeadSource {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  enabled   Boolean  @default(true)
+  sortOrder Int      @default(0)
+}
+
+/** Etapas del CRM (contactos, empresas, oportunidades): un solo catálogo por slug */
+model CrmStage {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  color       String   @default("#64748b")
+  probability Int      @default(0)
+  enabled     Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  /** Sembradas iniciales: no eliminar del catálogo si hay registros con esa etapa */
+  isSystem    Boolean  @default(false)
+}
+
+model CrmPriority {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  color       String
+  description String   @default("")
+  enabled     Boolean  @default(true)
+  sortOrder   Int      @default(0)
+}
+
+model CrmActivityType {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  enabled   Boolean  @default(true)
+  sortOrder Int      @default(0)
+}
+
+model CrmUserSalesGoal {
+  userId        String
+  weeklyTarget  Float   @default(0)
+  monthlyTarget Float   @default(0)
+  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId])
 }
 
 model Contact {
   id                 String    @id @default(cuid())
+  /** Segmento de URL para /contactos/:slug (único; también se acepta :id cuid en API) */
+  urlSlug            String    @unique
   name               String
   cargo              String?
   telefono           String
@@ -80,10 +146,6 @@ model Contact {
   etapa              String    @default("lead")
   assignedTo         String?
   estimatedValue     Float     @default(0)
-  nextAction         String?
-  nextFollowUp       DateTime?
-  notes              String?
-  tags               String[]  @default([])
   docType            String?
   docNumber          String?
   departamento       String?
@@ -108,6 +170,8 @@ model Contact {
 
 model Company {
   id           String   @id @default(cuid())
+  /** Segmento de URL para /empresas/:slug */
+  urlSlug      String   @unique
   name         String
   razonSocial  String?
   ruc          String?  // TODO: añadir @unique cuando se resuelvan RUC duplicados (ej: 20000000000)
@@ -135,13 +199,29 @@ model Company {
   linkedBy     CompanyCompany[]  @relation("LinkedCompanies")
   opportunities CompanyOpportunity[]
   activities   CompanyActivity[]
+  /** Registro CRM “Cliente”: se crea al alcanzar etapa cierre_ganado (1:1 con empresa). */
+  clientRecord Client?
 
   @@index([assignedTo])
   @@index([etapa])
 }
 
+model Client {
+  id        String   @id @default(cuid())
+  companyId String   @unique
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  /** activo | inactivo | potencial */
+  status    String   @default("activo")
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
+}
+
 model Opportunity {
   id                String    @id @default(cuid())
+  urlSlug           String    @unique
   title             String
   amount            Float
   probability       Int       @default(0)
@@ -172,6 +252,8 @@ model Opportunity {
 model Activity {
   id            String    @id @default(cuid())
   type          String
+  /** Modalidad cuando type = tarea: llamada | reunion | correo | whatsapp */
+  taskKind      String?
   title         String
   description   String
   assignedTo    String
@@ -315,5 +397,29 @@ model Campaign {
   createdBy        User      @relation(fields: [createdById], references: [id], onDelete: Restrict)
 
   @@index([createdById])
+  @@index([createdAt])
+}
+
+/** Adjuntos del CRM: metadatos en BD; binario en S3/MinIO o URL pública (CDN) vía proxy de medios. */
+model CrmFile {
+  id                String   @id @default(cuid())
+  /** Clave S3 o URL https del CDN si la subida fue por MEDIA_UPLOAD_URL. */
+  storageKey        String   @unique
+  originalName      String
+  mimeType          String
+  size              Int
+  /** contact | company | opportunity | activity | email | task */
+  entityType        String
+  entityId          String
+  entityName        String?
+  relatedEntityType String?
+  relatedEntityId   String?
+  relatedEntityName String?
+  uploadedBy        String
+  createdAt         DateTime @default(now())
+  user              User     @relation(fields: [uploadedBy], references: [id], onDelete: Restrict)
+
+  @@index([entityType, entityId])
+  @@index([uploadedBy])
   @@index([createdAt])
 }

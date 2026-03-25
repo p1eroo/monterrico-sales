@@ -1,26 +1,64 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { addDays, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek, format, isSameMonth, addWeeks, subWeeks, parseISO, isToday } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
   ChevronLeft, ChevronRight, Calendar as CalendarIcon, List, LayoutGrid, Clock, Plus,
+  Phone, Mail, MessageCircle, ClipboardList,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { ActivityFormDialog, type ActivityFormData } from '@/components/shared/ActivityFormDialog';
+import { TaskFormDialog, type TaskFormResult } from '@/components/shared/TaskFormDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog';
+import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useUsers } from '@/hooks/useUsers';
 import { useActivities } from '@/hooks/useActivities';
-import { activityToCalendarEvent } from '@/lib/activityApi';
-import { contacts } from '@/data/mock';
-import { opportunities } from '@/data/mock';
+import { activityToCalendarEvent, type CreateActivityPayload } from '@/lib/activityApi';
+import { contactListAll, mapApiContactRowToContact } from '@/lib/contactApi';
+import { companyListAll } from '@/lib/companyApi';
+import { opportunityListAll, mapApiOpportunityToOpportunity } from '@/lib/opportunityApi';
 import { CalendarEventCard } from '@/components/calendar/CalendarEventCard';
 import { EventDetailModal } from '@/components/calendar/EventDetailModal';
 import { EventFormModal, type EventFormModalProps } from '@/components/calendar/EventFormModal';
 import { eventTypeConfig } from '@/components/calendar/eventTypeConfig';
 import { cn } from '@/lib/utils';
-import type { CalendarEvent } from '@/types';
+import type { CalendarEvent, Contact, Opportunity, TaskKind } from '@/types';
+import { TASK_KINDS } from '@/types';
+
+const CALENDAR_TYPE_FILTER_MODALITIES = ['llamada', 'reunion', 'correo', 'whatsapp'] as const;
+
+function eventMatchesCalendarTypeFilter(
+  e: CalendarEvent,
+  typeFilter: string,
+  taskKindSubFilter: string,
+): boolean {
+  if (typeFilter === 'all') return true;
+  if (typeFilter === 'tarea') {
+    if (e.activityRecordType !== 'tarea') return false;
+    if (taskKindSubFilter === 'all') return true;
+    return e.taskKind === taskKindSubFilter;
+  }
+  if (CALENDAR_TYPE_FILTER_MODALITIES.includes(typeFilter as TaskKind)) {
+    return (
+      e.activityRecordType === typeFilter ||
+      (e.activityRecordType === 'tarea' && e.taskKind === typeFilter)
+    );
+  }
+  return e.type === typeFilter;
+}
 import { toast } from 'sonner';
 
 type ViewMode = 'month' | 'week' | 'day' | 'agenda';
@@ -28,16 +66,77 @@ type ViewMode = 'month' | 'week' | 'day' | 'agenda';
 const WEEKDAYS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
+const NEW_ACTIVITY_ACTIONS = [
+  { kind: 'llamada' as const, icon: Phone, label: 'Llamada' },
+  { kind: 'reunion' as const, icon: CalendarIcon, label: 'Reunión' },
+  { kind: 'correo' as const, icon: Mail, label: 'Correo' },
+  { kind: 'whatsapp' as const, icon: MessageCircle, label: 'WhatsApp' },
+  { kind: 'tarea' as const, icon: ClipboardList, label: 'Tarea' },
+];
+
+function activityPayloadFromForm(
+  kind: 'llamada' | 'reunion' | 'correo' | 'whatsapp',
+  data: ActivityFormData,
+  ctx: { contactId?: string; companyId?: string; opportunityId?: string },
+  assignedTo: string,
+): CreateActivityPayload {
+  const today = new Date().toISOString().slice(0, 10);
+  let dueDate = today;
+  let startDate = today;
+  let startTime = '09:00';
+  const extra: string[] = [];
+
+  if (kind === 'llamada') {
+    dueDate = data.date || today;
+    startDate = data.date || today;
+    startTime = data.time || '09:00';
+    if (data.duration) extra.push(`Duración: ${data.duration} min`);
+    if (data.result) extra.push(`Resultado: ${data.result}`);
+  } else if (kind === 'reunion') {
+    const dt = data.dateTime?.trim();
+    if (dt) {
+      dueDate = dt.slice(0, 10);
+      startDate = dt.slice(0, 10);
+      startTime = dt.length >= 16 ? dt.slice(11, 16) : '09:00';
+    }
+    if (data.meetingType) extra.push(`Modalidad: ${data.meetingType}`);
+    if (data.result) extra.push(`Resultado: ${data.result}`);
+  } else {
+    dueDate = today;
+    startDate = today;
+    startTime = '09:00';
+  }
+
+  const title =
+    data.title?.trim() ||
+    (kind === 'llamada' ? 'Llamada' : kind === 'reunion' ? 'Reunión' : kind === 'correo' ? 'Correo' : 'WhatsApp');
+  const description = [data.description?.trim(), ...extra].filter(Boolean).join('\n');
+
+  return {
+    type: kind,
+    title,
+    description,
+    assignedTo,
+    dueDate,
+    startDate,
+    startTime,
+    ...ctx,
+  };
+}
 
 export default function CalendarioPage() {
   const { activeUsers } = useUsers();
+  const defaultAssigneeId = activeUsers[0]?.id ?? '';
   const { activities, loading: activitiesLoading, createActivity, updateActivity, deleteActivity, error: activitiesError } = useActivities();
 
-  const TASK_TYPES = ['tarea', 'llamada', 'reunion', 'correo'];
   const events = useMemo(
-    () => activities
-      .filter((a) => TASK_TYPES.includes(a.type))
-      .map(activityToCalendarEvent),
+    () =>
+      activities
+        .filter((a) => {
+          if (a.type === 'tarea') return !!(a.taskKind && TASK_KINDS.includes(a.taskKind));
+          return ['llamada', 'reunion', 'correo', 'whatsapp'].includes(a.type);
+        })
+        .map(activityToCalendarEvent),
     [activities],
   );
 
@@ -45,39 +144,94 @@ export default function CalendarioPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [userFilter, setUserFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [taskKindSubFilter, setTaskKindSubFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
 
+  const [entityLinkOpen, setEntityLinkOpen] = useState(false);
+  const [entityLinkValue, setEntityLinkValue] = useState<string>('');
+  const [pendingActivityKind, setPendingActivityKind] = useState<
+    'llamada' | 'reunion' | 'correo' | 'whatsapp' | null
+  >(null);
+  const [activityFormKind, setActivityFormKind] = useState<
+    'llamada' | 'reunion' | 'correo' | 'whatsapp' | null
+  >(null);
+  const [activityEntityCtx, setActivityEntityCtx] = useState<{
+    contactId?: string;
+    companyId?: string;
+    opportunityId?: string;
+  } | null>(null);
+  const [taskFormOpen, setTaskFormOpen] = useState(false);
+
+  const [taskContacts, setTaskContacts] = useState<Contact[]>([]);
+  const [taskOpportunities, setTaskOpportunities] = useState<Opportunity[]>([]);
+  const [taskCompanies, setTaskCompanies] = useState<{ name: string; id: string }[]>([]);
+  const [entitiesLoading, setEntitiesLoading] = useState(false);
+
+  const loadCalendarEntities = useCallback(async () => {
+    setEntitiesLoading(true);
+    try {
+      const [contactRows, companyRows, oppRows] = await Promise.all([
+        contactListAll(),
+        companyListAll(),
+        opportunityListAll(),
+      ]);
+      setTaskContacts(contactRows.map(mapApiContactRowToContact));
+      setTaskCompanies(companyRows.map((c) => ({ name: c.name, id: c.id })));
+      setTaskOpportunities(oppRows.map(mapApiOpportunityToOpportunity));
+    } catch {
+      toast.error('No se pudieron cargar contactos u oportunidades para el calendario');
+    } finally {
+      setEntitiesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadCalendarEntities();
+  }, [loadCalendarEntities]);
+
   const relatedOptions = useMemo(() => {
     const opts: { type: 'contact' | 'company' | 'opportunity'; id: string; name: string }[] = [];
-    contacts.forEach((c) => {
+    taskContacts.forEach((c) => {
       const company = c.companies?.[0]?.name;
       opts.push({ type: 'contact', id: c.id, name: `${c.name}${company ? ` - ${company}` : ''}` });
     });
-    const companyNames = new Set<string>();
-    contacts.forEach((c) => {
-      c.companies?.forEach((co) => {
-        if (co.name && !companyNames.has(co.name)) {
-          companyNames.add(co.name);
-          opts.push({ type: 'company', id: co.name, name: co.name });
-        }
+    taskCompanies.forEach((co) => {
+      opts.push({ type: 'company', id: co.id, name: co.name });
+    });
+    taskOpportunities.forEach((o) => opts.push({ type: 'opportunity', id: o.id, name: o.title }));
+    return opts;
+  }, [taskContacts, taskCompanies, taskOpportunities]);
+
+  const entityLinkOptions = useMemo(() => {
+    const out: { value: string; label: string }[] = [];
+    taskContacts.forEach((c) => {
+      const co = c.companies?.[0]?.name;
+      out.push({
+        value: `contact:${c.id}`,
+        label: `${c.name}${co ? ` — ${co}` : ''}`,
       });
     });
-    opportunities.forEach((o) => opts.push({ type: 'opportunity', id: o.id, name: o.title }));
-    return opts;
-  }, []);
+    taskCompanies.forEach((co) => {
+      out.push({ value: `company:${co.id}`, label: co.name });
+    });
+    taskOpportunities.forEach((o) => {
+      out.push({ value: `opportunity:${o.id}`, label: o.title });
+    });
+    return out;
+  }, [taskContacts, taskCompanies, taskOpportunities]);
 
   const filteredEvents = useMemo(() => {
     return events.filter((e) => {
       if (userFilter !== 'all' && e.assignedTo !== userFilter) return false;
-      if (typeFilter !== 'all' && e.type !== typeFilter) return false;
+      if (!eventMatchesCalendarTypeFilter(e, typeFilter, taskKindSubFilter)) return false;
       if (statusFilter !== 'all' && e.status !== statusFilter) return false;
       return true;
     });
-  }, [events, userFilter, typeFilter, statusFilter]);
+  }, [events, userFilter, typeFilter, taskKindSubFilter, statusFilter]);
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -137,6 +291,99 @@ export default function CalendarioPage() {
     setCurrentDate(new Date());
   }
 
+  function parseEntityLink(sel: string) {
+    const i = sel.indexOf(':');
+    if (i <= 0) return {};
+    const kind = sel.slice(0, i);
+    const id = sel.slice(i + 1);
+    if (kind === 'contact') return { contactId: id };
+    if (kind === 'company') return { companyId: id };
+    if (kind === 'opportunity') return { opportunityId: id };
+    return {};
+  }
+
+  function handleSelectNewActivityKind(
+    kind: 'llamada' | 'reunion' | 'correo' | 'whatsapp' | 'tarea',
+  ) {
+    if (kind === 'tarea') {
+      setTaskFormOpen(true);
+      return;
+    }
+    setPendingActivityKind(kind);
+    setEntityLinkValue('');
+    setEntityLinkOpen(true);
+  }
+
+  function handleConfirmEntityLink() {
+    if (!entityLinkValue || !pendingActivityKind) {
+      toast.error('Selecciona un contacto, empresa u oportunidad');
+      return;
+    }
+    const ctx = parseEntityLink(entityLinkValue);
+    if (!ctx.contactId && !ctx.companyId && !ctx.opportunityId) {
+      toast.error('Selección no válida');
+      return;
+    }
+    setActivityEntityCtx(ctx);
+    setActivityFormKind(pendingActivityKind);
+    setPendingActivityKind(null);
+    setEntityLinkOpen(false);
+    setEntityLinkValue('');
+  }
+
+  async function handleActivityFormSave(data: ActivityFormData) {
+    if (!activityFormKind || !activityEntityCtx) return;
+    if (!defaultAssigneeId) {
+      toast.error('No hay usuario interno para asignar');
+      throw new Error('no assignee');
+    }
+    try {
+      const payload = activityPayloadFromForm(
+        activityFormKind,
+        data,
+        activityEntityCtx,
+        defaultAssigneeId,
+      );
+      await createActivity(payload);
+      setActivityFormKind(null);
+      setActivityEntityCtx(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al crear la actividad');
+      throw e;
+    }
+  }
+
+  async function handleCalendarTaskFormSave(data: TaskFormResult) {
+    const contactAssoc = data.associations?.find((a) => a.type === 'contacto');
+    const negocioAssoc = data.associations?.find((a) => a.type === 'negocio');
+    const empresaAssoc = data.associations?.find((a) => a.type === 'empresa');
+    const companyId =
+      empresaAssoc?.id && /^c[a-z0-9]+$/i.test(empresaAssoc.id) ? empresaAssoc.id : undefined;
+
+    if (!contactAssoc && !companyId && !negocioAssoc) {
+      toast.error('Debes vincular la tarea a un contacto, empresa u oportunidad');
+      throw new Error('validation');
+    }
+    try {
+      await createActivity({
+        type: 'tarea',
+        taskKind: data.type,
+        title: data.title,
+        description: '',
+        assignedTo: data.assignee,
+        dueDate: data.dueDate,
+        startDate: data.startDate,
+        startTime: data.startTime,
+        contactId: contactAssoc?.id,
+        companyId,
+        opportunityId: negocioAssoc?.id,
+      });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al crear la tarea');
+      throw e;
+    }
+  }
+
   async function handleSaveEvent(data: Parameters<EventFormModalProps['onSave']>[0]) {
     const d = data as {
       title: string;
@@ -164,16 +411,30 @@ export default function CalendarioPage() {
 
     try {
       if (editingEvent) {
-        await updateActivity(editingEvent.id, {
-          type: d.type,
-          title: d.title,
-          description: d.description ?? '',
-          assignedTo: d.assignedTo,
-          status: d.status,
-          dueDate: d.date,
-          startDate: d.date,
-          startTime: d.startTime,
-        });
+        const editPayload =
+          editingEvent.activityRecordType === 'tarea'
+            ? {
+                type: 'tarea' as const,
+                taskKind: d.type as TaskKind,
+                title: d.title,
+                description: d.description ?? '',
+                assignedTo: d.assignedTo,
+                status: d.status,
+                dueDate: d.date,
+                startDate: d.date,
+                startTime: d.startTime,
+              }
+            : {
+                type: d.type,
+                title: d.title,
+                description: d.description ?? '',
+                assignedTo: d.assignedTo,
+                status: d.status,
+                dueDate: d.date,
+                startDate: d.date,
+                startTime: d.startTime,
+              };
+        await updateActivity(editingEvent.id, editPayload);
         toast.success('Evento actualizado');
       } else {
         await createActivity({
@@ -203,14 +464,44 @@ export default function CalendarioPage() {
         title="Calendario"
         description="Visualiza tus tareas y actividades por fecha."
       >
-        <Button
-          className="bg-[#13944C] hover:bg-[#0f7a3d]"
-          onClick={() => { setEditingEvent(null); setFormOpen(true); }}
-          disabled={activitiesLoading}
+        <DropdownMenu
+          onOpenChange={(open) => {
+            if (open) {
+              setEditingEvent(null);
+              void loadCalendarEntities();
+            }
+          }}
         >
-          <Plus className="mr-2 size-4" />
-          Nueva Actividad
-        </Button>
+          <DropdownMenuTrigger asChild>
+            <Button
+              className="bg-[#13944C] hover:bg-[#0f7a3d]"
+              disabled={activitiesLoading || entitiesLoading}
+            >
+              <Plus className="mr-2 size-4" />
+              Nueva Actividad
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+              Elige el tipo de actividad
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {NEW_ACTIVITY_ACTIONS.map((a) => {
+              const Icon = a.icon;
+              return (
+                <DropdownMenuItem
+                  key={a.kind}
+                  disabled={entitiesLoading}
+                  className="gap-2"
+                  onSelect={() => handleSelectNewActivityKind(a.kind)}
+                >
+                  <Icon className="size-4 shrink-0 text-[#13944C]" />
+                  {a.label}
+                </DropdownMenuItem>
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </PageHeader>
 
       {activitiesError && (
@@ -233,7 +524,13 @@ export default function CalendarioPage() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <Select
+            value={typeFilter}
+            onValueChange={(v) => {
+              setTypeFilter(v);
+              if (v !== 'tarea') setTaskKindSubFilter('all');
+            }}
+          >
             <SelectTrigger className="w-[160px]">
               <SelectValue placeholder="Tipo" />
             </SelectTrigger>
@@ -244,6 +541,21 @@ export default function CalendarioPage() {
               ))}
             </SelectContent>
           </Select>
+          {typeFilter === 'tarea' && (
+            <Select value={taskKindSubFilter} onValueChange={setTaskKindSubFilter}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Modalidad" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas las modalidades</SelectItem>
+                {TASK_KINDS.map((k) => (
+                  <SelectItem key={k} value={k}>
+                    {eventTypeConfig[k].label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[150px]">
               <SelectValue placeholder="Estado" />
@@ -541,6 +853,78 @@ export default function CalendarioPage() {
           </Card>
         </div>
       </div>
+
+      <Dialog
+        open={entityLinkOpen}
+        onOpenChange={(open) => {
+          setEntityLinkOpen(open);
+          if (!open) {
+            setPendingActivityKind(null);
+            setEntityLinkValue('');
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Vincular actividad</DialogTitle>
+            <DialogDescription>
+              Elige el contacto, empresa u oportunidad relacionada con esta actividad.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Select value={entityLinkValue || undefined} onValueChange={setEntityLinkValue}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar registro…" />
+              </SelectTrigger>
+              <SelectContent className="max-h-[280px]">
+                {entityLinkOptions.length === 0 ? (
+                  <div className="px-2 py-3 text-sm text-muted-foreground">Sin datos. Carga o crea registros en el CRM.</div>
+                ) : (
+                  entityLinkOptions.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEntityLinkOpen(false)}>
+              Cancelar
+            </Button>
+            <Button className="bg-[#13944C] hover:bg-[#0f7a3d]" onClick={handleConfirmEntityLink}>
+              Continuar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {activityFormKind && (
+        <ActivityFormDialog
+          type={activityFormKind}
+          open={!!activityFormKind}
+          onOpenChange={(open) => {
+            if (!open) {
+              setActivityFormKind(null);
+              setActivityEntityCtx(null);
+            }
+          }}
+          onSave={handleActivityFormSave}
+        />
+      )}
+
+      <TaskFormDialog
+        open={taskFormOpen}
+        onOpenChange={setTaskFormOpen}
+        title="Nueva tarea"
+        description="Crea una tarea y vincúlala a un contacto, empresa u oportunidad."
+        contacts={taskContacts}
+        companies={taskCompanies}
+        opportunities={taskOpportunities}
+        defaultAssigneeId={defaultAssigneeId}
+        onSave={handleCalendarTaskFormSave}
+      />
 
       <EventDetailModal
         event={selectedEvent}

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Phone, Users, Mail } from 'lucide-react';
+import { Phone, Users, Mail, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ActivityType, ActivityStatus } from '@/types';
 
@@ -58,10 +58,10 @@ interface TaskSummary {
 }
 
 interface ActivityFormDialogProps {
-  type: 'llamada' | 'reunion' | 'correo';
+  type: 'llamada' | 'reunion' | 'correo' | 'whatsapp';
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (data: ActivityFormData) => void;
+  onSave: (data: ActivityFormData) => void | Promise<void>;
   /** Shows a task summary card and changes dialog text for task-completion context */
   taskSummary?: TaskSummary;
   /** Pre-fill the title field */
@@ -77,6 +77,7 @@ const typeConfig = {
   llamada: { icon: Phone, color: 'text-blue-600', label: 'Llamada', labelFem: 'a' },
   reunion: { icon: Users, color: 'text-emerald-600', label: 'Reunión', labelFem: 'a' },
   correo: { icon: Mail, color: 'text-purple-600', label: 'Correo', labelFem: 'o' },
+  whatsapp: { icon: MessageCircle, color: 'text-green-600', label: 'WhatsApp', labelFem: 'o' },
 };
 
 export function ActivityFormDialog({
@@ -108,10 +109,14 @@ export function ActivityFormDialog({
     }
   }
 
-  function handleSave() {
-    onSave(form);
-    toast.success(`${config.label} registrad${config.labelFem} exitosamente`);
-    setForm({ ...emptyForm });
+  async function handleSave() {
+    try {
+      await Promise.resolve(onSave(form));
+      toast.success(`${config.label} registrad${config.labelFem} exitosamente`);
+      setForm({ ...emptyForm });
+    } catch {
+      /* el padre ya mostró el error */
+    }
   }
 
   const set = <K extends keyof ActivityFormData>(key: K, value: ActivityFormData[K]) =>
@@ -127,7 +132,7 @@ export function ActivityFormDialog({
           <DialogDescription>
             {taskSummary
               ? `La tarea "${taskSummary.title}" fue completada. Registra los detalles de la actividad.`
-              : `Registra los detalles de la ${type === 'correo' ? 'el correo' : type === 'llamada' ? 'llamada' : 'reunión'}.`
+              : `Registra los detalles de la ${type === 'correo' ? 'el correo' : type === 'llamada' ? 'llamada' : type === 'whatsapp' ? 'conversación de WhatsApp' : 'reunión'}.`
             }
           </DialogDescription>
         </DialogHeader>
@@ -244,13 +249,26 @@ export function ActivityFormDialog({
               </div>
             </>
           )}
+
+          {type === 'whatsapp' && (
+            <>
+              <div className="space-y-2">
+                <Label>Tema</Label>
+                <Input placeholder="Tema del seguimiento" value={form.title} onChange={(e) => set('title', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Resumen</Label>
+                <Textarea placeholder="Qué se acordó o conversó..." rows={3} value={form.description} onChange={(e) => set('description', e.target.value)} />
+              </div>
+            </>
+          )}
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => handleOpenChange(false)}>
             {showSkip ? 'Omitir' : 'Cancelar'}
           </Button>
-          <Button className="bg-[#13944C] hover:bg-[#0f7a3d]" onClick={handleSave}>
+          <Button type="button" className="bg-[#13944C] hover:bg-[#0f7a3d]" onClick={() => void handleSave()}>
             Guardar actividad
           </Button>
         </DialogFooter>

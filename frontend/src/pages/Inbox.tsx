@@ -22,6 +22,11 @@ import {
 import type { EmailThread, EmailFolder } from '@/types';
 import { emailThreads, folderLabels, entityTypeLabels } from '@/data/emailMock';
 import { useAppStore } from '@/store';
+import {
+  companyDetailHref,
+  contactDetailHref,
+  opportunityDetailHref,
+} from '@/lib/detailRoutes';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -366,9 +371,9 @@ export default function InboxPage() {
                         onClick={() => {
                           const t = selectedThread.relatedEntityType;
                           const id = selectedThread.relatedEntityId;
-                          if (t === 'contact' && id) navigate(`/contactos/${id}`);
-                          if (t === 'opportunity' && id) navigate(`/opportunities/${id}`);
-                          if (t === 'company' && id) navigate(`/empresas/${id}`);
+                          if (t === 'contact' && id) navigate(contactDetailHref({ id }));
+                          if (t === 'opportunity' && id) navigate(opportunityDetailHref({ id }));
+                          if (t === 'company' && id) navigate(companyDetailHref({ id }));
                         }}
                         className="text-sm text-[#13944C] hover:underline"
                       >

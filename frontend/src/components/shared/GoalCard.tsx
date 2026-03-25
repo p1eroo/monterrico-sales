@@ -2,14 +2,7 @@ import type { LucideIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { useGoalsStore } from '@/store/goalsStore';
-import {
-  getTotalWeeklySales,
-  getUserWeeklySales,
-} from '@/lib/weeklySales';
-import {
-  getTotalMonthlySales,
-  getUserMonthlySales,
-} from '@/lib/monthlySales';
+import { useAnalyticsGoalStore } from '@/store/analyticsGoalStore';
 import { useAppStore } from '@/store';
 import { formatCurrencyShort } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
@@ -23,6 +16,15 @@ interface GoalCardProps {
   labelTeam: string;
   periodLabel: string;
   periodLabelCapitalize?: boolean;
+}
+
+function roleShowsTeamAggregate(role?: string, roleName?: string): boolean {
+  const r = `${role ?? ''} ${roleName ?? ''}`.toLowerCase();
+  return (
+    r.includes('admin') ||
+    r.includes('supervisor') ||
+    r.includes('gerente')
+  );
 }
 
 export function GoalCard({
@@ -41,11 +43,15 @@ export function GoalCard({
     getUserMonthlyGoal,
   } = useGoalsStore();
 
-  const isAdminOrGerente =
-    currentUser.role?.toLowerCase().includes('admin') ||
-    currentUser.role?.toLowerCase().includes('supervisor');
+  const teamWeekly = useAnalyticsGoalStore((s) => s.teamWeeklyClosed);
+  const myWeekly = useAnalyticsGoalStore((s) => s.myWeeklyClosed);
+  const teamMonthly = useAnalyticsGoalStore((s) => s.teamMonthlyClosed);
+  const myMonthly = useAnalyticsGoalStore((s) => s.myMonthlyClosed);
 
-  const showGlobal = isAdminOrGerente;
+  const showGlobal = roleShowsTeamAggregate(
+    currentUser.role,
+    currentUser.roleName,
+  );
 
   const goal =
     period === 'weekly'
@@ -59,16 +65,34 @@ export function GoalCard({
   const sales =
     period === 'weekly'
       ? showGlobal
-        ? getTotalWeeklySales()
-        : getUserWeeklySales(currentUser.id)
+        ? teamWeekly
+        : myWeekly
       : showGlobal
-        ? getTotalMonthlySales()
-        : getUserMonthlySales(currentUser.id);
+        ? teamMonthly
+        : myMonthly;
 
   const percent = goal > 0 ? Math.min(100, Math.round((sales / goal) * 100)) : 0;
-  const isComplete = sales >= goal;
+  const isComplete = goal > 0 && sales >= goal;
 
-  if (goal <= 0) return null;
+  if (goal <= 0) {
+    return (
+      <Card className="border-dashed py-0">
+        <CardContent className="px-4 py-2.5">
+          <div className="flex items-start gap-2">
+            <Icon className="size-4 shrink-0 text-muted-foreground" />
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-muted-foreground">
+                {showGlobal ? labelTeam : labelPersonal}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                No hay una meta establecida.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="relative overflow-hidden border-primary/20 py-0">

@@ -35,6 +35,7 @@ import {
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAppStore } from '@/store';
+import { initialsFromName } from '@/lib/utils';
 
 type NavDef = {
   to: string;
@@ -87,11 +88,7 @@ export function AppSidebar() {
   const { hasPermission } = usePermissions();
   const visibleNav = navItems.filter((item) => navItemVisible(item, hasPermission));
 
-  const initials = currentUser.name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .slice(0, 2);
+  const initials = initialsFromName(currentUser.name);
 
   return (
     <Sidebar collapsible="icon">

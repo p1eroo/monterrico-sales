@@ -1,11 +1,12 @@
 import { useState, forwardRef, useImperativeHandle, useMemo } from 'react';
-import { CheckSquare, Phone, Mail, Users } from 'lucide-react';
+import { CheckSquare, Phone, Mail, Users, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { priorityLabels } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
 import { useActivities } from '@/hooks/useActivities';
-import type { Contact, Opportunity, TaskAssociation } from '@/types';
-import type { Activity } from '@/types';
+import type { Contact, Opportunity, TaskAssociation, Activity, TaskKind } from '@/types';
+import { TASK_KINDS } from '@/types';
+import type { UpdateActivityPayload } from '@/lib/activityApi';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -29,7 +30,7 @@ import { TaskDetailDialog, type TaskDetailTask, type TaskComment as TaskDetailCo
 
 type TaskStatus = 'pendiente' | 'completada' | 'en_progreso' | 'vencida';
 type TaskPriority = 'alta' | 'media' | 'baja';
-type TaskType = 'llamada' | 'reunion' | 'correo' | 'tarea';
+type TaskType = TaskKind;
 
 interface TaskComment {
   id: string;
@@ -79,21 +80,21 @@ const taskTypeLabels: Record<TaskType, string> = {
   llamada: 'Llamada',
   reunion: 'Reunión',
   correo: 'Correo',
-  tarea: 'Tarea',
+  whatsapp: 'WhatsApp',
 };
 
 const taskTypeIcons: Record<TaskType, typeof Phone> = {
   llamada: Phone,
   reunion: Users,
   correo: Mail,
-  tarea: CheckSquare,
+  whatsapp: MessageCircle,
 };
 
 const taskTypeIconColors: Record<TaskType, string> = {
   llamada: 'bg-blue-100 text-blue-600',
   reunion: 'bg-purple-100 text-purple-600',
   correo: 'bg-amber-100 text-amber-600',
-  tarea: 'bg-emerald-100 text-emerald-600',
+  whatsapp: 'bg-green-100 text-green-600',
 };
 
 interface TasksTabProps {
@@ -108,7 +109,13 @@ interface TasksTabProps {
   opportunityId?: string;
 }
 
-const TASK_TYPES = ['tarea', 'llamada', 'reunion', 'correo'];
+function isTaskActivity(a: Activity): boolean {
+  return (
+    a.type === 'tarea' &&
+    !!a.taskKind &&
+    TASK_KINDS.includes(a.taskKind)
+  );
+}
 
 function activityToMockTask(a: Activity): MockTask {
   const company = a.contactName?.includes(' - ') ? a.contactName.split(' - ')[1] : undefined;
@@ -119,7 +126,8 @@ function activityToMockTask(a: Activity): MockTask {
     id: a.id,
     title: a.title,
     status: a.status as TaskStatus,
-    type: (a.type as TaskType) ?? 'tarea',
+    type:
+      a.taskKind && TASK_KINDS.includes(a.taskKind) ? a.taskKind : 'llamada',
     priority: 'media',
     company,
     startDate: a.startDate,
@@ -157,7 +165,7 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
 
   const tasks = useMemo(() => {
     const filtered = activities.filter((a) => {
-      if (!TASK_TYPES.includes(a.type)) return false;
+      if (!isTaskActivity(a)) return false;
       if (contactId && a.contactId === contactId) return true;
       if (companyId && a.companyId === companyId) return true;
       if (opportunityId && a.opportunityId === opportunityId) return true;
@@ -179,7 +187,11 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
       if (!contactIdToUse && !companyIdToUse && !opportunityIdToUse) return;
       try {
         await createActivity({
-          type: (task.type ?? 'tarea') as string,
+          type: 'tarea',
+          taskKind:
+            task.type && TASK_KINDS.includes(task.type as TaskKind)
+              ? task.type
+              : 'llamada',
           title: task.title,
           description: '',
           assignedTo: userId,
@@ -248,7 +260,11 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
       if (newStatus === 'completada') payload.completedAt = new Date().toISOString().slice(0, 10);
       await updateActivity(taskId, payload);
       toast.success(newStatus === 'completada' ? 'Tarea completada' : 'Tarea reactivada');
-      if (newStatus === 'completada' && task.type && ['llamada', 'reunion', 'correo'].includes(task.type)) {
+      if (
+        newStatus === 'completada' &&
+        task.type &&
+        TASK_KINDS.includes(task.type)
+      ) {
         setCompletedTask(task);
         setActivityFromTaskOpen(true);
       }
@@ -277,7 +293,9 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
             </TableHeader>
             <TableBody>
               {tasks.map((task) => {
-                const taskType = (['llamada', 'reunion', 'correo', 'tarea'].includes(task.type ?? '') ? task.type : 'tarea') as TaskType;
+                const taskType = (
+                  task.type && TASK_KINDS.includes(task.type) ? task.type : 'llamada'
+                ) as TaskType;
                 const TypeIcon = taskTypeIcons[taskType];
                 const iconColor = taskTypeIconColors[taskType];
                 return (
@@ -338,9 +356,12 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
         </CardContent>
       </Card>
 
-      {completedTask && ['llamada', 'reunion', 'correo'].includes(completedTask.type ?? '') && activityFromTaskOpen && (
+      {completedTask &&
+        completedTask.type &&
+        TASK_KINDS.includes(completedTask.type) &&
+        activityFromTaskOpen && (
         <ActivityFormDialog
-          type={completedTask.type as 'llamada' | 'reunion' | 'correo'}
+          type={completedTask.type}
           open={activityFromTaskOpen}
           onOpenChange={(open) => { setActivityFromTaskOpen(open); if (!open) setCompletedTask(null); }}
           onSave={async (data) => {
@@ -441,8 +462,8 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
                     <SelectValue placeholder="Seleccionar tipo" />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(taskTypeLabels).map(([key, label]) => (
-                      <SelectItem key={key} value={key}>{label}</SelectItem>
+                    {TASK_KINDS.map((key) => (
+                      <SelectItem key={key} value={key}>{taskTypeLabels[key]}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -500,7 +521,11 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
               }
               try {
                 await createActivity({
-                  type: (linkedTaskType as string) || 'tarea',
+                  type: 'tarea',
+                  taskKind:
+                    linkedTaskType && TASK_KINDS.includes(linkedTaskType as TaskKind)
+                      ? linkedTaskType
+                      : 'llamada',
                   title: linkedTaskTitle.trim(),
                   description: '',
                   assignedTo: linkedTaskAssignee || defaultAssigneeId || activeUsers[0]?.id || '',
@@ -538,24 +563,46 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
           const newIds = new Set(newTasks.map((t) => t.id));
           const deleted = current.filter((t) => !newIds.has(t.id));
           for (const t of deleted) {
-            try { await deleteActivity(t.id); } catch (e) { toast.error(e instanceof Error ? e.message : 'Error al eliminar'); }
-          }
-          const changed = newTasks.find((nd) => {
-            const oldTask = current.find((c) => c.id === nd.id);
-            return oldTask && oldTask.status !== nd.status;
-          });
-          if (changed) {
             try {
-              const payload: { status: string; completedAt?: string } = { status: changed.status };
-              if (changed.status === 'completada') payload.completedAt = new Date().toISOString().slice(0, 10);
-              await updateActivity(changed.id, payload);
-              if (changed.status === 'completada' && selectedTask?.id === changed.id && ['llamada', 'reunion', 'correo'].includes(changed.type ?? '')) {
-                setCompletedTask(tasks.find((ta) => ta.id === changed.id) as MockTask);
+              await deleteActivity(t.id);
+            } catch (e) {
+              toast.error(e instanceof Error ? e.message : 'Error al eliminar');
+            }
+          }
+          for (const nd of newTasks) {
+            const oldDetail = current.find((c) => c.id === nd.id);
+            if (!oldDetail) continue;
+            const payload: UpdateActivityPayload = {};
+            if (nd.title !== oldDetail.title) payload.title = nd.title;
+            if (nd.status !== oldDetail.status) {
+              payload.status = nd.status;
+              if (nd.status === 'completada') {
+                payload.completedAt = new Date().toISOString().slice(0, 10);
+              }
+            }
+            if (nd.type !== oldDetail.type) payload.taskKind = nd.type;
+            if (nd.dueDate !== oldDetail.dueDate) payload.dueDate = nd.dueDate;
+            if (nd.startDate !== oldDetail.startDate) payload.startDate = nd.startDate;
+            if (nd.startTime !== oldDetail.startTime) payload.startTime = nd.startTime;
+            if (Object.keys(payload).length === 0) continue;
+            try {
+              await updateActivity(nd.id, payload);
+              const becameCompleted =
+                oldDetail.status !== 'completada' && nd.status === 'completada';
+              if (
+                becameCompleted &&
+                selectedTask?.id === nd.id &&
+                nd.type &&
+                TASK_KINDS.includes(nd.type as TaskKind)
+              ) {
+                setCompletedTask(tasks.find((ta) => ta.id === nd.id) as MockTask);
                 setTaskDetailOpen(false);
                 setSelectedTask(null);
                 setActivityFromTaskOpen(true);
               }
-            } catch (e) { toast.error(e instanceof Error ? e.message : 'Error al actualizar'); }
+            } catch (e) {
+              toast.error(e instanceof Error ? e.message : 'Error al actualizar');
+            }
           }
         }}
         taskComments={taskComments as TaskDetailComment[]}

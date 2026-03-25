@@ -7,17 +7,21 @@ import { Prisma } from '../generated/prisma';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
+import { CreateCompanyDto } from '../companies/dto/create-company.dto';
 import { EntitySyncService } from '../sync/entity-sync.service';
+import { slugifyForUrl } from '../common/url-slug.util';
+import { CrmConfigService } from '../crm-config/crm-config.service';
 
 const contactIncludeList = {
   companies: { include: { company: true } },
   user: { select: { id: true, name: true } },
 } as const;
 
-/** Select explícito para listado: solo campos necesarios (sin etapaHistory, notes, doc, direcciones).
+/** Select explícito para listado: solo campos necesarios (sin etapaHistory, doc, direcciones).
  *  Omite redundancias: companyId (=company.id), assignedTo (=user.id) */
 const contactSelectListSlim = {
   id: true,
+  urlSlug: true,
   name: true,
   cargo: true,
   telefono: true,
@@ -25,8 +29,6 @@ const contactSelectListSlim = {
   fuente: true,
   etapa: true,
   estimatedValue: true,
-  nextAction: true,
-  nextFollowUp: true,
   clienteRecuperado: true,
   createdAt: true,
   updatedAt: true,
@@ -34,7 +36,7 @@ const contactSelectListSlim = {
     select: {
       id: true,
       isPrimary: true,
-      company: { select: { id: true, name: true } },
+      company: { select: { id: true, urlSlug: true, name: true } },
     },
   },
   user: { select: { id: true, name: true } },
@@ -81,6 +83,7 @@ export class ContactsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly entitySync: EntitySyncService,
+    private readonly crmConfig: CrmConfigService,
   ) {}
 
   private async assertUserExists(id: string): Promise<void> {
@@ -90,23 +93,177 @@ export class ContactsService {
     }
   }
 
-  async create(dto: CreateContactDto) {
+  /** Alta de empresa dentro de una transacción (sin propagate; el contacto vinculado lo dispara después). */
+  private async allocateContactUrlSlugTx(
+    tx: Prisma.TransactionClient,
+    nameSource: string,
+    excludeId?: string,
+  ): Promise<string> {
+    const base = slugifyForUrl(nameSource);
+    let candidate = base;
+    let n = 0;
+    for (;;) {
+      const found = await tx.contact.findFirst({
+        where: {
+          urlSlug: candidate,
+          ...(excludeId ? { NOT: { id: excludeId } } : {}),
+        },
+      });
+      if (!found) return candidate;
+      n += 1;
+      candidate = `${base}-${n}`;
+    }
+  }
+
+  private async allocateCompanyUrlSlugTx(
+    tx: Prisma.TransactionClient,
+    nameSource: string,
+    excludeId?: string,
+  ): Promise<string> {
+    const base = slugifyForUrl(nameSource);
+    let candidate = base;
+    let n = 0;
+    for (;;) {
+      const found = await tx.company.findFirst({
+        where: {
+          urlSlug: candidate,
+          ...(excludeId ? { NOT: { id: excludeId } } : {}),
+        },
+      });
+      if (!found) return candidate;
+      n += 1;
+      candidate = `${base}-${n}`;
+    }
+  }
+
+  private async allocateContactUrlSlug(
+    nameSource: string,
+    excludeId?: string,
+  ): Promise<string> {
+    const base = slugifyForUrl(nameSource);
+    let candidate = base;
+    let n = 0;
+    for (;;) {
+      const found = await this.prisma.contact.findFirst({
+        where: {
+          urlSlug: candidate,
+          ...(excludeId ? { NOT: { id: excludeId } } : {}),
+        },
+      });
+      if (!found) return candidate;
+      n += 1;
+      candidate = `${base}-${n}`;
+    }
+  }
+
+  private async resolveContactId(param: string): Promise<string> {
+    const raw = param.trim();
+    if (!raw) {
+      throw new NotFoundException('Contacto no encontrado');
+    }
+    const byId = await this.prisma.contact.findUnique({
+      where: { id: raw },
+      select: { id: true },
+    });
+    if (byId) return byId.id;
+    let slug = raw;
+    try {
+      slug = decodeURIComponent(raw);
+    } catch {
+      /* usar raw */
+    }
+    const bySlug = await this.prisma.contact.findUnique({
+      where: { urlSlug: slug },
+      select: { id: true },
+    });
+    if (bySlug) return bySlug.id;
+    throw new NotFoundException('Contacto no encontrado');
+  }
+
+  private async createCompanyInTx(
+    tx: Prisma.TransactionClient,
+    dto: CreateCompanyDto,
+  ): Promise<{ id: string; name: string }> {
     const name = dto.name?.trim();
     if (!name) {
-      throw new BadRequestException('El nombre es obligatorio');
+      throw new BadRequestException('El nombre de la empresa es obligatorio');
     }
-    const telefono = dto.telefono?.trim();
-    if (!telefono) {
-      throw new BadRequestException('El teléfono es obligatorio');
-    }
-    const correo = dto.correo?.trim();
-    if (!correo) {
-      throw new BadRequestException('El correo es obligatorio');
+    if (
+      dto.facturacionEstimada === undefined ||
+      dto.facturacionEstimada === null ||
+      Number.isNaN(dto.facturacionEstimada) ||
+      dto.facturacionEstimada <= 0
+    ) {
+      throw new BadRequestException(
+        'La facturación estimada es obligatoria y debe ser mayor que 0',
+      );
     }
     const fuente = dto.fuente?.trim();
     if (!fuente) {
       throw new BadRequestException('La fuente es obligatoria');
     }
+    const etapa = dto.etapa?.trim() || 'lead';
+    const assignedTo = dto.assignedTo?.trim() || null;
+    await this.crmConfig.assertEtapaAssignable(etapa);
+
+    const dupName = await tx.company.findFirst({
+      where: {
+        name: { equals: name, mode: 'insensitive' },
+      },
+    });
+    if (dupName) {
+      throw new BadRequestException(
+        'Ya existe una empresa con el mismo nombre. Revisa o elige otro nombre.',
+      );
+    }
+
+    const rucTrim = dto.ruc?.trim();
+    if (rucTrim) {
+      const dupRuc = await tx.company.findFirst({
+        where: { ruc: rucTrim },
+      });
+      if (dupRuc) {
+        throw new BadRequestException(
+          'Ya existe una empresa registrada con el mismo RUC.',
+        );
+      }
+    }
+
+    const companyUrlSlug = await this.allocateCompanyUrlSlugTx(tx, name);
+    const company = await tx.company.create({
+      data: {
+        urlSlug: companyUrlSlug,
+        name,
+        razonSocial: dto.razonSocial?.trim() || null,
+        ruc: rucTrim || null,
+        telefono: dto.telefono?.trim() || null,
+        domain: dto.domain?.trim() || null,
+        rubro: dto.rubro?.trim() || null,
+        tipo: dto.tipo?.trim() || null,
+        linkedin: dto.linkedin?.trim() || null,
+        correo: dto.correo?.trim() || null,
+        distrito: dto.distrito?.trim() || null,
+        provincia: dto.provincia?.trim() || null,
+        departamento: dto.departamento?.trim() || null,
+        direccion: dto.direccion?.trim() || null,
+        facturacionEstimada: dto.facturacionEstimada,
+        fuente,
+        clienteRecuperado: dto.clienteRecuperado?.trim() || null,
+        etapa,
+        assignedTo,
+      },
+    });
+    return { id: company.id, name: company.name };
+  }
+
+  async create(dto: CreateContactDto) {
+    const name = dto.name?.trim();
+    if (!name) {
+      throw new BadRequestException('El nombre es obligatorio');
+    }
+    const telefono = dto.telefono?.trim() || '-';
+    const correo = dto.correo?.trim() ?? '';
+    const fuente = dto.fuente?.trim() || 'base';
 
     if (
       dto.estimatedValue === undefined ||
@@ -124,13 +281,26 @@ export class ContactsService {
       await this.assertUserExists(assignedTo);
     }
 
-    const companyId = dto.companyId?.trim();
-    if (companyId) {
+    const requestedCompanyId = dto.companyId?.trim();
+    if (requestedCompanyId && dto.newCompany) {
+      throw new BadRequestException(
+        'No puedes enviar companyId y newCompany a la vez',
+      );
+    }
+
+    if (requestedCompanyId) {
       const comp = await this.prisma.company.findUnique({
-        where: { id: companyId },
+        where: { id: requestedCompanyId },
       });
       if (!comp) {
         throw new BadRequestException('La empresa indicada no existe');
+      }
+    }
+
+    if (dto.newCompany) {
+      const ncAssigned = dto.newCompany.assignedTo?.trim();
+      if (ncAssigned) {
+        await this.assertUserExists(ncAssigned);
       }
     }
 
@@ -143,76 +313,72 @@ export class ContactsService {
       etapaHistory = [{ etapa, fecha: today }] as unknown as Prisma.InputJsonValue;
     }
 
-    const nextFollowUp =
-      dto.nextFollowUp?.trim() != null && dto.nextFollowUp.trim() !== ''
-        ? new Date(dto.nextFollowUp.trim())
-        : null;
-    if (nextFollowUp && Number.isNaN(nextFollowUp.getTime())) {
-      throw new BadRequestException('Fecha de próximo seguimiento inválida');
-    }
+    await this.crmConfig.assertEtapaAssignable(etapa);
 
-    const tags = Array.isArray(dto.tags) ? dto.tags.filter((t) => typeof t === 'string') : [];
+    const { contact: row, effectiveCompanyId } = await this.prisma.$transaction(
+      async (tx) => {
+        let effectiveCompanyId: string | null = requestedCompanyId || null;
+        if (dto.newCompany) {
+          const comp = await this.createCompanyInTx(tx, dto.newCompany);
+          effectiveCompanyId = comp.id;
+        }
 
-    const row = await this.prisma.$transaction(async (tx) => {
-      const created = await tx.contact.create({
-        data: {
-          name,
-          telefono,
-          correo,
-          fuente,
-          cargo: dto.cargo?.trim() || null,
-          etapa,
-          assignedTo,
-          estimatedValue: dto.estimatedValue,
-          nextAction: dto.nextAction?.trim() || 'Contactar',
-          nextFollowUp,
-          notes: dto.notes?.trim() || null,
-          tags,
-          docType: dto.docType?.trim() || null,
-          docNumber: dto.docNumber?.trim() || null,
-          departamento: dto.departamento?.trim() || null,
-          provincia: dto.provincia?.trim() || null,
-          distrito: dto.distrito?.trim() || null,
-          direccion: dto.direccion?.trim() || null,
-          clienteRecuperado: dto.clienteRecuperado?.trim() || null,
-          etapaHistory,
-        },
-      });
-
-      if (companyId) {
-        await tx.companyContact.create({
+        const contactUrlSlug = await this.allocateContactUrlSlugTx(tx, name);
+        const created = await tx.contact.create({
           data: {
-            contactId: created.id,
-            companyId,
-            isPrimary: true,
+            urlSlug: contactUrlSlug,
+            name,
+            telefono,
+            correo,
+            fuente,
+            cargo: dto.cargo?.trim() || null,
+            etapa,
+            assignedTo,
+            estimatedValue: dto.estimatedValue,
+            docType: dto.docType?.trim() || null,
+            docNumber: dto.docNumber?.trim() || null,
+            departamento: dto.departamento?.trim() || null,
+            provincia: dto.provincia?.trim() || null,
+            distrito: dto.distrito?.trim() || null,
+            direccion: dto.direccion?.trim() || null,
+            clienteRecuperado: dto.clienteRecuperado?.trim() || null,
+            etapaHistory,
           },
         });
-      }
 
-      return created;
-    });
+        if (effectiveCompanyId) {
+          await tx.companyContact.create({
+            data: {
+              contactId: created.id,
+              companyId: effectiveCompanyId,
+              isPrimary: true,
+            },
+          });
+        }
 
-    if (companyId) {
+        return { contact: created, effectiveCompanyId };
+      },
+    );
+
+    if (effectiveCompanyId) {
       const company = await this.prisma.company.findUnique({
-        where: { id: companyId },
+        where: { id: effectiveCompanyId },
         select: { name: true },
       });
       const expectedClose = new Date();
       expectedClose.setDate(expectedClose.getDate() + 30);
       await this.entitySync.ensureOpportunityForContactCompany(
         row.id,
-        companyId,
+        effectiveCompanyId,
         {
-          title: company?.name
-            ? `${name} · ${company.name}`
-            : name,
+          title: company?.name?.trim() || 'Oportunidad',
           amount: dto.estimatedValue!,
           etapa,
           assignedTo,
           expectedCloseDate: expectedClose,
         },
       );
-      await this.entitySync.propagateFromContact(companyId, row.id);
+      await this.entitySync.propagateFromContact(effectiveCompanyId, row.id);
     }
 
     return this.findOne(row.id);
@@ -273,7 +439,8 @@ export class ContactsService {
     };
   }
 
-  async findOne(id: string) {
+  async findOne(idOrSlug: string) {
+    const id = await this.resolveContactId(idOrSlug);
     const row = await this.prisma.contact.findUnique({
       where: { id },
       include: contactIncludeDetail,
@@ -284,7 +451,8 @@ export class ContactsService {
     return row;
   }
 
-  async update(id: string, dto: UpdateContactDto) {
+  async update(idOrSlug: string, dto: UpdateContactDto) {
+    const id = await this.resolveContactId(idOrSlug);
     await this.findOne(id);
 
     const data: Record<string, unknown> = {};
@@ -295,6 +463,7 @@ export class ContactsService {
         throw new BadRequestException('El nombre no puede estar vacío');
       }
       data.name = name;
+      data.urlSlug = await this.allocateContactUrlSlug(name, id);
     }
     if (dto.telefono !== undefined) {
       const telefono = dto.telefono.trim();
@@ -323,6 +492,7 @@ export class ContactsService {
       if (!etapa) {
         throw new BadRequestException('La etapa no puede estar vacía');
       }
+      await this.crmConfig.assertEtapaAssignable(etapa);
       data.etapa = etapa;
     }
     if (dto.assignedTo !== undefined) {
@@ -343,29 +513,6 @@ export class ContactsService {
         );
       }
       data.estimatedValue = dto.estimatedValue;
-    }
-    if (dto.nextAction !== undefined) {
-      data.nextAction = dto.nextAction?.trim() || null;
-    }
-    if (dto.nextFollowUp !== undefined) {
-      if (
-        dto.nextFollowUp === null ||
-        (typeof dto.nextFollowUp === 'string' && dto.nextFollowUp.trim() === '')
-      ) {
-        data.nextFollowUp = null;
-      } else if (typeof dto.nextFollowUp === 'string') {
-        const d = new Date(dto.nextFollowUp.trim());
-        if (Number.isNaN(d.getTime())) {
-          throw new BadRequestException('Fecha de próximo seguimiento inválida');
-        }
-        data.nextFollowUp = d;
-      }
-    }
-    if (dto.notes !== undefined) data.notes = dto.notes?.trim() || null;
-    if (dto.tags !== undefined) {
-      data.tags = Array.isArray(dto.tags)
-        ? dto.tags.filter((t) => typeof t === 'string')
-        : [];
     }
     if (dto.docType !== undefined) data.docType = dto.docType?.trim() || null;
     if (dto.docNumber !== undefined) {
@@ -411,14 +558,16 @@ export class ContactsService {
     return this.findOne(id);
   }
 
-  async remove(id: string) {
+  async remove(idOrSlug: string) {
+    const id = await this.resolveContactId(idOrSlug);
     await this.findOne(id);
     return this.prisma.contact.delete({
       where: { id },
     });
   }
 
-  async addCompany(contactId: string, companyId: string, isPrimary = false) {
+  async addCompany(contactIdOrSlug: string, companyId: string, isPrimary = false) {
+    const contactId = await this.resolveContactId(contactIdOrSlug);
     await this.findOne(contactId);
     const company = await this.prisma.company.findUnique({
       where: { id: companyId },
@@ -441,7 +590,8 @@ export class ContactsService {
     return this.findOne(contactId);
   }
 
-  async removeCompany(contactId: string, companyId: string) {
+  async removeCompany(contactIdOrSlug: string, companyId: string) {
+    const contactId = await this.resolveContactId(contactIdOrSlug);
     await this.findOne(contactId);
     const deleted = await this.prisma.companyContact.deleteMany({
       where: { contactId, companyId },
@@ -452,7 +602,8 @@ export class ContactsService {
     return this.findOne(contactId);
   }
 
-  async addLinkedContact(contactId: string, linkedContactId: string) {
+  async addLinkedContact(contactIdOrSlug: string, linkedContactId: string) {
+    const contactId = await this.resolveContactId(contactIdOrSlug);
     if (contactId === linkedContactId) {
       throw new BadRequestException('Un contacto no puede vincularse consigo mismo');
     }
@@ -477,7 +628,8 @@ export class ContactsService {
     return this.findOne(contactId);
   }
 
-  async removeLinkedContact(contactId: string, linkedId: string) {
+  async removeLinkedContact(contactIdOrSlug: string, linkedId: string) {
+    const contactId = await this.resolveContactId(contactIdOrSlug);
     await this.findOne(contactId);
     const deleted = await this.prisma.contactContact.deleteMany({
       where: { contactId, linkedId },

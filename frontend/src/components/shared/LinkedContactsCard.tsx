@@ -7,9 +7,11 @@ import { formatCurrency } from '@/lib/formatters';
 import { etapaColors } from '@/lib/etapaConfig';
 import { LinkedEntitiesCard } from './LinkedEntitiesCard';
 import type { Contact } from '@/types';
+import { contactDetailHref } from '@/lib/detailRoutes';
 
 export interface LinkedContact {
   id: string;
+  urlSlug?: string;
   name: string;
   cargo?: string;
   etapa: string;
@@ -53,7 +55,7 @@ export function LinkedContactsCard({
       onRemove={onRemove}
       getUnlinkLabel={(c) => c.name}
       getItemKey={(c) => c.id}
-      onItemClick={(c) => navigate(`/contactos/${c.id}`)}
+      onItemClick={(c) => navigate(contactDetailHref(c))}
       renderItem={(contact, unlinkButton) => {
         return (
           <>

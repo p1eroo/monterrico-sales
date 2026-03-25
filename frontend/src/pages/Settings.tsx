@@ -1,16 +1,29 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
 import {
   Building2, Globe, GitBranch, Flag,
-  Activity, Tag, Settings as SettingsIcon,
+  Activity, Settings as SettingsIcon,
   Plus, Trash2, GripVertical, Phone, Mail,
   MapPin, Save, Video, FileText,
   MessageCircle, Bell, Moon, Link2, CheckCircle2,
-  Target, CalendarDays, Calendar,
+  Target, CalendarDays, Calendar, ChevronUp, ChevronDown,
+  Loader2,
 } from 'lucide-react';
 import { useAppStore } from '@/store';
-import { useGoalsStore } from '@/store/goalsStore';
+import { useGoalsStore, hydrateGoalsFromBundle } from '@/store/goalsStore';
 import { useUsers } from '@/hooks/useUsers';
+import { usePermissions } from '@/hooks/usePermissions';
+import { useCrmConfigStore } from '@/store/crmConfigStore';
+import {
+  fetchCrmConfig,
+  patchCrmOrganization,
+  putCrmLeadSources,
+  putCrmStages,
+  putCrmPriorities,
+  putCrmActivityTypes,
+  putCrmSalesGoals,
+} from '@/lib/crmConfigApi';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
 import {
@@ -38,42 +51,11 @@ const NAV_SECTIONS = [
   { id: 'metas', label: 'Metas', icon: Target },
   { id: 'integraciones', label: 'Integraciones', icon: Link2 },
   { id: 'fuentes', label: 'Fuentes de Contactos', icon: Globe },
-  { id: 'pipeline', label: 'Etapas del Pipeline', icon: GitBranch },
+  { id: 'pipeline', label: 'Etapas', icon: GitBranch },
   { id: 'prioridades', label: 'Prioridades', icon: Flag },
   { id: 'actividades', label: 'Tipos de Actividad', icon: Activity },
-  { id: 'estados', label: 'Etapas (Contactos/Empresas/Oportunidades)', icon: Tag },
   { id: 'preferencias', label: 'Preferencias', icon: SettingsIcon },
 ] as const;
-
-const INITIAL_LEAD_SOURCES = [
-  { id: 'referido', name: 'Referido', enabled: true },
-  { id: 'base', name: 'Base', enabled: true },
-  { id: 'entorno', name: 'Entorno', enabled: true },
-  { id: 'feria', name: 'Feria', enabled: true },
-  { id: 'masivo', name: 'Masivo', enabled: true },
-];
-
-const INITIAL_PIPELINE_STAGES = [
-  { id: 'lead', name: 'Lead', color: '#64748b', enabled: true },
-  { id: 'contacto', name: 'Contacto', color: '#3b82f6', enabled: true },
-  { id: 'reunion_agendada', name: 'Reunión Agendada', color: '#6366f1', enabled: true },
-  { id: 'reunion_efectiva', name: 'Reunión Efectiva', color: '#06b6d4', enabled: true },
-  { id: 'propuesta_economica', name: 'Propuesta Económica', color: '#8b5cf6', enabled: true },
-  { id: 'negociacion', name: 'Negociación', color: '#f97316', enabled: true },
-  { id: 'licitacion', name: 'Licitación', color: '#f59e0b', enabled: true },
-  { id: 'licitacion_etapa_final', name: 'Licitación Etapa Final', color: '#eab308', enabled: true },
-  { id: 'cierre_ganado', name: 'Cierre Ganado', color: '#22c55e', enabled: true },
-  { id: 'firma_contrato', name: 'Firma de Contrato', color: '#16a34a', enabled: true },
-  { id: 'activo', name: 'Activo', color: '#15803d', enabled: true },
-  { id: 'cierre_perdido', name: 'Cierre Perdido', color: '#ef4444', enabled: true },
-  { id: 'inactivo', name: 'Inactivo', color: '#6b7280', enabled: true },
-];
-
-const PRIORITIES = [
-  { id: 'alta', name: 'Alta', color: '#ef4444', description: 'Atención inmediata requerida' },
-  { id: 'media', name: 'Media', color: '#f59e0b', description: 'Seguimiento regular programado' },
-  { id: 'baja', name: 'Baja', color: '#3b82f6', description: 'Sin urgencia, atender cuando sea posible' },
-];
 
 const ACTIVITY_TYPE_ICONS: Record<string, typeof Phone> = {
   llamada: Phone,
@@ -83,17 +65,13 @@ const ACTIVITY_TYPE_ICONS: Record<string, typeof Phone> = {
   whatsapp: MessageCircle,
 };
 
-const INITIAL_ACTIVITY_TYPES = [
-  { id: 'llamada', name: 'Llamada', enabled: true },
-  { id: 'reunion', name: 'Reunión', enabled: true },
-  { id: 'tarea', name: 'Tarea', enabled: true },
-  { id: 'correo', name: 'Correo', enabled: true },
-  { id: 'whatsapp', name: 'WhatsApp', enabled: true },
-];
-
 function GoalsSettingsCard() {
   const { users } = useUsers();
   const { currentUser } = useAppStore();
+  const bundle = useCrmConfigStore((s) => s.bundle);
+  const canView = bundle?.permissions.canViewTeamGoals ?? false;
+  const canEditGoals = bundle?.permissions.canEditSalesGoals ?? false;
+
   const {
     globalWeeklyGoal,
     userWeeklyGoals,
@@ -104,33 +82,60 @@ function GoalsSettingsCard() {
     setGlobalMonthlyGoal,
     setUserMonthlyGoal,
   } = useGoalsStore();
-  const isAdminOrGerente =
-    currentUser.role?.toLowerCase().includes('admin') ||
-    currentUser.role?.toLowerCase().includes('supervisor');
 
-  if (!isAdminOrGerente) {
+  const setBundle = useCrmConfigStore((s) => s.setBundle);
+
+  const roleUsers = users.filter((u) =>
+    ['asesor', 'admin', 'supervisor'].includes(u.role),
+  );
+
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    if (!canEditGoals) return;
+    setSaving(true);
+    try {
+      const byUserId: Record<string, { weekly?: number; monthly?: number }> = {};
+      for (const u of roleUsers) {
+        byUserId[u.id] = {
+          weekly: userWeeklyGoals[u.id] ?? 0,
+          monthly: userMonthlyGoals[u.id] ?? 0,
+        };
+      }
+      const b = await putCrmSalesGoals({
+        globalWeekly: globalWeeklyGoal,
+        globalMonthly: globalMonthlyGoal,
+        byUserId,
+      });
+      setBundle(b);
+      hydrateGoalsFromBundle(b, currentUser.id);
+      toast.success('Metas guardadas');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al guardar metas.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!canView) {
     return (
       <Card>
         <CardHeader>
           <CardTitle>Metas</CardTitle>
           <CardDescription>
-            Solo administradores y supervisores pueden configurar las metas. Ve a Mi perfil para ver tu meta personal.
+            Solo quien tiene permiso de ver configuración puede editar las metas del equipo. Consulta con un administrador.
           </CardDescription>
         </CardHeader>
       </Card>
     );
   }
 
-  const roleUsers = users.filter((u) =>
-    ['asesor', 'admin', 'supervisor'].includes(u.role),
-  );
-
   return (
     <Card>
       <CardHeader>
         <CardTitle>Metas</CardTitle>
         <CardDescription>
-          Configura las metas de ventas del equipo y por asesor (en soles). Cambia entre vista semanal y mensual.
+          Metas de ventas del equipo y por asesor (S/). Se guardan en el servidor.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -153,6 +158,7 @@ function GoalsSettingsCard() {
                 id="global-weekly"
                 type="number"
                 min={0}
+                disabled={!canEditGoals}
                 value={globalWeeklyGoal}
                 onChange={(e) => setGlobalWeeklyGoal(Number(e.target.value) || 0)}
               />
@@ -166,6 +172,7 @@ function GoalsSettingsCard() {
                     <Input
                       type="number"
                       min={0}
+                      disabled={!canEditGoals}
                       className="w-32"
                       value={userWeeklyGoals[u.id] ?? 0}
                       onChange={(e) => setUserWeeklyGoal(u.id, Number(e.target.value) || 0)}
@@ -183,6 +190,7 @@ function GoalsSettingsCard() {
                 id="global-monthly"
                 type="number"
                 min={0}
+                disabled={!canEditGoals}
                 value={globalMonthlyGoal}
                 onChange={(e) => setGlobalMonthlyGoal(Number(e.target.value) || 0)}
               />
@@ -196,6 +204,7 @@ function GoalsSettingsCard() {
                     <Input
                       type="number"
                       min={0}
+                      disabled={!canEditGoals}
                       className="w-32"
                       value={userMonthlyGoals[u.id] ?? 0}
                       onChange={(e) => setUserMonthlyGoal(u.id, Number(e.target.value) || 0)}
@@ -207,102 +216,342 @@ function GoalsSettingsCard() {
           </TabsContent>
         </Tabs>
 
-        <div className="mt-6 flex justify-end">
-          <Button className="bg-primary text-white hover:bg-primary/90">
-            <Save className="size-4" />
-            Guardar
-          </Button>
-        </div>
+        {canEditGoals && (
+          <div className="mt-6 flex justify-end">
+            <Button
+              className="bg-primary text-white hover:bg-primary/90"
+              disabled={saving}
+              onClick={() => void save()}
+            >
+              {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+              Guardar
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
 }
 
-const ETAPAS_CONFIG = [
-  { id: 'lead', name: 'Lead', color: '#64748b', order: 1, prob: 0 },
-  { id: 'contacto', name: 'Contacto', color: '#3b82f6', order: 2, prob: 10 },
-  { id: 'reunion_agendada', name: 'Reunión Agendada', color: '#6366f1', order: 3, prob: 30 },
-  { id: 'reunion_efectiva', name: 'Reunión Efectiva', color: '#06b6d4', order: 4, prob: 40 },
-  { id: 'propuesta_economica', name: 'Propuesta Económica', color: '#8b5cf6', order: 5, prob: 50 },
-  { id: 'negociacion', name: 'Negociación', color: '#f97316', order: 6, prob: 70 },
-  { id: 'licitacion', name: 'Licitación', color: '#f59e0b', order: 7, prob: 75 },
-  { id: 'licitacion_etapa_final', name: 'Licitación Etapa Final', color: '#eab308', order: 8, prob: 85 },
-  { id: 'cierre_ganado', name: 'Cierre Ganado', color: '#22c55e', order: 9, prob: 90 },
-  { id: 'firma_contrato', name: 'Firma de Contrato', color: '#16a34a', order: 10, prob: 95 },
-  { id: 'activo', name: 'Activo', color: '#15803d', order: 11, prob: 100 },
-  { id: 'cierre_perdido', name: 'Cierre Perdido', color: '#ef4444', order: 12, prob: -1 },
-  { id: 'inactivo', name: 'Inactivo', color: '#6b7280', order: 13, prob: -5 },
-];
+type LeadRow = { slug: string; name: string; enabled: boolean };
+type StageRow = {
+  slug: string;
+  name: string;
+  color: string;
+  probability: number;
+  enabled: boolean;
+  isSystem: boolean;
+};
+type PriorityRow = {
+  slug: string;
+  name: string;
+  color: string;
+  description: string;
+  enabled: boolean;
+};
+type ActivityRow = { slug: string; name: string; enabled: boolean };
 
 export default function Settings() {
   const [searchParams] = useSearchParams();
   const gmailConnected = useAppStore((s) => s.gmailConnected);
+  const { hasPermission } = usePermissions();
+  const canEdit = hasPermission('configuracion.editar');
+
+  const bundle = useCrmConfigStore((s) => s.bundle);
+  const setBundle = useCrmConfigStore((s) => s.setBundle);
+
   const tabFromUrl = searchParams.get('tab');
-  const [activeTab, setActiveTab] = useState(tabFromUrl && NAV_SECTIONS.some((s) => s.id === tabFromUrl) ? tabFromUrl : 'general');
-  const [leadSources, setLeadSources] = useState(INITIAL_LEAD_SOURCES);
+  const normalizedTab =
+    tabFromUrl === 'estados' ? 'pipeline' : tabFromUrl;
+  const [activeTab, setActiveTab] = useState(
+    normalizedTab && NAV_SECTIONS.some((s) => s.id === normalizedTab) ? normalizedTab : 'general',
+  );
+
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const [companyName, setCompanyName] = useState('');
+  const [companyDesc, setCompanyDesc] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
+  const [address, setAddress] = useState('');
+
+  const [leadSources, setLeadSources] = useState<LeadRow[]>([]);
   const [newSourceName, setNewSourceName] = useState('');
-  const [pipelineStages, setPipelineStages] = useState(INITIAL_PIPELINE_STAGES);
+
+  const [pipelineStages, setPipelineStages] = useState<StageRow[]>([]);
   const [addStageOpen, setAddStageOpen] = useState(false);
   const [newStageName, setNewStageName] = useState('');
   const [newStageColor, setNewStageColor] = useState('#64748b');
-  const [activityTypes, setActivityTypes] = useState(INITIAL_ACTIVITY_TYPES);
+
+  const [priorities, setPriorities] = useState<PriorityRow[]>([]);
+  const [activityTypes, setActivityTypes] = useState<ActivityRow[]>([]);
+
   const [emailNotif, setEmailNotif] = useState(true);
   const [pushNotif, setPushNotif] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
 
+  const [savingGeneral, setSavingGeneral] = useState(false);
+
+  const refreshBundle = useCallback(async () => {
+    try {
+      setLoadError(null);
+      const b = await fetchCrmConfig();
+      setBundle(b);
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : 'Error al cargar configuración');
+    }
+  }, [setBundle]);
+
+  useEffect(() => {
+    if (!bundle) {
+      void refreshBundle();
+    }
+  }, [bundle, refreshBundle]);
+
+  useEffect(() => {
+    if (!bundle?.organization) return;
+    const o = bundle.organization;
+    setCompanyName(o.name);
+    setCompanyDesc(o.description);
+    setContactEmail(o.contactEmail);
+    setContactPhone(o.contactPhone);
+    setAddress(o.address);
+  }, [bundle?.organization]);
+
+  useEffect(() => {
+    if (!bundle?.catalog) return;
+    const c = bundle.catalog;
+    setLeadSources(
+      [...c.leadSources].sort((a, b) => a.sortOrder - b.sortOrder).map((r) => ({
+        slug: r.slug,
+        name: r.name,
+        enabled: r.enabled,
+      })),
+    );
+    setPipelineStages(
+      [...c.stages].sort((a, b) => a.sortOrder - b.sortOrder).map((r) => ({
+        slug: r.slug,
+        name: r.name,
+        color: r.color,
+        probability: r.probability,
+        enabled: r.enabled,
+        isSystem: r.isSystem,
+      })),
+    );
+    setPriorities(
+      [...c.priorities].sort((a, b) => a.sortOrder - b.sortOrder).map((r) => ({
+        slug: r.slug,
+        name: r.name,
+        color: r.color,
+        description: r.description,
+        enabled: r.enabled,
+      })),
+    );
+    setActivityTypes(
+      [...c.activityTypes].sort((a, b) => a.sortOrder - b.sortOrder).map((r) => ({
+        slug: r.slug,
+        name: r.name,
+        enabled: r.enabled,
+      })),
+    );
+  }, [bundle?.catalog]);
+
+  function slugify(name: string): string {
+    const base = name
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/\p{M}/gu, '')
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_|_$/g, '');
+    return base || 'item';
+  }
+
   function addLeadSource() {
     const trimmed = newSourceName.trim();
     if (!trimmed) return;
-    setLeadSources((prev) => [
-      ...prev,
-      { id: trimmed.toLowerCase().replace(/\s+/g, '_'), name: trimmed, enabled: true },
-    ]);
+    const base = slugify(trimmed);
+    const used = new Set(leadSources.map((s) => s.slug));
+    let slug = base;
+    let n = 1;
+    while (used.has(slug)) {
+      slug = `${base}_${n}`;
+      n++;
+    }
+    setLeadSources((prev) => [...prev, { slug, name: trimmed, enabled: true }]);
     setNewSourceName('');
   }
 
-  function removeLeadSource(id: string) {
-    setLeadSources((prev) => prev.filter((s) => s.id !== id));
+  function removeLeadSource(slug: string) {
+    setLeadSources((prev) => prev.filter((s) => s.slug !== slug));
   }
 
-  function toggleLeadSource(id: string) {
+  function toggleLeadSource(slug: string) {
     setLeadSources((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, enabled: !s.enabled } : s)),
+      prev.map((s) => (s.slug === slug ? { ...s, enabled: !s.enabled } : s)),
     );
   }
 
-  function togglePipelineStage(id: string) {
+  function togglePipelineStage(slug: string) {
     setPipelineStages((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, enabled: !s.enabled } : s)),
+      prev.map((s) => (s.slug === slug ? { ...s, enabled: !s.enabled } : s)),
     );
+  }
+
+  function setStageProbability(slug: string, probability: number) {
+    setPipelineStages((prev) =>
+      prev.map((s) => (s.slug === slug ? { ...s, probability } : s)),
+    );
+  }
+
+  function movePipelineStage(index: number, delta: number) {
+    setPipelineStages((prev) => {
+      const j = index + delta;
+      if (j < 0 || j >= prev.length) return prev;
+      const next = [...prev];
+      const t = next[index];
+      next[index] = next[j]!;
+      next[j] = t!;
+      return next;
+    });
   }
 
   function addPipelineStage() {
     const trimmed = newStageName.trim();
     if (!trimmed) return;
-    const baseId = trimmed.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
-    const existingIds = new Set(pipelineStages.map((s) => s.id));
-    let id = baseId || 'etapa';
+    const base = slugify(trimmed);
+    const existing = new Set(pipelineStages.map((s) => s.slug));
+    let slug = base;
     let n = 1;
-    while (existingIds.has(id)) {
-      id = `${baseId}_${n}`;
+    while (existing.has(slug)) {
+      slug = `${base}_${n}`;
       n++;
     }
     setPipelineStages((prev) => [
       ...prev,
-      { id, name: trimmed, color: newStageColor, enabled: true },
+      {
+        slug,
+        name: trimmed,
+        color: newStageColor,
+        probability: 0,
+        enabled: true,
+        isSystem: false,
+      },
     ]);
     setNewStageName('');
     setNewStageColor('#64748b');
     setAddStageOpen(false);
   }
 
-  function removePipelineStage(id: string) {
-    setPipelineStages((prev) => prev.filter((s) => s.id !== id));
+  function removePipelineStage(slug: string) {
+    setPipelineStages((prev) => prev.filter((s) => s.slug !== slug));
   }
 
-  function toggleActivityType(id: string) {
+  function toggleActivityType(slug: string) {
     setActivityTypes((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, enabled: !a.enabled } : a)),
+      prev.map((a) => (a.slug === slug ? { ...a, enabled: !a.enabled } : a)),
+    );
+  }
+
+  function togglePriority(slug: string) {
+    setPriorities((prev) =>
+      prev.map((p) => (p.slug === slug ? { ...p, enabled: !p.enabled } : p)),
+    );
+  }
+
+  function setPriorityDescription(slug: string, description: string) {
+    setPriorities((prev) =>
+      prev.map((p) => (p.slug === slug ? { ...p, description } : p)),
+    );
+  }
+
+  async function saveGeneral() {
+    if (!canEdit) return;
+    setSavingGeneral(true);
+    try {
+      await patchCrmOrganization({
+        name: companyName,
+        description: companyDesc,
+        contactEmail,
+        contactPhone,
+        address,
+      });
+      await refreshBundle();
+      toast.success('Datos generales guardados');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al guardar');
+    } finally {
+      setSavingGeneral(false);
+    }
+  }
+
+  async function saveLeadSources() {
+    if (!canEdit) return;
+    try {
+      const b = await putCrmLeadSources(leadSources);
+      setBundle(b);
+      toast.success('Fuentes guardadas');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al guardar fuentes');
+    }
+  }
+
+  async function savePipeline() {
+    if (!canEdit) return;
+    try {
+      const b = await putCrmStages(
+        pipelineStages.map((s) => ({
+          slug: s.slug,
+          name: s.name,
+          color: s.color,
+          probability: s.probability,
+          enabled: s.enabled,
+          isSystem: s.isSystem,
+        })),
+      );
+      setBundle(b);
+      toast.success('Etapas guardadas');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al guardar etapas');
+    }
+  }
+
+  async function savePriorities() {
+    if (!canEdit) return;
+    try {
+      const b = await putCrmPriorities(priorities);
+      setBundle(b);
+      toast.success('Prioridades guardadas');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al guardar prioridades');
+    }
+  }
+
+  async function saveActivityTypes() {
+    if (!canEdit) return;
+    try {
+      const b = await putCrmActivityTypes(activityTypes);
+      setBundle(b);
+      toast.success('Tipos de actividad guardados');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al guardar');
+    }
+  }
+
+  if (loadError && !bundle) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Configuración" description="Administra la configuración del CRM" />
+        <Card>
+          <CardContent className="py-8 text-center text-sm text-destructive">
+            {loadError}
+            <div className="mt-4">
+              <Button variant="outline" onClick={() => void refreshBundle()}>
+                Reintentar
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
@@ -314,13 +563,13 @@ export default function Settings() {
       />
 
       <div className="flex flex-col gap-6 lg:flex-row">
-        {/* Sidebar Navigation */}
         <nav className="flex gap-1 overflow-x-auto pb-2 lg:w-56 lg:shrink-0 lg:flex-col lg:gap-0.5 lg:pb-0">
           {NAV_SECTIONS.map((section) => {
             const Icon = section.icon;
             return (
               <button
                 key={section.id}
+                type="button"
                 onClick={() => setActiveTab(section.id)}
                 className={cn(
                   'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm whitespace-nowrap transition-colors text-left',
@@ -336,9 +585,7 @@ export default function Settings() {
           })}
         </nav>
 
-        {/* Content Area */}
         <div className="min-w-0 flex-1">
-          {/* General */}
           {activeTab === 'general' && (
             <Card>
               <CardHeader>
@@ -349,14 +596,21 @@ export default function Settings() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2 sm:col-span-2">
                     <Label htmlFor="company-name">Nombre de la empresa</Label>
-                    <Input id="company-name" defaultValue="Taxi Monterrico" />
+                    <Input
+                      id="company-name"
+                      disabled={!canEdit}
+                      value={companyName}
+                      onChange={(e) => setCompanyName(e.target.value)}
+                    />
                   </div>
                   <div className="space-y-2 sm:col-span-2">
                     <Label htmlFor="company-desc">Descripción</Label>
                     <Textarea
                       id="company-desc"
                       rows={3}
-                      defaultValue="Servicio de transporte ejecutivo corporativo en Lima, Perú. Ofrecemos soluciones de movilidad premium para empresas, hoteles, embajadas y organizaciones."
+                      disabled={!canEdit}
+                      value={companyDesc}
+                      onChange={(e) => setCompanyDesc(e.target.value)}
                     />
                   </div>
                 </div>
@@ -368,13 +622,23 @@ export default function Settings() {
                     <Label htmlFor="contact-email" className="flex items-center gap-1.5">
                       <Mail className="size-3.5" /> Email de contacto
                     </Label>
-                    <Input id="contact-email" defaultValue="info@taximonterrico.com" />
+                    <Input
+                      id="contact-email"
+                      disabled={!canEdit}
+                      value={contactEmail}
+                      onChange={(e) => setContactEmail(e.target.value)}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="contact-phone" className="flex items-center gap-1.5">
                       <Phone className="size-3.5" /> Teléfono
                     </Label>
-                    <Input id="contact-phone" defaultValue="+51 1 234 5678" />
+                    <Input
+                      id="contact-phone"
+                      disabled={!canEdit}
+                      value={contactPhone}
+                      onChange={(e) => setContactPhone(e.target.value)}
+                    />
                   </div>
                   <div className="space-y-2 sm:col-span-2">
                     <Label htmlFor="address" className="flex items-center gap-1.5">
@@ -382,42 +646,31 @@ export default function Settings() {
                     </Label>
                     <Input
                       id="address"
-                      defaultValue="Av. Javier Prado Este 4600, Santiago de Surco, Lima, Perú"
+                      disabled={!canEdit}
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
                     />
                   </div>
                 </div>
 
-                <Separator />
-
-                <div className="space-y-2">
-                  <Label>Logo de la empresa</Label>
-                  <div className="flex items-center justify-center rounded-lg border-2 border-dashed p-8">
-                    <div className="text-center">
-                      <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-lg bg-[#13944C]/10">
-                        <Building2 className="size-6 text-[#13944C]" />
-                      </div>
-                      <p className="text-sm font-medium">Arrastra o haz clic para subir</p>
-                      <p className="text-xs text-muted-foreground">PNG, JPG hasta 2MB</p>
-                    </div>
+                {canEdit && (
+                  <div className="flex justify-end">
+                    <Button
+                      className="bg-[#13944C] text-white hover:bg-[#0f7a3d]"
+                      disabled={savingGeneral}
+                      onClick={() => void saveGeneral()}
+                    >
+                      {savingGeneral ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+                      Guardar Cambios
+                    </Button>
                   </div>
-                </div>
-
-                <div className="flex justify-end">
-                  <Button className="bg-[#13944C] text-white hover:bg-[#0f7a3d]">
-                    <Save className="size-4" />
-                    Guardar Cambios
-                  </Button>
-                </div>
+                )}
               </CardContent>
             </Card>
           )}
 
-          {/* Metas Semanales */}
-          {activeTab === 'metas' && (
-            <GoalsSettingsCard />
-          )}
+          {activeTab === 'metas' && <GoalsSettingsCard />}
 
-          {/* Integraciones - solo vista de estado (conectar desde Perfil) */}
           {activeTab === 'integraciones' && (
             <Card>
               <CardHeader>
@@ -464,13 +717,12 @@ export default function Settings() {
             </Card>
           )}
 
-          {/* Fuentes de Contactos */}
           {activeTab === 'fuentes' && (
             <Card>
               <CardHeader>
                 <CardTitle>Fuentes de Contactos</CardTitle>
                 <CardDescription>
-                  Configura las fuentes de captación de contactos
+                  Fuentes de captación (persistidas en base de datos).
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -478,11 +730,14 @@ export default function Settings() {
                   <Input
                     placeholder="Nueva fuente de contactos..."
                     value={newSourceName}
+                    disabled={!canEdit}
                     onChange={(e) => setNewSourceName(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && addLeadSource()}
                   />
                   <Button
+                    type="button"
                     onClick={addLeadSource}
+                    disabled={!canEdit}
                     className="shrink-0 bg-[#13944C] text-white hover:bg-[#0f7a3d]"
                   >
                     <Plus className="size-4" />
@@ -493,7 +748,7 @@ export default function Settings() {
                 <div className="space-y-2">
                   {leadSources.map((source) => (
                     <div
-                      key={source.id}
+                      key={source.slug}
                       className="flex items-center justify-between rounded-lg border px-4 py-3"
                     >
                       <span
@@ -507,13 +762,16 @@ export default function Settings() {
                       <div className="flex items-center gap-3">
                         <Switch
                           checked={source.enabled}
-                          onCheckedChange={() => toggleLeadSource(source.id)}
+                          disabled={!canEdit}
+                          onCheckedChange={() => toggleLeadSource(source.slug)}
                         />
                         <Button
+                          type="button"
                           variant="ghost"
                           size="sm"
+                          disabled={!canEdit}
                           className="text-muted-foreground hover:text-red-600"
-                          onClick={() => removeLeadSource(source.id)}
+                          onClick={() => removeLeadSource(source.slug)}
                         >
                           <Trash2 className="size-4" />
                         </Button>
@@ -521,23 +779,32 @@ export default function Settings() {
                     </div>
                   ))}
                 </div>
+                {canEdit && (
+                  <div className="flex justify-end">
+                    <Button className="bg-[#13944C] text-white hover:bg-[#0f7a3d]" onClick={() => void saveLeadSources()}>
+                      <Save className="size-4" />
+                      Guardar fuentes
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
 
-          {/* Etapas del Pipeline */}
           {activeTab === 'pipeline' && (
             <Card>
               <CardHeader>
-                <CardTitle>Etapas del Pipeline</CardTitle>
+                <CardTitle>Etapas</CardTitle>
                 <CardDescription>
-                  Ordena y configura las etapas del embudo de ventas
+                  Una sola definición para contactos, empresas y oportunidades. El % indica probabilidad sugerida en oportunidades.
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="mb-4 flex justify-end">
                   <Button
+                    type="button"
                     onClick={() => setAddStageOpen(true)}
+                    disabled={!canEdit}
                     className="bg-[#13944C] text-white hover:bg-[#0f7a3d]"
                   >
                     <Plus className="size-4" />
@@ -545,58 +812,97 @@ export default function Settings() {
                   </Button>
                 </div>
                 <div className="space-y-2">
-                  {pipelineStages.map((stage) => {
-                    const isDefault = INITIAL_PIPELINE_STAGES.some((s) => s.id === stage.id);
-                    return (
-                      <div
-                        key={stage.id}
-                        className="flex items-center gap-3 rounded-lg border px-4 py-3"
-                      >
-                        <GripVertical className="size-4 shrink-0 cursor-grab text-muted-foreground" />
-                        <div
-                          className="size-3 shrink-0 rounded-full"
-                          style={{ backgroundColor: stage.color }}
-                        />
-                        <span
-                          className={cn(
-                            'flex-1 text-sm font-medium',
-                            !stage.enabled && 'text-muted-foreground line-through',
-                          )}
+                  {pipelineStages.map((stage, idx) => (
+                    <div
+                      key={stage.slug}
+                      className="flex flex-wrap items-center gap-2 rounded-lg border px-3 py-3 sm:gap-3"
+                    >
+                      <div className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="size-8 shrink-0"
+                          disabled={!canEdit || idx === 0}
+                          onClick={() => movePipelineStage(idx, -1)}
                         >
-                          {stage.name}
-                        </span>
-                        <Switch
-                          checked={stage.enabled}
-                          onCheckedChange={() => togglePipelineStage(stage.id)}
-                        />
-                        {!isDefault && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-muted-foreground hover:text-red-600"
-                            onClick={() => removePipelineStage(stage.id)}
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
-                        )}
+                          <ChevronUp className="size-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="size-8 shrink-0"
+                          disabled={!canEdit || idx === pipelineStages.length - 1}
+                          onClick={() => movePipelineStage(idx, 1)}
+                        >
+                          <ChevronDown className="size-4" />
+                        </Button>
                       </div>
-                    );
-                  })}
+                      <GripVertical className="size-4 shrink-0 text-muted-foreground" />
+                      <div
+                        className="size-3 shrink-0 rounded-full"
+                        style={{ backgroundColor: stage.color }}
+                      />
+                      <span
+                        className={cn(
+                          'min-w-0 flex-1 text-sm font-medium',
+                          !stage.enabled && 'text-muted-foreground line-through',
+                        )}
+                      >
+                        {stage.name}
+                        {stage.isSystem && (
+                          <span className="ml-2 text-xs font-normal text-muted-foreground">(sistema)</span>
+                        )}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <Label className="text-xs text-muted-foreground whitespace-nowrap">%</Label>
+                        <Input
+                          type="number"
+                          className="h-8 w-16"
+                          disabled={!canEdit}
+                          value={stage.probability}
+                          onChange={(e) =>
+                            setStageProbability(stage.slug, Number(e.target.value) || 0)}
+                        />
+                      </div>
+                      <Switch
+                        checked={stage.enabled}
+                        disabled={!canEdit}
+                        onCheckedChange={() => togglePipelineStage(stage.slug)}
+                      />
+                      {!stage.isSystem && canEdit && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-muted-foreground hover:text-red-600"
+                          onClick={() => removePipelineStage(stage.slug)}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
                 </div>
-                <p className="mt-3 text-xs text-muted-foreground">
-                  Arrastra los elementos para reordenar las etapas del pipeline.
-                </p>
+                {canEdit && (
+                  <div className="mt-4 flex justify-end">
+                    <Button className="bg-[#13944C] text-white hover:bg-[#0f7a3d]" onClick={() => void savePipeline()}>
+                      <Save className="size-4" />
+                      Guardar etapas
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
 
-          {/* Modal Añadir etapa */}
           <Dialog open={addStageOpen} onOpenChange={setAddStageOpen}>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Añadir etapa</DialogTitle>
                 <DialogDescription>
-                  Crea una nueva etapa para el pipeline del equipo. La lógica se sincronizará con el backend al implementarlo.
+                  Nueva etapa personalizada (no sistema). Aparecerá en contactos, empresas y oportunidades.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
@@ -629,10 +935,11 @@ export default function Settings() {
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setAddStageOpen(false)}>
+                <Button type="button" variant="outline" onClick={() => setAddStageOpen(false)}>
                   Cancelar
                 </Button>
                 <Button
+                  type="button"
                   onClick={addPipelineStage}
                   disabled={!newStageName.trim()}
                   className="bg-[#13944C] text-white hover:bg-[#0f7a3d]"
@@ -644,62 +951,86 @@ export default function Settings() {
             </DialogContent>
           </Dialog>
 
-          {/* Prioridades */}
           {activeTab === 'prioridades' && (
             <Card>
               <CardHeader>
                 <CardTitle>Niveles de Prioridad</CardTitle>
                 <CardDescription>
-                  Configuración de los niveles de prioridad para contactos y oportunidades
+                  Prioridades para oportunidades (y UI del CRM). Las tres base no se pueden eliminar.
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
                 <div className="space-y-3">
-                  {PRIORITIES.map((priority) => (
+                  {priorities.map((priority) => (
                     <div
-                      key={priority.id}
-                      className="flex items-center gap-4 rounded-lg border p-4"
+                      key={priority.slug}
+                      className="rounded-lg border p-4"
                     >
-                      <div
-                        className="size-4 shrink-0 rounded-full"
-                        style={{ backgroundColor: priority.color }}
-                      />
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold">{priority.name}</p>
-                        <p className="text-xs text-muted-foreground">{priority.description}</p>
-                      </div>
-                      <div
-                        className="rounded-md px-3 py-1 text-xs font-medium"
-                        style={{
-                          backgroundColor: `${priority.color}15`,
-                          color: priority.color,
-                        }}
-                      >
-                        {priority.name}
+                      <div className="flex flex-wrap items-start gap-4">
+                        <div
+                          className="size-4 shrink-0 rounded-full mt-1"
+                          style={{ backgroundColor: priority.color }}
+                        />
+                        <div className="min-w-0 flex-1 space-y-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <p className="text-sm font-semibold">{priority.name}</p>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground">Activa</span>
+                              <Switch
+                                checked={priority.enabled}
+                                disabled={!canEdit}
+                                onCheckedChange={() => togglePriority(priority.slug)}
+                              />
+                            </div>
+                          </div>
+                          <Input
+                            placeholder="Descripción"
+                            disabled={!canEdit}
+                            value={priority.description}
+                            onChange={(e) => setPriorityDescription(priority.slug, e.target.value)}
+                            className="text-sm"
+                          />
+                        </div>
+                        <div
+                          className="rounded-md px-3 py-1 text-xs font-medium"
+                          style={{
+                            backgroundColor: `${priority.color}15`,
+                            color: priority.color,
+                          }}
+                        >
+                          {priority.name}
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
+                {canEdit && (
+                  <div className="flex justify-end">
+                    <Button className="bg-[#13944C] text-white hover:bg-[#0f7a3d]" onClick={() => void savePriorities()}>
+                      <Save className="size-4" />
+                      Guardar prioridades
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
 
-          {/* Tipos de Actividad */}
           {activeTab === 'actividades' && (
             <Card>
               <CardHeader>
                 <CardTitle>Tipos de Actividad</CardTitle>
                 <CardDescription>
-                  Gestiona los tipos de actividades disponibles en el CRM
+                  Tipos disponibles al registrar actividades (persistidos en BD).
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
                 <div className="space-y-2">
                   {activityTypes.map((at) => {
-                    const Icon = ACTIVITY_TYPE_ICONS[at.id];
+                    const Icon = ACTIVITY_TYPE_ICONS[at.slug];
                     return (
                       <div
-                        key={at.id}
+                        key={at.slug}
                         className="flex items-center gap-3 rounded-lg border px-4 py-3"
                       >
                         <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
@@ -715,63 +1046,31 @@ export default function Settings() {
                         </span>
                         <Switch
                           checked={at.enabled}
-                          onCheckedChange={() => toggleActivityType(at.id)}
+                          disabled={!canEdit}
+                          onCheckedChange={() => toggleActivityType(at.slug)}
                         />
                       </div>
                     );
                   })}
                 </div>
+                {canEdit && (
+                  <div className="flex justify-end">
+                    <Button className="bg-[#13944C] text-white hover:bg-[#0f7a3d]" onClick={() => void saveActivityTypes()}>
+                      <Save className="size-4" />
+                      Guardar tipos
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
 
-          {/* Etapas (Contactos, Empresas, Oportunidades) */}
-          {activeTab === 'estados' && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Etapas</CardTitle>
-                <CardDescription>
-                  Etapas unificadas para contactos, empresas y oportunidades. El porcentaje define la probabilidad en oportunidades.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {ETAPAS_CONFIG.map((etapa) => (
-                    <div
-                      key={etapa.id}
-                      className="flex items-center gap-3 rounded-lg border px-4 py-3"
-                    >
-                      <span className="w-6 text-center text-xs font-bold text-muted-foreground">
-                        {etapa.order}
-                      </span>
-                      <div
-                        className="size-3 shrink-0 rounded-full"
-                        style={{ backgroundColor: etapa.color }}
-                      />
-                      <span className="flex-1 text-sm font-medium">{etapa.name}</span>
-                      <span
-                        className="rounded-md px-2.5 py-1 text-xs font-medium"
-                        style={{
-                          backgroundColor: `${etapa.color}15`,
-                          color: etapa.color,
-                        }}
-                      >
-                        {etapa.name} ({etapa.prob}%)
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Preferencias */}
           {activeTab === 'preferencias' && (
             <Card>
               <CardHeader>
                 <CardTitle>Preferencias</CardTitle>
                 <CardDescription>
-                  Personaliza tu experiencia en el CRM
+                  Ajustes locales de interfaz (aún no sincronizados con el servidor).
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -868,7 +1167,7 @@ export default function Settings() {
                 <Separator />
 
                 <div className="flex justify-end">
-                  <Button className="bg-[#13944C] text-white hover:bg-[#0f7a3d]">
+                  <Button type="button" className="bg-[#13944C] text-white hover:bg-[#0f7a3d]">
                     <Save className="size-4" />
                     Guardar Preferencias
                   </Button>

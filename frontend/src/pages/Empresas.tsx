@@ -1,9 +1,9 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   Search, Building2, Users, ChevronRight, ChevronLeft, Briefcase,
-  FileSpreadsheet, Upload, Download, Plus, List, Grid3X3, DollarSign,
+  FileSpreadsheet, Upload, Download, Plus, List, Grid3X3, DollarSign, Loader2,
 } from 'lucide-react';
 import type { Etapa, CompanyRubro, CompanyTipo, Company, ContactSource } from '@/types';
 import { companyRubroLabels, companyTipoLabels, etapaLabels, contactSourceLabels } from '@/data/mock';
@@ -34,12 +34,27 @@ import { formatCurrency } from '@/lib/formatters';
 import { api } from '@/lib/api';
 import { usePermissions } from '@/hooks/usePermissions';
 import {
+  downloadImportExportCsv,
+  previewCompaniesImportCsv,
+  uploadImportCsv,
+  type CompanyImportPreviewResult,
+} from '@/lib/importExportApi';
+import {
   type ApiCompanyRecord,
   type CompanySummaryRow,
   companyListSummaryPaginated,
   isLikelyCompanyCuid,
 } from '@/lib/companyApi';
 import { isLikelyContactCuid, contactCreate } from '@/lib/contactApi';
+import { companyDetailHref, contactDetailHref } from '@/lib/detailRoutes';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 const etapaOrder: Etapa[] = ['lead', 'contacto', 'reunion_agendada', 'reunion_efectiva', 'propuesta_economica', 'negociacion', 'licitacion', 'licitacion_etapa_final', 'cierre_ganado', 'firma_contrato', 'activo', 'cierre_perdido', 'inactivo'];
 
@@ -58,7 +73,7 @@ function empresaDetailPath(row: EmpresaSummaryRow): string {
   if (row.isLocalOnly || !isLikelyCompanyCuid(row.id)) {
     return `/empresas/${slugifyCompany(row.name)}`;
   }
-  return `/empresas/${encodeURIComponent(row.id)}`;
+  return companyDetailHref({ id: row.id, urlSlug: row.urlSlug });
 }
 
 function localCompanyToSummary(c: Company): EmpresaSummaryRow {
@@ -94,9 +109,9 @@ function EmpresaContactsList({
   totalCount,
   onPick,
 }: {
-  items: { id: string; name: string }[];
+  items: { id: string; name: string; urlSlug?: string }[];
   totalCount: number;
-  onPick: (id: string) => void;
+  onPick: (row: { id: string; urlSlug?: string }) => void;
 }) {
   return (
     <>
@@ -112,7 +127,7 @@ function EmpresaContactsList({
             <button
               type="button"
               className="w-full px-3 py-2 text-left text-sm hover:bg-muted"
-              onClick={() => onPick(c.id)}
+              onClick={() => onPick(c)}
             >
               {c.name}
             </button>
@@ -130,12 +145,13 @@ function EmpresaContactsPopover({
   variant = 'table',
 }: {
   contactCount: number;
-  preview: { id: string; name: string }[];
+  preview: { id: string; name: string; urlSlug?: string }[];
   variant?: 'table' | 'card';
 }) {
   const navigate = useNavigate();
   const n = contactCount;
-  const go = (id: string) => navigate(`/contactos/${id}`);
+  const go = (row: { id: string; urlSlug?: string }) =>
+    navigate(contactDetailHref(row));
 
   if (n === 0) {
     if (variant === 'card') {
@@ -227,6 +243,15 @@ export default function EmpresasPage() {
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [page, setPage] = useState(1);
   const [newEmpresaOpen, setNewEmpresaOpen] = useState(false);
+  const importInputRef = useRef<HTMLInputElement>(null);
+  const [importBusy, setImportBusy] = useState(false);
+  const [importPreviewOpen, setImportPreviewOpen] = useState(false);
+  const [importPreviewData, setImportPreviewData] =
+    useState<CompanyImportPreviewResult | null>(null);
+  const [pendingImportFile, setPendingImportFile] = useState<File | null>(
+    null,
+  );
+  const [exportBusy, setExportBusy] = useState(false);
   const { users, activeUsers } = useUsers();
   const { hasPermission } = usePermissions();
 
@@ -416,25 +441,256 @@ export default function EmpresasPage() {
         ).length
       : 0;
 
+  async function handleCompanyTemplate() {
+    try {
+      setExportBusy(true);
+      await downloadImportExportCsv('companies', 'template');
+      toast.success('Plantilla descargada');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'No se pudo descargar la plantilla');
+    } finally {
+      setExportBusy(false);
+    }
+  }
+
+  async function handleCompanyExport() {
+    try {
+      setExportBusy(true);
+      await downloadImportExportCsv('companies', 'export');
+      toast.success('Exportación descargada');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'No se pudo exportar');
+    } finally {
+      setExportBusy(false);
+    }
+  }
+
+  function openCompanyImport() {
+    importInputRef.current?.click();
+  }
+
+  function closeImportPreview() {
+    setImportPreviewOpen(false);
+    setImportPreviewData(null);
+    setPendingImportFile(null);
+  }
+
+  async function onCompanyImportChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setImportBusy(true);
+    try {
+      const preview = await previewCompaniesImportCsv(file);
+      setImportPreviewData(preview);
+      setPendingImportFile(file);
+      setImportPreviewOpen(true);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'Error al generar vista previa',
+      );
+    } finally {
+      setImportBusy(false);
+    }
+  }
+
+  async function confirmCompanyImport() {
+    const file = pendingImportFile;
+    if (
+      !file ||
+      !importPreviewData ||
+      importPreviewData.okCount === 0 ||
+      importPreviewData.errorCount > 0
+    ) {
+      closeImportPreview();
+      return;
+    }
+    closeImportPreview();
+    setImportBusy(true);
+    try {
+      const r = await uploadImportCsv('companies', file);
+      const errMsg =
+        r.errors.length > 0
+          ? r.errors
+              .slice(0, 5)
+              .map((x) => `Fila ${x.row}: ${x.message}`)
+              .join('\n') + (r.errors.length > 5 ? `\n…y ${r.errors.length - 5} más` : '')
+          : undefined;
+      if (r.created === 0 && r.errors.length > 0) {
+        toast.error('No se importó ninguna fila', { description: errMsg });
+      } else {
+        toast.success(
+          `Importación: ${r.created} fila(s) procesada(s) correctamente${
+            r.skipped ? ` · ${r.skipped} vacía(s) omitidas` : ''
+          }`,
+          errMsg ? { description: errMsg } : undefined,
+        );
+      }
+      await loadSummary();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error al importar');
+    } finally {
+      setImportBusy(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
+      <Dialog
+        open={importPreviewOpen}
+        onOpenChange={(open) => {
+          if (!open) closeImportPreview();
+        }}
+      >
+        <DialogContent className="flex h-[min(92vh,880px)] max-h-[92vh] w-[min(96vw,calc(100vw-2rem))] max-w-[min(96vw,87.5rem)] flex-col gap-0 p-0 sm:max-w-[min(96vw,87.5rem)]">
+          <DialogHeader className="shrink-0 space-y-1 border-b px-6 py-4 text-left">
+            <DialogTitle>Vista previa · importar empresas</DialogTitle>
+            <DialogDescription className="text-left">
+              {importPreviewData ? (
+                <>
+                  <span className="block">
+                    {importPreviewData.okCount} fila(s) lista(s) ·{' '}
+                    {importPreviewData.errorCount} con error
+                    {importPreviewData.skipped
+                      ? ` · ${importPreviewData.skipped} vacía(s) omitida(s)`
+                      : ''}
+                    . Los datos SUNAT/RENIEC/CEE se consultan al confirmar la importación, no en esta vista.
+                  </span>
+                  {importPreviewData.errorCount > 0 ? (
+                    <span className="mt-2 block text-destructive">
+                      Corrige el CSV y vuelve a elegir el archivo. No se importará nada mientras haya
+                      errores en la vista previa.
+                    </span>
+                  ) : null}
+                </>
+              ) : null}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 overflow-auto px-6 py-3">
+            {importPreviewData && importPreviewData.rows.length > 0 ? (
+              <Table className="w-full table-fixed">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-11">Fila</TableHead>
+                    <TableHead className="w-[4.5rem]">Estado</TableHead>
+                    <TableHead className="w-[14%]">Empresa</TableHead>
+                    <TableHead className="w-[8%]">RUC</TableHead>
+                    <TableHead className="w-[14%]">Resumen</TableHead>
+                    <TableHead className="w-[14%]">Contacto</TableHead>
+                    <TableHead className="w-[9%]">Etapa</TableHead>
+                    <TableHead className="w-[9%] text-right">Fact. est.</TableHead>
+                    <TableHead className="min-w-[18%]">Motivo</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {importPreviewData.rows
+                    .slice()
+                    .sort((a, b) => a.row - b.row)
+                    .map((row) => (
+                      <TableRow key={row.row}>
+                        <TableCell className="tabular-nums text-muted-foreground">
+                          {row.row}
+                        </TableCell>
+                        <TableCell>
+                          {row.ok ? (
+                            <Badge variant="secondary" className="font-normal">
+                              OK
+                            </Badge>
+                          ) : (
+                            <Badge variant="destructive" className="font-normal">
+                              Error
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="break-words text-sm align-top">
+                          {row.empresaNombre || '—'}
+                        </TableCell>
+                        <TableCell className="break-all text-xs align-top text-muted-foreground">
+                          {row.empresaRuc || '—'}
+                        </TableCell>
+                        <TableCell className="break-words text-xs align-top text-muted-foreground">
+                          {row.empresaResumen}
+                        </TableCell>
+                        <TableCell className="break-words text-sm align-top">
+                          {row.contactoVista || '—'}
+                        </TableCell>
+                        <TableCell className="text-sm align-top">{row.etapa}</TableCell>
+                        <TableCell className="text-right text-sm align-top tabular-nums">
+                          {formatCurrency(row.facturacionEstimada)}
+                        </TableCell>
+                        <TableCell className="break-words text-sm align-top text-muted-foreground">
+                          {row.ok ? '—' : row.error ?? '—'}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
+            ) : importPreviewData ? (
+              <p className="text-sm text-muted-foreground">No hay filas que mostrar.</p>
+            ) : null}
+          </div>
+          <DialogFooter className="shrink-0 border-t px-6 py-4">
+            <Button type="button" variant="outline" onClick={closeImportPreview}>
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              disabled={
+                !importPreviewData ||
+                importPreviewData.okCount === 0 ||
+                importPreviewData.errorCount > 0
+              }
+              onClick={() => void confirmCompanyImport()}
+            >
+              Importar {importPreviewData ? `(${importPreviewData.okCount})` : ''}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <input
+        ref={importInputRef}
+        type="file"
+        accept=".csv,text/csv"
+        className="hidden"
+        onChange={onCompanyImportChange}
+      />
       <PageHeader
         title="Empresas"
         description="Gestiona empresas y cuentas comerciales"
       >
         {hasPermission('empresas.exportar') && (
-          <Button variant="outline" size="sm" onClick={() => toast.info('Descargando plantilla...')}>
-            <FileSpreadsheet className="size-4" /> Plantilla
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={exportBusy}
+            title="CSV sin id: RUC enriquece con SUNAT; columnas contacto_* y etapa como en contactos; oportunidad al vincular contacto."
+            onClick={() => void handleCompanyTemplate()}
+          >
+            {exportBusy ? <Loader2 className="size-4 animate-spin" /> : <FileSpreadsheet className="size-4" />}{' '}
+            Plantilla
           </Button>
         )}
         {hasPermission('empresas.crear') && (
-          <Button variant="outline" size="sm" onClick={() => toast.info('Selecciona un archivo para importar')}>
-            <Upload className="size-4" /> Importar
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={importBusy}
+            title="Por fila: empresa (reutiliza si nombre/RUC existe), contacto opcional con DNI/CEE Factiliza, misma lógica de etapa que contactos."
+            onClick={openCompanyImport}
+          >
+            {importBusy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}{' '}
+            Importar
           </Button>
         )}
         {hasPermission('empresas.exportar') && (
-          <Button variant="outline" size="sm" onClick={() => toast.info('Exportando empresas...')}>
-            <Download className="size-4" /> Exportar
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={exportBusy}
+            onClick={() => void handleCompanyExport()}
+          >
+            {exportBusy ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}{' '}
+            Exportar
           </Button>
         )}
         <Button className="bg-[#13944C] hover:bg-[#0f7a3d]" onClick={() => setNewEmpresaOpen(true)}>

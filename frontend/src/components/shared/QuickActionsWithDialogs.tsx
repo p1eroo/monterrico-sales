@@ -19,7 +19,7 @@ import type { TaskFormResult } from './TaskFormDialog';
 
 type TaskStatus = 'pendiente' | 'en_progreso' | 'completada' | 'vencida';
 type TaskPriority = 'alta' | 'media' | 'baja';
-type TaskType = 'llamada' | 'reunion' | 'correo';
+type TaskType = 'llamada' | 'reunion' | 'correo' | 'whatsapp';
 
 export interface QuickTask {
   id: string;
@@ -84,7 +84,7 @@ export function QuickActionsWithDialogs({
       id: `t${Date.now()}`,
       title: data.title,
       status: data.status as TaskStatus,
-      type: (data.type || undefined) as TaskType | undefined,
+      type: data.type as TaskType,
       priority: data.priority,
       company: companyFromAssoc,
       startDate: data.startDate,

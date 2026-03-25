@@ -1,8 +1,9 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
-  Building2, Users, DollarSign, Globe, Briefcase, CalendarDays,
-  Edit, Phone, RefreshCw, UserPlus, Plus, FileArchive, Loader2,
+  Building2, Users, DollarSign, Globe, Briefcase,
+  Edit, Phone, RefreshCw, UserPlus, Plus, FileArchive, Loader2, CheckSquare,
+  MapPin, Mail, Linkedin,
 } from 'lucide-react';
 import { useCRMStore } from '@/store/crmStore';
 import { useCompaniesStore } from '@/store/companiesStore';
@@ -10,6 +11,7 @@ import {
   companyRubroLabels, companyTipoLabels, etapaLabels, contactSourceLabels, timelineEvents, activities,
 } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
+import { useActivities } from '@/hooks/useActivities';
 import { getPrimaryCompany } from '@/lib/utils';
 import type { Etapa, CompanyRubro, CompanyTipo, ContactSource } from '@/types';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -49,11 +51,10 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { formatCurrency, formatDate } from '@/lib/formatters';
+import { nextPendingTaskForCompanyScope } from '@/lib/nextPendingTask';
 import { api } from '@/lib/api';
-import {
-  type ApiCompanyRecord,
-  isLikelyCompanyCuid,
-} from '@/lib/companyApi';
+import { companyDetailHref, isEntityDetailApiParam } from '@/lib/detailRoutes';
+import { type ApiCompanyRecord } from '@/lib/companyApi';
 import {
   type ApiContactListRow,
   contactCreate,
@@ -66,6 +67,7 @@ import {
   type ApiOpportunityListRow,
   isLikelyOpportunityCuid,
   mapApiOpportunityToOpportunity,
+  opportunityListAll,
 } from '@/lib/opportunityApi';
 
 function parseRubroField(s: string | null | undefined): CompanyRubro | undefined {
@@ -81,11 +83,12 @@ function parseTipoField(s: string | null | undefined): CompanyTipo | undefined {
 export default function EmpresaDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { contacts: storeContacts, opportunities: storeOpportunities } = useCRMStore();
   const { getCompanyByName, updateCompany, companies: standaloneCompanies } = useCompaniesStore();
 
   const routeId = id ? decodeURIComponent(id) : '';
-  const fromApiById = isLikelyCompanyCuid(routeId);
+  const fromApiById = isEntityDetailApiParam(routeId);
   const [apiRecord, setApiRecord] = useState<ApiCompanyRecord | null>(null);
   const [apiContactRows, setApiContactRows] = useState<ApiContactListRow[]>([]);
   const [apiOpportunityRows, setApiOpportunityRows] = useState<ApiOpportunityListRow[]>([]);
@@ -104,8 +107,8 @@ export default function EmpresaDetailPage() {
 
   const loadApiOpportunities = useCallback(async () => {
     try {
-      const list = await api<ApiOpportunityListRow[]>('/opportunities');
-      setApiOpportunityRows(list);
+      const list = await opportunityListAll();
+      setApiOpportunityRows(Array.isArray(list) ? list : []);
     } catch {
       setApiOpportunityRows([]);
     }
@@ -174,8 +177,8 @@ export default function EmpresaDetailPage() {
   }, [contacts, companyName, fromApiById, apiRecord]);
 
   /** companyId cuando viene de API (por cuid) o cuando lo resolvemos por slug desde contactos */
-  const resolvedCompanyId =
-    (fromApiById && apiRecord?.id) ??
+  const resolvedCompanyId: string | undefined =
+    (fromApiById ? apiRecord?.id : undefined) ??
     companyContacts[0]?.companies?.find((c) =>
       c.name?.trim().toLowerCase() === companyName.trim().toLowerCase(),
     )?.id;
@@ -235,6 +238,14 @@ export default function EmpresaDetailPage() {
         ? (contactSourceLabels[firstContact.fuente] ?? firstContact.fuente)
         : '—';
 
+  const apiUbicacionLine =
+    fromApiById && apiRecord
+      ? [apiRecord.departamento, apiRecord.provincia, apiRecord.distrito]
+          .map((x) => (x ?? '').trim())
+          .filter(Boolean)
+          .join(' · ') || null
+      : null;
+
   const opportunities = useMemo(() => {
     const fromApi = apiOpportunityRows.map(mapApiOpportunityToOpportunity);
     if (fromApiById) {
@@ -269,6 +280,20 @@ export default function EmpresaDetailPage() {
     }
     return result;
   }, [companyContacts, companyName]);
+
+  const { activities: activitiesFromStore } = useActivities();
+  const companyContactIds = useMemo(
+    () => companyContacts.map((c) => c.id),
+    [companyContacts],
+  );
+  const nextPendingSummary = useMemo(
+    () =>
+      nextPendingTaskForCompanyScope(activitiesFromStore, {
+        companyId: resolvedCompanyId,
+        contactIds: companyContactIds,
+      }),
+    [activitiesFromStore, resolvedCompanyId, companyContactIds],
+  );
 
   const tasksTabRef = useRef<TasksTabHandle>(null);
   const [newOppOpen, setNewOppOpen] = useState(false);
@@ -344,6 +369,10 @@ export default function EmpresaDetailPage() {
           });
           const row = await api<ApiCompanyRecord>(`/companies/${apiRecord.id}`);
           setApiRecord(row);
+          const nextPath = companyDetailHref(row);
+          if (nextPath.replace(/\/$/, '') !== location.pathname.replace(/\/$/, '')) {
+            navigate(nextPath, { replace: true });
+          }
           toast.success('Empresa actualizada en el servidor');
           setEditDialogOpen(false);
         } catch (e) {
@@ -639,7 +668,8 @@ export default function EmpresaDetailPage() {
     if (!c) return;
     if (fromApiById && routeId && isLikelyContactCuid(contact.id)) {
       try {
-        await contactRemoveCompany(contact.id, routeId);
+        const companyKey = apiRecord?.id ?? routeId;
+        await contactRemoveCompany(contact.id, companyKey);
         const filtered = (c.companies ?? []).filter(
           (co) => co.name.trim().toLowerCase() !== companyName.trim().toLowerCase(),
         );
@@ -817,12 +847,12 @@ export default function EmpresaDetailPage() {
           <Card className="py-0">
             <CardContent className="px-4 py-3">
               <div className="flex items-center gap-3">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
-                  <CalendarDays className="size-5" />
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-600">
+                  <Users className="size-5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm text-muted-foreground">Próximo seguimiento</p>
-                  <p className="text-l font-semibold">{firstContact ? formatDate(firstContact.nextFollowUp) : '—'}</p>
+                  <p className="text-sm text-muted-foreground">Asesor asignado</p>
+                  <p className="text-l font-semibold truncate">{displayAdvisorName}</p>
                 </div>
               </div>
             </CardContent>
@@ -830,12 +860,22 @@ export default function EmpresaDetailPage() {
           <Card className="py-0">
             <CardContent className="px-4 py-3">
               <div className="flex items-center gap-3">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-600">
-                  <Users className="size-5" />
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
+                  <CheckSquare className="size-5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm text-muted-foreground">Asesor asignado</p>
-                  <p className="text-l font-semibold truncate">{displayAdvisorName}</p>
+                  <p className="text-sm text-muted-foreground">Próxima acción</p>
+                  <p
+                    className="text-l font-semibold truncate"
+                    title={nextPendingSummary?.title ?? undefined}
+                  >
+                    {nextPendingSummary?.title ?? '—'}
+                  </p>
+                  {nextPendingSummary ? (
+                    <p className="text-xs text-muted-foreground">
+                      Vence {formatDate(nextPendingSummary.dueDate)}
+                    </p>
+                  ) : null}
                 </div>
               </div>
             </CardContent>
@@ -848,11 +888,77 @@ export default function EmpresaDetailPage() {
             title="Información de Empresa"
             fields={[
               { icon: Building2, value: companyData?.name ?? companyName },
-              ...(fromApiById && apiRecord?.telefono
-                ? [{ icon: Phone as typeof Building2, value: apiRecord.telefono, href: `tel:${apiRecord.telefono}` }]
+              ...(fromApiById && apiRecord?.razonSocial?.trim()
+                ? [
+                    {
+                      label: 'Razón social:',
+                      value: apiRecord.razonSocial.trim(),
+                      truncate: true,
+                    },
+                  ]
                 : []),
-              ...(companyData?.domain ? [{ icon: Globe as typeof Building2, value: companyData.domain, href: companyData.domain.startsWith('http') ? companyData.domain : `https://${companyData.domain}` }] : []),
-              ...(companyData?.rubro ? [{ icon: Briefcase as typeof Building2, value: companyRubroLabels[companyData.rubro] }] : []),
+              ...(fromApiById && apiRecord?.ruc?.trim()
+                ? [
+                    {
+                      label: 'RUC:',
+                      value: apiRecord.ruc.trim(),
+                    },
+                  ]
+                : []),
+              ...(fromApiById && apiRecord?.telefono
+                ? [
+                    {
+                      icon: Phone as typeof Building2,
+                      value: apiRecord.telefono,
+                      href: `tel:${apiRecord.telefono}`,
+                    },
+                  ]
+                : []),
+              ...(fromApiById && apiRecord?.correo?.trim()
+                ? [
+                    {
+                      icon: Mail as typeof Building2,
+                      value: apiRecord.correo.trim(),
+                      href: `mailto:${apiRecord.correo.trim()}`,
+                    },
+                  ]
+                : []),
+              ...(companyData?.domain
+                ? [
+                    {
+                      icon: Globe as typeof Building2,
+                      value: companyData.domain,
+                      href: companyData.domain.startsWith('http')
+                        ? companyData.domain
+                        : `https://${companyData.domain}`,
+                    },
+                  ]
+                : []),
+              ...(fromApiById && apiRecord?.linkedin?.trim()
+                ? [
+                    {
+                      icon: Linkedin as typeof Building2,
+                      value: apiRecord.linkedin.trim(),
+                      href: apiRecord.linkedin.trim().startsWith('http')
+                        ? apiRecord.linkedin.trim()
+                        : `https://${apiRecord.linkedin.trim()}`,
+                    },
+                  ]
+                : []),
+              ...(fromApiById && apiRecord?.direccion?.trim()
+                ? [{ icon: MapPin, value: apiRecord.direccion.trim() }]
+                : []),
+              ...(fromApiById && apiUbicacionLine
+                ? [{ label: 'Ubicación:', value: apiUbicacionLine }]
+                : []),
+              ...(companyData?.rubro
+                ? [
+                    {
+                      icon: Briefcase as typeof Building2,
+                      value: companyRubroLabels[companyData.rubro],
+                    },
+                  ]
+                : []),
               ...(companyData?.tipo ? [{ label: 'Tipo:', value: companyData.tipo }] : []),
               ...(fromApiById && apiRecord?.fuente
                 ? [{ label: 'Fuente:', value: displayFuenteLabel }]
@@ -912,7 +1018,7 @@ export default function EmpresaDetailPage() {
         <TabsContent value="archivos" className="mt-4">
           <EntityFilesTab
             entityType="company"
-            entityId={companyName}
+            entityId={resolvedCompanyId ?? ''}
             entityName={companyName}
           />
         </TabsContent>
@@ -959,7 +1065,7 @@ export default function EmpresaDetailPage() {
             defaultAssigneeId={firstContact?.assignedTo}
             onActivityCreated={(activity) => setCompanyActivities((prev) => [activity as any, ...prev])}
             contactId={firstContact?.id}
-            companyId={fromApiById && apiRecord ? apiRecord.id : undefined}
+            companyId={resolvedCompanyId}
           />
         </TabsContent>
       </Tabs>

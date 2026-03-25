@@ -34,6 +34,36 @@ export type Account = $Result.DefaultSelection<Prisma.$AccountPayload>
  */
 export type User = $Result.DefaultSelection<Prisma.$UserPayload>
 /**
+ * Model CrmOrganizationProfile
+ * 
+ */
+export type CrmOrganizationProfile = $Result.DefaultSelection<Prisma.$CrmOrganizationProfilePayload>
+/**
+ * Model CrmLeadSource
+ * 
+ */
+export type CrmLeadSource = $Result.DefaultSelection<Prisma.$CrmLeadSourcePayload>
+/**
+ * Model CrmStage
+ * * Etapas del CRM (contactos, empresas, oportunidades): un solo catálogo por slug
+ */
+export type CrmStage = $Result.DefaultSelection<Prisma.$CrmStagePayload>
+/**
+ * Model CrmPriority
+ * 
+ */
+export type CrmPriority = $Result.DefaultSelection<Prisma.$CrmPriorityPayload>
+/**
+ * Model CrmActivityType
+ * 
+ */
+export type CrmActivityType = $Result.DefaultSelection<Prisma.$CrmActivityTypePayload>
+/**
+ * Model CrmUserSalesGoal
+ * 
+ */
+export type CrmUserSalesGoal = $Result.DefaultSelection<Prisma.$CrmUserSalesGoalPayload>
+/**
  * Model Contact
  * 
  */
@@ -43,6 +73,11 @@ export type Contact = $Result.DefaultSelection<Prisma.$ContactPayload>
  * 
  */
 export type Company = $Result.DefaultSelection<Prisma.$CompanyPayload>
+/**
+ * Model Client
+ * 
+ */
+export type Client = $Result.DefaultSelection<Prisma.$ClientPayload>
 /**
  * Model Opportunity
  * 
@@ -108,6 +143,11 @@ export type CampaignEmailSendLog = $Result.DefaultSelection<Prisma.$CampaignEmai
  * 
  */
 export type Campaign = $Result.DefaultSelection<Prisma.$CampaignPayload>
+/**
+ * Model CrmFile
+ * * Adjuntos del CRM: metadatos en BD; binario en S3/MinIO o URL pública (CDN) vía proxy de medios.
+ */
+export type CrmFile = $Result.DefaultSelection<Prisma.$CrmFilePayload>
 
 /**
  * ##  Prisma Client ʲˢ
@@ -271,6 +311,66 @@ export class PrismaClient<
   get user(): Prisma.UserDelegate<ExtArgs, ClientOptions>;
 
   /**
+   * `prisma.crmOrganizationProfile`: Exposes CRUD operations for the **CrmOrganizationProfile** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more CrmOrganizationProfiles
+    * const crmOrganizationProfiles = await prisma.crmOrganizationProfile.findMany()
+    * ```
+    */
+  get crmOrganizationProfile(): Prisma.CrmOrganizationProfileDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.crmLeadSource`: Exposes CRUD operations for the **CrmLeadSource** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more CrmLeadSources
+    * const crmLeadSources = await prisma.crmLeadSource.findMany()
+    * ```
+    */
+  get crmLeadSource(): Prisma.CrmLeadSourceDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.crmStage`: Exposes CRUD operations for the **CrmStage** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more CrmStages
+    * const crmStages = await prisma.crmStage.findMany()
+    * ```
+    */
+  get crmStage(): Prisma.CrmStageDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.crmPriority`: Exposes CRUD operations for the **CrmPriority** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more CrmPriorities
+    * const crmPriorities = await prisma.crmPriority.findMany()
+    * ```
+    */
+  get crmPriority(): Prisma.CrmPriorityDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.crmActivityType`: Exposes CRUD operations for the **CrmActivityType** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more CrmActivityTypes
+    * const crmActivityTypes = await prisma.crmActivityType.findMany()
+    * ```
+    */
+  get crmActivityType(): Prisma.CrmActivityTypeDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.crmUserSalesGoal`: Exposes CRUD operations for the **CrmUserSalesGoal** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more CrmUserSalesGoals
+    * const crmUserSalesGoals = await prisma.crmUserSalesGoal.findMany()
+    * ```
+    */
+  get crmUserSalesGoal(): Prisma.CrmUserSalesGoalDelegate<ExtArgs, ClientOptions>;
+
+  /**
    * `prisma.contact`: Exposes CRUD operations for the **Contact** model.
     * Example usage:
     * ```ts
@@ -289,6 +389,16 @@ export class PrismaClient<
     * ```
     */
   get company(): Prisma.CompanyDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.client`: Exposes CRUD operations for the **Client** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more Clients
+    * const clients = await prisma.client.findMany()
+    * ```
+    */
+  get client(): Prisma.ClientDelegate<ExtArgs, ClientOptions>;
 
   /**
    * `prisma.opportunity`: Exposes CRUD operations for the **Opportunity** model.
@@ -419,6 +529,16 @@ export class PrismaClient<
     * ```
     */
   get campaign(): Prisma.CampaignDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.crmFile`: Exposes CRUD operations for the **CrmFile** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more CrmFiles
+    * const crmFiles = await prisma.crmFile.findMany()
+    * ```
+    */
+  get crmFile(): Prisma.CrmFileDelegate<ExtArgs, ClientOptions>;
 }
 
 export namespace Prisma {
@@ -857,8 +977,15 @@ export namespace Prisma {
     Authority: 'Authority',
     Account: 'Account',
     User: 'User',
+    CrmOrganizationProfile: 'CrmOrganizationProfile',
+    CrmLeadSource: 'CrmLeadSource',
+    CrmStage: 'CrmStage',
+    CrmPriority: 'CrmPriority',
+    CrmActivityType: 'CrmActivityType',
+    CrmUserSalesGoal: 'CrmUserSalesGoal',
     Contact: 'Contact',
     Company: 'Company',
+    Client: 'Client',
     Opportunity: 'Opportunity',
     Activity: 'Activity',
     CompanyContact: 'CompanyContact',
@@ -871,7 +998,8 @@ export namespace Prisma {
     CompanyActivity: 'CompanyActivity',
     OpportunityActivity: 'OpportunityActivity',
     CampaignEmailSendLog: 'CampaignEmailSendLog',
-    Campaign: 'Campaign'
+    Campaign: 'Campaign',
+    CrmFile: 'CrmFile'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -887,7 +1015,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "role" | "authority" | "account" | "user" | "contact" | "company" | "opportunity" | "activity" | "companyContact" | "contactContact" | "contactOpportunity" | "companyCompany" | "companyOpportunity" | "opportunityOpportunity" | "contactActivity" | "companyActivity" | "opportunityActivity" | "campaignEmailSendLog" | "campaign"
+      modelProps: "role" | "authority" | "account" | "user" | "crmOrganizationProfile" | "crmLeadSource" | "crmStage" | "crmPriority" | "crmActivityType" | "crmUserSalesGoal" | "contact" | "company" | "client" | "opportunity" | "activity" | "companyContact" | "contactContact" | "contactOpportunity" | "companyCompany" | "companyOpportunity" | "opportunityOpportunity" | "contactActivity" | "companyActivity" | "opportunityActivity" | "campaignEmailSendLog" | "campaign" | "crmFile"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -1187,6 +1315,450 @@ export namespace Prisma {
           }
         }
       }
+      CrmOrganizationProfile: {
+        payload: Prisma.$CrmOrganizationProfilePayload<ExtArgs>
+        fields: Prisma.CrmOrganizationProfileFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.CrmOrganizationProfileFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmOrganizationProfilePayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.CrmOrganizationProfileFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmOrganizationProfilePayload>
+          }
+          findFirst: {
+            args: Prisma.CrmOrganizationProfileFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmOrganizationProfilePayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.CrmOrganizationProfileFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmOrganizationProfilePayload>
+          }
+          findMany: {
+            args: Prisma.CrmOrganizationProfileFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmOrganizationProfilePayload>[]
+          }
+          create: {
+            args: Prisma.CrmOrganizationProfileCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmOrganizationProfilePayload>
+          }
+          createMany: {
+            args: Prisma.CrmOrganizationProfileCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.CrmOrganizationProfileCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmOrganizationProfilePayload>[]
+          }
+          delete: {
+            args: Prisma.CrmOrganizationProfileDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmOrganizationProfilePayload>
+          }
+          update: {
+            args: Prisma.CrmOrganizationProfileUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmOrganizationProfilePayload>
+          }
+          deleteMany: {
+            args: Prisma.CrmOrganizationProfileDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.CrmOrganizationProfileUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.CrmOrganizationProfileUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmOrganizationProfilePayload>[]
+          }
+          upsert: {
+            args: Prisma.CrmOrganizationProfileUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmOrganizationProfilePayload>
+          }
+          aggregate: {
+            args: Prisma.CrmOrganizationProfileAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateCrmOrganizationProfile>
+          }
+          groupBy: {
+            args: Prisma.CrmOrganizationProfileGroupByArgs<ExtArgs>
+            result: $Utils.Optional<CrmOrganizationProfileGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.CrmOrganizationProfileCountArgs<ExtArgs>
+            result: $Utils.Optional<CrmOrganizationProfileCountAggregateOutputType> | number
+          }
+        }
+      }
+      CrmLeadSource: {
+        payload: Prisma.$CrmLeadSourcePayload<ExtArgs>
+        fields: Prisma.CrmLeadSourceFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.CrmLeadSourceFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmLeadSourcePayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.CrmLeadSourceFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmLeadSourcePayload>
+          }
+          findFirst: {
+            args: Prisma.CrmLeadSourceFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmLeadSourcePayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.CrmLeadSourceFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmLeadSourcePayload>
+          }
+          findMany: {
+            args: Prisma.CrmLeadSourceFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmLeadSourcePayload>[]
+          }
+          create: {
+            args: Prisma.CrmLeadSourceCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmLeadSourcePayload>
+          }
+          createMany: {
+            args: Prisma.CrmLeadSourceCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.CrmLeadSourceCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmLeadSourcePayload>[]
+          }
+          delete: {
+            args: Prisma.CrmLeadSourceDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmLeadSourcePayload>
+          }
+          update: {
+            args: Prisma.CrmLeadSourceUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmLeadSourcePayload>
+          }
+          deleteMany: {
+            args: Prisma.CrmLeadSourceDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.CrmLeadSourceUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.CrmLeadSourceUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmLeadSourcePayload>[]
+          }
+          upsert: {
+            args: Prisma.CrmLeadSourceUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmLeadSourcePayload>
+          }
+          aggregate: {
+            args: Prisma.CrmLeadSourceAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateCrmLeadSource>
+          }
+          groupBy: {
+            args: Prisma.CrmLeadSourceGroupByArgs<ExtArgs>
+            result: $Utils.Optional<CrmLeadSourceGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.CrmLeadSourceCountArgs<ExtArgs>
+            result: $Utils.Optional<CrmLeadSourceCountAggregateOutputType> | number
+          }
+        }
+      }
+      CrmStage: {
+        payload: Prisma.$CrmStagePayload<ExtArgs>
+        fields: Prisma.CrmStageFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.CrmStageFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmStagePayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.CrmStageFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmStagePayload>
+          }
+          findFirst: {
+            args: Prisma.CrmStageFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmStagePayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.CrmStageFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmStagePayload>
+          }
+          findMany: {
+            args: Prisma.CrmStageFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmStagePayload>[]
+          }
+          create: {
+            args: Prisma.CrmStageCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmStagePayload>
+          }
+          createMany: {
+            args: Prisma.CrmStageCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.CrmStageCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmStagePayload>[]
+          }
+          delete: {
+            args: Prisma.CrmStageDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmStagePayload>
+          }
+          update: {
+            args: Prisma.CrmStageUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmStagePayload>
+          }
+          deleteMany: {
+            args: Prisma.CrmStageDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.CrmStageUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.CrmStageUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmStagePayload>[]
+          }
+          upsert: {
+            args: Prisma.CrmStageUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmStagePayload>
+          }
+          aggregate: {
+            args: Prisma.CrmStageAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateCrmStage>
+          }
+          groupBy: {
+            args: Prisma.CrmStageGroupByArgs<ExtArgs>
+            result: $Utils.Optional<CrmStageGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.CrmStageCountArgs<ExtArgs>
+            result: $Utils.Optional<CrmStageCountAggregateOutputType> | number
+          }
+        }
+      }
+      CrmPriority: {
+        payload: Prisma.$CrmPriorityPayload<ExtArgs>
+        fields: Prisma.CrmPriorityFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.CrmPriorityFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmPriorityPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.CrmPriorityFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmPriorityPayload>
+          }
+          findFirst: {
+            args: Prisma.CrmPriorityFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmPriorityPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.CrmPriorityFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmPriorityPayload>
+          }
+          findMany: {
+            args: Prisma.CrmPriorityFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmPriorityPayload>[]
+          }
+          create: {
+            args: Prisma.CrmPriorityCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmPriorityPayload>
+          }
+          createMany: {
+            args: Prisma.CrmPriorityCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.CrmPriorityCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmPriorityPayload>[]
+          }
+          delete: {
+            args: Prisma.CrmPriorityDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmPriorityPayload>
+          }
+          update: {
+            args: Prisma.CrmPriorityUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmPriorityPayload>
+          }
+          deleteMany: {
+            args: Prisma.CrmPriorityDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.CrmPriorityUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.CrmPriorityUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmPriorityPayload>[]
+          }
+          upsert: {
+            args: Prisma.CrmPriorityUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmPriorityPayload>
+          }
+          aggregate: {
+            args: Prisma.CrmPriorityAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateCrmPriority>
+          }
+          groupBy: {
+            args: Prisma.CrmPriorityGroupByArgs<ExtArgs>
+            result: $Utils.Optional<CrmPriorityGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.CrmPriorityCountArgs<ExtArgs>
+            result: $Utils.Optional<CrmPriorityCountAggregateOutputType> | number
+          }
+        }
+      }
+      CrmActivityType: {
+        payload: Prisma.$CrmActivityTypePayload<ExtArgs>
+        fields: Prisma.CrmActivityTypeFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.CrmActivityTypeFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmActivityTypePayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.CrmActivityTypeFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmActivityTypePayload>
+          }
+          findFirst: {
+            args: Prisma.CrmActivityTypeFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmActivityTypePayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.CrmActivityTypeFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmActivityTypePayload>
+          }
+          findMany: {
+            args: Prisma.CrmActivityTypeFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmActivityTypePayload>[]
+          }
+          create: {
+            args: Prisma.CrmActivityTypeCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmActivityTypePayload>
+          }
+          createMany: {
+            args: Prisma.CrmActivityTypeCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.CrmActivityTypeCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmActivityTypePayload>[]
+          }
+          delete: {
+            args: Prisma.CrmActivityTypeDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmActivityTypePayload>
+          }
+          update: {
+            args: Prisma.CrmActivityTypeUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmActivityTypePayload>
+          }
+          deleteMany: {
+            args: Prisma.CrmActivityTypeDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.CrmActivityTypeUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.CrmActivityTypeUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmActivityTypePayload>[]
+          }
+          upsert: {
+            args: Prisma.CrmActivityTypeUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmActivityTypePayload>
+          }
+          aggregate: {
+            args: Prisma.CrmActivityTypeAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateCrmActivityType>
+          }
+          groupBy: {
+            args: Prisma.CrmActivityTypeGroupByArgs<ExtArgs>
+            result: $Utils.Optional<CrmActivityTypeGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.CrmActivityTypeCountArgs<ExtArgs>
+            result: $Utils.Optional<CrmActivityTypeCountAggregateOutputType> | number
+          }
+        }
+      }
+      CrmUserSalesGoal: {
+        payload: Prisma.$CrmUserSalesGoalPayload<ExtArgs>
+        fields: Prisma.CrmUserSalesGoalFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.CrmUserSalesGoalFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmUserSalesGoalPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.CrmUserSalesGoalFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmUserSalesGoalPayload>
+          }
+          findFirst: {
+            args: Prisma.CrmUserSalesGoalFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmUserSalesGoalPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.CrmUserSalesGoalFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmUserSalesGoalPayload>
+          }
+          findMany: {
+            args: Prisma.CrmUserSalesGoalFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmUserSalesGoalPayload>[]
+          }
+          create: {
+            args: Prisma.CrmUserSalesGoalCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmUserSalesGoalPayload>
+          }
+          createMany: {
+            args: Prisma.CrmUserSalesGoalCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.CrmUserSalesGoalCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmUserSalesGoalPayload>[]
+          }
+          delete: {
+            args: Prisma.CrmUserSalesGoalDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmUserSalesGoalPayload>
+          }
+          update: {
+            args: Prisma.CrmUserSalesGoalUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmUserSalesGoalPayload>
+          }
+          deleteMany: {
+            args: Prisma.CrmUserSalesGoalDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.CrmUserSalesGoalUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.CrmUserSalesGoalUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmUserSalesGoalPayload>[]
+          }
+          upsert: {
+            args: Prisma.CrmUserSalesGoalUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmUserSalesGoalPayload>
+          }
+          aggregate: {
+            args: Prisma.CrmUserSalesGoalAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateCrmUserSalesGoal>
+          }
+          groupBy: {
+            args: Prisma.CrmUserSalesGoalGroupByArgs<ExtArgs>
+            result: $Utils.Optional<CrmUserSalesGoalGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.CrmUserSalesGoalCountArgs<ExtArgs>
+            result: $Utils.Optional<CrmUserSalesGoalCountAggregateOutputType> | number
+          }
+        }
+      }
       Contact: {
         payload: Prisma.$ContactPayload<ExtArgs>
         fields: Prisma.ContactFieldRefs
@@ -1332,6 +1904,80 @@ export namespace Prisma {
           count: {
             args: Prisma.CompanyCountArgs<ExtArgs>
             result: $Utils.Optional<CompanyCountAggregateOutputType> | number
+          }
+        }
+      }
+      Client: {
+        payload: Prisma.$ClientPayload<ExtArgs>
+        fields: Prisma.ClientFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.ClientFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ClientPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.ClientFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ClientPayload>
+          }
+          findFirst: {
+            args: Prisma.ClientFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ClientPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.ClientFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ClientPayload>
+          }
+          findMany: {
+            args: Prisma.ClientFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ClientPayload>[]
+          }
+          create: {
+            args: Prisma.ClientCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ClientPayload>
+          }
+          createMany: {
+            args: Prisma.ClientCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.ClientCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ClientPayload>[]
+          }
+          delete: {
+            args: Prisma.ClientDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ClientPayload>
+          }
+          update: {
+            args: Prisma.ClientUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ClientPayload>
+          }
+          deleteMany: {
+            args: Prisma.ClientDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.ClientUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.ClientUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ClientPayload>[]
+          }
+          upsert: {
+            args: Prisma.ClientUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ClientPayload>
+          }
+          aggregate: {
+            args: Prisma.ClientAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateClient>
+          }
+          groupBy: {
+            args: Prisma.ClientGroupByArgs<ExtArgs>
+            result: $Utils.Optional<ClientGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.ClientCountArgs<ExtArgs>
+            result: $Utils.Optional<ClientCountAggregateOutputType> | number
           }
         }
       }
@@ -2297,6 +2943,80 @@ export namespace Prisma {
           }
         }
       }
+      CrmFile: {
+        payload: Prisma.$CrmFilePayload<ExtArgs>
+        fields: Prisma.CrmFileFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.CrmFileFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmFilePayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.CrmFileFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmFilePayload>
+          }
+          findFirst: {
+            args: Prisma.CrmFileFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmFilePayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.CrmFileFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmFilePayload>
+          }
+          findMany: {
+            args: Prisma.CrmFileFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmFilePayload>[]
+          }
+          create: {
+            args: Prisma.CrmFileCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmFilePayload>
+          }
+          createMany: {
+            args: Prisma.CrmFileCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.CrmFileCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmFilePayload>[]
+          }
+          delete: {
+            args: Prisma.CrmFileDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmFilePayload>
+          }
+          update: {
+            args: Prisma.CrmFileUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmFilePayload>
+          }
+          deleteMany: {
+            args: Prisma.CrmFileDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.CrmFileUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.CrmFileUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmFilePayload>[]
+          }
+          upsert: {
+            args: Prisma.CrmFileUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmFilePayload>
+          }
+          aggregate: {
+            args: Prisma.CrmFileAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateCrmFile>
+          }
+          groupBy: {
+            args: Prisma.CrmFileGroupByArgs<ExtArgs>
+            result: $Utils.Optional<CrmFileGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.CrmFileCountArgs<ExtArgs>
+            result: $Utils.Optional<CrmFileCountAggregateOutputType> | number
+          }
+        }
+      }
     }
   } & {
     other: {
@@ -2409,8 +3129,15 @@ export namespace Prisma {
     authority?: AuthorityOmit
     account?: AccountOmit
     user?: UserOmit
+    crmOrganizationProfile?: CrmOrganizationProfileOmit
+    crmLeadSource?: CrmLeadSourceOmit
+    crmStage?: CrmStageOmit
+    crmPriority?: CrmPriorityOmit
+    crmActivityType?: CrmActivityTypeOmit
+    crmUserSalesGoal?: CrmUserSalesGoalOmit
     contact?: ContactOmit
     company?: CompanyOmit
+    client?: ClientOmit
     opportunity?: OpportunityOmit
     activity?: ActivityOmit
     companyContact?: CompanyContactOmit
@@ -2424,6 +3151,7 @@ export namespace Prisma {
     opportunityActivity?: OpportunityActivityOmit
     campaignEmailSendLog?: CampaignEmailSendLogOmit
     campaign?: CampaignOmit
+    crmFile?: CrmFileOmit
   }
 
   /* Types for Logging */
@@ -2550,6 +3278,7 @@ export namespace Prisma {
     companiesAssigned: number
     activitiesAssigned: number
     campaignsCreated: number
+    crmFilesUploaded: number
   }
 
   export type UserCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -2559,6 +3288,7 @@ export namespace Prisma {
     companiesAssigned?: boolean | UserCountOutputTypeCountCompaniesAssignedArgs
     activitiesAssigned?: boolean | UserCountOutputTypeCountActivitiesAssignedArgs
     campaignsCreated?: boolean | UserCountOutputTypeCountCampaignsCreatedArgs
+    crmFilesUploaded?: boolean | UserCountOutputTypeCountCrmFilesUploadedArgs
   }
 
   // Custom InputTypes
@@ -2612,6 +3342,13 @@ export namespace Prisma {
    */
   export type UserCountOutputTypeCountCampaignsCreatedArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: CampaignWhereInput
+  }
+
+  /**
+   * UserCountOutputType without action
+   */
+  export type UserCountOutputTypeCountCrmFilesUploadedArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: CrmFileWhereInput
   }
 
 
@@ -6335,6 +7072,8 @@ export namespace Prisma {
     companiesAssigned?: boolean | User$companiesAssignedArgs<ExtArgs>
     activitiesAssigned?: boolean | User$activitiesAssignedArgs<ExtArgs>
     campaignsCreated?: boolean | User$campaignsCreatedArgs<ExtArgs>
+    crmFilesUploaded?: boolean | User$crmFilesUploadedArgs<ExtArgs>
+    crmSalesGoal?: boolean | User$crmSalesGoalArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["user"]>
 
@@ -6388,6 +7127,8 @@ export namespace Prisma {
     companiesAssigned?: boolean | User$companiesAssignedArgs<ExtArgs>
     activitiesAssigned?: boolean | User$activitiesAssignedArgs<ExtArgs>
     campaignsCreated?: boolean | User$campaignsCreatedArgs<ExtArgs>
+    crmFilesUploaded?: boolean | User$crmFilesUploadedArgs<ExtArgs>
+    crmSalesGoal?: boolean | User$crmSalesGoalArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type UserIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -6407,6 +7148,8 @@ export namespace Prisma {
       companiesAssigned: Prisma.$CompanyPayload<ExtArgs>[]
       activitiesAssigned: Prisma.$ActivityPayload<ExtArgs>[]
       campaignsCreated: Prisma.$CampaignPayload<ExtArgs>[]
+      crmFilesUploaded: Prisma.$CrmFilePayload<ExtArgs>[]
+      crmSalesGoal: Prisma.$CrmUserSalesGoalPayload<ExtArgs> | null
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -6820,6 +7563,8 @@ export namespace Prisma {
     companiesAssigned<T extends User$companiesAssignedArgs<ExtArgs> = {}>(args?: Subset<T, User$companiesAssignedArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CompanyPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     activitiesAssigned<T extends User$activitiesAssignedArgs<ExtArgs> = {}>(args?: Subset<T, User$activitiesAssignedArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ActivityPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     campaignsCreated<T extends User$campaignsCreatedArgs<ExtArgs> = {}>(args?: Subset<T, User$campaignsCreatedArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CampaignPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    crmFilesUploaded<T extends User$crmFilesUploadedArgs<ExtArgs> = {}>(args?: Subset<T, User$crmFilesUploadedArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmFilePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    crmSalesGoal<T extends User$crmSalesGoalArgs<ExtArgs> = {}>(args?: Subset<T, User$crmSalesGoalArgs<ExtArgs>>): Prisma__CrmUserSalesGoalClient<$Result.GetResult<Prisma.$CrmUserSalesGoalPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -7404,6 +8149,49 @@ export namespace Prisma {
   }
 
   /**
+   * User.crmFilesUploaded
+   */
+  export type User$crmFilesUploadedArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmFile
+     */
+    select?: CrmFileSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmFile
+     */
+    omit?: CrmFileOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmFileInclude<ExtArgs> | null
+    where?: CrmFileWhereInput
+    orderBy?: CrmFileOrderByWithRelationInput | CrmFileOrderByWithRelationInput[]
+    cursor?: CrmFileWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: CrmFileScalarFieldEnum | CrmFileScalarFieldEnum[]
+  }
+
+  /**
+   * User.crmSalesGoal
+   */
+  export type User$crmSalesGoalArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmUserSalesGoal
+     */
+    select?: CrmUserSalesGoalSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmUserSalesGoal
+     */
+    omit?: CrmUserSalesGoalOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmUserSalesGoalInclude<ExtArgs> | null
+    where?: CrmUserSalesGoalWhereInput
+  }
+
+  /**
    * User without action
    */
   export type UserDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -7419,6 +8207,6379 @@ export namespace Prisma {
      * Choose, which related nodes to fetch as well
      */
     include?: UserInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model CrmOrganizationProfile
+   */
+
+  export type AggregateCrmOrganizationProfile = {
+    _count: CrmOrganizationProfileCountAggregateOutputType | null
+    _avg: CrmOrganizationProfileAvgAggregateOutputType | null
+    _sum: CrmOrganizationProfileSumAggregateOutputType | null
+    _min: CrmOrganizationProfileMinAggregateOutputType | null
+    _max: CrmOrganizationProfileMaxAggregateOutputType | null
+  }
+
+  export type CrmOrganizationProfileAvgAggregateOutputType = {
+    globalWeeklyGoal: number | null
+    globalMonthlyGoal: number | null
+  }
+
+  export type CrmOrganizationProfileSumAggregateOutputType = {
+    globalWeeklyGoal: number | null
+    globalMonthlyGoal: number | null
+  }
+
+  export type CrmOrganizationProfileMinAggregateOutputType = {
+    id: string | null
+    name: string | null
+    description: string | null
+    contactEmail: string | null
+    contactPhone: string | null
+    address: string | null
+    globalWeeklyGoal: number | null
+    globalMonthlyGoal: number | null
+    updatedAt: Date | null
+  }
+
+  export type CrmOrganizationProfileMaxAggregateOutputType = {
+    id: string | null
+    name: string | null
+    description: string | null
+    contactEmail: string | null
+    contactPhone: string | null
+    address: string | null
+    globalWeeklyGoal: number | null
+    globalMonthlyGoal: number | null
+    updatedAt: Date | null
+  }
+
+  export type CrmOrganizationProfileCountAggregateOutputType = {
+    id: number
+    name: number
+    description: number
+    contactEmail: number
+    contactPhone: number
+    address: number
+    globalWeeklyGoal: number
+    globalMonthlyGoal: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type CrmOrganizationProfileAvgAggregateInputType = {
+    globalWeeklyGoal?: true
+    globalMonthlyGoal?: true
+  }
+
+  export type CrmOrganizationProfileSumAggregateInputType = {
+    globalWeeklyGoal?: true
+    globalMonthlyGoal?: true
+  }
+
+  export type CrmOrganizationProfileMinAggregateInputType = {
+    id?: true
+    name?: true
+    description?: true
+    contactEmail?: true
+    contactPhone?: true
+    address?: true
+    globalWeeklyGoal?: true
+    globalMonthlyGoal?: true
+    updatedAt?: true
+  }
+
+  export type CrmOrganizationProfileMaxAggregateInputType = {
+    id?: true
+    name?: true
+    description?: true
+    contactEmail?: true
+    contactPhone?: true
+    address?: true
+    globalWeeklyGoal?: true
+    globalMonthlyGoal?: true
+    updatedAt?: true
+  }
+
+  export type CrmOrganizationProfileCountAggregateInputType = {
+    id?: true
+    name?: true
+    description?: true
+    contactEmail?: true
+    contactPhone?: true
+    address?: true
+    globalWeeklyGoal?: true
+    globalMonthlyGoal?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type CrmOrganizationProfileAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which CrmOrganizationProfile to aggregate.
+     */
+    where?: CrmOrganizationProfileWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmOrganizationProfiles to fetch.
+     */
+    orderBy?: CrmOrganizationProfileOrderByWithRelationInput | CrmOrganizationProfileOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: CrmOrganizationProfileWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmOrganizationProfiles from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmOrganizationProfiles.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned CrmOrganizationProfiles
+    **/
+    _count?: true | CrmOrganizationProfileCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: CrmOrganizationProfileAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: CrmOrganizationProfileSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: CrmOrganizationProfileMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: CrmOrganizationProfileMaxAggregateInputType
+  }
+
+  export type GetCrmOrganizationProfileAggregateType<T extends CrmOrganizationProfileAggregateArgs> = {
+        [P in keyof T & keyof AggregateCrmOrganizationProfile]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateCrmOrganizationProfile[P]>
+      : GetScalarType<T[P], AggregateCrmOrganizationProfile[P]>
+  }
+
+
+
+
+  export type CrmOrganizationProfileGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: CrmOrganizationProfileWhereInput
+    orderBy?: CrmOrganizationProfileOrderByWithAggregationInput | CrmOrganizationProfileOrderByWithAggregationInput[]
+    by: CrmOrganizationProfileScalarFieldEnum[] | CrmOrganizationProfileScalarFieldEnum
+    having?: CrmOrganizationProfileScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: CrmOrganizationProfileCountAggregateInputType | true
+    _avg?: CrmOrganizationProfileAvgAggregateInputType
+    _sum?: CrmOrganizationProfileSumAggregateInputType
+    _min?: CrmOrganizationProfileMinAggregateInputType
+    _max?: CrmOrganizationProfileMaxAggregateInputType
+  }
+
+  export type CrmOrganizationProfileGroupByOutputType = {
+    id: string
+    name: string
+    description: string
+    contactEmail: string
+    contactPhone: string
+    address: string
+    globalWeeklyGoal: number
+    globalMonthlyGoal: number
+    updatedAt: Date
+    _count: CrmOrganizationProfileCountAggregateOutputType | null
+    _avg: CrmOrganizationProfileAvgAggregateOutputType | null
+    _sum: CrmOrganizationProfileSumAggregateOutputType | null
+    _min: CrmOrganizationProfileMinAggregateOutputType | null
+    _max: CrmOrganizationProfileMaxAggregateOutputType | null
+  }
+
+  type GetCrmOrganizationProfileGroupByPayload<T extends CrmOrganizationProfileGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<CrmOrganizationProfileGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof CrmOrganizationProfileGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], CrmOrganizationProfileGroupByOutputType[P]>
+            : GetScalarType<T[P], CrmOrganizationProfileGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type CrmOrganizationProfileSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    name?: boolean
+    description?: boolean
+    contactEmail?: boolean
+    contactPhone?: boolean
+    address?: boolean
+    globalWeeklyGoal?: boolean
+    globalMonthlyGoal?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["crmOrganizationProfile"]>
+
+  export type CrmOrganizationProfileSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    name?: boolean
+    description?: boolean
+    contactEmail?: boolean
+    contactPhone?: boolean
+    address?: boolean
+    globalWeeklyGoal?: boolean
+    globalMonthlyGoal?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["crmOrganizationProfile"]>
+
+  export type CrmOrganizationProfileSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    name?: boolean
+    description?: boolean
+    contactEmail?: boolean
+    contactPhone?: boolean
+    address?: boolean
+    globalWeeklyGoal?: boolean
+    globalMonthlyGoal?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["crmOrganizationProfile"]>
+
+  export type CrmOrganizationProfileSelectScalar = {
+    id?: boolean
+    name?: boolean
+    description?: boolean
+    contactEmail?: boolean
+    contactPhone?: boolean
+    address?: boolean
+    globalWeeklyGoal?: boolean
+    globalMonthlyGoal?: boolean
+    updatedAt?: boolean
+  }
+
+  export type CrmOrganizationProfileOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "description" | "contactEmail" | "contactPhone" | "address" | "globalWeeklyGoal" | "globalMonthlyGoal" | "updatedAt", ExtArgs["result"]["crmOrganizationProfile"]>
+
+  export type $CrmOrganizationProfilePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "CrmOrganizationProfile"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      name: string
+      description: string
+      contactEmail: string
+      contactPhone: string
+      address: string
+      globalWeeklyGoal: number
+      globalMonthlyGoal: number
+      updatedAt: Date
+    }, ExtArgs["result"]["crmOrganizationProfile"]>
+    composites: {}
+  }
+
+  type CrmOrganizationProfileGetPayload<S extends boolean | null | undefined | CrmOrganizationProfileDefaultArgs> = $Result.GetResult<Prisma.$CrmOrganizationProfilePayload, S>
+
+  type CrmOrganizationProfileCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<CrmOrganizationProfileFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: CrmOrganizationProfileCountAggregateInputType | true
+    }
+
+  export interface CrmOrganizationProfileDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['CrmOrganizationProfile'], meta: { name: 'CrmOrganizationProfile' } }
+    /**
+     * Find zero or one CrmOrganizationProfile that matches the filter.
+     * @param {CrmOrganizationProfileFindUniqueArgs} args - Arguments to find a CrmOrganizationProfile
+     * @example
+     * // Get one CrmOrganizationProfile
+     * const crmOrganizationProfile = await prisma.crmOrganizationProfile.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends CrmOrganizationProfileFindUniqueArgs>(args: SelectSubset<T, CrmOrganizationProfileFindUniqueArgs<ExtArgs>>): Prisma__CrmOrganizationProfileClient<$Result.GetResult<Prisma.$CrmOrganizationProfilePayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one CrmOrganizationProfile that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {CrmOrganizationProfileFindUniqueOrThrowArgs} args - Arguments to find a CrmOrganizationProfile
+     * @example
+     * // Get one CrmOrganizationProfile
+     * const crmOrganizationProfile = await prisma.crmOrganizationProfile.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends CrmOrganizationProfileFindUniqueOrThrowArgs>(args: SelectSubset<T, CrmOrganizationProfileFindUniqueOrThrowArgs<ExtArgs>>): Prisma__CrmOrganizationProfileClient<$Result.GetResult<Prisma.$CrmOrganizationProfilePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first CrmOrganizationProfile that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmOrganizationProfileFindFirstArgs} args - Arguments to find a CrmOrganizationProfile
+     * @example
+     * // Get one CrmOrganizationProfile
+     * const crmOrganizationProfile = await prisma.crmOrganizationProfile.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends CrmOrganizationProfileFindFirstArgs>(args?: SelectSubset<T, CrmOrganizationProfileFindFirstArgs<ExtArgs>>): Prisma__CrmOrganizationProfileClient<$Result.GetResult<Prisma.$CrmOrganizationProfilePayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first CrmOrganizationProfile that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmOrganizationProfileFindFirstOrThrowArgs} args - Arguments to find a CrmOrganizationProfile
+     * @example
+     * // Get one CrmOrganizationProfile
+     * const crmOrganizationProfile = await prisma.crmOrganizationProfile.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends CrmOrganizationProfileFindFirstOrThrowArgs>(args?: SelectSubset<T, CrmOrganizationProfileFindFirstOrThrowArgs<ExtArgs>>): Prisma__CrmOrganizationProfileClient<$Result.GetResult<Prisma.$CrmOrganizationProfilePayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more CrmOrganizationProfiles that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmOrganizationProfileFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all CrmOrganizationProfiles
+     * const crmOrganizationProfiles = await prisma.crmOrganizationProfile.findMany()
+     * 
+     * // Get first 10 CrmOrganizationProfiles
+     * const crmOrganizationProfiles = await prisma.crmOrganizationProfile.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const crmOrganizationProfileWithIdOnly = await prisma.crmOrganizationProfile.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends CrmOrganizationProfileFindManyArgs>(args?: SelectSubset<T, CrmOrganizationProfileFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmOrganizationProfilePayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a CrmOrganizationProfile.
+     * @param {CrmOrganizationProfileCreateArgs} args - Arguments to create a CrmOrganizationProfile.
+     * @example
+     * // Create one CrmOrganizationProfile
+     * const CrmOrganizationProfile = await prisma.crmOrganizationProfile.create({
+     *   data: {
+     *     // ... data to create a CrmOrganizationProfile
+     *   }
+     * })
+     * 
+     */
+    create<T extends CrmOrganizationProfileCreateArgs>(args: SelectSubset<T, CrmOrganizationProfileCreateArgs<ExtArgs>>): Prisma__CrmOrganizationProfileClient<$Result.GetResult<Prisma.$CrmOrganizationProfilePayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many CrmOrganizationProfiles.
+     * @param {CrmOrganizationProfileCreateManyArgs} args - Arguments to create many CrmOrganizationProfiles.
+     * @example
+     * // Create many CrmOrganizationProfiles
+     * const crmOrganizationProfile = await prisma.crmOrganizationProfile.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends CrmOrganizationProfileCreateManyArgs>(args?: SelectSubset<T, CrmOrganizationProfileCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many CrmOrganizationProfiles and returns the data saved in the database.
+     * @param {CrmOrganizationProfileCreateManyAndReturnArgs} args - Arguments to create many CrmOrganizationProfiles.
+     * @example
+     * // Create many CrmOrganizationProfiles
+     * const crmOrganizationProfile = await prisma.crmOrganizationProfile.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many CrmOrganizationProfiles and only return the `id`
+     * const crmOrganizationProfileWithIdOnly = await prisma.crmOrganizationProfile.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends CrmOrganizationProfileCreateManyAndReturnArgs>(args?: SelectSubset<T, CrmOrganizationProfileCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmOrganizationProfilePayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a CrmOrganizationProfile.
+     * @param {CrmOrganizationProfileDeleteArgs} args - Arguments to delete one CrmOrganizationProfile.
+     * @example
+     * // Delete one CrmOrganizationProfile
+     * const CrmOrganizationProfile = await prisma.crmOrganizationProfile.delete({
+     *   where: {
+     *     // ... filter to delete one CrmOrganizationProfile
+     *   }
+     * })
+     * 
+     */
+    delete<T extends CrmOrganizationProfileDeleteArgs>(args: SelectSubset<T, CrmOrganizationProfileDeleteArgs<ExtArgs>>): Prisma__CrmOrganizationProfileClient<$Result.GetResult<Prisma.$CrmOrganizationProfilePayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one CrmOrganizationProfile.
+     * @param {CrmOrganizationProfileUpdateArgs} args - Arguments to update one CrmOrganizationProfile.
+     * @example
+     * // Update one CrmOrganizationProfile
+     * const crmOrganizationProfile = await prisma.crmOrganizationProfile.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends CrmOrganizationProfileUpdateArgs>(args: SelectSubset<T, CrmOrganizationProfileUpdateArgs<ExtArgs>>): Prisma__CrmOrganizationProfileClient<$Result.GetResult<Prisma.$CrmOrganizationProfilePayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more CrmOrganizationProfiles.
+     * @param {CrmOrganizationProfileDeleteManyArgs} args - Arguments to filter CrmOrganizationProfiles to delete.
+     * @example
+     * // Delete a few CrmOrganizationProfiles
+     * const { count } = await prisma.crmOrganizationProfile.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends CrmOrganizationProfileDeleteManyArgs>(args?: SelectSubset<T, CrmOrganizationProfileDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more CrmOrganizationProfiles.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmOrganizationProfileUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many CrmOrganizationProfiles
+     * const crmOrganizationProfile = await prisma.crmOrganizationProfile.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends CrmOrganizationProfileUpdateManyArgs>(args: SelectSubset<T, CrmOrganizationProfileUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more CrmOrganizationProfiles and returns the data updated in the database.
+     * @param {CrmOrganizationProfileUpdateManyAndReturnArgs} args - Arguments to update many CrmOrganizationProfiles.
+     * @example
+     * // Update many CrmOrganizationProfiles
+     * const crmOrganizationProfile = await prisma.crmOrganizationProfile.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more CrmOrganizationProfiles and only return the `id`
+     * const crmOrganizationProfileWithIdOnly = await prisma.crmOrganizationProfile.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends CrmOrganizationProfileUpdateManyAndReturnArgs>(args: SelectSubset<T, CrmOrganizationProfileUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmOrganizationProfilePayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one CrmOrganizationProfile.
+     * @param {CrmOrganizationProfileUpsertArgs} args - Arguments to update or create a CrmOrganizationProfile.
+     * @example
+     * // Update or create a CrmOrganizationProfile
+     * const crmOrganizationProfile = await prisma.crmOrganizationProfile.upsert({
+     *   create: {
+     *     // ... data to create a CrmOrganizationProfile
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the CrmOrganizationProfile we want to update
+     *   }
+     * })
+     */
+    upsert<T extends CrmOrganizationProfileUpsertArgs>(args: SelectSubset<T, CrmOrganizationProfileUpsertArgs<ExtArgs>>): Prisma__CrmOrganizationProfileClient<$Result.GetResult<Prisma.$CrmOrganizationProfilePayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of CrmOrganizationProfiles.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmOrganizationProfileCountArgs} args - Arguments to filter CrmOrganizationProfiles to count.
+     * @example
+     * // Count the number of CrmOrganizationProfiles
+     * const count = await prisma.crmOrganizationProfile.count({
+     *   where: {
+     *     // ... the filter for the CrmOrganizationProfiles we want to count
+     *   }
+     * })
+    **/
+    count<T extends CrmOrganizationProfileCountArgs>(
+      args?: Subset<T, CrmOrganizationProfileCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], CrmOrganizationProfileCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a CrmOrganizationProfile.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmOrganizationProfileAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends CrmOrganizationProfileAggregateArgs>(args: Subset<T, CrmOrganizationProfileAggregateArgs>): Prisma.PrismaPromise<GetCrmOrganizationProfileAggregateType<T>>
+
+    /**
+     * Group by CrmOrganizationProfile.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmOrganizationProfileGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends CrmOrganizationProfileGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: CrmOrganizationProfileGroupByArgs['orderBy'] }
+        : { orderBy?: CrmOrganizationProfileGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, CrmOrganizationProfileGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetCrmOrganizationProfileGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the CrmOrganizationProfile model
+   */
+  readonly fields: CrmOrganizationProfileFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for CrmOrganizationProfile.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__CrmOrganizationProfileClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the CrmOrganizationProfile model
+   */
+  interface CrmOrganizationProfileFieldRefs {
+    readonly id: FieldRef<"CrmOrganizationProfile", 'String'>
+    readonly name: FieldRef<"CrmOrganizationProfile", 'String'>
+    readonly description: FieldRef<"CrmOrganizationProfile", 'String'>
+    readonly contactEmail: FieldRef<"CrmOrganizationProfile", 'String'>
+    readonly contactPhone: FieldRef<"CrmOrganizationProfile", 'String'>
+    readonly address: FieldRef<"CrmOrganizationProfile", 'String'>
+    readonly globalWeeklyGoal: FieldRef<"CrmOrganizationProfile", 'Float'>
+    readonly globalMonthlyGoal: FieldRef<"CrmOrganizationProfile", 'Float'>
+    readonly updatedAt: FieldRef<"CrmOrganizationProfile", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * CrmOrganizationProfile findUnique
+   */
+  export type CrmOrganizationProfileFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmOrganizationProfile
+     */
+    select?: CrmOrganizationProfileSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmOrganizationProfile
+     */
+    omit?: CrmOrganizationProfileOmit<ExtArgs> | null
+    /**
+     * Filter, which CrmOrganizationProfile to fetch.
+     */
+    where: CrmOrganizationProfileWhereUniqueInput
+  }
+
+  /**
+   * CrmOrganizationProfile findUniqueOrThrow
+   */
+  export type CrmOrganizationProfileFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmOrganizationProfile
+     */
+    select?: CrmOrganizationProfileSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmOrganizationProfile
+     */
+    omit?: CrmOrganizationProfileOmit<ExtArgs> | null
+    /**
+     * Filter, which CrmOrganizationProfile to fetch.
+     */
+    where: CrmOrganizationProfileWhereUniqueInput
+  }
+
+  /**
+   * CrmOrganizationProfile findFirst
+   */
+  export type CrmOrganizationProfileFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmOrganizationProfile
+     */
+    select?: CrmOrganizationProfileSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmOrganizationProfile
+     */
+    omit?: CrmOrganizationProfileOmit<ExtArgs> | null
+    /**
+     * Filter, which CrmOrganizationProfile to fetch.
+     */
+    where?: CrmOrganizationProfileWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmOrganizationProfiles to fetch.
+     */
+    orderBy?: CrmOrganizationProfileOrderByWithRelationInput | CrmOrganizationProfileOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for CrmOrganizationProfiles.
+     */
+    cursor?: CrmOrganizationProfileWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmOrganizationProfiles from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmOrganizationProfiles.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CrmOrganizationProfiles.
+     */
+    distinct?: CrmOrganizationProfileScalarFieldEnum | CrmOrganizationProfileScalarFieldEnum[]
+  }
+
+  /**
+   * CrmOrganizationProfile findFirstOrThrow
+   */
+  export type CrmOrganizationProfileFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmOrganizationProfile
+     */
+    select?: CrmOrganizationProfileSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmOrganizationProfile
+     */
+    omit?: CrmOrganizationProfileOmit<ExtArgs> | null
+    /**
+     * Filter, which CrmOrganizationProfile to fetch.
+     */
+    where?: CrmOrganizationProfileWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmOrganizationProfiles to fetch.
+     */
+    orderBy?: CrmOrganizationProfileOrderByWithRelationInput | CrmOrganizationProfileOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for CrmOrganizationProfiles.
+     */
+    cursor?: CrmOrganizationProfileWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmOrganizationProfiles from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmOrganizationProfiles.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CrmOrganizationProfiles.
+     */
+    distinct?: CrmOrganizationProfileScalarFieldEnum | CrmOrganizationProfileScalarFieldEnum[]
+  }
+
+  /**
+   * CrmOrganizationProfile findMany
+   */
+  export type CrmOrganizationProfileFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmOrganizationProfile
+     */
+    select?: CrmOrganizationProfileSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmOrganizationProfile
+     */
+    omit?: CrmOrganizationProfileOmit<ExtArgs> | null
+    /**
+     * Filter, which CrmOrganizationProfiles to fetch.
+     */
+    where?: CrmOrganizationProfileWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmOrganizationProfiles to fetch.
+     */
+    orderBy?: CrmOrganizationProfileOrderByWithRelationInput | CrmOrganizationProfileOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing CrmOrganizationProfiles.
+     */
+    cursor?: CrmOrganizationProfileWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmOrganizationProfiles from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmOrganizationProfiles.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CrmOrganizationProfiles.
+     */
+    distinct?: CrmOrganizationProfileScalarFieldEnum | CrmOrganizationProfileScalarFieldEnum[]
+  }
+
+  /**
+   * CrmOrganizationProfile create
+   */
+  export type CrmOrganizationProfileCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmOrganizationProfile
+     */
+    select?: CrmOrganizationProfileSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmOrganizationProfile
+     */
+    omit?: CrmOrganizationProfileOmit<ExtArgs> | null
+    /**
+     * The data needed to create a CrmOrganizationProfile.
+     */
+    data: XOR<CrmOrganizationProfileCreateInput, CrmOrganizationProfileUncheckedCreateInput>
+  }
+
+  /**
+   * CrmOrganizationProfile createMany
+   */
+  export type CrmOrganizationProfileCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many CrmOrganizationProfiles.
+     */
+    data: CrmOrganizationProfileCreateManyInput | CrmOrganizationProfileCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * CrmOrganizationProfile createManyAndReturn
+   */
+  export type CrmOrganizationProfileCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmOrganizationProfile
+     */
+    select?: CrmOrganizationProfileSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmOrganizationProfile
+     */
+    omit?: CrmOrganizationProfileOmit<ExtArgs> | null
+    /**
+     * The data used to create many CrmOrganizationProfiles.
+     */
+    data: CrmOrganizationProfileCreateManyInput | CrmOrganizationProfileCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * CrmOrganizationProfile update
+   */
+  export type CrmOrganizationProfileUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmOrganizationProfile
+     */
+    select?: CrmOrganizationProfileSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmOrganizationProfile
+     */
+    omit?: CrmOrganizationProfileOmit<ExtArgs> | null
+    /**
+     * The data needed to update a CrmOrganizationProfile.
+     */
+    data: XOR<CrmOrganizationProfileUpdateInput, CrmOrganizationProfileUncheckedUpdateInput>
+    /**
+     * Choose, which CrmOrganizationProfile to update.
+     */
+    where: CrmOrganizationProfileWhereUniqueInput
+  }
+
+  /**
+   * CrmOrganizationProfile updateMany
+   */
+  export type CrmOrganizationProfileUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update CrmOrganizationProfiles.
+     */
+    data: XOR<CrmOrganizationProfileUpdateManyMutationInput, CrmOrganizationProfileUncheckedUpdateManyInput>
+    /**
+     * Filter which CrmOrganizationProfiles to update
+     */
+    where?: CrmOrganizationProfileWhereInput
+    /**
+     * Limit how many CrmOrganizationProfiles to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * CrmOrganizationProfile updateManyAndReturn
+   */
+  export type CrmOrganizationProfileUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmOrganizationProfile
+     */
+    select?: CrmOrganizationProfileSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmOrganizationProfile
+     */
+    omit?: CrmOrganizationProfileOmit<ExtArgs> | null
+    /**
+     * The data used to update CrmOrganizationProfiles.
+     */
+    data: XOR<CrmOrganizationProfileUpdateManyMutationInput, CrmOrganizationProfileUncheckedUpdateManyInput>
+    /**
+     * Filter which CrmOrganizationProfiles to update
+     */
+    where?: CrmOrganizationProfileWhereInput
+    /**
+     * Limit how many CrmOrganizationProfiles to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * CrmOrganizationProfile upsert
+   */
+  export type CrmOrganizationProfileUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmOrganizationProfile
+     */
+    select?: CrmOrganizationProfileSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmOrganizationProfile
+     */
+    omit?: CrmOrganizationProfileOmit<ExtArgs> | null
+    /**
+     * The filter to search for the CrmOrganizationProfile to update in case it exists.
+     */
+    where: CrmOrganizationProfileWhereUniqueInput
+    /**
+     * In case the CrmOrganizationProfile found by the `where` argument doesn't exist, create a new CrmOrganizationProfile with this data.
+     */
+    create: XOR<CrmOrganizationProfileCreateInput, CrmOrganizationProfileUncheckedCreateInput>
+    /**
+     * In case the CrmOrganizationProfile was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<CrmOrganizationProfileUpdateInput, CrmOrganizationProfileUncheckedUpdateInput>
+  }
+
+  /**
+   * CrmOrganizationProfile delete
+   */
+  export type CrmOrganizationProfileDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmOrganizationProfile
+     */
+    select?: CrmOrganizationProfileSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmOrganizationProfile
+     */
+    omit?: CrmOrganizationProfileOmit<ExtArgs> | null
+    /**
+     * Filter which CrmOrganizationProfile to delete.
+     */
+    where: CrmOrganizationProfileWhereUniqueInput
+  }
+
+  /**
+   * CrmOrganizationProfile deleteMany
+   */
+  export type CrmOrganizationProfileDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which CrmOrganizationProfiles to delete
+     */
+    where?: CrmOrganizationProfileWhereInput
+    /**
+     * Limit how many CrmOrganizationProfiles to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * CrmOrganizationProfile without action
+   */
+  export type CrmOrganizationProfileDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmOrganizationProfile
+     */
+    select?: CrmOrganizationProfileSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmOrganizationProfile
+     */
+    omit?: CrmOrganizationProfileOmit<ExtArgs> | null
+  }
+
+
+  /**
+   * Model CrmLeadSource
+   */
+
+  export type AggregateCrmLeadSource = {
+    _count: CrmLeadSourceCountAggregateOutputType | null
+    _avg: CrmLeadSourceAvgAggregateOutputType | null
+    _sum: CrmLeadSourceSumAggregateOutputType | null
+    _min: CrmLeadSourceMinAggregateOutputType | null
+    _max: CrmLeadSourceMaxAggregateOutputType | null
+  }
+
+  export type CrmLeadSourceAvgAggregateOutputType = {
+    sortOrder: number | null
+  }
+
+  export type CrmLeadSourceSumAggregateOutputType = {
+    sortOrder: number | null
+  }
+
+  export type CrmLeadSourceMinAggregateOutputType = {
+    id: string | null
+    slug: string | null
+    name: string | null
+    enabled: boolean | null
+    sortOrder: number | null
+  }
+
+  export type CrmLeadSourceMaxAggregateOutputType = {
+    id: string | null
+    slug: string | null
+    name: string | null
+    enabled: boolean | null
+    sortOrder: number | null
+  }
+
+  export type CrmLeadSourceCountAggregateOutputType = {
+    id: number
+    slug: number
+    name: number
+    enabled: number
+    sortOrder: number
+    _all: number
+  }
+
+
+  export type CrmLeadSourceAvgAggregateInputType = {
+    sortOrder?: true
+  }
+
+  export type CrmLeadSourceSumAggregateInputType = {
+    sortOrder?: true
+  }
+
+  export type CrmLeadSourceMinAggregateInputType = {
+    id?: true
+    slug?: true
+    name?: true
+    enabled?: true
+    sortOrder?: true
+  }
+
+  export type CrmLeadSourceMaxAggregateInputType = {
+    id?: true
+    slug?: true
+    name?: true
+    enabled?: true
+    sortOrder?: true
+  }
+
+  export type CrmLeadSourceCountAggregateInputType = {
+    id?: true
+    slug?: true
+    name?: true
+    enabled?: true
+    sortOrder?: true
+    _all?: true
+  }
+
+  export type CrmLeadSourceAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which CrmLeadSource to aggregate.
+     */
+    where?: CrmLeadSourceWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmLeadSources to fetch.
+     */
+    orderBy?: CrmLeadSourceOrderByWithRelationInput | CrmLeadSourceOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: CrmLeadSourceWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmLeadSources from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmLeadSources.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned CrmLeadSources
+    **/
+    _count?: true | CrmLeadSourceCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: CrmLeadSourceAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: CrmLeadSourceSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: CrmLeadSourceMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: CrmLeadSourceMaxAggregateInputType
+  }
+
+  export type GetCrmLeadSourceAggregateType<T extends CrmLeadSourceAggregateArgs> = {
+        [P in keyof T & keyof AggregateCrmLeadSource]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateCrmLeadSource[P]>
+      : GetScalarType<T[P], AggregateCrmLeadSource[P]>
+  }
+
+
+
+
+  export type CrmLeadSourceGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: CrmLeadSourceWhereInput
+    orderBy?: CrmLeadSourceOrderByWithAggregationInput | CrmLeadSourceOrderByWithAggregationInput[]
+    by: CrmLeadSourceScalarFieldEnum[] | CrmLeadSourceScalarFieldEnum
+    having?: CrmLeadSourceScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: CrmLeadSourceCountAggregateInputType | true
+    _avg?: CrmLeadSourceAvgAggregateInputType
+    _sum?: CrmLeadSourceSumAggregateInputType
+    _min?: CrmLeadSourceMinAggregateInputType
+    _max?: CrmLeadSourceMaxAggregateInputType
+  }
+
+  export type CrmLeadSourceGroupByOutputType = {
+    id: string
+    slug: string
+    name: string
+    enabled: boolean
+    sortOrder: number
+    _count: CrmLeadSourceCountAggregateOutputType | null
+    _avg: CrmLeadSourceAvgAggregateOutputType | null
+    _sum: CrmLeadSourceSumAggregateOutputType | null
+    _min: CrmLeadSourceMinAggregateOutputType | null
+    _max: CrmLeadSourceMaxAggregateOutputType | null
+  }
+
+  type GetCrmLeadSourceGroupByPayload<T extends CrmLeadSourceGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<CrmLeadSourceGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof CrmLeadSourceGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], CrmLeadSourceGroupByOutputType[P]>
+            : GetScalarType<T[P], CrmLeadSourceGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type CrmLeadSourceSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    slug?: boolean
+    name?: boolean
+    enabled?: boolean
+    sortOrder?: boolean
+  }, ExtArgs["result"]["crmLeadSource"]>
+
+  export type CrmLeadSourceSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    slug?: boolean
+    name?: boolean
+    enabled?: boolean
+    sortOrder?: boolean
+  }, ExtArgs["result"]["crmLeadSource"]>
+
+  export type CrmLeadSourceSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    slug?: boolean
+    name?: boolean
+    enabled?: boolean
+    sortOrder?: boolean
+  }, ExtArgs["result"]["crmLeadSource"]>
+
+  export type CrmLeadSourceSelectScalar = {
+    id?: boolean
+    slug?: boolean
+    name?: boolean
+    enabled?: boolean
+    sortOrder?: boolean
+  }
+
+  export type CrmLeadSourceOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "slug" | "name" | "enabled" | "sortOrder", ExtArgs["result"]["crmLeadSource"]>
+
+  export type $CrmLeadSourcePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "CrmLeadSource"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      slug: string
+      name: string
+      enabled: boolean
+      sortOrder: number
+    }, ExtArgs["result"]["crmLeadSource"]>
+    composites: {}
+  }
+
+  type CrmLeadSourceGetPayload<S extends boolean | null | undefined | CrmLeadSourceDefaultArgs> = $Result.GetResult<Prisma.$CrmLeadSourcePayload, S>
+
+  type CrmLeadSourceCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<CrmLeadSourceFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: CrmLeadSourceCountAggregateInputType | true
+    }
+
+  export interface CrmLeadSourceDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['CrmLeadSource'], meta: { name: 'CrmLeadSource' } }
+    /**
+     * Find zero or one CrmLeadSource that matches the filter.
+     * @param {CrmLeadSourceFindUniqueArgs} args - Arguments to find a CrmLeadSource
+     * @example
+     * // Get one CrmLeadSource
+     * const crmLeadSource = await prisma.crmLeadSource.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends CrmLeadSourceFindUniqueArgs>(args: SelectSubset<T, CrmLeadSourceFindUniqueArgs<ExtArgs>>): Prisma__CrmLeadSourceClient<$Result.GetResult<Prisma.$CrmLeadSourcePayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one CrmLeadSource that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {CrmLeadSourceFindUniqueOrThrowArgs} args - Arguments to find a CrmLeadSource
+     * @example
+     * // Get one CrmLeadSource
+     * const crmLeadSource = await prisma.crmLeadSource.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends CrmLeadSourceFindUniqueOrThrowArgs>(args: SelectSubset<T, CrmLeadSourceFindUniqueOrThrowArgs<ExtArgs>>): Prisma__CrmLeadSourceClient<$Result.GetResult<Prisma.$CrmLeadSourcePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first CrmLeadSource that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmLeadSourceFindFirstArgs} args - Arguments to find a CrmLeadSource
+     * @example
+     * // Get one CrmLeadSource
+     * const crmLeadSource = await prisma.crmLeadSource.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends CrmLeadSourceFindFirstArgs>(args?: SelectSubset<T, CrmLeadSourceFindFirstArgs<ExtArgs>>): Prisma__CrmLeadSourceClient<$Result.GetResult<Prisma.$CrmLeadSourcePayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first CrmLeadSource that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmLeadSourceFindFirstOrThrowArgs} args - Arguments to find a CrmLeadSource
+     * @example
+     * // Get one CrmLeadSource
+     * const crmLeadSource = await prisma.crmLeadSource.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends CrmLeadSourceFindFirstOrThrowArgs>(args?: SelectSubset<T, CrmLeadSourceFindFirstOrThrowArgs<ExtArgs>>): Prisma__CrmLeadSourceClient<$Result.GetResult<Prisma.$CrmLeadSourcePayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more CrmLeadSources that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmLeadSourceFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all CrmLeadSources
+     * const crmLeadSources = await prisma.crmLeadSource.findMany()
+     * 
+     * // Get first 10 CrmLeadSources
+     * const crmLeadSources = await prisma.crmLeadSource.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const crmLeadSourceWithIdOnly = await prisma.crmLeadSource.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends CrmLeadSourceFindManyArgs>(args?: SelectSubset<T, CrmLeadSourceFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmLeadSourcePayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a CrmLeadSource.
+     * @param {CrmLeadSourceCreateArgs} args - Arguments to create a CrmLeadSource.
+     * @example
+     * // Create one CrmLeadSource
+     * const CrmLeadSource = await prisma.crmLeadSource.create({
+     *   data: {
+     *     // ... data to create a CrmLeadSource
+     *   }
+     * })
+     * 
+     */
+    create<T extends CrmLeadSourceCreateArgs>(args: SelectSubset<T, CrmLeadSourceCreateArgs<ExtArgs>>): Prisma__CrmLeadSourceClient<$Result.GetResult<Prisma.$CrmLeadSourcePayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many CrmLeadSources.
+     * @param {CrmLeadSourceCreateManyArgs} args - Arguments to create many CrmLeadSources.
+     * @example
+     * // Create many CrmLeadSources
+     * const crmLeadSource = await prisma.crmLeadSource.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends CrmLeadSourceCreateManyArgs>(args?: SelectSubset<T, CrmLeadSourceCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many CrmLeadSources and returns the data saved in the database.
+     * @param {CrmLeadSourceCreateManyAndReturnArgs} args - Arguments to create many CrmLeadSources.
+     * @example
+     * // Create many CrmLeadSources
+     * const crmLeadSource = await prisma.crmLeadSource.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many CrmLeadSources and only return the `id`
+     * const crmLeadSourceWithIdOnly = await prisma.crmLeadSource.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends CrmLeadSourceCreateManyAndReturnArgs>(args?: SelectSubset<T, CrmLeadSourceCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmLeadSourcePayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a CrmLeadSource.
+     * @param {CrmLeadSourceDeleteArgs} args - Arguments to delete one CrmLeadSource.
+     * @example
+     * // Delete one CrmLeadSource
+     * const CrmLeadSource = await prisma.crmLeadSource.delete({
+     *   where: {
+     *     // ... filter to delete one CrmLeadSource
+     *   }
+     * })
+     * 
+     */
+    delete<T extends CrmLeadSourceDeleteArgs>(args: SelectSubset<T, CrmLeadSourceDeleteArgs<ExtArgs>>): Prisma__CrmLeadSourceClient<$Result.GetResult<Prisma.$CrmLeadSourcePayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one CrmLeadSource.
+     * @param {CrmLeadSourceUpdateArgs} args - Arguments to update one CrmLeadSource.
+     * @example
+     * // Update one CrmLeadSource
+     * const crmLeadSource = await prisma.crmLeadSource.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends CrmLeadSourceUpdateArgs>(args: SelectSubset<T, CrmLeadSourceUpdateArgs<ExtArgs>>): Prisma__CrmLeadSourceClient<$Result.GetResult<Prisma.$CrmLeadSourcePayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more CrmLeadSources.
+     * @param {CrmLeadSourceDeleteManyArgs} args - Arguments to filter CrmLeadSources to delete.
+     * @example
+     * // Delete a few CrmLeadSources
+     * const { count } = await prisma.crmLeadSource.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends CrmLeadSourceDeleteManyArgs>(args?: SelectSubset<T, CrmLeadSourceDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more CrmLeadSources.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmLeadSourceUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many CrmLeadSources
+     * const crmLeadSource = await prisma.crmLeadSource.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends CrmLeadSourceUpdateManyArgs>(args: SelectSubset<T, CrmLeadSourceUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more CrmLeadSources and returns the data updated in the database.
+     * @param {CrmLeadSourceUpdateManyAndReturnArgs} args - Arguments to update many CrmLeadSources.
+     * @example
+     * // Update many CrmLeadSources
+     * const crmLeadSource = await prisma.crmLeadSource.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more CrmLeadSources and only return the `id`
+     * const crmLeadSourceWithIdOnly = await prisma.crmLeadSource.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends CrmLeadSourceUpdateManyAndReturnArgs>(args: SelectSubset<T, CrmLeadSourceUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmLeadSourcePayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one CrmLeadSource.
+     * @param {CrmLeadSourceUpsertArgs} args - Arguments to update or create a CrmLeadSource.
+     * @example
+     * // Update or create a CrmLeadSource
+     * const crmLeadSource = await prisma.crmLeadSource.upsert({
+     *   create: {
+     *     // ... data to create a CrmLeadSource
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the CrmLeadSource we want to update
+     *   }
+     * })
+     */
+    upsert<T extends CrmLeadSourceUpsertArgs>(args: SelectSubset<T, CrmLeadSourceUpsertArgs<ExtArgs>>): Prisma__CrmLeadSourceClient<$Result.GetResult<Prisma.$CrmLeadSourcePayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of CrmLeadSources.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmLeadSourceCountArgs} args - Arguments to filter CrmLeadSources to count.
+     * @example
+     * // Count the number of CrmLeadSources
+     * const count = await prisma.crmLeadSource.count({
+     *   where: {
+     *     // ... the filter for the CrmLeadSources we want to count
+     *   }
+     * })
+    **/
+    count<T extends CrmLeadSourceCountArgs>(
+      args?: Subset<T, CrmLeadSourceCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], CrmLeadSourceCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a CrmLeadSource.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmLeadSourceAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends CrmLeadSourceAggregateArgs>(args: Subset<T, CrmLeadSourceAggregateArgs>): Prisma.PrismaPromise<GetCrmLeadSourceAggregateType<T>>
+
+    /**
+     * Group by CrmLeadSource.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmLeadSourceGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends CrmLeadSourceGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: CrmLeadSourceGroupByArgs['orderBy'] }
+        : { orderBy?: CrmLeadSourceGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, CrmLeadSourceGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetCrmLeadSourceGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the CrmLeadSource model
+   */
+  readonly fields: CrmLeadSourceFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for CrmLeadSource.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__CrmLeadSourceClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the CrmLeadSource model
+   */
+  interface CrmLeadSourceFieldRefs {
+    readonly id: FieldRef<"CrmLeadSource", 'String'>
+    readonly slug: FieldRef<"CrmLeadSource", 'String'>
+    readonly name: FieldRef<"CrmLeadSource", 'String'>
+    readonly enabled: FieldRef<"CrmLeadSource", 'Boolean'>
+    readonly sortOrder: FieldRef<"CrmLeadSource", 'Int'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * CrmLeadSource findUnique
+   */
+  export type CrmLeadSourceFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmLeadSource
+     */
+    select?: CrmLeadSourceSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmLeadSource
+     */
+    omit?: CrmLeadSourceOmit<ExtArgs> | null
+    /**
+     * Filter, which CrmLeadSource to fetch.
+     */
+    where: CrmLeadSourceWhereUniqueInput
+  }
+
+  /**
+   * CrmLeadSource findUniqueOrThrow
+   */
+  export type CrmLeadSourceFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmLeadSource
+     */
+    select?: CrmLeadSourceSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmLeadSource
+     */
+    omit?: CrmLeadSourceOmit<ExtArgs> | null
+    /**
+     * Filter, which CrmLeadSource to fetch.
+     */
+    where: CrmLeadSourceWhereUniqueInput
+  }
+
+  /**
+   * CrmLeadSource findFirst
+   */
+  export type CrmLeadSourceFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmLeadSource
+     */
+    select?: CrmLeadSourceSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmLeadSource
+     */
+    omit?: CrmLeadSourceOmit<ExtArgs> | null
+    /**
+     * Filter, which CrmLeadSource to fetch.
+     */
+    where?: CrmLeadSourceWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmLeadSources to fetch.
+     */
+    orderBy?: CrmLeadSourceOrderByWithRelationInput | CrmLeadSourceOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for CrmLeadSources.
+     */
+    cursor?: CrmLeadSourceWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmLeadSources from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmLeadSources.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CrmLeadSources.
+     */
+    distinct?: CrmLeadSourceScalarFieldEnum | CrmLeadSourceScalarFieldEnum[]
+  }
+
+  /**
+   * CrmLeadSource findFirstOrThrow
+   */
+  export type CrmLeadSourceFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmLeadSource
+     */
+    select?: CrmLeadSourceSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmLeadSource
+     */
+    omit?: CrmLeadSourceOmit<ExtArgs> | null
+    /**
+     * Filter, which CrmLeadSource to fetch.
+     */
+    where?: CrmLeadSourceWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmLeadSources to fetch.
+     */
+    orderBy?: CrmLeadSourceOrderByWithRelationInput | CrmLeadSourceOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for CrmLeadSources.
+     */
+    cursor?: CrmLeadSourceWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmLeadSources from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmLeadSources.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CrmLeadSources.
+     */
+    distinct?: CrmLeadSourceScalarFieldEnum | CrmLeadSourceScalarFieldEnum[]
+  }
+
+  /**
+   * CrmLeadSource findMany
+   */
+  export type CrmLeadSourceFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmLeadSource
+     */
+    select?: CrmLeadSourceSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmLeadSource
+     */
+    omit?: CrmLeadSourceOmit<ExtArgs> | null
+    /**
+     * Filter, which CrmLeadSources to fetch.
+     */
+    where?: CrmLeadSourceWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmLeadSources to fetch.
+     */
+    orderBy?: CrmLeadSourceOrderByWithRelationInput | CrmLeadSourceOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing CrmLeadSources.
+     */
+    cursor?: CrmLeadSourceWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmLeadSources from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmLeadSources.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CrmLeadSources.
+     */
+    distinct?: CrmLeadSourceScalarFieldEnum | CrmLeadSourceScalarFieldEnum[]
+  }
+
+  /**
+   * CrmLeadSource create
+   */
+  export type CrmLeadSourceCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmLeadSource
+     */
+    select?: CrmLeadSourceSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmLeadSource
+     */
+    omit?: CrmLeadSourceOmit<ExtArgs> | null
+    /**
+     * The data needed to create a CrmLeadSource.
+     */
+    data: XOR<CrmLeadSourceCreateInput, CrmLeadSourceUncheckedCreateInput>
+  }
+
+  /**
+   * CrmLeadSource createMany
+   */
+  export type CrmLeadSourceCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many CrmLeadSources.
+     */
+    data: CrmLeadSourceCreateManyInput | CrmLeadSourceCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * CrmLeadSource createManyAndReturn
+   */
+  export type CrmLeadSourceCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmLeadSource
+     */
+    select?: CrmLeadSourceSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmLeadSource
+     */
+    omit?: CrmLeadSourceOmit<ExtArgs> | null
+    /**
+     * The data used to create many CrmLeadSources.
+     */
+    data: CrmLeadSourceCreateManyInput | CrmLeadSourceCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * CrmLeadSource update
+   */
+  export type CrmLeadSourceUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmLeadSource
+     */
+    select?: CrmLeadSourceSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmLeadSource
+     */
+    omit?: CrmLeadSourceOmit<ExtArgs> | null
+    /**
+     * The data needed to update a CrmLeadSource.
+     */
+    data: XOR<CrmLeadSourceUpdateInput, CrmLeadSourceUncheckedUpdateInput>
+    /**
+     * Choose, which CrmLeadSource to update.
+     */
+    where: CrmLeadSourceWhereUniqueInput
+  }
+
+  /**
+   * CrmLeadSource updateMany
+   */
+  export type CrmLeadSourceUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update CrmLeadSources.
+     */
+    data: XOR<CrmLeadSourceUpdateManyMutationInput, CrmLeadSourceUncheckedUpdateManyInput>
+    /**
+     * Filter which CrmLeadSources to update
+     */
+    where?: CrmLeadSourceWhereInput
+    /**
+     * Limit how many CrmLeadSources to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * CrmLeadSource updateManyAndReturn
+   */
+  export type CrmLeadSourceUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmLeadSource
+     */
+    select?: CrmLeadSourceSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmLeadSource
+     */
+    omit?: CrmLeadSourceOmit<ExtArgs> | null
+    /**
+     * The data used to update CrmLeadSources.
+     */
+    data: XOR<CrmLeadSourceUpdateManyMutationInput, CrmLeadSourceUncheckedUpdateManyInput>
+    /**
+     * Filter which CrmLeadSources to update
+     */
+    where?: CrmLeadSourceWhereInput
+    /**
+     * Limit how many CrmLeadSources to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * CrmLeadSource upsert
+   */
+  export type CrmLeadSourceUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmLeadSource
+     */
+    select?: CrmLeadSourceSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmLeadSource
+     */
+    omit?: CrmLeadSourceOmit<ExtArgs> | null
+    /**
+     * The filter to search for the CrmLeadSource to update in case it exists.
+     */
+    where: CrmLeadSourceWhereUniqueInput
+    /**
+     * In case the CrmLeadSource found by the `where` argument doesn't exist, create a new CrmLeadSource with this data.
+     */
+    create: XOR<CrmLeadSourceCreateInput, CrmLeadSourceUncheckedCreateInput>
+    /**
+     * In case the CrmLeadSource was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<CrmLeadSourceUpdateInput, CrmLeadSourceUncheckedUpdateInput>
+  }
+
+  /**
+   * CrmLeadSource delete
+   */
+  export type CrmLeadSourceDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmLeadSource
+     */
+    select?: CrmLeadSourceSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmLeadSource
+     */
+    omit?: CrmLeadSourceOmit<ExtArgs> | null
+    /**
+     * Filter which CrmLeadSource to delete.
+     */
+    where: CrmLeadSourceWhereUniqueInput
+  }
+
+  /**
+   * CrmLeadSource deleteMany
+   */
+  export type CrmLeadSourceDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which CrmLeadSources to delete
+     */
+    where?: CrmLeadSourceWhereInput
+    /**
+     * Limit how many CrmLeadSources to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * CrmLeadSource without action
+   */
+  export type CrmLeadSourceDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmLeadSource
+     */
+    select?: CrmLeadSourceSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmLeadSource
+     */
+    omit?: CrmLeadSourceOmit<ExtArgs> | null
+  }
+
+
+  /**
+   * Model CrmStage
+   */
+
+  export type AggregateCrmStage = {
+    _count: CrmStageCountAggregateOutputType | null
+    _avg: CrmStageAvgAggregateOutputType | null
+    _sum: CrmStageSumAggregateOutputType | null
+    _min: CrmStageMinAggregateOutputType | null
+    _max: CrmStageMaxAggregateOutputType | null
+  }
+
+  export type CrmStageAvgAggregateOutputType = {
+    probability: number | null
+    sortOrder: number | null
+  }
+
+  export type CrmStageSumAggregateOutputType = {
+    probability: number | null
+    sortOrder: number | null
+  }
+
+  export type CrmStageMinAggregateOutputType = {
+    id: string | null
+    slug: string | null
+    name: string | null
+    color: string | null
+    probability: number | null
+    enabled: boolean | null
+    sortOrder: number | null
+    isSystem: boolean | null
+  }
+
+  export type CrmStageMaxAggregateOutputType = {
+    id: string | null
+    slug: string | null
+    name: string | null
+    color: string | null
+    probability: number | null
+    enabled: boolean | null
+    sortOrder: number | null
+    isSystem: boolean | null
+  }
+
+  export type CrmStageCountAggregateOutputType = {
+    id: number
+    slug: number
+    name: number
+    color: number
+    probability: number
+    enabled: number
+    sortOrder: number
+    isSystem: number
+    _all: number
+  }
+
+
+  export type CrmStageAvgAggregateInputType = {
+    probability?: true
+    sortOrder?: true
+  }
+
+  export type CrmStageSumAggregateInputType = {
+    probability?: true
+    sortOrder?: true
+  }
+
+  export type CrmStageMinAggregateInputType = {
+    id?: true
+    slug?: true
+    name?: true
+    color?: true
+    probability?: true
+    enabled?: true
+    sortOrder?: true
+    isSystem?: true
+  }
+
+  export type CrmStageMaxAggregateInputType = {
+    id?: true
+    slug?: true
+    name?: true
+    color?: true
+    probability?: true
+    enabled?: true
+    sortOrder?: true
+    isSystem?: true
+  }
+
+  export type CrmStageCountAggregateInputType = {
+    id?: true
+    slug?: true
+    name?: true
+    color?: true
+    probability?: true
+    enabled?: true
+    sortOrder?: true
+    isSystem?: true
+    _all?: true
+  }
+
+  export type CrmStageAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which CrmStage to aggregate.
+     */
+    where?: CrmStageWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmStages to fetch.
+     */
+    orderBy?: CrmStageOrderByWithRelationInput | CrmStageOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: CrmStageWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmStages from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmStages.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned CrmStages
+    **/
+    _count?: true | CrmStageCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: CrmStageAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: CrmStageSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: CrmStageMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: CrmStageMaxAggregateInputType
+  }
+
+  export type GetCrmStageAggregateType<T extends CrmStageAggregateArgs> = {
+        [P in keyof T & keyof AggregateCrmStage]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateCrmStage[P]>
+      : GetScalarType<T[P], AggregateCrmStage[P]>
+  }
+
+
+
+
+  export type CrmStageGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: CrmStageWhereInput
+    orderBy?: CrmStageOrderByWithAggregationInput | CrmStageOrderByWithAggregationInput[]
+    by: CrmStageScalarFieldEnum[] | CrmStageScalarFieldEnum
+    having?: CrmStageScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: CrmStageCountAggregateInputType | true
+    _avg?: CrmStageAvgAggregateInputType
+    _sum?: CrmStageSumAggregateInputType
+    _min?: CrmStageMinAggregateInputType
+    _max?: CrmStageMaxAggregateInputType
+  }
+
+  export type CrmStageGroupByOutputType = {
+    id: string
+    slug: string
+    name: string
+    color: string
+    probability: number
+    enabled: boolean
+    sortOrder: number
+    isSystem: boolean
+    _count: CrmStageCountAggregateOutputType | null
+    _avg: CrmStageAvgAggregateOutputType | null
+    _sum: CrmStageSumAggregateOutputType | null
+    _min: CrmStageMinAggregateOutputType | null
+    _max: CrmStageMaxAggregateOutputType | null
+  }
+
+  type GetCrmStageGroupByPayload<T extends CrmStageGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<CrmStageGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof CrmStageGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], CrmStageGroupByOutputType[P]>
+            : GetScalarType<T[P], CrmStageGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type CrmStageSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    slug?: boolean
+    name?: boolean
+    color?: boolean
+    probability?: boolean
+    enabled?: boolean
+    sortOrder?: boolean
+    isSystem?: boolean
+  }, ExtArgs["result"]["crmStage"]>
+
+  export type CrmStageSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    slug?: boolean
+    name?: boolean
+    color?: boolean
+    probability?: boolean
+    enabled?: boolean
+    sortOrder?: boolean
+    isSystem?: boolean
+  }, ExtArgs["result"]["crmStage"]>
+
+  export type CrmStageSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    slug?: boolean
+    name?: boolean
+    color?: boolean
+    probability?: boolean
+    enabled?: boolean
+    sortOrder?: boolean
+    isSystem?: boolean
+  }, ExtArgs["result"]["crmStage"]>
+
+  export type CrmStageSelectScalar = {
+    id?: boolean
+    slug?: boolean
+    name?: boolean
+    color?: boolean
+    probability?: boolean
+    enabled?: boolean
+    sortOrder?: boolean
+    isSystem?: boolean
+  }
+
+  export type CrmStageOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "slug" | "name" | "color" | "probability" | "enabled" | "sortOrder" | "isSystem", ExtArgs["result"]["crmStage"]>
+
+  export type $CrmStagePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "CrmStage"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      slug: string
+      name: string
+      color: string
+      probability: number
+      enabled: boolean
+      sortOrder: number
+      /**
+       * * Sembradas iniciales: no eliminar del catálogo si hay registros con esa etapa
+       */
+      isSystem: boolean
+    }, ExtArgs["result"]["crmStage"]>
+    composites: {}
+  }
+
+  type CrmStageGetPayload<S extends boolean | null | undefined | CrmStageDefaultArgs> = $Result.GetResult<Prisma.$CrmStagePayload, S>
+
+  type CrmStageCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<CrmStageFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: CrmStageCountAggregateInputType | true
+    }
+
+  export interface CrmStageDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['CrmStage'], meta: { name: 'CrmStage' } }
+    /**
+     * Find zero or one CrmStage that matches the filter.
+     * @param {CrmStageFindUniqueArgs} args - Arguments to find a CrmStage
+     * @example
+     * // Get one CrmStage
+     * const crmStage = await prisma.crmStage.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends CrmStageFindUniqueArgs>(args: SelectSubset<T, CrmStageFindUniqueArgs<ExtArgs>>): Prisma__CrmStageClient<$Result.GetResult<Prisma.$CrmStagePayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one CrmStage that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {CrmStageFindUniqueOrThrowArgs} args - Arguments to find a CrmStage
+     * @example
+     * // Get one CrmStage
+     * const crmStage = await prisma.crmStage.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends CrmStageFindUniqueOrThrowArgs>(args: SelectSubset<T, CrmStageFindUniqueOrThrowArgs<ExtArgs>>): Prisma__CrmStageClient<$Result.GetResult<Prisma.$CrmStagePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first CrmStage that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmStageFindFirstArgs} args - Arguments to find a CrmStage
+     * @example
+     * // Get one CrmStage
+     * const crmStage = await prisma.crmStage.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends CrmStageFindFirstArgs>(args?: SelectSubset<T, CrmStageFindFirstArgs<ExtArgs>>): Prisma__CrmStageClient<$Result.GetResult<Prisma.$CrmStagePayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first CrmStage that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmStageFindFirstOrThrowArgs} args - Arguments to find a CrmStage
+     * @example
+     * // Get one CrmStage
+     * const crmStage = await prisma.crmStage.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends CrmStageFindFirstOrThrowArgs>(args?: SelectSubset<T, CrmStageFindFirstOrThrowArgs<ExtArgs>>): Prisma__CrmStageClient<$Result.GetResult<Prisma.$CrmStagePayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more CrmStages that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmStageFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all CrmStages
+     * const crmStages = await prisma.crmStage.findMany()
+     * 
+     * // Get first 10 CrmStages
+     * const crmStages = await prisma.crmStage.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const crmStageWithIdOnly = await prisma.crmStage.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends CrmStageFindManyArgs>(args?: SelectSubset<T, CrmStageFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmStagePayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a CrmStage.
+     * @param {CrmStageCreateArgs} args - Arguments to create a CrmStage.
+     * @example
+     * // Create one CrmStage
+     * const CrmStage = await prisma.crmStage.create({
+     *   data: {
+     *     // ... data to create a CrmStage
+     *   }
+     * })
+     * 
+     */
+    create<T extends CrmStageCreateArgs>(args: SelectSubset<T, CrmStageCreateArgs<ExtArgs>>): Prisma__CrmStageClient<$Result.GetResult<Prisma.$CrmStagePayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many CrmStages.
+     * @param {CrmStageCreateManyArgs} args - Arguments to create many CrmStages.
+     * @example
+     * // Create many CrmStages
+     * const crmStage = await prisma.crmStage.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends CrmStageCreateManyArgs>(args?: SelectSubset<T, CrmStageCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many CrmStages and returns the data saved in the database.
+     * @param {CrmStageCreateManyAndReturnArgs} args - Arguments to create many CrmStages.
+     * @example
+     * // Create many CrmStages
+     * const crmStage = await prisma.crmStage.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many CrmStages and only return the `id`
+     * const crmStageWithIdOnly = await prisma.crmStage.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends CrmStageCreateManyAndReturnArgs>(args?: SelectSubset<T, CrmStageCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmStagePayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a CrmStage.
+     * @param {CrmStageDeleteArgs} args - Arguments to delete one CrmStage.
+     * @example
+     * // Delete one CrmStage
+     * const CrmStage = await prisma.crmStage.delete({
+     *   where: {
+     *     // ... filter to delete one CrmStage
+     *   }
+     * })
+     * 
+     */
+    delete<T extends CrmStageDeleteArgs>(args: SelectSubset<T, CrmStageDeleteArgs<ExtArgs>>): Prisma__CrmStageClient<$Result.GetResult<Prisma.$CrmStagePayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one CrmStage.
+     * @param {CrmStageUpdateArgs} args - Arguments to update one CrmStage.
+     * @example
+     * // Update one CrmStage
+     * const crmStage = await prisma.crmStage.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends CrmStageUpdateArgs>(args: SelectSubset<T, CrmStageUpdateArgs<ExtArgs>>): Prisma__CrmStageClient<$Result.GetResult<Prisma.$CrmStagePayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more CrmStages.
+     * @param {CrmStageDeleteManyArgs} args - Arguments to filter CrmStages to delete.
+     * @example
+     * // Delete a few CrmStages
+     * const { count } = await prisma.crmStage.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends CrmStageDeleteManyArgs>(args?: SelectSubset<T, CrmStageDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more CrmStages.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmStageUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many CrmStages
+     * const crmStage = await prisma.crmStage.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends CrmStageUpdateManyArgs>(args: SelectSubset<T, CrmStageUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more CrmStages and returns the data updated in the database.
+     * @param {CrmStageUpdateManyAndReturnArgs} args - Arguments to update many CrmStages.
+     * @example
+     * // Update many CrmStages
+     * const crmStage = await prisma.crmStage.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more CrmStages and only return the `id`
+     * const crmStageWithIdOnly = await prisma.crmStage.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends CrmStageUpdateManyAndReturnArgs>(args: SelectSubset<T, CrmStageUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmStagePayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one CrmStage.
+     * @param {CrmStageUpsertArgs} args - Arguments to update or create a CrmStage.
+     * @example
+     * // Update or create a CrmStage
+     * const crmStage = await prisma.crmStage.upsert({
+     *   create: {
+     *     // ... data to create a CrmStage
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the CrmStage we want to update
+     *   }
+     * })
+     */
+    upsert<T extends CrmStageUpsertArgs>(args: SelectSubset<T, CrmStageUpsertArgs<ExtArgs>>): Prisma__CrmStageClient<$Result.GetResult<Prisma.$CrmStagePayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of CrmStages.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmStageCountArgs} args - Arguments to filter CrmStages to count.
+     * @example
+     * // Count the number of CrmStages
+     * const count = await prisma.crmStage.count({
+     *   where: {
+     *     // ... the filter for the CrmStages we want to count
+     *   }
+     * })
+    **/
+    count<T extends CrmStageCountArgs>(
+      args?: Subset<T, CrmStageCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], CrmStageCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a CrmStage.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmStageAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends CrmStageAggregateArgs>(args: Subset<T, CrmStageAggregateArgs>): Prisma.PrismaPromise<GetCrmStageAggregateType<T>>
+
+    /**
+     * Group by CrmStage.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmStageGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends CrmStageGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: CrmStageGroupByArgs['orderBy'] }
+        : { orderBy?: CrmStageGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, CrmStageGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetCrmStageGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the CrmStage model
+   */
+  readonly fields: CrmStageFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for CrmStage.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__CrmStageClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the CrmStage model
+   */
+  interface CrmStageFieldRefs {
+    readonly id: FieldRef<"CrmStage", 'String'>
+    readonly slug: FieldRef<"CrmStage", 'String'>
+    readonly name: FieldRef<"CrmStage", 'String'>
+    readonly color: FieldRef<"CrmStage", 'String'>
+    readonly probability: FieldRef<"CrmStage", 'Int'>
+    readonly enabled: FieldRef<"CrmStage", 'Boolean'>
+    readonly sortOrder: FieldRef<"CrmStage", 'Int'>
+    readonly isSystem: FieldRef<"CrmStage", 'Boolean'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * CrmStage findUnique
+   */
+  export type CrmStageFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmStage
+     */
+    select?: CrmStageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmStage
+     */
+    omit?: CrmStageOmit<ExtArgs> | null
+    /**
+     * Filter, which CrmStage to fetch.
+     */
+    where: CrmStageWhereUniqueInput
+  }
+
+  /**
+   * CrmStage findUniqueOrThrow
+   */
+  export type CrmStageFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmStage
+     */
+    select?: CrmStageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmStage
+     */
+    omit?: CrmStageOmit<ExtArgs> | null
+    /**
+     * Filter, which CrmStage to fetch.
+     */
+    where: CrmStageWhereUniqueInput
+  }
+
+  /**
+   * CrmStage findFirst
+   */
+  export type CrmStageFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmStage
+     */
+    select?: CrmStageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmStage
+     */
+    omit?: CrmStageOmit<ExtArgs> | null
+    /**
+     * Filter, which CrmStage to fetch.
+     */
+    where?: CrmStageWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmStages to fetch.
+     */
+    orderBy?: CrmStageOrderByWithRelationInput | CrmStageOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for CrmStages.
+     */
+    cursor?: CrmStageWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmStages from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmStages.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CrmStages.
+     */
+    distinct?: CrmStageScalarFieldEnum | CrmStageScalarFieldEnum[]
+  }
+
+  /**
+   * CrmStage findFirstOrThrow
+   */
+  export type CrmStageFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmStage
+     */
+    select?: CrmStageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmStage
+     */
+    omit?: CrmStageOmit<ExtArgs> | null
+    /**
+     * Filter, which CrmStage to fetch.
+     */
+    where?: CrmStageWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmStages to fetch.
+     */
+    orderBy?: CrmStageOrderByWithRelationInput | CrmStageOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for CrmStages.
+     */
+    cursor?: CrmStageWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmStages from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmStages.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CrmStages.
+     */
+    distinct?: CrmStageScalarFieldEnum | CrmStageScalarFieldEnum[]
+  }
+
+  /**
+   * CrmStage findMany
+   */
+  export type CrmStageFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmStage
+     */
+    select?: CrmStageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmStage
+     */
+    omit?: CrmStageOmit<ExtArgs> | null
+    /**
+     * Filter, which CrmStages to fetch.
+     */
+    where?: CrmStageWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmStages to fetch.
+     */
+    orderBy?: CrmStageOrderByWithRelationInput | CrmStageOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing CrmStages.
+     */
+    cursor?: CrmStageWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmStages from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmStages.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CrmStages.
+     */
+    distinct?: CrmStageScalarFieldEnum | CrmStageScalarFieldEnum[]
+  }
+
+  /**
+   * CrmStage create
+   */
+  export type CrmStageCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmStage
+     */
+    select?: CrmStageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmStage
+     */
+    omit?: CrmStageOmit<ExtArgs> | null
+    /**
+     * The data needed to create a CrmStage.
+     */
+    data: XOR<CrmStageCreateInput, CrmStageUncheckedCreateInput>
+  }
+
+  /**
+   * CrmStage createMany
+   */
+  export type CrmStageCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many CrmStages.
+     */
+    data: CrmStageCreateManyInput | CrmStageCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * CrmStage createManyAndReturn
+   */
+  export type CrmStageCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmStage
+     */
+    select?: CrmStageSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmStage
+     */
+    omit?: CrmStageOmit<ExtArgs> | null
+    /**
+     * The data used to create many CrmStages.
+     */
+    data: CrmStageCreateManyInput | CrmStageCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * CrmStage update
+   */
+  export type CrmStageUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmStage
+     */
+    select?: CrmStageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmStage
+     */
+    omit?: CrmStageOmit<ExtArgs> | null
+    /**
+     * The data needed to update a CrmStage.
+     */
+    data: XOR<CrmStageUpdateInput, CrmStageUncheckedUpdateInput>
+    /**
+     * Choose, which CrmStage to update.
+     */
+    where: CrmStageWhereUniqueInput
+  }
+
+  /**
+   * CrmStage updateMany
+   */
+  export type CrmStageUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update CrmStages.
+     */
+    data: XOR<CrmStageUpdateManyMutationInput, CrmStageUncheckedUpdateManyInput>
+    /**
+     * Filter which CrmStages to update
+     */
+    where?: CrmStageWhereInput
+    /**
+     * Limit how many CrmStages to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * CrmStage updateManyAndReturn
+   */
+  export type CrmStageUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmStage
+     */
+    select?: CrmStageSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmStage
+     */
+    omit?: CrmStageOmit<ExtArgs> | null
+    /**
+     * The data used to update CrmStages.
+     */
+    data: XOR<CrmStageUpdateManyMutationInput, CrmStageUncheckedUpdateManyInput>
+    /**
+     * Filter which CrmStages to update
+     */
+    where?: CrmStageWhereInput
+    /**
+     * Limit how many CrmStages to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * CrmStage upsert
+   */
+  export type CrmStageUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmStage
+     */
+    select?: CrmStageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmStage
+     */
+    omit?: CrmStageOmit<ExtArgs> | null
+    /**
+     * The filter to search for the CrmStage to update in case it exists.
+     */
+    where: CrmStageWhereUniqueInput
+    /**
+     * In case the CrmStage found by the `where` argument doesn't exist, create a new CrmStage with this data.
+     */
+    create: XOR<CrmStageCreateInput, CrmStageUncheckedCreateInput>
+    /**
+     * In case the CrmStage was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<CrmStageUpdateInput, CrmStageUncheckedUpdateInput>
+  }
+
+  /**
+   * CrmStage delete
+   */
+  export type CrmStageDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmStage
+     */
+    select?: CrmStageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmStage
+     */
+    omit?: CrmStageOmit<ExtArgs> | null
+    /**
+     * Filter which CrmStage to delete.
+     */
+    where: CrmStageWhereUniqueInput
+  }
+
+  /**
+   * CrmStage deleteMany
+   */
+  export type CrmStageDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which CrmStages to delete
+     */
+    where?: CrmStageWhereInput
+    /**
+     * Limit how many CrmStages to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * CrmStage without action
+   */
+  export type CrmStageDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmStage
+     */
+    select?: CrmStageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmStage
+     */
+    omit?: CrmStageOmit<ExtArgs> | null
+  }
+
+
+  /**
+   * Model CrmPriority
+   */
+
+  export type AggregateCrmPriority = {
+    _count: CrmPriorityCountAggregateOutputType | null
+    _avg: CrmPriorityAvgAggregateOutputType | null
+    _sum: CrmPrioritySumAggregateOutputType | null
+    _min: CrmPriorityMinAggregateOutputType | null
+    _max: CrmPriorityMaxAggregateOutputType | null
+  }
+
+  export type CrmPriorityAvgAggregateOutputType = {
+    sortOrder: number | null
+  }
+
+  export type CrmPrioritySumAggregateOutputType = {
+    sortOrder: number | null
+  }
+
+  export type CrmPriorityMinAggregateOutputType = {
+    id: string | null
+    slug: string | null
+    name: string | null
+    color: string | null
+    description: string | null
+    enabled: boolean | null
+    sortOrder: number | null
+  }
+
+  export type CrmPriorityMaxAggregateOutputType = {
+    id: string | null
+    slug: string | null
+    name: string | null
+    color: string | null
+    description: string | null
+    enabled: boolean | null
+    sortOrder: number | null
+  }
+
+  export type CrmPriorityCountAggregateOutputType = {
+    id: number
+    slug: number
+    name: number
+    color: number
+    description: number
+    enabled: number
+    sortOrder: number
+    _all: number
+  }
+
+
+  export type CrmPriorityAvgAggregateInputType = {
+    sortOrder?: true
+  }
+
+  export type CrmPrioritySumAggregateInputType = {
+    sortOrder?: true
+  }
+
+  export type CrmPriorityMinAggregateInputType = {
+    id?: true
+    slug?: true
+    name?: true
+    color?: true
+    description?: true
+    enabled?: true
+    sortOrder?: true
+  }
+
+  export type CrmPriorityMaxAggregateInputType = {
+    id?: true
+    slug?: true
+    name?: true
+    color?: true
+    description?: true
+    enabled?: true
+    sortOrder?: true
+  }
+
+  export type CrmPriorityCountAggregateInputType = {
+    id?: true
+    slug?: true
+    name?: true
+    color?: true
+    description?: true
+    enabled?: true
+    sortOrder?: true
+    _all?: true
+  }
+
+  export type CrmPriorityAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which CrmPriority to aggregate.
+     */
+    where?: CrmPriorityWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmPriorities to fetch.
+     */
+    orderBy?: CrmPriorityOrderByWithRelationInput | CrmPriorityOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: CrmPriorityWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmPriorities from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmPriorities.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned CrmPriorities
+    **/
+    _count?: true | CrmPriorityCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: CrmPriorityAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: CrmPrioritySumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: CrmPriorityMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: CrmPriorityMaxAggregateInputType
+  }
+
+  export type GetCrmPriorityAggregateType<T extends CrmPriorityAggregateArgs> = {
+        [P in keyof T & keyof AggregateCrmPriority]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateCrmPriority[P]>
+      : GetScalarType<T[P], AggregateCrmPriority[P]>
+  }
+
+
+
+
+  export type CrmPriorityGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: CrmPriorityWhereInput
+    orderBy?: CrmPriorityOrderByWithAggregationInput | CrmPriorityOrderByWithAggregationInput[]
+    by: CrmPriorityScalarFieldEnum[] | CrmPriorityScalarFieldEnum
+    having?: CrmPriorityScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: CrmPriorityCountAggregateInputType | true
+    _avg?: CrmPriorityAvgAggregateInputType
+    _sum?: CrmPrioritySumAggregateInputType
+    _min?: CrmPriorityMinAggregateInputType
+    _max?: CrmPriorityMaxAggregateInputType
+  }
+
+  export type CrmPriorityGroupByOutputType = {
+    id: string
+    slug: string
+    name: string
+    color: string
+    description: string
+    enabled: boolean
+    sortOrder: number
+    _count: CrmPriorityCountAggregateOutputType | null
+    _avg: CrmPriorityAvgAggregateOutputType | null
+    _sum: CrmPrioritySumAggregateOutputType | null
+    _min: CrmPriorityMinAggregateOutputType | null
+    _max: CrmPriorityMaxAggregateOutputType | null
+  }
+
+  type GetCrmPriorityGroupByPayload<T extends CrmPriorityGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<CrmPriorityGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof CrmPriorityGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], CrmPriorityGroupByOutputType[P]>
+            : GetScalarType<T[P], CrmPriorityGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type CrmPrioritySelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    slug?: boolean
+    name?: boolean
+    color?: boolean
+    description?: boolean
+    enabled?: boolean
+    sortOrder?: boolean
+  }, ExtArgs["result"]["crmPriority"]>
+
+  export type CrmPrioritySelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    slug?: boolean
+    name?: boolean
+    color?: boolean
+    description?: boolean
+    enabled?: boolean
+    sortOrder?: boolean
+  }, ExtArgs["result"]["crmPriority"]>
+
+  export type CrmPrioritySelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    slug?: boolean
+    name?: boolean
+    color?: boolean
+    description?: boolean
+    enabled?: boolean
+    sortOrder?: boolean
+  }, ExtArgs["result"]["crmPriority"]>
+
+  export type CrmPrioritySelectScalar = {
+    id?: boolean
+    slug?: boolean
+    name?: boolean
+    color?: boolean
+    description?: boolean
+    enabled?: boolean
+    sortOrder?: boolean
+  }
+
+  export type CrmPriorityOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "slug" | "name" | "color" | "description" | "enabled" | "sortOrder", ExtArgs["result"]["crmPriority"]>
+
+  export type $CrmPriorityPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "CrmPriority"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      slug: string
+      name: string
+      color: string
+      description: string
+      enabled: boolean
+      sortOrder: number
+    }, ExtArgs["result"]["crmPriority"]>
+    composites: {}
+  }
+
+  type CrmPriorityGetPayload<S extends boolean | null | undefined | CrmPriorityDefaultArgs> = $Result.GetResult<Prisma.$CrmPriorityPayload, S>
+
+  type CrmPriorityCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<CrmPriorityFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: CrmPriorityCountAggregateInputType | true
+    }
+
+  export interface CrmPriorityDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['CrmPriority'], meta: { name: 'CrmPriority' } }
+    /**
+     * Find zero or one CrmPriority that matches the filter.
+     * @param {CrmPriorityFindUniqueArgs} args - Arguments to find a CrmPriority
+     * @example
+     * // Get one CrmPriority
+     * const crmPriority = await prisma.crmPriority.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends CrmPriorityFindUniqueArgs>(args: SelectSubset<T, CrmPriorityFindUniqueArgs<ExtArgs>>): Prisma__CrmPriorityClient<$Result.GetResult<Prisma.$CrmPriorityPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one CrmPriority that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {CrmPriorityFindUniqueOrThrowArgs} args - Arguments to find a CrmPriority
+     * @example
+     * // Get one CrmPriority
+     * const crmPriority = await prisma.crmPriority.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends CrmPriorityFindUniqueOrThrowArgs>(args: SelectSubset<T, CrmPriorityFindUniqueOrThrowArgs<ExtArgs>>): Prisma__CrmPriorityClient<$Result.GetResult<Prisma.$CrmPriorityPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first CrmPriority that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmPriorityFindFirstArgs} args - Arguments to find a CrmPriority
+     * @example
+     * // Get one CrmPriority
+     * const crmPriority = await prisma.crmPriority.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends CrmPriorityFindFirstArgs>(args?: SelectSubset<T, CrmPriorityFindFirstArgs<ExtArgs>>): Prisma__CrmPriorityClient<$Result.GetResult<Prisma.$CrmPriorityPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first CrmPriority that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmPriorityFindFirstOrThrowArgs} args - Arguments to find a CrmPriority
+     * @example
+     * // Get one CrmPriority
+     * const crmPriority = await prisma.crmPriority.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends CrmPriorityFindFirstOrThrowArgs>(args?: SelectSubset<T, CrmPriorityFindFirstOrThrowArgs<ExtArgs>>): Prisma__CrmPriorityClient<$Result.GetResult<Prisma.$CrmPriorityPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more CrmPriorities that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmPriorityFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all CrmPriorities
+     * const crmPriorities = await prisma.crmPriority.findMany()
+     * 
+     * // Get first 10 CrmPriorities
+     * const crmPriorities = await prisma.crmPriority.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const crmPriorityWithIdOnly = await prisma.crmPriority.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends CrmPriorityFindManyArgs>(args?: SelectSubset<T, CrmPriorityFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmPriorityPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a CrmPriority.
+     * @param {CrmPriorityCreateArgs} args - Arguments to create a CrmPriority.
+     * @example
+     * // Create one CrmPriority
+     * const CrmPriority = await prisma.crmPriority.create({
+     *   data: {
+     *     // ... data to create a CrmPriority
+     *   }
+     * })
+     * 
+     */
+    create<T extends CrmPriorityCreateArgs>(args: SelectSubset<T, CrmPriorityCreateArgs<ExtArgs>>): Prisma__CrmPriorityClient<$Result.GetResult<Prisma.$CrmPriorityPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many CrmPriorities.
+     * @param {CrmPriorityCreateManyArgs} args - Arguments to create many CrmPriorities.
+     * @example
+     * // Create many CrmPriorities
+     * const crmPriority = await prisma.crmPriority.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends CrmPriorityCreateManyArgs>(args?: SelectSubset<T, CrmPriorityCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many CrmPriorities and returns the data saved in the database.
+     * @param {CrmPriorityCreateManyAndReturnArgs} args - Arguments to create many CrmPriorities.
+     * @example
+     * // Create many CrmPriorities
+     * const crmPriority = await prisma.crmPriority.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many CrmPriorities and only return the `id`
+     * const crmPriorityWithIdOnly = await prisma.crmPriority.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends CrmPriorityCreateManyAndReturnArgs>(args?: SelectSubset<T, CrmPriorityCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmPriorityPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a CrmPriority.
+     * @param {CrmPriorityDeleteArgs} args - Arguments to delete one CrmPriority.
+     * @example
+     * // Delete one CrmPriority
+     * const CrmPriority = await prisma.crmPriority.delete({
+     *   where: {
+     *     // ... filter to delete one CrmPriority
+     *   }
+     * })
+     * 
+     */
+    delete<T extends CrmPriorityDeleteArgs>(args: SelectSubset<T, CrmPriorityDeleteArgs<ExtArgs>>): Prisma__CrmPriorityClient<$Result.GetResult<Prisma.$CrmPriorityPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one CrmPriority.
+     * @param {CrmPriorityUpdateArgs} args - Arguments to update one CrmPriority.
+     * @example
+     * // Update one CrmPriority
+     * const crmPriority = await prisma.crmPriority.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends CrmPriorityUpdateArgs>(args: SelectSubset<T, CrmPriorityUpdateArgs<ExtArgs>>): Prisma__CrmPriorityClient<$Result.GetResult<Prisma.$CrmPriorityPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more CrmPriorities.
+     * @param {CrmPriorityDeleteManyArgs} args - Arguments to filter CrmPriorities to delete.
+     * @example
+     * // Delete a few CrmPriorities
+     * const { count } = await prisma.crmPriority.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends CrmPriorityDeleteManyArgs>(args?: SelectSubset<T, CrmPriorityDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more CrmPriorities.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmPriorityUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many CrmPriorities
+     * const crmPriority = await prisma.crmPriority.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends CrmPriorityUpdateManyArgs>(args: SelectSubset<T, CrmPriorityUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more CrmPriorities and returns the data updated in the database.
+     * @param {CrmPriorityUpdateManyAndReturnArgs} args - Arguments to update many CrmPriorities.
+     * @example
+     * // Update many CrmPriorities
+     * const crmPriority = await prisma.crmPriority.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more CrmPriorities and only return the `id`
+     * const crmPriorityWithIdOnly = await prisma.crmPriority.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends CrmPriorityUpdateManyAndReturnArgs>(args: SelectSubset<T, CrmPriorityUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmPriorityPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one CrmPriority.
+     * @param {CrmPriorityUpsertArgs} args - Arguments to update or create a CrmPriority.
+     * @example
+     * // Update or create a CrmPriority
+     * const crmPriority = await prisma.crmPriority.upsert({
+     *   create: {
+     *     // ... data to create a CrmPriority
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the CrmPriority we want to update
+     *   }
+     * })
+     */
+    upsert<T extends CrmPriorityUpsertArgs>(args: SelectSubset<T, CrmPriorityUpsertArgs<ExtArgs>>): Prisma__CrmPriorityClient<$Result.GetResult<Prisma.$CrmPriorityPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of CrmPriorities.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmPriorityCountArgs} args - Arguments to filter CrmPriorities to count.
+     * @example
+     * // Count the number of CrmPriorities
+     * const count = await prisma.crmPriority.count({
+     *   where: {
+     *     // ... the filter for the CrmPriorities we want to count
+     *   }
+     * })
+    **/
+    count<T extends CrmPriorityCountArgs>(
+      args?: Subset<T, CrmPriorityCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], CrmPriorityCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a CrmPriority.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmPriorityAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends CrmPriorityAggregateArgs>(args: Subset<T, CrmPriorityAggregateArgs>): Prisma.PrismaPromise<GetCrmPriorityAggregateType<T>>
+
+    /**
+     * Group by CrmPriority.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmPriorityGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends CrmPriorityGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: CrmPriorityGroupByArgs['orderBy'] }
+        : { orderBy?: CrmPriorityGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, CrmPriorityGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetCrmPriorityGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the CrmPriority model
+   */
+  readonly fields: CrmPriorityFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for CrmPriority.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__CrmPriorityClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the CrmPriority model
+   */
+  interface CrmPriorityFieldRefs {
+    readonly id: FieldRef<"CrmPriority", 'String'>
+    readonly slug: FieldRef<"CrmPriority", 'String'>
+    readonly name: FieldRef<"CrmPriority", 'String'>
+    readonly color: FieldRef<"CrmPriority", 'String'>
+    readonly description: FieldRef<"CrmPriority", 'String'>
+    readonly enabled: FieldRef<"CrmPriority", 'Boolean'>
+    readonly sortOrder: FieldRef<"CrmPriority", 'Int'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * CrmPriority findUnique
+   */
+  export type CrmPriorityFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmPriority
+     */
+    select?: CrmPrioritySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmPriority
+     */
+    omit?: CrmPriorityOmit<ExtArgs> | null
+    /**
+     * Filter, which CrmPriority to fetch.
+     */
+    where: CrmPriorityWhereUniqueInput
+  }
+
+  /**
+   * CrmPriority findUniqueOrThrow
+   */
+  export type CrmPriorityFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmPriority
+     */
+    select?: CrmPrioritySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmPriority
+     */
+    omit?: CrmPriorityOmit<ExtArgs> | null
+    /**
+     * Filter, which CrmPriority to fetch.
+     */
+    where: CrmPriorityWhereUniqueInput
+  }
+
+  /**
+   * CrmPriority findFirst
+   */
+  export type CrmPriorityFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmPriority
+     */
+    select?: CrmPrioritySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmPriority
+     */
+    omit?: CrmPriorityOmit<ExtArgs> | null
+    /**
+     * Filter, which CrmPriority to fetch.
+     */
+    where?: CrmPriorityWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmPriorities to fetch.
+     */
+    orderBy?: CrmPriorityOrderByWithRelationInput | CrmPriorityOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for CrmPriorities.
+     */
+    cursor?: CrmPriorityWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmPriorities from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmPriorities.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CrmPriorities.
+     */
+    distinct?: CrmPriorityScalarFieldEnum | CrmPriorityScalarFieldEnum[]
+  }
+
+  /**
+   * CrmPriority findFirstOrThrow
+   */
+  export type CrmPriorityFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmPriority
+     */
+    select?: CrmPrioritySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmPriority
+     */
+    omit?: CrmPriorityOmit<ExtArgs> | null
+    /**
+     * Filter, which CrmPriority to fetch.
+     */
+    where?: CrmPriorityWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmPriorities to fetch.
+     */
+    orderBy?: CrmPriorityOrderByWithRelationInput | CrmPriorityOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for CrmPriorities.
+     */
+    cursor?: CrmPriorityWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmPriorities from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmPriorities.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CrmPriorities.
+     */
+    distinct?: CrmPriorityScalarFieldEnum | CrmPriorityScalarFieldEnum[]
+  }
+
+  /**
+   * CrmPriority findMany
+   */
+  export type CrmPriorityFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmPriority
+     */
+    select?: CrmPrioritySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmPriority
+     */
+    omit?: CrmPriorityOmit<ExtArgs> | null
+    /**
+     * Filter, which CrmPriorities to fetch.
+     */
+    where?: CrmPriorityWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmPriorities to fetch.
+     */
+    orderBy?: CrmPriorityOrderByWithRelationInput | CrmPriorityOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing CrmPriorities.
+     */
+    cursor?: CrmPriorityWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmPriorities from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmPriorities.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CrmPriorities.
+     */
+    distinct?: CrmPriorityScalarFieldEnum | CrmPriorityScalarFieldEnum[]
+  }
+
+  /**
+   * CrmPriority create
+   */
+  export type CrmPriorityCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmPriority
+     */
+    select?: CrmPrioritySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmPriority
+     */
+    omit?: CrmPriorityOmit<ExtArgs> | null
+    /**
+     * The data needed to create a CrmPriority.
+     */
+    data: XOR<CrmPriorityCreateInput, CrmPriorityUncheckedCreateInput>
+  }
+
+  /**
+   * CrmPriority createMany
+   */
+  export type CrmPriorityCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many CrmPriorities.
+     */
+    data: CrmPriorityCreateManyInput | CrmPriorityCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * CrmPriority createManyAndReturn
+   */
+  export type CrmPriorityCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmPriority
+     */
+    select?: CrmPrioritySelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmPriority
+     */
+    omit?: CrmPriorityOmit<ExtArgs> | null
+    /**
+     * The data used to create many CrmPriorities.
+     */
+    data: CrmPriorityCreateManyInput | CrmPriorityCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * CrmPriority update
+   */
+  export type CrmPriorityUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmPriority
+     */
+    select?: CrmPrioritySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmPriority
+     */
+    omit?: CrmPriorityOmit<ExtArgs> | null
+    /**
+     * The data needed to update a CrmPriority.
+     */
+    data: XOR<CrmPriorityUpdateInput, CrmPriorityUncheckedUpdateInput>
+    /**
+     * Choose, which CrmPriority to update.
+     */
+    where: CrmPriorityWhereUniqueInput
+  }
+
+  /**
+   * CrmPriority updateMany
+   */
+  export type CrmPriorityUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update CrmPriorities.
+     */
+    data: XOR<CrmPriorityUpdateManyMutationInput, CrmPriorityUncheckedUpdateManyInput>
+    /**
+     * Filter which CrmPriorities to update
+     */
+    where?: CrmPriorityWhereInput
+    /**
+     * Limit how many CrmPriorities to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * CrmPriority updateManyAndReturn
+   */
+  export type CrmPriorityUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmPriority
+     */
+    select?: CrmPrioritySelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmPriority
+     */
+    omit?: CrmPriorityOmit<ExtArgs> | null
+    /**
+     * The data used to update CrmPriorities.
+     */
+    data: XOR<CrmPriorityUpdateManyMutationInput, CrmPriorityUncheckedUpdateManyInput>
+    /**
+     * Filter which CrmPriorities to update
+     */
+    where?: CrmPriorityWhereInput
+    /**
+     * Limit how many CrmPriorities to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * CrmPriority upsert
+   */
+  export type CrmPriorityUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmPriority
+     */
+    select?: CrmPrioritySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmPriority
+     */
+    omit?: CrmPriorityOmit<ExtArgs> | null
+    /**
+     * The filter to search for the CrmPriority to update in case it exists.
+     */
+    where: CrmPriorityWhereUniqueInput
+    /**
+     * In case the CrmPriority found by the `where` argument doesn't exist, create a new CrmPriority with this data.
+     */
+    create: XOR<CrmPriorityCreateInput, CrmPriorityUncheckedCreateInput>
+    /**
+     * In case the CrmPriority was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<CrmPriorityUpdateInput, CrmPriorityUncheckedUpdateInput>
+  }
+
+  /**
+   * CrmPriority delete
+   */
+  export type CrmPriorityDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmPriority
+     */
+    select?: CrmPrioritySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmPriority
+     */
+    omit?: CrmPriorityOmit<ExtArgs> | null
+    /**
+     * Filter which CrmPriority to delete.
+     */
+    where: CrmPriorityWhereUniqueInput
+  }
+
+  /**
+   * CrmPriority deleteMany
+   */
+  export type CrmPriorityDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which CrmPriorities to delete
+     */
+    where?: CrmPriorityWhereInput
+    /**
+     * Limit how many CrmPriorities to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * CrmPriority without action
+   */
+  export type CrmPriorityDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmPriority
+     */
+    select?: CrmPrioritySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmPriority
+     */
+    omit?: CrmPriorityOmit<ExtArgs> | null
+  }
+
+
+  /**
+   * Model CrmActivityType
+   */
+
+  export type AggregateCrmActivityType = {
+    _count: CrmActivityTypeCountAggregateOutputType | null
+    _avg: CrmActivityTypeAvgAggregateOutputType | null
+    _sum: CrmActivityTypeSumAggregateOutputType | null
+    _min: CrmActivityTypeMinAggregateOutputType | null
+    _max: CrmActivityTypeMaxAggregateOutputType | null
+  }
+
+  export type CrmActivityTypeAvgAggregateOutputType = {
+    sortOrder: number | null
+  }
+
+  export type CrmActivityTypeSumAggregateOutputType = {
+    sortOrder: number | null
+  }
+
+  export type CrmActivityTypeMinAggregateOutputType = {
+    id: string | null
+    slug: string | null
+    name: string | null
+    enabled: boolean | null
+    sortOrder: number | null
+  }
+
+  export type CrmActivityTypeMaxAggregateOutputType = {
+    id: string | null
+    slug: string | null
+    name: string | null
+    enabled: boolean | null
+    sortOrder: number | null
+  }
+
+  export type CrmActivityTypeCountAggregateOutputType = {
+    id: number
+    slug: number
+    name: number
+    enabled: number
+    sortOrder: number
+    _all: number
+  }
+
+
+  export type CrmActivityTypeAvgAggregateInputType = {
+    sortOrder?: true
+  }
+
+  export type CrmActivityTypeSumAggregateInputType = {
+    sortOrder?: true
+  }
+
+  export type CrmActivityTypeMinAggregateInputType = {
+    id?: true
+    slug?: true
+    name?: true
+    enabled?: true
+    sortOrder?: true
+  }
+
+  export type CrmActivityTypeMaxAggregateInputType = {
+    id?: true
+    slug?: true
+    name?: true
+    enabled?: true
+    sortOrder?: true
+  }
+
+  export type CrmActivityTypeCountAggregateInputType = {
+    id?: true
+    slug?: true
+    name?: true
+    enabled?: true
+    sortOrder?: true
+    _all?: true
+  }
+
+  export type CrmActivityTypeAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which CrmActivityType to aggregate.
+     */
+    where?: CrmActivityTypeWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmActivityTypes to fetch.
+     */
+    orderBy?: CrmActivityTypeOrderByWithRelationInput | CrmActivityTypeOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: CrmActivityTypeWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmActivityTypes from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmActivityTypes.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned CrmActivityTypes
+    **/
+    _count?: true | CrmActivityTypeCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: CrmActivityTypeAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: CrmActivityTypeSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: CrmActivityTypeMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: CrmActivityTypeMaxAggregateInputType
+  }
+
+  export type GetCrmActivityTypeAggregateType<T extends CrmActivityTypeAggregateArgs> = {
+        [P in keyof T & keyof AggregateCrmActivityType]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateCrmActivityType[P]>
+      : GetScalarType<T[P], AggregateCrmActivityType[P]>
+  }
+
+
+
+
+  export type CrmActivityTypeGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: CrmActivityTypeWhereInput
+    orderBy?: CrmActivityTypeOrderByWithAggregationInput | CrmActivityTypeOrderByWithAggregationInput[]
+    by: CrmActivityTypeScalarFieldEnum[] | CrmActivityTypeScalarFieldEnum
+    having?: CrmActivityTypeScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: CrmActivityTypeCountAggregateInputType | true
+    _avg?: CrmActivityTypeAvgAggregateInputType
+    _sum?: CrmActivityTypeSumAggregateInputType
+    _min?: CrmActivityTypeMinAggregateInputType
+    _max?: CrmActivityTypeMaxAggregateInputType
+  }
+
+  export type CrmActivityTypeGroupByOutputType = {
+    id: string
+    slug: string
+    name: string
+    enabled: boolean
+    sortOrder: number
+    _count: CrmActivityTypeCountAggregateOutputType | null
+    _avg: CrmActivityTypeAvgAggregateOutputType | null
+    _sum: CrmActivityTypeSumAggregateOutputType | null
+    _min: CrmActivityTypeMinAggregateOutputType | null
+    _max: CrmActivityTypeMaxAggregateOutputType | null
+  }
+
+  type GetCrmActivityTypeGroupByPayload<T extends CrmActivityTypeGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<CrmActivityTypeGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof CrmActivityTypeGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], CrmActivityTypeGroupByOutputType[P]>
+            : GetScalarType<T[P], CrmActivityTypeGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type CrmActivityTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    slug?: boolean
+    name?: boolean
+    enabled?: boolean
+    sortOrder?: boolean
+  }, ExtArgs["result"]["crmActivityType"]>
+
+  export type CrmActivityTypeSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    slug?: boolean
+    name?: boolean
+    enabled?: boolean
+    sortOrder?: boolean
+  }, ExtArgs["result"]["crmActivityType"]>
+
+  export type CrmActivityTypeSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    slug?: boolean
+    name?: boolean
+    enabled?: boolean
+    sortOrder?: boolean
+  }, ExtArgs["result"]["crmActivityType"]>
+
+  export type CrmActivityTypeSelectScalar = {
+    id?: boolean
+    slug?: boolean
+    name?: boolean
+    enabled?: boolean
+    sortOrder?: boolean
+  }
+
+  export type CrmActivityTypeOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "slug" | "name" | "enabled" | "sortOrder", ExtArgs["result"]["crmActivityType"]>
+
+  export type $CrmActivityTypePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "CrmActivityType"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      slug: string
+      name: string
+      enabled: boolean
+      sortOrder: number
+    }, ExtArgs["result"]["crmActivityType"]>
+    composites: {}
+  }
+
+  type CrmActivityTypeGetPayload<S extends boolean | null | undefined | CrmActivityTypeDefaultArgs> = $Result.GetResult<Prisma.$CrmActivityTypePayload, S>
+
+  type CrmActivityTypeCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<CrmActivityTypeFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: CrmActivityTypeCountAggregateInputType | true
+    }
+
+  export interface CrmActivityTypeDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['CrmActivityType'], meta: { name: 'CrmActivityType' } }
+    /**
+     * Find zero or one CrmActivityType that matches the filter.
+     * @param {CrmActivityTypeFindUniqueArgs} args - Arguments to find a CrmActivityType
+     * @example
+     * // Get one CrmActivityType
+     * const crmActivityType = await prisma.crmActivityType.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends CrmActivityTypeFindUniqueArgs>(args: SelectSubset<T, CrmActivityTypeFindUniqueArgs<ExtArgs>>): Prisma__CrmActivityTypeClient<$Result.GetResult<Prisma.$CrmActivityTypePayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one CrmActivityType that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {CrmActivityTypeFindUniqueOrThrowArgs} args - Arguments to find a CrmActivityType
+     * @example
+     * // Get one CrmActivityType
+     * const crmActivityType = await prisma.crmActivityType.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends CrmActivityTypeFindUniqueOrThrowArgs>(args: SelectSubset<T, CrmActivityTypeFindUniqueOrThrowArgs<ExtArgs>>): Prisma__CrmActivityTypeClient<$Result.GetResult<Prisma.$CrmActivityTypePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first CrmActivityType that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmActivityTypeFindFirstArgs} args - Arguments to find a CrmActivityType
+     * @example
+     * // Get one CrmActivityType
+     * const crmActivityType = await prisma.crmActivityType.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends CrmActivityTypeFindFirstArgs>(args?: SelectSubset<T, CrmActivityTypeFindFirstArgs<ExtArgs>>): Prisma__CrmActivityTypeClient<$Result.GetResult<Prisma.$CrmActivityTypePayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first CrmActivityType that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmActivityTypeFindFirstOrThrowArgs} args - Arguments to find a CrmActivityType
+     * @example
+     * // Get one CrmActivityType
+     * const crmActivityType = await prisma.crmActivityType.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends CrmActivityTypeFindFirstOrThrowArgs>(args?: SelectSubset<T, CrmActivityTypeFindFirstOrThrowArgs<ExtArgs>>): Prisma__CrmActivityTypeClient<$Result.GetResult<Prisma.$CrmActivityTypePayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more CrmActivityTypes that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmActivityTypeFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all CrmActivityTypes
+     * const crmActivityTypes = await prisma.crmActivityType.findMany()
+     * 
+     * // Get first 10 CrmActivityTypes
+     * const crmActivityTypes = await prisma.crmActivityType.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const crmActivityTypeWithIdOnly = await prisma.crmActivityType.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends CrmActivityTypeFindManyArgs>(args?: SelectSubset<T, CrmActivityTypeFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmActivityTypePayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a CrmActivityType.
+     * @param {CrmActivityTypeCreateArgs} args - Arguments to create a CrmActivityType.
+     * @example
+     * // Create one CrmActivityType
+     * const CrmActivityType = await prisma.crmActivityType.create({
+     *   data: {
+     *     // ... data to create a CrmActivityType
+     *   }
+     * })
+     * 
+     */
+    create<T extends CrmActivityTypeCreateArgs>(args: SelectSubset<T, CrmActivityTypeCreateArgs<ExtArgs>>): Prisma__CrmActivityTypeClient<$Result.GetResult<Prisma.$CrmActivityTypePayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many CrmActivityTypes.
+     * @param {CrmActivityTypeCreateManyArgs} args - Arguments to create many CrmActivityTypes.
+     * @example
+     * // Create many CrmActivityTypes
+     * const crmActivityType = await prisma.crmActivityType.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends CrmActivityTypeCreateManyArgs>(args?: SelectSubset<T, CrmActivityTypeCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many CrmActivityTypes and returns the data saved in the database.
+     * @param {CrmActivityTypeCreateManyAndReturnArgs} args - Arguments to create many CrmActivityTypes.
+     * @example
+     * // Create many CrmActivityTypes
+     * const crmActivityType = await prisma.crmActivityType.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many CrmActivityTypes and only return the `id`
+     * const crmActivityTypeWithIdOnly = await prisma.crmActivityType.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends CrmActivityTypeCreateManyAndReturnArgs>(args?: SelectSubset<T, CrmActivityTypeCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmActivityTypePayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a CrmActivityType.
+     * @param {CrmActivityTypeDeleteArgs} args - Arguments to delete one CrmActivityType.
+     * @example
+     * // Delete one CrmActivityType
+     * const CrmActivityType = await prisma.crmActivityType.delete({
+     *   where: {
+     *     // ... filter to delete one CrmActivityType
+     *   }
+     * })
+     * 
+     */
+    delete<T extends CrmActivityTypeDeleteArgs>(args: SelectSubset<T, CrmActivityTypeDeleteArgs<ExtArgs>>): Prisma__CrmActivityTypeClient<$Result.GetResult<Prisma.$CrmActivityTypePayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one CrmActivityType.
+     * @param {CrmActivityTypeUpdateArgs} args - Arguments to update one CrmActivityType.
+     * @example
+     * // Update one CrmActivityType
+     * const crmActivityType = await prisma.crmActivityType.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends CrmActivityTypeUpdateArgs>(args: SelectSubset<T, CrmActivityTypeUpdateArgs<ExtArgs>>): Prisma__CrmActivityTypeClient<$Result.GetResult<Prisma.$CrmActivityTypePayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more CrmActivityTypes.
+     * @param {CrmActivityTypeDeleteManyArgs} args - Arguments to filter CrmActivityTypes to delete.
+     * @example
+     * // Delete a few CrmActivityTypes
+     * const { count } = await prisma.crmActivityType.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends CrmActivityTypeDeleteManyArgs>(args?: SelectSubset<T, CrmActivityTypeDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more CrmActivityTypes.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmActivityTypeUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many CrmActivityTypes
+     * const crmActivityType = await prisma.crmActivityType.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends CrmActivityTypeUpdateManyArgs>(args: SelectSubset<T, CrmActivityTypeUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more CrmActivityTypes and returns the data updated in the database.
+     * @param {CrmActivityTypeUpdateManyAndReturnArgs} args - Arguments to update many CrmActivityTypes.
+     * @example
+     * // Update many CrmActivityTypes
+     * const crmActivityType = await prisma.crmActivityType.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more CrmActivityTypes and only return the `id`
+     * const crmActivityTypeWithIdOnly = await prisma.crmActivityType.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends CrmActivityTypeUpdateManyAndReturnArgs>(args: SelectSubset<T, CrmActivityTypeUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmActivityTypePayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one CrmActivityType.
+     * @param {CrmActivityTypeUpsertArgs} args - Arguments to update or create a CrmActivityType.
+     * @example
+     * // Update or create a CrmActivityType
+     * const crmActivityType = await prisma.crmActivityType.upsert({
+     *   create: {
+     *     // ... data to create a CrmActivityType
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the CrmActivityType we want to update
+     *   }
+     * })
+     */
+    upsert<T extends CrmActivityTypeUpsertArgs>(args: SelectSubset<T, CrmActivityTypeUpsertArgs<ExtArgs>>): Prisma__CrmActivityTypeClient<$Result.GetResult<Prisma.$CrmActivityTypePayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of CrmActivityTypes.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmActivityTypeCountArgs} args - Arguments to filter CrmActivityTypes to count.
+     * @example
+     * // Count the number of CrmActivityTypes
+     * const count = await prisma.crmActivityType.count({
+     *   where: {
+     *     // ... the filter for the CrmActivityTypes we want to count
+     *   }
+     * })
+    **/
+    count<T extends CrmActivityTypeCountArgs>(
+      args?: Subset<T, CrmActivityTypeCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], CrmActivityTypeCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a CrmActivityType.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmActivityTypeAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends CrmActivityTypeAggregateArgs>(args: Subset<T, CrmActivityTypeAggregateArgs>): Prisma.PrismaPromise<GetCrmActivityTypeAggregateType<T>>
+
+    /**
+     * Group by CrmActivityType.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmActivityTypeGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends CrmActivityTypeGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: CrmActivityTypeGroupByArgs['orderBy'] }
+        : { orderBy?: CrmActivityTypeGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, CrmActivityTypeGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetCrmActivityTypeGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the CrmActivityType model
+   */
+  readonly fields: CrmActivityTypeFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for CrmActivityType.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__CrmActivityTypeClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the CrmActivityType model
+   */
+  interface CrmActivityTypeFieldRefs {
+    readonly id: FieldRef<"CrmActivityType", 'String'>
+    readonly slug: FieldRef<"CrmActivityType", 'String'>
+    readonly name: FieldRef<"CrmActivityType", 'String'>
+    readonly enabled: FieldRef<"CrmActivityType", 'Boolean'>
+    readonly sortOrder: FieldRef<"CrmActivityType", 'Int'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * CrmActivityType findUnique
+   */
+  export type CrmActivityTypeFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmActivityType
+     */
+    select?: CrmActivityTypeSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmActivityType
+     */
+    omit?: CrmActivityTypeOmit<ExtArgs> | null
+    /**
+     * Filter, which CrmActivityType to fetch.
+     */
+    where: CrmActivityTypeWhereUniqueInput
+  }
+
+  /**
+   * CrmActivityType findUniqueOrThrow
+   */
+  export type CrmActivityTypeFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmActivityType
+     */
+    select?: CrmActivityTypeSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmActivityType
+     */
+    omit?: CrmActivityTypeOmit<ExtArgs> | null
+    /**
+     * Filter, which CrmActivityType to fetch.
+     */
+    where: CrmActivityTypeWhereUniqueInput
+  }
+
+  /**
+   * CrmActivityType findFirst
+   */
+  export type CrmActivityTypeFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmActivityType
+     */
+    select?: CrmActivityTypeSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmActivityType
+     */
+    omit?: CrmActivityTypeOmit<ExtArgs> | null
+    /**
+     * Filter, which CrmActivityType to fetch.
+     */
+    where?: CrmActivityTypeWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmActivityTypes to fetch.
+     */
+    orderBy?: CrmActivityTypeOrderByWithRelationInput | CrmActivityTypeOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for CrmActivityTypes.
+     */
+    cursor?: CrmActivityTypeWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmActivityTypes from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmActivityTypes.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CrmActivityTypes.
+     */
+    distinct?: CrmActivityTypeScalarFieldEnum | CrmActivityTypeScalarFieldEnum[]
+  }
+
+  /**
+   * CrmActivityType findFirstOrThrow
+   */
+  export type CrmActivityTypeFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmActivityType
+     */
+    select?: CrmActivityTypeSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmActivityType
+     */
+    omit?: CrmActivityTypeOmit<ExtArgs> | null
+    /**
+     * Filter, which CrmActivityType to fetch.
+     */
+    where?: CrmActivityTypeWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmActivityTypes to fetch.
+     */
+    orderBy?: CrmActivityTypeOrderByWithRelationInput | CrmActivityTypeOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for CrmActivityTypes.
+     */
+    cursor?: CrmActivityTypeWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmActivityTypes from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmActivityTypes.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CrmActivityTypes.
+     */
+    distinct?: CrmActivityTypeScalarFieldEnum | CrmActivityTypeScalarFieldEnum[]
+  }
+
+  /**
+   * CrmActivityType findMany
+   */
+  export type CrmActivityTypeFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmActivityType
+     */
+    select?: CrmActivityTypeSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmActivityType
+     */
+    omit?: CrmActivityTypeOmit<ExtArgs> | null
+    /**
+     * Filter, which CrmActivityTypes to fetch.
+     */
+    where?: CrmActivityTypeWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmActivityTypes to fetch.
+     */
+    orderBy?: CrmActivityTypeOrderByWithRelationInput | CrmActivityTypeOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing CrmActivityTypes.
+     */
+    cursor?: CrmActivityTypeWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmActivityTypes from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmActivityTypes.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CrmActivityTypes.
+     */
+    distinct?: CrmActivityTypeScalarFieldEnum | CrmActivityTypeScalarFieldEnum[]
+  }
+
+  /**
+   * CrmActivityType create
+   */
+  export type CrmActivityTypeCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmActivityType
+     */
+    select?: CrmActivityTypeSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmActivityType
+     */
+    omit?: CrmActivityTypeOmit<ExtArgs> | null
+    /**
+     * The data needed to create a CrmActivityType.
+     */
+    data: XOR<CrmActivityTypeCreateInput, CrmActivityTypeUncheckedCreateInput>
+  }
+
+  /**
+   * CrmActivityType createMany
+   */
+  export type CrmActivityTypeCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many CrmActivityTypes.
+     */
+    data: CrmActivityTypeCreateManyInput | CrmActivityTypeCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * CrmActivityType createManyAndReturn
+   */
+  export type CrmActivityTypeCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmActivityType
+     */
+    select?: CrmActivityTypeSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmActivityType
+     */
+    omit?: CrmActivityTypeOmit<ExtArgs> | null
+    /**
+     * The data used to create many CrmActivityTypes.
+     */
+    data: CrmActivityTypeCreateManyInput | CrmActivityTypeCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * CrmActivityType update
+   */
+  export type CrmActivityTypeUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmActivityType
+     */
+    select?: CrmActivityTypeSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmActivityType
+     */
+    omit?: CrmActivityTypeOmit<ExtArgs> | null
+    /**
+     * The data needed to update a CrmActivityType.
+     */
+    data: XOR<CrmActivityTypeUpdateInput, CrmActivityTypeUncheckedUpdateInput>
+    /**
+     * Choose, which CrmActivityType to update.
+     */
+    where: CrmActivityTypeWhereUniqueInput
+  }
+
+  /**
+   * CrmActivityType updateMany
+   */
+  export type CrmActivityTypeUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update CrmActivityTypes.
+     */
+    data: XOR<CrmActivityTypeUpdateManyMutationInput, CrmActivityTypeUncheckedUpdateManyInput>
+    /**
+     * Filter which CrmActivityTypes to update
+     */
+    where?: CrmActivityTypeWhereInput
+    /**
+     * Limit how many CrmActivityTypes to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * CrmActivityType updateManyAndReturn
+   */
+  export type CrmActivityTypeUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmActivityType
+     */
+    select?: CrmActivityTypeSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmActivityType
+     */
+    omit?: CrmActivityTypeOmit<ExtArgs> | null
+    /**
+     * The data used to update CrmActivityTypes.
+     */
+    data: XOR<CrmActivityTypeUpdateManyMutationInput, CrmActivityTypeUncheckedUpdateManyInput>
+    /**
+     * Filter which CrmActivityTypes to update
+     */
+    where?: CrmActivityTypeWhereInput
+    /**
+     * Limit how many CrmActivityTypes to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * CrmActivityType upsert
+   */
+  export type CrmActivityTypeUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmActivityType
+     */
+    select?: CrmActivityTypeSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmActivityType
+     */
+    omit?: CrmActivityTypeOmit<ExtArgs> | null
+    /**
+     * The filter to search for the CrmActivityType to update in case it exists.
+     */
+    where: CrmActivityTypeWhereUniqueInput
+    /**
+     * In case the CrmActivityType found by the `where` argument doesn't exist, create a new CrmActivityType with this data.
+     */
+    create: XOR<CrmActivityTypeCreateInput, CrmActivityTypeUncheckedCreateInput>
+    /**
+     * In case the CrmActivityType was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<CrmActivityTypeUpdateInput, CrmActivityTypeUncheckedUpdateInput>
+  }
+
+  /**
+   * CrmActivityType delete
+   */
+  export type CrmActivityTypeDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmActivityType
+     */
+    select?: CrmActivityTypeSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmActivityType
+     */
+    omit?: CrmActivityTypeOmit<ExtArgs> | null
+    /**
+     * Filter which CrmActivityType to delete.
+     */
+    where: CrmActivityTypeWhereUniqueInput
+  }
+
+  /**
+   * CrmActivityType deleteMany
+   */
+  export type CrmActivityTypeDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which CrmActivityTypes to delete
+     */
+    where?: CrmActivityTypeWhereInput
+    /**
+     * Limit how many CrmActivityTypes to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * CrmActivityType without action
+   */
+  export type CrmActivityTypeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmActivityType
+     */
+    select?: CrmActivityTypeSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmActivityType
+     */
+    omit?: CrmActivityTypeOmit<ExtArgs> | null
+  }
+
+
+  /**
+   * Model CrmUserSalesGoal
+   */
+
+  export type AggregateCrmUserSalesGoal = {
+    _count: CrmUserSalesGoalCountAggregateOutputType | null
+    _avg: CrmUserSalesGoalAvgAggregateOutputType | null
+    _sum: CrmUserSalesGoalSumAggregateOutputType | null
+    _min: CrmUserSalesGoalMinAggregateOutputType | null
+    _max: CrmUserSalesGoalMaxAggregateOutputType | null
+  }
+
+  export type CrmUserSalesGoalAvgAggregateOutputType = {
+    weeklyTarget: number | null
+    monthlyTarget: number | null
+  }
+
+  export type CrmUserSalesGoalSumAggregateOutputType = {
+    weeklyTarget: number | null
+    monthlyTarget: number | null
+  }
+
+  export type CrmUserSalesGoalMinAggregateOutputType = {
+    userId: string | null
+    weeklyTarget: number | null
+    monthlyTarget: number | null
+  }
+
+  export type CrmUserSalesGoalMaxAggregateOutputType = {
+    userId: string | null
+    weeklyTarget: number | null
+    monthlyTarget: number | null
+  }
+
+  export type CrmUserSalesGoalCountAggregateOutputType = {
+    userId: number
+    weeklyTarget: number
+    monthlyTarget: number
+    _all: number
+  }
+
+
+  export type CrmUserSalesGoalAvgAggregateInputType = {
+    weeklyTarget?: true
+    monthlyTarget?: true
+  }
+
+  export type CrmUserSalesGoalSumAggregateInputType = {
+    weeklyTarget?: true
+    monthlyTarget?: true
+  }
+
+  export type CrmUserSalesGoalMinAggregateInputType = {
+    userId?: true
+    weeklyTarget?: true
+    monthlyTarget?: true
+  }
+
+  export type CrmUserSalesGoalMaxAggregateInputType = {
+    userId?: true
+    weeklyTarget?: true
+    monthlyTarget?: true
+  }
+
+  export type CrmUserSalesGoalCountAggregateInputType = {
+    userId?: true
+    weeklyTarget?: true
+    monthlyTarget?: true
+    _all?: true
+  }
+
+  export type CrmUserSalesGoalAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which CrmUserSalesGoal to aggregate.
+     */
+    where?: CrmUserSalesGoalWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmUserSalesGoals to fetch.
+     */
+    orderBy?: CrmUserSalesGoalOrderByWithRelationInput | CrmUserSalesGoalOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: CrmUserSalesGoalWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmUserSalesGoals from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmUserSalesGoals.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned CrmUserSalesGoals
+    **/
+    _count?: true | CrmUserSalesGoalCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: CrmUserSalesGoalAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: CrmUserSalesGoalSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: CrmUserSalesGoalMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: CrmUserSalesGoalMaxAggregateInputType
+  }
+
+  export type GetCrmUserSalesGoalAggregateType<T extends CrmUserSalesGoalAggregateArgs> = {
+        [P in keyof T & keyof AggregateCrmUserSalesGoal]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateCrmUserSalesGoal[P]>
+      : GetScalarType<T[P], AggregateCrmUserSalesGoal[P]>
+  }
+
+
+
+
+  export type CrmUserSalesGoalGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: CrmUserSalesGoalWhereInput
+    orderBy?: CrmUserSalesGoalOrderByWithAggregationInput | CrmUserSalesGoalOrderByWithAggregationInput[]
+    by: CrmUserSalesGoalScalarFieldEnum[] | CrmUserSalesGoalScalarFieldEnum
+    having?: CrmUserSalesGoalScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: CrmUserSalesGoalCountAggregateInputType | true
+    _avg?: CrmUserSalesGoalAvgAggregateInputType
+    _sum?: CrmUserSalesGoalSumAggregateInputType
+    _min?: CrmUserSalesGoalMinAggregateInputType
+    _max?: CrmUserSalesGoalMaxAggregateInputType
+  }
+
+  export type CrmUserSalesGoalGroupByOutputType = {
+    userId: string
+    weeklyTarget: number
+    monthlyTarget: number
+    _count: CrmUserSalesGoalCountAggregateOutputType | null
+    _avg: CrmUserSalesGoalAvgAggregateOutputType | null
+    _sum: CrmUserSalesGoalSumAggregateOutputType | null
+    _min: CrmUserSalesGoalMinAggregateOutputType | null
+    _max: CrmUserSalesGoalMaxAggregateOutputType | null
+  }
+
+  type GetCrmUserSalesGoalGroupByPayload<T extends CrmUserSalesGoalGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<CrmUserSalesGoalGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof CrmUserSalesGoalGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], CrmUserSalesGoalGroupByOutputType[P]>
+            : GetScalarType<T[P], CrmUserSalesGoalGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type CrmUserSalesGoalSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    userId?: boolean
+    weeklyTarget?: boolean
+    monthlyTarget?: boolean
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["crmUserSalesGoal"]>
+
+  export type CrmUserSalesGoalSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    userId?: boolean
+    weeklyTarget?: boolean
+    monthlyTarget?: boolean
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["crmUserSalesGoal"]>
+
+  export type CrmUserSalesGoalSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    userId?: boolean
+    weeklyTarget?: boolean
+    monthlyTarget?: boolean
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["crmUserSalesGoal"]>
+
+  export type CrmUserSalesGoalSelectScalar = {
+    userId?: boolean
+    weeklyTarget?: boolean
+    monthlyTarget?: boolean
+  }
+
+  export type CrmUserSalesGoalOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"userId" | "weeklyTarget" | "monthlyTarget", ExtArgs["result"]["crmUserSalesGoal"]>
+  export type CrmUserSalesGoalInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }
+  export type CrmUserSalesGoalIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }
+  export type CrmUserSalesGoalIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }
+
+  export type $CrmUserSalesGoalPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "CrmUserSalesGoal"
+    objects: {
+      user: Prisma.$UserPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      userId: string
+      weeklyTarget: number
+      monthlyTarget: number
+    }, ExtArgs["result"]["crmUserSalesGoal"]>
+    composites: {}
+  }
+
+  type CrmUserSalesGoalGetPayload<S extends boolean | null | undefined | CrmUserSalesGoalDefaultArgs> = $Result.GetResult<Prisma.$CrmUserSalesGoalPayload, S>
+
+  type CrmUserSalesGoalCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<CrmUserSalesGoalFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: CrmUserSalesGoalCountAggregateInputType | true
+    }
+
+  export interface CrmUserSalesGoalDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['CrmUserSalesGoal'], meta: { name: 'CrmUserSalesGoal' } }
+    /**
+     * Find zero or one CrmUserSalesGoal that matches the filter.
+     * @param {CrmUserSalesGoalFindUniqueArgs} args - Arguments to find a CrmUserSalesGoal
+     * @example
+     * // Get one CrmUserSalesGoal
+     * const crmUserSalesGoal = await prisma.crmUserSalesGoal.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends CrmUserSalesGoalFindUniqueArgs>(args: SelectSubset<T, CrmUserSalesGoalFindUniqueArgs<ExtArgs>>): Prisma__CrmUserSalesGoalClient<$Result.GetResult<Prisma.$CrmUserSalesGoalPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one CrmUserSalesGoal that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {CrmUserSalesGoalFindUniqueOrThrowArgs} args - Arguments to find a CrmUserSalesGoal
+     * @example
+     * // Get one CrmUserSalesGoal
+     * const crmUserSalesGoal = await prisma.crmUserSalesGoal.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends CrmUserSalesGoalFindUniqueOrThrowArgs>(args: SelectSubset<T, CrmUserSalesGoalFindUniqueOrThrowArgs<ExtArgs>>): Prisma__CrmUserSalesGoalClient<$Result.GetResult<Prisma.$CrmUserSalesGoalPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first CrmUserSalesGoal that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmUserSalesGoalFindFirstArgs} args - Arguments to find a CrmUserSalesGoal
+     * @example
+     * // Get one CrmUserSalesGoal
+     * const crmUserSalesGoal = await prisma.crmUserSalesGoal.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends CrmUserSalesGoalFindFirstArgs>(args?: SelectSubset<T, CrmUserSalesGoalFindFirstArgs<ExtArgs>>): Prisma__CrmUserSalesGoalClient<$Result.GetResult<Prisma.$CrmUserSalesGoalPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first CrmUserSalesGoal that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmUserSalesGoalFindFirstOrThrowArgs} args - Arguments to find a CrmUserSalesGoal
+     * @example
+     * // Get one CrmUserSalesGoal
+     * const crmUserSalesGoal = await prisma.crmUserSalesGoal.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends CrmUserSalesGoalFindFirstOrThrowArgs>(args?: SelectSubset<T, CrmUserSalesGoalFindFirstOrThrowArgs<ExtArgs>>): Prisma__CrmUserSalesGoalClient<$Result.GetResult<Prisma.$CrmUserSalesGoalPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more CrmUserSalesGoals that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmUserSalesGoalFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all CrmUserSalesGoals
+     * const crmUserSalesGoals = await prisma.crmUserSalesGoal.findMany()
+     * 
+     * // Get first 10 CrmUserSalesGoals
+     * const crmUserSalesGoals = await prisma.crmUserSalesGoal.findMany({ take: 10 })
+     * 
+     * // Only select the `userId`
+     * const crmUserSalesGoalWithUserIdOnly = await prisma.crmUserSalesGoal.findMany({ select: { userId: true } })
+     * 
+     */
+    findMany<T extends CrmUserSalesGoalFindManyArgs>(args?: SelectSubset<T, CrmUserSalesGoalFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmUserSalesGoalPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a CrmUserSalesGoal.
+     * @param {CrmUserSalesGoalCreateArgs} args - Arguments to create a CrmUserSalesGoal.
+     * @example
+     * // Create one CrmUserSalesGoal
+     * const CrmUserSalesGoal = await prisma.crmUserSalesGoal.create({
+     *   data: {
+     *     // ... data to create a CrmUserSalesGoal
+     *   }
+     * })
+     * 
+     */
+    create<T extends CrmUserSalesGoalCreateArgs>(args: SelectSubset<T, CrmUserSalesGoalCreateArgs<ExtArgs>>): Prisma__CrmUserSalesGoalClient<$Result.GetResult<Prisma.$CrmUserSalesGoalPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many CrmUserSalesGoals.
+     * @param {CrmUserSalesGoalCreateManyArgs} args - Arguments to create many CrmUserSalesGoals.
+     * @example
+     * // Create many CrmUserSalesGoals
+     * const crmUserSalesGoal = await prisma.crmUserSalesGoal.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends CrmUserSalesGoalCreateManyArgs>(args?: SelectSubset<T, CrmUserSalesGoalCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many CrmUserSalesGoals and returns the data saved in the database.
+     * @param {CrmUserSalesGoalCreateManyAndReturnArgs} args - Arguments to create many CrmUserSalesGoals.
+     * @example
+     * // Create many CrmUserSalesGoals
+     * const crmUserSalesGoal = await prisma.crmUserSalesGoal.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many CrmUserSalesGoals and only return the `userId`
+     * const crmUserSalesGoalWithUserIdOnly = await prisma.crmUserSalesGoal.createManyAndReturn({
+     *   select: { userId: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends CrmUserSalesGoalCreateManyAndReturnArgs>(args?: SelectSubset<T, CrmUserSalesGoalCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmUserSalesGoalPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a CrmUserSalesGoal.
+     * @param {CrmUserSalesGoalDeleteArgs} args - Arguments to delete one CrmUserSalesGoal.
+     * @example
+     * // Delete one CrmUserSalesGoal
+     * const CrmUserSalesGoal = await prisma.crmUserSalesGoal.delete({
+     *   where: {
+     *     // ... filter to delete one CrmUserSalesGoal
+     *   }
+     * })
+     * 
+     */
+    delete<T extends CrmUserSalesGoalDeleteArgs>(args: SelectSubset<T, CrmUserSalesGoalDeleteArgs<ExtArgs>>): Prisma__CrmUserSalesGoalClient<$Result.GetResult<Prisma.$CrmUserSalesGoalPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one CrmUserSalesGoal.
+     * @param {CrmUserSalesGoalUpdateArgs} args - Arguments to update one CrmUserSalesGoal.
+     * @example
+     * // Update one CrmUserSalesGoal
+     * const crmUserSalesGoal = await prisma.crmUserSalesGoal.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends CrmUserSalesGoalUpdateArgs>(args: SelectSubset<T, CrmUserSalesGoalUpdateArgs<ExtArgs>>): Prisma__CrmUserSalesGoalClient<$Result.GetResult<Prisma.$CrmUserSalesGoalPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more CrmUserSalesGoals.
+     * @param {CrmUserSalesGoalDeleteManyArgs} args - Arguments to filter CrmUserSalesGoals to delete.
+     * @example
+     * // Delete a few CrmUserSalesGoals
+     * const { count } = await prisma.crmUserSalesGoal.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends CrmUserSalesGoalDeleteManyArgs>(args?: SelectSubset<T, CrmUserSalesGoalDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more CrmUserSalesGoals.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmUserSalesGoalUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many CrmUserSalesGoals
+     * const crmUserSalesGoal = await prisma.crmUserSalesGoal.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends CrmUserSalesGoalUpdateManyArgs>(args: SelectSubset<T, CrmUserSalesGoalUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more CrmUserSalesGoals and returns the data updated in the database.
+     * @param {CrmUserSalesGoalUpdateManyAndReturnArgs} args - Arguments to update many CrmUserSalesGoals.
+     * @example
+     * // Update many CrmUserSalesGoals
+     * const crmUserSalesGoal = await prisma.crmUserSalesGoal.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more CrmUserSalesGoals and only return the `userId`
+     * const crmUserSalesGoalWithUserIdOnly = await prisma.crmUserSalesGoal.updateManyAndReturn({
+     *   select: { userId: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends CrmUserSalesGoalUpdateManyAndReturnArgs>(args: SelectSubset<T, CrmUserSalesGoalUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmUserSalesGoalPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one CrmUserSalesGoal.
+     * @param {CrmUserSalesGoalUpsertArgs} args - Arguments to update or create a CrmUserSalesGoal.
+     * @example
+     * // Update or create a CrmUserSalesGoal
+     * const crmUserSalesGoal = await prisma.crmUserSalesGoal.upsert({
+     *   create: {
+     *     // ... data to create a CrmUserSalesGoal
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the CrmUserSalesGoal we want to update
+     *   }
+     * })
+     */
+    upsert<T extends CrmUserSalesGoalUpsertArgs>(args: SelectSubset<T, CrmUserSalesGoalUpsertArgs<ExtArgs>>): Prisma__CrmUserSalesGoalClient<$Result.GetResult<Prisma.$CrmUserSalesGoalPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of CrmUserSalesGoals.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmUserSalesGoalCountArgs} args - Arguments to filter CrmUserSalesGoals to count.
+     * @example
+     * // Count the number of CrmUserSalesGoals
+     * const count = await prisma.crmUserSalesGoal.count({
+     *   where: {
+     *     // ... the filter for the CrmUserSalesGoals we want to count
+     *   }
+     * })
+    **/
+    count<T extends CrmUserSalesGoalCountArgs>(
+      args?: Subset<T, CrmUserSalesGoalCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], CrmUserSalesGoalCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a CrmUserSalesGoal.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmUserSalesGoalAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends CrmUserSalesGoalAggregateArgs>(args: Subset<T, CrmUserSalesGoalAggregateArgs>): Prisma.PrismaPromise<GetCrmUserSalesGoalAggregateType<T>>
+
+    /**
+     * Group by CrmUserSalesGoal.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmUserSalesGoalGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends CrmUserSalesGoalGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: CrmUserSalesGoalGroupByArgs['orderBy'] }
+        : { orderBy?: CrmUserSalesGoalGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, CrmUserSalesGoalGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetCrmUserSalesGoalGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the CrmUserSalesGoal model
+   */
+  readonly fields: CrmUserSalesGoalFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for CrmUserSalesGoal.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__CrmUserSalesGoalClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    user<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the CrmUserSalesGoal model
+   */
+  interface CrmUserSalesGoalFieldRefs {
+    readonly userId: FieldRef<"CrmUserSalesGoal", 'String'>
+    readonly weeklyTarget: FieldRef<"CrmUserSalesGoal", 'Float'>
+    readonly monthlyTarget: FieldRef<"CrmUserSalesGoal", 'Float'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * CrmUserSalesGoal findUnique
+   */
+  export type CrmUserSalesGoalFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmUserSalesGoal
+     */
+    select?: CrmUserSalesGoalSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmUserSalesGoal
+     */
+    omit?: CrmUserSalesGoalOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmUserSalesGoalInclude<ExtArgs> | null
+    /**
+     * Filter, which CrmUserSalesGoal to fetch.
+     */
+    where: CrmUserSalesGoalWhereUniqueInput
+  }
+
+  /**
+   * CrmUserSalesGoal findUniqueOrThrow
+   */
+  export type CrmUserSalesGoalFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmUserSalesGoal
+     */
+    select?: CrmUserSalesGoalSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmUserSalesGoal
+     */
+    omit?: CrmUserSalesGoalOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmUserSalesGoalInclude<ExtArgs> | null
+    /**
+     * Filter, which CrmUserSalesGoal to fetch.
+     */
+    where: CrmUserSalesGoalWhereUniqueInput
+  }
+
+  /**
+   * CrmUserSalesGoal findFirst
+   */
+  export type CrmUserSalesGoalFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmUserSalesGoal
+     */
+    select?: CrmUserSalesGoalSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmUserSalesGoal
+     */
+    omit?: CrmUserSalesGoalOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmUserSalesGoalInclude<ExtArgs> | null
+    /**
+     * Filter, which CrmUserSalesGoal to fetch.
+     */
+    where?: CrmUserSalesGoalWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmUserSalesGoals to fetch.
+     */
+    orderBy?: CrmUserSalesGoalOrderByWithRelationInput | CrmUserSalesGoalOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for CrmUserSalesGoals.
+     */
+    cursor?: CrmUserSalesGoalWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmUserSalesGoals from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmUserSalesGoals.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CrmUserSalesGoals.
+     */
+    distinct?: CrmUserSalesGoalScalarFieldEnum | CrmUserSalesGoalScalarFieldEnum[]
+  }
+
+  /**
+   * CrmUserSalesGoal findFirstOrThrow
+   */
+  export type CrmUserSalesGoalFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmUserSalesGoal
+     */
+    select?: CrmUserSalesGoalSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmUserSalesGoal
+     */
+    omit?: CrmUserSalesGoalOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmUserSalesGoalInclude<ExtArgs> | null
+    /**
+     * Filter, which CrmUserSalesGoal to fetch.
+     */
+    where?: CrmUserSalesGoalWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmUserSalesGoals to fetch.
+     */
+    orderBy?: CrmUserSalesGoalOrderByWithRelationInput | CrmUserSalesGoalOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for CrmUserSalesGoals.
+     */
+    cursor?: CrmUserSalesGoalWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmUserSalesGoals from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmUserSalesGoals.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CrmUserSalesGoals.
+     */
+    distinct?: CrmUserSalesGoalScalarFieldEnum | CrmUserSalesGoalScalarFieldEnum[]
+  }
+
+  /**
+   * CrmUserSalesGoal findMany
+   */
+  export type CrmUserSalesGoalFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmUserSalesGoal
+     */
+    select?: CrmUserSalesGoalSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmUserSalesGoal
+     */
+    omit?: CrmUserSalesGoalOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmUserSalesGoalInclude<ExtArgs> | null
+    /**
+     * Filter, which CrmUserSalesGoals to fetch.
+     */
+    where?: CrmUserSalesGoalWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmUserSalesGoals to fetch.
+     */
+    orderBy?: CrmUserSalesGoalOrderByWithRelationInput | CrmUserSalesGoalOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing CrmUserSalesGoals.
+     */
+    cursor?: CrmUserSalesGoalWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmUserSalesGoals from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmUserSalesGoals.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CrmUserSalesGoals.
+     */
+    distinct?: CrmUserSalesGoalScalarFieldEnum | CrmUserSalesGoalScalarFieldEnum[]
+  }
+
+  /**
+   * CrmUserSalesGoal create
+   */
+  export type CrmUserSalesGoalCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmUserSalesGoal
+     */
+    select?: CrmUserSalesGoalSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmUserSalesGoal
+     */
+    omit?: CrmUserSalesGoalOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmUserSalesGoalInclude<ExtArgs> | null
+    /**
+     * The data needed to create a CrmUserSalesGoal.
+     */
+    data: XOR<CrmUserSalesGoalCreateInput, CrmUserSalesGoalUncheckedCreateInput>
+  }
+
+  /**
+   * CrmUserSalesGoal createMany
+   */
+  export type CrmUserSalesGoalCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many CrmUserSalesGoals.
+     */
+    data: CrmUserSalesGoalCreateManyInput | CrmUserSalesGoalCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * CrmUserSalesGoal createManyAndReturn
+   */
+  export type CrmUserSalesGoalCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmUserSalesGoal
+     */
+    select?: CrmUserSalesGoalSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmUserSalesGoal
+     */
+    omit?: CrmUserSalesGoalOmit<ExtArgs> | null
+    /**
+     * The data used to create many CrmUserSalesGoals.
+     */
+    data: CrmUserSalesGoalCreateManyInput | CrmUserSalesGoalCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmUserSalesGoalIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * CrmUserSalesGoal update
+   */
+  export type CrmUserSalesGoalUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmUserSalesGoal
+     */
+    select?: CrmUserSalesGoalSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmUserSalesGoal
+     */
+    omit?: CrmUserSalesGoalOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmUserSalesGoalInclude<ExtArgs> | null
+    /**
+     * The data needed to update a CrmUserSalesGoal.
+     */
+    data: XOR<CrmUserSalesGoalUpdateInput, CrmUserSalesGoalUncheckedUpdateInput>
+    /**
+     * Choose, which CrmUserSalesGoal to update.
+     */
+    where: CrmUserSalesGoalWhereUniqueInput
+  }
+
+  /**
+   * CrmUserSalesGoal updateMany
+   */
+  export type CrmUserSalesGoalUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update CrmUserSalesGoals.
+     */
+    data: XOR<CrmUserSalesGoalUpdateManyMutationInput, CrmUserSalesGoalUncheckedUpdateManyInput>
+    /**
+     * Filter which CrmUserSalesGoals to update
+     */
+    where?: CrmUserSalesGoalWhereInput
+    /**
+     * Limit how many CrmUserSalesGoals to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * CrmUserSalesGoal updateManyAndReturn
+   */
+  export type CrmUserSalesGoalUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmUserSalesGoal
+     */
+    select?: CrmUserSalesGoalSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmUserSalesGoal
+     */
+    omit?: CrmUserSalesGoalOmit<ExtArgs> | null
+    /**
+     * The data used to update CrmUserSalesGoals.
+     */
+    data: XOR<CrmUserSalesGoalUpdateManyMutationInput, CrmUserSalesGoalUncheckedUpdateManyInput>
+    /**
+     * Filter which CrmUserSalesGoals to update
+     */
+    where?: CrmUserSalesGoalWhereInput
+    /**
+     * Limit how many CrmUserSalesGoals to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmUserSalesGoalIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * CrmUserSalesGoal upsert
+   */
+  export type CrmUserSalesGoalUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmUserSalesGoal
+     */
+    select?: CrmUserSalesGoalSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmUserSalesGoal
+     */
+    omit?: CrmUserSalesGoalOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmUserSalesGoalInclude<ExtArgs> | null
+    /**
+     * The filter to search for the CrmUserSalesGoal to update in case it exists.
+     */
+    where: CrmUserSalesGoalWhereUniqueInput
+    /**
+     * In case the CrmUserSalesGoal found by the `where` argument doesn't exist, create a new CrmUserSalesGoal with this data.
+     */
+    create: XOR<CrmUserSalesGoalCreateInput, CrmUserSalesGoalUncheckedCreateInput>
+    /**
+     * In case the CrmUserSalesGoal was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<CrmUserSalesGoalUpdateInput, CrmUserSalesGoalUncheckedUpdateInput>
+  }
+
+  /**
+   * CrmUserSalesGoal delete
+   */
+  export type CrmUserSalesGoalDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmUserSalesGoal
+     */
+    select?: CrmUserSalesGoalSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmUserSalesGoal
+     */
+    omit?: CrmUserSalesGoalOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmUserSalesGoalInclude<ExtArgs> | null
+    /**
+     * Filter which CrmUserSalesGoal to delete.
+     */
+    where: CrmUserSalesGoalWhereUniqueInput
+  }
+
+  /**
+   * CrmUserSalesGoal deleteMany
+   */
+  export type CrmUserSalesGoalDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which CrmUserSalesGoals to delete
+     */
+    where?: CrmUserSalesGoalWhereInput
+    /**
+     * Limit how many CrmUserSalesGoals to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * CrmUserSalesGoal without action
+   */
+  export type CrmUserSalesGoalDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmUserSalesGoal
+     */
+    select?: CrmUserSalesGoalSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmUserSalesGoal
+     */
+    omit?: CrmUserSalesGoalOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmUserSalesGoalInclude<ExtArgs> | null
   }
 
 
@@ -7444,6 +14605,7 @@ export namespace Prisma {
 
   export type ContactMinAggregateOutputType = {
     id: string | null
+    urlSlug: string | null
     name: string | null
     cargo: string | null
     telefono: string | null
@@ -7452,9 +14614,6 @@ export namespace Prisma {
     etapa: string | null
     assignedTo: string | null
     estimatedValue: number | null
-    nextAction: string | null
-    nextFollowUp: Date | null
-    notes: string | null
     docType: string | null
     docNumber: string | null
     departamento: string | null
@@ -7468,6 +14627,7 @@ export namespace Prisma {
 
   export type ContactMaxAggregateOutputType = {
     id: string | null
+    urlSlug: string | null
     name: string | null
     cargo: string | null
     telefono: string | null
@@ -7476,9 +14636,6 @@ export namespace Prisma {
     etapa: string | null
     assignedTo: string | null
     estimatedValue: number | null
-    nextAction: string | null
-    nextFollowUp: Date | null
-    notes: string | null
     docType: string | null
     docNumber: string | null
     departamento: string | null
@@ -7492,6 +14649,7 @@ export namespace Prisma {
 
   export type ContactCountAggregateOutputType = {
     id: number
+    urlSlug: number
     name: number
     cargo: number
     telefono: number
@@ -7500,10 +14658,6 @@ export namespace Prisma {
     etapa: number
     assignedTo: number
     estimatedValue: number
-    nextAction: number
-    nextFollowUp: number
-    notes: number
-    tags: number
     docType: number
     docNumber: number
     departamento: number
@@ -7528,6 +14682,7 @@ export namespace Prisma {
 
   export type ContactMinAggregateInputType = {
     id?: true
+    urlSlug?: true
     name?: true
     cargo?: true
     telefono?: true
@@ -7536,9 +14691,6 @@ export namespace Prisma {
     etapa?: true
     assignedTo?: true
     estimatedValue?: true
-    nextAction?: true
-    nextFollowUp?: true
-    notes?: true
     docType?: true
     docNumber?: true
     departamento?: true
@@ -7552,6 +14704,7 @@ export namespace Prisma {
 
   export type ContactMaxAggregateInputType = {
     id?: true
+    urlSlug?: true
     name?: true
     cargo?: true
     telefono?: true
@@ -7560,9 +14713,6 @@ export namespace Prisma {
     etapa?: true
     assignedTo?: true
     estimatedValue?: true
-    nextAction?: true
-    nextFollowUp?: true
-    notes?: true
     docType?: true
     docNumber?: true
     departamento?: true
@@ -7576,6 +14726,7 @@ export namespace Prisma {
 
   export type ContactCountAggregateInputType = {
     id?: true
+    urlSlug?: true
     name?: true
     cargo?: true
     telefono?: true
@@ -7584,10 +14735,6 @@ export namespace Prisma {
     etapa?: true
     assignedTo?: true
     estimatedValue?: true
-    nextAction?: true
-    nextFollowUp?: true
-    notes?: true
-    tags?: true
     docType?: true
     docNumber?: true
     departamento?: true
@@ -7689,6 +14836,7 @@ export namespace Prisma {
 
   export type ContactGroupByOutputType = {
     id: string
+    urlSlug: string
     name: string
     cargo: string | null
     telefono: string
@@ -7697,10 +14845,6 @@ export namespace Prisma {
     etapa: string
     assignedTo: string | null
     estimatedValue: number
-    nextAction: string | null
-    nextFollowUp: Date | null
-    notes: string | null
-    tags: string[]
     docType: string | null
     docNumber: string | null
     departamento: string | null
@@ -7734,6 +14878,7 @@ export namespace Prisma {
 
   export type ContactSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
+    urlSlug?: boolean
     name?: boolean
     cargo?: boolean
     telefono?: boolean
@@ -7742,10 +14887,6 @@ export namespace Prisma {
     etapa?: boolean
     assignedTo?: boolean
     estimatedValue?: boolean
-    nextAction?: boolean
-    nextFollowUp?: boolean
-    notes?: boolean
-    tags?: boolean
     docType?: boolean
     docNumber?: boolean
     departamento?: boolean
@@ -7767,6 +14908,7 @@ export namespace Prisma {
 
   export type ContactSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
+    urlSlug?: boolean
     name?: boolean
     cargo?: boolean
     telefono?: boolean
@@ -7775,10 +14917,6 @@ export namespace Prisma {
     etapa?: boolean
     assignedTo?: boolean
     estimatedValue?: boolean
-    nextAction?: boolean
-    nextFollowUp?: boolean
-    notes?: boolean
-    tags?: boolean
     docType?: boolean
     docNumber?: boolean
     departamento?: boolean
@@ -7794,6 +14932,7 @@ export namespace Prisma {
 
   export type ContactSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
+    urlSlug?: boolean
     name?: boolean
     cargo?: boolean
     telefono?: boolean
@@ -7802,10 +14941,6 @@ export namespace Prisma {
     etapa?: boolean
     assignedTo?: boolean
     estimatedValue?: boolean
-    nextAction?: boolean
-    nextFollowUp?: boolean
-    notes?: boolean
-    tags?: boolean
     docType?: boolean
     docNumber?: boolean
     departamento?: boolean
@@ -7821,6 +14956,7 @@ export namespace Prisma {
 
   export type ContactSelectScalar = {
     id?: boolean
+    urlSlug?: boolean
     name?: boolean
     cargo?: boolean
     telefono?: boolean
@@ -7829,10 +14965,6 @@ export namespace Prisma {
     etapa?: boolean
     assignedTo?: boolean
     estimatedValue?: boolean
-    nextAction?: boolean
-    nextFollowUp?: boolean
-    notes?: boolean
-    tags?: boolean
     docType?: boolean
     docNumber?: boolean
     departamento?: boolean
@@ -7845,7 +14977,7 @@ export namespace Prisma {
     updatedAt?: boolean
   }
 
-  export type ContactOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "cargo" | "telefono" | "correo" | "fuente" | "etapa" | "assignedTo" | "estimatedValue" | "nextAction" | "nextFollowUp" | "notes" | "tags" | "docType" | "docNumber" | "departamento" | "provincia" | "distrito" | "direccion" | "clienteRecuperado" | "etapaHistory" | "createdAt" | "updatedAt", ExtArgs["result"]["contact"]>
+  export type ContactOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "urlSlug" | "name" | "cargo" | "telefono" | "correo" | "fuente" | "etapa" | "assignedTo" | "estimatedValue" | "docType" | "docNumber" | "departamento" | "provincia" | "distrito" | "direccion" | "clienteRecuperado" | "etapaHistory" | "createdAt" | "updatedAt", ExtArgs["result"]["contact"]>
   export type ContactInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     user?: boolean | Contact$userArgs<ExtArgs>
     companies?: boolean | Contact$companiesArgs<ExtArgs>
@@ -7874,6 +15006,10 @@ export namespace Prisma {
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
+      /**
+       * * Segmento de URL para /contactos/:slug (único; también se acepta :id cuid en API)
+       */
+      urlSlug: string
       name: string
       cargo: string | null
       telefono: string
@@ -7882,10 +15018,6 @@ export namespace Prisma {
       etapa: string
       assignedTo: string | null
       estimatedValue: number
-      nextAction: string | null
-      nextFollowUp: Date | null
-      notes: string | null
-      tags: string[]
       docType: string | null
       docNumber: string | null
       departamento: string | null
@@ -8326,6 +15458,7 @@ export namespace Prisma {
    */
   interface ContactFieldRefs {
     readonly id: FieldRef<"Contact", 'String'>
+    readonly urlSlug: FieldRef<"Contact", 'String'>
     readonly name: FieldRef<"Contact", 'String'>
     readonly cargo: FieldRef<"Contact", 'String'>
     readonly telefono: FieldRef<"Contact", 'String'>
@@ -8334,10 +15467,6 @@ export namespace Prisma {
     readonly etapa: FieldRef<"Contact", 'String'>
     readonly assignedTo: FieldRef<"Contact", 'String'>
     readonly estimatedValue: FieldRef<"Contact", 'Float'>
-    readonly nextAction: FieldRef<"Contact", 'String'>
-    readonly nextFollowUp: FieldRef<"Contact", 'DateTime'>
-    readonly notes: FieldRef<"Contact", 'String'>
-    readonly tags: FieldRef<"Contact", 'String[]'>
     readonly docType: FieldRef<"Contact", 'String'>
     readonly docNumber: FieldRef<"Contact", 'String'>
     readonly departamento: FieldRef<"Contact", 'String'>
@@ -8928,6 +16057,7 @@ export namespace Prisma {
 
   export type CompanyMinAggregateOutputType = {
     id: string | null
+    urlSlug: string | null
     name: string | null
     razonSocial: string | null
     ruc: string | null
@@ -8952,6 +16082,7 @@ export namespace Prisma {
 
   export type CompanyMaxAggregateOutputType = {
     id: string | null
+    urlSlug: string | null
     name: string | null
     razonSocial: string | null
     ruc: string | null
@@ -8976,6 +16107,7 @@ export namespace Prisma {
 
   export type CompanyCountAggregateOutputType = {
     id: number
+    urlSlug: number
     name: number
     razonSocial: number
     ruc: number
@@ -9010,6 +16142,7 @@ export namespace Prisma {
 
   export type CompanyMinAggregateInputType = {
     id?: true
+    urlSlug?: true
     name?: true
     razonSocial?: true
     ruc?: true
@@ -9034,6 +16167,7 @@ export namespace Prisma {
 
   export type CompanyMaxAggregateInputType = {
     id?: true
+    urlSlug?: true
     name?: true
     razonSocial?: true
     ruc?: true
@@ -9058,6 +16192,7 @@ export namespace Prisma {
 
   export type CompanyCountAggregateInputType = {
     id?: true
+    urlSlug?: true
     name?: true
     razonSocial?: true
     ruc?: true
@@ -9169,6 +16304,7 @@ export namespace Prisma {
 
   export type CompanyGroupByOutputType = {
     id: string
+    urlSlug: string
     name: string
     razonSocial: string | null
     ruc: string | null
@@ -9212,6 +16348,7 @@ export namespace Prisma {
 
   export type CompanySelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
+    urlSlug?: boolean
     name?: boolean
     razonSocial?: boolean
     ruc?: boolean
@@ -9238,11 +16375,13 @@ export namespace Prisma {
     linkedBy?: boolean | Company$linkedByArgs<ExtArgs>
     opportunities?: boolean | Company$opportunitiesArgs<ExtArgs>
     activities?: boolean | Company$activitiesArgs<ExtArgs>
+    clientRecord?: boolean | Company$clientRecordArgs<ExtArgs>
     _count?: boolean | CompanyCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["company"]>
 
   export type CompanySelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
+    urlSlug?: boolean
     name?: boolean
     razonSocial?: boolean
     ruc?: boolean
@@ -9268,6 +16407,7 @@ export namespace Prisma {
 
   export type CompanySelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
+    urlSlug?: boolean
     name?: boolean
     razonSocial?: boolean
     ruc?: boolean
@@ -9293,6 +16433,7 @@ export namespace Prisma {
 
   export type CompanySelectScalar = {
     id?: boolean
+    urlSlug?: boolean
     name?: boolean
     razonSocial?: boolean
     ruc?: boolean
@@ -9315,7 +16456,7 @@ export namespace Prisma {
     updatedAt?: boolean
   }
 
-  export type CompanyOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "razonSocial" | "ruc" | "telefono" | "domain" | "rubro" | "tipo" | "linkedin" | "correo" | "distrito" | "provincia" | "departamento" | "direccion" | "facturacionEstimada" | "fuente" | "clienteRecuperado" | "etapa" | "assignedTo" | "createdAt" | "updatedAt", ExtArgs["result"]["company"]>
+  export type CompanyOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "urlSlug" | "name" | "razonSocial" | "ruc" | "telefono" | "domain" | "rubro" | "tipo" | "linkedin" | "correo" | "distrito" | "provincia" | "departamento" | "direccion" | "facturacionEstimada" | "fuente" | "clienteRecuperado" | "etapa" | "assignedTo" | "createdAt" | "updatedAt", ExtArgs["result"]["company"]>
   export type CompanyInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     user?: boolean | Company$userArgs<ExtArgs>
     contacts?: boolean | Company$contactsArgs<ExtArgs>
@@ -9323,6 +16464,7 @@ export namespace Prisma {
     linkedBy?: boolean | Company$linkedByArgs<ExtArgs>
     opportunities?: boolean | Company$opportunitiesArgs<ExtArgs>
     activities?: boolean | Company$activitiesArgs<ExtArgs>
+    clientRecord?: boolean | Company$clientRecordArgs<ExtArgs>
     _count?: boolean | CompanyCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type CompanyIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -9341,9 +16483,17 @@ export namespace Prisma {
       linkedBy: Prisma.$CompanyCompanyPayload<ExtArgs>[]
       opportunities: Prisma.$CompanyOpportunityPayload<ExtArgs>[]
       activities: Prisma.$CompanyActivityPayload<ExtArgs>[]
+      /**
+       * * Registro CRM “Cliente”: se crea al alcanzar etapa cierre_ganado (1:1 con empresa).
+       */
+      clientRecord: Prisma.$ClientPayload<ExtArgs> | null
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
+      /**
+       * * Segmento de URL para /empresas/:slug
+       */
+      urlSlug: string
       name: string
       razonSocial: string | null
       ruc: string | null
@@ -9767,6 +16917,7 @@ export namespace Prisma {
     linkedBy<T extends Company$linkedByArgs<ExtArgs> = {}>(args?: Subset<T, Company$linkedByArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CompanyCompanyPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     opportunities<T extends Company$opportunitiesArgs<ExtArgs> = {}>(args?: Subset<T, Company$opportunitiesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CompanyOpportunityPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     activities<T extends Company$activitiesArgs<ExtArgs> = {}>(args?: Subset<T, Company$activitiesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CompanyActivityPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    clientRecord<T extends Company$clientRecordArgs<ExtArgs> = {}>(args?: Subset<T, Company$clientRecordArgs<ExtArgs>>): Prisma__ClientClient<$Result.GetResult<Prisma.$ClientPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -9797,6 +16948,7 @@ export namespace Prisma {
    */
   interface CompanyFieldRefs {
     readonly id: FieldRef<"Company", 'String'>
+    readonly urlSlug: FieldRef<"Company", 'String'>
     readonly name: FieldRef<"Company", 'String'>
     readonly razonSocial: FieldRef<"Company", 'String'>
     readonly ruc: FieldRef<"Company", 'String'>
@@ -10357,6 +17509,25 @@ export namespace Prisma {
   }
 
   /**
+   * Company.clientRecord
+   */
+  export type Company$clientRecordArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Client
+     */
+    select?: ClientSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Client
+     */
+    omit?: ClientOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ClientInclude<ExtArgs> | null
+    where?: ClientWhereInput
+  }
+
+  /**
    * Company without action
    */
   export type CompanyDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -10372,6 +17543,1085 @@ export namespace Prisma {
      * Choose, which related nodes to fetch as well
      */
     include?: CompanyInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model Client
+   */
+
+  export type AggregateClient = {
+    _count: ClientCountAggregateOutputType | null
+    _min: ClientMinAggregateOutputType | null
+    _max: ClientMaxAggregateOutputType | null
+  }
+
+  export type ClientMinAggregateOutputType = {
+    id: string | null
+    companyId: string | null
+    status: string | null
+    notes: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type ClientMaxAggregateOutputType = {
+    id: string | null
+    companyId: string | null
+    status: string | null
+    notes: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type ClientCountAggregateOutputType = {
+    id: number
+    companyId: number
+    status: number
+    notes: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type ClientMinAggregateInputType = {
+    id?: true
+    companyId?: true
+    status?: true
+    notes?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type ClientMaxAggregateInputType = {
+    id?: true
+    companyId?: true
+    status?: true
+    notes?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type ClientCountAggregateInputType = {
+    id?: true
+    companyId?: true
+    status?: true
+    notes?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type ClientAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which Client to aggregate.
+     */
+    where?: ClientWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Clients to fetch.
+     */
+    orderBy?: ClientOrderByWithRelationInput | ClientOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: ClientWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Clients from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Clients.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned Clients
+    **/
+    _count?: true | ClientCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: ClientMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: ClientMaxAggregateInputType
+  }
+
+  export type GetClientAggregateType<T extends ClientAggregateArgs> = {
+        [P in keyof T & keyof AggregateClient]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateClient[P]>
+      : GetScalarType<T[P], AggregateClient[P]>
+  }
+
+
+
+
+  export type ClientGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: ClientWhereInput
+    orderBy?: ClientOrderByWithAggregationInput | ClientOrderByWithAggregationInput[]
+    by: ClientScalarFieldEnum[] | ClientScalarFieldEnum
+    having?: ClientScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: ClientCountAggregateInputType | true
+    _min?: ClientMinAggregateInputType
+    _max?: ClientMaxAggregateInputType
+  }
+
+  export type ClientGroupByOutputType = {
+    id: string
+    companyId: string
+    status: string
+    notes: string | null
+    createdAt: Date
+    updatedAt: Date
+    _count: ClientCountAggregateOutputType | null
+    _min: ClientMinAggregateOutputType | null
+    _max: ClientMaxAggregateOutputType | null
+  }
+
+  type GetClientGroupByPayload<T extends ClientGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<ClientGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof ClientGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], ClientGroupByOutputType[P]>
+            : GetScalarType<T[P], ClientGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type ClientSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    companyId?: boolean
+    status?: boolean
+    notes?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    company?: boolean | CompanyDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["client"]>
+
+  export type ClientSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    companyId?: boolean
+    status?: boolean
+    notes?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    company?: boolean | CompanyDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["client"]>
+
+  export type ClientSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    companyId?: boolean
+    status?: boolean
+    notes?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    company?: boolean | CompanyDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["client"]>
+
+  export type ClientSelectScalar = {
+    id?: boolean
+    companyId?: boolean
+    status?: boolean
+    notes?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type ClientOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "companyId" | "status" | "notes" | "createdAt" | "updatedAt", ExtArgs["result"]["client"]>
+  export type ClientInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    company?: boolean | CompanyDefaultArgs<ExtArgs>
+  }
+  export type ClientIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    company?: boolean | CompanyDefaultArgs<ExtArgs>
+  }
+  export type ClientIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    company?: boolean | CompanyDefaultArgs<ExtArgs>
+  }
+
+  export type $ClientPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "Client"
+    objects: {
+      company: Prisma.$CompanyPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      companyId: string
+      /**
+       * * activo | inactivo | potencial
+       */
+      status: string
+      notes: string | null
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["client"]>
+    composites: {}
+  }
+
+  type ClientGetPayload<S extends boolean | null | undefined | ClientDefaultArgs> = $Result.GetResult<Prisma.$ClientPayload, S>
+
+  type ClientCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<ClientFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: ClientCountAggregateInputType | true
+    }
+
+  export interface ClientDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['Client'], meta: { name: 'Client' } }
+    /**
+     * Find zero or one Client that matches the filter.
+     * @param {ClientFindUniqueArgs} args - Arguments to find a Client
+     * @example
+     * // Get one Client
+     * const client = await prisma.client.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends ClientFindUniqueArgs>(args: SelectSubset<T, ClientFindUniqueArgs<ExtArgs>>): Prisma__ClientClient<$Result.GetResult<Prisma.$ClientPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one Client that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {ClientFindUniqueOrThrowArgs} args - Arguments to find a Client
+     * @example
+     * // Get one Client
+     * const client = await prisma.client.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends ClientFindUniqueOrThrowArgs>(args: SelectSubset<T, ClientFindUniqueOrThrowArgs<ExtArgs>>): Prisma__ClientClient<$Result.GetResult<Prisma.$ClientPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first Client that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ClientFindFirstArgs} args - Arguments to find a Client
+     * @example
+     * // Get one Client
+     * const client = await prisma.client.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends ClientFindFirstArgs>(args?: SelectSubset<T, ClientFindFirstArgs<ExtArgs>>): Prisma__ClientClient<$Result.GetResult<Prisma.$ClientPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first Client that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ClientFindFirstOrThrowArgs} args - Arguments to find a Client
+     * @example
+     * // Get one Client
+     * const client = await prisma.client.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends ClientFindFirstOrThrowArgs>(args?: SelectSubset<T, ClientFindFirstOrThrowArgs<ExtArgs>>): Prisma__ClientClient<$Result.GetResult<Prisma.$ClientPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more Clients that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ClientFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all Clients
+     * const clients = await prisma.client.findMany()
+     * 
+     * // Get first 10 Clients
+     * const clients = await prisma.client.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const clientWithIdOnly = await prisma.client.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends ClientFindManyArgs>(args?: SelectSubset<T, ClientFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ClientPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a Client.
+     * @param {ClientCreateArgs} args - Arguments to create a Client.
+     * @example
+     * // Create one Client
+     * const Client = await prisma.client.create({
+     *   data: {
+     *     // ... data to create a Client
+     *   }
+     * })
+     * 
+     */
+    create<T extends ClientCreateArgs>(args: SelectSubset<T, ClientCreateArgs<ExtArgs>>): Prisma__ClientClient<$Result.GetResult<Prisma.$ClientPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many Clients.
+     * @param {ClientCreateManyArgs} args - Arguments to create many Clients.
+     * @example
+     * // Create many Clients
+     * const client = await prisma.client.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends ClientCreateManyArgs>(args?: SelectSubset<T, ClientCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many Clients and returns the data saved in the database.
+     * @param {ClientCreateManyAndReturnArgs} args - Arguments to create many Clients.
+     * @example
+     * // Create many Clients
+     * const client = await prisma.client.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many Clients and only return the `id`
+     * const clientWithIdOnly = await prisma.client.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends ClientCreateManyAndReturnArgs>(args?: SelectSubset<T, ClientCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ClientPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a Client.
+     * @param {ClientDeleteArgs} args - Arguments to delete one Client.
+     * @example
+     * // Delete one Client
+     * const Client = await prisma.client.delete({
+     *   where: {
+     *     // ... filter to delete one Client
+     *   }
+     * })
+     * 
+     */
+    delete<T extends ClientDeleteArgs>(args: SelectSubset<T, ClientDeleteArgs<ExtArgs>>): Prisma__ClientClient<$Result.GetResult<Prisma.$ClientPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one Client.
+     * @param {ClientUpdateArgs} args - Arguments to update one Client.
+     * @example
+     * // Update one Client
+     * const client = await prisma.client.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends ClientUpdateArgs>(args: SelectSubset<T, ClientUpdateArgs<ExtArgs>>): Prisma__ClientClient<$Result.GetResult<Prisma.$ClientPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more Clients.
+     * @param {ClientDeleteManyArgs} args - Arguments to filter Clients to delete.
+     * @example
+     * // Delete a few Clients
+     * const { count } = await prisma.client.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends ClientDeleteManyArgs>(args?: SelectSubset<T, ClientDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more Clients.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ClientUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many Clients
+     * const client = await prisma.client.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends ClientUpdateManyArgs>(args: SelectSubset<T, ClientUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more Clients and returns the data updated in the database.
+     * @param {ClientUpdateManyAndReturnArgs} args - Arguments to update many Clients.
+     * @example
+     * // Update many Clients
+     * const client = await prisma.client.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more Clients and only return the `id`
+     * const clientWithIdOnly = await prisma.client.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends ClientUpdateManyAndReturnArgs>(args: SelectSubset<T, ClientUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ClientPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one Client.
+     * @param {ClientUpsertArgs} args - Arguments to update or create a Client.
+     * @example
+     * // Update or create a Client
+     * const client = await prisma.client.upsert({
+     *   create: {
+     *     // ... data to create a Client
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the Client we want to update
+     *   }
+     * })
+     */
+    upsert<T extends ClientUpsertArgs>(args: SelectSubset<T, ClientUpsertArgs<ExtArgs>>): Prisma__ClientClient<$Result.GetResult<Prisma.$ClientPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of Clients.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ClientCountArgs} args - Arguments to filter Clients to count.
+     * @example
+     * // Count the number of Clients
+     * const count = await prisma.client.count({
+     *   where: {
+     *     // ... the filter for the Clients we want to count
+     *   }
+     * })
+    **/
+    count<T extends ClientCountArgs>(
+      args?: Subset<T, ClientCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], ClientCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a Client.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ClientAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends ClientAggregateArgs>(args: Subset<T, ClientAggregateArgs>): Prisma.PrismaPromise<GetClientAggregateType<T>>
+
+    /**
+     * Group by Client.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ClientGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends ClientGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: ClientGroupByArgs['orderBy'] }
+        : { orderBy?: ClientGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, ClientGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetClientGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the Client model
+   */
+  readonly fields: ClientFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for Client.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__ClientClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    company<T extends CompanyDefaultArgs<ExtArgs> = {}>(args?: Subset<T, CompanyDefaultArgs<ExtArgs>>): Prisma__CompanyClient<$Result.GetResult<Prisma.$CompanyPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the Client model
+   */
+  interface ClientFieldRefs {
+    readonly id: FieldRef<"Client", 'String'>
+    readonly companyId: FieldRef<"Client", 'String'>
+    readonly status: FieldRef<"Client", 'String'>
+    readonly notes: FieldRef<"Client", 'String'>
+    readonly createdAt: FieldRef<"Client", 'DateTime'>
+    readonly updatedAt: FieldRef<"Client", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * Client findUnique
+   */
+  export type ClientFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Client
+     */
+    select?: ClientSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Client
+     */
+    omit?: ClientOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ClientInclude<ExtArgs> | null
+    /**
+     * Filter, which Client to fetch.
+     */
+    where: ClientWhereUniqueInput
+  }
+
+  /**
+   * Client findUniqueOrThrow
+   */
+  export type ClientFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Client
+     */
+    select?: ClientSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Client
+     */
+    omit?: ClientOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ClientInclude<ExtArgs> | null
+    /**
+     * Filter, which Client to fetch.
+     */
+    where: ClientWhereUniqueInput
+  }
+
+  /**
+   * Client findFirst
+   */
+  export type ClientFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Client
+     */
+    select?: ClientSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Client
+     */
+    omit?: ClientOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ClientInclude<ExtArgs> | null
+    /**
+     * Filter, which Client to fetch.
+     */
+    where?: ClientWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Clients to fetch.
+     */
+    orderBy?: ClientOrderByWithRelationInput | ClientOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for Clients.
+     */
+    cursor?: ClientWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Clients from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Clients.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of Clients.
+     */
+    distinct?: ClientScalarFieldEnum | ClientScalarFieldEnum[]
+  }
+
+  /**
+   * Client findFirstOrThrow
+   */
+  export type ClientFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Client
+     */
+    select?: ClientSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Client
+     */
+    omit?: ClientOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ClientInclude<ExtArgs> | null
+    /**
+     * Filter, which Client to fetch.
+     */
+    where?: ClientWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Clients to fetch.
+     */
+    orderBy?: ClientOrderByWithRelationInput | ClientOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for Clients.
+     */
+    cursor?: ClientWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Clients from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Clients.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of Clients.
+     */
+    distinct?: ClientScalarFieldEnum | ClientScalarFieldEnum[]
+  }
+
+  /**
+   * Client findMany
+   */
+  export type ClientFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Client
+     */
+    select?: ClientSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Client
+     */
+    omit?: ClientOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ClientInclude<ExtArgs> | null
+    /**
+     * Filter, which Clients to fetch.
+     */
+    where?: ClientWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Clients to fetch.
+     */
+    orderBy?: ClientOrderByWithRelationInput | ClientOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing Clients.
+     */
+    cursor?: ClientWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Clients from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Clients.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of Clients.
+     */
+    distinct?: ClientScalarFieldEnum | ClientScalarFieldEnum[]
+  }
+
+  /**
+   * Client create
+   */
+  export type ClientCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Client
+     */
+    select?: ClientSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Client
+     */
+    omit?: ClientOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ClientInclude<ExtArgs> | null
+    /**
+     * The data needed to create a Client.
+     */
+    data: XOR<ClientCreateInput, ClientUncheckedCreateInput>
+  }
+
+  /**
+   * Client createMany
+   */
+  export type ClientCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many Clients.
+     */
+    data: ClientCreateManyInput | ClientCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * Client createManyAndReturn
+   */
+  export type ClientCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Client
+     */
+    select?: ClientSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the Client
+     */
+    omit?: ClientOmit<ExtArgs> | null
+    /**
+     * The data used to create many Clients.
+     */
+    data: ClientCreateManyInput | ClientCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ClientIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * Client update
+   */
+  export type ClientUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Client
+     */
+    select?: ClientSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Client
+     */
+    omit?: ClientOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ClientInclude<ExtArgs> | null
+    /**
+     * The data needed to update a Client.
+     */
+    data: XOR<ClientUpdateInput, ClientUncheckedUpdateInput>
+    /**
+     * Choose, which Client to update.
+     */
+    where: ClientWhereUniqueInput
+  }
+
+  /**
+   * Client updateMany
+   */
+  export type ClientUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update Clients.
+     */
+    data: XOR<ClientUpdateManyMutationInput, ClientUncheckedUpdateManyInput>
+    /**
+     * Filter which Clients to update
+     */
+    where?: ClientWhereInput
+    /**
+     * Limit how many Clients to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * Client updateManyAndReturn
+   */
+  export type ClientUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Client
+     */
+    select?: ClientSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the Client
+     */
+    omit?: ClientOmit<ExtArgs> | null
+    /**
+     * The data used to update Clients.
+     */
+    data: XOR<ClientUpdateManyMutationInput, ClientUncheckedUpdateManyInput>
+    /**
+     * Filter which Clients to update
+     */
+    where?: ClientWhereInput
+    /**
+     * Limit how many Clients to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ClientIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * Client upsert
+   */
+  export type ClientUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Client
+     */
+    select?: ClientSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Client
+     */
+    omit?: ClientOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ClientInclude<ExtArgs> | null
+    /**
+     * The filter to search for the Client to update in case it exists.
+     */
+    where: ClientWhereUniqueInput
+    /**
+     * In case the Client found by the `where` argument doesn't exist, create a new Client with this data.
+     */
+    create: XOR<ClientCreateInput, ClientUncheckedCreateInput>
+    /**
+     * In case the Client was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<ClientUpdateInput, ClientUncheckedUpdateInput>
+  }
+
+  /**
+   * Client delete
+   */
+  export type ClientDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Client
+     */
+    select?: ClientSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Client
+     */
+    omit?: ClientOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ClientInclude<ExtArgs> | null
+    /**
+     * Filter which Client to delete.
+     */
+    where: ClientWhereUniqueInput
+  }
+
+  /**
+   * Client deleteMany
+   */
+  export type ClientDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which Clients to delete
+     */
+    where?: ClientWhereInput
+    /**
+     * Limit how many Clients to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * Client without action
+   */
+  export type ClientDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Client
+     */
+    select?: ClientSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Client
+     */
+    omit?: ClientOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ClientInclude<ExtArgs> | null
   }
 
 
@@ -10399,6 +18649,7 @@ export namespace Prisma {
 
   export type OpportunityMinAggregateOutputType = {
     id: string | null
+    urlSlug: string | null
     title: string | null
     amount: number | null
     probability: number | null
@@ -10413,6 +18664,7 @@ export namespace Prisma {
 
   export type OpportunityMaxAggregateOutputType = {
     id: string | null
+    urlSlug: string | null
     title: string | null
     amount: number | null
     probability: number | null
@@ -10427,6 +18679,7 @@ export namespace Prisma {
 
   export type OpportunityCountAggregateOutputType = {
     id: number
+    urlSlug: number
     title: number
     amount: number
     probability: number
@@ -10453,6 +18706,7 @@ export namespace Prisma {
 
   export type OpportunityMinAggregateInputType = {
     id?: true
+    urlSlug?: true
     title?: true
     amount?: true
     probability?: true
@@ -10467,6 +18721,7 @@ export namespace Prisma {
 
   export type OpportunityMaxAggregateInputType = {
     id?: true
+    urlSlug?: true
     title?: true
     amount?: true
     probability?: true
@@ -10481,6 +18736,7 @@ export namespace Prisma {
 
   export type OpportunityCountAggregateInputType = {
     id?: true
+    urlSlug?: true
     title?: true
     amount?: true
     probability?: true
@@ -10582,6 +18838,7 @@ export namespace Prisma {
 
   export type OpportunityGroupByOutputType = {
     id: string
+    urlSlug: string
     title: string
     amount: number
     probability: number
@@ -10615,6 +18872,7 @@ export namespace Prisma {
 
   export type OpportunitySelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
+    urlSlug?: boolean
     title?: boolean
     amount?: boolean
     probability?: boolean
@@ -10636,6 +18894,7 @@ export namespace Prisma {
 
   export type OpportunitySelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
+    urlSlug?: boolean
     title?: boolean
     amount?: boolean
     probability?: boolean
@@ -10651,6 +18910,7 @@ export namespace Prisma {
 
   export type OpportunitySelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
+    urlSlug?: boolean
     title?: boolean
     amount?: boolean
     probability?: boolean
@@ -10666,6 +18926,7 @@ export namespace Prisma {
 
   export type OpportunitySelectScalar = {
     id?: boolean
+    urlSlug?: boolean
     title?: boolean
     amount?: boolean
     probability?: boolean
@@ -10678,7 +18939,7 @@ export namespace Prisma {
     updatedAt?: boolean
   }
 
-  export type OpportunityOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "title" | "amount" | "probability" | "etapa" | "status" | "priority" | "expectedCloseDate" | "assignedTo" | "createdAt" | "updatedAt", ExtArgs["result"]["opportunity"]>
+  export type OpportunityOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "urlSlug" | "title" | "amount" | "probability" | "etapa" | "status" | "priority" | "expectedCloseDate" | "assignedTo" | "createdAt" | "updatedAt", ExtArgs["result"]["opportunity"]>
   export type OpportunityInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     user?: boolean | Opportunity$userArgs<ExtArgs>
     contacts?: boolean | Opportunity$contactsArgs<ExtArgs>
@@ -10707,6 +18968,7 @@ export namespace Prisma {
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
+      urlSlug: string
       title: string
       amount: number
       probability: number
@@ -11150,6 +19412,7 @@ export namespace Prisma {
    */
   interface OpportunityFieldRefs {
     readonly id: FieldRef<"Opportunity", 'String'>
+    readonly urlSlug: FieldRef<"Opportunity", 'String'>
     readonly title: FieldRef<"Opportunity", 'String'>
     readonly amount: FieldRef<"Opportunity", 'Float'>
     readonly probability: FieldRef<"Opportunity", 'Int'>
@@ -11731,6 +19994,7 @@ export namespace Prisma {
   export type ActivityMinAggregateOutputType = {
     id: string | null
     type: string | null
+    taskKind: string | null
     title: string | null
     description: string | null
     assignedTo: string | null
@@ -11746,6 +20010,7 @@ export namespace Prisma {
   export type ActivityMaxAggregateOutputType = {
     id: string | null
     type: string | null
+    taskKind: string | null
     title: string | null
     description: string | null
     assignedTo: string | null
@@ -11761,6 +20026,7 @@ export namespace Prisma {
   export type ActivityCountAggregateOutputType = {
     id: number
     type: number
+    taskKind: number
     title: number
     description: number
     assignedTo: number
@@ -11778,6 +20044,7 @@ export namespace Prisma {
   export type ActivityMinAggregateInputType = {
     id?: true
     type?: true
+    taskKind?: true
     title?: true
     description?: true
     assignedTo?: true
@@ -11793,6 +20060,7 @@ export namespace Prisma {
   export type ActivityMaxAggregateInputType = {
     id?: true
     type?: true
+    taskKind?: true
     title?: true
     description?: true
     assignedTo?: true
@@ -11808,6 +20076,7 @@ export namespace Prisma {
   export type ActivityCountAggregateInputType = {
     id?: true
     type?: true
+    taskKind?: true
     title?: true
     description?: true
     assignedTo?: true
@@ -11896,6 +20165,7 @@ export namespace Prisma {
   export type ActivityGroupByOutputType = {
     id: string
     type: string
+    taskKind: string | null
     title: string
     description: string
     assignedTo: string
@@ -11928,6 +20198,7 @@ export namespace Prisma {
   export type ActivitySelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
     type?: boolean
+    taskKind?: boolean
     title?: boolean
     description?: boolean
     assignedTo?: boolean
@@ -11948,6 +20219,7 @@ export namespace Prisma {
   export type ActivitySelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
     type?: boolean
+    taskKind?: boolean
     title?: boolean
     description?: boolean
     assignedTo?: boolean
@@ -11964,6 +20236,7 @@ export namespace Prisma {
   export type ActivitySelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
     type?: boolean
+    taskKind?: boolean
     title?: boolean
     description?: boolean
     assignedTo?: boolean
@@ -11980,6 +20253,7 @@ export namespace Prisma {
   export type ActivitySelectScalar = {
     id?: boolean
     type?: boolean
+    taskKind?: boolean
     title?: boolean
     description?: boolean
     assignedTo?: boolean
@@ -11992,7 +20266,7 @@ export namespace Prisma {
     updatedAt?: boolean
   }
 
-  export type ActivityOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "type" | "title" | "description" | "assignedTo" | "status" | "dueDate" | "startDate" | "startTime" | "completedAt" | "createdAt" | "updatedAt", ExtArgs["result"]["activity"]>
+  export type ActivityOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "type" | "taskKind" | "title" | "description" | "assignedTo" | "status" | "dueDate" | "startDate" | "startTime" | "completedAt" | "createdAt" | "updatedAt", ExtArgs["result"]["activity"]>
   export type ActivityInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     user?: boolean | UserDefaultArgs<ExtArgs>
     contacts?: boolean | Activity$contactsArgs<ExtArgs>
@@ -12018,6 +20292,10 @@ export namespace Prisma {
     scalars: $Extensions.GetPayloadResult<{
       id: string
       type: string
+      /**
+       * * Modalidad cuando type = tarea: llamada | reunion | correo | whatsapp
+       */
+      taskKind: string | null
       title: string
       description: string
       assignedTo: string
@@ -12457,6 +20735,7 @@ export namespace Prisma {
   interface ActivityFieldRefs {
     readonly id: FieldRef<"Activity", 'String'>
     readonly type: FieldRef<"Activity", 'String'>
+    readonly taskKind: FieldRef<"Activity", 'String'>
     readonly title: FieldRef<"Activity", 'String'>
     readonly description: FieldRef<"Activity", 'String'>
     readonly assignedTo: FieldRef<"Activity", 'String'>
@@ -24657,6 +32936,1213 @@ export namespace Prisma {
 
 
   /**
+   * Model CrmFile
+   */
+
+  export type AggregateCrmFile = {
+    _count: CrmFileCountAggregateOutputType | null
+    _avg: CrmFileAvgAggregateOutputType | null
+    _sum: CrmFileSumAggregateOutputType | null
+    _min: CrmFileMinAggregateOutputType | null
+    _max: CrmFileMaxAggregateOutputType | null
+  }
+
+  export type CrmFileAvgAggregateOutputType = {
+    size: number | null
+  }
+
+  export type CrmFileSumAggregateOutputType = {
+    size: number | null
+  }
+
+  export type CrmFileMinAggregateOutputType = {
+    id: string | null
+    storageKey: string | null
+    originalName: string | null
+    mimeType: string | null
+    size: number | null
+    entityType: string | null
+    entityId: string | null
+    entityName: string | null
+    relatedEntityType: string | null
+    relatedEntityId: string | null
+    relatedEntityName: string | null
+    uploadedBy: string | null
+    createdAt: Date | null
+  }
+
+  export type CrmFileMaxAggregateOutputType = {
+    id: string | null
+    storageKey: string | null
+    originalName: string | null
+    mimeType: string | null
+    size: number | null
+    entityType: string | null
+    entityId: string | null
+    entityName: string | null
+    relatedEntityType: string | null
+    relatedEntityId: string | null
+    relatedEntityName: string | null
+    uploadedBy: string | null
+    createdAt: Date | null
+  }
+
+  export type CrmFileCountAggregateOutputType = {
+    id: number
+    storageKey: number
+    originalName: number
+    mimeType: number
+    size: number
+    entityType: number
+    entityId: number
+    entityName: number
+    relatedEntityType: number
+    relatedEntityId: number
+    relatedEntityName: number
+    uploadedBy: number
+    createdAt: number
+    _all: number
+  }
+
+
+  export type CrmFileAvgAggregateInputType = {
+    size?: true
+  }
+
+  export type CrmFileSumAggregateInputType = {
+    size?: true
+  }
+
+  export type CrmFileMinAggregateInputType = {
+    id?: true
+    storageKey?: true
+    originalName?: true
+    mimeType?: true
+    size?: true
+    entityType?: true
+    entityId?: true
+    entityName?: true
+    relatedEntityType?: true
+    relatedEntityId?: true
+    relatedEntityName?: true
+    uploadedBy?: true
+    createdAt?: true
+  }
+
+  export type CrmFileMaxAggregateInputType = {
+    id?: true
+    storageKey?: true
+    originalName?: true
+    mimeType?: true
+    size?: true
+    entityType?: true
+    entityId?: true
+    entityName?: true
+    relatedEntityType?: true
+    relatedEntityId?: true
+    relatedEntityName?: true
+    uploadedBy?: true
+    createdAt?: true
+  }
+
+  export type CrmFileCountAggregateInputType = {
+    id?: true
+    storageKey?: true
+    originalName?: true
+    mimeType?: true
+    size?: true
+    entityType?: true
+    entityId?: true
+    entityName?: true
+    relatedEntityType?: true
+    relatedEntityId?: true
+    relatedEntityName?: true
+    uploadedBy?: true
+    createdAt?: true
+    _all?: true
+  }
+
+  export type CrmFileAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which CrmFile to aggregate.
+     */
+    where?: CrmFileWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmFiles to fetch.
+     */
+    orderBy?: CrmFileOrderByWithRelationInput | CrmFileOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: CrmFileWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmFiles from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmFiles.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned CrmFiles
+    **/
+    _count?: true | CrmFileCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: CrmFileAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: CrmFileSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: CrmFileMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: CrmFileMaxAggregateInputType
+  }
+
+  export type GetCrmFileAggregateType<T extends CrmFileAggregateArgs> = {
+        [P in keyof T & keyof AggregateCrmFile]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateCrmFile[P]>
+      : GetScalarType<T[P], AggregateCrmFile[P]>
+  }
+
+
+
+
+  export type CrmFileGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: CrmFileWhereInput
+    orderBy?: CrmFileOrderByWithAggregationInput | CrmFileOrderByWithAggregationInput[]
+    by: CrmFileScalarFieldEnum[] | CrmFileScalarFieldEnum
+    having?: CrmFileScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: CrmFileCountAggregateInputType | true
+    _avg?: CrmFileAvgAggregateInputType
+    _sum?: CrmFileSumAggregateInputType
+    _min?: CrmFileMinAggregateInputType
+    _max?: CrmFileMaxAggregateInputType
+  }
+
+  export type CrmFileGroupByOutputType = {
+    id: string
+    storageKey: string
+    originalName: string
+    mimeType: string
+    size: number
+    entityType: string
+    entityId: string
+    entityName: string | null
+    relatedEntityType: string | null
+    relatedEntityId: string | null
+    relatedEntityName: string | null
+    uploadedBy: string
+    createdAt: Date
+    _count: CrmFileCountAggregateOutputType | null
+    _avg: CrmFileAvgAggregateOutputType | null
+    _sum: CrmFileSumAggregateOutputType | null
+    _min: CrmFileMinAggregateOutputType | null
+    _max: CrmFileMaxAggregateOutputType | null
+  }
+
+  type GetCrmFileGroupByPayload<T extends CrmFileGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<CrmFileGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof CrmFileGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], CrmFileGroupByOutputType[P]>
+            : GetScalarType<T[P], CrmFileGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type CrmFileSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    storageKey?: boolean
+    originalName?: boolean
+    mimeType?: boolean
+    size?: boolean
+    entityType?: boolean
+    entityId?: boolean
+    entityName?: boolean
+    relatedEntityType?: boolean
+    relatedEntityId?: boolean
+    relatedEntityName?: boolean
+    uploadedBy?: boolean
+    createdAt?: boolean
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["crmFile"]>
+
+  export type CrmFileSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    storageKey?: boolean
+    originalName?: boolean
+    mimeType?: boolean
+    size?: boolean
+    entityType?: boolean
+    entityId?: boolean
+    entityName?: boolean
+    relatedEntityType?: boolean
+    relatedEntityId?: boolean
+    relatedEntityName?: boolean
+    uploadedBy?: boolean
+    createdAt?: boolean
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["crmFile"]>
+
+  export type CrmFileSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    storageKey?: boolean
+    originalName?: boolean
+    mimeType?: boolean
+    size?: boolean
+    entityType?: boolean
+    entityId?: boolean
+    entityName?: boolean
+    relatedEntityType?: boolean
+    relatedEntityId?: boolean
+    relatedEntityName?: boolean
+    uploadedBy?: boolean
+    createdAt?: boolean
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["crmFile"]>
+
+  export type CrmFileSelectScalar = {
+    id?: boolean
+    storageKey?: boolean
+    originalName?: boolean
+    mimeType?: boolean
+    size?: boolean
+    entityType?: boolean
+    entityId?: boolean
+    entityName?: boolean
+    relatedEntityType?: boolean
+    relatedEntityId?: boolean
+    relatedEntityName?: boolean
+    uploadedBy?: boolean
+    createdAt?: boolean
+  }
+
+  export type CrmFileOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "storageKey" | "originalName" | "mimeType" | "size" | "entityType" | "entityId" | "entityName" | "relatedEntityType" | "relatedEntityId" | "relatedEntityName" | "uploadedBy" | "createdAt", ExtArgs["result"]["crmFile"]>
+  export type CrmFileInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }
+  export type CrmFileIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }
+  export type CrmFileIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }
+
+  export type $CrmFilePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "CrmFile"
+    objects: {
+      user: Prisma.$UserPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      /**
+       * * Clave S3 o URL https del CDN si la subida fue por MEDIA_UPLOAD_URL.
+       */
+      storageKey: string
+      originalName: string
+      mimeType: string
+      size: number
+      /**
+       * * contact | company | opportunity | activity | email | task
+       */
+      entityType: string
+      entityId: string
+      entityName: string | null
+      relatedEntityType: string | null
+      relatedEntityId: string | null
+      relatedEntityName: string | null
+      uploadedBy: string
+      createdAt: Date
+    }, ExtArgs["result"]["crmFile"]>
+    composites: {}
+  }
+
+  type CrmFileGetPayload<S extends boolean | null | undefined | CrmFileDefaultArgs> = $Result.GetResult<Prisma.$CrmFilePayload, S>
+
+  type CrmFileCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<CrmFileFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: CrmFileCountAggregateInputType | true
+    }
+
+  export interface CrmFileDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['CrmFile'], meta: { name: 'CrmFile' } }
+    /**
+     * Find zero or one CrmFile that matches the filter.
+     * @param {CrmFileFindUniqueArgs} args - Arguments to find a CrmFile
+     * @example
+     * // Get one CrmFile
+     * const crmFile = await prisma.crmFile.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends CrmFileFindUniqueArgs>(args: SelectSubset<T, CrmFileFindUniqueArgs<ExtArgs>>): Prisma__CrmFileClient<$Result.GetResult<Prisma.$CrmFilePayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one CrmFile that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {CrmFileFindUniqueOrThrowArgs} args - Arguments to find a CrmFile
+     * @example
+     * // Get one CrmFile
+     * const crmFile = await prisma.crmFile.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends CrmFileFindUniqueOrThrowArgs>(args: SelectSubset<T, CrmFileFindUniqueOrThrowArgs<ExtArgs>>): Prisma__CrmFileClient<$Result.GetResult<Prisma.$CrmFilePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first CrmFile that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmFileFindFirstArgs} args - Arguments to find a CrmFile
+     * @example
+     * // Get one CrmFile
+     * const crmFile = await prisma.crmFile.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends CrmFileFindFirstArgs>(args?: SelectSubset<T, CrmFileFindFirstArgs<ExtArgs>>): Prisma__CrmFileClient<$Result.GetResult<Prisma.$CrmFilePayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first CrmFile that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmFileFindFirstOrThrowArgs} args - Arguments to find a CrmFile
+     * @example
+     * // Get one CrmFile
+     * const crmFile = await prisma.crmFile.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends CrmFileFindFirstOrThrowArgs>(args?: SelectSubset<T, CrmFileFindFirstOrThrowArgs<ExtArgs>>): Prisma__CrmFileClient<$Result.GetResult<Prisma.$CrmFilePayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more CrmFiles that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmFileFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all CrmFiles
+     * const crmFiles = await prisma.crmFile.findMany()
+     * 
+     * // Get first 10 CrmFiles
+     * const crmFiles = await prisma.crmFile.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const crmFileWithIdOnly = await prisma.crmFile.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends CrmFileFindManyArgs>(args?: SelectSubset<T, CrmFileFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmFilePayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a CrmFile.
+     * @param {CrmFileCreateArgs} args - Arguments to create a CrmFile.
+     * @example
+     * // Create one CrmFile
+     * const CrmFile = await prisma.crmFile.create({
+     *   data: {
+     *     // ... data to create a CrmFile
+     *   }
+     * })
+     * 
+     */
+    create<T extends CrmFileCreateArgs>(args: SelectSubset<T, CrmFileCreateArgs<ExtArgs>>): Prisma__CrmFileClient<$Result.GetResult<Prisma.$CrmFilePayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many CrmFiles.
+     * @param {CrmFileCreateManyArgs} args - Arguments to create many CrmFiles.
+     * @example
+     * // Create many CrmFiles
+     * const crmFile = await prisma.crmFile.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends CrmFileCreateManyArgs>(args?: SelectSubset<T, CrmFileCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many CrmFiles and returns the data saved in the database.
+     * @param {CrmFileCreateManyAndReturnArgs} args - Arguments to create many CrmFiles.
+     * @example
+     * // Create many CrmFiles
+     * const crmFile = await prisma.crmFile.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many CrmFiles and only return the `id`
+     * const crmFileWithIdOnly = await prisma.crmFile.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends CrmFileCreateManyAndReturnArgs>(args?: SelectSubset<T, CrmFileCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmFilePayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a CrmFile.
+     * @param {CrmFileDeleteArgs} args - Arguments to delete one CrmFile.
+     * @example
+     * // Delete one CrmFile
+     * const CrmFile = await prisma.crmFile.delete({
+     *   where: {
+     *     // ... filter to delete one CrmFile
+     *   }
+     * })
+     * 
+     */
+    delete<T extends CrmFileDeleteArgs>(args: SelectSubset<T, CrmFileDeleteArgs<ExtArgs>>): Prisma__CrmFileClient<$Result.GetResult<Prisma.$CrmFilePayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one CrmFile.
+     * @param {CrmFileUpdateArgs} args - Arguments to update one CrmFile.
+     * @example
+     * // Update one CrmFile
+     * const crmFile = await prisma.crmFile.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends CrmFileUpdateArgs>(args: SelectSubset<T, CrmFileUpdateArgs<ExtArgs>>): Prisma__CrmFileClient<$Result.GetResult<Prisma.$CrmFilePayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more CrmFiles.
+     * @param {CrmFileDeleteManyArgs} args - Arguments to filter CrmFiles to delete.
+     * @example
+     * // Delete a few CrmFiles
+     * const { count } = await prisma.crmFile.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends CrmFileDeleteManyArgs>(args?: SelectSubset<T, CrmFileDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more CrmFiles.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmFileUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many CrmFiles
+     * const crmFile = await prisma.crmFile.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends CrmFileUpdateManyArgs>(args: SelectSubset<T, CrmFileUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more CrmFiles and returns the data updated in the database.
+     * @param {CrmFileUpdateManyAndReturnArgs} args - Arguments to update many CrmFiles.
+     * @example
+     * // Update many CrmFiles
+     * const crmFile = await prisma.crmFile.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more CrmFiles and only return the `id`
+     * const crmFileWithIdOnly = await prisma.crmFile.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends CrmFileUpdateManyAndReturnArgs>(args: SelectSubset<T, CrmFileUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmFilePayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one CrmFile.
+     * @param {CrmFileUpsertArgs} args - Arguments to update or create a CrmFile.
+     * @example
+     * // Update or create a CrmFile
+     * const crmFile = await prisma.crmFile.upsert({
+     *   create: {
+     *     // ... data to create a CrmFile
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the CrmFile we want to update
+     *   }
+     * })
+     */
+    upsert<T extends CrmFileUpsertArgs>(args: SelectSubset<T, CrmFileUpsertArgs<ExtArgs>>): Prisma__CrmFileClient<$Result.GetResult<Prisma.$CrmFilePayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of CrmFiles.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmFileCountArgs} args - Arguments to filter CrmFiles to count.
+     * @example
+     * // Count the number of CrmFiles
+     * const count = await prisma.crmFile.count({
+     *   where: {
+     *     // ... the filter for the CrmFiles we want to count
+     *   }
+     * })
+    **/
+    count<T extends CrmFileCountArgs>(
+      args?: Subset<T, CrmFileCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], CrmFileCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a CrmFile.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmFileAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends CrmFileAggregateArgs>(args: Subset<T, CrmFileAggregateArgs>): Prisma.PrismaPromise<GetCrmFileAggregateType<T>>
+
+    /**
+     * Group by CrmFile.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmFileGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends CrmFileGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: CrmFileGroupByArgs['orderBy'] }
+        : { orderBy?: CrmFileGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, CrmFileGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetCrmFileGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the CrmFile model
+   */
+  readonly fields: CrmFileFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for CrmFile.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__CrmFileClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    user<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the CrmFile model
+   */
+  interface CrmFileFieldRefs {
+    readonly id: FieldRef<"CrmFile", 'String'>
+    readonly storageKey: FieldRef<"CrmFile", 'String'>
+    readonly originalName: FieldRef<"CrmFile", 'String'>
+    readonly mimeType: FieldRef<"CrmFile", 'String'>
+    readonly size: FieldRef<"CrmFile", 'Int'>
+    readonly entityType: FieldRef<"CrmFile", 'String'>
+    readonly entityId: FieldRef<"CrmFile", 'String'>
+    readonly entityName: FieldRef<"CrmFile", 'String'>
+    readonly relatedEntityType: FieldRef<"CrmFile", 'String'>
+    readonly relatedEntityId: FieldRef<"CrmFile", 'String'>
+    readonly relatedEntityName: FieldRef<"CrmFile", 'String'>
+    readonly uploadedBy: FieldRef<"CrmFile", 'String'>
+    readonly createdAt: FieldRef<"CrmFile", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * CrmFile findUnique
+   */
+  export type CrmFileFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmFile
+     */
+    select?: CrmFileSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmFile
+     */
+    omit?: CrmFileOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmFileInclude<ExtArgs> | null
+    /**
+     * Filter, which CrmFile to fetch.
+     */
+    where: CrmFileWhereUniqueInput
+  }
+
+  /**
+   * CrmFile findUniqueOrThrow
+   */
+  export type CrmFileFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmFile
+     */
+    select?: CrmFileSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmFile
+     */
+    omit?: CrmFileOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmFileInclude<ExtArgs> | null
+    /**
+     * Filter, which CrmFile to fetch.
+     */
+    where: CrmFileWhereUniqueInput
+  }
+
+  /**
+   * CrmFile findFirst
+   */
+  export type CrmFileFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmFile
+     */
+    select?: CrmFileSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmFile
+     */
+    omit?: CrmFileOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmFileInclude<ExtArgs> | null
+    /**
+     * Filter, which CrmFile to fetch.
+     */
+    where?: CrmFileWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmFiles to fetch.
+     */
+    orderBy?: CrmFileOrderByWithRelationInput | CrmFileOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for CrmFiles.
+     */
+    cursor?: CrmFileWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmFiles from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmFiles.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CrmFiles.
+     */
+    distinct?: CrmFileScalarFieldEnum | CrmFileScalarFieldEnum[]
+  }
+
+  /**
+   * CrmFile findFirstOrThrow
+   */
+  export type CrmFileFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmFile
+     */
+    select?: CrmFileSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmFile
+     */
+    omit?: CrmFileOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmFileInclude<ExtArgs> | null
+    /**
+     * Filter, which CrmFile to fetch.
+     */
+    where?: CrmFileWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmFiles to fetch.
+     */
+    orderBy?: CrmFileOrderByWithRelationInput | CrmFileOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for CrmFiles.
+     */
+    cursor?: CrmFileWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmFiles from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmFiles.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CrmFiles.
+     */
+    distinct?: CrmFileScalarFieldEnum | CrmFileScalarFieldEnum[]
+  }
+
+  /**
+   * CrmFile findMany
+   */
+  export type CrmFileFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmFile
+     */
+    select?: CrmFileSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmFile
+     */
+    omit?: CrmFileOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmFileInclude<ExtArgs> | null
+    /**
+     * Filter, which CrmFiles to fetch.
+     */
+    where?: CrmFileWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmFiles to fetch.
+     */
+    orderBy?: CrmFileOrderByWithRelationInput | CrmFileOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing CrmFiles.
+     */
+    cursor?: CrmFileWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmFiles from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmFiles.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CrmFiles.
+     */
+    distinct?: CrmFileScalarFieldEnum | CrmFileScalarFieldEnum[]
+  }
+
+  /**
+   * CrmFile create
+   */
+  export type CrmFileCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmFile
+     */
+    select?: CrmFileSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmFile
+     */
+    omit?: CrmFileOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmFileInclude<ExtArgs> | null
+    /**
+     * The data needed to create a CrmFile.
+     */
+    data: XOR<CrmFileCreateInput, CrmFileUncheckedCreateInput>
+  }
+
+  /**
+   * CrmFile createMany
+   */
+  export type CrmFileCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many CrmFiles.
+     */
+    data: CrmFileCreateManyInput | CrmFileCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * CrmFile createManyAndReturn
+   */
+  export type CrmFileCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmFile
+     */
+    select?: CrmFileSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmFile
+     */
+    omit?: CrmFileOmit<ExtArgs> | null
+    /**
+     * The data used to create many CrmFiles.
+     */
+    data: CrmFileCreateManyInput | CrmFileCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmFileIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * CrmFile update
+   */
+  export type CrmFileUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmFile
+     */
+    select?: CrmFileSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmFile
+     */
+    omit?: CrmFileOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmFileInclude<ExtArgs> | null
+    /**
+     * The data needed to update a CrmFile.
+     */
+    data: XOR<CrmFileUpdateInput, CrmFileUncheckedUpdateInput>
+    /**
+     * Choose, which CrmFile to update.
+     */
+    where: CrmFileWhereUniqueInput
+  }
+
+  /**
+   * CrmFile updateMany
+   */
+  export type CrmFileUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update CrmFiles.
+     */
+    data: XOR<CrmFileUpdateManyMutationInput, CrmFileUncheckedUpdateManyInput>
+    /**
+     * Filter which CrmFiles to update
+     */
+    where?: CrmFileWhereInput
+    /**
+     * Limit how many CrmFiles to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * CrmFile updateManyAndReturn
+   */
+  export type CrmFileUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmFile
+     */
+    select?: CrmFileSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmFile
+     */
+    omit?: CrmFileOmit<ExtArgs> | null
+    /**
+     * The data used to update CrmFiles.
+     */
+    data: XOR<CrmFileUpdateManyMutationInput, CrmFileUncheckedUpdateManyInput>
+    /**
+     * Filter which CrmFiles to update
+     */
+    where?: CrmFileWhereInput
+    /**
+     * Limit how many CrmFiles to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmFileIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * CrmFile upsert
+   */
+  export type CrmFileUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmFile
+     */
+    select?: CrmFileSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmFile
+     */
+    omit?: CrmFileOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmFileInclude<ExtArgs> | null
+    /**
+     * The filter to search for the CrmFile to update in case it exists.
+     */
+    where: CrmFileWhereUniqueInput
+    /**
+     * In case the CrmFile found by the `where` argument doesn't exist, create a new CrmFile with this data.
+     */
+    create: XOR<CrmFileCreateInput, CrmFileUncheckedCreateInput>
+    /**
+     * In case the CrmFile was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<CrmFileUpdateInput, CrmFileUncheckedUpdateInput>
+  }
+
+  /**
+   * CrmFile delete
+   */
+  export type CrmFileDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmFile
+     */
+    select?: CrmFileSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmFile
+     */
+    omit?: CrmFileOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmFileInclude<ExtArgs> | null
+    /**
+     * Filter which CrmFile to delete.
+     */
+    where: CrmFileWhereUniqueInput
+  }
+
+  /**
+   * CrmFile deleteMany
+   */
+  export type CrmFileDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which CrmFiles to delete
+     */
+    where?: CrmFileWhereInput
+    /**
+     * Limit how many CrmFiles to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * CrmFile without action
+   */
+  export type CrmFileDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmFile
+     */
+    select?: CrmFileSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmFile
+     */
+    omit?: CrmFileOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmFileInclude<ExtArgs> | null
+  }
+
+
+  /**
    * Enums
    */
 
@@ -24721,8 +34207,82 @@ export namespace Prisma {
   export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
 
 
+  export const CrmOrganizationProfileScalarFieldEnum: {
+    id: 'id',
+    name: 'name',
+    description: 'description',
+    contactEmail: 'contactEmail',
+    contactPhone: 'contactPhone',
+    address: 'address',
+    globalWeeklyGoal: 'globalWeeklyGoal',
+    globalMonthlyGoal: 'globalMonthlyGoal',
+    updatedAt: 'updatedAt'
+  };
+
+  export type CrmOrganizationProfileScalarFieldEnum = (typeof CrmOrganizationProfileScalarFieldEnum)[keyof typeof CrmOrganizationProfileScalarFieldEnum]
+
+
+  export const CrmLeadSourceScalarFieldEnum: {
+    id: 'id',
+    slug: 'slug',
+    name: 'name',
+    enabled: 'enabled',
+    sortOrder: 'sortOrder'
+  };
+
+  export type CrmLeadSourceScalarFieldEnum = (typeof CrmLeadSourceScalarFieldEnum)[keyof typeof CrmLeadSourceScalarFieldEnum]
+
+
+  export const CrmStageScalarFieldEnum: {
+    id: 'id',
+    slug: 'slug',
+    name: 'name',
+    color: 'color',
+    probability: 'probability',
+    enabled: 'enabled',
+    sortOrder: 'sortOrder',
+    isSystem: 'isSystem'
+  };
+
+  export type CrmStageScalarFieldEnum = (typeof CrmStageScalarFieldEnum)[keyof typeof CrmStageScalarFieldEnum]
+
+
+  export const CrmPriorityScalarFieldEnum: {
+    id: 'id',
+    slug: 'slug',
+    name: 'name',
+    color: 'color',
+    description: 'description',
+    enabled: 'enabled',
+    sortOrder: 'sortOrder'
+  };
+
+  export type CrmPriorityScalarFieldEnum = (typeof CrmPriorityScalarFieldEnum)[keyof typeof CrmPriorityScalarFieldEnum]
+
+
+  export const CrmActivityTypeScalarFieldEnum: {
+    id: 'id',
+    slug: 'slug',
+    name: 'name',
+    enabled: 'enabled',
+    sortOrder: 'sortOrder'
+  };
+
+  export type CrmActivityTypeScalarFieldEnum = (typeof CrmActivityTypeScalarFieldEnum)[keyof typeof CrmActivityTypeScalarFieldEnum]
+
+
+  export const CrmUserSalesGoalScalarFieldEnum: {
+    userId: 'userId',
+    weeklyTarget: 'weeklyTarget',
+    monthlyTarget: 'monthlyTarget'
+  };
+
+  export type CrmUserSalesGoalScalarFieldEnum = (typeof CrmUserSalesGoalScalarFieldEnum)[keyof typeof CrmUserSalesGoalScalarFieldEnum]
+
+
   export const ContactScalarFieldEnum: {
     id: 'id',
+    urlSlug: 'urlSlug',
     name: 'name',
     cargo: 'cargo',
     telefono: 'telefono',
@@ -24731,10 +34291,6 @@ export namespace Prisma {
     etapa: 'etapa',
     assignedTo: 'assignedTo',
     estimatedValue: 'estimatedValue',
-    nextAction: 'nextAction',
-    nextFollowUp: 'nextFollowUp',
-    notes: 'notes',
-    tags: 'tags',
     docType: 'docType',
     docNumber: 'docNumber',
     departamento: 'departamento',
@@ -24752,6 +34308,7 @@ export namespace Prisma {
 
   export const CompanyScalarFieldEnum: {
     id: 'id',
+    urlSlug: 'urlSlug',
     name: 'name',
     razonSocial: 'razonSocial',
     ruc: 'ruc',
@@ -24777,8 +34334,21 @@ export namespace Prisma {
   export type CompanyScalarFieldEnum = (typeof CompanyScalarFieldEnum)[keyof typeof CompanyScalarFieldEnum]
 
 
+  export const ClientScalarFieldEnum: {
+    id: 'id',
+    companyId: 'companyId',
+    status: 'status',
+    notes: 'notes',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type ClientScalarFieldEnum = (typeof ClientScalarFieldEnum)[keyof typeof ClientScalarFieldEnum]
+
+
   export const OpportunityScalarFieldEnum: {
     id: 'id',
+    urlSlug: 'urlSlug',
     title: 'title',
     amount: 'amount',
     probability: 'probability',
@@ -24797,6 +34367,7 @@ export namespace Prisma {
   export const ActivityScalarFieldEnum: {
     id: 'id',
     type: 'type',
+    taskKind: 'taskKind',
     title: 'title',
     description: 'description',
     assignedTo: 'assignedTo',
@@ -24929,6 +34500,25 @@ export namespace Prisma {
   export type CampaignScalarFieldEnum = (typeof CampaignScalarFieldEnum)[keyof typeof CampaignScalarFieldEnum]
 
 
+  export const CrmFileScalarFieldEnum: {
+    id: 'id',
+    storageKey: 'storageKey',
+    originalName: 'originalName',
+    mimeType: 'mimeType',
+    size: 'size',
+    entityType: 'entityType',
+    entityId: 'entityId',
+    entityName: 'entityName',
+    relatedEntityType: 'relatedEntityType',
+    relatedEntityId: 'relatedEntityId',
+    relatedEntityName: 'relatedEntityName',
+    uploadedBy: 'uploadedBy',
+    createdAt: 'createdAt'
+  };
+
+  export type CrmFileScalarFieldEnum = (typeof CrmFileScalarFieldEnum)[keyof typeof CrmFileScalarFieldEnum]
+
+
   export const SortOrder: {
     asc: 'asc',
     desc: 'desc'
@@ -25025,20 +34615,6 @@ export namespace Prisma {
 
 
   /**
-   * Reference to a field of type 'Json'
-   */
-  export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Json'>
-    
-
-
-  /**
-   * Reference to a field of type 'QueryMode'
-   */
-  export type EnumQueryModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QueryMode'>
-    
-
-
-  /**
    * Reference to a field of type 'Int'
    */
   export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int'>
@@ -25049,6 +34625,20 @@ export namespace Prisma {
    * Reference to a field of type 'Int[]'
    */
   export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
+    
+
+
+  /**
+   * Reference to a field of type 'Json'
+   */
+  export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Json'>
+    
+
+
+  /**
+   * Reference to a field of type 'QueryMode'
+   */
+  export type EnumQueryModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QueryMode'>
     
   /**
    * Deep Input Types
@@ -25256,6 +34846,8 @@ export namespace Prisma {
     companiesAssigned?: CompanyListRelationFilter
     activitiesAssigned?: ActivityListRelationFilter
     campaignsCreated?: CampaignListRelationFilter
+    crmFilesUploaded?: CrmFileListRelationFilter
+    crmSalesGoal?: XOR<CrmUserSalesGoalNullableScalarRelationFilter, CrmUserSalesGoalWhereInput> | null
   }
 
   export type UserOrderByWithRelationInput = {
@@ -25276,6 +34868,8 @@ export namespace Prisma {
     companiesAssigned?: CompanyOrderByRelationAggregateInput
     activitiesAssigned?: ActivityOrderByRelationAggregateInput
     campaignsCreated?: CampaignOrderByRelationAggregateInput
+    crmFilesUploaded?: CrmFileOrderByRelationAggregateInput
+    crmSalesGoal?: CrmUserSalesGoalOrderByWithRelationInput
   }
 
   export type UserWhereUniqueInput = Prisma.AtLeast<{
@@ -25299,6 +34893,8 @@ export namespace Prisma {
     companiesAssigned?: CompanyListRelationFilter
     activitiesAssigned?: ActivityListRelationFilter
     campaignsCreated?: CampaignListRelationFilter
+    crmFilesUploaded?: CrmFileListRelationFilter
+    crmSalesGoal?: XOR<CrmUserSalesGoalNullableScalarRelationFilter, CrmUserSalesGoalWhereInput> | null
   }, "id">
 
   export type UserOrderByWithAggregationInput = {
@@ -25333,11 +34929,374 @@ export namespace Prisma {
     updatedAt?: DateTimeWithAggregatesFilter<"User"> | Date | string
   }
 
+  export type CrmOrganizationProfileWhereInput = {
+    AND?: CrmOrganizationProfileWhereInput | CrmOrganizationProfileWhereInput[]
+    OR?: CrmOrganizationProfileWhereInput[]
+    NOT?: CrmOrganizationProfileWhereInput | CrmOrganizationProfileWhereInput[]
+    id?: StringFilter<"CrmOrganizationProfile"> | string
+    name?: StringFilter<"CrmOrganizationProfile"> | string
+    description?: StringFilter<"CrmOrganizationProfile"> | string
+    contactEmail?: StringFilter<"CrmOrganizationProfile"> | string
+    contactPhone?: StringFilter<"CrmOrganizationProfile"> | string
+    address?: StringFilter<"CrmOrganizationProfile"> | string
+    globalWeeklyGoal?: FloatFilter<"CrmOrganizationProfile"> | number
+    globalMonthlyGoal?: FloatFilter<"CrmOrganizationProfile"> | number
+    updatedAt?: DateTimeFilter<"CrmOrganizationProfile"> | Date | string
+  }
+
+  export type CrmOrganizationProfileOrderByWithRelationInput = {
+    id?: SortOrder
+    name?: SortOrder
+    description?: SortOrder
+    contactEmail?: SortOrder
+    contactPhone?: SortOrder
+    address?: SortOrder
+    globalWeeklyGoal?: SortOrder
+    globalMonthlyGoal?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type CrmOrganizationProfileWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: CrmOrganizationProfileWhereInput | CrmOrganizationProfileWhereInput[]
+    OR?: CrmOrganizationProfileWhereInput[]
+    NOT?: CrmOrganizationProfileWhereInput | CrmOrganizationProfileWhereInput[]
+    name?: StringFilter<"CrmOrganizationProfile"> | string
+    description?: StringFilter<"CrmOrganizationProfile"> | string
+    contactEmail?: StringFilter<"CrmOrganizationProfile"> | string
+    contactPhone?: StringFilter<"CrmOrganizationProfile"> | string
+    address?: StringFilter<"CrmOrganizationProfile"> | string
+    globalWeeklyGoal?: FloatFilter<"CrmOrganizationProfile"> | number
+    globalMonthlyGoal?: FloatFilter<"CrmOrganizationProfile"> | number
+    updatedAt?: DateTimeFilter<"CrmOrganizationProfile"> | Date | string
+  }, "id">
+
+  export type CrmOrganizationProfileOrderByWithAggregationInput = {
+    id?: SortOrder
+    name?: SortOrder
+    description?: SortOrder
+    contactEmail?: SortOrder
+    contactPhone?: SortOrder
+    address?: SortOrder
+    globalWeeklyGoal?: SortOrder
+    globalMonthlyGoal?: SortOrder
+    updatedAt?: SortOrder
+    _count?: CrmOrganizationProfileCountOrderByAggregateInput
+    _avg?: CrmOrganizationProfileAvgOrderByAggregateInput
+    _max?: CrmOrganizationProfileMaxOrderByAggregateInput
+    _min?: CrmOrganizationProfileMinOrderByAggregateInput
+    _sum?: CrmOrganizationProfileSumOrderByAggregateInput
+  }
+
+  export type CrmOrganizationProfileScalarWhereWithAggregatesInput = {
+    AND?: CrmOrganizationProfileScalarWhereWithAggregatesInput | CrmOrganizationProfileScalarWhereWithAggregatesInput[]
+    OR?: CrmOrganizationProfileScalarWhereWithAggregatesInput[]
+    NOT?: CrmOrganizationProfileScalarWhereWithAggregatesInput | CrmOrganizationProfileScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"CrmOrganizationProfile"> | string
+    name?: StringWithAggregatesFilter<"CrmOrganizationProfile"> | string
+    description?: StringWithAggregatesFilter<"CrmOrganizationProfile"> | string
+    contactEmail?: StringWithAggregatesFilter<"CrmOrganizationProfile"> | string
+    contactPhone?: StringWithAggregatesFilter<"CrmOrganizationProfile"> | string
+    address?: StringWithAggregatesFilter<"CrmOrganizationProfile"> | string
+    globalWeeklyGoal?: FloatWithAggregatesFilter<"CrmOrganizationProfile"> | number
+    globalMonthlyGoal?: FloatWithAggregatesFilter<"CrmOrganizationProfile"> | number
+    updatedAt?: DateTimeWithAggregatesFilter<"CrmOrganizationProfile"> | Date | string
+  }
+
+  export type CrmLeadSourceWhereInput = {
+    AND?: CrmLeadSourceWhereInput | CrmLeadSourceWhereInput[]
+    OR?: CrmLeadSourceWhereInput[]
+    NOT?: CrmLeadSourceWhereInput | CrmLeadSourceWhereInput[]
+    id?: StringFilter<"CrmLeadSource"> | string
+    slug?: StringFilter<"CrmLeadSource"> | string
+    name?: StringFilter<"CrmLeadSource"> | string
+    enabled?: BoolFilter<"CrmLeadSource"> | boolean
+    sortOrder?: IntFilter<"CrmLeadSource"> | number
+  }
+
+  export type CrmLeadSourceOrderByWithRelationInput = {
+    id?: SortOrder
+    slug?: SortOrder
+    name?: SortOrder
+    enabled?: SortOrder
+    sortOrder?: SortOrder
+  }
+
+  export type CrmLeadSourceWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    slug?: string
+    AND?: CrmLeadSourceWhereInput | CrmLeadSourceWhereInput[]
+    OR?: CrmLeadSourceWhereInput[]
+    NOT?: CrmLeadSourceWhereInput | CrmLeadSourceWhereInput[]
+    name?: StringFilter<"CrmLeadSource"> | string
+    enabled?: BoolFilter<"CrmLeadSource"> | boolean
+    sortOrder?: IntFilter<"CrmLeadSource"> | number
+  }, "id" | "slug">
+
+  export type CrmLeadSourceOrderByWithAggregationInput = {
+    id?: SortOrder
+    slug?: SortOrder
+    name?: SortOrder
+    enabled?: SortOrder
+    sortOrder?: SortOrder
+    _count?: CrmLeadSourceCountOrderByAggregateInput
+    _avg?: CrmLeadSourceAvgOrderByAggregateInput
+    _max?: CrmLeadSourceMaxOrderByAggregateInput
+    _min?: CrmLeadSourceMinOrderByAggregateInput
+    _sum?: CrmLeadSourceSumOrderByAggregateInput
+  }
+
+  export type CrmLeadSourceScalarWhereWithAggregatesInput = {
+    AND?: CrmLeadSourceScalarWhereWithAggregatesInput | CrmLeadSourceScalarWhereWithAggregatesInput[]
+    OR?: CrmLeadSourceScalarWhereWithAggregatesInput[]
+    NOT?: CrmLeadSourceScalarWhereWithAggregatesInput | CrmLeadSourceScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"CrmLeadSource"> | string
+    slug?: StringWithAggregatesFilter<"CrmLeadSource"> | string
+    name?: StringWithAggregatesFilter<"CrmLeadSource"> | string
+    enabled?: BoolWithAggregatesFilter<"CrmLeadSource"> | boolean
+    sortOrder?: IntWithAggregatesFilter<"CrmLeadSource"> | number
+  }
+
+  export type CrmStageWhereInput = {
+    AND?: CrmStageWhereInput | CrmStageWhereInput[]
+    OR?: CrmStageWhereInput[]
+    NOT?: CrmStageWhereInput | CrmStageWhereInput[]
+    id?: StringFilter<"CrmStage"> | string
+    slug?: StringFilter<"CrmStage"> | string
+    name?: StringFilter<"CrmStage"> | string
+    color?: StringFilter<"CrmStage"> | string
+    probability?: IntFilter<"CrmStage"> | number
+    enabled?: BoolFilter<"CrmStage"> | boolean
+    sortOrder?: IntFilter<"CrmStage"> | number
+    isSystem?: BoolFilter<"CrmStage"> | boolean
+  }
+
+  export type CrmStageOrderByWithRelationInput = {
+    id?: SortOrder
+    slug?: SortOrder
+    name?: SortOrder
+    color?: SortOrder
+    probability?: SortOrder
+    enabled?: SortOrder
+    sortOrder?: SortOrder
+    isSystem?: SortOrder
+  }
+
+  export type CrmStageWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    slug?: string
+    AND?: CrmStageWhereInput | CrmStageWhereInput[]
+    OR?: CrmStageWhereInput[]
+    NOT?: CrmStageWhereInput | CrmStageWhereInput[]
+    name?: StringFilter<"CrmStage"> | string
+    color?: StringFilter<"CrmStage"> | string
+    probability?: IntFilter<"CrmStage"> | number
+    enabled?: BoolFilter<"CrmStage"> | boolean
+    sortOrder?: IntFilter<"CrmStage"> | number
+    isSystem?: BoolFilter<"CrmStage"> | boolean
+  }, "id" | "slug">
+
+  export type CrmStageOrderByWithAggregationInput = {
+    id?: SortOrder
+    slug?: SortOrder
+    name?: SortOrder
+    color?: SortOrder
+    probability?: SortOrder
+    enabled?: SortOrder
+    sortOrder?: SortOrder
+    isSystem?: SortOrder
+    _count?: CrmStageCountOrderByAggregateInput
+    _avg?: CrmStageAvgOrderByAggregateInput
+    _max?: CrmStageMaxOrderByAggregateInput
+    _min?: CrmStageMinOrderByAggregateInput
+    _sum?: CrmStageSumOrderByAggregateInput
+  }
+
+  export type CrmStageScalarWhereWithAggregatesInput = {
+    AND?: CrmStageScalarWhereWithAggregatesInput | CrmStageScalarWhereWithAggregatesInput[]
+    OR?: CrmStageScalarWhereWithAggregatesInput[]
+    NOT?: CrmStageScalarWhereWithAggregatesInput | CrmStageScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"CrmStage"> | string
+    slug?: StringWithAggregatesFilter<"CrmStage"> | string
+    name?: StringWithAggregatesFilter<"CrmStage"> | string
+    color?: StringWithAggregatesFilter<"CrmStage"> | string
+    probability?: IntWithAggregatesFilter<"CrmStage"> | number
+    enabled?: BoolWithAggregatesFilter<"CrmStage"> | boolean
+    sortOrder?: IntWithAggregatesFilter<"CrmStage"> | number
+    isSystem?: BoolWithAggregatesFilter<"CrmStage"> | boolean
+  }
+
+  export type CrmPriorityWhereInput = {
+    AND?: CrmPriorityWhereInput | CrmPriorityWhereInput[]
+    OR?: CrmPriorityWhereInput[]
+    NOT?: CrmPriorityWhereInput | CrmPriorityWhereInput[]
+    id?: StringFilter<"CrmPriority"> | string
+    slug?: StringFilter<"CrmPriority"> | string
+    name?: StringFilter<"CrmPriority"> | string
+    color?: StringFilter<"CrmPriority"> | string
+    description?: StringFilter<"CrmPriority"> | string
+    enabled?: BoolFilter<"CrmPriority"> | boolean
+    sortOrder?: IntFilter<"CrmPriority"> | number
+  }
+
+  export type CrmPriorityOrderByWithRelationInput = {
+    id?: SortOrder
+    slug?: SortOrder
+    name?: SortOrder
+    color?: SortOrder
+    description?: SortOrder
+    enabled?: SortOrder
+    sortOrder?: SortOrder
+  }
+
+  export type CrmPriorityWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    slug?: string
+    AND?: CrmPriorityWhereInput | CrmPriorityWhereInput[]
+    OR?: CrmPriorityWhereInput[]
+    NOT?: CrmPriorityWhereInput | CrmPriorityWhereInput[]
+    name?: StringFilter<"CrmPriority"> | string
+    color?: StringFilter<"CrmPriority"> | string
+    description?: StringFilter<"CrmPriority"> | string
+    enabled?: BoolFilter<"CrmPriority"> | boolean
+    sortOrder?: IntFilter<"CrmPriority"> | number
+  }, "id" | "slug">
+
+  export type CrmPriorityOrderByWithAggregationInput = {
+    id?: SortOrder
+    slug?: SortOrder
+    name?: SortOrder
+    color?: SortOrder
+    description?: SortOrder
+    enabled?: SortOrder
+    sortOrder?: SortOrder
+    _count?: CrmPriorityCountOrderByAggregateInput
+    _avg?: CrmPriorityAvgOrderByAggregateInput
+    _max?: CrmPriorityMaxOrderByAggregateInput
+    _min?: CrmPriorityMinOrderByAggregateInput
+    _sum?: CrmPrioritySumOrderByAggregateInput
+  }
+
+  export type CrmPriorityScalarWhereWithAggregatesInput = {
+    AND?: CrmPriorityScalarWhereWithAggregatesInput | CrmPriorityScalarWhereWithAggregatesInput[]
+    OR?: CrmPriorityScalarWhereWithAggregatesInput[]
+    NOT?: CrmPriorityScalarWhereWithAggregatesInput | CrmPriorityScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"CrmPriority"> | string
+    slug?: StringWithAggregatesFilter<"CrmPriority"> | string
+    name?: StringWithAggregatesFilter<"CrmPriority"> | string
+    color?: StringWithAggregatesFilter<"CrmPriority"> | string
+    description?: StringWithAggregatesFilter<"CrmPriority"> | string
+    enabled?: BoolWithAggregatesFilter<"CrmPriority"> | boolean
+    sortOrder?: IntWithAggregatesFilter<"CrmPriority"> | number
+  }
+
+  export type CrmActivityTypeWhereInput = {
+    AND?: CrmActivityTypeWhereInput | CrmActivityTypeWhereInput[]
+    OR?: CrmActivityTypeWhereInput[]
+    NOT?: CrmActivityTypeWhereInput | CrmActivityTypeWhereInput[]
+    id?: StringFilter<"CrmActivityType"> | string
+    slug?: StringFilter<"CrmActivityType"> | string
+    name?: StringFilter<"CrmActivityType"> | string
+    enabled?: BoolFilter<"CrmActivityType"> | boolean
+    sortOrder?: IntFilter<"CrmActivityType"> | number
+  }
+
+  export type CrmActivityTypeOrderByWithRelationInput = {
+    id?: SortOrder
+    slug?: SortOrder
+    name?: SortOrder
+    enabled?: SortOrder
+    sortOrder?: SortOrder
+  }
+
+  export type CrmActivityTypeWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    slug?: string
+    AND?: CrmActivityTypeWhereInput | CrmActivityTypeWhereInput[]
+    OR?: CrmActivityTypeWhereInput[]
+    NOT?: CrmActivityTypeWhereInput | CrmActivityTypeWhereInput[]
+    name?: StringFilter<"CrmActivityType"> | string
+    enabled?: BoolFilter<"CrmActivityType"> | boolean
+    sortOrder?: IntFilter<"CrmActivityType"> | number
+  }, "id" | "slug">
+
+  export type CrmActivityTypeOrderByWithAggregationInput = {
+    id?: SortOrder
+    slug?: SortOrder
+    name?: SortOrder
+    enabled?: SortOrder
+    sortOrder?: SortOrder
+    _count?: CrmActivityTypeCountOrderByAggregateInput
+    _avg?: CrmActivityTypeAvgOrderByAggregateInput
+    _max?: CrmActivityTypeMaxOrderByAggregateInput
+    _min?: CrmActivityTypeMinOrderByAggregateInput
+    _sum?: CrmActivityTypeSumOrderByAggregateInput
+  }
+
+  export type CrmActivityTypeScalarWhereWithAggregatesInput = {
+    AND?: CrmActivityTypeScalarWhereWithAggregatesInput | CrmActivityTypeScalarWhereWithAggregatesInput[]
+    OR?: CrmActivityTypeScalarWhereWithAggregatesInput[]
+    NOT?: CrmActivityTypeScalarWhereWithAggregatesInput | CrmActivityTypeScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"CrmActivityType"> | string
+    slug?: StringWithAggregatesFilter<"CrmActivityType"> | string
+    name?: StringWithAggregatesFilter<"CrmActivityType"> | string
+    enabled?: BoolWithAggregatesFilter<"CrmActivityType"> | boolean
+    sortOrder?: IntWithAggregatesFilter<"CrmActivityType"> | number
+  }
+
+  export type CrmUserSalesGoalWhereInput = {
+    AND?: CrmUserSalesGoalWhereInput | CrmUserSalesGoalWhereInput[]
+    OR?: CrmUserSalesGoalWhereInput[]
+    NOT?: CrmUserSalesGoalWhereInput | CrmUserSalesGoalWhereInput[]
+    userId?: StringFilter<"CrmUserSalesGoal"> | string
+    weeklyTarget?: FloatFilter<"CrmUserSalesGoal"> | number
+    monthlyTarget?: FloatFilter<"CrmUserSalesGoal"> | number
+    user?: XOR<UserScalarRelationFilter, UserWhereInput>
+  }
+
+  export type CrmUserSalesGoalOrderByWithRelationInput = {
+    userId?: SortOrder
+    weeklyTarget?: SortOrder
+    monthlyTarget?: SortOrder
+    user?: UserOrderByWithRelationInput
+  }
+
+  export type CrmUserSalesGoalWhereUniqueInput = Prisma.AtLeast<{
+    userId?: string
+    AND?: CrmUserSalesGoalWhereInput | CrmUserSalesGoalWhereInput[]
+    OR?: CrmUserSalesGoalWhereInput[]
+    NOT?: CrmUserSalesGoalWhereInput | CrmUserSalesGoalWhereInput[]
+    weeklyTarget?: FloatFilter<"CrmUserSalesGoal"> | number
+    monthlyTarget?: FloatFilter<"CrmUserSalesGoal"> | number
+    user?: XOR<UserScalarRelationFilter, UserWhereInput>
+  }, "userId">
+
+  export type CrmUserSalesGoalOrderByWithAggregationInput = {
+    userId?: SortOrder
+    weeklyTarget?: SortOrder
+    monthlyTarget?: SortOrder
+    _count?: CrmUserSalesGoalCountOrderByAggregateInput
+    _avg?: CrmUserSalesGoalAvgOrderByAggregateInput
+    _max?: CrmUserSalesGoalMaxOrderByAggregateInput
+    _min?: CrmUserSalesGoalMinOrderByAggregateInput
+    _sum?: CrmUserSalesGoalSumOrderByAggregateInput
+  }
+
+  export type CrmUserSalesGoalScalarWhereWithAggregatesInput = {
+    AND?: CrmUserSalesGoalScalarWhereWithAggregatesInput | CrmUserSalesGoalScalarWhereWithAggregatesInput[]
+    OR?: CrmUserSalesGoalScalarWhereWithAggregatesInput[]
+    NOT?: CrmUserSalesGoalScalarWhereWithAggregatesInput | CrmUserSalesGoalScalarWhereWithAggregatesInput[]
+    userId?: StringWithAggregatesFilter<"CrmUserSalesGoal"> | string
+    weeklyTarget?: FloatWithAggregatesFilter<"CrmUserSalesGoal"> | number
+    monthlyTarget?: FloatWithAggregatesFilter<"CrmUserSalesGoal"> | number
+  }
+
   export type ContactWhereInput = {
     AND?: ContactWhereInput | ContactWhereInput[]
     OR?: ContactWhereInput[]
     NOT?: ContactWhereInput | ContactWhereInput[]
     id?: StringFilter<"Contact"> | string
+    urlSlug?: StringFilter<"Contact"> | string
     name?: StringFilter<"Contact"> | string
     cargo?: StringNullableFilter<"Contact"> | string | null
     telefono?: StringFilter<"Contact"> | string
@@ -25346,10 +35305,6 @@ export namespace Prisma {
     etapa?: StringFilter<"Contact"> | string
     assignedTo?: StringNullableFilter<"Contact"> | string | null
     estimatedValue?: FloatFilter<"Contact"> | number
-    nextAction?: StringNullableFilter<"Contact"> | string | null
-    nextFollowUp?: DateTimeNullableFilter<"Contact"> | Date | string | null
-    notes?: StringNullableFilter<"Contact"> | string | null
-    tags?: StringNullableListFilter<"Contact">
     docType?: StringNullableFilter<"Contact"> | string | null
     docNumber?: StringNullableFilter<"Contact"> | string | null
     departamento?: StringNullableFilter<"Contact"> | string | null
@@ -25370,6 +35325,7 @@ export namespace Prisma {
 
   export type ContactOrderByWithRelationInput = {
     id?: SortOrder
+    urlSlug?: SortOrder
     name?: SortOrder
     cargo?: SortOrderInput | SortOrder
     telefono?: SortOrder
@@ -25378,10 +35334,6 @@ export namespace Prisma {
     etapa?: SortOrder
     assignedTo?: SortOrderInput | SortOrder
     estimatedValue?: SortOrder
-    nextAction?: SortOrderInput | SortOrder
-    nextFollowUp?: SortOrderInput | SortOrder
-    notes?: SortOrderInput | SortOrder
-    tags?: SortOrder
     docType?: SortOrderInput | SortOrder
     docNumber?: SortOrderInput | SortOrder
     departamento?: SortOrderInput | SortOrder
@@ -25402,6 +35354,7 @@ export namespace Prisma {
 
   export type ContactWhereUniqueInput = Prisma.AtLeast<{
     id?: string
+    urlSlug?: string
     AND?: ContactWhereInput | ContactWhereInput[]
     OR?: ContactWhereInput[]
     NOT?: ContactWhereInput | ContactWhereInput[]
@@ -25413,10 +35366,6 @@ export namespace Prisma {
     etapa?: StringFilter<"Contact"> | string
     assignedTo?: StringNullableFilter<"Contact"> | string | null
     estimatedValue?: FloatFilter<"Contact"> | number
-    nextAction?: StringNullableFilter<"Contact"> | string | null
-    nextFollowUp?: DateTimeNullableFilter<"Contact"> | Date | string | null
-    notes?: StringNullableFilter<"Contact"> | string | null
-    tags?: StringNullableListFilter<"Contact">
     docType?: StringNullableFilter<"Contact"> | string | null
     docNumber?: StringNullableFilter<"Contact"> | string | null
     departamento?: StringNullableFilter<"Contact"> | string | null
@@ -25433,10 +35382,11 @@ export namespace Prisma {
     linkedBy?: ContactContactListRelationFilter
     opportunities?: ContactOpportunityListRelationFilter
     activities?: ContactActivityListRelationFilter
-  }, "id">
+  }, "id" | "urlSlug">
 
   export type ContactOrderByWithAggregationInput = {
     id?: SortOrder
+    urlSlug?: SortOrder
     name?: SortOrder
     cargo?: SortOrderInput | SortOrder
     telefono?: SortOrder
@@ -25445,10 +35395,6 @@ export namespace Prisma {
     etapa?: SortOrder
     assignedTo?: SortOrderInput | SortOrder
     estimatedValue?: SortOrder
-    nextAction?: SortOrderInput | SortOrder
-    nextFollowUp?: SortOrderInput | SortOrder
-    notes?: SortOrderInput | SortOrder
-    tags?: SortOrder
     docType?: SortOrderInput | SortOrder
     docNumber?: SortOrderInput | SortOrder
     departamento?: SortOrderInput | SortOrder
@@ -25471,6 +35417,7 @@ export namespace Prisma {
     OR?: ContactScalarWhereWithAggregatesInput[]
     NOT?: ContactScalarWhereWithAggregatesInput | ContactScalarWhereWithAggregatesInput[]
     id?: StringWithAggregatesFilter<"Contact"> | string
+    urlSlug?: StringWithAggregatesFilter<"Contact"> | string
     name?: StringWithAggregatesFilter<"Contact"> | string
     cargo?: StringNullableWithAggregatesFilter<"Contact"> | string | null
     telefono?: StringWithAggregatesFilter<"Contact"> | string
@@ -25479,10 +35426,6 @@ export namespace Prisma {
     etapa?: StringWithAggregatesFilter<"Contact"> | string
     assignedTo?: StringNullableWithAggregatesFilter<"Contact"> | string | null
     estimatedValue?: FloatWithAggregatesFilter<"Contact"> | number
-    nextAction?: StringNullableWithAggregatesFilter<"Contact"> | string | null
-    nextFollowUp?: DateTimeNullableWithAggregatesFilter<"Contact"> | Date | string | null
-    notes?: StringNullableWithAggregatesFilter<"Contact"> | string | null
-    tags?: StringNullableListFilter<"Contact">
     docType?: StringNullableWithAggregatesFilter<"Contact"> | string | null
     docNumber?: StringNullableWithAggregatesFilter<"Contact"> | string | null
     departamento?: StringNullableWithAggregatesFilter<"Contact"> | string | null
@@ -25500,6 +35443,7 @@ export namespace Prisma {
     OR?: CompanyWhereInput[]
     NOT?: CompanyWhereInput | CompanyWhereInput[]
     id?: StringFilter<"Company"> | string
+    urlSlug?: StringFilter<"Company"> | string
     name?: StringFilter<"Company"> | string
     razonSocial?: StringNullableFilter<"Company"> | string | null
     ruc?: StringNullableFilter<"Company"> | string | null
@@ -25526,10 +35470,12 @@ export namespace Prisma {
     linkedBy?: CompanyCompanyListRelationFilter
     opportunities?: CompanyOpportunityListRelationFilter
     activities?: CompanyActivityListRelationFilter
+    clientRecord?: XOR<ClientNullableScalarRelationFilter, ClientWhereInput> | null
   }
 
   export type CompanyOrderByWithRelationInput = {
     id?: SortOrder
+    urlSlug?: SortOrder
     name?: SortOrder
     razonSocial?: SortOrderInput | SortOrder
     ruc?: SortOrderInput | SortOrder
@@ -25556,10 +35502,12 @@ export namespace Prisma {
     linkedBy?: CompanyCompanyOrderByRelationAggregateInput
     opportunities?: CompanyOpportunityOrderByRelationAggregateInput
     activities?: CompanyActivityOrderByRelationAggregateInput
+    clientRecord?: ClientOrderByWithRelationInput
   }
 
   export type CompanyWhereUniqueInput = Prisma.AtLeast<{
     id?: string
+    urlSlug?: string
     AND?: CompanyWhereInput | CompanyWhereInput[]
     OR?: CompanyWhereInput[]
     NOT?: CompanyWhereInput | CompanyWhereInput[]
@@ -25589,10 +35537,12 @@ export namespace Prisma {
     linkedBy?: CompanyCompanyListRelationFilter
     opportunities?: CompanyOpportunityListRelationFilter
     activities?: CompanyActivityListRelationFilter
-  }, "id">
+    clientRecord?: XOR<ClientNullableScalarRelationFilter, ClientWhereInput> | null
+  }, "id" | "urlSlug">
 
   export type CompanyOrderByWithAggregationInput = {
     id?: SortOrder
+    urlSlug?: SortOrder
     name?: SortOrder
     razonSocial?: SortOrderInput | SortOrder
     ruc?: SortOrderInput | SortOrder
@@ -25625,6 +35575,7 @@ export namespace Prisma {
     OR?: CompanyScalarWhereWithAggregatesInput[]
     NOT?: CompanyScalarWhereWithAggregatesInput | CompanyScalarWhereWithAggregatesInput[]
     id?: StringWithAggregatesFilter<"Company"> | string
+    urlSlug?: StringWithAggregatesFilter<"Company"> | string
     name?: StringWithAggregatesFilter<"Company"> | string
     razonSocial?: StringNullableWithAggregatesFilter<"Company"> | string | null
     ruc?: StringNullableWithAggregatesFilter<"Company"> | string | null
@@ -25647,11 +35598,72 @@ export namespace Prisma {
     updatedAt?: DateTimeWithAggregatesFilter<"Company"> | Date | string
   }
 
+  export type ClientWhereInput = {
+    AND?: ClientWhereInput | ClientWhereInput[]
+    OR?: ClientWhereInput[]
+    NOT?: ClientWhereInput | ClientWhereInput[]
+    id?: StringFilter<"Client"> | string
+    companyId?: StringFilter<"Client"> | string
+    status?: StringFilter<"Client"> | string
+    notes?: StringNullableFilter<"Client"> | string | null
+    createdAt?: DateTimeFilter<"Client"> | Date | string
+    updatedAt?: DateTimeFilter<"Client"> | Date | string
+    company?: XOR<CompanyScalarRelationFilter, CompanyWhereInput>
+  }
+
+  export type ClientOrderByWithRelationInput = {
+    id?: SortOrder
+    companyId?: SortOrder
+    status?: SortOrder
+    notes?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    company?: CompanyOrderByWithRelationInput
+  }
+
+  export type ClientWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    companyId?: string
+    AND?: ClientWhereInput | ClientWhereInput[]
+    OR?: ClientWhereInput[]
+    NOT?: ClientWhereInput | ClientWhereInput[]
+    status?: StringFilter<"Client"> | string
+    notes?: StringNullableFilter<"Client"> | string | null
+    createdAt?: DateTimeFilter<"Client"> | Date | string
+    updatedAt?: DateTimeFilter<"Client"> | Date | string
+    company?: XOR<CompanyScalarRelationFilter, CompanyWhereInput>
+  }, "id" | "companyId">
+
+  export type ClientOrderByWithAggregationInput = {
+    id?: SortOrder
+    companyId?: SortOrder
+    status?: SortOrder
+    notes?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: ClientCountOrderByAggregateInput
+    _max?: ClientMaxOrderByAggregateInput
+    _min?: ClientMinOrderByAggregateInput
+  }
+
+  export type ClientScalarWhereWithAggregatesInput = {
+    AND?: ClientScalarWhereWithAggregatesInput | ClientScalarWhereWithAggregatesInput[]
+    OR?: ClientScalarWhereWithAggregatesInput[]
+    NOT?: ClientScalarWhereWithAggregatesInput | ClientScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"Client"> | string
+    companyId?: StringWithAggregatesFilter<"Client"> | string
+    status?: StringWithAggregatesFilter<"Client"> | string
+    notes?: StringNullableWithAggregatesFilter<"Client"> | string | null
+    createdAt?: DateTimeWithAggregatesFilter<"Client"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"Client"> | Date | string
+  }
+
   export type OpportunityWhereInput = {
     AND?: OpportunityWhereInput | OpportunityWhereInput[]
     OR?: OpportunityWhereInput[]
     NOT?: OpportunityWhereInput | OpportunityWhereInput[]
     id?: StringFilter<"Opportunity"> | string
+    urlSlug?: StringFilter<"Opportunity"> | string
     title?: StringFilter<"Opportunity"> | string
     amount?: FloatFilter<"Opportunity"> | number
     probability?: IntFilter<"Opportunity"> | number
@@ -25672,6 +35684,7 @@ export namespace Prisma {
 
   export type OpportunityOrderByWithRelationInput = {
     id?: SortOrder
+    urlSlug?: SortOrder
     title?: SortOrder
     amount?: SortOrder
     probability?: SortOrder
@@ -25692,6 +35705,7 @@ export namespace Prisma {
 
   export type OpportunityWhereUniqueInput = Prisma.AtLeast<{
     id?: string
+    urlSlug?: string
     AND?: OpportunityWhereInput | OpportunityWhereInput[]
     OR?: OpportunityWhereInput[]
     NOT?: OpportunityWhereInput | OpportunityWhereInput[]
@@ -25711,10 +35725,11 @@ export namespace Prisma {
     opportunities?: OpportunityOpportunityListRelationFilter
     linkedBy?: OpportunityOpportunityListRelationFilter
     activities?: OpportunityActivityListRelationFilter
-  }, "id">
+  }, "id" | "urlSlug">
 
   export type OpportunityOrderByWithAggregationInput = {
     id?: SortOrder
+    urlSlug?: SortOrder
     title?: SortOrder
     amount?: SortOrder
     probability?: SortOrder
@@ -25737,6 +35752,7 @@ export namespace Prisma {
     OR?: OpportunityScalarWhereWithAggregatesInput[]
     NOT?: OpportunityScalarWhereWithAggregatesInput | OpportunityScalarWhereWithAggregatesInput[]
     id?: StringWithAggregatesFilter<"Opportunity"> | string
+    urlSlug?: StringWithAggregatesFilter<"Opportunity"> | string
     title?: StringWithAggregatesFilter<"Opportunity"> | string
     amount?: FloatWithAggregatesFilter<"Opportunity"> | number
     probability?: IntWithAggregatesFilter<"Opportunity"> | number
@@ -25755,6 +35771,7 @@ export namespace Prisma {
     NOT?: ActivityWhereInput | ActivityWhereInput[]
     id?: StringFilter<"Activity"> | string
     type?: StringFilter<"Activity"> | string
+    taskKind?: StringNullableFilter<"Activity"> | string | null
     title?: StringFilter<"Activity"> | string
     description?: StringFilter<"Activity"> | string
     assignedTo?: StringFilter<"Activity"> | string
@@ -25774,6 +35791,7 @@ export namespace Prisma {
   export type ActivityOrderByWithRelationInput = {
     id?: SortOrder
     type?: SortOrder
+    taskKind?: SortOrderInput | SortOrder
     title?: SortOrder
     description?: SortOrder
     assignedTo?: SortOrder
@@ -25796,6 +35814,7 @@ export namespace Prisma {
     OR?: ActivityWhereInput[]
     NOT?: ActivityWhereInput | ActivityWhereInput[]
     type?: StringFilter<"Activity"> | string
+    taskKind?: StringNullableFilter<"Activity"> | string | null
     title?: StringFilter<"Activity"> | string
     description?: StringFilter<"Activity"> | string
     assignedTo?: StringFilter<"Activity"> | string
@@ -25815,6 +35834,7 @@ export namespace Prisma {
   export type ActivityOrderByWithAggregationInput = {
     id?: SortOrder
     type?: SortOrder
+    taskKind?: SortOrderInput | SortOrder
     title?: SortOrder
     description?: SortOrder
     assignedTo?: SortOrder
@@ -25836,6 +35856,7 @@ export namespace Prisma {
     NOT?: ActivityScalarWhereWithAggregatesInput | ActivityScalarWhereWithAggregatesInput[]
     id?: StringWithAggregatesFilter<"Activity"> | string
     type?: StringWithAggregatesFilter<"Activity"> | string
+    taskKind?: StringNullableWithAggregatesFilter<"Activity"> | string | null
     title?: StringWithAggregatesFilter<"Activity"> | string
     description?: StringWithAggregatesFilter<"Activity"> | string
     assignedTo?: StringWithAggregatesFilter<"Activity"> | string
@@ -26468,6 +36489,103 @@ export namespace Prisma {
     createdByName?: StringWithAggregatesFilter<"Campaign"> | string
   }
 
+  export type CrmFileWhereInput = {
+    AND?: CrmFileWhereInput | CrmFileWhereInput[]
+    OR?: CrmFileWhereInput[]
+    NOT?: CrmFileWhereInput | CrmFileWhereInput[]
+    id?: StringFilter<"CrmFile"> | string
+    storageKey?: StringFilter<"CrmFile"> | string
+    originalName?: StringFilter<"CrmFile"> | string
+    mimeType?: StringFilter<"CrmFile"> | string
+    size?: IntFilter<"CrmFile"> | number
+    entityType?: StringFilter<"CrmFile"> | string
+    entityId?: StringFilter<"CrmFile"> | string
+    entityName?: StringNullableFilter<"CrmFile"> | string | null
+    relatedEntityType?: StringNullableFilter<"CrmFile"> | string | null
+    relatedEntityId?: StringNullableFilter<"CrmFile"> | string | null
+    relatedEntityName?: StringNullableFilter<"CrmFile"> | string | null
+    uploadedBy?: StringFilter<"CrmFile"> | string
+    createdAt?: DateTimeFilter<"CrmFile"> | Date | string
+    user?: XOR<UserScalarRelationFilter, UserWhereInput>
+  }
+
+  export type CrmFileOrderByWithRelationInput = {
+    id?: SortOrder
+    storageKey?: SortOrder
+    originalName?: SortOrder
+    mimeType?: SortOrder
+    size?: SortOrder
+    entityType?: SortOrder
+    entityId?: SortOrder
+    entityName?: SortOrderInput | SortOrder
+    relatedEntityType?: SortOrderInput | SortOrder
+    relatedEntityId?: SortOrderInput | SortOrder
+    relatedEntityName?: SortOrderInput | SortOrder
+    uploadedBy?: SortOrder
+    createdAt?: SortOrder
+    user?: UserOrderByWithRelationInput
+  }
+
+  export type CrmFileWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    storageKey?: string
+    AND?: CrmFileWhereInput | CrmFileWhereInput[]
+    OR?: CrmFileWhereInput[]
+    NOT?: CrmFileWhereInput | CrmFileWhereInput[]
+    originalName?: StringFilter<"CrmFile"> | string
+    mimeType?: StringFilter<"CrmFile"> | string
+    size?: IntFilter<"CrmFile"> | number
+    entityType?: StringFilter<"CrmFile"> | string
+    entityId?: StringFilter<"CrmFile"> | string
+    entityName?: StringNullableFilter<"CrmFile"> | string | null
+    relatedEntityType?: StringNullableFilter<"CrmFile"> | string | null
+    relatedEntityId?: StringNullableFilter<"CrmFile"> | string | null
+    relatedEntityName?: StringNullableFilter<"CrmFile"> | string | null
+    uploadedBy?: StringFilter<"CrmFile"> | string
+    createdAt?: DateTimeFilter<"CrmFile"> | Date | string
+    user?: XOR<UserScalarRelationFilter, UserWhereInput>
+  }, "id" | "storageKey">
+
+  export type CrmFileOrderByWithAggregationInput = {
+    id?: SortOrder
+    storageKey?: SortOrder
+    originalName?: SortOrder
+    mimeType?: SortOrder
+    size?: SortOrder
+    entityType?: SortOrder
+    entityId?: SortOrder
+    entityName?: SortOrderInput | SortOrder
+    relatedEntityType?: SortOrderInput | SortOrder
+    relatedEntityId?: SortOrderInput | SortOrder
+    relatedEntityName?: SortOrderInput | SortOrder
+    uploadedBy?: SortOrder
+    createdAt?: SortOrder
+    _count?: CrmFileCountOrderByAggregateInput
+    _avg?: CrmFileAvgOrderByAggregateInput
+    _max?: CrmFileMaxOrderByAggregateInput
+    _min?: CrmFileMinOrderByAggregateInput
+    _sum?: CrmFileSumOrderByAggregateInput
+  }
+
+  export type CrmFileScalarWhereWithAggregatesInput = {
+    AND?: CrmFileScalarWhereWithAggregatesInput | CrmFileScalarWhereWithAggregatesInput[]
+    OR?: CrmFileScalarWhereWithAggregatesInput[]
+    NOT?: CrmFileScalarWhereWithAggregatesInput | CrmFileScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"CrmFile"> | string
+    storageKey?: StringWithAggregatesFilter<"CrmFile"> | string
+    originalName?: StringWithAggregatesFilter<"CrmFile"> | string
+    mimeType?: StringWithAggregatesFilter<"CrmFile"> | string
+    size?: IntWithAggregatesFilter<"CrmFile"> | number
+    entityType?: StringWithAggregatesFilter<"CrmFile"> | string
+    entityId?: StringWithAggregatesFilter<"CrmFile"> | string
+    entityName?: StringNullableWithAggregatesFilter<"CrmFile"> | string | null
+    relatedEntityType?: StringNullableWithAggregatesFilter<"CrmFile"> | string | null
+    relatedEntityId?: StringNullableWithAggregatesFilter<"CrmFile"> | string | null
+    relatedEntityName?: StringNullableWithAggregatesFilter<"CrmFile"> | string | null
+    uploadedBy?: StringWithAggregatesFilter<"CrmFile"> | string
+    createdAt?: DateTimeWithAggregatesFilter<"CrmFile"> | Date | string
+  }
+
   export type RoleCreateInput = {
     id?: string
     name: string
@@ -26673,6 +36791,8 @@ export namespace Prisma {
     companiesAssigned?: CompanyCreateNestedManyWithoutUserInput
     activitiesAssigned?: ActivityCreateNestedManyWithoutUserInput
     campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
+    crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
+    crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
   }
 
   export type UserUncheckedCreateInput = {
@@ -26692,6 +36812,8 @@ export namespace Prisma {
     companiesAssigned?: CompanyUncheckedCreateNestedManyWithoutUserInput
     activitiesAssigned?: ActivityUncheckedCreateNestedManyWithoutUserInput
     campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
+    crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
+    crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
   }
 
   export type UserUpdateInput = {
@@ -26711,6 +36833,8 @@ export namespace Prisma {
     companiesAssigned?: CompanyUpdateManyWithoutUserNestedInput
     activitiesAssigned?: ActivityUpdateManyWithoutUserNestedInput
     campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
+    crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
+    crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateInput = {
@@ -26730,6 +36854,8 @@ export namespace Prisma {
     companiesAssigned?: CompanyUncheckedUpdateManyWithoutUserNestedInput
     activitiesAssigned?: ActivityUncheckedUpdateManyWithoutUserNestedInput
     campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
+    crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
+    crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
   }
 
   export type UserCreateManyInput = {
@@ -26770,8 +36896,393 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type CrmOrganizationProfileCreateInput = {
+    id?: string
+    name?: string
+    description?: string
+    contactEmail?: string
+    contactPhone?: string
+    address?: string
+    globalWeeklyGoal?: number
+    globalMonthlyGoal?: number
+    updatedAt?: Date | string
+  }
+
+  export type CrmOrganizationProfileUncheckedCreateInput = {
+    id?: string
+    name?: string
+    description?: string
+    contactEmail?: string
+    contactPhone?: string
+    address?: string
+    globalWeeklyGoal?: number
+    globalMonthlyGoal?: number
+    updatedAt?: Date | string
+  }
+
+  export type CrmOrganizationProfileUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    contactEmail?: StringFieldUpdateOperationsInput | string
+    contactPhone?: StringFieldUpdateOperationsInput | string
+    address?: StringFieldUpdateOperationsInput | string
+    globalWeeklyGoal?: FloatFieldUpdateOperationsInput | number
+    globalMonthlyGoal?: FloatFieldUpdateOperationsInput | number
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CrmOrganizationProfileUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    contactEmail?: StringFieldUpdateOperationsInput | string
+    contactPhone?: StringFieldUpdateOperationsInput | string
+    address?: StringFieldUpdateOperationsInput | string
+    globalWeeklyGoal?: FloatFieldUpdateOperationsInput | number
+    globalMonthlyGoal?: FloatFieldUpdateOperationsInput | number
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CrmOrganizationProfileCreateManyInput = {
+    id?: string
+    name?: string
+    description?: string
+    contactEmail?: string
+    contactPhone?: string
+    address?: string
+    globalWeeklyGoal?: number
+    globalMonthlyGoal?: number
+    updatedAt?: Date | string
+  }
+
+  export type CrmOrganizationProfileUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    contactEmail?: StringFieldUpdateOperationsInput | string
+    contactPhone?: StringFieldUpdateOperationsInput | string
+    address?: StringFieldUpdateOperationsInput | string
+    globalWeeklyGoal?: FloatFieldUpdateOperationsInput | number
+    globalMonthlyGoal?: FloatFieldUpdateOperationsInput | number
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CrmOrganizationProfileUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    contactEmail?: StringFieldUpdateOperationsInput | string
+    contactPhone?: StringFieldUpdateOperationsInput | string
+    address?: StringFieldUpdateOperationsInput | string
+    globalWeeklyGoal?: FloatFieldUpdateOperationsInput | number
+    globalMonthlyGoal?: FloatFieldUpdateOperationsInput | number
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CrmLeadSourceCreateInput = {
+    id?: string
+    slug: string
+    name: string
+    enabled?: boolean
+    sortOrder?: number
+  }
+
+  export type CrmLeadSourceUncheckedCreateInput = {
+    id?: string
+    slug: string
+    name: string
+    enabled?: boolean
+    sortOrder?: number
+  }
+
+  export type CrmLeadSourceUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    slug?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    sortOrder?: IntFieldUpdateOperationsInput | number
+  }
+
+  export type CrmLeadSourceUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    slug?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    sortOrder?: IntFieldUpdateOperationsInput | number
+  }
+
+  export type CrmLeadSourceCreateManyInput = {
+    id?: string
+    slug: string
+    name: string
+    enabled?: boolean
+    sortOrder?: number
+  }
+
+  export type CrmLeadSourceUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    slug?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    sortOrder?: IntFieldUpdateOperationsInput | number
+  }
+
+  export type CrmLeadSourceUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    slug?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    sortOrder?: IntFieldUpdateOperationsInput | number
+  }
+
+  export type CrmStageCreateInput = {
+    id?: string
+    slug: string
+    name: string
+    color?: string
+    probability?: number
+    enabled?: boolean
+    sortOrder?: number
+    isSystem?: boolean
+  }
+
+  export type CrmStageUncheckedCreateInput = {
+    id?: string
+    slug: string
+    name: string
+    color?: string
+    probability?: number
+    enabled?: boolean
+    sortOrder?: number
+    isSystem?: boolean
+  }
+
+  export type CrmStageUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    slug?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    color?: StringFieldUpdateOperationsInput | string
+    probability?: IntFieldUpdateOperationsInput | number
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    sortOrder?: IntFieldUpdateOperationsInput | number
+    isSystem?: BoolFieldUpdateOperationsInput | boolean
+  }
+
+  export type CrmStageUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    slug?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    color?: StringFieldUpdateOperationsInput | string
+    probability?: IntFieldUpdateOperationsInput | number
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    sortOrder?: IntFieldUpdateOperationsInput | number
+    isSystem?: BoolFieldUpdateOperationsInput | boolean
+  }
+
+  export type CrmStageCreateManyInput = {
+    id?: string
+    slug: string
+    name: string
+    color?: string
+    probability?: number
+    enabled?: boolean
+    sortOrder?: number
+    isSystem?: boolean
+  }
+
+  export type CrmStageUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    slug?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    color?: StringFieldUpdateOperationsInput | string
+    probability?: IntFieldUpdateOperationsInput | number
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    sortOrder?: IntFieldUpdateOperationsInput | number
+    isSystem?: BoolFieldUpdateOperationsInput | boolean
+  }
+
+  export type CrmStageUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    slug?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    color?: StringFieldUpdateOperationsInput | string
+    probability?: IntFieldUpdateOperationsInput | number
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    sortOrder?: IntFieldUpdateOperationsInput | number
+    isSystem?: BoolFieldUpdateOperationsInput | boolean
+  }
+
+  export type CrmPriorityCreateInput = {
+    id?: string
+    slug: string
+    name: string
+    color: string
+    description?: string
+    enabled?: boolean
+    sortOrder?: number
+  }
+
+  export type CrmPriorityUncheckedCreateInput = {
+    id?: string
+    slug: string
+    name: string
+    color: string
+    description?: string
+    enabled?: boolean
+    sortOrder?: number
+  }
+
+  export type CrmPriorityUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    slug?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    color?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    sortOrder?: IntFieldUpdateOperationsInput | number
+  }
+
+  export type CrmPriorityUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    slug?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    color?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    sortOrder?: IntFieldUpdateOperationsInput | number
+  }
+
+  export type CrmPriorityCreateManyInput = {
+    id?: string
+    slug: string
+    name: string
+    color: string
+    description?: string
+    enabled?: boolean
+    sortOrder?: number
+  }
+
+  export type CrmPriorityUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    slug?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    color?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    sortOrder?: IntFieldUpdateOperationsInput | number
+  }
+
+  export type CrmPriorityUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    slug?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    color?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    sortOrder?: IntFieldUpdateOperationsInput | number
+  }
+
+  export type CrmActivityTypeCreateInput = {
+    id?: string
+    slug: string
+    name: string
+    enabled?: boolean
+    sortOrder?: number
+  }
+
+  export type CrmActivityTypeUncheckedCreateInput = {
+    id?: string
+    slug: string
+    name: string
+    enabled?: boolean
+    sortOrder?: number
+  }
+
+  export type CrmActivityTypeUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    slug?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    sortOrder?: IntFieldUpdateOperationsInput | number
+  }
+
+  export type CrmActivityTypeUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    slug?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    sortOrder?: IntFieldUpdateOperationsInput | number
+  }
+
+  export type CrmActivityTypeCreateManyInput = {
+    id?: string
+    slug: string
+    name: string
+    enabled?: boolean
+    sortOrder?: number
+  }
+
+  export type CrmActivityTypeUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    slug?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    sortOrder?: IntFieldUpdateOperationsInput | number
+  }
+
+  export type CrmActivityTypeUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    slug?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    sortOrder?: IntFieldUpdateOperationsInput | number
+  }
+
+  export type CrmUserSalesGoalCreateInput = {
+    weeklyTarget?: number
+    monthlyTarget?: number
+    user: UserCreateNestedOneWithoutCrmSalesGoalInput
+  }
+
+  export type CrmUserSalesGoalUncheckedCreateInput = {
+    userId: string
+    weeklyTarget?: number
+    monthlyTarget?: number
+  }
+
+  export type CrmUserSalesGoalUpdateInput = {
+    weeklyTarget?: FloatFieldUpdateOperationsInput | number
+    monthlyTarget?: FloatFieldUpdateOperationsInput | number
+    user?: UserUpdateOneRequiredWithoutCrmSalesGoalNestedInput
+  }
+
+  export type CrmUserSalesGoalUncheckedUpdateInput = {
+    userId?: StringFieldUpdateOperationsInput | string
+    weeklyTarget?: FloatFieldUpdateOperationsInput | number
+    monthlyTarget?: FloatFieldUpdateOperationsInput | number
+  }
+
+  export type CrmUserSalesGoalCreateManyInput = {
+    userId: string
+    weeklyTarget?: number
+    monthlyTarget?: number
+  }
+
+  export type CrmUserSalesGoalUpdateManyMutationInput = {
+    weeklyTarget?: FloatFieldUpdateOperationsInput | number
+    monthlyTarget?: FloatFieldUpdateOperationsInput | number
+  }
+
+  export type CrmUserSalesGoalUncheckedUpdateManyInput = {
+    userId?: StringFieldUpdateOperationsInput | string
+    weeklyTarget?: FloatFieldUpdateOperationsInput | number
+    monthlyTarget?: FloatFieldUpdateOperationsInput | number
+  }
+
   export type ContactCreateInput = {
     id?: string
+    urlSlug: string
     name: string
     cargo?: string | null
     telefono: string
@@ -26779,10 +37290,6 @@ export namespace Prisma {
     fuente: string
     etapa?: string
     estimatedValue?: number
-    nextAction?: string | null
-    nextFollowUp?: Date | string | null
-    notes?: string | null
-    tags?: ContactCreatetagsInput | string[]
     docType?: string | null
     docNumber?: string | null
     departamento?: string | null
@@ -26803,6 +37310,7 @@ export namespace Prisma {
 
   export type ContactUncheckedCreateInput = {
     id?: string
+    urlSlug: string
     name: string
     cargo?: string | null
     telefono: string
@@ -26811,10 +37319,6 @@ export namespace Prisma {
     etapa?: string
     assignedTo?: string | null
     estimatedValue?: number
-    nextAction?: string | null
-    nextFollowUp?: Date | string | null
-    notes?: string | null
-    tags?: ContactCreatetagsInput | string[]
     docType?: string | null
     docNumber?: string | null
     departamento?: string | null
@@ -26834,6 +37338,7 @@ export namespace Prisma {
 
   export type ContactUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     cargo?: NullableStringFieldUpdateOperationsInput | string | null
     telefono?: StringFieldUpdateOperationsInput | string
@@ -26841,10 +37346,6 @@ export namespace Prisma {
     fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
-    nextAction?: NullableStringFieldUpdateOperationsInput | string | null
-    nextFollowUp?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    notes?: NullableStringFieldUpdateOperationsInput | string | null
-    tags?: ContactUpdatetagsInput | string[]
     docType?: NullableStringFieldUpdateOperationsInput | string | null
     docNumber?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
@@ -26865,6 +37366,7 @@ export namespace Prisma {
 
   export type ContactUncheckedUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     cargo?: NullableStringFieldUpdateOperationsInput | string | null
     telefono?: StringFieldUpdateOperationsInput | string
@@ -26873,10 +37375,6 @@ export namespace Prisma {
     etapa?: StringFieldUpdateOperationsInput | string
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     estimatedValue?: FloatFieldUpdateOperationsInput | number
-    nextAction?: NullableStringFieldUpdateOperationsInput | string | null
-    nextFollowUp?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    notes?: NullableStringFieldUpdateOperationsInput | string | null
-    tags?: ContactUpdatetagsInput | string[]
     docType?: NullableStringFieldUpdateOperationsInput | string | null
     docNumber?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
@@ -26896,6 +37394,7 @@ export namespace Prisma {
 
   export type ContactCreateManyInput = {
     id?: string
+    urlSlug: string
     name: string
     cargo?: string | null
     telefono: string
@@ -26904,10 +37403,6 @@ export namespace Prisma {
     etapa?: string
     assignedTo?: string | null
     estimatedValue?: number
-    nextAction?: string | null
-    nextFollowUp?: Date | string | null
-    notes?: string | null
-    tags?: ContactCreatetagsInput | string[]
     docType?: string | null
     docNumber?: string | null
     departamento?: string | null
@@ -26922,6 +37417,7 @@ export namespace Prisma {
 
   export type ContactUpdateManyMutationInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     cargo?: NullableStringFieldUpdateOperationsInput | string | null
     telefono?: StringFieldUpdateOperationsInput | string
@@ -26929,10 +37425,6 @@ export namespace Prisma {
     fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
-    nextAction?: NullableStringFieldUpdateOperationsInput | string | null
-    nextFollowUp?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    notes?: NullableStringFieldUpdateOperationsInput | string | null
-    tags?: ContactUpdatetagsInput | string[]
     docType?: NullableStringFieldUpdateOperationsInput | string | null
     docNumber?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
@@ -26947,6 +37439,7 @@ export namespace Prisma {
 
   export type ContactUncheckedUpdateManyInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     cargo?: NullableStringFieldUpdateOperationsInput | string | null
     telefono?: StringFieldUpdateOperationsInput | string
@@ -26955,10 +37448,6 @@ export namespace Prisma {
     etapa?: StringFieldUpdateOperationsInput | string
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     estimatedValue?: FloatFieldUpdateOperationsInput | number
-    nextAction?: NullableStringFieldUpdateOperationsInput | string | null
-    nextFollowUp?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    notes?: NullableStringFieldUpdateOperationsInput | string | null
-    tags?: ContactUpdatetagsInput | string[]
     docType?: NullableStringFieldUpdateOperationsInput | string | null
     docNumber?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
@@ -26973,6 +37462,7 @@ export namespace Prisma {
 
   export type CompanyCreateInput = {
     id?: string
+    urlSlug: string
     name: string
     razonSocial?: string | null
     ruc?: string | null
@@ -26998,10 +37488,12 @@ export namespace Prisma {
     linkedBy?: CompanyCompanyCreateNestedManyWithoutLinkedInput
     opportunities?: CompanyOpportunityCreateNestedManyWithoutCompanyInput
     activities?: CompanyActivityCreateNestedManyWithoutCompanyInput
+    clientRecord?: ClientCreateNestedOneWithoutCompanyInput
   }
 
   export type CompanyUncheckedCreateInput = {
     id?: string
+    urlSlug: string
     name: string
     razonSocial?: string | null
     ruc?: string | null
@@ -27027,10 +37519,12 @@ export namespace Prisma {
     linkedBy?: CompanyCompanyUncheckedCreateNestedManyWithoutLinkedInput
     opportunities?: CompanyOpportunityUncheckedCreateNestedManyWithoutCompanyInput
     activities?: CompanyActivityUncheckedCreateNestedManyWithoutCompanyInput
+    clientRecord?: ClientUncheckedCreateNestedOneWithoutCompanyInput
   }
 
   export type CompanyUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     razonSocial?: NullableStringFieldUpdateOperationsInput | string | null
     ruc?: NullableStringFieldUpdateOperationsInput | string | null
@@ -27056,10 +37550,12 @@ export namespace Prisma {
     linkedBy?: CompanyCompanyUpdateManyWithoutLinkedNestedInput
     opportunities?: CompanyOpportunityUpdateManyWithoutCompanyNestedInput
     activities?: CompanyActivityUpdateManyWithoutCompanyNestedInput
+    clientRecord?: ClientUpdateOneWithoutCompanyNestedInput
   }
 
   export type CompanyUncheckedUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     razonSocial?: NullableStringFieldUpdateOperationsInput | string | null
     ruc?: NullableStringFieldUpdateOperationsInput | string | null
@@ -27085,10 +37581,12 @@ export namespace Prisma {
     linkedBy?: CompanyCompanyUncheckedUpdateManyWithoutLinkedNestedInput
     opportunities?: CompanyOpportunityUncheckedUpdateManyWithoutCompanyNestedInput
     activities?: CompanyActivityUncheckedUpdateManyWithoutCompanyNestedInput
+    clientRecord?: ClientUncheckedUpdateOneWithoutCompanyNestedInput
   }
 
   export type CompanyCreateManyInput = {
     id?: string
+    urlSlug: string
     name: string
     razonSocial?: string | null
     ruc?: string | null
@@ -27113,6 +37611,7 @@ export namespace Prisma {
 
   export type CompanyUpdateManyMutationInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     razonSocial?: NullableStringFieldUpdateOperationsInput | string | null
     ruc?: NullableStringFieldUpdateOperationsInput | string | null
@@ -27136,6 +37635,7 @@ export namespace Prisma {
 
   export type CompanyUncheckedUpdateManyInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     razonSocial?: NullableStringFieldUpdateOperationsInput | string | null
     ruc?: NullableStringFieldUpdateOperationsInput | string | null
@@ -27158,8 +37658,71 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type ClientCreateInput = {
+    id?: string
+    status?: string
+    notes?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    company: CompanyCreateNestedOneWithoutClientRecordInput
+  }
+
+  export type ClientUncheckedCreateInput = {
+    id?: string
+    companyId: string
+    status?: string
+    notes?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type ClientUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    notes?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    company?: CompanyUpdateOneRequiredWithoutClientRecordNestedInput
+  }
+
+  export type ClientUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    companyId?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    notes?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ClientCreateManyInput = {
+    id?: string
+    companyId: string
+    status?: string
+    notes?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type ClientUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    notes?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ClientUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    companyId?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    notes?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type OpportunityCreateInput = {
     id?: string
+    urlSlug: string
     title: string
     amount: number
     probability?: number
@@ -27179,6 +37742,7 @@ export namespace Prisma {
 
   export type OpportunityUncheckedCreateInput = {
     id?: string
+    urlSlug: string
     title: string
     amount: number
     probability?: number
@@ -27198,6 +37762,7 @@ export namespace Prisma {
 
   export type OpportunityUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     amount?: FloatFieldUpdateOperationsInput | number
     probability?: IntFieldUpdateOperationsInput | number
@@ -27217,6 +37782,7 @@ export namespace Prisma {
 
   export type OpportunityUncheckedUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     amount?: FloatFieldUpdateOperationsInput | number
     probability?: IntFieldUpdateOperationsInput | number
@@ -27236,6 +37802,7 @@ export namespace Prisma {
 
   export type OpportunityCreateManyInput = {
     id?: string
+    urlSlug: string
     title: string
     amount: number
     probability?: number
@@ -27250,6 +37817,7 @@ export namespace Prisma {
 
   export type OpportunityUpdateManyMutationInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     amount?: FloatFieldUpdateOperationsInput | number
     probability?: IntFieldUpdateOperationsInput | number
@@ -27263,6 +37831,7 @@ export namespace Prisma {
 
   export type OpportunityUncheckedUpdateManyInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     amount?: FloatFieldUpdateOperationsInput | number
     probability?: IntFieldUpdateOperationsInput | number
@@ -27278,6 +37847,7 @@ export namespace Prisma {
   export type ActivityCreateInput = {
     id?: string
     type: string
+    taskKind?: string | null
     title: string
     description: string
     status?: string
@@ -27296,6 +37866,7 @@ export namespace Prisma {
   export type ActivityUncheckedCreateInput = {
     id?: string
     type: string
+    taskKind?: string | null
     title: string
     description: string
     assignedTo: string
@@ -27314,6 +37885,7 @@ export namespace Prisma {
   export type ActivityUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
     type?: StringFieldUpdateOperationsInput | string
+    taskKind?: NullableStringFieldUpdateOperationsInput | string | null
     title?: StringFieldUpdateOperationsInput | string
     description?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
@@ -27332,6 +37904,7 @@ export namespace Prisma {
   export type ActivityUncheckedUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
     type?: StringFieldUpdateOperationsInput | string
+    taskKind?: NullableStringFieldUpdateOperationsInput | string | null
     title?: StringFieldUpdateOperationsInput | string
     description?: StringFieldUpdateOperationsInput | string
     assignedTo?: StringFieldUpdateOperationsInput | string
@@ -27350,6 +37923,7 @@ export namespace Prisma {
   export type ActivityCreateManyInput = {
     id?: string
     type: string
+    taskKind?: string | null
     title: string
     description: string
     assignedTo: string
@@ -27365,6 +37939,7 @@ export namespace Prisma {
   export type ActivityUpdateManyMutationInput = {
     id?: StringFieldUpdateOperationsInput | string
     type?: StringFieldUpdateOperationsInput | string
+    taskKind?: NullableStringFieldUpdateOperationsInput | string | null
     title?: StringFieldUpdateOperationsInput | string
     description?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
@@ -27379,6 +37954,7 @@ export namespace Prisma {
   export type ActivityUncheckedUpdateManyInput = {
     id?: StringFieldUpdateOperationsInput | string
     type?: StringFieldUpdateOperationsInput | string
+    taskKind?: NullableStringFieldUpdateOperationsInput | string | null
     title?: StringFieldUpdateOperationsInput | string
     description?: StringFieldUpdateOperationsInput | string
     assignedTo?: StringFieldUpdateOperationsInput | string
@@ -27960,6 +38536,117 @@ export namespace Prisma {
     createdByName?: StringFieldUpdateOperationsInput | string
   }
 
+  export type CrmFileCreateInput = {
+    id?: string
+    storageKey: string
+    originalName: string
+    mimeType: string
+    size: number
+    entityType: string
+    entityId: string
+    entityName?: string | null
+    relatedEntityType?: string | null
+    relatedEntityId?: string | null
+    relatedEntityName?: string | null
+    createdAt?: Date | string
+    user: UserCreateNestedOneWithoutCrmFilesUploadedInput
+  }
+
+  export type CrmFileUncheckedCreateInput = {
+    id?: string
+    storageKey: string
+    originalName: string
+    mimeType: string
+    size: number
+    entityType: string
+    entityId: string
+    entityName?: string | null
+    relatedEntityType?: string | null
+    relatedEntityId?: string | null
+    relatedEntityName?: string | null
+    uploadedBy: string
+    createdAt?: Date | string
+  }
+
+  export type CrmFileUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    storageKey?: StringFieldUpdateOperationsInput | string
+    originalName?: StringFieldUpdateOperationsInput | string
+    mimeType?: StringFieldUpdateOperationsInput | string
+    size?: IntFieldUpdateOperationsInput | number
+    entityType?: StringFieldUpdateOperationsInput | string
+    entityId?: StringFieldUpdateOperationsInput | string
+    entityName?: NullableStringFieldUpdateOperationsInput | string | null
+    relatedEntityType?: NullableStringFieldUpdateOperationsInput | string | null
+    relatedEntityId?: NullableStringFieldUpdateOperationsInput | string | null
+    relatedEntityName?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    user?: UserUpdateOneRequiredWithoutCrmFilesUploadedNestedInput
+  }
+
+  export type CrmFileUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    storageKey?: StringFieldUpdateOperationsInput | string
+    originalName?: StringFieldUpdateOperationsInput | string
+    mimeType?: StringFieldUpdateOperationsInput | string
+    size?: IntFieldUpdateOperationsInput | number
+    entityType?: StringFieldUpdateOperationsInput | string
+    entityId?: StringFieldUpdateOperationsInput | string
+    entityName?: NullableStringFieldUpdateOperationsInput | string | null
+    relatedEntityType?: NullableStringFieldUpdateOperationsInput | string | null
+    relatedEntityId?: NullableStringFieldUpdateOperationsInput | string | null
+    relatedEntityName?: NullableStringFieldUpdateOperationsInput | string | null
+    uploadedBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CrmFileCreateManyInput = {
+    id?: string
+    storageKey: string
+    originalName: string
+    mimeType: string
+    size: number
+    entityType: string
+    entityId: string
+    entityName?: string | null
+    relatedEntityType?: string | null
+    relatedEntityId?: string | null
+    relatedEntityName?: string | null
+    uploadedBy: string
+    createdAt?: Date | string
+  }
+
+  export type CrmFileUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    storageKey?: StringFieldUpdateOperationsInput | string
+    originalName?: StringFieldUpdateOperationsInput | string
+    mimeType?: StringFieldUpdateOperationsInput | string
+    size?: IntFieldUpdateOperationsInput | number
+    entityType?: StringFieldUpdateOperationsInput | string
+    entityId?: StringFieldUpdateOperationsInput | string
+    entityName?: NullableStringFieldUpdateOperationsInput | string | null
+    relatedEntityType?: NullableStringFieldUpdateOperationsInput | string | null
+    relatedEntityId?: NullableStringFieldUpdateOperationsInput | string | null
+    relatedEntityName?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CrmFileUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    storageKey?: StringFieldUpdateOperationsInput | string
+    originalName?: StringFieldUpdateOperationsInput | string
+    mimeType?: StringFieldUpdateOperationsInput | string
+    size?: IntFieldUpdateOperationsInput | number
+    entityType?: StringFieldUpdateOperationsInput | string
+    entityId?: StringFieldUpdateOperationsInput | string
+    entityName?: NullableStringFieldUpdateOperationsInput | string | null
+    relatedEntityType?: NullableStringFieldUpdateOperationsInput | string | null
+    relatedEntityId?: NullableStringFieldUpdateOperationsInput | string | null
+    relatedEntityName?: NullableStringFieldUpdateOperationsInput | string | null
+    uploadedBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type StringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[] | ListStringFieldRefInput<$PrismaModel>
@@ -28234,6 +38921,17 @@ export namespace Prisma {
     none?: CampaignWhereInput
   }
 
+  export type CrmFileListRelationFilter = {
+    every?: CrmFileWhereInput
+    some?: CrmFileWhereInput
+    none?: CrmFileWhereInput
+  }
+
+  export type CrmUserSalesGoalNullableScalarRelationFilter = {
+    is?: CrmUserSalesGoalWhereInput | null
+    isNot?: CrmUserSalesGoalWhereInput | null
+  }
+
   export type AccountOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
@@ -28255,6 +38953,10 @@ export namespace Prisma {
   }
 
   export type CampaignOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type CrmFileOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -28322,12 +39024,266 @@ export namespace Prisma {
     not?: NestedFloatFilter<$PrismaModel> | number
   }
 
-  export type StringNullableListFilter<$PrismaModel = never> = {
-    equals?: string[] | ListStringFieldRefInput<$PrismaModel> | null
-    has?: string | StringFieldRefInput<$PrismaModel> | null
-    hasEvery?: string[] | ListStringFieldRefInput<$PrismaModel>
-    hasSome?: string[] | ListStringFieldRefInput<$PrismaModel>
-    isEmpty?: boolean
+  export type CrmOrganizationProfileCountOrderByAggregateInput = {
+    id?: SortOrder
+    name?: SortOrder
+    description?: SortOrder
+    contactEmail?: SortOrder
+    contactPhone?: SortOrder
+    address?: SortOrder
+    globalWeeklyGoal?: SortOrder
+    globalMonthlyGoal?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type CrmOrganizationProfileAvgOrderByAggregateInput = {
+    globalWeeklyGoal?: SortOrder
+    globalMonthlyGoal?: SortOrder
+  }
+
+  export type CrmOrganizationProfileMaxOrderByAggregateInput = {
+    id?: SortOrder
+    name?: SortOrder
+    description?: SortOrder
+    contactEmail?: SortOrder
+    contactPhone?: SortOrder
+    address?: SortOrder
+    globalWeeklyGoal?: SortOrder
+    globalMonthlyGoal?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type CrmOrganizationProfileMinOrderByAggregateInput = {
+    id?: SortOrder
+    name?: SortOrder
+    description?: SortOrder
+    contactEmail?: SortOrder
+    contactPhone?: SortOrder
+    address?: SortOrder
+    globalWeeklyGoal?: SortOrder
+    globalMonthlyGoal?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type CrmOrganizationProfileSumOrderByAggregateInput = {
+    globalWeeklyGoal?: SortOrder
+    globalMonthlyGoal?: SortOrder
+  }
+
+  export type FloatWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | FloatFieldRefInput<$PrismaModel>
+    in?: number[] | ListFloatFieldRefInput<$PrismaModel>
+    notIn?: number[] | ListFloatFieldRefInput<$PrismaModel>
+    lt?: number | FloatFieldRefInput<$PrismaModel>
+    lte?: number | FloatFieldRefInput<$PrismaModel>
+    gt?: number | FloatFieldRefInput<$PrismaModel>
+    gte?: number | FloatFieldRefInput<$PrismaModel>
+    not?: NestedFloatWithAggregatesFilter<$PrismaModel> | number
+    _count?: NestedIntFilter<$PrismaModel>
+    _avg?: NestedFloatFilter<$PrismaModel>
+    _sum?: NestedFloatFilter<$PrismaModel>
+    _min?: NestedFloatFilter<$PrismaModel>
+    _max?: NestedFloatFilter<$PrismaModel>
+  }
+
+  export type IntFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel>
+    in?: number[] | ListIntFieldRefInput<$PrismaModel>
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntFilter<$PrismaModel> | number
+  }
+
+  export type CrmLeadSourceCountOrderByAggregateInput = {
+    id?: SortOrder
+    slug?: SortOrder
+    name?: SortOrder
+    enabled?: SortOrder
+    sortOrder?: SortOrder
+  }
+
+  export type CrmLeadSourceAvgOrderByAggregateInput = {
+    sortOrder?: SortOrder
+  }
+
+  export type CrmLeadSourceMaxOrderByAggregateInput = {
+    id?: SortOrder
+    slug?: SortOrder
+    name?: SortOrder
+    enabled?: SortOrder
+    sortOrder?: SortOrder
+  }
+
+  export type CrmLeadSourceMinOrderByAggregateInput = {
+    id?: SortOrder
+    slug?: SortOrder
+    name?: SortOrder
+    enabled?: SortOrder
+    sortOrder?: SortOrder
+  }
+
+  export type CrmLeadSourceSumOrderByAggregateInput = {
+    sortOrder?: SortOrder
+  }
+
+  export type IntWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel>
+    in?: number[] | ListIntFieldRefInput<$PrismaModel>
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntWithAggregatesFilter<$PrismaModel> | number
+    _count?: NestedIntFilter<$PrismaModel>
+    _avg?: NestedFloatFilter<$PrismaModel>
+    _sum?: NestedIntFilter<$PrismaModel>
+    _min?: NestedIntFilter<$PrismaModel>
+    _max?: NestedIntFilter<$PrismaModel>
+  }
+
+  export type CrmStageCountOrderByAggregateInput = {
+    id?: SortOrder
+    slug?: SortOrder
+    name?: SortOrder
+    color?: SortOrder
+    probability?: SortOrder
+    enabled?: SortOrder
+    sortOrder?: SortOrder
+    isSystem?: SortOrder
+  }
+
+  export type CrmStageAvgOrderByAggregateInput = {
+    probability?: SortOrder
+    sortOrder?: SortOrder
+  }
+
+  export type CrmStageMaxOrderByAggregateInput = {
+    id?: SortOrder
+    slug?: SortOrder
+    name?: SortOrder
+    color?: SortOrder
+    probability?: SortOrder
+    enabled?: SortOrder
+    sortOrder?: SortOrder
+    isSystem?: SortOrder
+  }
+
+  export type CrmStageMinOrderByAggregateInput = {
+    id?: SortOrder
+    slug?: SortOrder
+    name?: SortOrder
+    color?: SortOrder
+    probability?: SortOrder
+    enabled?: SortOrder
+    sortOrder?: SortOrder
+    isSystem?: SortOrder
+  }
+
+  export type CrmStageSumOrderByAggregateInput = {
+    probability?: SortOrder
+    sortOrder?: SortOrder
+  }
+
+  export type CrmPriorityCountOrderByAggregateInput = {
+    id?: SortOrder
+    slug?: SortOrder
+    name?: SortOrder
+    color?: SortOrder
+    description?: SortOrder
+    enabled?: SortOrder
+    sortOrder?: SortOrder
+  }
+
+  export type CrmPriorityAvgOrderByAggregateInput = {
+    sortOrder?: SortOrder
+  }
+
+  export type CrmPriorityMaxOrderByAggregateInput = {
+    id?: SortOrder
+    slug?: SortOrder
+    name?: SortOrder
+    color?: SortOrder
+    description?: SortOrder
+    enabled?: SortOrder
+    sortOrder?: SortOrder
+  }
+
+  export type CrmPriorityMinOrderByAggregateInput = {
+    id?: SortOrder
+    slug?: SortOrder
+    name?: SortOrder
+    color?: SortOrder
+    description?: SortOrder
+    enabled?: SortOrder
+    sortOrder?: SortOrder
+  }
+
+  export type CrmPrioritySumOrderByAggregateInput = {
+    sortOrder?: SortOrder
+  }
+
+  export type CrmActivityTypeCountOrderByAggregateInput = {
+    id?: SortOrder
+    slug?: SortOrder
+    name?: SortOrder
+    enabled?: SortOrder
+    sortOrder?: SortOrder
+  }
+
+  export type CrmActivityTypeAvgOrderByAggregateInput = {
+    sortOrder?: SortOrder
+  }
+
+  export type CrmActivityTypeMaxOrderByAggregateInput = {
+    id?: SortOrder
+    slug?: SortOrder
+    name?: SortOrder
+    enabled?: SortOrder
+    sortOrder?: SortOrder
+  }
+
+  export type CrmActivityTypeMinOrderByAggregateInput = {
+    id?: SortOrder
+    slug?: SortOrder
+    name?: SortOrder
+    enabled?: SortOrder
+    sortOrder?: SortOrder
+  }
+
+  export type CrmActivityTypeSumOrderByAggregateInput = {
+    sortOrder?: SortOrder
+  }
+
+  export type CrmUserSalesGoalCountOrderByAggregateInput = {
+    userId?: SortOrder
+    weeklyTarget?: SortOrder
+    monthlyTarget?: SortOrder
+  }
+
+  export type CrmUserSalesGoalAvgOrderByAggregateInput = {
+    weeklyTarget?: SortOrder
+    monthlyTarget?: SortOrder
+  }
+
+  export type CrmUserSalesGoalMaxOrderByAggregateInput = {
+    userId?: SortOrder
+    weeklyTarget?: SortOrder
+    monthlyTarget?: SortOrder
+  }
+
+  export type CrmUserSalesGoalMinOrderByAggregateInput = {
+    userId?: SortOrder
+    weeklyTarget?: SortOrder
+    monthlyTarget?: SortOrder
+  }
+
+  export type CrmUserSalesGoalSumOrderByAggregateInput = {
+    weeklyTarget?: SortOrder
+    monthlyTarget?: SortOrder
   }
   export type JsonNullableFilter<$PrismaModel = never> =
     | PatchUndefined<
@@ -28400,6 +39356,7 @@ export namespace Prisma {
 
   export type ContactCountOrderByAggregateInput = {
     id?: SortOrder
+    urlSlug?: SortOrder
     name?: SortOrder
     cargo?: SortOrder
     telefono?: SortOrder
@@ -28408,10 +39365,6 @@ export namespace Prisma {
     etapa?: SortOrder
     assignedTo?: SortOrder
     estimatedValue?: SortOrder
-    nextAction?: SortOrder
-    nextFollowUp?: SortOrder
-    notes?: SortOrder
-    tags?: SortOrder
     docType?: SortOrder
     docNumber?: SortOrder
     departamento?: SortOrder
@@ -28430,6 +39383,7 @@ export namespace Prisma {
 
   export type ContactMaxOrderByAggregateInput = {
     id?: SortOrder
+    urlSlug?: SortOrder
     name?: SortOrder
     cargo?: SortOrder
     telefono?: SortOrder
@@ -28438,9 +39392,6 @@ export namespace Prisma {
     etapa?: SortOrder
     assignedTo?: SortOrder
     estimatedValue?: SortOrder
-    nextAction?: SortOrder
-    nextFollowUp?: SortOrder
-    notes?: SortOrder
     docType?: SortOrder
     docNumber?: SortOrder
     departamento?: SortOrder
@@ -28454,6 +39405,7 @@ export namespace Prisma {
 
   export type ContactMinOrderByAggregateInput = {
     id?: SortOrder
+    urlSlug?: SortOrder
     name?: SortOrder
     cargo?: SortOrder
     telefono?: SortOrder
@@ -28462,9 +39414,6 @@ export namespace Prisma {
     etapa?: SortOrder
     assignedTo?: SortOrder
     estimatedValue?: SortOrder
-    nextAction?: SortOrder
-    nextFollowUp?: SortOrder
-    notes?: SortOrder
     docType?: SortOrder
     docNumber?: SortOrder
     departamento?: SortOrder
@@ -28478,22 +39427,6 @@ export namespace Prisma {
 
   export type ContactSumOrderByAggregateInput = {
     estimatedValue?: SortOrder
-  }
-
-  export type FloatWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: number | FloatFieldRefInput<$PrismaModel>
-    in?: number[] | ListFloatFieldRefInput<$PrismaModel>
-    notIn?: number[] | ListFloatFieldRefInput<$PrismaModel>
-    lt?: number | FloatFieldRefInput<$PrismaModel>
-    lte?: number | FloatFieldRefInput<$PrismaModel>
-    gt?: number | FloatFieldRefInput<$PrismaModel>
-    gte?: number | FloatFieldRefInput<$PrismaModel>
-    not?: NestedFloatWithAggregatesFilter<$PrismaModel> | number
-    _count?: NestedIntFilter<$PrismaModel>
-    _avg?: NestedFloatFilter<$PrismaModel>
-    _sum?: NestedFloatFilter<$PrismaModel>
-    _min?: NestedFloatFilter<$PrismaModel>
-    _max?: NestedFloatFilter<$PrismaModel>
   }
   export type JsonNullableWithAggregatesFilter<$PrismaModel = never> =
     | PatchUndefined<
@@ -28540,6 +39473,11 @@ export namespace Prisma {
     none?: CompanyActivityWhereInput
   }
 
+  export type ClientNullableScalarRelationFilter = {
+    is?: ClientWhereInput | null
+    isNot?: ClientWhereInput | null
+  }
+
   export type CompanyCompanyOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
@@ -28554,6 +39492,7 @@ export namespace Prisma {
 
   export type CompanyCountOrderByAggregateInput = {
     id?: SortOrder
+    urlSlug?: SortOrder
     name?: SortOrder
     razonSocial?: SortOrder
     ruc?: SortOrder
@@ -28582,6 +39521,7 @@ export namespace Prisma {
 
   export type CompanyMaxOrderByAggregateInput = {
     id?: SortOrder
+    urlSlug?: SortOrder
     name?: SortOrder
     razonSocial?: SortOrder
     ruc?: SortOrder
@@ -28606,6 +39546,7 @@ export namespace Prisma {
 
   export type CompanyMinOrderByAggregateInput = {
     id?: SortOrder
+    urlSlug?: SortOrder
     name?: SortOrder
     razonSocial?: SortOrder
     ruc?: SortOrder
@@ -28632,15 +39573,36 @@ export namespace Prisma {
     facturacionEstimada?: SortOrder
   }
 
-  export type IntFilter<$PrismaModel = never> = {
-    equals?: number | IntFieldRefInput<$PrismaModel>
-    in?: number[] | ListIntFieldRefInput<$PrismaModel>
-    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
-    lt?: number | IntFieldRefInput<$PrismaModel>
-    lte?: number | IntFieldRefInput<$PrismaModel>
-    gt?: number | IntFieldRefInput<$PrismaModel>
-    gte?: number | IntFieldRefInput<$PrismaModel>
-    not?: NestedIntFilter<$PrismaModel> | number
+  export type CompanyScalarRelationFilter = {
+    is?: CompanyWhereInput
+    isNot?: CompanyWhereInput
+  }
+
+  export type ClientCountOrderByAggregateInput = {
+    id?: SortOrder
+    companyId?: SortOrder
+    status?: SortOrder
+    notes?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type ClientMaxOrderByAggregateInput = {
+    id?: SortOrder
+    companyId?: SortOrder
+    status?: SortOrder
+    notes?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type ClientMinOrderByAggregateInput = {
+    id?: SortOrder
+    companyId?: SortOrder
+    status?: SortOrder
+    notes?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
   }
 
   export type OpportunityOpportunityListRelationFilter = {
@@ -28665,6 +39627,7 @@ export namespace Prisma {
 
   export type OpportunityCountOrderByAggregateInput = {
     id?: SortOrder
+    urlSlug?: SortOrder
     title?: SortOrder
     amount?: SortOrder
     probability?: SortOrder
@@ -28684,6 +39647,7 @@ export namespace Prisma {
 
   export type OpportunityMaxOrderByAggregateInput = {
     id?: SortOrder
+    urlSlug?: SortOrder
     title?: SortOrder
     amount?: SortOrder
     probability?: SortOrder
@@ -28698,6 +39662,7 @@ export namespace Prisma {
 
   export type OpportunityMinOrderByAggregateInput = {
     id?: SortOrder
+    urlSlug?: SortOrder
     title?: SortOrder
     amount?: SortOrder
     probability?: SortOrder
@@ -28715,25 +39680,10 @@ export namespace Prisma {
     probability?: SortOrder
   }
 
-  export type IntWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: number | IntFieldRefInput<$PrismaModel>
-    in?: number[] | ListIntFieldRefInput<$PrismaModel>
-    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
-    lt?: number | IntFieldRefInput<$PrismaModel>
-    lte?: number | IntFieldRefInput<$PrismaModel>
-    gt?: number | IntFieldRefInput<$PrismaModel>
-    gte?: number | IntFieldRefInput<$PrismaModel>
-    not?: NestedIntWithAggregatesFilter<$PrismaModel> | number
-    _count?: NestedIntFilter<$PrismaModel>
-    _avg?: NestedFloatFilter<$PrismaModel>
-    _sum?: NestedIntFilter<$PrismaModel>
-    _min?: NestedIntFilter<$PrismaModel>
-    _max?: NestedIntFilter<$PrismaModel>
-  }
-
   export type ActivityCountOrderByAggregateInput = {
     id?: SortOrder
     type?: SortOrder
+    taskKind?: SortOrder
     title?: SortOrder
     description?: SortOrder
     assignedTo?: SortOrder
@@ -28749,6 +39699,7 @@ export namespace Prisma {
   export type ActivityMaxOrderByAggregateInput = {
     id?: SortOrder
     type?: SortOrder
+    taskKind?: SortOrder
     title?: SortOrder
     description?: SortOrder
     assignedTo?: SortOrder
@@ -28764,6 +39715,7 @@ export namespace Prisma {
   export type ActivityMinOrderByAggregateInput = {
     id?: SortOrder
     type?: SortOrder
+    taskKind?: SortOrder
     title?: SortOrder
     description?: SortOrder
     assignedTo?: SortOrder
@@ -28774,11 +39726,6 @@ export namespace Prisma {
     completedAt?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
-  }
-
-  export type CompanyScalarRelationFilter = {
-    is?: CompanyWhereInput
-    isNot?: CompanyWhereInput
   }
 
   export type ContactScalarRelationFilter = {
@@ -29024,6 +39971,14 @@ export namespace Prisma {
     sentAt?: SortOrder
   }
 
+  export type StringNullableListFilter<$PrismaModel = never> = {
+    equals?: string[] | ListStringFieldRefInput<$PrismaModel> | null
+    has?: string | StringFieldRefInput<$PrismaModel> | null
+    hasEvery?: string[] | ListStringFieldRefInput<$PrismaModel>
+    hasSome?: string[] | ListStringFieldRefInput<$PrismaModel>
+    isEmpty?: boolean
+  }
+
   export type CampaignCountOrderByAggregateInput = {
     id?: SortOrder
     name?: SortOrder
@@ -29103,6 +40058,62 @@ export namespace Prisma {
     clickedCount?: SortOrder
     failedCount?: SortOrder
     bounceCount?: SortOrder
+  }
+
+  export type CrmFileCountOrderByAggregateInput = {
+    id?: SortOrder
+    storageKey?: SortOrder
+    originalName?: SortOrder
+    mimeType?: SortOrder
+    size?: SortOrder
+    entityType?: SortOrder
+    entityId?: SortOrder
+    entityName?: SortOrder
+    relatedEntityType?: SortOrder
+    relatedEntityId?: SortOrder
+    relatedEntityName?: SortOrder
+    uploadedBy?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type CrmFileAvgOrderByAggregateInput = {
+    size?: SortOrder
+  }
+
+  export type CrmFileMaxOrderByAggregateInput = {
+    id?: SortOrder
+    storageKey?: SortOrder
+    originalName?: SortOrder
+    mimeType?: SortOrder
+    size?: SortOrder
+    entityType?: SortOrder
+    entityId?: SortOrder
+    entityName?: SortOrder
+    relatedEntityType?: SortOrder
+    relatedEntityId?: SortOrder
+    relatedEntityName?: SortOrder
+    uploadedBy?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type CrmFileMinOrderByAggregateInput = {
+    id?: SortOrder
+    storageKey?: SortOrder
+    originalName?: SortOrder
+    mimeType?: SortOrder
+    size?: SortOrder
+    entityType?: SortOrder
+    entityId?: SortOrder
+    entityName?: SortOrder
+    relatedEntityType?: SortOrder
+    relatedEntityId?: SortOrder
+    relatedEntityName?: SortOrder
+    uploadedBy?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type CrmFileSumOrderByAggregateInput = {
+    size?: SortOrder
   }
 
   export type AuthorityCreateNestedManyWithoutRoleInput = {
@@ -29281,6 +40292,19 @@ export namespace Prisma {
     connect?: CampaignWhereUniqueInput | CampaignWhereUniqueInput[]
   }
 
+  export type CrmFileCreateNestedManyWithoutUserInput = {
+    create?: XOR<CrmFileCreateWithoutUserInput, CrmFileUncheckedCreateWithoutUserInput> | CrmFileCreateWithoutUserInput[] | CrmFileUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: CrmFileCreateOrConnectWithoutUserInput | CrmFileCreateOrConnectWithoutUserInput[]
+    createMany?: CrmFileCreateManyUserInputEnvelope
+    connect?: CrmFileWhereUniqueInput | CrmFileWhereUniqueInput[]
+  }
+
+  export type CrmUserSalesGoalCreateNestedOneWithoutUserInput = {
+    create?: XOR<CrmUserSalesGoalCreateWithoutUserInput, CrmUserSalesGoalUncheckedCreateWithoutUserInput>
+    connectOrCreate?: CrmUserSalesGoalCreateOrConnectWithoutUserInput
+    connect?: CrmUserSalesGoalWhereUniqueInput
+  }
+
   export type AccountUncheckedCreateNestedManyWithoutUserInput = {
     create?: XOR<AccountCreateWithoutUserInput, AccountUncheckedCreateWithoutUserInput> | AccountCreateWithoutUserInput[] | AccountUncheckedCreateWithoutUserInput[]
     connectOrCreate?: AccountCreateOrConnectWithoutUserInput | AccountCreateOrConnectWithoutUserInput[]
@@ -29321,6 +40345,19 @@ export namespace Prisma {
     connectOrCreate?: CampaignCreateOrConnectWithoutCreatedByInput | CampaignCreateOrConnectWithoutCreatedByInput[]
     createMany?: CampaignCreateManyCreatedByInputEnvelope
     connect?: CampaignWhereUniqueInput | CampaignWhereUniqueInput[]
+  }
+
+  export type CrmFileUncheckedCreateNestedManyWithoutUserInput = {
+    create?: XOR<CrmFileCreateWithoutUserInput, CrmFileUncheckedCreateWithoutUserInput> | CrmFileCreateWithoutUserInput[] | CrmFileUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: CrmFileCreateOrConnectWithoutUserInput | CrmFileCreateOrConnectWithoutUserInput[]
+    createMany?: CrmFileCreateManyUserInputEnvelope
+    connect?: CrmFileWhereUniqueInput | CrmFileWhereUniqueInput[]
+  }
+
+  export type CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput = {
+    create?: XOR<CrmUserSalesGoalCreateWithoutUserInput, CrmUserSalesGoalUncheckedCreateWithoutUserInput>
+    connectOrCreate?: CrmUserSalesGoalCreateOrConnectWithoutUserInput
+    connect?: CrmUserSalesGoalWhereUniqueInput
   }
 
   export type NullableDateTimeFieldUpdateOperationsInput = {
@@ -29419,6 +40456,30 @@ export namespace Prisma {
     deleteMany?: CampaignScalarWhereInput | CampaignScalarWhereInput[]
   }
 
+  export type CrmFileUpdateManyWithoutUserNestedInput = {
+    create?: XOR<CrmFileCreateWithoutUserInput, CrmFileUncheckedCreateWithoutUserInput> | CrmFileCreateWithoutUserInput[] | CrmFileUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: CrmFileCreateOrConnectWithoutUserInput | CrmFileCreateOrConnectWithoutUserInput[]
+    upsert?: CrmFileUpsertWithWhereUniqueWithoutUserInput | CrmFileUpsertWithWhereUniqueWithoutUserInput[]
+    createMany?: CrmFileCreateManyUserInputEnvelope
+    set?: CrmFileWhereUniqueInput | CrmFileWhereUniqueInput[]
+    disconnect?: CrmFileWhereUniqueInput | CrmFileWhereUniqueInput[]
+    delete?: CrmFileWhereUniqueInput | CrmFileWhereUniqueInput[]
+    connect?: CrmFileWhereUniqueInput | CrmFileWhereUniqueInput[]
+    update?: CrmFileUpdateWithWhereUniqueWithoutUserInput | CrmFileUpdateWithWhereUniqueWithoutUserInput[]
+    updateMany?: CrmFileUpdateManyWithWhereWithoutUserInput | CrmFileUpdateManyWithWhereWithoutUserInput[]
+    deleteMany?: CrmFileScalarWhereInput | CrmFileScalarWhereInput[]
+  }
+
+  export type CrmUserSalesGoalUpdateOneWithoutUserNestedInput = {
+    create?: XOR<CrmUserSalesGoalCreateWithoutUserInput, CrmUserSalesGoalUncheckedCreateWithoutUserInput>
+    connectOrCreate?: CrmUserSalesGoalCreateOrConnectWithoutUserInput
+    upsert?: CrmUserSalesGoalUpsertWithoutUserInput
+    disconnect?: CrmUserSalesGoalWhereInput | boolean
+    delete?: CrmUserSalesGoalWhereInput | boolean
+    connect?: CrmUserSalesGoalWhereUniqueInput
+    update?: XOR<XOR<CrmUserSalesGoalUpdateToOneWithWhereWithoutUserInput, CrmUserSalesGoalUpdateWithoutUserInput>, CrmUserSalesGoalUncheckedUpdateWithoutUserInput>
+  }
+
   export type AccountUncheckedUpdateManyWithoutUserNestedInput = {
     create?: XOR<AccountCreateWithoutUserInput, AccountUncheckedCreateWithoutUserInput> | AccountCreateWithoutUserInput[] | AccountUncheckedCreateWithoutUserInput[]
     connectOrCreate?: AccountCreateOrConnectWithoutUserInput | AccountCreateOrConnectWithoutUserInput[]
@@ -29503,8 +40564,58 @@ export namespace Prisma {
     deleteMany?: CampaignScalarWhereInput | CampaignScalarWhereInput[]
   }
 
-  export type ContactCreatetagsInput = {
-    set: string[]
+  export type CrmFileUncheckedUpdateManyWithoutUserNestedInput = {
+    create?: XOR<CrmFileCreateWithoutUserInput, CrmFileUncheckedCreateWithoutUserInput> | CrmFileCreateWithoutUserInput[] | CrmFileUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: CrmFileCreateOrConnectWithoutUserInput | CrmFileCreateOrConnectWithoutUserInput[]
+    upsert?: CrmFileUpsertWithWhereUniqueWithoutUserInput | CrmFileUpsertWithWhereUniqueWithoutUserInput[]
+    createMany?: CrmFileCreateManyUserInputEnvelope
+    set?: CrmFileWhereUniqueInput | CrmFileWhereUniqueInput[]
+    disconnect?: CrmFileWhereUniqueInput | CrmFileWhereUniqueInput[]
+    delete?: CrmFileWhereUniqueInput | CrmFileWhereUniqueInput[]
+    connect?: CrmFileWhereUniqueInput | CrmFileWhereUniqueInput[]
+    update?: CrmFileUpdateWithWhereUniqueWithoutUserInput | CrmFileUpdateWithWhereUniqueWithoutUserInput[]
+    updateMany?: CrmFileUpdateManyWithWhereWithoutUserInput | CrmFileUpdateManyWithWhereWithoutUserInput[]
+    deleteMany?: CrmFileScalarWhereInput | CrmFileScalarWhereInput[]
+  }
+
+  export type CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput = {
+    create?: XOR<CrmUserSalesGoalCreateWithoutUserInput, CrmUserSalesGoalUncheckedCreateWithoutUserInput>
+    connectOrCreate?: CrmUserSalesGoalCreateOrConnectWithoutUserInput
+    upsert?: CrmUserSalesGoalUpsertWithoutUserInput
+    disconnect?: CrmUserSalesGoalWhereInput | boolean
+    delete?: CrmUserSalesGoalWhereInput | boolean
+    connect?: CrmUserSalesGoalWhereUniqueInput
+    update?: XOR<XOR<CrmUserSalesGoalUpdateToOneWithWhereWithoutUserInput, CrmUserSalesGoalUpdateWithoutUserInput>, CrmUserSalesGoalUncheckedUpdateWithoutUserInput>
+  }
+
+  export type FloatFieldUpdateOperationsInput = {
+    set?: number
+    increment?: number
+    decrement?: number
+    multiply?: number
+    divide?: number
+  }
+
+  export type IntFieldUpdateOperationsInput = {
+    set?: number
+    increment?: number
+    decrement?: number
+    multiply?: number
+    divide?: number
+  }
+
+  export type UserCreateNestedOneWithoutCrmSalesGoalInput = {
+    create?: XOR<UserCreateWithoutCrmSalesGoalInput, UserUncheckedCreateWithoutCrmSalesGoalInput>
+    connectOrCreate?: UserCreateOrConnectWithoutCrmSalesGoalInput
+    connect?: UserWhereUniqueInput
+  }
+
+  export type UserUpdateOneRequiredWithoutCrmSalesGoalNestedInput = {
+    create?: XOR<UserCreateWithoutCrmSalesGoalInput, UserUncheckedCreateWithoutCrmSalesGoalInput>
+    connectOrCreate?: UserCreateOrConnectWithoutCrmSalesGoalInput
+    upsert?: UserUpsertWithoutCrmSalesGoalInput
+    connect?: UserWhereUniqueInput
+    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutCrmSalesGoalInput, UserUpdateWithoutCrmSalesGoalInput>, UserUncheckedUpdateWithoutCrmSalesGoalInput>
   }
 
   export type UserCreateNestedOneWithoutContactsAssignedInput = {
@@ -29581,19 +40692,6 @@ export namespace Prisma {
     connectOrCreate?: ContactActivityCreateOrConnectWithoutContactInput | ContactActivityCreateOrConnectWithoutContactInput[]
     createMany?: ContactActivityCreateManyContactInputEnvelope
     connect?: ContactActivityWhereUniqueInput | ContactActivityWhereUniqueInput[]
-  }
-
-  export type FloatFieldUpdateOperationsInput = {
-    set?: number
-    increment?: number
-    decrement?: number
-    multiply?: number
-    divide?: number
-  }
-
-  export type ContactUpdatetagsInput = {
-    set?: string[]
-    push?: string | string[]
   }
 
   export type UserUpdateOneWithoutContactsAssignedNestedInput = {
@@ -29787,6 +40885,12 @@ export namespace Prisma {
     connect?: CompanyActivityWhereUniqueInput | CompanyActivityWhereUniqueInput[]
   }
 
+  export type ClientCreateNestedOneWithoutCompanyInput = {
+    create?: XOR<ClientCreateWithoutCompanyInput, ClientUncheckedCreateWithoutCompanyInput>
+    connectOrCreate?: ClientCreateOrConnectWithoutCompanyInput
+    connect?: ClientWhereUniqueInput
+  }
+
   export type CompanyContactUncheckedCreateNestedManyWithoutCompanyInput = {
     create?: XOR<CompanyContactCreateWithoutCompanyInput, CompanyContactUncheckedCreateWithoutCompanyInput> | CompanyContactCreateWithoutCompanyInput[] | CompanyContactUncheckedCreateWithoutCompanyInput[]
     connectOrCreate?: CompanyContactCreateOrConnectWithoutCompanyInput | CompanyContactCreateOrConnectWithoutCompanyInput[]
@@ -29820,6 +40924,12 @@ export namespace Prisma {
     connectOrCreate?: CompanyActivityCreateOrConnectWithoutCompanyInput | CompanyActivityCreateOrConnectWithoutCompanyInput[]
     createMany?: CompanyActivityCreateManyCompanyInputEnvelope
     connect?: CompanyActivityWhereUniqueInput | CompanyActivityWhereUniqueInput[]
+  }
+
+  export type ClientUncheckedCreateNestedOneWithoutCompanyInput = {
+    create?: XOR<ClientCreateWithoutCompanyInput, ClientUncheckedCreateWithoutCompanyInput>
+    connectOrCreate?: ClientCreateOrConnectWithoutCompanyInput
+    connect?: ClientWhereUniqueInput
   }
 
   export type UserUpdateOneWithoutCompaniesAssignedNestedInput = {
@@ -29902,6 +41012,16 @@ export namespace Prisma {
     deleteMany?: CompanyActivityScalarWhereInput | CompanyActivityScalarWhereInput[]
   }
 
+  export type ClientUpdateOneWithoutCompanyNestedInput = {
+    create?: XOR<ClientCreateWithoutCompanyInput, ClientUncheckedCreateWithoutCompanyInput>
+    connectOrCreate?: ClientCreateOrConnectWithoutCompanyInput
+    upsert?: ClientUpsertWithoutCompanyInput
+    disconnect?: ClientWhereInput | boolean
+    delete?: ClientWhereInput | boolean
+    connect?: ClientWhereUniqueInput
+    update?: XOR<XOR<ClientUpdateToOneWithWhereWithoutCompanyInput, ClientUpdateWithoutCompanyInput>, ClientUncheckedUpdateWithoutCompanyInput>
+  }
+
   export type CompanyContactUncheckedUpdateManyWithoutCompanyNestedInput = {
     create?: XOR<CompanyContactCreateWithoutCompanyInput, CompanyContactUncheckedCreateWithoutCompanyInput> | CompanyContactCreateWithoutCompanyInput[] | CompanyContactUncheckedCreateWithoutCompanyInput[]
     connectOrCreate?: CompanyContactCreateOrConnectWithoutCompanyInput | CompanyContactCreateOrConnectWithoutCompanyInput[]
@@ -29970,6 +41090,30 @@ export namespace Prisma {
     update?: CompanyActivityUpdateWithWhereUniqueWithoutCompanyInput | CompanyActivityUpdateWithWhereUniqueWithoutCompanyInput[]
     updateMany?: CompanyActivityUpdateManyWithWhereWithoutCompanyInput | CompanyActivityUpdateManyWithWhereWithoutCompanyInput[]
     deleteMany?: CompanyActivityScalarWhereInput | CompanyActivityScalarWhereInput[]
+  }
+
+  export type ClientUncheckedUpdateOneWithoutCompanyNestedInput = {
+    create?: XOR<ClientCreateWithoutCompanyInput, ClientUncheckedCreateWithoutCompanyInput>
+    connectOrCreate?: ClientCreateOrConnectWithoutCompanyInput
+    upsert?: ClientUpsertWithoutCompanyInput
+    disconnect?: ClientWhereInput | boolean
+    delete?: ClientWhereInput | boolean
+    connect?: ClientWhereUniqueInput
+    update?: XOR<XOR<ClientUpdateToOneWithWhereWithoutCompanyInput, ClientUpdateWithoutCompanyInput>, ClientUncheckedUpdateWithoutCompanyInput>
+  }
+
+  export type CompanyCreateNestedOneWithoutClientRecordInput = {
+    create?: XOR<CompanyCreateWithoutClientRecordInput, CompanyUncheckedCreateWithoutClientRecordInput>
+    connectOrCreate?: CompanyCreateOrConnectWithoutClientRecordInput
+    connect?: CompanyWhereUniqueInput
+  }
+
+  export type CompanyUpdateOneRequiredWithoutClientRecordNestedInput = {
+    create?: XOR<CompanyCreateWithoutClientRecordInput, CompanyUncheckedCreateWithoutClientRecordInput>
+    connectOrCreate?: CompanyCreateOrConnectWithoutClientRecordInput
+    upsert?: CompanyUpsertWithoutClientRecordInput
+    connect?: CompanyWhereUniqueInput
+    update?: XOR<XOR<CompanyUpdateToOneWithWhereWithoutClientRecordInput, CompanyUpdateWithoutClientRecordInput>, CompanyUncheckedUpdateWithoutClientRecordInput>
   }
 
   export type UserCreateNestedOneWithoutOpportunitiesAssignedInput = {
@@ -30046,14 +41190,6 @@ export namespace Prisma {
     connectOrCreate?: OpportunityActivityCreateOrConnectWithoutOpportunityInput | OpportunityActivityCreateOrConnectWithoutOpportunityInput[]
     createMany?: OpportunityActivityCreateManyOpportunityInputEnvelope
     connect?: OpportunityActivityWhereUniqueInput | OpportunityActivityWhereUniqueInput[]
-  }
-
-  export type IntFieldUpdateOperationsInput = {
-    set?: number
-    increment?: number
-    decrement?: number
-    multiply?: number
-    divide?: number
   }
 
   export type UserUpdateOneWithoutOpportunitiesAssignedNestedInput = {
@@ -30621,6 +41757,20 @@ export namespace Prisma {
     update?: XOR<XOR<UserUpdateToOneWithWhereWithoutCampaignsCreatedInput, UserUpdateWithoutCampaignsCreatedInput>, UserUncheckedUpdateWithoutCampaignsCreatedInput>
   }
 
+  export type UserCreateNestedOneWithoutCrmFilesUploadedInput = {
+    create?: XOR<UserCreateWithoutCrmFilesUploadedInput, UserUncheckedCreateWithoutCrmFilesUploadedInput>
+    connectOrCreate?: UserCreateOrConnectWithoutCrmFilesUploadedInput
+    connect?: UserWhereUniqueInput
+  }
+
+  export type UserUpdateOneRequiredWithoutCrmFilesUploadedNestedInput = {
+    create?: XOR<UserCreateWithoutCrmFilesUploadedInput, UserUncheckedCreateWithoutCrmFilesUploadedInput>
+    connectOrCreate?: UserCreateOrConnectWithoutCrmFilesUploadedInput
+    upsert?: UserUpsertWithoutCrmFilesUploadedInput
+    connect?: UserWhereUniqueInput
+    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutCrmFilesUploadedInput, UserUpdateWithoutCrmFilesUploadedInput>, UserUncheckedUpdateWithoutCrmFilesUploadedInput>
+  }
+
   export type NestedStringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[] | ListStringFieldRefInput<$PrismaModel>
@@ -30794,6 +41944,22 @@ export namespace Prisma {
     _min?: NestedFloatFilter<$PrismaModel>
     _max?: NestedFloatFilter<$PrismaModel>
   }
+
+  export type NestedIntWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel>
+    in?: number[] | ListIntFieldRefInput<$PrismaModel>
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntWithAggregatesFilter<$PrismaModel> | number
+    _count?: NestedIntFilter<$PrismaModel>
+    _avg?: NestedFloatFilter<$PrismaModel>
+    _sum?: NestedIntFilter<$PrismaModel>
+    _min?: NestedIntFilter<$PrismaModel>
+    _max?: NestedIntFilter<$PrismaModel>
+  }
   export type NestedJsonNullableFilter<$PrismaModel = never> =
     | PatchUndefined<
         Either<Required<NestedJsonNullableFilterBase<$PrismaModel>>, Exclude<keyof Required<NestedJsonNullableFilterBase<$PrismaModel>>, 'path'>>,
@@ -30816,22 +41982,6 @@ export namespace Prisma {
     gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
-  }
-
-  export type NestedIntWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: number | IntFieldRefInput<$PrismaModel>
-    in?: number[] | ListIntFieldRefInput<$PrismaModel>
-    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
-    lt?: number | IntFieldRefInput<$PrismaModel>
-    lte?: number | IntFieldRefInput<$PrismaModel>
-    gt?: number | IntFieldRefInput<$PrismaModel>
-    gte?: number | IntFieldRefInput<$PrismaModel>
-    not?: NestedIntWithAggregatesFilter<$PrismaModel> | number
-    _count?: NestedIntFilter<$PrismaModel>
-    _avg?: NestedFloatFilter<$PrismaModel>
-    _sum?: NestedIntFilter<$PrismaModel>
-    _min?: NestedIntFilter<$PrismaModel>
-    _max?: NestedIntFilter<$PrismaModel>
   }
 
   export type AuthorityCreateWithoutRoleInput = {
@@ -30870,6 +42020,8 @@ export namespace Prisma {
     companiesAssigned?: CompanyCreateNestedManyWithoutUserInput
     activitiesAssigned?: ActivityCreateNestedManyWithoutUserInput
     campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
+    crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
+    crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutRoleInput = {
@@ -30888,6 +42040,8 @@ export namespace Prisma {
     companiesAssigned?: CompanyUncheckedCreateNestedManyWithoutUserInput
     activitiesAssigned?: ActivityUncheckedCreateNestedManyWithoutUserInput
     campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
+    crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
+    crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutRoleInput = {
@@ -31033,6 +42187,8 @@ export namespace Prisma {
     companiesAssigned?: CompanyCreateNestedManyWithoutUserInput
     activitiesAssigned?: ActivityCreateNestedManyWithoutUserInput
     campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
+    crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
+    crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutAccountsInput = {
@@ -31051,6 +42207,8 @@ export namespace Prisma {
     companiesAssigned?: CompanyUncheckedCreateNestedManyWithoutUserInput
     activitiesAssigned?: ActivityUncheckedCreateNestedManyWithoutUserInput
     campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
+    crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
+    crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutAccountsInput = {
@@ -31085,6 +42243,8 @@ export namespace Prisma {
     companiesAssigned?: CompanyUpdateManyWithoutUserNestedInput
     activitiesAssigned?: ActivityUpdateManyWithoutUserNestedInput
     campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
+    crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
+    crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutAccountsInput = {
@@ -31103,6 +42263,8 @@ export namespace Prisma {
     companiesAssigned?: CompanyUncheckedUpdateManyWithoutUserNestedInput
     activitiesAssigned?: ActivityUncheckedUpdateManyWithoutUserNestedInput
     campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
+    crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
+    crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
   }
 
   export type RoleCreateWithoutUsersInput = {
@@ -31162,6 +42324,7 @@ export namespace Prisma {
 
   export type ContactCreateWithoutUserInput = {
     id?: string
+    urlSlug: string
     name: string
     cargo?: string | null
     telefono: string
@@ -31169,10 +42332,6 @@ export namespace Prisma {
     fuente: string
     etapa?: string
     estimatedValue?: number
-    nextAction?: string | null
-    nextFollowUp?: Date | string | null
-    notes?: string | null
-    tags?: ContactCreatetagsInput | string[]
     docType?: string | null
     docNumber?: string | null
     departamento?: string | null
@@ -31192,6 +42351,7 @@ export namespace Prisma {
 
   export type ContactUncheckedCreateWithoutUserInput = {
     id?: string
+    urlSlug: string
     name: string
     cargo?: string | null
     telefono: string
@@ -31199,10 +42359,6 @@ export namespace Prisma {
     fuente: string
     etapa?: string
     estimatedValue?: number
-    nextAction?: string | null
-    nextFollowUp?: Date | string | null
-    notes?: string | null
-    tags?: ContactCreatetagsInput | string[]
     docType?: string | null
     docNumber?: string | null
     departamento?: string | null
@@ -31232,6 +42388,7 @@ export namespace Prisma {
 
   export type OpportunityCreateWithoutUserInput = {
     id?: string
+    urlSlug: string
     title: string
     amount: number
     probability?: number
@@ -31250,6 +42407,7 @@ export namespace Prisma {
 
   export type OpportunityUncheckedCreateWithoutUserInput = {
     id?: string
+    urlSlug: string
     title: string
     amount: number
     probability?: number
@@ -31278,6 +42436,7 @@ export namespace Prisma {
 
   export type CompanyCreateWithoutUserInput = {
     id?: string
+    urlSlug: string
     name: string
     razonSocial?: string | null
     ruc?: string | null
@@ -31302,10 +42461,12 @@ export namespace Prisma {
     linkedBy?: CompanyCompanyCreateNestedManyWithoutLinkedInput
     opportunities?: CompanyOpportunityCreateNestedManyWithoutCompanyInput
     activities?: CompanyActivityCreateNestedManyWithoutCompanyInput
+    clientRecord?: ClientCreateNestedOneWithoutCompanyInput
   }
 
   export type CompanyUncheckedCreateWithoutUserInput = {
     id?: string
+    urlSlug: string
     name: string
     razonSocial?: string | null
     ruc?: string | null
@@ -31330,6 +42491,7 @@ export namespace Prisma {
     linkedBy?: CompanyCompanyUncheckedCreateNestedManyWithoutLinkedInput
     opportunities?: CompanyOpportunityUncheckedCreateNestedManyWithoutCompanyInput
     activities?: CompanyActivityUncheckedCreateNestedManyWithoutCompanyInput
+    clientRecord?: ClientUncheckedCreateNestedOneWithoutCompanyInput
   }
 
   export type CompanyCreateOrConnectWithoutUserInput = {
@@ -31345,6 +42507,7 @@ export namespace Prisma {
   export type ActivityCreateWithoutUserInput = {
     id?: string
     type: string
+    taskKind?: string | null
     title: string
     description: string
     status?: string
@@ -31362,6 +42525,7 @@ export namespace Prisma {
   export type ActivityUncheckedCreateWithoutUserInput = {
     id?: string
     type: string
+    taskKind?: string | null
     title: string
     description: string
     status?: string
@@ -31438,6 +42602,61 @@ export namespace Prisma {
   export type CampaignCreateManyCreatedByInputEnvelope = {
     data: CampaignCreateManyCreatedByInput | CampaignCreateManyCreatedByInput[]
     skipDuplicates?: boolean
+  }
+
+  export type CrmFileCreateWithoutUserInput = {
+    id?: string
+    storageKey: string
+    originalName: string
+    mimeType: string
+    size: number
+    entityType: string
+    entityId: string
+    entityName?: string | null
+    relatedEntityType?: string | null
+    relatedEntityId?: string | null
+    relatedEntityName?: string | null
+    createdAt?: Date | string
+  }
+
+  export type CrmFileUncheckedCreateWithoutUserInput = {
+    id?: string
+    storageKey: string
+    originalName: string
+    mimeType: string
+    size: number
+    entityType: string
+    entityId: string
+    entityName?: string | null
+    relatedEntityType?: string | null
+    relatedEntityId?: string | null
+    relatedEntityName?: string | null
+    createdAt?: Date | string
+  }
+
+  export type CrmFileCreateOrConnectWithoutUserInput = {
+    where: CrmFileWhereUniqueInput
+    create: XOR<CrmFileCreateWithoutUserInput, CrmFileUncheckedCreateWithoutUserInput>
+  }
+
+  export type CrmFileCreateManyUserInputEnvelope = {
+    data: CrmFileCreateManyUserInput | CrmFileCreateManyUserInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type CrmUserSalesGoalCreateWithoutUserInput = {
+    weeklyTarget?: number
+    monthlyTarget?: number
+  }
+
+  export type CrmUserSalesGoalUncheckedCreateWithoutUserInput = {
+    weeklyTarget?: number
+    monthlyTarget?: number
+  }
+
+  export type CrmUserSalesGoalCreateOrConnectWithoutUserInput = {
+    where: CrmUserSalesGoalWhereUniqueInput
+    create: XOR<CrmUserSalesGoalCreateWithoutUserInput, CrmUserSalesGoalUncheckedCreateWithoutUserInput>
   }
 
   export type RoleUpsertWithoutUsersInput = {
@@ -31523,6 +42742,7 @@ export namespace Prisma {
     OR?: ContactScalarWhereInput[]
     NOT?: ContactScalarWhereInput | ContactScalarWhereInput[]
     id?: StringFilter<"Contact"> | string
+    urlSlug?: StringFilter<"Contact"> | string
     name?: StringFilter<"Contact"> | string
     cargo?: StringNullableFilter<"Contact"> | string | null
     telefono?: StringFilter<"Contact"> | string
@@ -31531,10 +42751,6 @@ export namespace Prisma {
     etapa?: StringFilter<"Contact"> | string
     assignedTo?: StringNullableFilter<"Contact"> | string | null
     estimatedValue?: FloatFilter<"Contact"> | number
-    nextAction?: StringNullableFilter<"Contact"> | string | null
-    nextFollowUp?: DateTimeNullableFilter<"Contact"> | Date | string | null
-    notes?: StringNullableFilter<"Contact"> | string | null
-    tags?: StringNullableListFilter<"Contact">
     docType?: StringNullableFilter<"Contact"> | string | null
     docNumber?: StringNullableFilter<"Contact"> | string | null
     departamento?: StringNullableFilter<"Contact"> | string | null
@@ -31568,6 +42784,7 @@ export namespace Prisma {
     OR?: OpportunityScalarWhereInput[]
     NOT?: OpportunityScalarWhereInput | OpportunityScalarWhereInput[]
     id?: StringFilter<"Opportunity"> | string
+    urlSlug?: StringFilter<"Opportunity"> | string
     title?: StringFilter<"Opportunity"> | string
     amount?: FloatFilter<"Opportunity"> | number
     probability?: IntFilter<"Opportunity"> | number
@@ -31601,6 +42818,7 @@ export namespace Prisma {
     OR?: CompanyScalarWhereInput[]
     NOT?: CompanyScalarWhereInput | CompanyScalarWhereInput[]
     id?: StringFilter<"Company"> | string
+    urlSlug?: StringFilter<"Company"> | string
     name?: StringFilter<"Company"> | string
     razonSocial?: StringNullableFilter<"Company"> | string | null
     ruc?: StringNullableFilter<"Company"> | string | null
@@ -31645,6 +42863,7 @@ export namespace Prisma {
     NOT?: ActivityScalarWhereInput | ActivityScalarWhereInput[]
     id?: StringFilter<"Activity"> | string
     type?: StringFilter<"Activity"> | string
+    taskKind?: StringNullableFilter<"Activity"> | string | null
     title?: StringFilter<"Activity"> | string
     description?: StringFilter<"Activity"> | string
     assignedTo?: StringFilter<"Activity"> | string
@@ -31699,6 +42918,158 @@ export namespace Prisma {
     createdByName?: StringFilter<"Campaign"> | string
   }
 
+  export type CrmFileUpsertWithWhereUniqueWithoutUserInput = {
+    where: CrmFileWhereUniqueInput
+    update: XOR<CrmFileUpdateWithoutUserInput, CrmFileUncheckedUpdateWithoutUserInput>
+    create: XOR<CrmFileCreateWithoutUserInput, CrmFileUncheckedCreateWithoutUserInput>
+  }
+
+  export type CrmFileUpdateWithWhereUniqueWithoutUserInput = {
+    where: CrmFileWhereUniqueInput
+    data: XOR<CrmFileUpdateWithoutUserInput, CrmFileUncheckedUpdateWithoutUserInput>
+  }
+
+  export type CrmFileUpdateManyWithWhereWithoutUserInput = {
+    where: CrmFileScalarWhereInput
+    data: XOR<CrmFileUpdateManyMutationInput, CrmFileUncheckedUpdateManyWithoutUserInput>
+  }
+
+  export type CrmFileScalarWhereInput = {
+    AND?: CrmFileScalarWhereInput | CrmFileScalarWhereInput[]
+    OR?: CrmFileScalarWhereInput[]
+    NOT?: CrmFileScalarWhereInput | CrmFileScalarWhereInput[]
+    id?: StringFilter<"CrmFile"> | string
+    storageKey?: StringFilter<"CrmFile"> | string
+    originalName?: StringFilter<"CrmFile"> | string
+    mimeType?: StringFilter<"CrmFile"> | string
+    size?: IntFilter<"CrmFile"> | number
+    entityType?: StringFilter<"CrmFile"> | string
+    entityId?: StringFilter<"CrmFile"> | string
+    entityName?: StringNullableFilter<"CrmFile"> | string | null
+    relatedEntityType?: StringNullableFilter<"CrmFile"> | string | null
+    relatedEntityId?: StringNullableFilter<"CrmFile"> | string | null
+    relatedEntityName?: StringNullableFilter<"CrmFile"> | string | null
+    uploadedBy?: StringFilter<"CrmFile"> | string
+    createdAt?: DateTimeFilter<"CrmFile"> | Date | string
+  }
+
+  export type CrmUserSalesGoalUpsertWithoutUserInput = {
+    update: XOR<CrmUserSalesGoalUpdateWithoutUserInput, CrmUserSalesGoalUncheckedUpdateWithoutUserInput>
+    create: XOR<CrmUserSalesGoalCreateWithoutUserInput, CrmUserSalesGoalUncheckedCreateWithoutUserInput>
+    where?: CrmUserSalesGoalWhereInput
+  }
+
+  export type CrmUserSalesGoalUpdateToOneWithWhereWithoutUserInput = {
+    where?: CrmUserSalesGoalWhereInput
+    data: XOR<CrmUserSalesGoalUpdateWithoutUserInput, CrmUserSalesGoalUncheckedUpdateWithoutUserInput>
+  }
+
+  export type CrmUserSalesGoalUpdateWithoutUserInput = {
+    weeklyTarget?: FloatFieldUpdateOperationsInput | number
+    monthlyTarget?: FloatFieldUpdateOperationsInput | number
+  }
+
+  export type CrmUserSalesGoalUncheckedUpdateWithoutUserInput = {
+    weeklyTarget?: FloatFieldUpdateOperationsInput | number
+    monthlyTarget?: FloatFieldUpdateOperationsInput | number
+  }
+
+  export type UserCreateWithoutCrmSalesGoalInput = {
+    id?: string
+    name: string
+    phone?: string | null
+    avatar?: string | null
+    status?: string
+    joinedAt?: Date | string
+    lastActivity?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    role: RoleCreateNestedOneWithoutUsersInput
+    accounts?: AccountCreateNestedManyWithoutUserInput
+    contactsAssigned?: ContactCreateNestedManyWithoutUserInput
+    opportunitiesAssigned?: OpportunityCreateNestedManyWithoutUserInput
+    companiesAssigned?: CompanyCreateNestedManyWithoutUserInput
+    activitiesAssigned?: ActivityCreateNestedManyWithoutUserInput
+    campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
+    crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
+  }
+
+  export type UserUncheckedCreateWithoutCrmSalesGoalInput = {
+    id?: string
+    name: string
+    roleId: string
+    phone?: string | null
+    avatar?: string | null
+    status?: string
+    joinedAt?: Date | string
+    lastActivity?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
+    contactsAssigned?: ContactUncheckedCreateNestedManyWithoutUserInput
+    opportunitiesAssigned?: OpportunityUncheckedCreateNestedManyWithoutUserInput
+    companiesAssigned?: CompanyUncheckedCreateNestedManyWithoutUserInput
+    activitiesAssigned?: ActivityUncheckedCreateNestedManyWithoutUserInput
+    campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
+    crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
+  }
+
+  export type UserCreateOrConnectWithoutCrmSalesGoalInput = {
+    where: UserWhereUniqueInput
+    create: XOR<UserCreateWithoutCrmSalesGoalInput, UserUncheckedCreateWithoutCrmSalesGoalInput>
+  }
+
+  export type UserUpsertWithoutCrmSalesGoalInput = {
+    update: XOR<UserUpdateWithoutCrmSalesGoalInput, UserUncheckedUpdateWithoutCrmSalesGoalInput>
+    create: XOR<UserCreateWithoutCrmSalesGoalInput, UserUncheckedCreateWithoutCrmSalesGoalInput>
+    where?: UserWhereInput
+  }
+
+  export type UserUpdateToOneWithWhereWithoutCrmSalesGoalInput = {
+    where?: UserWhereInput
+    data: XOR<UserUpdateWithoutCrmSalesGoalInput, UserUncheckedUpdateWithoutCrmSalesGoalInput>
+  }
+
+  export type UserUpdateWithoutCrmSalesGoalInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
+    avatar?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: StringFieldUpdateOperationsInput | string
+    joinedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    role?: RoleUpdateOneRequiredWithoutUsersNestedInput
+    accounts?: AccountUpdateManyWithoutUserNestedInput
+    contactsAssigned?: ContactUpdateManyWithoutUserNestedInput
+    opportunitiesAssigned?: OpportunityUpdateManyWithoutUserNestedInput
+    companiesAssigned?: CompanyUpdateManyWithoutUserNestedInput
+    activitiesAssigned?: ActivityUpdateManyWithoutUserNestedInput
+    campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
+    crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
+  }
+
+  export type UserUncheckedUpdateWithoutCrmSalesGoalInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    roleId?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
+    avatar?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: StringFieldUpdateOperationsInput | string
+    joinedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
+    contactsAssigned?: ContactUncheckedUpdateManyWithoutUserNestedInput
+    opportunitiesAssigned?: OpportunityUncheckedUpdateManyWithoutUserNestedInput
+    companiesAssigned?: CompanyUncheckedUpdateManyWithoutUserNestedInput
+    activitiesAssigned?: ActivityUncheckedUpdateManyWithoutUserNestedInput
+    campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
+    crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
+  }
+
   export type UserCreateWithoutContactsAssignedInput = {
     id?: string
     name: string
@@ -31715,6 +43086,8 @@ export namespace Prisma {
     companiesAssigned?: CompanyCreateNestedManyWithoutUserInput
     activitiesAssigned?: ActivityCreateNestedManyWithoutUserInput
     campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
+    crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
+    crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutContactsAssignedInput = {
@@ -31733,6 +43106,8 @@ export namespace Prisma {
     companiesAssigned?: CompanyUncheckedCreateNestedManyWithoutUserInput
     activitiesAssigned?: ActivityUncheckedCreateNestedManyWithoutUserInput
     campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
+    crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
+    crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutContactsAssignedInput = {
@@ -31869,6 +43244,8 @@ export namespace Prisma {
     companiesAssigned?: CompanyUpdateManyWithoutUserNestedInput
     activitiesAssigned?: ActivityUpdateManyWithoutUserNestedInput
     campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
+    crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
+    crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutContactsAssignedInput = {
@@ -31887,6 +43264,8 @@ export namespace Prisma {
     companiesAssigned?: CompanyUncheckedUpdateManyWithoutUserNestedInput
     activitiesAssigned?: ActivityUncheckedUpdateManyWithoutUserNestedInput
     campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
+    crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
+    crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
   }
 
   export type CompanyContactUpsertWithWhereUniqueWithoutContactInput = {
@@ -32022,6 +43401,8 @@ export namespace Prisma {
     opportunitiesAssigned?: OpportunityCreateNestedManyWithoutUserInput
     activitiesAssigned?: ActivityCreateNestedManyWithoutUserInput
     campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
+    crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
+    crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutCompaniesAssignedInput = {
@@ -32040,6 +43421,8 @@ export namespace Prisma {
     opportunitiesAssigned?: OpportunityUncheckedCreateNestedManyWithoutUserInput
     activitiesAssigned?: ActivityUncheckedCreateNestedManyWithoutUserInput
     campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
+    crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
+    crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutCompaniesAssignedInput = {
@@ -32149,6 +43532,27 @@ export namespace Prisma {
     skipDuplicates?: boolean
   }
 
+  export type ClientCreateWithoutCompanyInput = {
+    id?: string
+    status?: string
+    notes?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type ClientUncheckedCreateWithoutCompanyInput = {
+    id?: string
+    status?: string
+    notes?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type ClientCreateOrConnectWithoutCompanyInput = {
+    where: ClientWhereUniqueInput
+    create: XOR<ClientCreateWithoutCompanyInput, ClientUncheckedCreateWithoutCompanyInput>
+  }
+
   export type UserUpsertWithoutCompaniesAssignedInput = {
     update: XOR<UserUpdateWithoutCompaniesAssignedInput, UserUncheckedUpdateWithoutCompaniesAssignedInput>
     create: XOR<UserCreateWithoutCompaniesAssignedInput, UserUncheckedCreateWithoutCompaniesAssignedInput>
@@ -32176,6 +43580,8 @@ export namespace Prisma {
     opportunitiesAssigned?: OpportunityUpdateManyWithoutUserNestedInput
     activitiesAssigned?: ActivityUpdateManyWithoutUserNestedInput
     campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
+    crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
+    crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutCompaniesAssignedInput = {
@@ -32194,6 +43600,8 @@ export namespace Prisma {
     opportunitiesAssigned?: OpportunityUncheckedUpdateManyWithoutUserNestedInput
     activitiesAssigned?: ActivityUncheckedUpdateManyWithoutUserNestedInput
     campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
+    crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
+    crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
   }
 
   export type CompanyContactUpsertWithWhereUniqueWithoutCompanyInput = {
@@ -32303,6 +43711,169 @@ export namespace Prisma {
     activityId?: StringFilter<"CompanyActivity"> | string
   }
 
+  export type ClientUpsertWithoutCompanyInput = {
+    update: XOR<ClientUpdateWithoutCompanyInput, ClientUncheckedUpdateWithoutCompanyInput>
+    create: XOR<ClientCreateWithoutCompanyInput, ClientUncheckedCreateWithoutCompanyInput>
+    where?: ClientWhereInput
+  }
+
+  export type ClientUpdateToOneWithWhereWithoutCompanyInput = {
+    where?: ClientWhereInput
+    data: XOR<ClientUpdateWithoutCompanyInput, ClientUncheckedUpdateWithoutCompanyInput>
+  }
+
+  export type ClientUpdateWithoutCompanyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    notes?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ClientUncheckedUpdateWithoutCompanyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    notes?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CompanyCreateWithoutClientRecordInput = {
+    id?: string
+    urlSlug: string
+    name: string
+    razonSocial?: string | null
+    ruc?: string | null
+    telefono?: string | null
+    domain?: string | null
+    rubro?: string | null
+    tipo?: string | null
+    linkedin?: string | null
+    correo?: string | null
+    distrito?: string | null
+    provincia?: string | null
+    departamento?: string | null
+    direccion?: string | null
+    facturacionEstimada?: number
+    fuente?: string | null
+    clienteRecuperado?: string | null
+    etapa?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    user?: UserCreateNestedOneWithoutCompaniesAssignedInput
+    contacts?: CompanyContactCreateNestedManyWithoutCompanyInput
+    companies?: CompanyCompanyCreateNestedManyWithoutCompanyInput
+    linkedBy?: CompanyCompanyCreateNestedManyWithoutLinkedInput
+    opportunities?: CompanyOpportunityCreateNestedManyWithoutCompanyInput
+    activities?: CompanyActivityCreateNestedManyWithoutCompanyInput
+  }
+
+  export type CompanyUncheckedCreateWithoutClientRecordInput = {
+    id?: string
+    urlSlug: string
+    name: string
+    razonSocial?: string | null
+    ruc?: string | null
+    telefono?: string | null
+    domain?: string | null
+    rubro?: string | null
+    tipo?: string | null
+    linkedin?: string | null
+    correo?: string | null
+    distrito?: string | null
+    provincia?: string | null
+    departamento?: string | null
+    direccion?: string | null
+    facturacionEstimada?: number
+    fuente?: string | null
+    clienteRecuperado?: string | null
+    etapa?: string
+    assignedTo?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    contacts?: CompanyContactUncheckedCreateNestedManyWithoutCompanyInput
+    companies?: CompanyCompanyUncheckedCreateNestedManyWithoutCompanyInput
+    linkedBy?: CompanyCompanyUncheckedCreateNestedManyWithoutLinkedInput
+    opportunities?: CompanyOpportunityUncheckedCreateNestedManyWithoutCompanyInput
+    activities?: CompanyActivityUncheckedCreateNestedManyWithoutCompanyInput
+  }
+
+  export type CompanyCreateOrConnectWithoutClientRecordInput = {
+    where: CompanyWhereUniqueInput
+    create: XOR<CompanyCreateWithoutClientRecordInput, CompanyUncheckedCreateWithoutClientRecordInput>
+  }
+
+  export type CompanyUpsertWithoutClientRecordInput = {
+    update: XOR<CompanyUpdateWithoutClientRecordInput, CompanyUncheckedUpdateWithoutClientRecordInput>
+    create: XOR<CompanyCreateWithoutClientRecordInput, CompanyUncheckedCreateWithoutClientRecordInput>
+    where?: CompanyWhereInput
+  }
+
+  export type CompanyUpdateToOneWithWhereWithoutClientRecordInput = {
+    where?: CompanyWhereInput
+    data: XOR<CompanyUpdateWithoutClientRecordInput, CompanyUncheckedUpdateWithoutClientRecordInput>
+  }
+
+  export type CompanyUpdateWithoutClientRecordInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    razonSocial?: NullableStringFieldUpdateOperationsInput | string | null
+    ruc?: NullableStringFieldUpdateOperationsInput | string | null
+    telefono?: NullableStringFieldUpdateOperationsInput | string | null
+    domain?: NullableStringFieldUpdateOperationsInput | string | null
+    rubro?: NullableStringFieldUpdateOperationsInput | string | null
+    tipo?: NullableStringFieldUpdateOperationsInput | string | null
+    linkedin?: NullableStringFieldUpdateOperationsInput | string | null
+    correo?: NullableStringFieldUpdateOperationsInput | string | null
+    distrito?: NullableStringFieldUpdateOperationsInput | string | null
+    provincia?: NullableStringFieldUpdateOperationsInput | string | null
+    departamento?: NullableStringFieldUpdateOperationsInput | string | null
+    direccion?: NullableStringFieldUpdateOperationsInput | string | null
+    facturacionEstimada?: FloatFieldUpdateOperationsInput | number
+    fuente?: NullableStringFieldUpdateOperationsInput | string | null
+    clienteRecuperado?: NullableStringFieldUpdateOperationsInput | string | null
+    etapa?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    user?: UserUpdateOneWithoutCompaniesAssignedNestedInput
+    contacts?: CompanyContactUpdateManyWithoutCompanyNestedInput
+    companies?: CompanyCompanyUpdateManyWithoutCompanyNestedInput
+    linkedBy?: CompanyCompanyUpdateManyWithoutLinkedNestedInput
+    opportunities?: CompanyOpportunityUpdateManyWithoutCompanyNestedInput
+    activities?: CompanyActivityUpdateManyWithoutCompanyNestedInput
+  }
+
+  export type CompanyUncheckedUpdateWithoutClientRecordInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    razonSocial?: NullableStringFieldUpdateOperationsInput | string | null
+    ruc?: NullableStringFieldUpdateOperationsInput | string | null
+    telefono?: NullableStringFieldUpdateOperationsInput | string | null
+    domain?: NullableStringFieldUpdateOperationsInput | string | null
+    rubro?: NullableStringFieldUpdateOperationsInput | string | null
+    tipo?: NullableStringFieldUpdateOperationsInput | string | null
+    linkedin?: NullableStringFieldUpdateOperationsInput | string | null
+    correo?: NullableStringFieldUpdateOperationsInput | string | null
+    distrito?: NullableStringFieldUpdateOperationsInput | string | null
+    provincia?: NullableStringFieldUpdateOperationsInput | string | null
+    departamento?: NullableStringFieldUpdateOperationsInput | string | null
+    direccion?: NullableStringFieldUpdateOperationsInput | string | null
+    facturacionEstimada?: FloatFieldUpdateOperationsInput | number
+    fuente?: NullableStringFieldUpdateOperationsInput | string | null
+    clienteRecuperado?: NullableStringFieldUpdateOperationsInput | string | null
+    etapa?: StringFieldUpdateOperationsInput | string
+    assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    contacts?: CompanyContactUncheckedUpdateManyWithoutCompanyNestedInput
+    companies?: CompanyCompanyUncheckedUpdateManyWithoutCompanyNestedInput
+    linkedBy?: CompanyCompanyUncheckedUpdateManyWithoutLinkedNestedInput
+    opportunities?: CompanyOpportunityUncheckedUpdateManyWithoutCompanyNestedInput
+    activities?: CompanyActivityUncheckedUpdateManyWithoutCompanyNestedInput
+  }
+
   export type UserCreateWithoutOpportunitiesAssignedInput = {
     id?: string
     name: string
@@ -32319,6 +43890,8 @@ export namespace Prisma {
     companiesAssigned?: CompanyCreateNestedManyWithoutUserInput
     activitiesAssigned?: ActivityCreateNestedManyWithoutUserInput
     campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
+    crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
+    crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutOpportunitiesAssignedInput = {
@@ -32337,6 +43910,8 @@ export namespace Prisma {
     companiesAssigned?: CompanyUncheckedCreateNestedManyWithoutUserInput
     activitiesAssigned?: ActivityUncheckedCreateNestedManyWithoutUserInput
     campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
+    crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
+    crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutOpportunitiesAssignedInput = {
@@ -32471,6 +44046,8 @@ export namespace Prisma {
     companiesAssigned?: CompanyUpdateManyWithoutUserNestedInput
     activitiesAssigned?: ActivityUpdateManyWithoutUserNestedInput
     campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
+    crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
+    crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutOpportunitiesAssignedInput = {
@@ -32489,6 +44066,8 @@ export namespace Prisma {
     companiesAssigned?: CompanyUncheckedUpdateManyWithoutUserNestedInput
     activitiesAssigned?: ActivityUncheckedUpdateManyWithoutUserNestedInput
     campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
+    crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
+    crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
   }
 
   export type ContactOpportunityUpsertWithWhereUniqueWithoutOpportunityInput = {
@@ -32605,6 +44184,8 @@ export namespace Prisma {
     opportunitiesAssigned?: OpportunityCreateNestedManyWithoutUserInput
     companiesAssigned?: CompanyCreateNestedManyWithoutUserInput
     campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
+    crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
+    crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutActivitiesAssignedInput = {
@@ -32623,6 +44204,8 @@ export namespace Prisma {
     opportunitiesAssigned?: OpportunityUncheckedCreateNestedManyWithoutUserInput
     companiesAssigned?: CompanyUncheckedCreateNestedManyWithoutUserInput
     campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
+    crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
+    crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutActivitiesAssignedInput = {
@@ -32717,6 +44300,8 @@ export namespace Prisma {
     opportunitiesAssigned?: OpportunityUpdateManyWithoutUserNestedInput
     companiesAssigned?: CompanyUpdateManyWithoutUserNestedInput
     campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
+    crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
+    crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutActivitiesAssignedInput = {
@@ -32735,6 +44320,8 @@ export namespace Prisma {
     opportunitiesAssigned?: OpportunityUncheckedUpdateManyWithoutUserNestedInput
     companiesAssigned?: CompanyUncheckedUpdateManyWithoutUserNestedInput
     campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
+    crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
+    crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
   }
 
   export type ContactActivityUpsertWithWhereUniqueWithoutActivityInput = {
@@ -32787,6 +44374,7 @@ export namespace Prisma {
 
   export type CompanyCreateWithoutContactsInput = {
     id?: string
+    urlSlug: string
     name: string
     razonSocial?: string | null
     ruc?: string | null
@@ -32811,10 +44399,12 @@ export namespace Prisma {
     linkedBy?: CompanyCompanyCreateNestedManyWithoutLinkedInput
     opportunities?: CompanyOpportunityCreateNestedManyWithoutCompanyInput
     activities?: CompanyActivityCreateNestedManyWithoutCompanyInput
+    clientRecord?: ClientCreateNestedOneWithoutCompanyInput
   }
 
   export type CompanyUncheckedCreateWithoutContactsInput = {
     id?: string
+    urlSlug: string
     name: string
     razonSocial?: string | null
     ruc?: string | null
@@ -32839,6 +44429,7 @@ export namespace Prisma {
     linkedBy?: CompanyCompanyUncheckedCreateNestedManyWithoutLinkedInput
     opportunities?: CompanyOpportunityUncheckedCreateNestedManyWithoutCompanyInput
     activities?: CompanyActivityUncheckedCreateNestedManyWithoutCompanyInput
+    clientRecord?: ClientUncheckedCreateNestedOneWithoutCompanyInput
   }
 
   export type CompanyCreateOrConnectWithoutContactsInput = {
@@ -32848,6 +44439,7 @@ export namespace Prisma {
 
   export type ContactCreateWithoutCompaniesInput = {
     id?: string
+    urlSlug: string
     name: string
     cargo?: string | null
     telefono: string
@@ -32855,10 +44447,6 @@ export namespace Prisma {
     fuente: string
     etapa?: string
     estimatedValue?: number
-    nextAction?: string | null
-    nextFollowUp?: Date | string | null
-    notes?: string | null
-    tags?: ContactCreatetagsInput | string[]
     docType?: string | null
     docNumber?: string | null
     departamento?: string | null
@@ -32878,6 +44466,7 @@ export namespace Prisma {
 
   export type ContactUncheckedCreateWithoutCompaniesInput = {
     id?: string
+    urlSlug: string
     name: string
     cargo?: string | null
     telefono: string
@@ -32886,10 +44475,6 @@ export namespace Prisma {
     etapa?: string
     assignedTo?: string | null
     estimatedValue?: number
-    nextAction?: string | null
-    nextFollowUp?: Date | string | null
-    notes?: string | null
-    tags?: ContactCreatetagsInput | string[]
     docType?: string | null
     docNumber?: string | null
     departamento?: string | null
@@ -32924,6 +44509,7 @@ export namespace Prisma {
 
   export type CompanyUpdateWithoutContactsInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     razonSocial?: NullableStringFieldUpdateOperationsInput | string | null
     ruc?: NullableStringFieldUpdateOperationsInput | string | null
@@ -32948,10 +44534,12 @@ export namespace Prisma {
     linkedBy?: CompanyCompanyUpdateManyWithoutLinkedNestedInput
     opportunities?: CompanyOpportunityUpdateManyWithoutCompanyNestedInput
     activities?: CompanyActivityUpdateManyWithoutCompanyNestedInput
+    clientRecord?: ClientUpdateOneWithoutCompanyNestedInput
   }
 
   export type CompanyUncheckedUpdateWithoutContactsInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     razonSocial?: NullableStringFieldUpdateOperationsInput | string | null
     ruc?: NullableStringFieldUpdateOperationsInput | string | null
@@ -32976,6 +44564,7 @@ export namespace Prisma {
     linkedBy?: CompanyCompanyUncheckedUpdateManyWithoutLinkedNestedInput
     opportunities?: CompanyOpportunityUncheckedUpdateManyWithoutCompanyNestedInput
     activities?: CompanyActivityUncheckedUpdateManyWithoutCompanyNestedInput
+    clientRecord?: ClientUncheckedUpdateOneWithoutCompanyNestedInput
   }
 
   export type ContactUpsertWithoutCompaniesInput = {
@@ -32991,6 +44580,7 @@ export namespace Prisma {
 
   export type ContactUpdateWithoutCompaniesInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     cargo?: NullableStringFieldUpdateOperationsInput | string | null
     telefono?: StringFieldUpdateOperationsInput | string
@@ -32998,10 +44588,6 @@ export namespace Prisma {
     fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
-    nextAction?: NullableStringFieldUpdateOperationsInput | string | null
-    nextFollowUp?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    notes?: NullableStringFieldUpdateOperationsInput | string | null
-    tags?: ContactUpdatetagsInput | string[]
     docType?: NullableStringFieldUpdateOperationsInput | string | null
     docNumber?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
@@ -33021,6 +44607,7 @@ export namespace Prisma {
 
   export type ContactUncheckedUpdateWithoutCompaniesInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     cargo?: NullableStringFieldUpdateOperationsInput | string | null
     telefono?: StringFieldUpdateOperationsInput | string
@@ -33029,10 +44616,6 @@ export namespace Prisma {
     etapa?: StringFieldUpdateOperationsInput | string
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     estimatedValue?: FloatFieldUpdateOperationsInput | number
-    nextAction?: NullableStringFieldUpdateOperationsInput | string | null
-    nextFollowUp?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    notes?: NullableStringFieldUpdateOperationsInput | string | null
-    tags?: ContactUpdatetagsInput | string[]
     docType?: NullableStringFieldUpdateOperationsInput | string | null
     docNumber?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
@@ -33051,6 +44634,7 @@ export namespace Prisma {
 
   export type ContactCreateWithoutContactsInput = {
     id?: string
+    urlSlug: string
     name: string
     cargo?: string | null
     telefono: string
@@ -33058,10 +44642,6 @@ export namespace Prisma {
     fuente: string
     etapa?: string
     estimatedValue?: number
-    nextAction?: string | null
-    nextFollowUp?: Date | string | null
-    notes?: string | null
-    tags?: ContactCreatetagsInput | string[]
     docType?: string | null
     docNumber?: string | null
     departamento?: string | null
@@ -33081,6 +44661,7 @@ export namespace Prisma {
 
   export type ContactUncheckedCreateWithoutContactsInput = {
     id?: string
+    urlSlug: string
     name: string
     cargo?: string | null
     telefono: string
@@ -33089,10 +44670,6 @@ export namespace Prisma {
     etapa?: string
     assignedTo?: string | null
     estimatedValue?: number
-    nextAction?: string | null
-    nextFollowUp?: Date | string | null
-    notes?: string | null
-    tags?: ContactCreatetagsInput | string[]
     docType?: string | null
     docNumber?: string | null
     departamento?: string | null
@@ -33116,6 +44693,7 @@ export namespace Prisma {
 
   export type ContactCreateWithoutLinkedByInput = {
     id?: string
+    urlSlug: string
     name: string
     cargo?: string | null
     telefono: string
@@ -33123,10 +44701,6 @@ export namespace Prisma {
     fuente: string
     etapa?: string
     estimatedValue?: number
-    nextAction?: string | null
-    nextFollowUp?: Date | string | null
-    notes?: string | null
-    tags?: ContactCreatetagsInput | string[]
     docType?: string | null
     docNumber?: string | null
     departamento?: string | null
@@ -33146,6 +44720,7 @@ export namespace Prisma {
 
   export type ContactUncheckedCreateWithoutLinkedByInput = {
     id?: string
+    urlSlug: string
     name: string
     cargo?: string | null
     telefono: string
@@ -33154,10 +44729,6 @@ export namespace Prisma {
     etapa?: string
     assignedTo?: string | null
     estimatedValue?: number
-    nextAction?: string | null
-    nextFollowUp?: Date | string | null
-    notes?: string | null
-    tags?: ContactCreatetagsInput | string[]
     docType?: string | null
     docNumber?: string | null
     departamento?: string | null
@@ -33192,6 +44763,7 @@ export namespace Prisma {
 
   export type ContactUpdateWithoutContactsInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     cargo?: NullableStringFieldUpdateOperationsInput | string | null
     telefono?: StringFieldUpdateOperationsInput | string
@@ -33199,10 +44771,6 @@ export namespace Prisma {
     fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
-    nextAction?: NullableStringFieldUpdateOperationsInput | string | null
-    nextFollowUp?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    notes?: NullableStringFieldUpdateOperationsInput | string | null
-    tags?: ContactUpdatetagsInput | string[]
     docType?: NullableStringFieldUpdateOperationsInput | string | null
     docNumber?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
@@ -33222,6 +44790,7 @@ export namespace Prisma {
 
   export type ContactUncheckedUpdateWithoutContactsInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     cargo?: NullableStringFieldUpdateOperationsInput | string | null
     telefono?: StringFieldUpdateOperationsInput | string
@@ -33230,10 +44799,6 @@ export namespace Prisma {
     etapa?: StringFieldUpdateOperationsInput | string
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     estimatedValue?: FloatFieldUpdateOperationsInput | number
-    nextAction?: NullableStringFieldUpdateOperationsInput | string | null
-    nextFollowUp?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    notes?: NullableStringFieldUpdateOperationsInput | string | null
-    tags?: ContactUpdatetagsInput | string[]
     docType?: NullableStringFieldUpdateOperationsInput | string | null
     docNumber?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
@@ -33263,6 +44828,7 @@ export namespace Prisma {
 
   export type ContactUpdateWithoutLinkedByInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     cargo?: NullableStringFieldUpdateOperationsInput | string | null
     telefono?: StringFieldUpdateOperationsInput | string
@@ -33270,10 +44836,6 @@ export namespace Prisma {
     fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
-    nextAction?: NullableStringFieldUpdateOperationsInput | string | null
-    nextFollowUp?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    notes?: NullableStringFieldUpdateOperationsInput | string | null
-    tags?: ContactUpdatetagsInput | string[]
     docType?: NullableStringFieldUpdateOperationsInput | string | null
     docNumber?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
@@ -33293,6 +44855,7 @@ export namespace Prisma {
 
   export type ContactUncheckedUpdateWithoutLinkedByInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     cargo?: NullableStringFieldUpdateOperationsInput | string | null
     telefono?: StringFieldUpdateOperationsInput | string
@@ -33301,10 +44864,6 @@ export namespace Prisma {
     etapa?: StringFieldUpdateOperationsInput | string
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     estimatedValue?: FloatFieldUpdateOperationsInput | number
-    nextAction?: NullableStringFieldUpdateOperationsInput | string | null
-    nextFollowUp?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    notes?: NullableStringFieldUpdateOperationsInput | string | null
-    tags?: ContactUpdatetagsInput | string[]
     docType?: NullableStringFieldUpdateOperationsInput | string | null
     docNumber?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
@@ -33323,6 +44882,7 @@ export namespace Prisma {
 
   export type ContactCreateWithoutOpportunitiesInput = {
     id?: string
+    urlSlug: string
     name: string
     cargo?: string | null
     telefono: string
@@ -33330,10 +44890,6 @@ export namespace Prisma {
     fuente: string
     etapa?: string
     estimatedValue?: number
-    nextAction?: string | null
-    nextFollowUp?: Date | string | null
-    notes?: string | null
-    tags?: ContactCreatetagsInput | string[]
     docType?: string | null
     docNumber?: string | null
     departamento?: string | null
@@ -33353,6 +44909,7 @@ export namespace Prisma {
 
   export type ContactUncheckedCreateWithoutOpportunitiesInput = {
     id?: string
+    urlSlug: string
     name: string
     cargo?: string | null
     telefono: string
@@ -33361,10 +44918,6 @@ export namespace Prisma {
     etapa?: string
     assignedTo?: string | null
     estimatedValue?: number
-    nextAction?: string | null
-    nextFollowUp?: Date | string | null
-    notes?: string | null
-    tags?: ContactCreatetagsInput | string[]
     docType?: string | null
     docNumber?: string | null
     departamento?: string | null
@@ -33388,6 +44941,7 @@ export namespace Prisma {
 
   export type OpportunityCreateWithoutContactsInput = {
     id?: string
+    urlSlug: string
     title: string
     amount: number
     probability?: number
@@ -33406,6 +44960,7 @@ export namespace Prisma {
 
   export type OpportunityUncheckedCreateWithoutContactsInput = {
     id?: string
+    urlSlug: string
     title: string
     amount: number
     probability?: number
@@ -33440,6 +44995,7 @@ export namespace Prisma {
 
   export type ContactUpdateWithoutOpportunitiesInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     cargo?: NullableStringFieldUpdateOperationsInput | string | null
     telefono?: StringFieldUpdateOperationsInput | string
@@ -33447,10 +45003,6 @@ export namespace Prisma {
     fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
-    nextAction?: NullableStringFieldUpdateOperationsInput | string | null
-    nextFollowUp?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    notes?: NullableStringFieldUpdateOperationsInput | string | null
-    tags?: ContactUpdatetagsInput | string[]
     docType?: NullableStringFieldUpdateOperationsInput | string | null
     docNumber?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
@@ -33470,6 +45022,7 @@ export namespace Prisma {
 
   export type ContactUncheckedUpdateWithoutOpportunitiesInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     cargo?: NullableStringFieldUpdateOperationsInput | string | null
     telefono?: StringFieldUpdateOperationsInput | string
@@ -33478,10 +45031,6 @@ export namespace Prisma {
     etapa?: StringFieldUpdateOperationsInput | string
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     estimatedValue?: FloatFieldUpdateOperationsInput | number
-    nextAction?: NullableStringFieldUpdateOperationsInput | string | null
-    nextFollowUp?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    notes?: NullableStringFieldUpdateOperationsInput | string | null
-    tags?: ContactUpdatetagsInput | string[]
     docType?: NullableStringFieldUpdateOperationsInput | string | null
     docNumber?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
@@ -33511,6 +45060,7 @@ export namespace Prisma {
 
   export type OpportunityUpdateWithoutContactsInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     amount?: FloatFieldUpdateOperationsInput | number
     probability?: IntFieldUpdateOperationsInput | number
@@ -33529,6 +45079,7 @@ export namespace Prisma {
 
   export type OpportunityUncheckedUpdateWithoutContactsInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     amount?: FloatFieldUpdateOperationsInput | number
     probability?: IntFieldUpdateOperationsInput | number
@@ -33547,6 +45098,7 @@ export namespace Prisma {
 
   export type CompanyCreateWithoutCompaniesInput = {
     id?: string
+    urlSlug: string
     name: string
     razonSocial?: string | null
     ruc?: string | null
@@ -33571,10 +45123,12 @@ export namespace Prisma {
     linkedBy?: CompanyCompanyCreateNestedManyWithoutLinkedInput
     opportunities?: CompanyOpportunityCreateNestedManyWithoutCompanyInput
     activities?: CompanyActivityCreateNestedManyWithoutCompanyInput
+    clientRecord?: ClientCreateNestedOneWithoutCompanyInput
   }
 
   export type CompanyUncheckedCreateWithoutCompaniesInput = {
     id?: string
+    urlSlug: string
     name: string
     razonSocial?: string | null
     ruc?: string | null
@@ -33599,6 +45153,7 @@ export namespace Prisma {
     linkedBy?: CompanyCompanyUncheckedCreateNestedManyWithoutLinkedInput
     opportunities?: CompanyOpportunityUncheckedCreateNestedManyWithoutCompanyInput
     activities?: CompanyActivityUncheckedCreateNestedManyWithoutCompanyInput
+    clientRecord?: ClientUncheckedCreateNestedOneWithoutCompanyInput
   }
 
   export type CompanyCreateOrConnectWithoutCompaniesInput = {
@@ -33608,6 +45163,7 @@ export namespace Prisma {
 
   export type CompanyCreateWithoutLinkedByInput = {
     id?: string
+    urlSlug: string
     name: string
     razonSocial?: string | null
     ruc?: string | null
@@ -33632,10 +45188,12 @@ export namespace Prisma {
     companies?: CompanyCompanyCreateNestedManyWithoutCompanyInput
     opportunities?: CompanyOpportunityCreateNestedManyWithoutCompanyInput
     activities?: CompanyActivityCreateNestedManyWithoutCompanyInput
+    clientRecord?: ClientCreateNestedOneWithoutCompanyInput
   }
 
   export type CompanyUncheckedCreateWithoutLinkedByInput = {
     id?: string
+    urlSlug: string
     name: string
     razonSocial?: string | null
     ruc?: string | null
@@ -33660,6 +45218,7 @@ export namespace Prisma {
     companies?: CompanyCompanyUncheckedCreateNestedManyWithoutCompanyInput
     opportunities?: CompanyOpportunityUncheckedCreateNestedManyWithoutCompanyInput
     activities?: CompanyActivityUncheckedCreateNestedManyWithoutCompanyInput
+    clientRecord?: ClientUncheckedCreateNestedOneWithoutCompanyInput
   }
 
   export type CompanyCreateOrConnectWithoutLinkedByInput = {
@@ -33680,6 +45239,7 @@ export namespace Prisma {
 
   export type CompanyUpdateWithoutCompaniesInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     razonSocial?: NullableStringFieldUpdateOperationsInput | string | null
     ruc?: NullableStringFieldUpdateOperationsInput | string | null
@@ -33704,10 +45264,12 @@ export namespace Prisma {
     linkedBy?: CompanyCompanyUpdateManyWithoutLinkedNestedInput
     opportunities?: CompanyOpportunityUpdateManyWithoutCompanyNestedInput
     activities?: CompanyActivityUpdateManyWithoutCompanyNestedInput
+    clientRecord?: ClientUpdateOneWithoutCompanyNestedInput
   }
 
   export type CompanyUncheckedUpdateWithoutCompaniesInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     razonSocial?: NullableStringFieldUpdateOperationsInput | string | null
     ruc?: NullableStringFieldUpdateOperationsInput | string | null
@@ -33732,6 +45294,7 @@ export namespace Prisma {
     linkedBy?: CompanyCompanyUncheckedUpdateManyWithoutLinkedNestedInput
     opportunities?: CompanyOpportunityUncheckedUpdateManyWithoutCompanyNestedInput
     activities?: CompanyActivityUncheckedUpdateManyWithoutCompanyNestedInput
+    clientRecord?: ClientUncheckedUpdateOneWithoutCompanyNestedInput
   }
 
   export type CompanyUpsertWithoutLinkedByInput = {
@@ -33747,6 +45310,7 @@ export namespace Prisma {
 
   export type CompanyUpdateWithoutLinkedByInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     razonSocial?: NullableStringFieldUpdateOperationsInput | string | null
     ruc?: NullableStringFieldUpdateOperationsInput | string | null
@@ -33771,10 +45335,12 @@ export namespace Prisma {
     companies?: CompanyCompanyUpdateManyWithoutCompanyNestedInput
     opportunities?: CompanyOpportunityUpdateManyWithoutCompanyNestedInput
     activities?: CompanyActivityUpdateManyWithoutCompanyNestedInput
+    clientRecord?: ClientUpdateOneWithoutCompanyNestedInput
   }
 
   export type CompanyUncheckedUpdateWithoutLinkedByInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     razonSocial?: NullableStringFieldUpdateOperationsInput | string | null
     ruc?: NullableStringFieldUpdateOperationsInput | string | null
@@ -33799,10 +45365,12 @@ export namespace Prisma {
     companies?: CompanyCompanyUncheckedUpdateManyWithoutCompanyNestedInput
     opportunities?: CompanyOpportunityUncheckedUpdateManyWithoutCompanyNestedInput
     activities?: CompanyActivityUncheckedUpdateManyWithoutCompanyNestedInput
+    clientRecord?: ClientUncheckedUpdateOneWithoutCompanyNestedInput
   }
 
   export type CompanyCreateWithoutOpportunitiesInput = {
     id?: string
+    urlSlug: string
     name: string
     razonSocial?: string | null
     ruc?: string | null
@@ -33827,10 +45395,12 @@ export namespace Prisma {
     companies?: CompanyCompanyCreateNestedManyWithoutCompanyInput
     linkedBy?: CompanyCompanyCreateNestedManyWithoutLinkedInput
     activities?: CompanyActivityCreateNestedManyWithoutCompanyInput
+    clientRecord?: ClientCreateNestedOneWithoutCompanyInput
   }
 
   export type CompanyUncheckedCreateWithoutOpportunitiesInput = {
     id?: string
+    urlSlug: string
     name: string
     razonSocial?: string | null
     ruc?: string | null
@@ -33855,6 +45425,7 @@ export namespace Prisma {
     companies?: CompanyCompanyUncheckedCreateNestedManyWithoutCompanyInput
     linkedBy?: CompanyCompanyUncheckedCreateNestedManyWithoutLinkedInput
     activities?: CompanyActivityUncheckedCreateNestedManyWithoutCompanyInput
+    clientRecord?: ClientUncheckedCreateNestedOneWithoutCompanyInput
   }
 
   export type CompanyCreateOrConnectWithoutOpportunitiesInput = {
@@ -33864,6 +45435,7 @@ export namespace Prisma {
 
   export type OpportunityCreateWithoutCompaniesInput = {
     id?: string
+    urlSlug: string
     title: string
     amount: number
     probability?: number
@@ -33882,6 +45454,7 @@ export namespace Prisma {
 
   export type OpportunityUncheckedCreateWithoutCompaniesInput = {
     id?: string
+    urlSlug: string
     title: string
     amount: number
     probability?: number
@@ -33916,6 +45489,7 @@ export namespace Prisma {
 
   export type CompanyUpdateWithoutOpportunitiesInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     razonSocial?: NullableStringFieldUpdateOperationsInput | string | null
     ruc?: NullableStringFieldUpdateOperationsInput | string | null
@@ -33940,10 +45514,12 @@ export namespace Prisma {
     companies?: CompanyCompanyUpdateManyWithoutCompanyNestedInput
     linkedBy?: CompanyCompanyUpdateManyWithoutLinkedNestedInput
     activities?: CompanyActivityUpdateManyWithoutCompanyNestedInput
+    clientRecord?: ClientUpdateOneWithoutCompanyNestedInput
   }
 
   export type CompanyUncheckedUpdateWithoutOpportunitiesInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     razonSocial?: NullableStringFieldUpdateOperationsInput | string | null
     ruc?: NullableStringFieldUpdateOperationsInput | string | null
@@ -33968,6 +45544,7 @@ export namespace Prisma {
     companies?: CompanyCompanyUncheckedUpdateManyWithoutCompanyNestedInput
     linkedBy?: CompanyCompanyUncheckedUpdateManyWithoutLinkedNestedInput
     activities?: CompanyActivityUncheckedUpdateManyWithoutCompanyNestedInput
+    clientRecord?: ClientUncheckedUpdateOneWithoutCompanyNestedInput
   }
 
   export type OpportunityUpsertWithoutCompaniesInput = {
@@ -33983,6 +45560,7 @@ export namespace Prisma {
 
   export type OpportunityUpdateWithoutCompaniesInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     amount?: FloatFieldUpdateOperationsInput | number
     probability?: IntFieldUpdateOperationsInput | number
@@ -34001,6 +45579,7 @@ export namespace Prisma {
 
   export type OpportunityUncheckedUpdateWithoutCompaniesInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     amount?: FloatFieldUpdateOperationsInput | number
     probability?: IntFieldUpdateOperationsInput | number
@@ -34019,6 +45598,7 @@ export namespace Prisma {
 
   export type OpportunityCreateWithoutOpportunitiesInput = {
     id?: string
+    urlSlug: string
     title: string
     amount: number
     probability?: number
@@ -34037,6 +45617,7 @@ export namespace Prisma {
 
   export type OpportunityUncheckedCreateWithoutOpportunitiesInput = {
     id?: string
+    urlSlug: string
     title: string
     amount: number
     probability?: number
@@ -34060,6 +45641,7 @@ export namespace Prisma {
 
   export type OpportunityCreateWithoutLinkedByInput = {
     id?: string
+    urlSlug: string
     title: string
     amount: number
     probability?: number
@@ -34078,6 +45660,7 @@ export namespace Prisma {
 
   export type OpportunityUncheckedCreateWithoutLinkedByInput = {
     id?: string
+    urlSlug: string
     title: string
     amount: number
     probability?: number
@@ -34112,6 +45695,7 @@ export namespace Prisma {
 
   export type OpportunityUpdateWithoutOpportunitiesInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     amount?: FloatFieldUpdateOperationsInput | number
     probability?: IntFieldUpdateOperationsInput | number
@@ -34130,6 +45714,7 @@ export namespace Prisma {
 
   export type OpportunityUncheckedUpdateWithoutOpportunitiesInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     amount?: FloatFieldUpdateOperationsInput | number
     probability?: IntFieldUpdateOperationsInput | number
@@ -34159,6 +45744,7 @@ export namespace Prisma {
 
   export type OpportunityUpdateWithoutLinkedByInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     amount?: FloatFieldUpdateOperationsInput | number
     probability?: IntFieldUpdateOperationsInput | number
@@ -34177,6 +45763,7 @@ export namespace Prisma {
 
   export type OpportunityUncheckedUpdateWithoutLinkedByInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     amount?: FloatFieldUpdateOperationsInput | number
     probability?: IntFieldUpdateOperationsInput | number
@@ -34195,6 +45782,7 @@ export namespace Prisma {
 
   export type ContactCreateWithoutActivitiesInput = {
     id?: string
+    urlSlug: string
     name: string
     cargo?: string | null
     telefono: string
@@ -34202,10 +45790,6 @@ export namespace Prisma {
     fuente: string
     etapa?: string
     estimatedValue?: number
-    nextAction?: string | null
-    nextFollowUp?: Date | string | null
-    notes?: string | null
-    tags?: ContactCreatetagsInput | string[]
     docType?: string | null
     docNumber?: string | null
     departamento?: string | null
@@ -34225,6 +45809,7 @@ export namespace Prisma {
 
   export type ContactUncheckedCreateWithoutActivitiesInput = {
     id?: string
+    urlSlug: string
     name: string
     cargo?: string | null
     telefono: string
@@ -34233,10 +45818,6 @@ export namespace Prisma {
     etapa?: string
     assignedTo?: string | null
     estimatedValue?: number
-    nextAction?: string | null
-    nextFollowUp?: Date | string | null
-    notes?: string | null
-    tags?: ContactCreatetagsInput | string[]
     docType?: string | null
     docNumber?: string | null
     departamento?: string | null
@@ -34261,6 +45842,7 @@ export namespace Prisma {
   export type ActivityCreateWithoutContactsInput = {
     id?: string
     type: string
+    taskKind?: string | null
     title: string
     description: string
     status?: string
@@ -34278,6 +45860,7 @@ export namespace Prisma {
   export type ActivityUncheckedCreateWithoutContactsInput = {
     id?: string
     type: string
+    taskKind?: string | null
     title: string
     description: string
     assignedTo: string
@@ -34310,6 +45893,7 @@ export namespace Prisma {
 
   export type ContactUpdateWithoutActivitiesInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     cargo?: NullableStringFieldUpdateOperationsInput | string | null
     telefono?: StringFieldUpdateOperationsInput | string
@@ -34317,10 +45901,6 @@ export namespace Prisma {
     fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
-    nextAction?: NullableStringFieldUpdateOperationsInput | string | null
-    nextFollowUp?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    notes?: NullableStringFieldUpdateOperationsInput | string | null
-    tags?: ContactUpdatetagsInput | string[]
     docType?: NullableStringFieldUpdateOperationsInput | string | null
     docNumber?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
@@ -34340,6 +45920,7 @@ export namespace Prisma {
 
   export type ContactUncheckedUpdateWithoutActivitiesInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     cargo?: NullableStringFieldUpdateOperationsInput | string | null
     telefono?: StringFieldUpdateOperationsInput | string
@@ -34348,10 +45929,6 @@ export namespace Prisma {
     etapa?: StringFieldUpdateOperationsInput | string
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     estimatedValue?: FloatFieldUpdateOperationsInput | number
-    nextAction?: NullableStringFieldUpdateOperationsInput | string | null
-    nextFollowUp?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    notes?: NullableStringFieldUpdateOperationsInput | string | null
-    tags?: ContactUpdatetagsInput | string[]
     docType?: NullableStringFieldUpdateOperationsInput | string | null
     docNumber?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
@@ -34382,6 +45959,7 @@ export namespace Prisma {
   export type ActivityUpdateWithoutContactsInput = {
     id?: StringFieldUpdateOperationsInput | string
     type?: StringFieldUpdateOperationsInput | string
+    taskKind?: NullableStringFieldUpdateOperationsInput | string | null
     title?: StringFieldUpdateOperationsInput | string
     description?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
@@ -34399,6 +45977,7 @@ export namespace Prisma {
   export type ActivityUncheckedUpdateWithoutContactsInput = {
     id?: StringFieldUpdateOperationsInput | string
     type?: StringFieldUpdateOperationsInput | string
+    taskKind?: NullableStringFieldUpdateOperationsInput | string | null
     title?: StringFieldUpdateOperationsInput | string
     description?: StringFieldUpdateOperationsInput | string
     assignedTo?: StringFieldUpdateOperationsInput | string
@@ -34415,6 +45994,7 @@ export namespace Prisma {
 
   export type CompanyCreateWithoutActivitiesInput = {
     id?: string
+    urlSlug: string
     name: string
     razonSocial?: string | null
     ruc?: string | null
@@ -34439,10 +46019,12 @@ export namespace Prisma {
     companies?: CompanyCompanyCreateNestedManyWithoutCompanyInput
     linkedBy?: CompanyCompanyCreateNestedManyWithoutLinkedInput
     opportunities?: CompanyOpportunityCreateNestedManyWithoutCompanyInput
+    clientRecord?: ClientCreateNestedOneWithoutCompanyInput
   }
 
   export type CompanyUncheckedCreateWithoutActivitiesInput = {
     id?: string
+    urlSlug: string
     name: string
     razonSocial?: string | null
     ruc?: string | null
@@ -34467,6 +46049,7 @@ export namespace Prisma {
     companies?: CompanyCompanyUncheckedCreateNestedManyWithoutCompanyInput
     linkedBy?: CompanyCompanyUncheckedCreateNestedManyWithoutLinkedInput
     opportunities?: CompanyOpportunityUncheckedCreateNestedManyWithoutCompanyInput
+    clientRecord?: ClientUncheckedCreateNestedOneWithoutCompanyInput
   }
 
   export type CompanyCreateOrConnectWithoutActivitiesInput = {
@@ -34477,6 +46060,7 @@ export namespace Prisma {
   export type ActivityCreateWithoutCompaniesInput = {
     id?: string
     type: string
+    taskKind?: string | null
     title: string
     description: string
     status?: string
@@ -34494,6 +46078,7 @@ export namespace Prisma {
   export type ActivityUncheckedCreateWithoutCompaniesInput = {
     id?: string
     type: string
+    taskKind?: string | null
     title: string
     description: string
     assignedTo: string
@@ -34526,6 +46111,7 @@ export namespace Prisma {
 
   export type CompanyUpdateWithoutActivitiesInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     razonSocial?: NullableStringFieldUpdateOperationsInput | string | null
     ruc?: NullableStringFieldUpdateOperationsInput | string | null
@@ -34550,10 +46136,12 @@ export namespace Prisma {
     companies?: CompanyCompanyUpdateManyWithoutCompanyNestedInput
     linkedBy?: CompanyCompanyUpdateManyWithoutLinkedNestedInput
     opportunities?: CompanyOpportunityUpdateManyWithoutCompanyNestedInput
+    clientRecord?: ClientUpdateOneWithoutCompanyNestedInput
   }
 
   export type CompanyUncheckedUpdateWithoutActivitiesInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     razonSocial?: NullableStringFieldUpdateOperationsInput | string | null
     ruc?: NullableStringFieldUpdateOperationsInput | string | null
@@ -34578,6 +46166,7 @@ export namespace Prisma {
     companies?: CompanyCompanyUncheckedUpdateManyWithoutCompanyNestedInput
     linkedBy?: CompanyCompanyUncheckedUpdateManyWithoutLinkedNestedInput
     opportunities?: CompanyOpportunityUncheckedUpdateManyWithoutCompanyNestedInput
+    clientRecord?: ClientUncheckedUpdateOneWithoutCompanyNestedInput
   }
 
   export type ActivityUpsertWithoutCompaniesInput = {
@@ -34594,6 +46183,7 @@ export namespace Prisma {
   export type ActivityUpdateWithoutCompaniesInput = {
     id?: StringFieldUpdateOperationsInput | string
     type?: StringFieldUpdateOperationsInput | string
+    taskKind?: NullableStringFieldUpdateOperationsInput | string | null
     title?: StringFieldUpdateOperationsInput | string
     description?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
@@ -34611,6 +46201,7 @@ export namespace Prisma {
   export type ActivityUncheckedUpdateWithoutCompaniesInput = {
     id?: StringFieldUpdateOperationsInput | string
     type?: StringFieldUpdateOperationsInput | string
+    taskKind?: NullableStringFieldUpdateOperationsInput | string | null
     title?: StringFieldUpdateOperationsInput | string
     description?: StringFieldUpdateOperationsInput | string
     assignedTo?: StringFieldUpdateOperationsInput | string
@@ -34627,6 +46218,7 @@ export namespace Prisma {
 
   export type OpportunityCreateWithoutActivitiesInput = {
     id?: string
+    urlSlug: string
     title: string
     amount: number
     probability?: number
@@ -34645,6 +46237,7 @@ export namespace Prisma {
 
   export type OpportunityUncheckedCreateWithoutActivitiesInput = {
     id?: string
+    urlSlug: string
     title: string
     amount: number
     probability?: number
@@ -34669,6 +46262,7 @@ export namespace Prisma {
   export type ActivityCreateWithoutOpportunitiesInput = {
     id?: string
     type: string
+    taskKind?: string | null
     title: string
     description: string
     status?: string
@@ -34686,6 +46280,7 @@ export namespace Prisma {
   export type ActivityUncheckedCreateWithoutOpportunitiesInput = {
     id?: string
     type: string
+    taskKind?: string | null
     title: string
     description: string
     assignedTo: string
@@ -34718,6 +46313,7 @@ export namespace Prisma {
 
   export type OpportunityUpdateWithoutActivitiesInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     amount?: FloatFieldUpdateOperationsInput | number
     probability?: IntFieldUpdateOperationsInput | number
@@ -34736,6 +46332,7 @@ export namespace Prisma {
 
   export type OpportunityUncheckedUpdateWithoutActivitiesInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     amount?: FloatFieldUpdateOperationsInput | number
     probability?: IntFieldUpdateOperationsInput | number
@@ -34766,6 +46363,7 @@ export namespace Prisma {
   export type ActivityUpdateWithoutOpportunitiesInput = {
     id?: StringFieldUpdateOperationsInput | string
     type?: StringFieldUpdateOperationsInput | string
+    taskKind?: NullableStringFieldUpdateOperationsInput | string | null
     title?: StringFieldUpdateOperationsInput | string
     description?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
@@ -34783,6 +46381,7 @@ export namespace Prisma {
   export type ActivityUncheckedUpdateWithoutOpportunitiesInput = {
     id?: StringFieldUpdateOperationsInput | string
     type?: StringFieldUpdateOperationsInput | string
+    taskKind?: NullableStringFieldUpdateOperationsInput | string | null
     title?: StringFieldUpdateOperationsInput | string
     description?: StringFieldUpdateOperationsInput | string
     assignedTo?: StringFieldUpdateOperationsInput | string
@@ -34813,6 +46412,8 @@ export namespace Prisma {
     opportunitiesAssigned?: OpportunityCreateNestedManyWithoutUserInput
     companiesAssigned?: CompanyCreateNestedManyWithoutUserInput
     activitiesAssigned?: ActivityCreateNestedManyWithoutUserInput
+    crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
+    crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutCampaignsCreatedInput = {
@@ -34831,6 +46432,8 @@ export namespace Prisma {
     opportunitiesAssigned?: OpportunityUncheckedCreateNestedManyWithoutUserInput
     companiesAssigned?: CompanyUncheckedCreateNestedManyWithoutUserInput
     activitiesAssigned?: ActivityUncheckedCreateNestedManyWithoutUserInput
+    crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
+    crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutCampaignsCreatedInput = {
@@ -34865,6 +46468,8 @@ export namespace Prisma {
     opportunitiesAssigned?: OpportunityUpdateManyWithoutUserNestedInput
     companiesAssigned?: CompanyUpdateManyWithoutUserNestedInput
     activitiesAssigned?: ActivityUpdateManyWithoutUserNestedInput
+    crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
+    crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutCampaignsCreatedInput = {
@@ -34883,6 +46488,104 @@ export namespace Prisma {
     opportunitiesAssigned?: OpportunityUncheckedUpdateManyWithoutUserNestedInput
     companiesAssigned?: CompanyUncheckedUpdateManyWithoutUserNestedInput
     activitiesAssigned?: ActivityUncheckedUpdateManyWithoutUserNestedInput
+    crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
+    crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
+  }
+
+  export type UserCreateWithoutCrmFilesUploadedInput = {
+    id?: string
+    name: string
+    phone?: string | null
+    avatar?: string | null
+    status?: string
+    joinedAt?: Date | string
+    lastActivity?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    role: RoleCreateNestedOneWithoutUsersInput
+    accounts?: AccountCreateNestedManyWithoutUserInput
+    contactsAssigned?: ContactCreateNestedManyWithoutUserInput
+    opportunitiesAssigned?: OpportunityCreateNestedManyWithoutUserInput
+    companiesAssigned?: CompanyCreateNestedManyWithoutUserInput
+    activitiesAssigned?: ActivityCreateNestedManyWithoutUserInput
+    campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
+    crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
+  }
+
+  export type UserUncheckedCreateWithoutCrmFilesUploadedInput = {
+    id?: string
+    name: string
+    roleId: string
+    phone?: string | null
+    avatar?: string | null
+    status?: string
+    joinedAt?: Date | string
+    lastActivity?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
+    contactsAssigned?: ContactUncheckedCreateNestedManyWithoutUserInput
+    opportunitiesAssigned?: OpportunityUncheckedCreateNestedManyWithoutUserInput
+    companiesAssigned?: CompanyUncheckedCreateNestedManyWithoutUserInput
+    activitiesAssigned?: ActivityUncheckedCreateNestedManyWithoutUserInput
+    campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
+    crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
+  }
+
+  export type UserCreateOrConnectWithoutCrmFilesUploadedInput = {
+    where: UserWhereUniqueInput
+    create: XOR<UserCreateWithoutCrmFilesUploadedInput, UserUncheckedCreateWithoutCrmFilesUploadedInput>
+  }
+
+  export type UserUpsertWithoutCrmFilesUploadedInput = {
+    update: XOR<UserUpdateWithoutCrmFilesUploadedInput, UserUncheckedUpdateWithoutCrmFilesUploadedInput>
+    create: XOR<UserCreateWithoutCrmFilesUploadedInput, UserUncheckedCreateWithoutCrmFilesUploadedInput>
+    where?: UserWhereInput
+  }
+
+  export type UserUpdateToOneWithWhereWithoutCrmFilesUploadedInput = {
+    where?: UserWhereInput
+    data: XOR<UserUpdateWithoutCrmFilesUploadedInput, UserUncheckedUpdateWithoutCrmFilesUploadedInput>
+  }
+
+  export type UserUpdateWithoutCrmFilesUploadedInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
+    avatar?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: StringFieldUpdateOperationsInput | string
+    joinedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    role?: RoleUpdateOneRequiredWithoutUsersNestedInput
+    accounts?: AccountUpdateManyWithoutUserNestedInput
+    contactsAssigned?: ContactUpdateManyWithoutUserNestedInput
+    opportunitiesAssigned?: OpportunityUpdateManyWithoutUserNestedInput
+    companiesAssigned?: CompanyUpdateManyWithoutUserNestedInput
+    activitiesAssigned?: ActivityUpdateManyWithoutUserNestedInput
+    campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
+    crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
+  }
+
+  export type UserUncheckedUpdateWithoutCrmFilesUploadedInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    roleId?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
+    avatar?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: StringFieldUpdateOperationsInput | string
+    joinedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
+    contactsAssigned?: ContactUncheckedUpdateManyWithoutUserNestedInput
+    opportunitiesAssigned?: OpportunityUncheckedUpdateManyWithoutUserNestedInput
+    companiesAssigned?: CompanyUncheckedUpdateManyWithoutUserNestedInput
+    activitiesAssigned?: ActivityUncheckedUpdateManyWithoutUserNestedInput
+    campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
+    crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
   }
 
   export type AuthorityCreateManyRoleInput = {
@@ -34933,6 +46636,8 @@ export namespace Prisma {
     companiesAssigned?: CompanyUpdateManyWithoutUserNestedInput
     activitiesAssigned?: ActivityUpdateManyWithoutUserNestedInput
     campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
+    crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
+    crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutRoleInput = {
@@ -34951,6 +46656,8 @@ export namespace Prisma {
     companiesAssigned?: CompanyUncheckedUpdateManyWithoutUserNestedInput
     activitiesAssigned?: ActivityUncheckedUpdateManyWithoutUserNestedInput
     campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
+    crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
+    crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateManyWithoutRoleInput = {
@@ -34976,6 +46683,7 @@ export namespace Prisma {
 
   export type ContactCreateManyUserInput = {
     id?: string
+    urlSlug: string
     name: string
     cargo?: string | null
     telefono: string
@@ -34983,10 +46691,6 @@ export namespace Prisma {
     fuente: string
     etapa?: string
     estimatedValue?: number
-    nextAction?: string | null
-    nextFollowUp?: Date | string | null
-    notes?: string | null
-    tags?: ContactCreatetagsInput | string[]
     docType?: string | null
     docNumber?: string | null
     departamento?: string | null
@@ -35001,6 +46705,7 @@ export namespace Prisma {
 
   export type OpportunityCreateManyUserInput = {
     id?: string
+    urlSlug: string
     title: string
     amount: number
     probability?: number
@@ -35014,6 +46719,7 @@ export namespace Prisma {
 
   export type CompanyCreateManyUserInput = {
     id?: string
+    urlSlug: string
     name: string
     razonSocial?: string | null
     ruc?: string | null
@@ -35038,6 +46744,7 @@ export namespace Prisma {
   export type ActivityCreateManyUserInput = {
     id?: string
     type: string
+    taskKind?: string | null
     title: string
     description: string
     status?: string
@@ -35071,6 +46778,21 @@ export namespace Prisma {
     createdByName: string
   }
 
+  export type CrmFileCreateManyUserInput = {
+    id?: string
+    storageKey: string
+    originalName: string
+    mimeType: string
+    size: number
+    entityType: string
+    entityId: string
+    entityName?: string | null
+    relatedEntityType?: string | null
+    relatedEntityId?: string | null
+    relatedEntityName?: string | null
+    createdAt?: Date | string
+  }
+
   export type AccountUpdateWithoutUserInput = {
     id?: StringFieldUpdateOperationsInput | string
     provider?: StringFieldUpdateOperationsInput | string
@@ -35100,6 +46822,7 @@ export namespace Prisma {
 
   export type ContactUpdateWithoutUserInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     cargo?: NullableStringFieldUpdateOperationsInput | string | null
     telefono?: StringFieldUpdateOperationsInput | string
@@ -35107,10 +46830,6 @@ export namespace Prisma {
     fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
-    nextAction?: NullableStringFieldUpdateOperationsInput | string | null
-    nextFollowUp?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    notes?: NullableStringFieldUpdateOperationsInput | string | null
-    tags?: ContactUpdatetagsInput | string[]
     docType?: NullableStringFieldUpdateOperationsInput | string | null
     docNumber?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
@@ -35130,6 +46849,7 @@ export namespace Prisma {
 
   export type ContactUncheckedUpdateWithoutUserInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     cargo?: NullableStringFieldUpdateOperationsInput | string | null
     telefono?: StringFieldUpdateOperationsInput | string
@@ -35137,10 +46857,6 @@ export namespace Prisma {
     fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
-    nextAction?: NullableStringFieldUpdateOperationsInput | string | null
-    nextFollowUp?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    notes?: NullableStringFieldUpdateOperationsInput | string | null
-    tags?: ContactUpdatetagsInput | string[]
     docType?: NullableStringFieldUpdateOperationsInput | string | null
     docNumber?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
@@ -35160,6 +46876,7 @@ export namespace Prisma {
 
   export type ContactUncheckedUpdateManyWithoutUserInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     cargo?: NullableStringFieldUpdateOperationsInput | string | null
     telefono?: StringFieldUpdateOperationsInput | string
@@ -35167,10 +46884,6 @@ export namespace Prisma {
     fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
-    nextAction?: NullableStringFieldUpdateOperationsInput | string | null
-    nextFollowUp?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    notes?: NullableStringFieldUpdateOperationsInput | string | null
-    tags?: ContactUpdatetagsInput | string[]
     docType?: NullableStringFieldUpdateOperationsInput | string | null
     docNumber?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
@@ -35185,6 +46898,7 @@ export namespace Prisma {
 
   export type OpportunityUpdateWithoutUserInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     amount?: FloatFieldUpdateOperationsInput | number
     probability?: IntFieldUpdateOperationsInput | number
@@ -35203,6 +46917,7 @@ export namespace Prisma {
 
   export type OpportunityUncheckedUpdateWithoutUserInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     amount?: FloatFieldUpdateOperationsInput | number
     probability?: IntFieldUpdateOperationsInput | number
@@ -35221,6 +46936,7 @@ export namespace Prisma {
 
   export type OpportunityUncheckedUpdateManyWithoutUserInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     amount?: FloatFieldUpdateOperationsInput | number
     probability?: IntFieldUpdateOperationsInput | number
@@ -35234,6 +46950,7 @@ export namespace Prisma {
 
   export type CompanyUpdateWithoutUserInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     razonSocial?: NullableStringFieldUpdateOperationsInput | string | null
     ruc?: NullableStringFieldUpdateOperationsInput | string | null
@@ -35258,10 +46975,12 @@ export namespace Prisma {
     linkedBy?: CompanyCompanyUpdateManyWithoutLinkedNestedInput
     opportunities?: CompanyOpportunityUpdateManyWithoutCompanyNestedInput
     activities?: CompanyActivityUpdateManyWithoutCompanyNestedInput
+    clientRecord?: ClientUpdateOneWithoutCompanyNestedInput
   }
 
   export type CompanyUncheckedUpdateWithoutUserInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     razonSocial?: NullableStringFieldUpdateOperationsInput | string | null
     ruc?: NullableStringFieldUpdateOperationsInput | string | null
@@ -35286,10 +47005,12 @@ export namespace Prisma {
     linkedBy?: CompanyCompanyUncheckedUpdateManyWithoutLinkedNestedInput
     opportunities?: CompanyOpportunityUncheckedUpdateManyWithoutCompanyNestedInput
     activities?: CompanyActivityUncheckedUpdateManyWithoutCompanyNestedInput
+    clientRecord?: ClientUncheckedUpdateOneWithoutCompanyNestedInput
   }
 
   export type CompanyUncheckedUpdateManyWithoutUserInput = {
     id?: StringFieldUpdateOperationsInput | string
+    urlSlug?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     razonSocial?: NullableStringFieldUpdateOperationsInput | string | null
     ruc?: NullableStringFieldUpdateOperationsInput | string | null
@@ -35314,6 +47035,7 @@ export namespace Prisma {
   export type ActivityUpdateWithoutUserInput = {
     id?: StringFieldUpdateOperationsInput | string
     type?: StringFieldUpdateOperationsInput | string
+    taskKind?: NullableStringFieldUpdateOperationsInput | string | null
     title?: StringFieldUpdateOperationsInput | string
     description?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
@@ -35331,6 +47053,7 @@ export namespace Prisma {
   export type ActivityUncheckedUpdateWithoutUserInput = {
     id?: StringFieldUpdateOperationsInput | string
     type?: StringFieldUpdateOperationsInput | string
+    taskKind?: NullableStringFieldUpdateOperationsInput | string | null
     title?: StringFieldUpdateOperationsInput | string
     description?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
@@ -35348,6 +47071,7 @@ export namespace Prisma {
   export type ActivityUncheckedUpdateManyWithoutUserInput = {
     id?: StringFieldUpdateOperationsInput | string
     type?: StringFieldUpdateOperationsInput | string
+    taskKind?: NullableStringFieldUpdateOperationsInput | string | null
     title?: StringFieldUpdateOperationsInput | string
     description?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
@@ -35423,6 +47147,51 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     sentAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdByName?: StringFieldUpdateOperationsInput | string
+  }
+
+  export type CrmFileUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    storageKey?: StringFieldUpdateOperationsInput | string
+    originalName?: StringFieldUpdateOperationsInput | string
+    mimeType?: StringFieldUpdateOperationsInput | string
+    size?: IntFieldUpdateOperationsInput | number
+    entityType?: StringFieldUpdateOperationsInput | string
+    entityId?: StringFieldUpdateOperationsInput | string
+    entityName?: NullableStringFieldUpdateOperationsInput | string | null
+    relatedEntityType?: NullableStringFieldUpdateOperationsInput | string | null
+    relatedEntityId?: NullableStringFieldUpdateOperationsInput | string | null
+    relatedEntityName?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CrmFileUncheckedUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    storageKey?: StringFieldUpdateOperationsInput | string
+    originalName?: StringFieldUpdateOperationsInput | string
+    mimeType?: StringFieldUpdateOperationsInput | string
+    size?: IntFieldUpdateOperationsInput | number
+    entityType?: StringFieldUpdateOperationsInput | string
+    entityId?: StringFieldUpdateOperationsInput | string
+    entityName?: NullableStringFieldUpdateOperationsInput | string | null
+    relatedEntityType?: NullableStringFieldUpdateOperationsInput | string | null
+    relatedEntityId?: NullableStringFieldUpdateOperationsInput | string | null
+    relatedEntityName?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CrmFileUncheckedUpdateManyWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    storageKey?: StringFieldUpdateOperationsInput | string
+    originalName?: StringFieldUpdateOperationsInput | string
+    mimeType?: StringFieldUpdateOperationsInput | string
+    size?: IntFieldUpdateOperationsInput | number
+    entityType?: StringFieldUpdateOperationsInput | string
+    entityId?: StringFieldUpdateOperationsInput | string
+    entityName?: NullableStringFieldUpdateOperationsInput | string | null
+    relatedEntityType?: NullableStringFieldUpdateOperationsInput | string | null
+    relatedEntityId?: NullableStringFieldUpdateOperationsInput | string | null
+    relatedEntityName?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type CompanyContactCreateManyContactInput = {

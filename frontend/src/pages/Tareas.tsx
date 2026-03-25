@@ -6,7 +6,9 @@ import {
   CalendarDays, CalendarCheck, AlertTriangle,
   RefreshCw, Check, Pencil, Trash2,
 } from 'lucide-react';
-import type { Activity, ActivityType, ActivityStatus } from '@/types';
+import type { Activity, ActivityType, ActivityStatus, TaskKind } from '@/types';
+import { TASK_KINDS } from '@/types';
+import type { UpdateActivityPayload } from '@/lib/activityApi';
 import { contacts } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
 import { useActivities } from '@/hooks/useActivities';
@@ -69,12 +71,12 @@ const activityIconColors: Record<ActivityType, string> = {
   whatsapp: 'bg-green-100 text-green-600',
 };
 
-/** Tipos de tarea mostrados en la columna Tipo: llamada, reunión, correo */
-const taskTypeLabels: Record<'llamada' | 'reunion' | 'correo' | 'tarea', string> = {
+/** Tipos de tarea (modalidades; la fila en BD tiene type = 'tarea' + taskKind) */
+const taskTypeLabels: Record<TaskKind, string> = {
   llamada: 'Llamada',
   reunion: 'Reunión',
   correo: 'Correo',
-  tarea: 'Tarea',
+  whatsapp: 'WhatsApp',
 };
 
 const activityStatusConfig: Record<ActivityStatus, { label: string; className: string }> = {
@@ -101,7 +103,13 @@ function TaskStatusBadge({ status }: { status: ActivityStatus }) {
   );
 }
 
-const TASK_TYPES = ['tarea', 'llamada', 'reunion', 'correo'];
+function isTaskRow(a: Activity): boolean {
+  return (
+    a.type === 'tarea' &&
+    !!a.taskKind &&
+    TASK_KINDS.includes(a.taskKind)
+  );
+}
 
 export default function TareasPage() {
   const { users } = useUsers();
@@ -116,7 +124,7 @@ export default function TareasPage() {
   } = useActivities();
 
   const allTasks = useMemo(
-    () => activities.filter((a) => TASK_TYPES.includes(a.type)),
+    () => activities.filter(isTaskRow),
     [activities],
   );
 
@@ -217,7 +225,8 @@ export default function TareasPage() {
   }
 
   function activityToTaskDetail(a: Activity): TaskDetailTask {
-    const type = ['llamada', 'reunion', 'correo', 'tarea'].includes(a.type) ? a.type : 'tarea';
+    const kind: TaskKind =
+      a.taskKind && TASK_KINDS.includes(a.taskKind) ? a.taskKind : 'llamada';
     const associations = a.contactName && a.contactId
       ? [{ type: 'contacto' as const, id: a.contactId, name: a.contactName }]
       : undefined;
@@ -226,7 +235,7 @@ export default function TareasPage() {
       id: a.id,
       title: a.title,
       status: a.status,
-      type: type as TaskDetailTask['type'],
+      type: kind,
       priority: 'media',
       company,
       dueDate: a.dueDate,
@@ -269,7 +278,11 @@ export default function TareasPage() {
       }
       await updateActivity(taskId, payload);
       toast.success(newStatus === 'completada' ? 'Tarea completada' : 'Tarea reactivada');
-      if (newStatus === 'completada' && ['llamada', 'reunion', 'correo'].includes(task.type)) {
+      if (
+        newStatus === 'completada' &&
+        task.taskKind &&
+        TASK_KINDS.includes(task.taskKind)
+      ) {
         setCompletedTask({ ...task, status: 'completada' });
         setActivityFromTaskOpen(true);
       }
@@ -304,7 +317,8 @@ export default function TareasPage() {
     }
     try {
       await createActivity({
-        type: (data.type ?? 'tarea') as string,
+        type: 'tarea',
+        taskKind: data.type,
         title: data.title,
         description: '',
         assignedTo: data.assignee,
@@ -460,11 +474,12 @@ export default function TareasPage() {
                     </TableHeader>
                     <TableBody>
                       {filteredTasks.map((task) => {
-                        const taskType = ['llamada', 'reunion', 'correo', 'tarea'].includes(task.type)
-                          ? task.type
-                          : 'tarea';
-                        const TypeIcon = activityIcons[taskType as keyof typeof activityIcons];
-                        const iconColor = activityIconColors[taskType as keyof typeof activityIconColors];
+                        const taskType: TaskKind =
+                          task.taskKind && TASK_KINDS.includes(task.taskKind)
+                            ? task.taskKind
+                            : 'llamada';
+                        const TypeIcon = activityIcons[taskType];
+                        const iconColor = activityIconColors[taskType];
                         const overdue = isOverdue(task.dueDate, task.status);
 
                         return (
@@ -492,7 +507,7 @@ export default function TareasPage() {
                                   'flex size-8 items-center justify-center rounded-lg',
                                   iconColor,
                                 )}
-                                title={taskTypeLabels[taskType as keyof typeof taskTypeLabels]}
+                                title={taskTypeLabels[taskType]}
                               >
                                 <TypeIcon className="size-4" />
                               </div>
@@ -607,7 +622,7 @@ export default function TareasPage() {
                 ) : (
                   <div className="mt-3 space-y-2">
                     {todayTasks.map((t) => {
-                      const Icon = activityIcons[t.type];
+                      const Icon = activityIcons[t.taskKind ?? 'llamada'];
                       return (
                         <div key={t.id} className="flex items-center gap-2 rounded-md border p-2 text-sm">
                           <Icon className="size-4 shrink-0 text-muted-foreground" />
@@ -637,7 +652,7 @@ export default function TareasPage() {
                 ) : (
                   <div className="mt-3 space-y-2">
                     {upcomingTasks.map((t) => {
-                      const Icon = activityIcons[t.type];
+                      const Icon = activityIcons[t.taskKind ?? 'llamada'];
                       return (
                         <div key={t.id} className="flex items-center gap-2 rounded-md border p-2 text-sm">
                           <Icon className="size-4 shrink-0 text-muted-foreground" />
@@ -689,7 +704,7 @@ export default function TareasPage() {
                 ) : (
                   <div className="mt-3 space-y-2">
                     {todayTasks.map((t) => {
-                      const Icon = activityIcons[t.type];
+                      const Icon = activityIcons[t.taskKind ?? 'llamada'];
                       return (
                         <div key={t.id} className="flex items-center gap-2 rounded-md border p-2 text-sm">
                           <Icon className="size-4 shrink-0 text-muted-foreground" />
@@ -720,7 +735,8 @@ export default function TareasPage() {
         statusColors={tareasStatusColors}
         tasks={allTasks.map(activityToTaskDetail)}
         onTasksChange={async (taskDetails) => {
-          const current = allTasks.map(activityToTaskDetail);
+          const currentActs = allTasks;
+          const current = currentActs.map(activityToTaskDetail);
           const newIds = new Set(taskDetails.map((t) => t.id));
           const deleted = current.filter((t) => !newIds.has(t.id));
           for (const t of deleted) {
@@ -730,19 +746,25 @@ export default function TareasPage() {
               toast.error(e instanceof Error ? e.message : 'Error al eliminar');
             }
           }
-          const changed = taskDetails.find(
-            (nd) => {
-              const oldTask = current.find((c) => c.id === nd.id);
-              return oldTask && oldTask.status !== nd.status;
-            },
-          );
-          if (changed) {
-            try {
-              const payload: { status: string; completedAt?: string } = { status: changed.status };
-              if (changed.status === 'completada') {
+          for (const nd of taskDetails) {
+            const oldAct = currentActs.find((a) => a.id === nd.id);
+            if (!oldAct) continue;
+            const oldDetail = activityToTaskDetail(oldAct);
+            const payload: UpdateActivityPayload = {};
+            if (nd.title !== oldDetail.title) payload.title = nd.title;
+            if (nd.status !== oldDetail.status) {
+              payload.status = nd.status;
+              if (nd.status === 'completada') {
                 payload.completedAt = new Date().toISOString().slice(0, 10);
               }
-              await updateActivity(changed.id, payload);
+            }
+            if (nd.type !== oldDetail.type) payload.taskKind = nd.type;
+            if (nd.dueDate !== oldDetail.dueDate) payload.dueDate = nd.dueDate;
+            if (nd.startDate !== oldDetail.startDate) payload.startDate = nd.startDate;
+            if (nd.startTime !== oldDetail.startTime) payload.startTime = nd.startTime;
+            if (Object.keys(payload).length === 0) continue;
+            try {
+              await updateActivity(nd.id, payload);
             } catch (e) {
               toast.error(e instanceof Error ? e.message : 'Error al actualizar');
             }
@@ -766,10 +788,11 @@ export default function TareasPage() {
 
       {/* ActivityFormDialog al completar llamada/reunión/correo */}
       {completedTask &&
-        ['llamada', 'reunion', 'correo'].includes(completedTask.type) &&
+        completedTask.taskKind &&
+        TASK_KINDS.includes(completedTask.taskKind) &&
         activityFromTaskOpen && (
           <ActivityFormDialog
-            type={completedTask.type as 'llamada' | 'reunion' | 'correo'}
+            type={completedTask.taskKind}
             open={activityFromTaskOpen}
             onOpenChange={(open) => {
               setActivityFromTaskOpen(open);

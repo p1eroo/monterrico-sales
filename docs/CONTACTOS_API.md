@@ -4,7 +4,7 @@ CRUD conectado a Prisma (`Contact`). Requiere **JWT** en todas las rutas (guard 
 
 ## Modelo (PostgreSQL)
 
-Campos principales: `name`, `phone`, `email`, `source`, `etapa` (default `lead`), `assignedTo` (FK opcional a `User`), `estimatedValue`, `nextAction`, `nextFollowUp`, `notes`, `tags[]`, documento y ubicación (`docType`, `docNumber`, `departamento`, `provincia`, `distrito`, `direccion`), `clienteRecuperado`, `etapaHistory` (JSON), `createdAt`, `updatedAt`.
+Campos principales: `name`, `telefono`, `correo`, `fuente`, `etapa` (default `lead`), `assignedTo` (FK opcional a `User`), `estimatedValue`, documento y ubicación (`docType`, `docNumber`, `departamento`, `provincia`, `distrito`, `direccion`), `clienteRecuperado`, `etapaHistory` (JSON), `createdAt`, `updatedAt`.
 
 Al **crear**, opcionalmente:
 
@@ -35,9 +35,7 @@ Detalle por **cuid**. Incluye:
 | `etapa` | no | Default `lead` en BD |
 | `assignedTo` | no | Id de `User` existente |
 | `estimatedValue` | no | Default 0 |
-| `nextAction` | no | Default `Contactar` |
-| `nextFollowUp` | no | ISO date string |
-| `notes`, `tags`, `docType`, `docNumber`, ubicación, `clienteRecuperado` | no | |
+| `docType`, `docNumber`, ubicación, `clienteRecuperado` | no | |
 | `etapaHistory` | no | JSON; si se omite, el servicio inicializa `[{ etapa, fecha: hoy }]` |
 | `companyId` | no | Empresa existente; vínculo principal |
 
@@ -47,7 +45,7 @@ Detalle por **cuid**. Incluye:
 
 Actualización parcial. **`companyId` no se acepta** (no mezclar alta con actualización de vínculos; usar endpoints dedicados más adelante).
 
-`nextFollowUp` puede enviarse vacío o `null` para limpiar. `etapaHistory` puede enviarse como JSON (p. ej. al cambiar etapa desde el frontend se puede reenviar el historial ampliado).
+`etapaHistory` puede enviarse como JSON (p. ej. al cambiar etapa desde el frontend se puede reenviar el historial ampliado).
 
 **400** si no hay campos que actualizar.
 
@@ -63,6 +61,16 @@ Elimina el contacto; relaciones con `onDelete: Cascade` se limpian según el esq
 | Detalle por **cuid** o id mock | `frontend/src/pages/ContactoDetail.tsx` |
 | Tipos / mapeo | `frontend/src/lib/contactApi.ts` |
 | Selector de contacto en nueva oportunidad | `frontend/src/pages/Opportunities.tsx` (merge con API) |
+
+### Importación masiva (CSV)
+
+- La **plantilla** no incluye `id` ni `empresa_id` (los genera el sistema). Columnas de empresa: **`empresa_nombre`** y **`empresa_ruc`**.
+- **RUC existente en BD**: se vincula esa empresa; si viene un **`empresa_nombre`** distinto, solo se actualiza el campo `name` de la empresa.
+- **RUC nuevo**: se crea la empresa con la misma `fuente`, `etapa`, `valor_estimado` y `asignado_a` que el contacto.
+- **Solo nombre de empresa**: se busca por nombre (sin distinguir mayúsculas) o se crea la empresa.
+- Un CSV antiguo con **`empresa_id`** sigue funcionando si `empresa_nombre` y `empresa_ruc` están vacíos.
+- Con empresa vinculada, tras el alta el servicio crea (si falta) la **oportunidad** contacto+empresa y sincroniza etapa / monto / fuente en el grafo (`ensureOpportunityForContactCompany` + `propagateFromContact`).
+- Si hay RUC **nuevo** y está configurado `FACTILIZA_API_TOKEN`, se consulta Factiliza (SUNAT) para rellenar razón social y dirección/ubigeo; el **nombre** del CSV sigue primando si lo enviaste (no es el placeholder `Empresa RUC …`).
 
 ### Alta desde el wizard
 

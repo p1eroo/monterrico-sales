@@ -7,11 +7,17 @@ interface AppState {
   sidebarMobileOpen: boolean;
   toggleSidebar: () => void;
   setSidebarMobileOpen: (open: boolean) => void;
+  /** `null` = usar plantilla por slug hasta tener respuesta API; `[]` = rol sin permisos en BD. */
+  permissionKeys: string[] | null;
+  setPermissionKeys: (keys: string[] | null) => void;
   currentUser: {
     id: string;
     username: string;
     name: string;
     role: string;
+    roleId?: string;
+    /** Nombre legible del rol (Role.name), p. ej. para “Cargo”. */
+    roleName?: string;
     avatar?: string;
     phone?: string;
     cargo?: string;
@@ -52,6 +58,9 @@ export const useAppStore = create<AppState>()(
   sidebarMobileOpen: false,
   toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
   setSidebarMobileOpen: (open) => set({ sidebarMobileOpen: open }),
+  permissionKeys: null,
+  setPermissionKeys: (keys) =>
+    set({ permissionKeys: keys === null ? null : [...keys] }),
   currentUser: {
     id: 'u1',
     username: 'cmendoza',
@@ -74,7 +83,7 @@ export const useAppStore = create<AppState>()(
     if (typeof window !== 'undefined') {
       localStorage.removeItem('accessToken');
     }
-    set({ isAuthenticated: false });
+    set({ isAuthenticated: false, permissionKeys: null });
   },
   userTemplates: [],
       addUserTemplate: (t) =>
@@ -103,6 +112,7 @@ export const useAppStore = create<AppState>()(
       partialize: (s) => ({
         userTemplates: s.userTemplates,
         currentUser: s.currentUser,
+        permissionKeys: s.permissionKeys,
         preferences: s.preferences,
         gmailConnected: s.gmailConnected,
         isAuthenticated: s.isAuthenticated,

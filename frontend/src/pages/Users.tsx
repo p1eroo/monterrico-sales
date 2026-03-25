@@ -511,9 +511,9 @@ export default function UsersPage() {
                             </DropdownMenuItem>
                             {canEditUser && (
                               <DropdownMenuItem
-                                onClick={() => {
+                                onSelect={() => {
                                   setEditingUser(u);
-                                  setUserFormOpen(true);
+                                  window.setTimeout(() => setUserFormOpen(true), 0);
                                 }}
                               >
                                 <Pencil className="size-4" />
@@ -616,9 +616,9 @@ export default function UsersPage() {
                           </DropdownMenuItem>
                           {canEditUser && (
                             <DropdownMenuItem
-                              onClick={() => {
+                              onSelect={() => {
                                 setEditingUser(u);
-                                setUserFormOpen(true);
+                                window.setTimeout(() => setUserFormOpen(true), 0);
                               }}
                             >
                               <Pencil className="size-4" />

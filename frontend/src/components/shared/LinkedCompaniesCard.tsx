@@ -5,6 +5,7 @@ import { etapaLabels } from '@/data/mock';
 import { etapaColors } from '@/lib/etapaConfig';
 import { LinkedEntitiesCard } from './LinkedEntitiesCard';
 import type { LinkedCompany } from '@/types';
+import { companyDetailHref } from '@/lib/detailRoutes';
 
 interface LinkedCompaniesCardProps {
   companies: LinkedCompany[];
@@ -39,7 +40,10 @@ export function LinkedCompaniesCard({
       onRemove={onRemove}
       getUnlinkLabel={(c) => c.name}
       getItemKey={(c, idx) => c.id ?? `${c.name}-${idx ?? 0}`}
-      onItemClick={(c) => navigate(c.id ? `/empresas/${c.id}` : `/empresas/${encodeURIComponent(c.name)}`)}
+      onItemClick={(c) =>
+        navigate(
+          c.id ? companyDetailHref({ id: c.id, urlSlug: c.urlSlug }) : `/empresas/${encodeURIComponent(c.name)}`,
+        )}
       renderItem={(comp, unlinkButton) => (
         <>
           <div className="flex items-start justify-between gap-2 mb-1">

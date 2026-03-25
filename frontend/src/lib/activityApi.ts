@@ -6,12 +6,15 @@ import type {
   CalendarEventStatus,
   CalendarEventType,
   RelatedEntityType,
+  TaskKind,
 } from '@/types';
+import { TASK_KINDS } from '@/types';
 import { api } from './api';
 
 export type ApiActivity = {
   id: string;
   type: string;
+  taskKind?: string | null;
   title: string;
   description: string;
   assignedTo?: string;
@@ -49,6 +52,11 @@ function parseStatus(raw: string): ActivityStatus {
   return VALID_STATUSES.includes(raw as ActivityStatus) ? (raw as ActivityStatus) : 'pendiente';
 }
 
+function parseTaskKind(raw: unknown): TaskKind | undefined {
+  if (raw == null || typeof raw !== 'string') return undefined;
+  return TASK_KINDS.includes(raw as TaskKind) ? (raw as TaskKind) : undefined;
+}
+
 function toDateOnly(iso: string | null): string {
   if (!iso) return '';
   return iso.slice(0, 10);
@@ -66,6 +74,7 @@ export function mapApiActivityToActivity(row: ApiActivity): Activity {
   return {
     id: row.id,
     type: parseType(row.type),
+    taskKind: parseTaskKind(row.taskKind),
     title: row.title,
     description: row.description ?? '',
     contactId: contact?.id,
@@ -86,6 +95,7 @@ export function mapApiActivityToActivity(row: ApiActivity): Activity {
 
 export type CreateActivityPayload = {
   type: string;
+  taskKind?: string;
   title: string;
   description?: string;
   assignedTo: string;
@@ -99,6 +109,7 @@ export type CreateActivityPayload = {
 
 export type UpdateActivityPayload = {
   type?: string;
+  taskKind?: string | null;
   title?: string;
   description?: string;
   assignedTo?: string;
@@ -166,10 +177,17 @@ export function activityToCalendarEvent(activity: Activity): CalendarEvent {
     relatedEntityName = activity.opportunityTitle ?? activity.contactName;
   }
 
+  const calType: CalendarEventType =
+    activity.type === 'tarea' && activity.taskKind
+      ? (activity.taskKind as CalendarEventType)
+      : ((activity.type as CalendarEventType) ?? 'tarea');
+
   return {
     id: activity.id,
     title: activity.title,
-    type: (activity.type as CalendarEventType) ?? 'tarea',
+    type: calType,
+    activityRecordType: activity.type,
+    taskKind: activity.type === 'tarea' ? activity.taskKind : undefined,
     date,
     startTime,
     endTime,

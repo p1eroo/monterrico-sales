@@ -8,23 +8,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateOpportunityDto } from './dto/create-opportunity.dto';
 import { UpdateOpportunityDto } from './dto/update-opportunity.dto';
 import { EntitySyncService } from '../sync/entity-sync.service';
-
-/** Misma lógica que el mock del frontend (`etapaProbabilidad`) */
-const ETAPA_PROBABILITY: Record<string, number> = {
-  lead: 0,
-  contacto: 10,
-  reunion_agendada: 30,
-  reunion_efectiva: 40,
-  propuesta_economica: 50,
-  negociacion: 70,
-  licitacion: 75,
-  licitacion_etapa_final: 85,
-  cierre_ganado: 90,
-  firma_contrato: 95,
-  activo: 100,
-  cierre_perdido: -1,
-  inactivo: -5,
-};
+import { slugifyForUrl } from '../common/url-slug.util';
+import { CrmConfigService } from '../crm-config/crm-config.service';
 
 /** Estados de pipeline derivados de la etapa (no se usa `suspendida`). */
 type PipelineOpportunityStatus = 'abierta' | 'ganada' | 'perdida';
@@ -32,6 +17,7 @@ type PipelineOpportunityStatus = 'abierta' | 'ganada' | 'perdida';
 /** Select slim para listado: omite assignedTo (=user.id) */
 const opportunitySelectListSlim = {
   id: true,
+  urlSlug: true,
   title: true,
   amount: true,
   probability: true,
@@ -43,7 +29,7 @@ const opportunitySelectListSlim = {
   updatedAt: true,
   contacts: {
     take: 1,
-    select: { contact: { select: { id: true, name: true } } },
+    select: { contact: { select: { id: true, urlSlug: true, name: true } } },
   },
   user: { select: { id: true, name: true } },
 } as const;
@@ -59,13 +45,17 @@ export class OpportunitiesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly entitySync: EntitySyncService,
+    private readonly crmConfig: CrmConfigService,
   ) {}
 
-  private probabilityForEtapa(etapa: string, explicit?: number): number {
+  private async probabilityForEtapa(
+    etapa: string,
+    explicit?: number,
+  ): Promise<number> {
     if (explicit !== undefined && Number.isFinite(explicit)) {
       return Math.round(explicit);
     }
-    return ETAPA_PROBABILITY[etapa] ?? 0;
+    return this.crmConfig.resolveOpportunityProbability(etapa);
   }
 
   private normalizePriority(raw?: string): string {
@@ -103,6 +93,71 @@ export class OpportunitiesService {
     }
   }
 
+  private async allocateOpportunityUrlSlugTx(
+    tx: Prisma.TransactionClient,
+    title: string,
+    excludeId?: string,
+  ): Promise<string> {
+    const base = slugifyForUrl(title);
+    let candidate = base;
+    let n = 0;
+    for (;;) {
+      const found = await tx.opportunity.findFirst({
+        where: {
+          urlSlug: candidate,
+          ...(excludeId ? { NOT: { id: excludeId } } : {}),
+        },
+      });
+      if (!found) return candidate;
+      n += 1;
+      candidate = `${base}-${n}`;
+    }
+  }
+
+  private async allocateOpportunityUrlSlug(
+    title: string,
+    excludeId?: string,
+  ): Promise<string> {
+    const base = slugifyForUrl(title);
+    let candidate = base;
+    let n = 0;
+    for (;;) {
+      const found = await this.prisma.opportunity.findFirst({
+        where: {
+          urlSlug: candidate,
+          ...(excludeId ? { NOT: { id: excludeId } } : {}),
+        },
+      });
+      if (!found) return candidate;
+      n += 1;
+      candidate = `${base}-${n}`;
+    }
+  }
+
+  private async resolveOpportunityId(param: string): Promise<string> {
+    const raw = param.trim();
+    if (!raw) {
+      throw new NotFoundException('Oportunidad no encontrada');
+    }
+    const byId = await this.prisma.opportunity.findUnique({
+      where: { id: raw },
+      select: { id: true },
+    });
+    if (byId) return byId.id;
+    let slug = raw;
+    try {
+      slug = decodeURIComponent(raw);
+    } catch {
+      /* usar raw */
+    }
+    const bySlug = await this.prisma.opportunity.findUnique({
+      where: { urlSlug: slug },
+      select: { id: true },
+    });
+    if (bySlug) return bySlug.id;
+    throw new NotFoundException('Oportunidad no encontrada');
+  }
+
   async create(dto: CreateOpportunityDto) {
     const title = dto.title?.trim();
     if (!title) {
@@ -120,6 +175,7 @@ export class OpportunitiesService {
     if (!etapa) {
       throw new BadRequestException('La etapa es obligatoria');
     }
+    await this.crmConfig.assertEtapaAssignable(etapa);
 
     const assignedTo = dto.assignedTo?.trim() || null;
     if (assignedTo) {
@@ -147,7 +203,7 @@ export class OpportunitiesService {
     const contactId = dto.contactId?.trim();
     const companyId = dto.companyId?.trim();
 
-    const probability = this.probabilityForEtapa(etapa, dto.probability);
+    const probability = await this.probabilityForEtapa(etapa, dto.probability);
     const priority = this.normalizePriority(dto.priority);
     const status = this.statusFromEtapa(etapa);
     const expectedCloseDate =
@@ -173,8 +229,10 @@ export class OpportunitiesService {
     }
 
     const created = await this.prisma.$transaction(async (tx) => {
+      const urlSlug = await this.allocateOpportunityUrlSlugTx(tx, title);
       const opp = await tx.opportunity.create({
         data: {
+          urlSlug,
           title,
           amount: dto.amount,
           probability,
@@ -248,7 +306,8 @@ export class OpportunitiesService {
     };
   }
 
-  async findOne(id: string) {
+  async findOne(idOrSlug: string) {
+    const id = await this.resolveOpportunityId(idOrSlug);
     const opp = await this.prisma.opportunity.findUnique({
       where: { id },
       include: opportunityIncludeDetail,
@@ -259,7 +318,8 @@ export class OpportunitiesService {
     return opp;
   }
 
-  async update(id: string, dto: UpdateOpportunityDto) {
+  async update(idOrSlug: string, dto: UpdateOpportunityDto) {
+    const id = await this.resolveOpportunityId(idOrSlug);
     await this.findOne(id);
 
     const data: Record<string, string | number | Date | null | undefined> = {};
@@ -270,6 +330,7 @@ export class OpportunitiesService {
         throw new BadRequestException('El título no puede estar vacío');
       }
       data.title = title;
+      data.urlSlug = await this.allocateOpportunityUrlSlug(title, id);
     }
     if (dto.amount !== undefined) {
       if (dto.amount < 0) {
@@ -282,9 +343,10 @@ export class OpportunitiesService {
       if (!etapa) {
         throw new BadRequestException('La etapa no puede estar vacía');
       }
+      await this.crmConfig.assertEtapaAssignable(etapa);
       data.etapa = etapa;
       if (dto.probability === undefined) {
-        data.probability = this.probabilityForEtapa(etapa);
+        data.probability = await this.probabilityForEtapa(etapa);
       }
       data.status = this.statusFromEtapa(etapa);
     }
@@ -369,7 +431,8 @@ export class OpportunitiesService {
     return this.findOne(id);
   }
 
-  async remove(id: string) {
+  async remove(idOrSlug: string) {
+    const id = await this.resolveOpportunityId(idOrSlug);
     await this.findOne(id);
     return this.prisma.opportunity.delete({
       where: { id },

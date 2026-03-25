@@ -5,7 +5,7 @@ import {
   ArrowLeft, Edit, RefreshCw, UserPlus,
   Phone, Mail, Users,
   Building2, Globe, DollarSign, CalendarDays, MapPin,
-  Plus, FileArchive, Loader2,
+  FileArchive, Loader2, CheckSquare,
 } from 'lucide-react';
 import type { Contact, Etapa, CompanyRubro, CompanyTipo, ContactSource } from '@/types';
 import {
@@ -41,9 +41,8 @@ import { AssignDialog } from '@/components/shared/AssignDialog';
 import { EntityFilesTab } from '@/components/files';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -53,7 +52,10 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { formatCurrency, formatDate } from '@/lib/formatters';
+import { nextPendingTaskForContact } from '@/lib/nextPendingTask';
+import { useActivities } from '@/hooks/useActivities';
 import { api } from '@/lib/api';
+import { isEntityDetailApiParam } from '@/lib/detailRoutes';
 import {
   type ApiContactDetail,
   type ApiContactListRow,
@@ -75,14 +77,6 @@ import {
   opportunityListAll,
 } from '@/lib/opportunityApi';
 import { type ApiCompanyRecord, companyListAll } from '@/lib/companyApi';
-
-const initialNotes = [
-  { id: 'n1', text: 'El cliente prefiere vehículos SUV para su equipo directivo. Requiere servicio 24/7.', author: 'Ana Torres', date: '2026-03-02' },
-  { id: 'n2', text: 'Llamada de seguimiento realizada. El cliente está evaluando propuestas de la competencia.', author: 'Carlos Mendoza', date: '2026-03-04' },
-  { id: 'n3', text: 'Se acordó enviar tarifas diferenciadas según volumen de uso mensual.', author: 'María García', date: '2026-03-05' },
-];
-
-
 
 function ContactoSidebar({ contact, contactOpportunities, linkedContacts, onOpenConvertDialog, onAddExistingOpportunity, onRemoveOpportunity, onAddCompany, onAddExistingCompany, onRemoveCompany, onNewContact, onAddLinkContact, onRemoveContact }: {
   contact: Contact;
@@ -145,7 +139,7 @@ export default function ContactoDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const routeId = id ? decodeURIComponent(id) : '';
-  const fromApi = isLikelyContactCuid(routeId);
+  const fromApi = isEntityDetailApiParam(routeId);
   const { contacts, opportunities, getOpportunitiesByContactId, addOpportunity, updateOpportunity, updateContact, addContact } = useCRMStore();
   const { users } = useUsers();
 
@@ -232,6 +226,12 @@ export default function ContactoDetailPage() {
     return storeContact;
   }, [fromApi, apiRecord, storeContact]);
 
+  const { activities: activitiesFromStore } = useActivities();
+  const nextPendingSummary = useMemo(
+    () => nextPendingTaskForContact(activitiesFromStore, contact?.id),
+    [activitiesFromStore, contact?.id],
+  );
+
   const mergedContacts = useMemo(() => {
     if (fromApi) {
       return apiContactsList.map(mapApiContactRowToContact);
@@ -268,10 +268,10 @@ export default function ContactoDetailPage() {
       .filter((l): l is Contact => !!l);
   }, [fromApi, apiRecord, contact, contacts]);
 
-  const defaultContactIdForNewOpp = useMemo(() => {
-    if (fromApi && isLikelyContactCuid(routeId)) return routeId;
-    return contact?.id ?? '';
-  }, [fromApi, routeId, contact?.id]);
+  const defaultContactIdForNewOpp = useMemo(
+    () => contact?.id ?? '',
+    [contact?.id],
+  );
 
   const defaultCompanyIdForNewOpp = useMemo(() => {
     if (!contact) return '';
@@ -281,8 +281,6 @@ export default function ContactoDetailPage() {
 
   const tasksTabRef = useRef<TasksTabHandle>(null);
   const [contactActivities, setContactActivities] = useState(initialActivities);
-  const [notes, setNotes] = useState(initialNotes);
-  const [noteText, setNoteText] = useState('');
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
@@ -305,8 +303,6 @@ export default function ContactoDetailPage() {
     correo: '',
     fuente: '' as ContactSource,
     estimatedValue: 0,
-    nextAction: '',
-    nextFollowUp: '',
   });
 
   useEffect(() => {
@@ -357,16 +353,6 @@ export default function ContactoDetailPage() {
     );
   }
 
-  function handleAddNote() {
-    if (!noteText.trim()) return;
-    setNotes((prev) => [
-      { id: `n-${Date.now()}`, text: noteText.trim(), author: 'Tú', date: new Date().toISOString().slice(0, 10) },
-      ...prev,
-    ]);
-      setNoteText('');
-    toast.success('Nota agregada correctamente');
-  }
-
   function handleOpenEditDialog() {
     if (!contact) return;
     setEditForm({
@@ -376,8 +362,6 @@ export default function ContactoDetailPage() {
       correo: contact.correo,
       fuente: contact.fuente,
       estimatedValue: contact.estimatedValue,
-      nextAction: contact.nextAction,
-      nextFollowUp: contact.nextFollowUp,
     });
     setEditDialogOpen(true);
   }
@@ -396,8 +380,6 @@ export default function ContactoDetailPage() {
               correo: editForm.correo.trim(),
               fuente: editForm.fuente,
               estimatedValue: editForm.estimatedValue,
-              nextAction: editForm.nextAction.trim() || null,
-              nextFollowUp: editForm.nextFollowUp.trim() || null,
             }),
           });
           setApiRecord(updated);
@@ -416,8 +398,6 @@ export default function ContactoDetailPage() {
       correo: editForm.correo,
       fuente: editForm.fuente,
       estimatedValue: editForm.estimatedValue,
-      nextAction: editForm.nextAction,
-      nextFollowUp: editForm.nextFollowUp,
     });
     toast.success('Contacto actualizado correctamente');
     setEditDialogOpen(false);
@@ -429,13 +409,13 @@ export default function ContactoDetailPage() {
       toast.error('No hay contacto');
       throw new Error('no contact');
     }
-    const contactId = fromApi && isLikelyContactCuid(routeId) ? routeId : contact.id;
+    const contactId = contact.id;
     const merged: NewOpportunityFormValues = {
       ...data,
       contactId,
       companyId: defaultCompanyIdForNewOpp || data.companyId,
     };
-    if (fromApi && isLikelyContactCuid(routeId)) {
+    if (fromApi) {
       try {
         const body = buildOpportunityCreateBody(merged);
         await api('/opportunities', {
@@ -606,14 +586,14 @@ export default function ContactoDetailPage() {
 
   function handleLinkOpportunities() {
     if (linkOpportunityIds.length === 0 || !contact) return;
-    if (fromApi && isLikelyContactCuid(routeId)) {
+    if (fromApi) {
       void (async () => {
         try {
           for (const oppId of linkOpportunityIds) {
             if (isLikelyOpportunityCuid(oppId)) {
               await api(`/opportunities/${oppId}`, {
                 method: 'PATCH',
-                body: JSON.stringify({ contactId: routeId }),
+                body: JSON.stringify({ contactId: contact.id }),
               });
             } else {
               updateOpportunity(oppId, { contactId: contact.id, contactName: contact.name });
@@ -688,54 +668,72 @@ export default function ContactoDetailPage() {
     if (!contact) return;
     if (fromApi && routeId) {
       try {
-        let companyId: string | undefined = data.companyId;
-        if (data.newCompanyWizardData) {
-          const created = await api<ApiCompanyRecord>('/companies', {
-            method: 'POST',
-            body: JSON.stringify({
-              name: data.newCompanyWizardData.nombreComercial.trim(),
-              razonSocial: data.newCompanyWizardData.razonSocial.trim() || undefined,
-              ruc: data.newCompanyWizardData.ruc.trim() || undefined,
-              telefono: data.newCompanyWizardData.telefono.trim() || undefined,
-              domain: data.newCompanyWizardData.dominio.trim() || undefined,
-              rubro: data.newCompanyWizardData.rubro || undefined,
-              tipo: data.newCompanyWizardData.tipoEmpresa || undefined,
-              linkedin: data.newCompanyWizardData.linkedin.trim() || undefined,
-              correo: data.newCompanyWizardData.correo.trim() || undefined,
-              distrito: data.newCompanyWizardData.distrito.trim() || undefined,
-              provincia: data.newCompanyWizardData.provincia.trim() || undefined,
-              departamento: data.newCompanyWizardData.departamento.trim() || undefined,
-              direccion: data.newCompanyWizardData.direccion.trim() || undefined,
-            }),
-          });
-          companyId = created.id;
-        } else if (data.companyId) {
-          companyId = data.companyId;
-        }
+        const w = data.newCompanyWizardData;
         const today = new Date().toISOString().slice(0, 10);
+        const baseBody: Record<string, unknown> = {
+          name: data.name.trim(),
+          telefono: data.phone?.trim() || contact.telefono,
+          correo: data.email?.trim() || contact.correo,
+          fuente: data.source,
+          cargo: data.cargo?.trim() || undefined,
+          etapa: data.etapaCiclo,
+          assignedTo: data.assignedTo?.trim() || undefined,
+          estimatedValue: data.estimatedValue ?? 0,
+          docType: data.docType || undefined,
+          docNumber: data.docNumber?.trim() || undefined,
+          departamento: data.departamento?.trim() || undefined,
+          provincia: data.provincia?.trim() || undefined,
+          distrito: data.distrito?.trim() || undefined,
+          direccion: data.direccion?.trim() || undefined,
+          clienteRecuperado: data.clienteRecuperado || undefined,
+          etapaHistory: [{ etapa: data.etapaCiclo, fecha: today }],
+        };
+
+        if (w) {
+          const factEmpresa = (() => {
+            const f = Number(w.facturacion);
+            if (Number.isFinite(f) && f > 0) return f;
+            return data.estimatedValue > 0 ? data.estimatedValue : 0;
+          })();
+          if (factEmpresa <= 0) {
+            toast.error(
+              'Indica facturación estimada en el wizard de empresa o un valor estimado del contacto mayor que 0',
+            );
+            return;
+          }
+          if (!w.origenLead) {
+            toast.error('Selecciona la fuente del lead en el wizard de empresa');
+            return;
+          }
+          baseBody.newCompany = {
+            name: w.nombreComercial.trim(),
+            razonSocial: w.razonSocial.trim() || undefined,
+            ruc: w.ruc.trim() || undefined,
+            telefono: w.telefono.trim() || undefined,
+            domain: w.dominio.trim() || undefined,
+            rubro: w.rubro || undefined,
+            tipo: w.tipoEmpresa || undefined,
+            linkedin: w.linkedin.trim() || undefined,
+            correo: w.correo.trim() || undefined,
+            distrito: w.distrito.trim() || undefined,
+            provincia: w.provincia.trim() || undefined,
+            departamento: w.departamento.trim() || undefined,
+            direccion: w.direccion.trim() || undefined,
+            facturacionEstimada: factEmpresa,
+            fuente: w.origenLead,
+            clienteRecuperado: w.clienteRecuperado,
+            etapa: w.etapa,
+            ...(w.propietario && isLikelyContactCuid(w.propietario)
+              ? { assignedTo: w.propietario }
+              : {}),
+          };
+        } else if (data.companyId) {
+          baseBody.companyId = data.companyId;
+        }
+
         const createdContact = await api<ApiContactDetail>('/contacts', {
           method: 'POST',
-          body: JSON.stringify({
-            name: data.name.trim(),
-            telefono: data.phone?.trim() || contact.telefono,
-            correo: data.email?.trim() || contact.correo,
-            fuente: data.source,
-            cargo: data.cargo?.trim() || undefined,
-            etapa: data.etapaCiclo,
-            assignedTo: data.assignedTo?.trim() || undefined,
-            estimatedValue: data.estimatedValue ?? 0,
-            nextAction: 'Contactar',
-            notes: data.notes?.trim() || undefined,
-            docType: data.docType || undefined,
-            docNumber: data.docNumber?.trim() || undefined,
-            departamento: data.departamento?.trim() || undefined,
-            provincia: data.provincia?.trim() || undefined,
-            distrito: data.distrito?.trim() || undefined,
-            direccion: data.direccion?.trim() || undefined,
-            clienteRecuperado: data.clienteRecuperado || undefined,
-            etapaHistory: [{ etapa: data.etapaCiclo, fecha: today }],
-            companyId,
-          }),
+          body: JSON.stringify(baseBody),
         });
         await contactAddLinkedContact(routeId, createdContact.id);
         const updated = await api<ApiContactDetail>(`/contacts/${routeId}`);
@@ -944,7 +942,7 @@ export default function ContactoDetailPage() {
           contacts={mergedContacts.filter((l) => l.id !== contact.id)}
           companies={contact.companies ?? []}
           opportunities={contactOpportunities}
-          contactId={id}
+          contactId={contact.id}
           onTaskCreated={(task) => tasksTabRef.current?.addTask(task as any)}
           onActivityCreated={(activity) => setContactActivities((prev) => [activity, ...prev])}
         />
@@ -980,12 +978,12 @@ export default function ContactoDetailPage() {
             <Card className="py-0">
               <CardContent className="px-4 py-3">
                 <div className="flex items-center gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
-                    <CalendarDays className="size-5" />
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-600">
+                    <Users className="size-5" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm text-muted-foreground">Próximo seguimiento</p>
-                    <p className="text-l font-semibold">{formatDate(contact.nextFollowUp)}</p>
+                    <p className="text-sm text-muted-foreground">Asesor asignado</p>
+                    <p className="text-l font-semibold truncate">{contact.assignedToName}</p>
                   </div>
                 </div>
               </CardContent>
@@ -993,12 +991,22 @@ export default function ContactoDetailPage() {
             <Card className="py-0">
               <CardContent className="px-4 py-3">
                 <div className="flex items-center gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-600">
-                    <Users className="size-5" />
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
+                    <CheckSquare className="size-5" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm text-muted-foreground">Asesor asignado</p>
-                    <p className="text-l font-semibold truncate">{contact.assignedToName}</p>
+                    <p className="text-sm text-muted-foreground">Próxima acción</p>
+                    <p
+                      className="text-l font-semibold truncate"
+                      title={nextPendingSummary?.title ?? undefined}
+                    >
+                      {nextPendingSummary?.title ?? '—'}
+                    </p>
+                    {nextPendingSummary ? (
+                      <p className="text-xs text-muted-foreground">
+                        Vence {formatDate(nextPendingSummary.dueDate)}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
               </CardContent>
@@ -1012,7 +1020,6 @@ export default function ContactoDetailPage() {
             <TabsTrigger value="historial">Historial</TabsTrigger>
             <TabsTrigger value="actividades">Actividades</TabsTrigger>
             <TabsTrigger value="tareas">Tareas</TabsTrigger>
-            <TabsTrigger value="notas">Notas</TabsTrigger>
             <TabsTrigger value="archivos" className="gap-1.5">
               <FileArchive className="size-3.5" />
               Archivos
@@ -1021,40 +1028,6 @@ export default function ContactoDetailPage() {
 
           <TabsContent value="actividades" className="mt-4">
             <ActivityPanel activities={contactActivities} onRegisterActivity={() => toast.info('Usa las acciones rápidas para registrar una actividad')} />
-          </TabsContent>
-
-          {/* Notas Tab */}
-          <TabsContent value="notas" className="mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Notas</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Textarea
-                    placeholder="Escribe una nota..."
-                    value={noteText}
-                    onChange={(e) => setNoteText(e.target.value)}
-                    rows={3}
-                  />
-                  <Button size="sm" onClick={handleAddNote} disabled={!noteText.trim()}>
-                    <Plus className="size-4" /> Agregar nota
-                  </Button>
-                </div>
-                <div className="space-y-3">
-                  {notes.map((note) => (
-                    <div key={note.id} className="rounded-lg border p-4">
-                      <p className="text-sm">{note.text}</p>
-                      <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                        <span className="font-medium">{note.author}</span>
-                        <span>·</span>
-                        <span>{formatDate(note.date)}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
           </TabsContent>
 
           {/* Archivos Tab */}
@@ -1075,7 +1048,7 @@ export default function ContactoDetailPage() {
               opportunities={contactOpportunities}
               defaultAssigneeId={contact?.assignedTo}
               onActivityCreated={(activity) => setContactActivities((prev) => [activity as any, ...prev])}
-              contactId={id}
+              contactId={contact.id}
             />
           </TabsContent>
 
@@ -1131,14 +1104,6 @@ export default function ContactoDetailPage() {
             <div className="space-y-2">
               <Label htmlFor="edit-value">Valor estimado (S/)</Label>
               <Input id="edit-value" type="number" min={0} value={editForm.estimatedValue} onChange={(e) => setEditForm((f) => ({ ...f, estimatedValue: Number(e.target.value) }))} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-next-action">Próxima acción</Label>
-              <Input id="edit-next-action" value={editForm.nextAction} onChange={(e) => setEditForm((f) => ({ ...f, nextAction: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-followup">Próximo seguimiento</Label>
-              <Input id="edit-followup" type="date" value={editForm.nextFollowUp} onChange={(e) => setEditForm((f) => ({ ...f, nextFollowUp: e.target.value }))} />
             </div>
           </div>
           <DialogFooter>

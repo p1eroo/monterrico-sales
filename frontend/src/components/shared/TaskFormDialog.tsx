@@ -5,7 +5,8 @@ import {
 import { toast } from 'sonner';
 import { priorityLabels } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
-import type { Contact, Opportunity, TaskAssociation } from '@/types';
+import type { Contact, Opportunity, TaskAssociation, TaskKind } from '@/types';
+import { TASK_KINDS } from '@/types';
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,11 +22,12 @@ import {
 
 export type TaskFormStatus = 'pendiente' | 'completada' | 'en_progreso' | 'vencida';
 export type TaskFormPriority = 'alta' | 'media' | 'baja';
-export type TaskFormType = 'llamada' | 'reunion' | 'correo' | 'tarea';
+export type TaskFormType = TaskKind;
 
 export interface TaskFormResult {
   title: string;
-  type?: TaskFormType;
+  /** Tipo de tarea obligatorio al guardar */
+  type: TaskFormType;
   status: TaskFormStatus;
   priority: TaskFormPriority;
   assignee: string;
@@ -40,7 +42,7 @@ const taskTypeLabels: Record<TaskFormType, string> = {
   llamada: 'Llamada',
   reunion: 'Reunión',
   correo: 'Correo',
-  tarea: 'Tarea',
+  whatsapp: 'WhatsApp',
 };
 
 const taskStatusLabels: Record<TaskFormStatus, string> = {
@@ -56,7 +58,8 @@ export interface TaskFormDialogProps {
   title?: string;
   description?: string;
   contacts: Contact[];
-  companies: { name: string }[];
+  /** Si `id` existe (API), se usa para companyId al crear la tarea; si no, se usa el nombre como antes. */
+  companies: { name: string; id?: string }[];
   opportunities: Opportunity[];
   defaultAssigneeId?: string;
   defaultTitle?: string;
@@ -120,11 +123,15 @@ export function TaskFormDialog({
       toast.error('Ingresa un título para la tarea');
       return;
     }
+    if (!formType) {
+      toast.error('Selecciona el tipo de tarea');
+      return;
+    }
     const assigneeUser = users.find((u) => u.id === formAssignee);
     const assigneeName = assigneeUser?.name ?? 'Sin asignar';
     const result = onSave({
       title: formTitle.trim(),
-      type: formType || undefined,
+      type: formType,
       status: formStatus,
       priority: formPriority,
       assignee: formAssignee,
@@ -261,17 +268,18 @@ export function TaskFormDialog({
                         companies
                           .filter((c) => c.name.toLowerCase().includes(assocSearch.toLowerCase()))
                           .map((c) => {
-                            const isSelected = associations.some((a) => a.type === 'empresa' && a.id === c.name);
+                            const rowId = c.id ?? c.name;
+                            const isSelected = associations.some((a) => a.type === 'empresa' && a.id === rowId);
                             return (
                               <button
-                                key={c.name}
+                                key={rowId}
                                 type="button"
                                 className={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted ${isSelected ? 'bg-muted' : ''}`}
                                 onClick={() => {
                                   if (isSelected) {
-                                    setAssociations((prev) => prev.filter((a) => !(a.type === 'empresa' && a.id === c.name)));
+                                    setAssociations((prev) => prev.filter((a) => !(a.type === 'empresa' && a.id === rowId)));
                                   } else {
-                                    setAssociations((prev) => [...prev, { type: 'empresa', id: c.name, name: c.name }]);
+                                    setAssociations((prev) => [...prev, { type: 'empresa', id: rowId, name: c.name }]);
                                   }
                                 }}
                               >
@@ -330,8 +338,8 @@ export function TaskFormDialog({
               <Select value={formType} onValueChange={(v) => setFormType(v as TaskFormType)}>
                 <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar tipo" /></SelectTrigger>
                 <SelectContent>
-                  {Object.entries(taskTypeLabels).map(([key, label]) => (
-                    <SelectItem key={key} value={key}>{label}</SelectItem>
+                  {TASK_KINDS.map((key) => (
+                    <SelectItem key={key} value={key}>{taskTypeLabels[key]}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

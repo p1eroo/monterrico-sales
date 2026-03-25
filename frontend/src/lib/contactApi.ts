@@ -17,6 +17,7 @@ export const isLikelyContactCuid = isLikelyCompanyCuid;
 
 export type ApiCompanyInContact = {
   id: string;
+  urlSlug?: string;
   name: string;
   razonSocial?: string | null;
   ruc?: string | null;
@@ -34,6 +35,7 @@ export type ApiContactCompanyRow = {
 /** Contacto anidado (vínculos) con empresas cargadas */
 export type ApiContactNested = {
   id: string;
+  urlSlug: string;
   name: string;
   cargo?: string | null;
   telefono: string;
@@ -42,10 +44,6 @@ export type ApiContactNested = {
   etapa: string;
   assignedTo?: string | null;
   estimatedValue: number;
-  nextAction?: string | null;
-  nextFollowUp?: string | null;
-  notes?: string | null;
-  tags?: string[];
   docType?: string | null;
   docNumber?: string | null;
   departamento?: string | null;
@@ -60,6 +58,7 @@ export type ApiContactNested = {
 
 export type ApiContactListRow = {
   id: string;
+  urlSlug: string;
   name: string;
   cargo?: string | null;
   telefono: string;
@@ -68,10 +67,6 @@ export type ApiContactListRow = {
   etapa: string;
   assignedTo?: string | null;
   estimatedValue: number;
-  nextAction?: string | null;
-  nextFollowUp?: string | null;
-  notes?: string | null;
-  tags?: string[];
   docType?: string | null;
   docNumber?: string | null;
   departamento?: string | null;
@@ -116,6 +111,7 @@ function mapCompanies(rows: ApiContactCompanyRow[] | undefined): LinkedCompany[]
   return rows.map((r) => ({
     name: r.company.name,
     id: r.company.id,
+    urlSlug: r.company.urlSlug,
     domain: r.company.domain ?? undefined,
     rubro: parseRubro(r.company.rubro),
     tipo: parseTipo(r.company.tipo),
@@ -152,11 +148,9 @@ function parseClienteRec(s: string | null | undefined): 'si' | 'no' | undefined 
 export function mapApiContactRowToContact(row: ApiContactListRow | ApiContactNested): Contact {
   const assignedId =
     (row as ApiContactListRow).user?.id ?? row.assignedTo ?? '';
-  const nextFu = row.nextFollowUp
-    ? row.nextFollowUp.slice(0, 10)
-    : '';
   return {
     id: row.id,
+    urlSlug: row.urlSlug,
     name: row.name,
     cargo: row.cargo ?? undefined,
     companies: mapCompanies(row.companies),
@@ -170,10 +164,6 @@ export function mapApiContactRowToContact(row: ApiContactListRow | ApiContactNes
       useUsersStore.getState().getUserName(assignedId),
     estimatedValue: row.estimatedValue,
     createdAt: row.createdAt.slice(0, 10),
-    nextAction: row.nextAction ?? '',
-    nextFollowUp: nextFu,
-    notes: row.notes ?? undefined,
-    tags: row.tags?.length ? row.tags : undefined,
     docType:
       row.docType === 'dni' || row.docType === 'cee' ? row.docType : undefined,
     docNumber: row.docNumber ?? undefined,
@@ -238,9 +228,19 @@ export function opportunitiesFromApiContactDetail(row: ApiContactDetail) {
   );
 }
 
+/** Empresa principal del contacto según el detalle devuelto por el API. */
+export function primaryCompanyIdFromApiContact(
+  row: Pick<ApiContactListRow, 'companies'> | Pick<ApiContactNested, 'companies'>,
+): string | undefined {
+  const list = row.companies;
+  if (!list?.length) return undefined;
+  const primary = list.find((c) => c.isPrimary);
+  return (primary ?? list[0])?.company.id;
+}
+
 /** Crear contacto: POST /contacts */
-export async function contactCreate(body: Record<string, unknown>): Promise<{ id: string }> {
-  return api<{ id: string }>('/contacts', {
+export async function contactCreate(body: Record<string, unknown>): Promise<ApiContactDetail> {
+  return api<ApiContactDetail>('/contacts', {
     method: 'POST',
     body: JSON.stringify(body),
   });

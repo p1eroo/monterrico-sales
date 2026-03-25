@@ -68,36 +68,37 @@ export function EventFormModal({
   });
 
   const { activeUsers } = useUsers();
+  /** Primitivo estable: evita re-ejecutar el efecto en cada render (activeUsers era un array nuevo cada vez). */
+  const defaultAssigneeId = activeUsers[0]?.id ?? '';
 
   useEffect(() => {
-    if (open) {
-      if (event) {
-        reset({
-          title: event.title,
-          type: event.type,
-          date: event.date,
-          startTime: event.startTime,
-          endTime: event.endTime,
-          assignedTo: event.assignedTo,
-          relatedEntityType: event.relatedEntityType,
-          relatedEntityId: event.relatedEntityId,
-          relatedEntityName: event.relatedEntityName,
-          description: event.description,
-          status: event.status,
-        });
-      } else {
-        reset({
-          title: '',
-          type: 'llamada',
-          date: new Date().toISOString().slice(0, 10),
-          startTime: '09:00',
-          endTime: '09:30',
-          assignedTo: activeUsers[0]?.id ?? '',
-          status: 'pendiente',
-        });
-      }
+    if (!open) return;
+    if (event) {
+      reset({
+        title: event.title,
+        type: event.type,
+        date: event.date,
+        startTime: event.startTime,
+        endTime: event.endTime,
+        assignedTo: event.assignedTo,
+        relatedEntityType: event.relatedEntityType,
+        relatedEntityId: event.relatedEntityId,
+        relatedEntityName: event.relatedEntityName,
+        description: event.description,
+        status: event.status,
+      });
+    } else {
+      reset({
+        title: '',
+        type: 'llamada',
+        date: new Date().toISOString().slice(0, 10),
+        startTime: '09:00',
+        endTime: '09:30',
+        assignedTo: defaultAssigneeId,
+        status: 'pendiente',
+      });
     }
-  }, [open, event, reset, activeUsers]);
+  }, [open, event, reset, defaultAssigneeId]);
 
   async function onSubmit(data: EventFormData) {
     const result = onSave(data);

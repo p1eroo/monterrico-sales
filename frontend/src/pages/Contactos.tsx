@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -35,12 +35,16 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { formatCurrency } from '@/lib/formatters';
 import { api } from '@/lib/api';
-import { type ApiCompanyRecord, companyListAll } from '@/lib/companyApi';
+import { contactDetailHref } from '@/lib/detailRoutes';
+import type { Contact } from '@/types';
+import { companyListAll } from '@/lib/companyApi';
 import {
+  type ApiContactDetail,
   type ApiContactListRow,
   isLikelyContactCuid,
   mapApiContactRowToContact,
   contactListPaginated,
+  primaryCompanyIdFromApiContact,
 } from '@/lib/contactApi';
 import { buildOptimisticContact } from '@/lib/optimisticEntities';
 import {
@@ -48,8 +52,35 @@ import {
   useOptimisticCrmStore,
 } from '@/store/optimisticCrmStore';
 import { usePermissions } from '@/hooks/usePermissions';
+import {
+  downloadImportExportCsv,
+  previewContactsImportCsv,
+  uploadImportCsv,
+  type ContactImportPreviewResult,
+  type ContactImportPreviewRow,
+} from '@/lib/importExportApi';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 const ITEMS_PER_PAGE = 25;
+
+/** Misma lógica que el backend: RUC si hay; si no, nombre del CSV; si no, resumen (p. ej. empresa por id legado). */
+function previewEmpresaCell(row: ContactImportPreviewRow): string {
+  const r = row.empresaRuc.trim();
+  const rucNorm = r ? r.replace(/\D/g, '') || r : '';
+  if (rucNorm) return rucNorm;
+  const n = row.empresaNombre.trim();
+  if (n) return n;
+  const s = row.empresaResumen.trim();
+  if (s) return s;
+  return '—';
+}
 
 const etapaTabs: { value: string; label: string }[] = [
   { value: 'todos', label: 'Todos' },
@@ -92,6 +123,15 @@ export default function ContactosPage() {
   const [newContactOpen, setNewContactOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [contactToDelete, setContactToDelete] = useState<string | null>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
+  const [importBusy, setImportBusy] = useState(false);
+  const [exportBusy, setExportBusy] = useState(false);
+  const [importPreviewOpen, setImportPreviewOpen] = useState(false);
+  const [importPreviewData, setImportPreviewData] =
+    useState<ContactImportPreviewResult | null>(null);
+  const [pendingImportFile, setPendingImportFile] = useState<File | null>(
+    null,
+  );
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search), 400);
@@ -136,12 +176,12 @@ export default function ContactosPage() {
     return [...pending, ...paginatedContacts];
   }, [paginatedContacts, pendingContacts]);
 
-  function openContactDetail(id: string) {
-    if (isPendingContactId(id)) {
+  function openContactDetail(contact: Contact) {
+    if (isPendingContactId(contact.id)) {
       toast.info('Guardando contacto en el servidor…');
       return;
     }
-    navigate(`/contactos/${id}`);
+    navigate(contactDetailHref(contact));
   }
   const startIndex = totalContacts === 0 ? 0 : (page - 1) * ITEMS_PER_PAGE + 1;
   const endIndex = Math.min(page * ITEMS_PER_PAGE, totalContacts);
@@ -193,6 +233,14 @@ export default function ContactosPage() {
   }
 
   async function onSubmitNewContact(data: NewContactData) {
+    if (!data.phone?.trim()) {
+      toast.error('El teléfono es obligatorio');
+      return;
+    }
+    if (!data.email?.trim()) {
+      toast.error('El correo es obligatorio');
+      return;
+    }
     if (data.estimatedValue <= 0) {
       toast.error('El valor estimado debe ser mayor que 0');
       return;
@@ -213,40 +261,28 @@ export default function ContactosPage() {
         return;
       }
 
-      let companyId: string;
-      try {
-        const comp = await api<ApiCompanyRecord>('/companies', {
-          method: 'POST',
-          body: JSON.stringify({
-            name: w.nombreComercial.trim(),
-            razonSocial: w.razonSocial.trim() || undefined,
-            ruc: w.ruc.trim() || undefined,
-            telefono: w.telefono.trim() || undefined,
-            domain: w.dominio.trim() || undefined,
-            rubro: w.rubro || undefined,
-            tipo: w.tipoEmpresa || undefined,
-            linkedin: w.linkedin.trim() || undefined,
-            correo: w.correo.trim() || undefined,
-            distrito: w.distrito.trim() || undefined,
-            provincia: w.provincia.trim() || undefined,
-            departamento: w.departamento.trim() || undefined,
-            direccion: w.direccion.trim() || undefined,
-            facturacionEstimada: factEmpresa,
-            fuente: w.origenLead,
-            clienteRecuperado: w.clienteRecuperado,
-            etapa: w.etapa,
-            ...(w.propietario && isLikelyContactCuid(w.propietario)
-              ? { assignedTo: w.propietario }
-              : {}),
-          }),
-        });
-        companyId = comp.id;
-      } catch (e) {
-        toast.error(
-          e instanceof Error ? e.message : 'No se pudo crear la empresa en el servidor',
-        );
-        return;
-      }
+      const newCompany = {
+        name: w.nombreComercial.trim(),
+        razonSocial: w.razonSocial.trim() || undefined,
+        ruc: w.ruc.trim() || undefined,
+        telefono: w.telefono.trim() || undefined,
+        domain: w.dominio.trim() || undefined,
+        rubro: w.rubro || undefined,
+        tipo: w.tipoEmpresa || undefined,
+        linkedin: w.linkedin.trim() || undefined,
+        correo: w.correo.trim() || undefined,
+        distrito: w.distrito.trim() || undefined,
+        provincia: w.provincia.trim() || undefined,
+        departamento: w.departamento.trim() || undefined,
+        direccion: w.direccion.trim() || undefined,
+        facturacionEstimada: factEmpresa,
+        fuente: w.origenLead,
+        clienteRecuperado: w.clienteRecuperado,
+        etapa: w.etapa,
+        ...(w.propietario && isLikelyContactCuid(w.propietario)
+          ? { assignedTo: w.propietario }
+          : {}),
+      };
 
       const body: Record<string, unknown> = {
         name: data.name.trim(),
@@ -258,13 +294,12 @@ export default function ContactosPage() {
         cargo: data.cargo?.trim() || undefined,
         docType: data.docType || undefined,
         docNumber: data.docNumber?.trim() || undefined,
-        notes: data.notes?.trim() || undefined,
         departamento: data.departamento?.trim() || undefined,
         provincia: data.provincia?.trim() || undefined,
         distrito: data.distrito?.trim() || undefined,
         direccion: data.direccion?.trim() || undefined,
         clienteRecuperado: data.clienteRecuperado,
-        companyId,
+        newCompany,
       };
       if (data.assignedTo && isLikelyContactCuid(data.assignedTo)) {
         body.assignedTo = data.assignedTo;
@@ -278,17 +313,25 @@ export default function ContactosPage() {
       );
 
       let contactId: string;
+      let companyId: string | undefined;
       try {
-        const created = await api<{ id: string }>('/contacts', {
+        const created = await api<ApiContactDetail>('/contacts', {
           method: 'POST',
           body: JSON.stringify(body),
         });
         contactId = created.id;
+        companyId = primaryCompanyIdFromApiContact(created);
       } catch (e) {
         removePendingContact(optId);
         toast.error(
           e instanceof Error ? e.message : 'No se pudo crear el contacto en el servidor',
         );
+        return;
+      }
+
+      if (!companyId) {
+        removePendingContact(optId);
+        toast.error('No se pudo obtener la empresa vinculada al contacto creado');
         return;
       }
 
@@ -334,6 +377,7 @@ export default function ContactosPage() {
     }
 
     let companyId: string | undefined;
+    let newCompany: Record<string, unknown> | undefined;
     if (data.companyId) {
       companyId = data.companyId;
     } else if (data.company.trim()) {
@@ -344,19 +388,15 @@ export default function ContactosPage() {
         if (found) {
           companyId = found.id;
         } else {
-          const created = await api<ApiCompanyRecord>('/companies', {
-            method: 'POST',
-            body: JSON.stringify({
-              name: data.company.trim(),
-              facturacionEstimada: data.estimatedValue,
-              fuente: data.source,
-              etapa: data.etapaCiclo,
-              ...(data.assignedTo && isLikelyContactCuid(data.assignedTo)
-                ? { assignedTo: data.assignedTo }
-                : {}),
-            }),
-          });
-          companyId = created.id;
+          newCompany = {
+            name: data.company.trim(),
+            facturacionEstimada: data.estimatedValue,
+            fuente: data.source,
+            etapa: data.etapaCiclo,
+            ...(data.assignedTo && isLikelyContactCuid(data.assignedTo)
+              ? { assignedTo: data.assignedTo }
+              : {}),
+          };
         }
       } catch (e) {
         toast.error(
@@ -376,7 +416,6 @@ export default function ContactosPage() {
       cargo: data.cargo?.trim() || undefined,
       docType: data.docType || undefined,
       docNumber: data.docNumber?.trim() || undefined,
-      notes: data.notes?.trim() || undefined,
       departamento: data.departamento?.trim() || undefined,
       provincia: data.provincia?.trim() || undefined,
       distrito: data.distrito?.trim() || undefined,
@@ -388,6 +427,9 @@ export default function ContactosPage() {
     }
     if (companyId) {
       body.companyId = companyId;
+    }
+    if (newCompany) {
+      body.newCompany = newCompany;
     }
 
     const optIdSimple = generateOptimisticId('c');
@@ -416,8 +458,209 @@ export default function ContactosPage() {
     setNewContactOpen(false);
   }
 
+  async function handleContactTemplate() {
+    try {
+      setExportBusy(true);
+      await downloadImportExportCsv('contacts', 'template');
+      toast.success('Plantilla descargada');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'No se pudo descargar la plantilla');
+    } finally {
+      setExportBusy(false);
+    }
+  }
+
+  async function handleContactExport() {
+    try {
+      setExportBusy(true);
+      await downloadImportExportCsv('contacts', 'export');
+      toast.success('Exportación descargada');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'No se pudo exportar');
+    } finally {
+      setExportBusy(false);
+    }
+  }
+
+  function openContactImport() {
+    importInputRef.current?.click();
+  }
+
+  async function onContactImportChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setImportBusy(true);
+    try {
+      const preview = await previewContactsImportCsv(file);
+      setImportPreviewData(preview);
+      setPendingImportFile(file);
+      setImportPreviewOpen(true);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'Error al generar vista previa',
+      );
+    } finally {
+      setImportBusy(false);
+    }
+  }
+
+  function closeImportPreview() {
+    setImportPreviewOpen(false);
+    setImportPreviewData(null);
+    setPendingImportFile(null);
+  }
+
+  async function confirmContactImport() {
+    const file = pendingImportFile;
+    if (
+      !file ||
+      !importPreviewData ||
+      importPreviewData.okCount === 0 ||
+      importPreviewData.errorCount > 0
+    ) {
+      closeImportPreview();
+      return;
+    }
+    closeImportPreview();
+    setImportBusy(true);
+    try {
+      const r = await uploadImportCsv('contacts', file);
+      const errMsg =
+        r.errors.length > 0
+          ? r.errors
+              .slice(0, 5)
+              .map((x) => `Fila ${x.row}: ${x.message}`)
+              .join('\n') + (r.errors.length > 5 ? `\n…y ${r.errors.length - 5} más` : '')
+          : undefined;
+      if (r.created === 0 && r.errors.length > 0) {
+        toast.error('No se crearon contactos', { description: errMsg });
+      } else {
+        toast.success(
+          `Importación: ${r.created} contacto(s) creado(s)${
+            r.skipped ? ` · ${r.skipped} fila(s) vacía(s) omitidas` : ''
+          }`,
+          errMsg ? { description: errMsg } : undefined,
+        );
+      }
+      await loadApiContacts();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error al importar');
+    } finally {
+      setImportBusy(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
+      <Dialog
+        open={importPreviewOpen}
+        onOpenChange={(open) => {
+          if (!open) closeImportPreview();
+        }}
+      >
+        <DialogContent className="flex h-[min(92vh,880px)] max-h-[92vh] w-[min(96vw,calc(100vw-2rem))] max-w-[min(96vw,87.5rem)] flex-col gap-0 p-0 sm:max-w-[min(96vw,87.5rem)]">
+          <DialogHeader className="shrink-0 space-y-1 border-b px-6 py-4 text-left">
+            <DialogTitle>Vista previa de importación</DialogTitle>
+            <DialogDescription className="text-left">
+              {importPreviewData ? (
+                <>
+                  <span className="block">
+                    {importPreviewData.okCount} fila(s) lista(s) ·{' '}
+                    {importPreviewData.errorCount} con error
+                    {importPreviewData.skipped
+                      ? ` · ${importPreviewData.skipped} vacía(s) omitida(s)`
+                      : ''}
+                    . Teléfono, correo y fuente pueden ir en blanco. En Empresa se muestra el RUC si viene en el archivo; si no, el nombre.
+                  </span>
+                  {importPreviewData.errorCount > 0 ? (
+                    <span className="mt-2 block text-destructive">
+                      Corrige o elimina las filas con error en el CSV y vuelve a elegir el archivo. No se importará nada
+                      hasta que no queden errores en la vista previa.
+                    </span>
+                  ) : null}
+                </>
+              ) : null}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 overflow-auto px-6 py-3">
+            {importPreviewData && importPreviewData.rows.length > 0 ? (
+              <Table className="w-full table-fixed">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-11">Fila</TableHead>
+                    <TableHead className="w-20">Estado</TableHead>
+                    <TableHead className="w-[12%]">Nombre</TableHead>
+                    <TableHead className="w-[20%]">Empresa</TableHead>
+                    <TableHead className="min-w-[28%]">Motivo</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {importPreviewData.rows
+                    .slice()
+                    .sort((a, b) => a.row - b.row)
+                    .map((row) => (
+                      <TableRow key={row.row}>
+                        <TableCell className="tabular-nums text-muted-foreground">
+                          {row.row}
+                        </TableCell>
+                        <TableCell>
+                          {row.ok ? (
+                            <Badge variant="secondary" className="font-normal">
+                              OK
+                            </Badge>
+                          ) : (
+                            <Badge variant="destructive" className="font-normal">
+                              Error
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="break-words align-top">
+                          {row.nombre || '—'}
+                        </TableCell>
+                        <TableCell className="break-words text-sm align-top">
+                          {previewEmpresaCell(row)}
+                        </TableCell>
+                        <TableCell className="break-words text-sm align-top text-muted-foreground">
+                          {row.ok ? '—' : row.error ?? '—'}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
+            ) : (
+              importPreviewData && (
+                <p className="text-sm text-muted-foreground">
+                  No hay filas que mostrar.
+                </p>
+              )
+            )}
+          </div>
+          <DialogFooter className="shrink-0 border-t px-6 py-4">
+            <Button type="button" variant="outline" onClick={closeImportPreview}>
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              disabled={
+                !importPreviewData ||
+                importPreviewData.okCount === 0 ||
+                importPreviewData.errorCount > 0
+              }
+              onClick={() => void confirmContactImport()}
+            >
+              Importar {importPreviewData ? `(${importPreviewData.okCount})` : ''}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <input
+        ref={importInputRef}
+        type="file"
+        accept=".csv,text/csv"
+        className="hidden"
+        onChange={onContactImportChange}
+      />
       <PageHeader title="Contactos" description="Gestiona y da seguimiento a tus prospectos de venta">
         {(totalContacts > 0 || pendingContacts.length > 0) && (
           <Badge variant="secondary" className="mr-2 font-normal">
@@ -432,18 +675,38 @@ export default function ContactosPage() {
           </Badge>
         )}
         {hasPermission('contactos.exportar') && (
-          <Button variant="outline" size="sm" onClick={() => toast.info('Descargando plantilla...')}>
-            <FileSpreadsheet className="size-4" /> Plantilla
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={exportBusy}
+            title="CSV sin id: usa empresa_nombre y empresa_ruc para vincular o crear empresa"
+            onClick={() => void handleContactTemplate()}
+          >
+            {exportBusy ? <Loader2 className="size-4 animate-spin" /> : <FileSpreadsheet className="size-4" />}{' '}
+            Plantilla
           </Button>
         )}
         {hasPermission('contactos.crear') && (
-          <Button variant="outline" size="sm" onClick={() => toast.info('Selecciona un archivo para importar')}>
-            <Upload className="size-4" /> Importar
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={importBusy}
+            title="Obligatorio: valor_estimado (>0). Nombre o DNI (8 dígitos en doc_numero) para RENIEC vía Factiliza. Si indicas nombre en el CSV, prevalece sobre el de la API. doc_tipo vacío o DNI."
+            onClick={openContactImport}
+          >
+            {importBusy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}{' '}
+            Importar
           </Button>
         )}
         {hasPermission('contactos.exportar') && (
-          <Button variant="outline" size="sm" onClick={() => toast.info('Exportando contactos...')}>
-            <Download className="size-4" /> Exportar
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={exportBusy}
+            onClick={() => void handleContactExport()}
+          >
+            {exportBusy ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}{' '}
+            Exportar
           </Button>
         )}
         <Button onClick={() => setNewContactOpen(true)}>
@@ -647,13 +910,13 @@ export default function ContactosPage() {
 /* ─── Table View ─── */
 
 interface ContactsTableProps {
-  contacts: import('@/types').Contact[];
+  contacts: Contact[];
   selectedContacts: string[];
   allSelected: boolean;
   onToggleSelectAll: () => void;
   onToggleSelect: (id: string) => void;
   isPendingContactId: (id: string) => boolean;
-  onView: (id: string) => void;
+  onView: (contact: Contact) => void;
   onDelete: (id: string) => void;
 }
 
@@ -705,7 +968,7 @@ function ContactsTable({
             <TableRow
               key={contact.id}
               className={pending ? 'bg-muted/40' : 'cursor-pointer'}
-              onClick={() => onView(contact.id)}
+              onClick={() => onView(contact)}
             >
               <TableCell onClick={(e) => e.stopPropagation()}>
                 <Checkbox
@@ -749,10 +1012,10 @@ function ContactsTable({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => onView(contact.id)}>
+                    <DropdownMenuItem onClick={() => onView(contact)}>
                       <Eye /> Ver
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onView(contact.id)}>
+                    <DropdownMenuItem onClick={() => onView(contact)}>
                       <Pencil /> Editar
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
@@ -774,9 +1037,9 @@ function ContactsTable({
 /* ─── Card View ─── */
 
 interface ContactsGridProps {
-  contacts: import('@/types').Contact[];
+  contacts: Contact[];
   isPendingContactId: (id: string) => boolean;
-  onView: (id: string) => void;
+  onView: (contact: Contact) => void;
   onDelete: (id: string) => void;
 }
 
@@ -789,7 +1052,7 @@ function ContactsGrid({ contacts: data, isPendingContactId, onView, onDelete }: 
         <Card
           key={contact.id}
           className={pending ? 'border-dashed bg-muted/30' : 'cursor-pointer transition-shadow hover:shadow-md'}
-          onClick={() => onView(contact.id)}
+          onClick={() => onView(contact)}
         >
           <CardContent className="p-5">
             <div className="flex items-start justify-between">
@@ -815,7 +1078,7 @@ function ContactsGrid({ contacts: data, isPendingContactId, onView, onDelete }: 
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => onView(contact.id)}>
+                  <DropdownMenuItem onClick={() => onView(contact)}>
                     <Eye /> Ver
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />

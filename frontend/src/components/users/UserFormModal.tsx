@@ -85,20 +85,23 @@ export function UserFormModal({
     },
   });
 
+  /**
+   * Con `open` controlado desde fuera, Radix no invoca `onOpenChange(true)`, así que el reset con datos del usuario debe hacerse aquí.
+   * Dependencias acotadas a `open` y `user?.id` para no vaciar el formulario al cargar roles o al re-renderizar.
+   */
   useEffect(() => {
-    if (defaultRoleId && !form.getValues('roleId')) {
-      form.setValue('roleId', defaultRoleId);
-    }
-  }, [defaultRoleId, form]);
+    if (!open) return;
 
-  function handleOpenChange(next: boolean) {
-    if (!next) {
-      form.reset();
-    } else if (user) {
+    const fallbackRole = (defaultRoleId || roles[0]?.id || '').trim();
+
+    if (user) {
       form.reset({
-        name: user.name,
-        username: user.username ?? user.email?.split('@')[0] ?? '',
-        roleId: user.roleId ?? defaultRoleId,
+        name: user.name?.trim() || user.username?.trim() || '',
+        username:
+          user.username?.trim() ||
+          user.email?.split('@')[0]?.trim() ||
+          '',
+        roleId: user.roleId?.trim() || fallbackRole,
         status: user.status === 'activo',
         password: '',
       });
@@ -107,7 +110,30 @@ export function UserFormModal({
         name: '',
         username: '',
         password: '',
-        roleId: defaultRoleId,
+        roleId: fallbackRole,
+        status: true,
+      });
+    }
+    // Solo al abrir o al cambiar el usuario editado; no al cargar `roles` (evita borrar lo tipeado en “crear”).
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- `user`, `form`, `roles` leídos al abrir
+  }, [open, user?.id]);
+
+  /** Crear usuario: si los roles llegan después de abrir el modal, asignar rol por defecto sin resetear el resto. */
+  useEffect(() => {
+    if (!open || user) return;
+    const r = (defaultRoleId || roles[0]?.id || '').trim();
+    if (!r) return;
+    const cur = form.getValues('roleId');
+    if (!cur) form.setValue('roleId', r);
+  }, [open, user, defaultRoleId, roles[0]?.id, form]);
+
+  function handleOpenChange(next: boolean) {
+    if (!next) {
+      form.reset({
+        name: '',
+        username: '',
+        password: '',
+        roleId: defaultRoleId || roles[0]?.id || '',
         status: true,
       });
     }

@@ -5,10 +5,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import {
   User, Building2, ChevronsUpDown, X,
 } from 'lucide-react';
-import type { ContactPriority, Etapa } from '@/types';
+import type { ContactPriority } from '@/types';
 import { etapaLabels } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
 import { useCRMStore } from '@/store/crmStore';
+import { useCrmConfigStore } from '@/store/crmConfigStore';
 import { getPrimaryCompany, cn } from '@/lib/utils';
 import { LinkExistingDialog } from '@/components/shared/LinkExistingDialog';
 import { Button } from '@/components/ui/button';
@@ -28,24 +29,18 @@ import {
 } from '@/lib/contactApi';
 import { type ApiCompanyRecord, companyListAll, isLikelyCompanyCuid } from '@/lib/companyApi';
 
-const etapas: Etapa[] = [
+const FALLBACK_ETAPA_SLUGS = [
   'lead', 'contacto', 'reunion_agendada', 'reunion_efectiva', 'propuesta_economica',
   'negociacion', 'licitacion', 'licitacion_etapa_final', 'cierre_ganado', 'firma_contrato',
   'activo', 'cierre_perdido', 'inactivo',
-];
-
-const etapaEnum = z.enum([
-  'lead', 'contacto', 'reunion_agendada', 'reunion_efectiva', 'propuesta_economica',
-  'negociacion', 'licitacion', 'licitacion_etapa_final', 'cierre_ganado', 'firma_contrato',
-  'activo', 'cierre_perdido', 'inactivo',
-] as const);
+] as const;
 
 export const newOpportunityFormSchema = z.object({
   title: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
   contactId: z.string().optional(),
   companyId: z.string().optional(),
   amount: z.coerce.number().min(0, 'El monto debe ser positivo'),
-  etapa: etapaEnum,
+  etapa: z.string().min(1, 'Selecciona una etapa'),
   expectedCloseDate: z.string().min(1, 'Selecciona una fecha'),
   assignedTo: z.string().optional(),
   priority: z.enum(['baja', 'media', 'alta']),
@@ -91,6 +86,19 @@ export function NewOpportunityFormDialog({
 }: NewOpportunityFormDialogProps) {
   const { contacts } = useCRMStore();
   const { activeUsers } = useUsers();
+  const bundle = useCrmConfigStore((s) => s.bundle);
+  const stageOptions = useMemo(() => {
+    const st = bundle?.catalog.stages
+      ?.filter((x) => x.enabled)
+      ?.sort((a, b) => a.sortOrder - b.sortOrder);
+    if (st?.length) {
+      return st.map((s) => ({ value: s.slug, label: s.name }));
+    }
+    return FALLBACK_ETAPA_SLUGS.map((slug) => ({
+      value: slug,
+      label: etapaLabels[slug] ?? slug,
+    }));
+  }, [bundle]);
   const [apiContactRows, setApiContactRows] = useState<ApiContactListRow[]>([]);
   const [apiCompanies, setApiCompanies] = useState<ApiCompanyRecord[]>([]);
   const [linkContactOpen, setLinkContactOpen] = useState(false);
@@ -404,15 +412,15 @@ export function NewOpportunityFormDialog({
                 <Label>Etapa * (define probabilidad)</Label>
                 <Select
                   value={form.watch('etapa')}
-                  onValueChange={(v) => form.setValue('etapa', v as Etapa)}
+                  onValueChange={(v) => form.setValue('etapa', v)}
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {etapas.map((e) => (
-                      <SelectItem key={e} value={e}>
-                        {etapaLabels[e]}
+                    {stageOptions.map(({ value, label }) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
                       </SelectItem>
                     ))}
                   </SelectContent>

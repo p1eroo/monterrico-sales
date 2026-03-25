@@ -1,8 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { DateRange } from 'react-day-picker';
-import {
-  leadsBySourceData, salesByMonthData, performanceByAdvisor, opportunitiesByStageData,
-} from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -27,48 +24,19 @@ import { toast } from 'sonner';
 import { useChartTheme } from '@/hooks/useChartTheme';
 import { formatCurrency } from '@/lib/formatters';
 import { usePermissions } from '@/hooks/usePermissions';
+import { contactSourceLabels } from '@/data/mock';
+import {
+  fetchAnalyticsSummary,
+  analyticsRangeFromPreset,
+  type AnalyticsSummary,
+} from '@/lib/analyticsApi';
+import {
+  useCrmConfigStore,
+  getSourceLabelFromCatalog,
+  getStageLabelFromCatalog,
+} from '@/store/crmConfigStore';
 
 const COLORS = ['#13944C', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];
-
-const leadsByPeriodData = [
-  { name: 'Sep', leads: 18, nuevos: 8 },
-  { name: 'Oct', leads: 24, nuevos: 12 },
-  { name: 'Nov', leads: 20, nuevos: 9 },
-  { name: 'Dic', leads: 28, nuevos: 14 },
-  { name: 'Ene', leads: 22, nuevos: 11 },
-  { name: 'Feb', leads: 26, nuevos: 13 },
-  { name: 'Mar', leads: 18, nuevos: 10 },
-];
-
-const conversionData = [
-  { name: 'Sep', tasa: 28 },
-  { name: 'Oct', tasa: 31 },
-  { name: 'Nov', tasa: 29 },
-  { name: 'Dic', tasa: 35 },
-  { name: 'Ene', tasa: 30 },
-  { name: 'Feb', tasa: 33 },
-  { name: 'Mar', tasa: 32.5 },
-];
-
-const activitiesByTypeData = [
-  { name: 'Sep', llamadas: 25, reuniones: 12, correos: 18 },
-  { name: 'Oct', llamadas: 30, reuniones: 15, correos: 22 },
-  { name: 'Nov', llamadas: 28, reuniones: 10, correos: 20 },
-  { name: 'Dic', llamadas: 35, reuniones: 18, correos: 25 },
-  { name: 'Ene', llamadas: 22, reuniones: 14, correos: 19 },
-  { name: 'Feb', llamadas: 32, reuniones: 16, correos: 24 },
-  { name: 'Mar', llamadas: 20, reuniones: 8, correos: 15 },
-];
-
-const followUpsData = [
-  { name: 'Sep', completados: 28, pendientes: 8 },
-  { name: 'Oct', completados: 35, pendientes: 12 },
-  { name: 'Nov', completados: 30, pendientes: 10 },
-  { name: 'Dic', completados: 38, pendientes: 15 },
-  { name: 'Ene', completados: 25, pendientes: 11 },
-  { name: 'Feb', completados: 33, pendientes: 9 },
-  { name: 'Mar', completados: 22, pendientes: 7 },
-];
 
 const sourceOptions = [
   { value: 'all', label: 'Todas las fuentes' },
@@ -87,23 +55,121 @@ function handleExport(format: string) {
   });
 }
 
+function changeTone(s: string): 'positive' | 'negative' | 'neutral' {
+  const t = s.trim();
+  if (t.startsWith('-')) return 'negative';
+  if (t.startsWith('+')) return 'positive';
+  return 'neutral';
+}
+
 type DateRangePreset = '7d' | '1m' | '3m' | '1y' | 'custom';
 
 export default function Reports() {
   const { activeUsers } = useUsers();
   const { hasPermission } = usePermissions();
+  const bundle = useCrmConfigStore((s) => s.bundle);
   const [dateRange, setDateRange] = useState<DateRangePreset>('3m');
   const [customRange, setCustomRange] = useState<DateRange | undefined>();
   const [advisorFilter, setAdvisorFilter] = useState('all');
   const [sourceFilter, setSourceFilter] = useState('all');
+  const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
+  const [loading, setLoading] = useState(false);
   const chartTheme = useChartTheme();
 
-  const summaryCards = [
-    { label: 'Total Contactos del Periodo', value: '156', icon: TrendingUp, color: 'text-primary', bg: 'bg-primary/10', trend: '+12% vs periodo anterior' },
-    { label: 'Tasa de Conversión', value: '32.5%', icon: Target, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/30', trend: '+3.2% vs periodo anterior' },
-    { label: 'Ventas Cerradas', value: 'S/ 245,000', icon: DollarSign, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/30', trend: '+18% vs periodo anterior' },
-    { label: 'Actividades Realizadas', value: '87', icon: Activity, color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-900/30', trend: '+5 vs periodo anterior' },
-  ];
+  useEffect(() => {
+    if (dateRange === 'custom' && (!customRange?.from || !customRange?.to)) {
+      setSummary(null);
+      return;
+    }
+    const { from, to } = analyticsRangeFromPreset(dateRange, customRange);
+    const advisorId = advisorFilter !== 'all' ? advisorFilter : undefined;
+    const source = sourceFilter !== 'all' ? sourceFilter : undefined;
+    let cancelled = false;
+    setLoading(true);
+    void fetchAnalyticsSummary({ from, to, advisorId, source })
+      .then((data) => {
+        if (!cancelled) setSummary(data);
+      })
+      .catch(() => {
+        if (!cancelled) setSummary(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [dateRange, customRange?.from, customRange?.to, advisorFilter, sourceFilter]);
+
+  const leadsBySourceData = useMemo(() => {
+    if (!summary) return [];
+    return summary.contactsBySource.map((x) => ({
+      ...x,
+      name: getSourceLabelFromCatalog(x.name, bundle, contactSourceLabels),
+    }));
+  }, [summary, bundle]);
+
+  const opportunitiesByStageData = useMemo(() => {
+    if (!summary) return [];
+    return summary.opportunitiesByStageData.map((x) => ({
+      ...x,
+      name: getStageLabelFromCatalog(x.name, bundle),
+    }));
+  }, [summary, bundle]);
+
+  const kpis = summary?.kpis;
+  const leadsByPeriodData = summary?.contactsByPeriod ?? [];
+  const conversionData = summary?.conversionByMonth ?? [];
+  const activitiesByTypeData = summary?.activitiesByTypeData ?? [];
+  const followUpsData = summary?.followUpsByMonth ?? [];
+  const salesByMonthData = summary?.salesByMonth ?? [];
+  const performanceByAdvisor = summary?.performanceByAdvisor ?? [];
+
+  const summaryCards = useMemo(
+    () => [
+      {
+        label: 'Total Contactos del Periodo',
+        value: kpis ? String(kpis.totalContacts) : '—',
+        icon: TrendingUp,
+        color: 'text-primary',
+        bg: 'bg-primary/10',
+        trend: kpis
+          ? `${kpis.changes.contacts} vs periodo anterior`
+          : '—',
+        trendType: kpis ? changeTone(kpis.changes.contacts) : 'neutral' as const,
+      },
+      {
+        label: 'Tasa de Conversión',
+        value: kpis ? `${kpis.conversionPct}%` : '—',
+        icon: Target,
+        color: 'text-blue-600 dark:text-blue-400',
+        bg: 'bg-blue-50 dark:bg-blue-900/30',
+        trend: 'En el periodo seleccionado',
+        trendType: 'neutral' as const,
+      },
+      {
+        label: 'Ventas Cerradas',
+        value: kpis ? formatCurrency(kpis.closedSalesAmount) : '—',
+        icon: DollarSign,
+        color: 'text-amber-600 dark:text-amber-400',
+        bg: 'bg-amber-50 dark:bg-amber-900/30',
+        trend: kpis
+          ? `${kpis.changes.sales} vs periodo anterior`
+          : '—',
+        trendType: kpis ? changeTone(kpis.changes.sales) : 'neutral',
+      },
+      {
+        label: 'Actividades Realizadas',
+        value: kpis ? String(kpis.activitiesCompleted) : '—',
+        icon: Activity,
+        color: 'text-purple-600 dark:text-purple-400',
+        bg: 'bg-purple-50 dark:bg-purple-900/30',
+        trend: 'Completadas en el periodo',
+        trendType: 'neutral' as const,
+      },
+    ],
+    [kpis],
+  );
 
   return (
     <div className="space-y-6">
@@ -131,30 +197,33 @@ export default function Reports() {
               placeholder="Seleccionar rango"
             />
           )}
+          {loading && (
+            <span className="text-xs text-muted-foreground">Cargando…</span>
+          )}
         </div>
 
         <Select value={advisorFilter} onValueChange={setAdvisorFilter}>
-            <SelectTrigger className="w-full md:w-[200px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos los asesores</SelectItem>
-              {activeUsers.map((u) => (
-                <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SelectTrigger className="w-full md:w-[200px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los asesores</SelectItem>
+            {activeUsers.map((u) => (
+              <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-          <Select value={sourceFilter} onValueChange={setSourceFilter}>
-            <SelectTrigger className="w-full md:w-[200px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {sourceOptions.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <Select value={sourceFilter} onValueChange={setSourceFilter}>
+          <SelectTrigger className="w-full md:w-[200px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {sourceOptions.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         {hasPermission('reportes.exportar') && (
           <div className="flex gap-2 md:ml-auto">
@@ -186,7 +255,17 @@ export default function Reports() {
                 </div>
               </div>
               <p className="mt-2 text-2xl font-bold">{card.value}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{card.trend}</p>
+              <p
+                className={`mt-1 text-xs ${
+                  card.trendType === 'positive'
+                    ? 'text-emerald-600'
+                    : card.trendType === 'negative'
+                      ? 'text-red-600'
+                      : 'text-muted-foreground'
+                }`}
+              >
+                {card.trend}
+              </p>
             </CardContent>
           </Card>
         ))}
@@ -465,8 +544,8 @@ export default function Reports() {
         {/* 8. Tareas - LineChart */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Tareas</CardTitle>
-            <CardDescription>Comparativa de tareas completadas vs pendientes</CardDescription>
+            <CardTitle className="text-base">Seguimientos</CardTitle>
+            <CardDescription>Actividades completadas vs pendientes por mes</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>

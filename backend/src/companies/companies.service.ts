@@ -8,10 +8,14 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { EntitySyncService } from '../sync/entity-sync.service';
+import { ClientsService } from '../clients/clients.service';
+import { slugifyForUrl } from '../common/url-slug.util';
+import { CrmConfigService } from '../crm-config/crm-config.service';
 
 /** Select slim para listado: excluye linkedin, correo, direcciones */
 const companySelectListSlim = {
   id: true,
+  urlSlug: true,
   name: true,
   razonSocial: true,
   ruc: true,
@@ -37,6 +41,7 @@ const companySelectSummary = {
       contact: {
         select: {
           id: true,
+          urlSlug: true,
           name: true,
           correo: true,
           etapa: true,
@@ -62,6 +67,8 @@ export class CompaniesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly entitySync: EntitySyncService,
+    private readonly clientsService: ClientsService,
+    private readonly crmConfig: CrmConfigService,
   ) {}
 
   private async assertUserExists(id: string): Promise<void> {
@@ -69,6 +76,50 @@ export class CompaniesService {
     if (!u) {
       throw new BadRequestException('El usuario asignado no existe');
     }
+  }
+
+  private async allocateCompanyUrlSlug(
+    nameSource: string,
+    excludeId?: string,
+  ): Promise<string> {
+    const base = slugifyForUrl(nameSource);
+    let candidate = base;
+    let n = 0;
+    for (;;) {
+      const found = await this.prisma.company.findFirst({
+        where: {
+          urlSlug: candidate,
+          ...(excludeId ? { NOT: { id: excludeId } } : {}),
+        },
+      });
+      if (!found) return candidate;
+      n += 1;
+      candidate = `${base}-${n}`;
+    }
+  }
+
+  private async resolveCompanyId(param: string): Promise<string> {
+    const raw = param.trim();
+    if (!raw) {
+      throw new NotFoundException('Empresa no encontrada');
+    }
+    const byId = await this.prisma.company.findUnique({
+      where: { id: raw },
+      select: { id: true },
+    });
+    if (byId) return byId.id;
+    let slug = raw;
+    try {
+      slug = decodeURIComponent(raw);
+    } catch {
+      /* usar raw */
+    }
+    const bySlug = await this.prisma.company.findUnique({
+      where: { urlSlug: slug },
+      select: { id: true },
+    });
+    if (bySlug) return bySlug.id;
+    throw new NotFoundException('Empresa no encontrada');
   }
 
   async create(dto: CreateCompanyDto) {
@@ -98,6 +149,7 @@ export class CompaniesService {
     if (assignedTo) {
       await this.assertUserExists(assignedTo);
     }
+    await this.crmConfig.assertEtapaAssignable(etapa);
 
     const dupName = await this.prisma.company.findFirst({
       where: {
@@ -122,8 +174,10 @@ export class CompaniesService {
       }
     }
 
+    const urlSlug = await this.allocateCompanyUrlSlug(name);
     const company = await this.prisma.company.create({
       data: {
+        urlSlug,
         name,
         razonSocial: dto.razonSocial?.trim() || null,
         ruc: rucTrim || null,
@@ -146,6 +200,7 @@ export class CompaniesService {
     });
 
     await this.entitySync.propagateFromCompany(company.id);
+    await this.clientsService.ensureClientForCierreGanado(company.id);
     return this.findOne(company.id);
   }
 
@@ -321,12 +376,13 @@ export class CompaniesService {
 
     const preview = contacts
       .slice(0, CONTACTS_PREVIEW_MAX)
-      .map((c) => ({ id: c.id, name: c.name }));
+      .map((c) => ({ id: c.id, name: c.name, urlSlug: c.urlSlug }));
 
     const contactCount = contacts.length;
 
     return {
       id: rest.id,
+      urlSlug: rest.urlSlug,
       name: rest.name,
       razonSocial: rest.razonSocial,
       ruc: rest.ruc,
@@ -351,7 +407,8 @@ export class CompaniesService {
     };
   }
 
-  async findOne(id: string) {
+  async findOne(idOrSlug: string) {
+    const id = await this.resolveCompanyId(idOrSlug);
     const company = await this.prisma.company.findUnique({
       where: { id },
       include: {
@@ -364,7 +421,8 @@ export class CompaniesService {
     return company;
   }
 
-  async update(id: string, dto: UpdateCompanyDto) {
+  async update(idOrSlug: string, dto: UpdateCompanyDto) {
+    const id = await this.resolveCompanyId(idOrSlug);
     await this.findOne(id);
 
     const data: Record<string, string | number | null | undefined> = {};
@@ -375,6 +433,7 @@ export class CompaniesService {
         throw new BadRequestException('El nombre no puede estar vacío');
       }
       data.name = name;
+      data.urlSlug = await this.allocateCompanyUrlSlug(name, id);
     }
     if (dto.razonSocial !== undefined) {
       data.razonSocial = dto.razonSocial?.trim() || null;
@@ -420,6 +479,7 @@ export class CompaniesService {
       if (!e) {
         throw new BadRequestException('La etapa no puede estar vacía');
       }
+      await this.crmConfig.assertEtapaAssignable(e);
       data.etapa = e;
     }
     if (dto.assignedTo !== undefined) {
@@ -449,10 +509,13 @@ export class CompaniesService {
       await this.entitySync.propagateFromCompany(id);
     }
 
+    await this.clientsService.ensureClientForCierreGanado(id);
+
     return this.findOne(id);
   }
 
-  async remove(id: string) {
+  async remove(idOrSlug: string) {
+    const id = await this.resolveCompanyId(idOrSlug);
     await this.findOne(id);
     return this.prisma.company.delete({
       where: { id },

@@ -7,7 +7,8 @@ import {
 import { toast } from 'sonner';
 import { priorityLabels } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
-import type { Contact, Opportunity, TaskAssociation } from '@/types';
+import type { Contact, Opportunity, TaskAssociation, TaskKind } from '@/types';
+import { TASK_KINDS } from '@/types';
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -24,7 +25,7 @@ import {
 import { formatDate, formatDateTime } from '@/lib/formatters';
 
 export type TaskDetailStatus = string;
-export type TaskDetailType = 'llamada' | 'reunion' | 'correo' | 'tarea';
+export type TaskDetailType = TaskKind;
 export type TaskDetailPriority = 'alta' | 'media' | 'baja';
 
 export interface TaskDetailTask {
@@ -54,7 +55,7 @@ const taskTypeLabels: Record<TaskDetailType, string> = {
   llamada: 'Llamada',
   reunion: 'Reunión',
   correo: 'Correo',
-  tarea: 'Tarea',
+  whatsapp: 'WhatsApp',
 };
 
 function getInitials(name: string) {
@@ -126,7 +127,12 @@ export function TaskDetailDialog({
     if (!task) return;
     const updated = { ...task, status: newStatus };
     onTasksChange(tasks.map((t) => (t.id === task.id ? updated : t)));
-    if (newStatus === 'completada' && onCompleteWithActivity && task.type) {
+    if (
+      newStatus === 'completada' &&
+      onCompleteWithActivity &&
+      task.type &&
+      TASK_KINDS.includes(task.type)
+    ) {
       toast.success('Tarea completada');
       handleClose();
       onCompleteWithActivity(task);
@@ -472,7 +478,7 @@ export function TaskDetailDialog({
                   <Label>Tipo</Label>
                   <Select value={taskEditForm.type ?? ''} onValueChange={(v) => setTaskEditForm({ ...taskEditForm, type: v as TaskDetailType })}>
                     <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar tipo" /></SelectTrigger>
-                    <SelectContent>{Object.entries(taskTypeLabels).map(([key, label]) => (<SelectItem key={key} value={key}>{label}</SelectItem>))}</SelectContent>
+                    <SelectContent>{TASK_KINDS.map((key) => (<SelectItem key={key} value={key}>{taskTypeLabels[key]}</SelectItem>))}</SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">

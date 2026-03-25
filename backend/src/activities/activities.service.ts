@@ -8,6 +8,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateActivityDto } from './dto/create-activity.dto';
 import { UpdateActivityDto } from './dto/update-activity.dto';
 
+const TASK_KINDS = new Set(['llamada', 'reunion', 'correo', 'whatsapp']);
+
 const activityInclude = {
   user: { select: { id: true, name: true } },
   contacts: { include: { contact: { select: { id: true, name: true } } } },
@@ -23,6 +25,7 @@ const activityInclude = {
 const activitySelectListSlim = {
   id: true,
   type: true,
+  taskKind: true,
   title: true,
   description: true,
   status: true,
@@ -49,8 +52,45 @@ export class ActivitiesService {
     return Number.isNaN(d.getTime()) ? null : d;
   }
 
+  private normalizeTaskKind(
+    value: string | null | undefined,
+  ): 'llamada' | 'reunion' | 'correo' | 'whatsapp' | null {
+    if (!value?.trim()) return null;
+    const k = value.trim().toLowerCase();
+    return TASK_KINDS.has(k)
+      ? (k as 'llamada' | 'reunion' | 'correo' | 'whatsapp')
+      : null;
+  }
+
+  /** Resuelve type + taskKind: legacy tipo=llamada|… → tarea + taskKind. */
+  private resolveTypeAndTaskKind(dto: {
+    type?: string;
+    taskKind?: string;
+  }): { type: string; taskKind: string | null } {
+    let type = dto.type?.trim() ?? '';
+    let taskKind = this.normalizeTaskKind(dto.taskKind);
+    if (TASK_KINDS.has(type)) {
+      taskKind = type as 'llamada' | 'reunion' | 'correo' | 'whatsapp';
+      type = 'tarea';
+    }
+    if (type === 'tarea') {
+      if (!taskKind) {
+        throw new BadRequestException(
+          'Las tareas requieren taskKind: llamada, reunion, correo o whatsapp',
+        );
+      }
+      return { type, taskKind };
+    }
+    if (taskKind) {
+      throw new BadRequestException(
+        'taskKind solo se usa cuando type es tarea (o al enviar tipo legacy llamada/reunion/correo/whatsapp)',
+      );
+    }
+    return { type, taskKind: null };
+  }
+
   async create(dto: CreateActivityDto) {
-    const type = dto.type?.trim();
+    const { type, taskKind } = this.resolveTypeAndTaskKind(dto);
     if (!type) {
       throw new BadRequestException('El tipo es obligatorio');
     }
@@ -110,6 +150,7 @@ export class ActivitiesService {
       const activity = await tx.activity.create({
         data: {
           type,
+          taskKind,
           title,
           description: dto.description?.trim() ?? '',
           assignedTo,
@@ -190,11 +231,39 @@ export class ActivitiesService {
 
   async update(id: string, dto: UpdateActivityDto) {
     await this.findOne(id);
+    const existingRow = await this.prisma.activity.findUnique({
+      where: { id },
+    });
+    if (!existingRow) {
+      throw new NotFoundException('Actividad no encontrada');
+    }
+
     const data: Record<string, unknown> = {};
-    if (dto.type !== undefined) {
-      const t = dto.type?.trim();
-      if (!t) throw new BadRequestException('El tipo no puede estar vacío');
-      data.type = t;
+    if (dto.type !== undefined || dto.taskKind !== undefined) {
+      let nextType =
+        dto.type !== undefined ? dto.type.trim() : existingRow.type;
+      let nextTk =
+        dto.taskKind !== undefined
+          ? this.normalizeTaskKind(dto.taskKind)
+          : this.normalizeTaskKind(existingRow.taskKind);
+
+      if (dto.type !== undefined && TASK_KINDS.has(nextType)) {
+        nextTk = nextType as 'llamada' | 'reunion' | 'correo' | 'whatsapp';
+        nextType = 'tarea';
+      }
+
+      if (nextType === 'tarea') {
+        if (!nextTk) {
+          throw new BadRequestException(
+            'Las tareas requieren taskKind: llamada, reunion, correo o whatsapp',
+          );
+        }
+        data.type = 'tarea';
+        data.taskKind = nextTk;
+      } else {
+        data.type = nextType;
+        data.taskKind = null;
+      }
     }
     if (dto.title !== undefined) {
       const t = dto.title?.trim();
@@ -232,10 +301,14 @@ export class ActivitiesService {
     if (Object.keys(data).length === 0) {
       throw new BadRequestException('No hay campos para actualizar');
     }
-    await this.prisma.activity.update({
-      where: { id },
-      data: data as Record<string, unknown>,
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.activity.update({
+        where: { id },
+        data: data as Prisma.ActivityUpdateInput,
+      });
     });
+
     return this.findOne(id);
   }
 

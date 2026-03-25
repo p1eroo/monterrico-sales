@@ -38,6 +38,10 @@ import type { Contact, Etapa, Opportunity, PipelineColumn } from '@/types';
 import { companyRubroLabels, etapaLabels, activities, activityTypeLabels } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
 import { api } from '@/lib/api';
+import { fetchCrmConfig } from '@/lib/crmConfigApi';
+import type { CrmCatalogDto } from '@/lib/crmConfigApi';
+import { useCrmConfigStore } from '@/store/crmConfigStore';
+import { contactDetailHref, opportunityDetailHref } from '@/lib/detailRoutes';
 import { getPrimaryCompany } from '@/lib/utils';
 import { type ApiContactListRow, isLikelyContactCuid, mapApiContactRowToContact, contactUpdate, contactListAll } from '@/lib/contactApi';
 import {
@@ -63,28 +67,83 @@ import { cn } from '@/lib/utils';
 import { formatCurrencyShort, formatDateShortLocal } from '@/lib/formatters';
 import type { ActivityType } from '@/types';
 
-const PIPELINE_COLUMNS: { id: Etapa; title: string; color: string }[] = [
-  { id: 'lead', title: 'Lead', color: 'bg-slate-500' },
-  { id: 'contacto', title: 'Contacto', color: 'bg-blue-500' },
-  { id: 'reunion_agendada', title: 'Reunión Agendada', color: 'bg-indigo-500' },
-  { id: 'reunion_efectiva', title: 'Reunión Efectiva', color: 'bg-cyan-500' },
-  { id: 'propuesta_economica', title: 'Propuesta Económica', color: 'bg-purple-500' },
-  { id: 'negociacion', title: 'Negociación', color: 'bg-orange-500' },
-  { id: 'licitacion', title: 'Licitación', color: 'bg-amber-500' },
-  { id: 'licitacion_etapa_final', title: 'Licitación Etapa Final', color: 'bg-amber-600' },
-  { id: 'cierre_ganado', title: 'Cierre Ganado', color: 'bg-emerald-500' },
-  { id: 'firma_contrato', title: 'Firma de Contrato', color: 'bg-emerald-600' },
-  { id: 'activo', title: 'Activo', color: 'bg-emerald-700' },
-  { id: 'cierre_perdido', title: 'Cierre Perdido', color: 'bg-red-500' },
-  { id: 'inactivo', title: 'Inactivo', color: 'bg-gray-500' },
+export type PipelineStageColumnConfig = {
+  id: Etapa;
+  title: string;
+  /** Color de acento (hex) para barras y puntos; inline para que funcione con cualquier valor del catálogo. */
+  accentColor: string;
+};
+
+/** Orden y colores por defecto si aún no hay catálogo CRM en memoria. */
+const FALLBACK_PIPELINE_COLUMNS: PipelineStageColumnConfig[] = [
+  { id: 'lead', title: 'Lead', accentColor: '#64748b' },
+  { id: 'contacto', title: 'Contacto', accentColor: '#3b82f6' },
+  { id: 'reunion_agendada', title: 'Reunión Agendada', accentColor: '#6366f1' },
+  { id: 'reunion_efectiva', title: 'Reunión Efectiva', accentColor: '#06b6d4' },
+  { id: 'propuesta_economica', title: 'Propuesta Económica', accentColor: '#a855f7' },
+  { id: 'negociacion', title: 'Negociación', accentColor: '#f97316' },
+  { id: 'licitacion', title: 'Licitación', accentColor: '#f59e0b' },
+  { id: 'licitacion_etapa_final', title: 'Licitación Etapa Final', accentColor: '#d97706' },
+  { id: 'cierre_ganado', title: 'Cierre Ganado', accentColor: '#22c55e' },
+  { id: 'firma_contrato', title: 'Firma de Contrato', accentColor: '#16a34a' },
+  { id: 'activo', title: 'Activo', accentColor: '#15803d' },
+  { id: 'cierre_perdido', title: 'Cierre Perdido', accentColor: '#ef4444' },
+  { id: 'inactivo', title: 'Inactivo', accentColor: '#6b7280' },
 ];
+
+function normalizeHexColor(raw: string, fallback: string): string {
+  const t = raw.trim();
+  if (/^#[0-9A-Fa-f]{6}$/.test(t) || /^#[0-9A-Fa-f]{3}$/.test(t)) return t;
+  return fallback;
+}
+
+function stagesFromCatalog(
+  stages: CrmCatalogDto['stages'] | undefined,
+): PipelineStageColumnConfig[] {
+  if (!stages?.length) return FALLBACK_PIPELINE_COLUMNS;
+  const sorted = [...stages]
+    .filter((s) => s.enabled)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+  if (!sorted.length) return FALLBACK_PIPELINE_COLUMNS;
+  return sorted.map((s) => ({
+    id: s.slug as Etapa,
+    title: s.name,
+    accentColor: normalizeHexColor(s.color, '#64748b'),
+  }));
+}
+
+/** Incluye al final etapas presentes en contactos pero fuera del catálogo habilitado (datos legacy). */
+function mergePipelineColumns(
+  base: PipelineStageColumnConfig[],
+  contacts: Contact[],
+): PipelineStageColumnConfig[] {
+  const seen = new Set(base.map((c) => c.id));
+  const tail: PipelineStageColumnConfig[] = [];
+  for (const contact of contacts) {
+    const e = contact.etapa;
+    if (seen.has(e)) continue;
+    seen.add(e);
+    const fb = FALLBACK_PIPELINE_COLUMNS.find((x) => x.id === e);
+    tail.push(
+      fb ?? {
+        id: e,
+        title: etapaLabels[e] ?? e,
+        accentColor: '#94a3b8',
+      },
+    );
+  }
+  return [...base, ...tail];
+}
 
 function formatEtapaDate(dateStr: string): string {
   return formatDateShortLocal(dateStr);
 }
 
-function buildPipeline(allContacts: Contact[]): PipelineColumn[] {
-  return PIPELINE_COLUMNS.map(({ id, title }) => {
+function buildPipeline(
+  allContacts: Contact[],
+  columnConfigs: PipelineStageColumnConfig[],
+): PipelineColumn[] {
+  return columnConfigs.map(({ id, title }) => {
     const columnContacts = allContacts.filter((l) => l.etapa === id);
     return {
       id,
@@ -93,11 +152,6 @@ function buildPipeline(allContacts: Contact[]): PipelineColumn[] {
       totalValue: columnContacts.reduce((sum, l) => sum + l.estimatedValue, 0),
     };
   });
-}
-
-function formatFollowUp(dateStr: string): string {
-  if (!dateStr) return '';
-  return formatDateShortLocal(dateStr);
 }
 
 function formatFullDate(dateStr: string): string {
@@ -183,7 +237,7 @@ function LeadCard({ lead, isDragging, overlay, onCardClick, pipelineOpportunity 
     e.stopPropagation();
     e.preventDefault();
     if (opportunity) {
-      navigate(`/opportunities/${opportunity.id}`);
+      navigate(opportunityDetailHref(opportunity));
     } else if (onCardClick) {
       onCardClick(lead);
     }
@@ -253,12 +307,6 @@ function LeadCard({ lead, isDragging, overlay, onCardClick, pipelineOpportunity 
             <User className="size-3 shrink-0" />
             <span className="truncate">{lead.assignedToName.split(' ')[0]}</span>
           </span>
-          {lead.nextFollowUp && (
-            <span className="flex shrink-0 items-center gap-1">
-              <Calendar className="size-3" />
-              {formatFollowUp(lead.nextFollowUp)}
-            </span>
-          )}
         </div>
       </div>
     </div>
@@ -275,6 +323,8 @@ interface CardDetailDialogProps {
   onOpenChange: (open: boolean) => void;
   onOpenChangeEtapa: () => void;
   onOpenAssign: () => void;
+  /** Columnas del pipeline (orden y nombres desde configuración). */
+  stageColumns: PipelineStageColumnConfig[];
 }
 
 function CardDetailDialog({
@@ -284,6 +334,7 @@ function CardDetailDialog({
   onOpenChange,
   onOpenChangeEtapa,
   onOpenAssign,
+  stageColumns,
 }: CardDetailDialogProps) {
   const navigate = useNavigate();
   const opportunity = pipelineOpportunity;
@@ -291,7 +342,7 @@ function CardDetailDialog({
 
   if (!contact) return null;
 
-  const currentIndex = PIPELINE_COLUMNS.findIndex((c) => c.id === contact.etapa);
+  const currentIndex = stageColumns.findIndex((c) => c.id === contact.etapa);
   const history = contact.etapaHistory ?? [];
   const today = new Date().toISOString().slice(0, 10);
 
@@ -317,7 +368,7 @@ function CardDetailDialog({
           <div className="border-b pb-4 sm:border-b-0 sm:border-r sm:pr-4 sm:pb-0">
             <p className="mb-2 text-xs font-medium text-muted-foreground">Progreso en el pipeline</p>
             <div className="max-h-48 space-y-1.5 overflow-y-auto sm:max-h-[calc(90vh-10rem)]">
-              {PIPELINE_COLUMNS.map((col, idx) => {
+              {stageColumns.map((col, idx) => {
                 const isCurrent = col.id === contact.etapa;
                 const isPast = currentIndex >= 0 && idx < currentIndex;
                 const etapaEntry = history.find((e) => e.etapa === col.id);
@@ -340,14 +391,14 @@ function CardDetailDialog({
                         className={cn(
                           'flex size-5 shrink-0 items-center justify-center rounded-full',
                           isPast && 'bg-primary/20 text-primary',
-                          isCurrent && col.color,
                           !isPast && !isCurrent && 'bg-muted',
                         )}
+                        style={isCurrent ? { backgroundColor: col.accentColor } : undefined}
                       >
                         {isPast ? <Check className="size-3" /> : isCurrent ? <span className="size-2 rounded-full bg-white" /> : <span className="size-1.5 rounded-full bg-current opacity-50" />}
                       </div>
                       {isCurrent && <ChevronRight className="size-3.5 shrink-0" />}
-                      <span className={cn(isCurrent && 'font-semibold')}>{etapaLabels[col.id]}</span>
+                      <span className={cn(isCurrent && 'font-semibold')}>{col.title}</span>
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-0.5">
                       <span className={cn('tabular-nums', (!isPast && !isCurrent) && 'text-muted-foreground/60')}>{fecha}</span>
@@ -424,15 +475,6 @@ function CardDetailDialog({
               <p className="text-[10px] text-muted-foreground">Asignado</p>
               <p className="text-sm">{contact.assignedToName}</p>
             </div>
-            {contact.nextFollowUp && (
-              <div>
-                <p className="text-[10px] text-muted-foreground">Próximo seguimiento</p>
-                <p className="flex items-center gap-1 text-sm">
-                  <Calendar className="size-3.5" />
-                  {formatFollowUp(contact.nextFollowUp)}
-                </p>
-              </div>
-            )}
           </div>
 
           <div className="flex gap-2">
@@ -452,9 +494,9 @@ function CardDetailDialog({
             onClick={() => {
               onOpenChange(false);
               if (opportunity) {
-                navigate(`/opportunities/${opportunity.id}`);
+                navigate(opportunityDetailHref(opportunity));
               } else {
-                navigate(`/contactos/${contact.id}`);
+                navigate(contactDetailHref(contact));
               }
             }}
           >
@@ -471,17 +513,17 @@ function CardDetailDialog({
 
 interface KanbanColumnProps {
   column: PipelineColumn;
-  colorClass: string;
+  accentColor: string;
   onCardClick?: (contact: Contact) => void;
   pipelineOpportunityFor: (contactId: string) => Opportunity | undefined;
 }
 
-function KanbanColumn({ column, colorClass, onCardClick, pipelineOpportunityFor }: KanbanColumnProps) {
+function KanbanColumn({ column, accentColor, onCardClick, pipelineOpportunityFor }: KanbanColumnProps) {
   const { setNodeRef } = useDroppable({ id: column.id });
 
   return (
     <div className="flex h-full min-w-[280px] max-w-[320px] shrink-0 flex-col">
-      <div className={cn('h-1 rounded-t-lg', colorClass)} />
+      <div className="h-1 rounded-t-lg" style={{ backgroundColor: accentColor }} />
 
       <div className="flex items-center justify-between rounded-t-none border-x border-t bg-white/80 px-3.5 py-3 backdrop-blur-sm">
         <div className="flex items-center gap-2">
@@ -548,6 +590,21 @@ function buildOpportunityByContactId(rows: ApiOpportunityListRow[]): Map<string,
 
 export default function Pipeline() {
   const { activeUsers } = useUsers();
+  const bundle = useCrmConfigStore((s) => s.bundle);
+  const setBundle = useCrmConfigStore((s) => s.setBundle);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchCrmConfig()
+      .then((b) => {
+        if (!cancelled) setBundle(b);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [setBundle]);
+
   const [apiRows, setApiRows] = useState<ApiContactListRow[]>([]);
   const [oppsApiRows, setOppsApiRows] = useState<ApiOpportunityListRow[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -581,6 +638,17 @@ export default function Pipeline() {
     () => apiRows.map(mapApiContactRowToContact),
     [apiRows],
   );
+
+  const catalogStageColumns = useMemo(
+    () => stagesFromCatalog(bundle?.catalog.stages),
+    [bundle?.catalog.stages],
+  );
+
+  const displayColumns = useMemo(
+    () => mergePipelineColumns(catalogStageColumns, allContacts),
+    [catalogStageColumns, allContacts],
+  );
+
   const [newOpportunityOpen, setNewOpportunityOpen] = useState(false);
 
   async function handleCreateOpportunityFromPipeline(data: NewOpportunityFormValues) {
@@ -645,10 +713,10 @@ export default function Pipeline() {
   }, [allContacts, filters]);
 
   const pipeline = useMemo(() => {
-    const all = buildPipeline(filteredContacts);
+    const all = buildPipeline(filteredContacts, displayColumns);
     if (filters.etapas.length > 0) return all.filter((col) => filters.etapas.includes(col.id));
     return all;
-  }, [filteredContacts, filters.etapas]);
+  }, [filteredContacts, filters.etapas, displayColumns]);
 
   const activeLead = useMemo(
     () => (activeId ? allContacts.find((l) => l.id === activeId) : undefined),
@@ -677,7 +745,7 @@ export default function Pipeline() {
     const overId = over.id as string;
 
     const activeColumn = findColumnByContactId(activeContactId);
-    const overColumn = PIPELINE_COLUMNS.find((c) => c.id === overId)
+    const overColumn = displayColumns.find((c) => c.id === overId)
       ? (overId as Etapa)
       : findColumnByContactId(overId);
 
@@ -694,7 +762,7 @@ export default function Pipeline() {
     const activeContactId = active.id as string;
     const overId = over.id as string;
 
-    const overColumn = PIPELINE_COLUMNS.find((c) => c.id === overId)
+    const overColumn = displayColumns.find((c) => c.id === overId)
       ? (overId as Etapa)
       : findColumnByContactId(overId);
 
@@ -778,7 +846,7 @@ export default function Pipeline() {
                     )}
                   </div>
                   <div className="max-h-40 space-y-1 overflow-y-auto">
-                    {PIPELINE_COLUMNS.map((col) => (
+                    {displayColumns.map((col) => (
                       <label key={col.id} className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-xs hover:bg-muted">
                         <Checkbox
                           checked={filters.etapas.includes(col.id)}
@@ -791,7 +859,10 @@ export default function Pipeline() {
                             }));
                           }}
                         />
-                        <span className={cn('size-2 rounded-full', col.color)} />
+                        <span
+                          className="size-2 shrink-0 rounded-full"
+                          style={{ backgroundColor: col.accentColor }}
+                        />
                         {col.title}
                       </label>
                     ))}
@@ -815,12 +886,12 @@ export default function Pipeline() {
       >
         <div className="scrollbar-thin -mx-2 flex flex-1 gap-3 overflow-x-auto px-2 pb-4">
           {pipeline.map((column) => {
-            const colConfig = PIPELINE_COLUMNS.find((c) => c.id === column.id)!;
+            const colConfig = displayColumns.find((c) => c.id === column.id)!;
             return (
               <KanbanColumn
                 key={column.id}
                 column={column}
-                colorClass={colConfig.color}
+                accentColor={colConfig.accentColor}
                 onCardClick={(c) => setSelectedContact(c)}
                 pipelineOpportunityFor={pipelineOpportunityFor}
               />
@@ -858,6 +929,7 @@ export default function Pipeline() {
         onOpenChange={(open) => !open && setSelectedContact(null)}
         onOpenChangeEtapa={() => setChangeEtapaOpen(true)}
         onOpenAssign={() => setAssignOpen(true)}
+        stageColumns={displayColumns}
       />
 
       {selectedContact && (() => {

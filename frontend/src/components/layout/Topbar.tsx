@@ -28,6 +28,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAppStore } from '@/store';
+import { initialsFromName } from '@/lib/utils';
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 
@@ -60,11 +61,7 @@ export function Topbar() {
   );
   const pageTitle = currentRoute ? routeLabels[currentRoute] : 'Página';
 
-  const initials = currentUser.name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .slice(0, 2);
+  const initials = initialsFromName(currentUser.name);
 
   const handleLogout = () => {
     logout();

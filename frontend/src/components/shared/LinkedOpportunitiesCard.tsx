@@ -6,6 +6,7 @@ import { formatCurrency, formatDate } from '@/lib/formatters';
 import { etapaColors } from '@/lib/etapaConfig';
 import { LinkedEntitiesCard } from './LinkedEntitiesCard';
 import type { Opportunity } from '@/types';
+import { opportunityDetailHref } from '@/lib/detailRoutes';
 
 interface LinkedOpportunitiesCardProps {
   opportunities: Opportunity[];
@@ -37,7 +38,7 @@ export function LinkedOpportunitiesCard({
       onRemove={onRemove}
       getUnlinkLabel={(o) => o.title}
       getItemKey={(o) => o.id}
-      onItemClick={(o) => navigate(`/opportunities/${o.id}`)}
+      onItemClick={(o) => navigate(opportunityDetailHref(o))}
       renderItem={(opp, unlinkButton) => (
         <>
           <div className="flex items-start justify-between gap-2 mb-1">

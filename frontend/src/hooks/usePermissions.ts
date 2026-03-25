@@ -1,21 +1,37 @@
 import { useMemo } from 'react';
 import { useAppStore } from '@/store';
 import type { PermissionKey } from '@/types';
-import { getTemplatePermissions, roleStringToTemplateId } from '@/data/rbac';
+import {
+  allValidPermissionKeys,
+  getTemplatePermissions,
+  roleStringToTemplateId,
+} from '@/data/rbac';
 
 /**
- * Permisos según el rol del usuario autenticado (string del backend / store).
- * Mapea a plantillas de `rbac.ts` (admin, supervisor, asesor, solo_lectura).
+ * Permisos: `permissionKeys !== null` viene del backend (login o /auth/me).
+ * `null` = fallback a plantillas `rbac.ts` por slug del rol.
  */
 export function usePermissions() {
   const currentUser = useAppStore((s) => s.currentUser);
+  const permissionKeys = useAppStore((s) => s.permissionKeys);
 
   const permissions = useMemo(() => {
+    if (permissionKeys !== null) {
+      const set = new Set(permissionKeys);
+      const rec = {} as Record<PermissionKey, boolean>;
+      for (const k of allValidPermissionKeys()) {
+        rec[k] = set.has(k);
+      }
+      return rec;
+    }
     const templateId = roleStringToTemplateId(currentUser.role ?? '');
     return getTemplatePermissions(templateId);
-  }, [currentUser.role]);
+  }, [permissionKeys, currentUser.role]);
 
   function hasPermission(key: PermissionKey): boolean {
+    if (permissionKeys !== null) {
+      return permissionKeys.includes(key);
+    }
     return permissions[key] ?? false;
   }
 

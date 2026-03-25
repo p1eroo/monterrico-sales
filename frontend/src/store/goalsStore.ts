@@ -1,6 +1,11 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import type { CrmConfigBundle } from '@/lib/crmConfigApi';
 
+/**
+ * Metas de ventas: fuente de verdad es GET /crm-config (salesGoals).
+ * No persistimos en localStorage: el middleware persist rehidrataba después
+ * de MainLayout y sobrescribía los valores recién cargados del servidor.
+ */
 interface GoalsState {
   /** Meta global del equipo (soles/semana) */
   globalWeeklyGoal: number;
@@ -20,47 +25,45 @@ interface GoalsState {
   getGlobalMonthlyGoal: () => number;
 }
 
-const DEFAULT_GLOBAL_WEEKLY = 60000;
-const DEFAULT_GLOBAL_MONTHLY = 240000;
-const DEFAULT_USER_WEEKLY: Record<string, number> = {
-  u1: 15000,
-  u2: 12000,
-  u3: 10000,
-  u4: 10000,
-  u5: 8000,
-  u6: 5000,
-};
-const DEFAULT_USER_MONTHLY: Record<string, number> = {
-  u1: 60000,
-  u2: 48000,
-  u3: 40000,
-  u4: 40000,
-  u5: 32000,
-  u6: 20000,
-};
+export const useGoalsStore = create<GoalsState>((set, get) => ({
+  globalWeeklyGoal: 0,
+  userWeeklyGoals: {},
+  globalMonthlyGoal: 0,
+  userMonthlyGoals: {},
+  setGlobalWeeklyGoal: (amount) => set({ globalWeeklyGoal: amount }),
+  setUserWeeklyGoal: (userId, amount) =>
+    set((s) => ({
+      userWeeklyGoals: { ...s.userWeeklyGoals, [userId]: amount },
+    })),
+  getUserWeeklyGoal: (userId) => get().userWeeklyGoals[userId] ?? 0,
+  getGlobalWeeklyGoal: () => get().globalWeeklyGoal,
+  setGlobalMonthlyGoal: (amount) => set({ globalMonthlyGoal: amount }),
+  setUserMonthlyGoal: (userId, amount) =>
+    set((s) => ({
+      userMonthlyGoals: { ...s.userMonthlyGoals, [userId]: amount },
+    })),
+  getUserMonthlyGoal: (userId) => get().userMonthlyGoals[userId] ?? 0,
+  getGlobalMonthlyGoal: () => get().globalMonthlyGoal,
+}));
 
-export const useGoalsStore = create<GoalsState>()(
-  persist(
-    (set, get) => ({
-      globalWeeklyGoal: DEFAULT_GLOBAL_WEEKLY,
-      userWeeklyGoals: DEFAULT_USER_WEEKLY,
-      globalMonthlyGoal: DEFAULT_GLOBAL_MONTHLY,
-      userMonthlyGoals: DEFAULT_USER_MONTHLY,
-      setGlobalWeeklyGoal: (amount) => set({ globalWeeklyGoal: amount }),
-      setUserWeeklyGoal: (userId, amount) =>
-        set((s) => ({
-          userWeeklyGoals: { ...s.userWeeklyGoals, [userId]: amount },
-        })),
-      getUserWeeklyGoal: (userId) => get().userWeeklyGoals[userId] ?? 0,
-      getGlobalWeeklyGoal: () => get().globalWeeklyGoal,
-      setGlobalMonthlyGoal: (amount) => set({ globalMonthlyGoal: amount }),
-      setUserMonthlyGoal: (userId, amount) =>
-        set((s) => ({
-          userMonthlyGoals: { ...s.userMonthlyGoals, [userId]: amount },
-        })),
-      getUserMonthlyGoal: (userId) => get().userMonthlyGoals[userId] ?? 0,
-      getGlobalMonthlyGoal: () => get().globalMonthlyGoal,
-    }),
-    { name: 'taxi-monterrico-goals' }
-  )
-);
+/** Sincroniza metas desde GET /crm-config (después de login o al abrir perfil). */
+export function hydrateGoalsFromBundle(bundle: CrmConfigBundle, currentUserId: string) {
+  const sg = bundle.salesGoals;
+  if (!sg) return;
+  const {
+    setGlobalWeeklyGoal,
+    setGlobalMonthlyGoal,
+    setUserWeeklyGoal,
+    setUserMonthlyGoal,
+  } = useGoalsStore.getState();
+  setGlobalWeeklyGoal(sg.globalWeekly);
+  setGlobalMonthlyGoal(sg.globalMonthly);
+  setUserWeeklyGoal(currentUserId, sg.myWeekly);
+  setUserMonthlyGoal(currentUserId, sg.myMonthly);
+  if (bundle.permissions.canViewTeamGoals) {
+    for (const [uid, v] of Object.entries(sg.byUserId)) {
+      setUserWeeklyGoal(uid, v.weekly);
+      setUserMonthlyGoal(uid, v.monthly);
+    }
+  }
+}

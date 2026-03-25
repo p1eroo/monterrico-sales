@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '../generated/prisma';
 import { PrismaService } from '../prisma/prisma.service';
+import { slugifyForUrl } from '../common/url-slug.util';
+import { ClientsService } from '../clients/clients.service';
+import { CrmConfigService } from '../crm-config/crm-config.service';
 
 type Tx = Prisma.TransactionClient;
 
@@ -13,7 +16,11 @@ type Tx = Prisma.TransactionClient;
 export class EntitySyncService {
   private readonly inFlight = new Set<string>();
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly clientsService: ClientsService,
+    private readonly crmConfig: CrmConfigService,
+  ) {}
 
   private lockCompany(companyId: string): boolean {
     if (this.inFlight.has(companyId)) return false;
@@ -119,6 +126,7 @@ export class EntitySyncService {
         assignedTo,
       },
     });
+    await this.clientsService.ensureClientForCierreGanadoTx(tx, companyId);
 
     const ccRows = await tx.companyContact.findMany({
       where: { companyId },
@@ -230,6 +238,7 @@ export class EntitySyncService {
         assignedTo,
       },
     });
+    await this.clientsService.ensureClientForCierreGanadoTx(tx, companyId);
 
     const ccRows = await tx.companyContact.findMany({
       where: { companyId },
@@ -270,7 +279,9 @@ export class EntitySyncService {
     },
   ) {
     const status = this.statusFromEtapa(patch.etapa);
-    const probability = this.probabilityForEtapa(patch.etapa);
+    const probability = await this.crmConfig.resolveOpportunityProbability(
+      patch.etapa,
+    );
     await tx.opportunity.update({
       where: { id: opportunityId },
       data: {
@@ -281,25 +292,6 @@ export class EntitySyncService {
         probability,
       },
     });
-  }
-
-  private probabilityForEtapa(etapa: string): number {
-    const ETAPA_PROBABILITY: Record<string, number> = {
-      lead: 0,
-      contacto: 10,
-      reunion_agendada: 30,
-      reunion_efectiva: 40,
-      propuesta_economica: 50,
-      negociacion: 70,
-      licitacion: 75,
-      licitacion_etapa_final: 85,
-      cierre_ganado: 90,
-      firma_contrato: 95,
-      activo: 100,
-      cierre_perdido: -1,
-      inactivo: -5,
-    };
-    return ETAPA_PROBABILITY[etapa] ?? 0;
   }
 
   private statusFromEtapa(etapa: string): string {
@@ -313,7 +305,10 @@ export class EntitySyncService {
   }
 
   /**
-   * Crea oportunidad + vínculos si no existe ya una que una este contacto y empresa.
+   * Si el contacto ya está en una oportunidad vinculada a esta empresa, no hace nada.
+   * Si la empresa ya tiene alguna oportunidad, solo vincula el contacto a la más antigua
+   * (no crea otra oportunidad por cada contacto nuevo).
+   * Si no hay oportunidad para la empresa, crea una con `defaults`.
    */
   async ensureOpportunityForContactCompany(
     contactId: string,
@@ -326,7 +321,7 @@ export class EntitySyncService {
       expectedCloseDate: Date | null;
     },
   ): Promise<string | null> {
-    const existing = await this.prisma.opportunity.findFirst({
+    const existingSamePair = await this.prisma.opportunity.findFirst({
       where: {
         AND: [
           { contacts: { some: { contactId } } },
@@ -335,14 +330,52 @@ export class EntitySyncService {
       },
       select: { id: true },
     });
-    if (existing) return null;
+    if (existingSamePair) return null;
 
-    const probability = this.probabilityForEtapa(defaults.etapa);
+    const oppForCompany = await this.prisma.opportunity.findFirst({
+      where: { companies: { some: { companyId } } },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true },
+    });
+
+    if (oppForCompany) {
+      await this.prisma.$transaction(async (tx) => {
+        const already = await tx.contactOpportunity.findFirst({
+          where: {
+            contactId,
+            opportunityId: oppForCompany.id,
+          },
+          select: { id: true },
+        });
+        if (!already) {
+          await tx.contactOpportunity.create({
+            data: { contactId, opportunityId: oppForCompany.id },
+          });
+        }
+      });
+      return null;
+    }
+
+    const probability = await this.crmConfig.resolveOpportunityProbability(
+      defaults.etapa,
+    );
     const status = this.statusFromEtapa(defaults.etapa);
 
     const opp = await this.prisma.$transaction(async (tx) => {
+      const base = slugifyForUrl(defaults.title);
+      let urlSlug = base;
+      let n = 0;
+      for (;;) {
+        const clash = await tx.opportunity.findFirst({
+          where: { urlSlug },
+        });
+        if (!clash) break;
+        n += 1;
+        urlSlug = `${base}-${n}`;
+      }
       const o = await tx.opportunity.create({
         data: {
+          urlSlug,
           title: defaults.title,
           amount: defaults.amount,
           etapa: defaults.etapa,

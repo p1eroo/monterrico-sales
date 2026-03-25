@@ -25,7 +25,7 @@ type RegisterForm = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
   const navigate = useNavigate();
-  const { login, updateCurrentUser } = useAppStore();
+  const { login, updateCurrentUser, setPermissionKeys } = useAppStore();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -69,7 +69,20 @@ export default function RegisterPage() {
             username: user.username ?? data.username.trim(),
             name: user.name ?? data.name.trim(),
             role: user.role ?? 'asesor',
+            roleId: typeof user.roleId === 'string' ? user.roleId : undefined,
+            roleName: typeof user.roleName === 'string' ? user.roleName : undefined,
+            phone: typeof user.phone === 'string' ? user.phone : undefined,
+            avatar: typeof user.avatar === 'string' ? user.avatar : undefined,
+            createdAt:
+              typeof user.joinedAt === 'string'
+                ? user.joinedAt.slice(0, 10)
+                : undefined,
+            lastActivity:
+              typeof user.lastActivity === 'string' ? user.lastActivity : undefined,
           });
+          setPermissionKeys(
+            Array.isArray(user.permissions) ? user.permissions : null,
+          );
         }
         login();
         navigate('/dashboard');

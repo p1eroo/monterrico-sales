@@ -7,6 +7,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PERMISSIONS_KEY } from '../decorators/require-permissions.decorator';
+import { PERMISSIONS_ANY_KEY } from '../decorators/require-any-permission.decorator';
 
 type RequestUser = {
   userId: string;
@@ -24,11 +25,16 @@ export class PermissionsGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const required = this.reflector.getAllAndOverride<string[]>(PERMISSIONS_KEY, [
+    const requiredAll = this.reflector.getAllAndOverride<string[]>(PERMISSIONS_KEY, [
       context.getHandler(),
       context.getClass(),
     ]);
-    if (!required?.length) {
+    const requiredAny = this.reflector.getAllAndOverride<string[]>(PERMISSIONS_ANY_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+
+    if (!requiredAll?.length && !requiredAny?.length) {
       return true;
     }
 
@@ -56,9 +62,20 @@ export class PermissionsGuard implements CanActivate {
     });
     const granted = new Set(authorities.map((a) => a.permission));
 
-    for (const perm of required) {
-      if (!granted.has(perm)) {
-        throw new ForbiddenException(`Permiso denegado: ${perm}`);
+    if (requiredAny?.length) {
+      const ok = requiredAny.some((p) => granted.has(p));
+      if (!ok) {
+        throw new ForbiddenException(
+          `Se requiere uno de: ${requiredAny.join(', ')}`,
+        );
+      }
+    }
+
+    if (requiredAll?.length) {
+      for (const perm of requiredAll) {
+        if (!granted.has(perm)) {
+          throw new ForbiddenException(`Permiso denegado: ${perm}`);
+        }
       }
     }
     return true;

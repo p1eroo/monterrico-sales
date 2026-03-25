@@ -159,8 +159,64 @@ exports.Prisma.UserScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.CrmOrganizationProfileScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  description: 'description',
+  contactEmail: 'contactEmail',
+  contactPhone: 'contactPhone',
+  address: 'address',
+  globalWeeklyGoal: 'globalWeeklyGoal',
+  globalMonthlyGoal: 'globalMonthlyGoal',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.CrmLeadSourceScalarFieldEnum = {
+  id: 'id',
+  slug: 'slug',
+  name: 'name',
+  enabled: 'enabled',
+  sortOrder: 'sortOrder'
+};
+
+exports.Prisma.CrmStageScalarFieldEnum = {
+  id: 'id',
+  slug: 'slug',
+  name: 'name',
+  color: 'color',
+  probability: 'probability',
+  enabled: 'enabled',
+  sortOrder: 'sortOrder',
+  isSystem: 'isSystem'
+};
+
+exports.Prisma.CrmPriorityScalarFieldEnum = {
+  id: 'id',
+  slug: 'slug',
+  name: 'name',
+  color: 'color',
+  description: 'description',
+  enabled: 'enabled',
+  sortOrder: 'sortOrder'
+};
+
+exports.Prisma.CrmActivityTypeScalarFieldEnum = {
+  id: 'id',
+  slug: 'slug',
+  name: 'name',
+  enabled: 'enabled',
+  sortOrder: 'sortOrder'
+};
+
+exports.Prisma.CrmUserSalesGoalScalarFieldEnum = {
+  userId: 'userId',
+  weeklyTarget: 'weeklyTarget',
+  monthlyTarget: 'monthlyTarget'
+};
+
 exports.Prisma.ContactScalarFieldEnum = {
   id: 'id',
+  urlSlug: 'urlSlug',
   name: 'name',
   cargo: 'cargo',
   telefono: 'telefono',
@@ -169,10 +225,6 @@ exports.Prisma.ContactScalarFieldEnum = {
   etapa: 'etapa',
   assignedTo: 'assignedTo',
   estimatedValue: 'estimatedValue',
-  nextAction: 'nextAction',
-  nextFollowUp: 'nextFollowUp',
-  notes: 'notes',
-  tags: 'tags',
   docType: 'docType',
   docNumber: 'docNumber',
   departamento: 'departamento',
@@ -187,6 +239,7 @@ exports.Prisma.ContactScalarFieldEnum = {
 
 exports.Prisma.CompanyScalarFieldEnum = {
   id: 'id',
+  urlSlug: 'urlSlug',
   name: 'name',
   razonSocial: 'razonSocial',
   ruc: 'ruc',
@@ -209,8 +262,18 @@ exports.Prisma.CompanyScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.ClientScalarFieldEnum = {
+  id: 'id',
+  companyId: 'companyId',
+  status: 'status',
+  notes: 'notes',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.OpportunityScalarFieldEnum = {
   id: 'id',
+  urlSlug: 'urlSlug',
   title: 'title',
   amount: 'amount',
   probability: 'probability',
@@ -226,6 +289,7 @@ exports.Prisma.OpportunityScalarFieldEnum = {
 exports.Prisma.ActivityScalarFieldEnum = {
   id: 'id',
   type: 'type',
+  taskKind: 'taskKind',
   title: 'title',
   description: 'description',
   assignedTo: 'assignedTo',
@@ -322,6 +386,22 @@ exports.Prisma.CampaignScalarFieldEnum = {
   createdByName: 'createdByName'
 };
 
+exports.Prisma.CrmFileScalarFieldEnum = {
+  id: 'id',
+  storageKey: 'storageKey',
+  originalName: 'originalName',
+  mimeType: 'mimeType',
+  size: 'size',
+  entityType: 'entityType',
+  entityId: 'entityId',
+  entityName: 'entityName',
+  relatedEntityType: 'relatedEntityType',
+  relatedEntityId: 'relatedEntityId',
+  relatedEntityName: 'relatedEntityName',
+  uploadedBy: 'uploadedBy',
+  createdAt: 'createdAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -354,8 +434,15 @@ exports.Prisma.ModelName = {
   Authority: 'Authority',
   Account: 'Account',
   User: 'User',
+  CrmOrganizationProfile: 'CrmOrganizationProfile',
+  CrmLeadSource: 'CrmLeadSource',
+  CrmStage: 'CrmStage',
+  CrmPriority: 'CrmPriority',
+  CrmActivityType: 'CrmActivityType',
+  CrmUserSalesGoal: 'CrmUserSalesGoal',
   Contact: 'Contact',
   Company: 'Company',
+  Client: 'Client',
   Opportunity: 'Opportunity',
   Activity: 'Activity',
   CompanyContact: 'CompanyContact',
@@ -368,7 +455,8 @@ exports.Prisma.ModelName = {
   CompanyActivity: 'CompanyActivity',
   OpportunityActivity: 'OpportunityActivity',
   CampaignEmailSendLog: 'CampaignEmailSendLog',
-  Campaign: 'Campaign'
+  Campaign: 'Campaign',
+  CrmFile: 'CrmFile'
 };
 
 /**

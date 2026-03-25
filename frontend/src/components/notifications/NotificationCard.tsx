@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { NotificationItem } from '@/types';
 import { useNotificationStore } from '@/store/notificationStore';
+import { contactDetailHref, opportunityDetailHref } from '@/lib/detailRoutes';
 
 const TYPE_CONFIG: Record<
   string,
@@ -104,13 +105,13 @@ export function NotificationCard({
   const handleViewContact = () => {
     if (notification.contactId) {
       markAsRead(notification.id);
-      navigate(`/contactos/${notification.contactId}`);
+      navigate(contactDetailHref({ id: notification.contactId }));
     }
   };
   const handleViewOpportunity = () => {
     if (notification.opportunityId) {
       markAsRead(notification.id);
-      navigate(`/opportunities/${notification.opportunityId}`);
+      navigate(opportunityDetailHref({ id: notification.opportunityId }));
     }
   };
   const handleReschedule = () => {

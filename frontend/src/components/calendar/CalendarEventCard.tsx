@@ -2,6 +2,11 @@ import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import type { CalendarEvent } from '@/types';
 import { eventTypeConfig } from './eventTypeConfig';
+import {
+  companyDetailHref,
+  contactDetailHref,
+  opportunityDetailHref,
+} from '@/lib/detailRoutes';
 
 interface CalendarEventCardProps {
   event: CalendarEvent;
@@ -14,11 +19,17 @@ function getEntityLink(event: CalendarEvent): string | null {
   if (!event.relatedEntityType || !event.relatedEntityId) return null;
   switch (event.relatedEntityType) {
     case 'contact':
-      return `/contactos/${event.relatedEntityId}`;
+      return contactDetailHref({ id: event.relatedEntityId });
     case 'company':
-      return `/empresas/${encodeURIComponent(event.relatedEntityName ?? event.relatedEntityId)}`;
+      if (event.relatedEntityId) {
+        return companyDetailHref({ id: event.relatedEntityId });
+      }
+      if (event.relatedEntityName) {
+        return `/empresas/${encodeURIComponent(event.relatedEntityName)}`;
+      }
+      return null;
     case 'opportunity':
-      return `/opportunities/${event.relatedEntityId}`;
+      return opportunityDetailHref({ id: event.relatedEntityId });
     default:
       return null;
   }

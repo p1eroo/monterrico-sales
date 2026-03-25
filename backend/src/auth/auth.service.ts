@@ -4,17 +4,21 @@ import {
   ConflictException,
   ForbiddenException,
   BadRequestException,
+  NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { BCRYPT_ROUNDS } from './auth.constants';
+import { MediaUploadService } from '../media/media-upload.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly mediaUpload: MediaUploadService,
   ) {}
 
   private normalizeUsername(username: string): string {
@@ -85,7 +89,125 @@ export class AuthService {
       include: { role: true },
     });
 
-    return this.buildAuthResponse(user, username);
+    return await this.buildAuthResponse(user, username);
+  }
+
+  private async getPermissionsForRoleId(roleId: string): Promise<string[]> {
+    const rows = await this.prisma.authority.findMany({
+      where: { roleId },
+      select: { permission: true },
+      orderBy: { permission: 'asc' },
+    });
+    return rows.map((r) => r.permission);
+  }
+
+  private async getCredentialsUsername(userId: string): Promise<string> {
+    const cred = await this.prisma.account.findFirst({
+      where: { userId, provider: 'credentials' },
+      select: { providerId: true },
+    });
+    return cred?.providerId ?? '';
+  }
+
+  private async formatMeResponse(
+    user: {
+      id: string;
+      name: string;
+      phone: string | null;
+      avatar: string | null;
+      roleId: string;
+      joinedAt: Date;
+      lastActivity: Date | null;
+      role: { slug: string; name: string };
+    },
+    username: string,
+  ) {
+    const permissions = await this.getPermissionsForRoleId(user.roleId);
+    return {
+      id: user.id,
+      username,
+      name: user.name,
+      phone: user.phone ?? '',
+      avatar: user.avatar ?? '',
+      role: user.role.slug,
+      roleId: user.roleId,
+      roleName: user.role.name,
+      permissions,
+      joinedAt: user.joinedAt.toISOString(),
+      lastActivity: user.lastActivity?.toISOString() ?? null,
+    };
+  }
+
+  async getMe(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { role: true },
+    });
+    if (!user) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+    if (user.status !== 'activo') {
+      throw new UnauthorizedException('Usuario inactivo');
+    }
+    const username = await this.getCredentialsUsername(userId);
+    return this.formatMeResponse(user, username);
+  }
+
+  async updateProfile(
+    userId: string,
+    body: { name?: string; phone?: string },
+  ) {
+    const data: { name?: string; phone?: string | null } = {};
+    if (body.name !== undefined) {
+      const n = body.name.trim();
+      if (n.length < 2) {
+        throw new BadRequestException('El nombre debe tener al menos 2 caracteres');
+      }
+      data.name = n;
+    }
+    if (body.phone !== undefined) {
+      const p = body.phone.trim();
+      data.phone = p === '' ? null : p;
+    }
+    if (Object.keys(data).length === 0) {
+      throw new BadRequestException('Indica nombre o teléfono a actualizar');
+    }
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data,
+      include: { role: true },
+    });
+    const username = await this.getCredentialsUsername(userId);
+    return this.formatMeResponse(user, username);
+  }
+
+  async updateAvatar(
+    userId: string,
+    buffer: Buffer,
+    mimeType: string,
+    originalName: string,
+    authorizationHeader?: string,
+  ) {
+    if (!this.mediaUpload.isProxyUrlConfigured()) {
+      throw new ServiceUnavailableException(
+        'MEDIA_UPLOAD_URL no está configurado (proxy de medios).',
+      );
+    }
+    const bucket = this.mediaUpload.avatarBucket();
+    const url = await this.mediaUpload.uploadToBucket(
+      bucket,
+      buffer,
+      originalName || 'avatar.jpg',
+      mimeType || 'image/jpeg',
+      { authorizationHeader },
+    );
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: { avatar: url },
+      include: { role: true },
+    });
+    const username = await this.getCredentialsUsername(userId);
+    return this.formatMeResponse(user, username);
   }
 
   async changePassword(
@@ -165,14 +287,24 @@ export class AuthService {
       data: { lastActivity: new Date() },
     });
 
-    return this.buildAuthResponse(account.user, account.providerId);
+    return await this.buildAuthResponse(account.user, account.providerId);
   }
 
-  private buildAuthResponse(
-    user: { id: string; name: string; roleId: string; role: { slug: string } },
+  private async buildAuthResponse(
+    user: {
+      id: string;
+      name: string;
+      phone: string | null;
+      avatar: string | null;
+      roleId: string;
+      joinedAt: Date;
+      lastActivity: Date | null;
+      role: { slug: string; name: string };
+    },
     username: string,
   ) {
     const roleSlug = user.role.slug;
+    const permissions = await this.getPermissionsForRoleId(user.roleId);
     const payload = {
       sub: user.id,
       username,
@@ -188,7 +320,14 @@ export class AuthService {
         id: user.id,
         username,
         name: user.name,
+        phone: user.phone ?? '',
+        avatar: user.avatar ?? '',
         role: roleSlug,
+        roleId: user.roleId,
+        roleName: user.role.name,
+        joinedAt: user.joinedAt.toISOString(),
+        lastActivity: user.lastActivity?.toISOString() ?? null,
+        permissions,
       },
     };
   }

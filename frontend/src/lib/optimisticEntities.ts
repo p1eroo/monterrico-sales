@@ -36,8 +36,6 @@ export function buildOptimisticContact(
     assignedToName,
     estimatedValue: data.estimatedValue,
     createdAt: today,
-    nextAction: 'Contactar',
-    nextFollowUp: '',
     etapaHistory: [{ etapa, fecha: today }],
     clienteRecuperado: data.clienteRecuperado,
   };
