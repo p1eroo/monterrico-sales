@@ -14,6 +14,7 @@ import { useCrmConfigStore } from '@/store/crmConfigStore';
 import { hydrateGoalsFromBundle } from '@/store/goalsStore';
 import { fetchAnalyticsGoalProgress } from '@/lib/analyticsApi';
 import { useAnalyticsGoalStore } from '@/store/analyticsGoalStore';
+import { AiAssistantDrawer } from '@/components/assistant/AiAssistantDrawer';
 
 export default function MainLayout() {
   useUsers(); // Precarga usuarios de la API para selects de asignación
@@ -88,6 +89,7 @@ export default function MainLayout() {
         dontShowAgainToday={dontShowAgainToday}
         onDontShowAgainChange={setDontShowAgainToday}
       />
+      <AiAssistantDrawer />
     </SidebarProvider>
   );
 }

@@ -30,6 +30,7 @@ export const ACCESSIBLE_PATH_ORDER: PathRule[] = [
   { path: '/users', anyOf: ['usuarios.ver', 'roles.ver'] },
   { path: '/audit', permission: 'auditoria.ver' },
   { path: '/settings', permission: 'configuracion.ver' },
+  { path: '/agentes-ia', anyOf: ['dashboard.ver', 'configuracion.ver'] },
 ];
 
 /**
@@ -57,6 +58,9 @@ export function getRequiredPermissionForPath(
   if (pathname.startsWith('/users')) return ['usuarios.ver', 'roles.ver'];
   if (pathname.startsWith('/audit')) return 'auditoria.ver';
   if (pathname.startsWith('/settings')) return 'configuracion.ver';
+  if (pathname.startsWith('/agentes-ia')) {
+    return ['dashboard.ver', 'configuracion.ver'];
+  }
   if (pathname === '/dashboard' || pathname.startsWith('/dashboard')) {
     return 'dashboard.ver';
   }

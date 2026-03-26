@@ -31,6 +31,7 @@ import { useAppStore } from '@/store';
 import { initialsFromName } from '@/lib/utils';
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
+import { AssistantLauncherButton } from '@/components/assistant/AiAssistantDrawer';
 
 const routeLabels: Record<string, string> = {
   '/dashboard': 'Dashboard',
@@ -49,6 +50,7 @@ const routeLabels: Record<string, string> = {
   '/audit': 'Auditoría',
   '/profile': 'Mi perfil',
   '/settings': 'Configuración',
+  '/agentes-ia': 'Agentes IA',
 };
 
 export function Topbar() {
@@ -99,6 +101,8 @@ export function Topbar() {
         </Button>
 
         <NotificationCenter />
+
+        <AssistantLauncherButton />
 
         <ThemeToggle />
 

@@ -18,6 +18,7 @@ import {
   Mail,
   Send,
   FileArchive,
+  Bot,
 } from 'lucide-react';
 import type { PermissionKey } from '@/types';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -58,6 +59,7 @@ const navItems: NavDef[] = [
   { to: '/clients', label: 'Clientes', icon: Building2, permission: 'clientes.ver' },
   { to: '/reports', label: 'Reportes', icon: BarChart3, permission: 'reportes.ver' },
   { to: '/archivos', label: 'Archivos', icon: FileArchive, permission: 'archivos.ver' },
+  { to: '/agentes-ia', label: 'Agentes IA', icon: Bot },
   { to: '/team', label: 'Equipo', icon: Users, permission: 'equipo.ver' },
   {
     to: '/users',

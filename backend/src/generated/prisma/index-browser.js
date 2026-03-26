@@ -159,6 +159,50 @@ exports.Prisma.UserScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.AiConversationScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.AiMessageScalarFieldEnum = {
+  id: 'id',
+  conversationId: 'conversationId',
+  role: 'role',
+  content: 'content',
+  meta: 'meta',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.AiKnowledgeBaseScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  title: 'title',
+  type: 'type',
+  sourceMode: 'sourceMode',
+  description: 'description',
+  chunkSize: 'chunkSize',
+  overlap: 'overlap',
+  linkedAgentId: 'linkedAgentId',
+  linkedAgentName: 'linkedAgentName',
+  status: 'status',
+  chunkCount: 'chunkCount',
+  sourceJson: 'sourceJson',
+  indexError: 'indexError',
+  indexedAt: 'indexedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.AiKnowledgeChunkScalarFieldEnum = {
+  id: 'id',
+  knowledgeBaseId: 'knowledgeBaseId',
+  position: 'position',
+  content: 'content',
+  createdAt: 'createdAt'
+};
+
 exports.Prisma.CrmOrganizationProfileScalarFieldEnum = {
   id: 'id',
   name: 'name',
@@ -434,6 +478,10 @@ exports.Prisma.ModelName = {
   Authority: 'Authority',
   Account: 'Account',
   User: 'User',
+  AiConversation: 'AiConversation',
+  AiMessage: 'AiMessage',
+  AiKnowledgeBase: 'AiKnowledgeBase',
+  AiKnowledgeChunk: 'AiKnowledgeChunk',
   CrmOrganizationProfile: 'CrmOrganizationProfile',
   CrmLeadSource: 'CrmLeadSource',
   CrmStage: 'CrmStage',

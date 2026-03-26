@@ -70,6 +70,76 @@ model User {
   campaignsCreated     Campaign[]
   crmFilesUploaded     CrmFile[]
   crmSalesGoal         CrmUserSalesGoal?
+  aiConversation       AiConversation?
+  aiKnowledgeBases     AiKnowledgeBase[]
+}
+
+// ─── Asistente IA (historial por usuario) ───
+
+model AiConversation {
+  id        String      @id @default(cuid())
+  userId    String      @unique
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  AiMessage[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+}
+
+model AiMessage {
+  id             String         @id @default(cuid())
+  conversationId String
+  conversation   AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  /** user | assistant */
+  role           String
+  content        String         @db.Text
+  /** links/actions para mensajes del asistente */
+  meta           Json?
+  createdAt      DateTime       @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+// ─── Bases de conocimiento (RAG operativo por usuario) ───
+
+model AiKnowledgeBase {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title            String
+  /** documentos | web | faq | tabular (UI Agentes IA) */
+  type             String   @default("documentos")
+  /** text_only | upload | url | existing */
+  sourceMode       String
+  /** Resumen / contenido pegado / notas (sin secretos de API) */
+  description      String   @db.Text
+  chunkSize        Int      @default(400)
+  overlap          Int      @default(64)
+  linkedAgentId    String?
+  linkedAgentName  String?
+  /** indexado | sync | error | pendiente */
+  status           String   @default("pendiente")
+  chunkCount       Int      @default(0)
+  /** Config estructurada (endpoint, método, ámbito CRM…); nunca guardar Bearer/API key en claro */
+  sourceJson       Json?
+  indexError       String?  @db.Text
+  indexedAt        DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  chunks           AiKnowledgeChunk[]
+
+  @@index([userId])
+  @@index([userId, updatedAt])
+}
+
+model AiKnowledgeChunk {
+  id              String          @id @default(cuid())
+  knowledgeBaseId String
+  knowledgeBase   AiKnowledgeBase @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
+  position        Int
+  content         String          @db.Text
+  createdAt       DateTime        @default(now())
+
+  @@index([knowledgeBaseId, position])
 }
 
 // ─── Configuración CRM (singleton + catálogos + metas por usuario) ───

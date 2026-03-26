@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
@@ -19,6 +20,8 @@ import { FilesModule } from './files/files.module';
 import { CrmConfigModule } from './crm-config/crm-config.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { ImportExportModule } from './import-export/import-export.module';
+import { AiModule } from './ai/ai.module';
+import { KnowledgeBasesModule } from './knowledge-bases/knowledge-bases.module';
 
 @Module({
   imports: [
@@ -38,6 +41,22 @@ import { ImportExportModule } from './import-export/import-export.module';
     CrmConfigModule,
     AnalyticsModule,
     ImportExportModule,
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          ttl: 60_000,
+          limit: 30,
+        },
+      ],
+      getTracker: (req: Record<string, unknown>) => {
+        const u = (req as { user?: { userId?: string } }).user?.userId;
+        if (typeof u === 'string' && u.length > 0) return `ai:${u}`;
+        const ip = (req as { ip?: string }).ip;
+        return typeof ip === 'string' ? ip : 'anon';
+      },
+    }),
+    AiModule,
+    KnowledgeBasesModule,
   ],
   controllers: [AppController],
   providers: [

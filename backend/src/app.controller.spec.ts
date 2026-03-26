@@ -15,8 +15,11 @@ describe('AppController', () => {
   });
 
   describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
+    it('devuelve estado y nombre del servicio', () => {
+      expect(appController.getRoot()).toEqual({
+        status: 'ok',
+        service: 'Monterrico CRM API',
+      });
     });
   });
 });

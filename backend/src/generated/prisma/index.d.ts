@@ -34,6 +34,26 @@ export type Account = $Result.DefaultSelection<Prisma.$AccountPayload>
  */
 export type User = $Result.DefaultSelection<Prisma.$UserPayload>
 /**
+ * Model AiConversation
+ * 
+ */
+export type AiConversation = $Result.DefaultSelection<Prisma.$AiConversationPayload>
+/**
+ * Model AiMessage
+ * 
+ */
+export type AiMessage = $Result.DefaultSelection<Prisma.$AiMessagePayload>
+/**
+ * Model AiKnowledgeBase
+ * 
+ */
+export type AiKnowledgeBase = $Result.DefaultSelection<Prisma.$AiKnowledgeBasePayload>
+/**
+ * Model AiKnowledgeChunk
+ * 
+ */
+export type AiKnowledgeChunk = $Result.DefaultSelection<Prisma.$AiKnowledgeChunkPayload>
+/**
  * Model CrmOrganizationProfile
  * 
  */
@@ -309,6 +329,46 @@ export class PrismaClient<
     * ```
     */
   get user(): Prisma.UserDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.aiConversation`: Exposes CRUD operations for the **AiConversation** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more AiConversations
+    * const aiConversations = await prisma.aiConversation.findMany()
+    * ```
+    */
+  get aiConversation(): Prisma.AiConversationDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.aiMessage`: Exposes CRUD operations for the **AiMessage** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more AiMessages
+    * const aiMessages = await prisma.aiMessage.findMany()
+    * ```
+    */
+  get aiMessage(): Prisma.AiMessageDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.aiKnowledgeBase`: Exposes CRUD operations for the **AiKnowledgeBase** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more AiKnowledgeBases
+    * const aiKnowledgeBases = await prisma.aiKnowledgeBase.findMany()
+    * ```
+    */
+  get aiKnowledgeBase(): Prisma.AiKnowledgeBaseDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.aiKnowledgeChunk`: Exposes CRUD operations for the **AiKnowledgeChunk** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more AiKnowledgeChunks
+    * const aiKnowledgeChunks = await prisma.aiKnowledgeChunk.findMany()
+    * ```
+    */
+  get aiKnowledgeChunk(): Prisma.AiKnowledgeChunkDelegate<ExtArgs, ClientOptions>;
 
   /**
    * `prisma.crmOrganizationProfile`: Exposes CRUD operations for the **CrmOrganizationProfile** model.
@@ -977,6 +1037,10 @@ export namespace Prisma {
     Authority: 'Authority',
     Account: 'Account',
     User: 'User',
+    AiConversation: 'AiConversation',
+    AiMessage: 'AiMessage',
+    AiKnowledgeBase: 'AiKnowledgeBase',
+    AiKnowledgeChunk: 'AiKnowledgeChunk',
     CrmOrganizationProfile: 'CrmOrganizationProfile',
     CrmLeadSource: 'CrmLeadSource',
     CrmStage: 'CrmStage',
@@ -1015,7 +1079,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "role" | "authority" | "account" | "user" | "crmOrganizationProfile" | "crmLeadSource" | "crmStage" | "crmPriority" | "crmActivityType" | "crmUserSalesGoal" | "contact" | "company" | "client" | "opportunity" | "activity" | "companyContact" | "contactContact" | "contactOpportunity" | "companyCompany" | "companyOpportunity" | "opportunityOpportunity" | "contactActivity" | "companyActivity" | "opportunityActivity" | "campaignEmailSendLog" | "campaign" | "crmFile"
+      modelProps: "role" | "authority" | "account" | "user" | "aiConversation" | "aiMessage" | "aiKnowledgeBase" | "aiKnowledgeChunk" | "crmOrganizationProfile" | "crmLeadSource" | "crmStage" | "crmPriority" | "crmActivityType" | "crmUserSalesGoal" | "contact" | "company" | "client" | "opportunity" | "activity" | "companyContact" | "contactContact" | "contactOpportunity" | "companyCompany" | "companyOpportunity" | "opportunityOpportunity" | "contactActivity" | "companyActivity" | "opportunityActivity" | "campaignEmailSendLog" | "campaign" | "crmFile"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -1312,6 +1376,302 @@ export namespace Prisma {
           count: {
             args: Prisma.UserCountArgs<ExtArgs>
             result: $Utils.Optional<UserCountAggregateOutputType> | number
+          }
+        }
+      }
+      AiConversation: {
+        payload: Prisma.$AiConversationPayload<ExtArgs>
+        fields: Prisma.AiConversationFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.AiConversationFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiConversationPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.AiConversationFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiConversationPayload>
+          }
+          findFirst: {
+            args: Prisma.AiConversationFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiConversationPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.AiConversationFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiConversationPayload>
+          }
+          findMany: {
+            args: Prisma.AiConversationFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiConversationPayload>[]
+          }
+          create: {
+            args: Prisma.AiConversationCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiConversationPayload>
+          }
+          createMany: {
+            args: Prisma.AiConversationCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.AiConversationCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiConversationPayload>[]
+          }
+          delete: {
+            args: Prisma.AiConversationDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiConversationPayload>
+          }
+          update: {
+            args: Prisma.AiConversationUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiConversationPayload>
+          }
+          deleteMany: {
+            args: Prisma.AiConversationDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.AiConversationUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.AiConversationUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiConversationPayload>[]
+          }
+          upsert: {
+            args: Prisma.AiConversationUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiConversationPayload>
+          }
+          aggregate: {
+            args: Prisma.AiConversationAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateAiConversation>
+          }
+          groupBy: {
+            args: Prisma.AiConversationGroupByArgs<ExtArgs>
+            result: $Utils.Optional<AiConversationGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.AiConversationCountArgs<ExtArgs>
+            result: $Utils.Optional<AiConversationCountAggregateOutputType> | number
+          }
+        }
+      }
+      AiMessage: {
+        payload: Prisma.$AiMessagePayload<ExtArgs>
+        fields: Prisma.AiMessageFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.AiMessageFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiMessagePayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.AiMessageFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiMessagePayload>
+          }
+          findFirst: {
+            args: Prisma.AiMessageFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiMessagePayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.AiMessageFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiMessagePayload>
+          }
+          findMany: {
+            args: Prisma.AiMessageFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiMessagePayload>[]
+          }
+          create: {
+            args: Prisma.AiMessageCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiMessagePayload>
+          }
+          createMany: {
+            args: Prisma.AiMessageCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.AiMessageCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiMessagePayload>[]
+          }
+          delete: {
+            args: Prisma.AiMessageDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiMessagePayload>
+          }
+          update: {
+            args: Prisma.AiMessageUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiMessagePayload>
+          }
+          deleteMany: {
+            args: Prisma.AiMessageDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.AiMessageUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.AiMessageUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiMessagePayload>[]
+          }
+          upsert: {
+            args: Prisma.AiMessageUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiMessagePayload>
+          }
+          aggregate: {
+            args: Prisma.AiMessageAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateAiMessage>
+          }
+          groupBy: {
+            args: Prisma.AiMessageGroupByArgs<ExtArgs>
+            result: $Utils.Optional<AiMessageGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.AiMessageCountArgs<ExtArgs>
+            result: $Utils.Optional<AiMessageCountAggregateOutputType> | number
+          }
+        }
+      }
+      AiKnowledgeBase: {
+        payload: Prisma.$AiKnowledgeBasePayload<ExtArgs>
+        fields: Prisma.AiKnowledgeBaseFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.AiKnowledgeBaseFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiKnowledgeBasePayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.AiKnowledgeBaseFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiKnowledgeBasePayload>
+          }
+          findFirst: {
+            args: Prisma.AiKnowledgeBaseFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiKnowledgeBasePayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.AiKnowledgeBaseFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiKnowledgeBasePayload>
+          }
+          findMany: {
+            args: Prisma.AiKnowledgeBaseFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiKnowledgeBasePayload>[]
+          }
+          create: {
+            args: Prisma.AiKnowledgeBaseCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiKnowledgeBasePayload>
+          }
+          createMany: {
+            args: Prisma.AiKnowledgeBaseCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.AiKnowledgeBaseCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiKnowledgeBasePayload>[]
+          }
+          delete: {
+            args: Prisma.AiKnowledgeBaseDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiKnowledgeBasePayload>
+          }
+          update: {
+            args: Prisma.AiKnowledgeBaseUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiKnowledgeBasePayload>
+          }
+          deleteMany: {
+            args: Prisma.AiKnowledgeBaseDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.AiKnowledgeBaseUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.AiKnowledgeBaseUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiKnowledgeBasePayload>[]
+          }
+          upsert: {
+            args: Prisma.AiKnowledgeBaseUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiKnowledgeBasePayload>
+          }
+          aggregate: {
+            args: Prisma.AiKnowledgeBaseAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateAiKnowledgeBase>
+          }
+          groupBy: {
+            args: Prisma.AiKnowledgeBaseGroupByArgs<ExtArgs>
+            result: $Utils.Optional<AiKnowledgeBaseGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.AiKnowledgeBaseCountArgs<ExtArgs>
+            result: $Utils.Optional<AiKnowledgeBaseCountAggregateOutputType> | number
+          }
+        }
+      }
+      AiKnowledgeChunk: {
+        payload: Prisma.$AiKnowledgeChunkPayload<ExtArgs>
+        fields: Prisma.AiKnowledgeChunkFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.AiKnowledgeChunkFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiKnowledgeChunkPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.AiKnowledgeChunkFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiKnowledgeChunkPayload>
+          }
+          findFirst: {
+            args: Prisma.AiKnowledgeChunkFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiKnowledgeChunkPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.AiKnowledgeChunkFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiKnowledgeChunkPayload>
+          }
+          findMany: {
+            args: Prisma.AiKnowledgeChunkFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiKnowledgeChunkPayload>[]
+          }
+          create: {
+            args: Prisma.AiKnowledgeChunkCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiKnowledgeChunkPayload>
+          }
+          createMany: {
+            args: Prisma.AiKnowledgeChunkCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.AiKnowledgeChunkCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiKnowledgeChunkPayload>[]
+          }
+          delete: {
+            args: Prisma.AiKnowledgeChunkDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiKnowledgeChunkPayload>
+          }
+          update: {
+            args: Prisma.AiKnowledgeChunkUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiKnowledgeChunkPayload>
+          }
+          deleteMany: {
+            args: Prisma.AiKnowledgeChunkDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.AiKnowledgeChunkUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.AiKnowledgeChunkUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiKnowledgeChunkPayload>[]
+          }
+          upsert: {
+            args: Prisma.AiKnowledgeChunkUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiKnowledgeChunkPayload>
+          }
+          aggregate: {
+            args: Prisma.AiKnowledgeChunkAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateAiKnowledgeChunk>
+          }
+          groupBy: {
+            args: Prisma.AiKnowledgeChunkGroupByArgs<ExtArgs>
+            result: $Utils.Optional<AiKnowledgeChunkGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.AiKnowledgeChunkCountArgs<ExtArgs>
+            result: $Utils.Optional<AiKnowledgeChunkCountAggregateOutputType> | number
           }
         }
       }
@@ -3129,6 +3489,10 @@ export namespace Prisma {
     authority?: AuthorityOmit
     account?: AccountOmit
     user?: UserOmit
+    aiConversation?: AiConversationOmit
+    aiMessage?: AiMessageOmit
+    aiKnowledgeBase?: AiKnowledgeBaseOmit
+    aiKnowledgeChunk?: AiKnowledgeChunkOmit
     crmOrganizationProfile?: CrmOrganizationProfileOmit
     crmLeadSource?: CrmLeadSourceOmit
     crmStage?: CrmStageOmit
@@ -3279,6 +3643,7 @@ export namespace Prisma {
     activitiesAssigned: number
     campaignsCreated: number
     crmFilesUploaded: number
+    aiKnowledgeBases: number
   }
 
   export type UserCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -3289,6 +3654,7 @@ export namespace Prisma {
     activitiesAssigned?: boolean | UserCountOutputTypeCountActivitiesAssignedArgs
     campaignsCreated?: boolean | UserCountOutputTypeCountCampaignsCreatedArgs
     crmFilesUploaded?: boolean | UserCountOutputTypeCountCrmFilesUploadedArgs
+    aiKnowledgeBases?: boolean | UserCountOutputTypeCountAiKnowledgeBasesArgs
   }
 
   // Custom InputTypes
@@ -3349,6 +3715,75 @@ export namespace Prisma {
    */
   export type UserCountOutputTypeCountCrmFilesUploadedArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: CrmFileWhereInput
+  }
+
+  /**
+   * UserCountOutputType without action
+   */
+  export type UserCountOutputTypeCountAiKnowledgeBasesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: AiKnowledgeBaseWhereInput
+  }
+
+
+  /**
+   * Count Type AiConversationCountOutputType
+   */
+
+  export type AiConversationCountOutputType = {
+    messages: number
+  }
+
+  export type AiConversationCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    messages?: boolean | AiConversationCountOutputTypeCountMessagesArgs
+  }
+
+  // Custom InputTypes
+  /**
+   * AiConversationCountOutputType without action
+   */
+  export type AiConversationCountOutputTypeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiConversationCountOutputType
+     */
+    select?: AiConversationCountOutputTypeSelect<ExtArgs> | null
+  }
+
+  /**
+   * AiConversationCountOutputType without action
+   */
+  export type AiConversationCountOutputTypeCountMessagesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: AiMessageWhereInput
+  }
+
+
+  /**
+   * Count Type AiKnowledgeBaseCountOutputType
+   */
+
+  export type AiKnowledgeBaseCountOutputType = {
+    chunks: number
+  }
+
+  export type AiKnowledgeBaseCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    chunks?: boolean | AiKnowledgeBaseCountOutputTypeCountChunksArgs
+  }
+
+  // Custom InputTypes
+  /**
+   * AiKnowledgeBaseCountOutputType without action
+   */
+  export type AiKnowledgeBaseCountOutputTypeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiKnowledgeBaseCountOutputType
+     */
+    select?: AiKnowledgeBaseCountOutputTypeSelect<ExtArgs> | null
+  }
+
+  /**
+   * AiKnowledgeBaseCountOutputType without action
+   */
+  export type AiKnowledgeBaseCountOutputTypeCountChunksArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: AiKnowledgeChunkWhereInput
   }
 
 
@@ -7074,6 +7509,8 @@ export namespace Prisma {
     campaignsCreated?: boolean | User$campaignsCreatedArgs<ExtArgs>
     crmFilesUploaded?: boolean | User$crmFilesUploadedArgs<ExtArgs>
     crmSalesGoal?: boolean | User$crmSalesGoalArgs<ExtArgs>
+    aiConversation?: boolean | User$aiConversationArgs<ExtArgs>
+    aiKnowledgeBases?: boolean | User$aiKnowledgeBasesArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["user"]>
 
@@ -7129,6 +7566,8 @@ export namespace Prisma {
     campaignsCreated?: boolean | User$campaignsCreatedArgs<ExtArgs>
     crmFilesUploaded?: boolean | User$crmFilesUploadedArgs<ExtArgs>
     crmSalesGoal?: boolean | User$crmSalesGoalArgs<ExtArgs>
+    aiConversation?: boolean | User$aiConversationArgs<ExtArgs>
+    aiKnowledgeBases?: boolean | User$aiKnowledgeBasesArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type UserIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -7150,6 +7589,8 @@ export namespace Prisma {
       campaignsCreated: Prisma.$CampaignPayload<ExtArgs>[]
       crmFilesUploaded: Prisma.$CrmFilePayload<ExtArgs>[]
       crmSalesGoal: Prisma.$CrmUserSalesGoalPayload<ExtArgs> | null
+      aiConversation: Prisma.$AiConversationPayload<ExtArgs> | null
+      aiKnowledgeBases: Prisma.$AiKnowledgeBasePayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -7565,6 +8006,8 @@ export namespace Prisma {
     campaignsCreated<T extends User$campaignsCreatedArgs<ExtArgs> = {}>(args?: Subset<T, User$campaignsCreatedArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CampaignPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     crmFilesUploaded<T extends User$crmFilesUploadedArgs<ExtArgs> = {}>(args?: Subset<T, User$crmFilesUploadedArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmFilePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     crmSalesGoal<T extends User$crmSalesGoalArgs<ExtArgs> = {}>(args?: Subset<T, User$crmSalesGoalArgs<ExtArgs>>): Prisma__CrmUserSalesGoalClient<$Result.GetResult<Prisma.$CrmUserSalesGoalPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    aiConversation<T extends User$aiConversationArgs<ExtArgs> = {}>(args?: Subset<T, User$aiConversationArgs<ExtArgs>>): Prisma__AiConversationClient<$Result.GetResult<Prisma.$AiConversationPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    aiKnowledgeBases<T extends User$aiKnowledgeBasesArgs<ExtArgs> = {}>(args?: Subset<T, User$aiKnowledgeBasesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AiKnowledgeBasePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -8192,6 +8635,49 @@ export namespace Prisma {
   }
 
   /**
+   * User.aiConversation
+   */
+  export type User$aiConversationArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiConversation
+     */
+    select?: AiConversationSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiConversation
+     */
+    omit?: AiConversationOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiConversationInclude<ExtArgs> | null
+    where?: AiConversationWhereInput
+  }
+
+  /**
+   * User.aiKnowledgeBases
+   */
+  export type User$aiKnowledgeBasesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiKnowledgeBase
+     */
+    select?: AiKnowledgeBaseSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiKnowledgeBase
+     */
+    omit?: AiKnowledgeBaseOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiKnowledgeBaseInclude<ExtArgs> | null
+    where?: AiKnowledgeBaseWhereInput
+    orderBy?: AiKnowledgeBaseOrderByWithRelationInput | AiKnowledgeBaseOrderByWithRelationInput[]
+    cursor?: AiKnowledgeBaseWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: AiKnowledgeBaseScalarFieldEnum | AiKnowledgeBaseScalarFieldEnum[]
+  }
+
+  /**
    * User without action
    */
   export type UserDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -8207,6 +8693,4563 @@ export namespace Prisma {
      * Choose, which related nodes to fetch as well
      */
     include?: UserInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model AiConversation
+   */
+
+  export type AggregateAiConversation = {
+    _count: AiConversationCountAggregateOutputType | null
+    _min: AiConversationMinAggregateOutputType | null
+    _max: AiConversationMaxAggregateOutputType | null
+  }
+
+  export type AiConversationMinAggregateOutputType = {
+    id: string | null
+    userId: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type AiConversationMaxAggregateOutputType = {
+    id: string | null
+    userId: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type AiConversationCountAggregateOutputType = {
+    id: number
+    userId: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type AiConversationMinAggregateInputType = {
+    id?: true
+    userId?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type AiConversationMaxAggregateInputType = {
+    id?: true
+    userId?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type AiConversationCountAggregateInputType = {
+    id?: true
+    userId?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type AiConversationAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which AiConversation to aggregate.
+     */
+    where?: AiConversationWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of AiConversations to fetch.
+     */
+    orderBy?: AiConversationOrderByWithRelationInput | AiConversationOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: AiConversationWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` AiConversations from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` AiConversations.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned AiConversations
+    **/
+    _count?: true | AiConversationCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: AiConversationMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: AiConversationMaxAggregateInputType
+  }
+
+  export type GetAiConversationAggregateType<T extends AiConversationAggregateArgs> = {
+        [P in keyof T & keyof AggregateAiConversation]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateAiConversation[P]>
+      : GetScalarType<T[P], AggregateAiConversation[P]>
+  }
+
+
+
+
+  export type AiConversationGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: AiConversationWhereInput
+    orderBy?: AiConversationOrderByWithAggregationInput | AiConversationOrderByWithAggregationInput[]
+    by: AiConversationScalarFieldEnum[] | AiConversationScalarFieldEnum
+    having?: AiConversationScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: AiConversationCountAggregateInputType | true
+    _min?: AiConversationMinAggregateInputType
+    _max?: AiConversationMaxAggregateInputType
+  }
+
+  export type AiConversationGroupByOutputType = {
+    id: string
+    userId: string
+    createdAt: Date
+    updatedAt: Date
+    _count: AiConversationCountAggregateOutputType | null
+    _min: AiConversationMinAggregateOutputType | null
+    _max: AiConversationMaxAggregateOutputType | null
+  }
+
+  type GetAiConversationGroupByPayload<T extends AiConversationGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<AiConversationGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof AiConversationGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], AiConversationGroupByOutputType[P]>
+            : GetScalarType<T[P], AiConversationGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type AiConversationSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    user?: boolean | UserDefaultArgs<ExtArgs>
+    messages?: boolean | AiConversation$messagesArgs<ExtArgs>
+    _count?: boolean | AiConversationCountOutputTypeDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["aiConversation"]>
+
+  export type AiConversationSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["aiConversation"]>
+
+  export type AiConversationSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["aiConversation"]>
+
+  export type AiConversationSelectScalar = {
+    id?: boolean
+    userId?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type AiConversationOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "userId" | "createdAt" | "updatedAt", ExtArgs["result"]["aiConversation"]>
+  export type AiConversationInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | UserDefaultArgs<ExtArgs>
+    messages?: boolean | AiConversation$messagesArgs<ExtArgs>
+    _count?: boolean | AiConversationCountOutputTypeDefaultArgs<ExtArgs>
+  }
+  export type AiConversationIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }
+  export type AiConversationIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }
+
+  export type $AiConversationPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "AiConversation"
+    objects: {
+      user: Prisma.$UserPayload<ExtArgs>
+      messages: Prisma.$AiMessagePayload<ExtArgs>[]
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      userId: string
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["aiConversation"]>
+    composites: {}
+  }
+
+  type AiConversationGetPayload<S extends boolean | null | undefined | AiConversationDefaultArgs> = $Result.GetResult<Prisma.$AiConversationPayload, S>
+
+  type AiConversationCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<AiConversationFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: AiConversationCountAggregateInputType | true
+    }
+
+  export interface AiConversationDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['AiConversation'], meta: { name: 'AiConversation' } }
+    /**
+     * Find zero or one AiConversation that matches the filter.
+     * @param {AiConversationFindUniqueArgs} args - Arguments to find a AiConversation
+     * @example
+     * // Get one AiConversation
+     * const aiConversation = await prisma.aiConversation.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends AiConversationFindUniqueArgs>(args: SelectSubset<T, AiConversationFindUniqueArgs<ExtArgs>>): Prisma__AiConversationClient<$Result.GetResult<Prisma.$AiConversationPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one AiConversation that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {AiConversationFindUniqueOrThrowArgs} args - Arguments to find a AiConversation
+     * @example
+     * // Get one AiConversation
+     * const aiConversation = await prisma.aiConversation.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends AiConversationFindUniqueOrThrowArgs>(args: SelectSubset<T, AiConversationFindUniqueOrThrowArgs<ExtArgs>>): Prisma__AiConversationClient<$Result.GetResult<Prisma.$AiConversationPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first AiConversation that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiConversationFindFirstArgs} args - Arguments to find a AiConversation
+     * @example
+     * // Get one AiConversation
+     * const aiConversation = await prisma.aiConversation.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends AiConversationFindFirstArgs>(args?: SelectSubset<T, AiConversationFindFirstArgs<ExtArgs>>): Prisma__AiConversationClient<$Result.GetResult<Prisma.$AiConversationPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first AiConversation that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiConversationFindFirstOrThrowArgs} args - Arguments to find a AiConversation
+     * @example
+     * // Get one AiConversation
+     * const aiConversation = await prisma.aiConversation.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends AiConversationFindFirstOrThrowArgs>(args?: SelectSubset<T, AiConversationFindFirstOrThrowArgs<ExtArgs>>): Prisma__AiConversationClient<$Result.GetResult<Prisma.$AiConversationPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more AiConversations that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiConversationFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all AiConversations
+     * const aiConversations = await prisma.aiConversation.findMany()
+     * 
+     * // Get first 10 AiConversations
+     * const aiConversations = await prisma.aiConversation.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const aiConversationWithIdOnly = await prisma.aiConversation.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends AiConversationFindManyArgs>(args?: SelectSubset<T, AiConversationFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AiConversationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a AiConversation.
+     * @param {AiConversationCreateArgs} args - Arguments to create a AiConversation.
+     * @example
+     * // Create one AiConversation
+     * const AiConversation = await prisma.aiConversation.create({
+     *   data: {
+     *     // ... data to create a AiConversation
+     *   }
+     * })
+     * 
+     */
+    create<T extends AiConversationCreateArgs>(args: SelectSubset<T, AiConversationCreateArgs<ExtArgs>>): Prisma__AiConversationClient<$Result.GetResult<Prisma.$AiConversationPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many AiConversations.
+     * @param {AiConversationCreateManyArgs} args - Arguments to create many AiConversations.
+     * @example
+     * // Create many AiConversations
+     * const aiConversation = await prisma.aiConversation.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends AiConversationCreateManyArgs>(args?: SelectSubset<T, AiConversationCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many AiConversations and returns the data saved in the database.
+     * @param {AiConversationCreateManyAndReturnArgs} args - Arguments to create many AiConversations.
+     * @example
+     * // Create many AiConversations
+     * const aiConversation = await prisma.aiConversation.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many AiConversations and only return the `id`
+     * const aiConversationWithIdOnly = await prisma.aiConversation.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends AiConversationCreateManyAndReturnArgs>(args?: SelectSubset<T, AiConversationCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AiConversationPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a AiConversation.
+     * @param {AiConversationDeleteArgs} args - Arguments to delete one AiConversation.
+     * @example
+     * // Delete one AiConversation
+     * const AiConversation = await prisma.aiConversation.delete({
+     *   where: {
+     *     // ... filter to delete one AiConversation
+     *   }
+     * })
+     * 
+     */
+    delete<T extends AiConversationDeleteArgs>(args: SelectSubset<T, AiConversationDeleteArgs<ExtArgs>>): Prisma__AiConversationClient<$Result.GetResult<Prisma.$AiConversationPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one AiConversation.
+     * @param {AiConversationUpdateArgs} args - Arguments to update one AiConversation.
+     * @example
+     * // Update one AiConversation
+     * const aiConversation = await prisma.aiConversation.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends AiConversationUpdateArgs>(args: SelectSubset<T, AiConversationUpdateArgs<ExtArgs>>): Prisma__AiConversationClient<$Result.GetResult<Prisma.$AiConversationPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more AiConversations.
+     * @param {AiConversationDeleteManyArgs} args - Arguments to filter AiConversations to delete.
+     * @example
+     * // Delete a few AiConversations
+     * const { count } = await prisma.aiConversation.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends AiConversationDeleteManyArgs>(args?: SelectSubset<T, AiConversationDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more AiConversations.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiConversationUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many AiConversations
+     * const aiConversation = await prisma.aiConversation.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends AiConversationUpdateManyArgs>(args: SelectSubset<T, AiConversationUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more AiConversations and returns the data updated in the database.
+     * @param {AiConversationUpdateManyAndReturnArgs} args - Arguments to update many AiConversations.
+     * @example
+     * // Update many AiConversations
+     * const aiConversation = await prisma.aiConversation.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more AiConversations and only return the `id`
+     * const aiConversationWithIdOnly = await prisma.aiConversation.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends AiConversationUpdateManyAndReturnArgs>(args: SelectSubset<T, AiConversationUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AiConversationPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one AiConversation.
+     * @param {AiConversationUpsertArgs} args - Arguments to update or create a AiConversation.
+     * @example
+     * // Update or create a AiConversation
+     * const aiConversation = await prisma.aiConversation.upsert({
+     *   create: {
+     *     // ... data to create a AiConversation
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the AiConversation we want to update
+     *   }
+     * })
+     */
+    upsert<T extends AiConversationUpsertArgs>(args: SelectSubset<T, AiConversationUpsertArgs<ExtArgs>>): Prisma__AiConversationClient<$Result.GetResult<Prisma.$AiConversationPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of AiConversations.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiConversationCountArgs} args - Arguments to filter AiConversations to count.
+     * @example
+     * // Count the number of AiConversations
+     * const count = await prisma.aiConversation.count({
+     *   where: {
+     *     // ... the filter for the AiConversations we want to count
+     *   }
+     * })
+    **/
+    count<T extends AiConversationCountArgs>(
+      args?: Subset<T, AiConversationCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], AiConversationCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a AiConversation.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiConversationAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends AiConversationAggregateArgs>(args: Subset<T, AiConversationAggregateArgs>): Prisma.PrismaPromise<GetAiConversationAggregateType<T>>
+
+    /**
+     * Group by AiConversation.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiConversationGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends AiConversationGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: AiConversationGroupByArgs['orderBy'] }
+        : { orderBy?: AiConversationGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, AiConversationGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetAiConversationGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the AiConversation model
+   */
+  readonly fields: AiConversationFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for AiConversation.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__AiConversationClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    user<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    messages<T extends AiConversation$messagesArgs<ExtArgs> = {}>(args?: Subset<T, AiConversation$messagesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AiMessagePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the AiConversation model
+   */
+  interface AiConversationFieldRefs {
+    readonly id: FieldRef<"AiConversation", 'String'>
+    readonly userId: FieldRef<"AiConversation", 'String'>
+    readonly createdAt: FieldRef<"AiConversation", 'DateTime'>
+    readonly updatedAt: FieldRef<"AiConversation", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * AiConversation findUnique
+   */
+  export type AiConversationFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiConversation
+     */
+    select?: AiConversationSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiConversation
+     */
+    omit?: AiConversationOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiConversationInclude<ExtArgs> | null
+    /**
+     * Filter, which AiConversation to fetch.
+     */
+    where: AiConversationWhereUniqueInput
+  }
+
+  /**
+   * AiConversation findUniqueOrThrow
+   */
+  export type AiConversationFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiConversation
+     */
+    select?: AiConversationSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiConversation
+     */
+    omit?: AiConversationOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiConversationInclude<ExtArgs> | null
+    /**
+     * Filter, which AiConversation to fetch.
+     */
+    where: AiConversationWhereUniqueInput
+  }
+
+  /**
+   * AiConversation findFirst
+   */
+  export type AiConversationFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiConversation
+     */
+    select?: AiConversationSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiConversation
+     */
+    omit?: AiConversationOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiConversationInclude<ExtArgs> | null
+    /**
+     * Filter, which AiConversation to fetch.
+     */
+    where?: AiConversationWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of AiConversations to fetch.
+     */
+    orderBy?: AiConversationOrderByWithRelationInput | AiConversationOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for AiConversations.
+     */
+    cursor?: AiConversationWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` AiConversations from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` AiConversations.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of AiConversations.
+     */
+    distinct?: AiConversationScalarFieldEnum | AiConversationScalarFieldEnum[]
+  }
+
+  /**
+   * AiConversation findFirstOrThrow
+   */
+  export type AiConversationFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiConversation
+     */
+    select?: AiConversationSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiConversation
+     */
+    omit?: AiConversationOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiConversationInclude<ExtArgs> | null
+    /**
+     * Filter, which AiConversation to fetch.
+     */
+    where?: AiConversationWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of AiConversations to fetch.
+     */
+    orderBy?: AiConversationOrderByWithRelationInput | AiConversationOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for AiConversations.
+     */
+    cursor?: AiConversationWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` AiConversations from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` AiConversations.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of AiConversations.
+     */
+    distinct?: AiConversationScalarFieldEnum | AiConversationScalarFieldEnum[]
+  }
+
+  /**
+   * AiConversation findMany
+   */
+  export type AiConversationFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiConversation
+     */
+    select?: AiConversationSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiConversation
+     */
+    omit?: AiConversationOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiConversationInclude<ExtArgs> | null
+    /**
+     * Filter, which AiConversations to fetch.
+     */
+    where?: AiConversationWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of AiConversations to fetch.
+     */
+    orderBy?: AiConversationOrderByWithRelationInput | AiConversationOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing AiConversations.
+     */
+    cursor?: AiConversationWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` AiConversations from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` AiConversations.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of AiConversations.
+     */
+    distinct?: AiConversationScalarFieldEnum | AiConversationScalarFieldEnum[]
+  }
+
+  /**
+   * AiConversation create
+   */
+  export type AiConversationCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiConversation
+     */
+    select?: AiConversationSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiConversation
+     */
+    omit?: AiConversationOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiConversationInclude<ExtArgs> | null
+    /**
+     * The data needed to create a AiConversation.
+     */
+    data: XOR<AiConversationCreateInput, AiConversationUncheckedCreateInput>
+  }
+
+  /**
+   * AiConversation createMany
+   */
+  export type AiConversationCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many AiConversations.
+     */
+    data: AiConversationCreateManyInput | AiConversationCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * AiConversation createManyAndReturn
+   */
+  export type AiConversationCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiConversation
+     */
+    select?: AiConversationSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiConversation
+     */
+    omit?: AiConversationOmit<ExtArgs> | null
+    /**
+     * The data used to create many AiConversations.
+     */
+    data: AiConversationCreateManyInput | AiConversationCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiConversationIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * AiConversation update
+   */
+  export type AiConversationUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiConversation
+     */
+    select?: AiConversationSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiConversation
+     */
+    omit?: AiConversationOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiConversationInclude<ExtArgs> | null
+    /**
+     * The data needed to update a AiConversation.
+     */
+    data: XOR<AiConversationUpdateInput, AiConversationUncheckedUpdateInput>
+    /**
+     * Choose, which AiConversation to update.
+     */
+    where: AiConversationWhereUniqueInput
+  }
+
+  /**
+   * AiConversation updateMany
+   */
+  export type AiConversationUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update AiConversations.
+     */
+    data: XOR<AiConversationUpdateManyMutationInput, AiConversationUncheckedUpdateManyInput>
+    /**
+     * Filter which AiConversations to update
+     */
+    where?: AiConversationWhereInput
+    /**
+     * Limit how many AiConversations to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * AiConversation updateManyAndReturn
+   */
+  export type AiConversationUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiConversation
+     */
+    select?: AiConversationSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiConversation
+     */
+    omit?: AiConversationOmit<ExtArgs> | null
+    /**
+     * The data used to update AiConversations.
+     */
+    data: XOR<AiConversationUpdateManyMutationInput, AiConversationUncheckedUpdateManyInput>
+    /**
+     * Filter which AiConversations to update
+     */
+    where?: AiConversationWhereInput
+    /**
+     * Limit how many AiConversations to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiConversationIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * AiConversation upsert
+   */
+  export type AiConversationUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiConversation
+     */
+    select?: AiConversationSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiConversation
+     */
+    omit?: AiConversationOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiConversationInclude<ExtArgs> | null
+    /**
+     * The filter to search for the AiConversation to update in case it exists.
+     */
+    where: AiConversationWhereUniqueInput
+    /**
+     * In case the AiConversation found by the `where` argument doesn't exist, create a new AiConversation with this data.
+     */
+    create: XOR<AiConversationCreateInput, AiConversationUncheckedCreateInput>
+    /**
+     * In case the AiConversation was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<AiConversationUpdateInput, AiConversationUncheckedUpdateInput>
+  }
+
+  /**
+   * AiConversation delete
+   */
+  export type AiConversationDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiConversation
+     */
+    select?: AiConversationSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiConversation
+     */
+    omit?: AiConversationOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiConversationInclude<ExtArgs> | null
+    /**
+     * Filter which AiConversation to delete.
+     */
+    where: AiConversationWhereUniqueInput
+  }
+
+  /**
+   * AiConversation deleteMany
+   */
+  export type AiConversationDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which AiConversations to delete
+     */
+    where?: AiConversationWhereInput
+    /**
+     * Limit how many AiConversations to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * AiConversation.messages
+   */
+  export type AiConversation$messagesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiMessage
+     */
+    select?: AiMessageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiMessage
+     */
+    omit?: AiMessageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiMessageInclude<ExtArgs> | null
+    where?: AiMessageWhereInput
+    orderBy?: AiMessageOrderByWithRelationInput | AiMessageOrderByWithRelationInput[]
+    cursor?: AiMessageWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: AiMessageScalarFieldEnum | AiMessageScalarFieldEnum[]
+  }
+
+  /**
+   * AiConversation without action
+   */
+  export type AiConversationDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiConversation
+     */
+    select?: AiConversationSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiConversation
+     */
+    omit?: AiConversationOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiConversationInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model AiMessage
+   */
+
+  export type AggregateAiMessage = {
+    _count: AiMessageCountAggregateOutputType | null
+    _min: AiMessageMinAggregateOutputType | null
+    _max: AiMessageMaxAggregateOutputType | null
+  }
+
+  export type AiMessageMinAggregateOutputType = {
+    id: string | null
+    conversationId: string | null
+    role: string | null
+    content: string | null
+    createdAt: Date | null
+  }
+
+  export type AiMessageMaxAggregateOutputType = {
+    id: string | null
+    conversationId: string | null
+    role: string | null
+    content: string | null
+    createdAt: Date | null
+  }
+
+  export type AiMessageCountAggregateOutputType = {
+    id: number
+    conversationId: number
+    role: number
+    content: number
+    meta: number
+    createdAt: number
+    _all: number
+  }
+
+
+  export type AiMessageMinAggregateInputType = {
+    id?: true
+    conversationId?: true
+    role?: true
+    content?: true
+    createdAt?: true
+  }
+
+  export type AiMessageMaxAggregateInputType = {
+    id?: true
+    conversationId?: true
+    role?: true
+    content?: true
+    createdAt?: true
+  }
+
+  export type AiMessageCountAggregateInputType = {
+    id?: true
+    conversationId?: true
+    role?: true
+    content?: true
+    meta?: true
+    createdAt?: true
+    _all?: true
+  }
+
+  export type AiMessageAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which AiMessage to aggregate.
+     */
+    where?: AiMessageWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of AiMessages to fetch.
+     */
+    orderBy?: AiMessageOrderByWithRelationInput | AiMessageOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: AiMessageWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` AiMessages from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` AiMessages.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned AiMessages
+    **/
+    _count?: true | AiMessageCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: AiMessageMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: AiMessageMaxAggregateInputType
+  }
+
+  export type GetAiMessageAggregateType<T extends AiMessageAggregateArgs> = {
+        [P in keyof T & keyof AggregateAiMessage]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateAiMessage[P]>
+      : GetScalarType<T[P], AggregateAiMessage[P]>
+  }
+
+
+
+
+  export type AiMessageGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: AiMessageWhereInput
+    orderBy?: AiMessageOrderByWithAggregationInput | AiMessageOrderByWithAggregationInput[]
+    by: AiMessageScalarFieldEnum[] | AiMessageScalarFieldEnum
+    having?: AiMessageScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: AiMessageCountAggregateInputType | true
+    _min?: AiMessageMinAggregateInputType
+    _max?: AiMessageMaxAggregateInputType
+  }
+
+  export type AiMessageGroupByOutputType = {
+    id: string
+    conversationId: string
+    role: string
+    content: string
+    meta: JsonValue | null
+    createdAt: Date
+    _count: AiMessageCountAggregateOutputType | null
+    _min: AiMessageMinAggregateOutputType | null
+    _max: AiMessageMaxAggregateOutputType | null
+  }
+
+  type GetAiMessageGroupByPayload<T extends AiMessageGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<AiMessageGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof AiMessageGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], AiMessageGroupByOutputType[P]>
+            : GetScalarType<T[P], AiMessageGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type AiMessageSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    conversationId?: boolean
+    role?: boolean
+    content?: boolean
+    meta?: boolean
+    createdAt?: boolean
+    conversation?: boolean | AiConversationDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["aiMessage"]>
+
+  export type AiMessageSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    conversationId?: boolean
+    role?: boolean
+    content?: boolean
+    meta?: boolean
+    createdAt?: boolean
+    conversation?: boolean | AiConversationDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["aiMessage"]>
+
+  export type AiMessageSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    conversationId?: boolean
+    role?: boolean
+    content?: boolean
+    meta?: boolean
+    createdAt?: boolean
+    conversation?: boolean | AiConversationDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["aiMessage"]>
+
+  export type AiMessageSelectScalar = {
+    id?: boolean
+    conversationId?: boolean
+    role?: boolean
+    content?: boolean
+    meta?: boolean
+    createdAt?: boolean
+  }
+
+  export type AiMessageOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "conversationId" | "role" | "content" | "meta" | "createdAt", ExtArgs["result"]["aiMessage"]>
+  export type AiMessageInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    conversation?: boolean | AiConversationDefaultArgs<ExtArgs>
+  }
+  export type AiMessageIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    conversation?: boolean | AiConversationDefaultArgs<ExtArgs>
+  }
+  export type AiMessageIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    conversation?: boolean | AiConversationDefaultArgs<ExtArgs>
+  }
+
+  export type $AiMessagePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "AiMessage"
+    objects: {
+      conversation: Prisma.$AiConversationPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      conversationId: string
+      /**
+       * * user | assistant
+       */
+      role: string
+      content: string
+      /**
+       * * links/actions para mensajes del asistente
+       */
+      meta: Prisma.JsonValue | null
+      createdAt: Date
+    }, ExtArgs["result"]["aiMessage"]>
+    composites: {}
+  }
+
+  type AiMessageGetPayload<S extends boolean | null | undefined | AiMessageDefaultArgs> = $Result.GetResult<Prisma.$AiMessagePayload, S>
+
+  type AiMessageCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<AiMessageFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: AiMessageCountAggregateInputType | true
+    }
+
+  export interface AiMessageDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['AiMessage'], meta: { name: 'AiMessage' } }
+    /**
+     * Find zero or one AiMessage that matches the filter.
+     * @param {AiMessageFindUniqueArgs} args - Arguments to find a AiMessage
+     * @example
+     * // Get one AiMessage
+     * const aiMessage = await prisma.aiMessage.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends AiMessageFindUniqueArgs>(args: SelectSubset<T, AiMessageFindUniqueArgs<ExtArgs>>): Prisma__AiMessageClient<$Result.GetResult<Prisma.$AiMessagePayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one AiMessage that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {AiMessageFindUniqueOrThrowArgs} args - Arguments to find a AiMessage
+     * @example
+     * // Get one AiMessage
+     * const aiMessage = await prisma.aiMessage.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends AiMessageFindUniqueOrThrowArgs>(args: SelectSubset<T, AiMessageFindUniqueOrThrowArgs<ExtArgs>>): Prisma__AiMessageClient<$Result.GetResult<Prisma.$AiMessagePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first AiMessage that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiMessageFindFirstArgs} args - Arguments to find a AiMessage
+     * @example
+     * // Get one AiMessage
+     * const aiMessage = await prisma.aiMessage.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends AiMessageFindFirstArgs>(args?: SelectSubset<T, AiMessageFindFirstArgs<ExtArgs>>): Prisma__AiMessageClient<$Result.GetResult<Prisma.$AiMessagePayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first AiMessage that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiMessageFindFirstOrThrowArgs} args - Arguments to find a AiMessage
+     * @example
+     * // Get one AiMessage
+     * const aiMessage = await prisma.aiMessage.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends AiMessageFindFirstOrThrowArgs>(args?: SelectSubset<T, AiMessageFindFirstOrThrowArgs<ExtArgs>>): Prisma__AiMessageClient<$Result.GetResult<Prisma.$AiMessagePayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more AiMessages that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiMessageFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all AiMessages
+     * const aiMessages = await prisma.aiMessage.findMany()
+     * 
+     * // Get first 10 AiMessages
+     * const aiMessages = await prisma.aiMessage.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const aiMessageWithIdOnly = await prisma.aiMessage.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends AiMessageFindManyArgs>(args?: SelectSubset<T, AiMessageFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AiMessagePayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a AiMessage.
+     * @param {AiMessageCreateArgs} args - Arguments to create a AiMessage.
+     * @example
+     * // Create one AiMessage
+     * const AiMessage = await prisma.aiMessage.create({
+     *   data: {
+     *     // ... data to create a AiMessage
+     *   }
+     * })
+     * 
+     */
+    create<T extends AiMessageCreateArgs>(args: SelectSubset<T, AiMessageCreateArgs<ExtArgs>>): Prisma__AiMessageClient<$Result.GetResult<Prisma.$AiMessagePayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many AiMessages.
+     * @param {AiMessageCreateManyArgs} args - Arguments to create many AiMessages.
+     * @example
+     * // Create many AiMessages
+     * const aiMessage = await prisma.aiMessage.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends AiMessageCreateManyArgs>(args?: SelectSubset<T, AiMessageCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many AiMessages and returns the data saved in the database.
+     * @param {AiMessageCreateManyAndReturnArgs} args - Arguments to create many AiMessages.
+     * @example
+     * // Create many AiMessages
+     * const aiMessage = await prisma.aiMessage.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many AiMessages and only return the `id`
+     * const aiMessageWithIdOnly = await prisma.aiMessage.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends AiMessageCreateManyAndReturnArgs>(args?: SelectSubset<T, AiMessageCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AiMessagePayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a AiMessage.
+     * @param {AiMessageDeleteArgs} args - Arguments to delete one AiMessage.
+     * @example
+     * // Delete one AiMessage
+     * const AiMessage = await prisma.aiMessage.delete({
+     *   where: {
+     *     // ... filter to delete one AiMessage
+     *   }
+     * })
+     * 
+     */
+    delete<T extends AiMessageDeleteArgs>(args: SelectSubset<T, AiMessageDeleteArgs<ExtArgs>>): Prisma__AiMessageClient<$Result.GetResult<Prisma.$AiMessagePayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one AiMessage.
+     * @param {AiMessageUpdateArgs} args - Arguments to update one AiMessage.
+     * @example
+     * // Update one AiMessage
+     * const aiMessage = await prisma.aiMessage.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends AiMessageUpdateArgs>(args: SelectSubset<T, AiMessageUpdateArgs<ExtArgs>>): Prisma__AiMessageClient<$Result.GetResult<Prisma.$AiMessagePayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more AiMessages.
+     * @param {AiMessageDeleteManyArgs} args - Arguments to filter AiMessages to delete.
+     * @example
+     * // Delete a few AiMessages
+     * const { count } = await prisma.aiMessage.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends AiMessageDeleteManyArgs>(args?: SelectSubset<T, AiMessageDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more AiMessages.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiMessageUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many AiMessages
+     * const aiMessage = await prisma.aiMessage.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends AiMessageUpdateManyArgs>(args: SelectSubset<T, AiMessageUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more AiMessages and returns the data updated in the database.
+     * @param {AiMessageUpdateManyAndReturnArgs} args - Arguments to update many AiMessages.
+     * @example
+     * // Update many AiMessages
+     * const aiMessage = await prisma.aiMessage.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more AiMessages and only return the `id`
+     * const aiMessageWithIdOnly = await prisma.aiMessage.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends AiMessageUpdateManyAndReturnArgs>(args: SelectSubset<T, AiMessageUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AiMessagePayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one AiMessage.
+     * @param {AiMessageUpsertArgs} args - Arguments to update or create a AiMessage.
+     * @example
+     * // Update or create a AiMessage
+     * const aiMessage = await prisma.aiMessage.upsert({
+     *   create: {
+     *     // ... data to create a AiMessage
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the AiMessage we want to update
+     *   }
+     * })
+     */
+    upsert<T extends AiMessageUpsertArgs>(args: SelectSubset<T, AiMessageUpsertArgs<ExtArgs>>): Prisma__AiMessageClient<$Result.GetResult<Prisma.$AiMessagePayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of AiMessages.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiMessageCountArgs} args - Arguments to filter AiMessages to count.
+     * @example
+     * // Count the number of AiMessages
+     * const count = await prisma.aiMessage.count({
+     *   where: {
+     *     // ... the filter for the AiMessages we want to count
+     *   }
+     * })
+    **/
+    count<T extends AiMessageCountArgs>(
+      args?: Subset<T, AiMessageCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], AiMessageCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a AiMessage.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiMessageAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends AiMessageAggregateArgs>(args: Subset<T, AiMessageAggregateArgs>): Prisma.PrismaPromise<GetAiMessageAggregateType<T>>
+
+    /**
+     * Group by AiMessage.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiMessageGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends AiMessageGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: AiMessageGroupByArgs['orderBy'] }
+        : { orderBy?: AiMessageGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, AiMessageGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetAiMessageGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the AiMessage model
+   */
+  readonly fields: AiMessageFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for AiMessage.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__AiMessageClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    conversation<T extends AiConversationDefaultArgs<ExtArgs> = {}>(args?: Subset<T, AiConversationDefaultArgs<ExtArgs>>): Prisma__AiConversationClient<$Result.GetResult<Prisma.$AiConversationPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the AiMessage model
+   */
+  interface AiMessageFieldRefs {
+    readonly id: FieldRef<"AiMessage", 'String'>
+    readonly conversationId: FieldRef<"AiMessage", 'String'>
+    readonly role: FieldRef<"AiMessage", 'String'>
+    readonly content: FieldRef<"AiMessage", 'String'>
+    readonly meta: FieldRef<"AiMessage", 'Json'>
+    readonly createdAt: FieldRef<"AiMessage", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * AiMessage findUnique
+   */
+  export type AiMessageFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiMessage
+     */
+    select?: AiMessageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiMessage
+     */
+    omit?: AiMessageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiMessageInclude<ExtArgs> | null
+    /**
+     * Filter, which AiMessage to fetch.
+     */
+    where: AiMessageWhereUniqueInput
+  }
+
+  /**
+   * AiMessage findUniqueOrThrow
+   */
+  export type AiMessageFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiMessage
+     */
+    select?: AiMessageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiMessage
+     */
+    omit?: AiMessageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiMessageInclude<ExtArgs> | null
+    /**
+     * Filter, which AiMessage to fetch.
+     */
+    where: AiMessageWhereUniqueInput
+  }
+
+  /**
+   * AiMessage findFirst
+   */
+  export type AiMessageFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiMessage
+     */
+    select?: AiMessageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiMessage
+     */
+    omit?: AiMessageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiMessageInclude<ExtArgs> | null
+    /**
+     * Filter, which AiMessage to fetch.
+     */
+    where?: AiMessageWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of AiMessages to fetch.
+     */
+    orderBy?: AiMessageOrderByWithRelationInput | AiMessageOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for AiMessages.
+     */
+    cursor?: AiMessageWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` AiMessages from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` AiMessages.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of AiMessages.
+     */
+    distinct?: AiMessageScalarFieldEnum | AiMessageScalarFieldEnum[]
+  }
+
+  /**
+   * AiMessage findFirstOrThrow
+   */
+  export type AiMessageFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiMessage
+     */
+    select?: AiMessageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiMessage
+     */
+    omit?: AiMessageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiMessageInclude<ExtArgs> | null
+    /**
+     * Filter, which AiMessage to fetch.
+     */
+    where?: AiMessageWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of AiMessages to fetch.
+     */
+    orderBy?: AiMessageOrderByWithRelationInput | AiMessageOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for AiMessages.
+     */
+    cursor?: AiMessageWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` AiMessages from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` AiMessages.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of AiMessages.
+     */
+    distinct?: AiMessageScalarFieldEnum | AiMessageScalarFieldEnum[]
+  }
+
+  /**
+   * AiMessage findMany
+   */
+  export type AiMessageFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiMessage
+     */
+    select?: AiMessageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiMessage
+     */
+    omit?: AiMessageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiMessageInclude<ExtArgs> | null
+    /**
+     * Filter, which AiMessages to fetch.
+     */
+    where?: AiMessageWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of AiMessages to fetch.
+     */
+    orderBy?: AiMessageOrderByWithRelationInput | AiMessageOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing AiMessages.
+     */
+    cursor?: AiMessageWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` AiMessages from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` AiMessages.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of AiMessages.
+     */
+    distinct?: AiMessageScalarFieldEnum | AiMessageScalarFieldEnum[]
+  }
+
+  /**
+   * AiMessage create
+   */
+  export type AiMessageCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiMessage
+     */
+    select?: AiMessageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiMessage
+     */
+    omit?: AiMessageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiMessageInclude<ExtArgs> | null
+    /**
+     * The data needed to create a AiMessage.
+     */
+    data: XOR<AiMessageCreateInput, AiMessageUncheckedCreateInput>
+  }
+
+  /**
+   * AiMessage createMany
+   */
+  export type AiMessageCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many AiMessages.
+     */
+    data: AiMessageCreateManyInput | AiMessageCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * AiMessage createManyAndReturn
+   */
+  export type AiMessageCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiMessage
+     */
+    select?: AiMessageSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiMessage
+     */
+    omit?: AiMessageOmit<ExtArgs> | null
+    /**
+     * The data used to create many AiMessages.
+     */
+    data: AiMessageCreateManyInput | AiMessageCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiMessageIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * AiMessage update
+   */
+  export type AiMessageUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiMessage
+     */
+    select?: AiMessageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiMessage
+     */
+    omit?: AiMessageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiMessageInclude<ExtArgs> | null
+    /**
+     * The data needed to update a AiMessage.
+     */
+    data: XOR<AiMessageUpdateInput, AiMessageUncheckedUpdateInput>
+    /**
+     * Choose, which AiMessage to update.
+     */
+    where: AiMessageWhereUniqueInput
+  }
+
+  /**
+   * AiMessage updateMany
+   */
+  export type AiMessageUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update AiMessages.
+     */
+    data: XOR<AiMessageUpdateManyMutationInput, AiMessageUncheckedUpdateManyInput>
+    /**
+     * Filter which AiMessages to update
+     */
+    where?: AiMessageWhereInput
+    /**
+     * Limit how many AiMessages to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * AiMessage updateManyAndReturn
+   */
+  export type AiMessageUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiMessage
+     */
+    select?: AiMessageSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiMessage
+     */
+    omit?: AiMessageOmit<ExtArgs> | null
+    /**
+     * The data used to update AiMessages.
+     */
+    data: XOR<AiMessageUpdateManyMutationInput, AiMessageUncheckedUpdateManyInput>
+    /**
+     * Filter which AiMessages to update
+     */
+    where?: AiMessageWhereInput
+    /**
+     * Limit how many AiMessages to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiMessageIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * AiMessage upsert
+   */
+  export type AiMessageUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiMessage
+     */
+    select?: AiMessageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiMessage
+     */
+    omit?: AiMessageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiMessageInclude<ExtArgs> | null
+    /**
+     * The filter to search for the AiMessage to update in case it exists.
+     */
+    where: AiMessageWhereUniqueInput
+    /**
+     * In case the AiMessage found by the `where` argument doesn't exist, create a new AiMessage with this data.
+     */
+    create: XOR<AiMessageCreateInput, AiMessageUncheckedCreateInput>
+    /**
+     * In case the AiMessage was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<AiMessageUpdateInput, AiMessageUncheckedUpdateInput>
+  }
+
+  /**
+   * AiMessage delete
+   */
+  export type AiMessageDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiMessage
+     */
+    select?: AiMessageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiMessage
+     */
+    omit?: AiMessageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiMessageInclude<ExtArgs> | null
+    /**
+     * Filter which AiMessage to delete.
+     */
+    where: AiMessageWhereUniqueInput
+  }
+
+  /**
+   * AiMessage deleteMany
+   */
+  export type AiMessageDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which AiMessages to delete
+     */
+    where?: AiMessageWhereInput
+    /**
+     * Limit how many AiMessages to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * AiMessage without action
+   */
+  export type AiMessageDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiMessage
+     */
+    select?: AiMessageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiMessage
+     */
+    omit?: AiMessageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiMessageInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model AiKnowledgeBase
+   */
+
+  export type AggregateAiKnowledgeBase = {
+    _count: AiKnowledgeBaseCountAggregateOutputType | null
+    _avg: AiKnowledgeBaseAvgAggregateOutputType | null
+    _sum: AiKnowledgeBaseSumAggregateOutputType | null
+    _min: AiKnowledgeBaseMinAggregateOutputType | null
+    _max: AiKnowledgeBaseMaxAggregateOutputType | null
+  }
+
+  export type AiKnowledgeBaseAvgAggregateOutputType = {
+    chunkSize: number | null
+    overlap: number | null
+    chunkCount: number | null
+  }
+
+  export type AiKnowledgeBaseSumAggregateOutputType = {
+    chunkSize: number | null
+    overlap: number | null
+    chunkCount: number | null
+  }
+
+  export type AiKnowledgeBaseMinAggregateOutputType = {
+    id: string | null
+    userId: string | null
+    title: string | null
+    type: string | null
+    sourceMode: string | null
+    description: string | null
+    chunkSize: number | null
+    overlap: number | null
+    linkedAgentId: string | null
+    linkedAgentName: string | null
+    status: string | null
+    chunkCount: number | null
+    indexError: string | null
+    indexedAt: Date | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type AiKnowledgeBaseMaxAggregateOutputType = {
+    id: string | null
+    userId: string | null
+    title: string | null
+    type: string | null
+    sourceMode: string | null
+    description: string | null
+    chunkSize: number | null
+    overlap: number | null
+    linkedAgentId: string | null
+    linkedAgentName: string | null
+    status: string | null
+    chunkCount: number | null
+    indexError: string | null
+    indexedAt: Date | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type AiKnowledgeBaseCountAggregateOutputType = {
+    id: number
+    userId: number
+    title: number
+    type: number
+    sourceMode: number
+    description: number
+    chunkSize: number
+    overlap: number
+    linkedAgentId: number
+    linkedAgentName: number
+    status: number
+    chunkCount: number
+    sourceJson: number
+    indexError: number
+    indexedAt: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type AiKnowledgeBaseAvgAggregateInputType = {
+    chunkSize?: true
+    overlap?: true
+    chunkCount?: true
+  }
+
+  export type AiKnowledgeBaseSumAggregateInputType = {
+    chunkSize?: true
+    overlap?: true
+    chunkCount?: true
+  }
+
+  export type AiKnowledgeBaseMinAggregateInputType = {
+    id?: true
+    userId?: true
+    title?: true
+    type?: true
+    sourceMode?: true
+    description?: true
+    chunkSize?: true
+    overlap?: true
+    linkedAgentId?: true
+    linkedAgentName?: true
+    status?: true
+    chunkCount?: true
+    indexError?: true
+    indexedAt?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type AiKnowledgeBaseMaxAggregateInputType = {
+    id?: true
+    userId?: true
+    title?: true
+    type?: true
+    sourceMode?: true
+    description?: true
+    chunkSize?: true
+    overlap?: true
+    linkedAgentId?: true
+    linkedAgentName?: true
+    status?: true
+    chunkCount?: true
+    indexError?: true
+    indexedAt?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type AiKnowledgeBaseCountAggregateInputType = {
+    id?: true
+    userId?: true
+    title?: true
+    type?: true
+    sourceMode?: true
+    description?: true
+    chunkSize?: true
+    overlap?: true
+    linkedAgentId?: true
+    linkedAgentName?: true
+    status?: true
+    chunkCount?: true
+    sourceJson?: true
+    indexError?: true
+    indexedAt?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type AiKnowledgeBaseAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which AiKnowledgeBase to aggregate.
+     */
+    where?: AiKnowledgeBaseWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of AiKnowledgeBases to fetch.
+     */
+    orderBy?: AiKnowledgeBaseOrderByWithRelationInput | AiKnowledgeBaseOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: AiKnowledgeBaseWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` AiKnowledgeBases from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` AiKnowledgeBases.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned AiKnowledgeBases
+    **/
+    _count?: true | AiKnowledgeBaseCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: AiKnowledgeBaseAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: AiKnowledgeBaseSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: AiKnowledgeBaseMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: AiKnowledgeBaseMaxAggregateInputType
+  }
+
+  export type GetAiKnowledgeBaseAggregateType<T extends AiKnowledgeBaseAggregateArgs> = {
+        [P in keyof T & keyof AggregateAiKnowledgeBase]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateAiKnowledgeBase[P]>
+      : GetScalarType<T[P], AggregateAiKnowledgeBase[P]>
+  }
+
+
+
+
+  export type AiKnowledgeBaseGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: AiKnowledgeBaseWhereInput
+    orderBy?: AiKnowledgeBaseOrderByWithAggregationInput | AiKnowledgeBaseOrderByWithAggregationInput[]
+    by: AiKnowledgeBaseScalarFieldEnum[] | AiKnowledgeBaseScalarFieldEnum
+    having?: AiKnowledgeBaseScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: AiKnowledgeBaseCountAggregateInputType | true
+    _avg?: AiKnowledgeBaseAvgAggregateInputType
+    _sum?: AiKnowledgeBaseSumAggregateInputType
+    _min?: AiKnowledgeBaseMinAggregateInputType
+    _max?: AiKnowledgeBaseMaxAggregateInputType
+  }
+
+  export type AiKnowledgeBaseGroupByOutputType = {
+    id: string
+    userId: string
+    title: string
+    type: string
+    sourceMode: string
+    description: string
+    chunkSize: number
+    overlap: number
+    linkedAgentId: string | null
+    linkedAgentName: string | null
+    status: string
+    chunkCount: number
+    sourceJson: JsonValue | null
+    indexError: string | null
+    indexedAt: Date | null
+    createdAt: Date
+    updatedAt: Date
+    _count: AiKnowledgeBaseCountAggregateOutputType | null
+    _avg: AiKnowledgeBaseAvgAggregateOutputType | null
+    _sum: AiKnowledgeBaseSumAggregateOutputType | null
+    _min: AiKnowledgeBaseMinAggregateOutputType | null
+    _max: AiKnowledgeBaseMaxAggregateOutputType | null
+  }
+
+  type GetAiKnowledgeBaseGroupByPayload<T extends AiKnowledgeBaseGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<AiKnowledgeBaseGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof AiKnowledgeBaseGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], AiKnowledgeBaseGroupByOutputType[P]>
+            : GetScalarType<T[P], AiKnowledgeBaseGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type AiKnowledgeBaseSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    title?: boolean
+    type?: boolean
+    sourceMode?: boolean
+    description?: boolean
+    chunkSize?: boolean
+    overlap?: boolean
+    linkedAgentId?: boolean
+    linkedAgentName?: boolean
+    status?: boolean
+    chunkCount?: boolean
+    sourceJson?: boolean
+    indexError?: boolean
+    indexedAt?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    user?: boolean | UserDefaultArgs<ExtArgs>
+    chunks?: boolean | AiKnowledgeBase$chunksArgs<ExtArgs>
+    _count?: boolean | AiKnowledgeBaseCountOutputTypeDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["aiKnowledgeBase"]>
+
+  export type AiKnowledgeBaseSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    title?: boolean
+    type?: boolean
+    sourceMode?: boolean
+    description?: boolean
+    chunkSize?: boolean
+    overlap?: boolean
+    linkedAgentId?: boolean
+    linkedAgentName?: boolean
+    status?: boolean
+    chunkCount?: boolean
+    sourceJson?: boolean
+    indexError?: boolean
+    indexedAt?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["aiKnowledgeBase"]>
+
+  export type AiKnowledgeBaseSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    title?: boolean
+    type?: boolean
+    sourceMode?: boolean
+    description?: boolean
+    chunkSize?: boolean
+    overlap?: boolean
+    linkedAgentId?: boolean
+    linkedAgentName?: boolean
+    status?: boolean
+    chunkCount?: boolean
+    sourceJson?: boolean
+    indexError?: boolean
+    indexedAt?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["aiKnowledgeBase"]>
+
+  export type AiKnowledgeBaseSelectScalar = {
+    id?: boolean
+    userId?: boolean
+    title?: boolean
+    type?: boolean
+    sourceMode?: boolean
+    description?: boolean
+    chunkSize?: boolean
+    overlap?: boolean
+    linkedAgentId?: boolean
+    linkedAgentName?: boolean
+    status?: boolean
+    chunkCount?: boolean
+    sourceJson?: boolean
+    indexError?: boolean
+    indexedAt?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type AiKnowledgeBaseOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "userId" | "title" | "type" | "sourceMode" | "description" | "chunkSize" | "overlap" | "linkedAgentId" | "linkedAgentName" | "status" | "chunkCount" | "sourceJson" | "indexError" | "indexedAt" | "createdAt" | "updatedAt", ExtArgs["result"]["aiKnowledgeBase"]>
+  export type AiKnowledgeBaseInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | UserDefaultArgs<ExtArgs>
+    chunks?: boolean | AiKnowledgeBase$chunksArgs<ExtArgs>
+    _count?: boolean | AiKnowledgeBaseCountOutputTypeDefaultArgs<ExtArgs>
+  }
+  export type AiKnowledgeBaseIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }
+  export type AiKnowledgeBaseIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }
+
+  export type $AiKnowledgeBasePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "AiKnowledgeBase"
+    objects: {
+      user: Prisma.$UserPayload<ExtArgs>
+      chunks: Prisma.$AiKnowledgeChunkPayload<ExtArgs>[]
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      userId: string
+      title: string
+      /**
+       * * documentos | web | faq | tabular (UI Agentes IA)
+       */
+      type: string
+      /**
+       * * text_only | upload | url | existing
+       */
+      sourceMode: string
+      /**
+       * * Resumen / contenido pegado / notas (sin secretos de API)
+       */
+      description: string
+      chunkSize: number
+      overlap: number
+      linkedAgentId: string | null
+      linkedAgentName: string | null
+      /**
+       * * indexado | sync | error | pendiente
+       */
+      status: string
+      chunkCount: number
+      /**
+       * * Config estructurada (endpoint, método, ámbito CRM…); nunca guardar Bearer/API key en claro
+       */
+      sourceJson: Prisma.JsonValue | null
+      indexError: string | null
+      indexedAt: Date | null
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["aiKnowledgeBase"]>
+    composites: {}
+  }
+
+  type AiKnowledgeBaseGetPayload<S extends boolean | null | undefined | AiKnowledgeBaseDefaultArgs> = $Result.GetResult<Prisma.$AiKnowledgeBasePayload, S>
+
+  type AiKnowledgeBaseCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<AiKnowledgeBaseFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: AiKnowledgeBaseCountAggregateInputType | true
+    }
+
+  export interface AiKnowledgeBaseDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['AiKnowledgeBase'], meta: { name: 'AiKnowledgeBase' } }
+    /**
+     * Find zero or one AiKnowledgeBase that matches the filter.
+     * @param {AiKnowledgeBaseFindUniqueArgs} args - Arguments to find a AiKnowledgeBase
+     * @example
+     * // Get one AiKnowledgeBase
+     * const aiKnowledgeBase = await prisma.aiKnowledgeBase.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends AiKnowledgeBaseFindUniqueArgs>(args: SelectSubset<T, AiKnowledgeBaseFindUniqueArgs<ExtArgs>>): Prisma__AiKnowledgeBaseClient<$Result.GetResult<Prisma.$AiKnowledgeBasePayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one AiKnowledgeBase that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {AiKnowledgeBaseFindUniqueOrThrowArgs} args - Arguments to find a AiKnowledgeBase
+     * @example
+     * // Get one AiKnowledgeBase
+     * const aiKnowledgeBase = await prisma.aiKnowledgeBase.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends AiKnowledgeBaseFindUniqueOrThrowArgs>(args: SelectSubset<T, AiKnowledgeBaseFindUniqueOrThrowArgs<ExtArgs>>): Prisma__AiKnowledgeBaseClient<$Result.GetResult<Prisma.$AiKnowledgeBasePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first AiKnowledgeBase that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiKnowledgeBaseFindFirstArgs} args - Arguments to find a AiKnowledgeBase
+     * @example
+     * // Get one AiKnowledgeBase
+     * const aiKnowledgeBase = await prisma.aiKnowledgeBase.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends AiKnowledgeBaseFindFirstArgs>(args?: SelectSubset<T, AiKnowledgeBaseFindFirstArgs<ExtArgs>>): Prisma__AiKnowledgeBaseClient<$Result.GetResult<Prisma.$AiKnowledgeBasePayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first AiKnowledgeBase that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiKnowledgeBaseFindFirstOrThrowArgs} args - Arguments to find a AiKnowledgeBase
+     * @example
+     * // Get one AiKnowledgeBase
+     * const aiKnowledgeBase = await prisma.aiKnowledgeBase.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends AiKnowledgeBaseFindFirstOrThrowArgs>(args?: SelectSubset<T, AiKnowledgeBaseFindFirstOrThrowArgs<ExtArgs>>): Prisma__AiKnowledgeBaseClient<$Result.GetResult<Prisma.$AiKnowledgeBasePayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more AiKnowledgeBases that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiKnowledgeBaseFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all AiKnowledgeBases
+     * const aiKnowledgeBases = await prisma.aiKnowledgeBase.findMany()
+     * 
+     * // Get first 10 AiKnowledgeBases
+     * const aiKnowledgeBases = await prisma.aiKnowledgeBase.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const aiKnowledgeBaseWithIdOnly = await prisma.aiKnowledgeBase.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends AiKnowledgeBaseFindManyArgs>(args?: SelectSubset<T, AiKnowledgeBaseFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AiKnowledgeBasePayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a AiKnowledgeBase.
+     * @param {AiKnowledgeBaseCreateArgs} args - Arguments to create a AiKnowledgeBase.
+     * @example
+     * // Create one AiKnowledgeBase
+     * const AiKnowledgeBase = await prisma.aiKnowledgeBase.create({
+     *   data: {
+     *     // ... data to create a AiKnowledgeBase
+     *   }
+     * })
+     * 
+     */
+    create<T extends AiKnowledgeBaseCreateArgs>(args: SelectSubset<T, AiKnowledgeBaseCreateArgs<ExtArgs>>): Prisma__AiKnowledgeBaseClient<$Result.GetResult<Prisma.$AiKnowledgeBasePayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many AiKnowledgeBases.
+     * @param {AiKnowledgeBaseCreateManyArgs} args - Arguments to create many AiKnowledgeBases.
+     * @example
+     * // Create many AiKnowledgeBases
+     * const aiKnowledgeBase = await prisma.aiKnowledgeBase.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends AiKnowledgeBaseCreateManyArgs>(args?: SelectSubset<T, AiKnowledgeBaseCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many AiKnowledgeBases and returns the data saved in the database.
+     * @param {AiKnowledgeBaseCreateManyAndReturnArgs} args - Arguments to create many AiKnowledgeBases.
+     * @example
+     * // Create many AiKnowledgeBases
+     * const aiKnowledgeBase = await prisma.aiKnowledgeBase.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many AiKnowledgeBases and only return the `id`
+     * const aiKnowledgeBaseWithIdOnly = await prisma.aiKnowledgeBase.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends AiKnowledgeBaseCreateManyAndReturnArgs>(args?: SelectSubset<T, AiKnowledgeBaseCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AiKnowledgeBasePayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a AiKnowledgeBase.
+     * @param {AiKnowledgeBaseDeleteArgs} args - Arguments to delete one AiKnowledgeBase.
+     * @example
+     * // Delete one AiKnowledgeBase
+     * const AiKnowledgeBase = await prisma.aiKnowledgeBase.delete({
+     *   where: {
+     *     // ... filter to delete one AiKnowledgeBase
+     *   }
+     * })
+     * 
+     */
+    delete<T extends AiKnowledgeBaseDeleteArgs>(args: SelectSubset<T, AiKnowledgeBaseDeleteArgs<ExtArgs>>): Prisma__AiKnowledgeBaseClient<$Result.GetResult<Prisma.$AiKnowledgeBasePayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one AiKnowledgeBase.
+     * @param {AiKnowledgeBaseUpdateArgs} args - Arguments to update one AiKnowledgeBase.
+     * @example
+     * // Update one AiKnowledgeBase
+     * const aiKnowledgeBase = await prisma.aiKnowledgeBase.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends AiKnowledgeBaseUpdateArgs>(args: SelectSubset<T, AiKnowledgeBaseUpdateArgs<ExtArgs>>): Prisma__AiKnowledgeBaseClient<$Result.GetResult<Prisma.$AiKnowledgeBasePayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more AiKnowledgeBases.
+     * @param {AiKnowledgeBaseDeleteManyArgs} args - Arguments to filter AiKnowledgeBases to delete.
+     * @example
+     * // Delete a few AiKnowledgeBases
+     * const { count } = await prisma.aiKnowledgeBase.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends AiKnowledgeBaseDeleteManyArgs>(args?: SelectSubset<T, AiKnowledgeBaseDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more AiKnowledgeBases.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiKnowledgeBaseUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many AiKnowledgeBases
+     * const aiKnowledgeBase = await prisma.aiKnowledgeBase.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends AiKnowledgeBaseUpdateManyArgs>(args: SelectSubset<T, AiKnowledgeBaseUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more AiKnowledgeBases and returns the data updated in the database.
+     * @param {AiKnowledgeBaseUpdateManyAndReturnArgs} args - Arguments to update many AiKnowledgeBases.
+     * @example
+     * // Update many AiKnowledgeBases
+     * const aiKnowledgeBase = await prisma.aiKnowledgeBase.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more AiKnowledgeBases and only return the `id`
+     * const aiKnowledgeBaseWithIdOnly = await prisma.aiKnowledgeBase.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends AiKnowledgeBaseUpdateManyAndReturnArgs>(args: SelectSubset<T, AiKnowledgeBaseUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AiKnowledgeBasePayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one AiKnowledgeBase.
+     * @param {AiKnowledgeBaseUpsertArgs} args - Arguments to update or create a AiKnowledgeBase.
+     * @example
+     * // Update or create a AiKnowledgeBase
+     * const aiKnowledgeBase = await prisma.aiKnowledgeBase.upsert({
+     *   create: {
+     *     // ... data to create a AiKnowledgeBase
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the AiKnowledgeBase we want to update
+     *   }
+     * })
+     */
+    upsert<T extends AiKnowledgeBaseUpsertArgs>(args: SelectSubset<T, AiKnowledgeBaseUpsertArgs<ExtArgs>>): Prisma__AiKnowledgeBaseClient<$Result.GetResult<Prisma.$AiKnowledgeBasePayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of AiKnowledgeBases.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiKnowledgeBaseCountArgs} args - Arguments to filter AiKnowledgeBases to count.
+     * @example
+     * // Count the number of AiKnowledgeBases
+     * const count = await prisma.aiKnowledgeBase.count({
+     *   where: {
+     *     // ... the filter for the AiKnowledgeBases we want to count
+     *   }
+     * })
+    **/
+    count<T extends AiKnowledgeBaseCountArgs>(
+      args?: Subset<T, AiKnowledgeBaseCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], AiKnowledgeBaseCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a AiKnowledgeBase.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiKnowledgeBaseAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends AiKnowledgeBaseAggregateArgs>(args: Subset<T, AiKnowledgeBaseAggregateArgs>): Prisma.PrismaPromise<GetAiKnowledgeBaseAggregateType<T>>
+
+    /**
+     * Group by AiKnowledgeBase.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiKnowledgeBaseGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends AiKnowledgeBaseGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: AiKnowledgeBaseGroupByArgs['orderBy'] }
+        : { orderBy?: AiKnowledgeBaseGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, AiKnowledgeBaseGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetAiKnowledgeBaseGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the AiKnowledgeBase model
+   */
+  readonly fields: AiKnowledgeBaseFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for AiKnowledgeBase.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__AiKnowledgeBaseClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    user<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    chunks<T extends AiKnowledgeBase$chunksArgs<ExtArgs> = {}>(args?: Subset<T, AiKnowledgeBase$chunksArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AiKnowledgeChunkPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the AiKnowledgeBase model
+   */
+  interface AiKnowledgeBaseFieldRefs {
+    readonly id: FieldRef<"AiKnowledgeBase", 'String'>
+    readonly userId: FieldRef<"AiKnowledgeBase", 'String'>
+    readonly title: FieldRef<"AiKnowledgeBase", 'String'>
+    readonly type: FieldRef<"AiKnowledgeBase", 'String'>
+    readonly sourceMode: FieldRef<"AiKnowledgeBase", 'String'>
+    readonly description: FieldRef<"AiKnowledgeBase", 'String'>
+    readonly chunkSize: FieldRef<"AiKnowledgeBase", 'Int'>
+    readonly overlap: FieldRef<"AiKnowledgeBase", 'Int'>
+    readonly linkedAgentId: FieldRef<"AiKnowledgeBase", 'String'>
+    readonly linkedAgentName: FieldRef<"AiKnowledgeBase", 'String'>
+    readonly status: FieldRef<"AiKnowledgeBase", 'String'>
+    readonly chunkCount: FieldRef<"AiKnowledgeBase", 'Int'>
+    readonly sourceJson: FieldRef<"AiKnowledgeBase", 'Json'>
+    readonly indexError: FieldRef<"AiKnowledgeBase", 'String'>
+    readonly indexedAt: FieldRef<"AiKnowledgeBase", 'DateTime'>
+    readonly createdAt: FieldRef<"AiKnowledgeBase", 'DateTime'>
+    readonly updatedAt: FieldRef<"AiKnowledgeBase", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * AiKnowledgeBase findUnique
+   */
+  export type AiKnowledgeBaseFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiKnowledgeBase
+     */
+    select?: AiKnowledgeBaseSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiKnowledgeBase
+     */
+    omit?: AiKnowledgeBaseOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiKnowledgeBaseInclude<ExtArgs> | null
+    /**
+     * Filter, which AiKnowledgeBase to fetch.
+     */
+    where: AiKnowledgeBaseWhereUniqueInput
+  }
+
+  /**
+   * AiKnowledgeBase findUniqueOrThrow
+   */
+  export type AiKnowledgeBaseFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiKnowledgeBase
+     */
+    select?: AiKnowledgeBaseSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiKnowledgeBase
+     */
+    omit?: AiKnowledgeBaseOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiKnowledgeBaseInclude<ExtArgs> | null
+    /**
+     * Filter, which AiKnowledgeBase to fetch.
+     */
+    where: AiKnowledgeBaseWhereUniqueInput
+  }
+
+  /**
+   * AiKnowledgeBase findFirst
+   */
+  export type AiKnowledgeBaseFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiKnowledgeBase
+     */
+    select?: AiKnowledgeBaseSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiKnowledgeBase
+     */
+    omit?: AiKnowledgeBaseOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiKnowledgeBaseInclude<ExtArgs> | null
+    /**
+     * Filter, which AiKnowledgeBase to fetch.
+     */
+    where?: AiKnowledgeBaseWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of AiKnowledgeBases to fetch.
+     */
+    orderBy?: AiKnowledgeBaseOrderByWithRelationInput | AiKnowledgeBaseOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for AiKnowledgeBases.
+     */
+    cursor?: AiKnowledgeBaseWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` AiKnowledgeBases from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` AiKnowledgeBases.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of AiKnowledgeBases.
+     */
+    distinct?: AiKnowledgeBaseScalarFieldEnum | AiKnowledgeBaseScalarFieldEnum[]
+  }
+
+  /**
+   * AiKnowledgeBase findFirstOrThrow
+   */
+  export type AiKnowledgeBaseFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiKnowledgeBase
+     */
+    select?: AiKnowledgeBaseSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiKnowledgeBase
+     */
+    omit?: AiKnowledgeBaseOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiKnowledgeBaseInclude<ExtArgs> | null
+    /**
+     * Filter, which AiKnowledgeBase to fetch.
+     */
+    where?: AiKnowledgeBaseWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of AiKnowledgeBases to fetch.
+     */
+    orderBy?: AiKnowledgeBaseOrderByWithRelationInput | AiKnowledgeBaseOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for AiKnowledgeBases.
+     */
+    cursor?: AiKnowledgeBaseWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` AiKnowledgeBases from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` AiKnowledgeBases.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of AiKnowledgeBases.
+     */
+    distinct?: AiKnowledgeBaseScalarFieldEnum | AiKnowledgeBaseScalarFieldEnum[]
+  }
+
+  /**
+   * AiKnowledgeBase findMany
+   */
+  export type AiKnowledgeBaseFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiKnowledgeBase
+     */
+    select?: AiKnowledgeBaseSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiKnowledgeBase
+     */
+    omit?: AiKnowledgeBaseOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiKnowledgeBaseInclude<ExtArgs> | null
+    /**
+     * Filter, which AiKnowledgeBases to fetch.
+     */
+    where?: AiKnowledgeBaseWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of AiKnowledgeBases to fetch.
+     */
+    orderBy?: AiKnowledgeBaseOrderByWithRelationInput | AiKnowledgeBaseOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing AiKnowledgeBases.
+     */
+    cursor?: AiKnowledgeBaseWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` AiKnowledgeBases from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` AiKnowledgeBases.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of AiKnowledgeBases.
+     */
+    distinct?: AiKnowledgeBaseScalarFieldEnum | AiKnowledgeBaseScalarFieldEnum[]
+  }
+
+  /**
+   * AiKnowledgeBase create
+   */
+  export type AiKnowledgeBaseCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiKnowledgeBase
+     */
+    select?: AiKnowledgeBaseSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiKnowledgeBase
+     */
+    omit?: AiKnowledgeBaseOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiKnowledgeBaseInclude<ExtArgs> | null
+    /**
+     * The data needed to create a AiKnowledgeBase.
+     */
+    data: XOR<AiKnowledgeBaseCreateInput, AiKnowledgeBaseUncheckedCreateInput>
+  }
+
+  /**
+   * AiKnowledgeBase createMany
+   */
+  export type AiKnowledgeBaseCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many AiKnowledgeBases.
+     */
+    data: AiKnowledgeBaseCreateManyInput | AiKnowledgeBaseCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * AiKnowledgeBase createManyAndReturn
+   */
+  export type AiKnowledgeBaseCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiKnowledgeBase
+     */
+    select?: AiKnowledgeBaseSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiKnowledgeBase
+     */
+    omit?: AiKnowledgeBaseOmit<ExtArgs> | null
+    /**
+     * The data used to create many AiKnowledgeBases.
+     */
+    data: AiKnowledgeBaseCreateManyInput | AiKnowledgeBaseCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiKnowledgeBaseIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * AiKnowledgeBase update
+   */
+  export type AiKnowledgeBaseUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiKnowledgeBase
+     */
+    select?: AiKnowledgeBaseSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiKnowledgeBase
+     */
+    omit?: AiKnowledgeBaseOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiKnowledgeBaseInclude<ExtArgs> | null
+    /**
+     * The data needed to update a AiKnowledgeBase.
+     */
+    data: XOR<AiKnowledgeBaseUpdateInput, AiKnowledgeBaseUncheckedUpdateInput>
+    /**
+     * Choose, which AiKnowledgeBase to update.
+     */
+    where: AiKnowledgeBaseWhereUniqueInput
+  }
+
+  /**
+   * AiKnowledgeBase updateMany
+   */
+  export type AiKnowledgeBaseUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update AiKnowledgeBases.
+     */
+    data: XOR<AiKnowledgeBaseUpdateManyMutationInput, AiKnowledgeBaseUncheckedUpdateManyInput>
+    /**
+     * Filter which AiKnowledgeBases to update
+     */
+    where?: AiKnowledgeBaseWhereInput
+    /**
+     * Limit how many AiKnowledgeBases to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * AiKnowledgeBase updateManyAndReturn
+   */
+  export type AiKnowledgeBaseUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiKnowledgeBase
+     */
+    select?: AiKnowledgeBaseSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiKnowledgeBase
+     */
+    omit?: AiKnowledgeBaseOmit<ExtArgs> | null
+    /**
+     * The data used to update AiKnowledgeBases.
+     */
+    data: XOR<AiKnowledgeBaseUpdateManyMutationInput, AiKnowledgeBaseUncheckedUpdateManyInput>
+    /**
+     * Filter which AiKnowledgeBases to update
+     */
+    where?: AiKnowledgeBaseWhereInput
+    /**
+     * Limit how many AiKnowledgeBases to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiKnowledgeBaseIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * AiKnowledgeBase upsert
+   */
+  export type AiKnowledgeBaseUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiKnowledgeBase
+     */
+    select?: AiKnowledgeBaseSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiKnowledgeBase
+     */
+    omit?: AiKnowledgeBaseOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiKnowledgeBaseInclude<ExtArgs> | null
+    /**
+     * The filter to search for the AiKnowledgeBase to update in case it exists.
+     */
+    where: AiKnowledgeBaseWhereUniqueInput
+    /**
+     * In case the AiKnowledgeBase found by the `where` argument doesn't exist, create a new AiKnowledgeBase with this data.
+     */
+    create: XOR<AiKnowledgeBaseCreateInput, AiKnowledgeBaseUncheckedCreateInput>
+    /**
+     * In case the AiKnowledgeBase was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<AiKnowledgeBaseUpdateInput, AiKnowledgeBaseUncheckedUpdateInput>
+  }
+
+  /**
+   * AiKnowledgeBase delete
+   */
+  export type AiKnowledgeBaseDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiKnowledgeBase
+     */
+    select?: AiKnowledgeBaseSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiKnowledgeBase
+     */
+    omit?: AiKnowledgeBaseOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiKnowledgeBaseInclude<ExtArgs> | null
+    /**
+     * Filter which AiKnowledgeBase to delete.
+     */
+    where: AiKnowledgeBaseWhereUniqueInput
+  }
+
+  /**
+   * AiKnowledgeBase deleteMany
+   */
+  export type AiKnowledgeBaseDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which AiKnowledgeBases to delete
+     */
+    where?: AiKnowledgeBaseWhereInput
+    /**
+     * Limit how many AiKnowledgeBases to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * AiKnowledgeBase.chunks
+   */
+  export type AiKnowledgeBase$chunksArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiKnowledgeChunk
+     */
+    select?: AiKnowledgeChunkSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiKnowledgeChunk
+     */
+    omit?: AiKnowledgeChunkOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiKnowledgeChunkInclude<ExtArgs> | null
+    where?: AiKnowledgeChunkWhereInput
+    orderBy?: AiKnowledgeChunkOrderByWithRelationInput | AiKnowledgeChunkOrderByWithRelationInput[]
+    cursor?: AiKnowledgeChunkWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: AiKnowledgeChunkScalarFieldEnum | AiKnowledgeChunkScalarFieldEnum[]
+  }
+
+  /**
+   * AiKnowledgeBase without action
+   */
+  export type AiKnowledgeBaseDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiKnowledgeBase
+     */
+    select?: AiKnowledgeBaseSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiKnowledgeBase
+     */
+    omit?: AiKnowledgeBaseOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiKnowledgeBaseInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model AiKnowledgeChunk
+   */
+
+  export type AggregateAiKnowledgeChunk = {
+    _count: AiKnowledgeChunkCountAggregateOutputType | null
+    _avg: AiKnowledgeChunkAvgAggregateOutputType | null
+    _sum: AiKnowledgeChunkSumAggregateOutputType | null
+    _min: AiKnowledgeChunkMinAggregateOutputType | null
+    _max: AiKnowledgeChunkMaxAggregateOutputType | null
+  }
+
+  export type AiKnowledgeChunkAvgAggregateOutputType = {
+    position: number | null
+  }
+
+  export type AiKnowledgeChunkSumAggregateOutputType = {
+    position: number | null
+  }
+
+  export type AiKnowledgeChunkMinAggregateOutputType = {
+    id: string | null
+    knowledgeBaseId: string | null
+    position: number | null
+    content: string | null
+    createdAt: Date | null
+  }
+
+  export type AiKnowledgeChunkMaxAggregateOutputType = {
+    id: string | null
+    knowledgeBaseId: string | null
+    position: number | null
+    content: string | null
+    createdAt: Date | null
+  }
+
+  export type AiKnowledgeChunkCountAggregateOutputType = {
+    id: number
+    knowledgeBaseId: number
+    position: number
+    content: number
+    createdAt: number
+    _all: number
+  }
+
+
+  export type AiKnowledgeChunkAvgAggregateInputType = {
+    position?: true
+  }
+
+  export type AiKnowledgeChunkSumAggregateInputType = {
+    position?: true
+  }
+
+  export type AiKnowledgeChunkMinAggregateInputType = {
+    id?: true
+    knowledgeBaseId?: true
+    position?: true
+    content?: true
+    createdAt?: true
+  }
+
+  export type AiKnowledgeChunkMaxAggregateInputType = {
+    id?: true
+    knowledgeBaseId?: true
+    position?: true
+    content?: true
+    createdAt?: true
+  }
+
+  export type AiKnowledgeChunkCountAggregateInputType = {
+    id?: true
+    knowledgeBaseId?: true
+    position?: true
+    content?: true
+    createdAt?: true
+    _all?: true
+  }
+
+  export type AiKnowledgeChunkAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which AiKnowledgeChunk to aggregate.
+     */
+    where?: AiKnowledgeChunkWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of AiKnowledgeChunks to fetch.
+     */
+    orderBy?: AiKnowledgeChunkOrderByWithRelationInput | AiKnowledgeChunkOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: AiKnowledgeChunkWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` AiKnowledgeChunks from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` AiKnowledgeChunks.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned AiKnowledgeChunks
+    **/
+    _count?: true | AiKnowledgeChunkCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: AiKnowledgeChunkAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: AiKnowledgeChunkSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: AiKnowledgeChunkMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: AiKnowledgeChunkMaxAggregateInputType
+  }
+
+  export type GetAiKnowledgeChunkAggregateType<T extends AiKnowledgeChunkAggregateArgs> = {
+        [P in keyof T & keyof AggregateAiKnowledgeChunk]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateAiKnowledgeChunk[P]>
+      : GetScalarType<T[P], AggregateAiKnowledgeChunk[P]>
+  }
+
+
+
+
+  export type AiKnowledgeChunkGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: AiKnowledgeChunkWhereInput
+    orderBy?: AiKnowledgeChunkOrderByWithAggregationInput | AiKnowledgeChunkOrderByWithAggregationInput[]
+    by: AiKnowledgeChunkScalarFieldEnum[] | AiKnowledgeChunkScalarFieldEnum
+    having?: AiKnowledgeChunkScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: AiKnowledgeChunkCountAggregateInputType | true
+    _avg?: AiKnowledgeChunkAvgAggregateInputType
+    _sum?: AiKnowledgeChunkSumAggregateInputType
+    _min?: AiKnowledgeChunkMinAggregateInputType
+    _max?: AiKnowledgeChunkMaxAggregateInputType
+  }
+
+  export type AiKnowledgeChunkGroupByOutputType = {
+    id: string
+    knowledgeBaseId: string
+    position: number
+    content: string
+    createdAt: Date
+    _count: AiKnowledgeChunkCountAggregateOutputType | null
+    _avg: AiKnowledgeChunkAvgAggregateOutputType | null
+    _sum: AiKnowledgeChunkSumAggregateOutputType | null
+    _min: AiKnowledgeChunkMinAggregateOutputType | null
+    _max: AiKnowledgeChunkMaxAggregateOutputType | null
+  }
+
+  type GetAiKnowledgeChunkGroupByPayload<T extends AiKnowledgeChunkGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<AiKnowledgeChunkGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof AiKnowledgeChunkGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], AiKnowledgeChunkGroupByOutputType[P]>
+            : GetScalarType<T[P], AiKnowledgeChunkGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type AiKnowledgeChunkSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    knowledgeBaseId?: boolean
+    position?: boolean
+    content?: boolean
+    createdAt?: boolean
+    knowledgeBase?: boolean | AiKnowledgeBaseDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["aiKnowledgeChunk"]>
+
+  export type AiKnowledgeChunkSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    knowledgeBaseId?: boolean
+    position?: boolean
+    content?: boolean
+    createdAt?: boolean
+    knowledgeBase?: boolean | AiKnowledgeBaseDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["aiKnowledgeChunk"]>
+
+  export type AiKnowledgeChunkSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    knowledgeBaseId?: boolean
+    position?: boolean
+    content?: boolean
+    createdAt?: boolean
+    knowledgeBase?: boolean | AiKnowledgeBaseDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["aiKnowledgeChunk"]>
+
+  export type AiKnowledgeChunkSelectScalar = {
+    id?: boolean
+    knowledgeBaseId?: boolean
+    position?: boolean
+    content?: boolean
+    createdAt?: boolean
+  }
+
+  export type AiKnowledgeChunkOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "knowledgeBaseId" | "position" | "content" | "createdAt", ExtArgs["result"]["aiKnowledgeChunk"]>
+  export type AiKnowledgeChunkInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    knowledgeBase?: boolean | AiKnowledgeBaseDefaultArgs<ExtArgs>
+  }
+  export type AiKnowledgeChunkIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    knowledgeBase?: boolean | AiKnowledgeBaseDefaultArgs<ExtArgs>
+  }
+  export type AiKnowledgeChunkIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    knowledgeBase?: boolean | AiKnowledgeBaseDefaultArgs<ExtArgs>
+  }
+
+  export type $AiKnowledgeChunkPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "AiKnowledgeChunk"
+    objects: {
+      knowledgeBase: Prisma.$AiKnowledgeBasePayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      knowledgeBaseId: string
+      position: number
+      content: string
+      createdAt: Date
+    }, ExtArgs["result"]["aiKnowledgeChunk"]>
+    composites: {}
+  }
+
+  type AiKnowledgeChunkGetPayload<S extends boolean | null | undefined | AiKnowledgeChunkDefaultArgs> = $Result.GetResult<Prisma.$AiKnowledgeChunkPayload, S>
+
+  type AiKnowledgeChunkCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<AiKnowledgeChunkFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: AiKnowledgeChunkCountAggregateInputType | true
+    }
+
+  export interface AiKnowledgeChunkDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['AiKnowledgeChunk'], meta: { name: 'AiKnowledgeChunk' } }
+    /**
+     * Find zero or one AiKnowledgeChunk that matches the filter.
+     * @param {AiKnowledgeChunkFindUniqueArgs} args - Arguments to find a AiKnowledgeChunk
+     * @example
+     * // Get one AiKnowledgeChunk
+     * const aiKnowledgeChunk = await prisma.aiKnowledgeChunk.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends AiKnowledgeChunkFindUniqueArgs>(args: SelectSubset<T, AiKnowledgeChunkFindUniqueArgs<ExtArgs>>): Prisma__AiKnowledgeChunkClient<$Result.GetResult<Prisma.$AiKnowledgeChunkPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one AiKnowledgeChunk that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {AiKnowledgeChunkFindUniqueOrThrowArgs} args - Arguments to find a AiKnowledgeChunk
+     * @example
+     * // Get one AiKnowledgeChunk
+     * const aiKnowledgeChunk = await prisma.aiKnowledgeChunk.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends AiKnowledgeChunkFindUniqueOrThrowArgs>(args: SelectSubset<T, AiKnowledgeChunkFindUniqueOrThrowArgs<ExtArgs>>): Prisma__AiKnowledgeChunkClient<$Result.GetResult<Prisma.$AiKnowledgeChunkPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first AiKnowledgeChunk that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiKnowledgeChunkFindFirstArgs} args - Arguments to find a AiKnowledgeChunk
+     * @example
+     * // Get one AiKnowledgeChunk
+     * const aiKnowledgeChunk = await prisma.aiKnowledgeChunk.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends AiKnowledgeChunkFindFirstArgs>(args?: SelectSubset<T, AiKnowledgeChunkFindFirstArgs<ExtArgs>>): Prisma__AiKnowledgeChunkClient<$Result.GetResult<Prisma.$AiKnowledgeChunkPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first AiKnowledgeChunk that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiKnowledgeChunkFindFirstOrThrowArgs} args - Arguments to find a AiKnowledgeChunk
+     * @example
+     * // Get one AiKnowledgeChunk
+     * const aiKnowledgeChunk = await prisma.aiKnowledgeChunk.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends AiKnowledgeChunkFindFirstOrThrowArgs>(args?: SelectSubset<T, AiKnowledgeChunkFindFirstOrThrowArgs<ExtArgs>>): Prisma__AiKnowledgeChunkClient<$Result.GetResult<Prisma.$AiKnowledgeChunkPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more AiKnowledgeChunks that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiKnowledgeChunkFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all AiKnowledgeChunks
+     * const aiKnowledgeChunks = await prisma.aiKnowledgeChunk.findMany()
+     * 
+     * // Get first 10 AiKnowledgeChunks
+     * const aiKnowledgeChunks = await prisma.aiKnowledgeChunk.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const aiKnowledgeChunkWithIdOnly = await prisma.aiKnowledgeChunk.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends AiKnowledgeChunkFindManyArgs>(args?: SelectSubset<T, AiKnowledgeChunkFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AiKnowledgeChunkPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a AiKnowledgeChunk.
+     * @param {AiKnowledgeChunkCreateArgs} args - Arguments to create a AiKnowledgeChunk.
+     * @example
+     * // Create one AiKnowledgeChunk
+     * const AiKnowledgeChunk = await prisma.aiKnowledgeChunk.create({
+     *   data: {
+     *     // ... data to create a AiKnowledgeChunk
+     *   }
+     * })
+     * 
+     */
+    create<T extends AiKnowledgeChunkCreateArgs>(args: SelectSubset<T, AiKnowledgeChunkCreateArgs<ExtArgs>>): Prisma__AiKnowledgeChunkClient<$Result.GetResult<Prisma.$AiKnowledgeChunkPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many AiKnowledgeChunks.
+     * @param {AiKnowledgeChunkCreateManyArgs} args - Arguments to create many AiKnowledgeChunks.
+     * @example
+     * // Create many AiKnowledgeChunks
+     * const aiKnowledgeChunk = await prisma.aiKnowledgeChunk.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends AiKnowledgeChunkCreateManyArgs>(args?: SelectSubset<T, AiKnowledgeChunkCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many AiKnowledgeChunks and returns the data saved in the database.
+     * @param {AiKnowledgeChunkCreateManyAndReturnArgs} args - Arguments to create many AiKnowledgeChunks.
+     * @example
+     * // Create many AiKnowledgeChunks
+     * const aiKnowledgeChunk = await prisma.aiKnowledgeChunk.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many AiKnowledgeChunks and only return the `id`
+     * const aiKnowledgeChunkWithIdOnly = await prisma.aiKnowledgeChunk.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends AiKnowledgeChunkCreateManyAndReturnArgs>(args?: SelectSubset<T, AiKnowledgeChunkCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AiKnowledgeChunkPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a AiKnowledgeChunk.
+     * @param {AiKnowledgeChunkDeleteArgs} args - Arguments to delete one AiKnowledgeChunk.
+     * @example
+     * // Delete one AiKnowledgeChunk
+     * const AiKnowledgeChunk = await prisma.aiKnowledgeChunk.delete({
+     *   where: {
+     *     // ... filter to delete one AiKnowledgeChunk
+     *   }
+     * })
+     * 
+     */
+    delete<T extends AiKnowledgeChunkDeleteArgs>(args: SelectSubset<T, AiKnowledgeChunkDeleteArgs<ExtArgs>>): Prisma__AiKnowledgeChunkClient<$Result.GetResult<Prisma.$AiKnowledgeChunkPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one AiKnowledgeChunk.
+     * @param {AiKnowledgeChunkUpdateArgs} args - Arguments to update one AiKnowledgeChunk.
+     * @example
+     * // Update one AiKnowledgeChunk
+     * const aiKnowledgeChunk = await prisma.aiKnowledgeChunk.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends AiKnowledgeChunkUpdateArgs>(args: SelectSubset<T, AiKnowledgeChunkUpdateArgs<ExtArgs>>): Prisma__AiKnowledgeChunkClient<$Result.GetResult<Prisma.$AiKnowledgeChunkPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more AiKnowledgeChunks.
+     * @param {AiKnowledgeChunkDeleteManyArgs} args - Arguments to filter AiKnowledgeChunks to delete.
+     * @example
+     * // Delete a few AiKnowledgeChunks
+     * const { count } = await prisma.aiKnowledgeChunk.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends AiKnowledgeChunkDeleteManyArgs>(args?: SelectSubset<T, AiKnowledgeChunkDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more AiKnowledgeChunks.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiKnowledgeChunkUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many AiKnowledgeChunks
+     * const aiKnowledgeChunk = await prisma.aiKnowledgeChunk.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends AiKnowledgeChunkUpdateManyArgs>(args: SelectSubset<T, AiKnowledgeChunkUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more AiKnowledgeChunks and returns the data updated in the database.
+     * @param {AiKnowledgeChunkUpdateManyAndReturnArgs} args - Arguments to update many AiKnowledgeChunks.
+     * @example
+     * // Update many AiKnowledgeChunks
+     * const aiKnowledgeChunk = await prisma.aiKnowledgeChunk.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more AiKnowledgeChunks and only return the `id`
+     * const aiKnowledgeChunkWithIdOnly = await prisma.aiKnowledgeChunk.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends AiKnowledgeChunkUpdateManyAndReturnArgs>(args: SelectSubset<T, AiKnowledgeChunkUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AiKnowledgeChunkPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one AiKnowledgeChunk.
+     * @param {AiKnowledgeChunkUpsertArgs} args - Arguments to update or create a AiKnowledgeChunk.
+     * @example
+     * // Update or create a AiKnowledgeChunk
+     * const aiKnowledgeChunk = await prisma.aiKnowledgeChunk.upsert({
+     *   create: {
+     *     // ... data to create a AiKnowledgeChunk
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the AiKnowledgeChunk we want to update
+     *   }
+     * })
+     */
+    upsert<T extends AiKnowledgeChunkUpsertArgs>(args: SelectSubset<T, AiKnowledgeChunkUpsertArgs<ExtArgs>>): Prisma__AiKnowledgeChunkClient<$Result.GetResult<Prisma.$AiKnowledgeChunkPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of AiKnowledgeChunks.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiKnowledgeChunkCountArgs} args - Arguments to filter AiKnowledgeChunks to count.
+     * @example
+     * // Count the number of AiKnowledgeChunks
+     * const count = await prisma.aiKnowledgeChunk.count({
+     *   where: {
+     *     // ... the filter for the AiKnowledgeChunks we want to count
+     *   }
+     * })
+    **/
+    count<T extends AiKnowledgeChunkCountArgs>(
+      args?: Subset<T, AiKnowledgeChunkCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], AiKnowledgeChunkCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a AiKnowledgeChunk.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiKnowledgeChunkAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends AiKnowledgeChunkAggregateArgs>(args: Subset<T, AiKnowledgeChunkAggregateArgs>): Prisma.PrismaPromise<GetAiKnowledgeChunkAggregateType<T>>
+
+    /**
+     * Group by AiKnowledgeChunk.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiKnowledgeChunkGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends AiKnowledgeChunkGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: AiKnowledgeChunkGroupByArgs['orderBy'] }
+        : { orderBy?: AiKnowledgeChunkGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, AiKnowledgeChunkGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetAiKnowledgeChunkGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the AiKnowledgeChunk model
+   */
+  readonly fields: AiKnowledgeChunkFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for AiKnowledgeChunk.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__AiKnowledgeChunkClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    knowledgeBase<T extends AiKnowledgeBaseDefaultArgs<ExtArgs> = {}>(args?: Subset<T, AiKnowledgeBaseDefaultArgs<ExtArgs>>): Prisma__AiKnowledgeBaseClient<$Result.GetResult<Prisma.$AiKnowledgeBasePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the AiKnowledgeChunk model
+   */
+  interface AiKnowledgeChunkFieldRefs {
+    readonly id: FieldRef<"AiKnowledgeChunk", 'String'>
+    readonly knowledgeBaseId: FieldRef<"AiKnowledgeChunk", 'String'>
+    readonly position: FieldRef<"AiKnowledgeChunk", 'Int'>
+    readonly content: FieldRef<"AiKnowledgeChunk", 'String'>
+    readonly createdAt: FieldRef<"AiKnowledgeChunk", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * AiKnowledgeChunk findUnique
+   */
+  export type AiKnowledgeChunkFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiKnowledgeChunk
+     */
+    select?: AiKnowledgeChunkSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiKnowledgeChunk
+     */
+    omit?: AiKnowledgeChunkOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiKnowledgeChunkInclude<ExtArgs> | null
+    /**
+     * Filter, which AiKnowledgeChunk to fetch.
+     */
+    where: AiKnowledgeChunkWhereUniqueInput
+  }
+
+  /**
+   * AiKnowledgeChunk findUniqueOrThrow
+   */
+  export type AiKnowledgeChunkFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiKnowledgeChunk
+     */
+    select?: AiKnowledgeChunkSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiKnowledgeChunk
+     */
+    omit?: AiKnowledgeChunkOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiKnowledgeChunkInclude<ExtArgs> | null
+    /**
+     * Filter, which AiKnowledgeChunk to fetch.
+     */
+    where: AiKnowledgeChunkWhereUniqueInput
+  }
+
+  /**
+   * AiKnowledgeChunk findFirst
+   */
+  export type AiKnowledgeChunkFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiKnowledgeChunk
+     */
+    select?: AiKnowledgeChunkSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiKnowledgeChunk
+     */
+    omit?: AiKnowledgeChunkOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiKnowledgeChunkInclude<ExtArgs> | null
+    /**
+     * Filter, which AiKnowledgeChunk to fetch.
+     */
+    where?: AiKnowledgeChunkWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of AiKnowledgeChunks to fetch.
+     */
+    orderBy?: AiKnowledgeChunkOrderByWithRelationInput | AiKnowledgeChunkOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for AiKnowledgeChunks.
+     */
+    cursor?: AiKnowledgeChunkWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` AiKnowledgeChunks from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` AiKnowledgeChunks.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of AiKnowledgeChunks.
+     */
+    distinct?: AiKnowledgeChunkScalarFieldEnum | AiKnowledgeChunkScalarFieldEnum[]
+  }
+
+  /**
+   * AiKnowledgeChunk findFirstOrThrow
+   */
+  export type AiKnowledgeChunkFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiKnowledgeChunk
+     */
+    select?: AiKnowledgeChunkSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiKnowledgeChunk
+     */
+    omit?: AiKnowledgeChunkOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiKnowledgeChunkInclude<ExtArgs> | null
+    /**
+     * Filter, which AiKnowledgeChunk to fetch.
+     */
+    where?: AiKnowledgeChunkWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of AiKnowledgeChunks to fetch.
+     */
+    orderBy?: AiKnowledgeChunkOrderByWithRelationInput | AiKnowledgeChunkOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for AiKnowledgeChunks.
+     */
+    cursor?: AiKnowledgeChunkWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` AiKnowledgeChunks from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` AiKnowledgeChunks.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of AiKnowledgeChunks.
+     */
+    distinct?: AiKnowledgeChunkScalarFieldEnum | AiKnowledgeChunkScalarFieldEnum[]
+  }
+
+  /**
+   * AiKnowledgeChunk findMany
+   */
+  export type AiKnowledgeChunkFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiKnowledgeChunk
+     */
+    select?: AiKnowledgeChunkSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiKnowledgeChunk
+     */
+    omit?: AiKnowledgeChunkOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiKnowledgeChunkInclude<ExtArgs> | null
+    /**
+     * Filter, which AiKnowledgeChunks to fetch.
+     */
+    where?: AiKnowledgeChunkWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of AiKnowledgeChunks to fetch.
+     */
+    orderBy?: AiKnowledgeChunkOrderByWithRelationInput | AiKnowledgeChunkOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing AiKnowledgeChunks.
+     */
+    cursor?: AiKnowledgeChunkWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` AiKnowledgeChunks from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` AiKnowledgeChunks.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of AiKnowledgeChunks.
+     */
+    distinct?: AiKnowledgeChunkScalarFieldEnum | AiKnowledgeChunkScalarFieldEnum[]
+  }
+
+  /**
+   * AiKnowledgeChunk create
+   */
+  export type AiKnowledgeChunkCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiKnowledgeChunk
+     */
+    select?: AiKnowledgeChunkSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiKnowledgeChunk
+     */
+    omit?: AiKnowledgeChunkOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiKnowledgeChunkInclude<ExtArgs> | null
+    /**
+     * The data needed to create a AiKnowledgeChunk.
+     */
+    data: XOR<AiKnowledgeChunkCreateInput, AiKnowledgeChunkUncheckedCreateInput>
+  }
+
+  /**
+   * AiKnowledgeChunk createMany
+   */
+  export type AiKnowledgeChunkCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many AiKnowledgeChunks.
+     */
+    data: AiKnowledgeChunkCreateManyInput | AiKnowledgeChunkCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * AiKnowledgeChunk createManyAndReturn
+   */
+  export type AiKnowledgeChunkCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiKnowledgeChunk
+     */
+    select?: AiKnowledgeChunkSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiKnowledgeChunk
+     */
+    omit?: AiKnowledgeChunkOmit<ExtArgs> | null
+    /**
+     * The data used to create many AiKnowledgeChunks.
+     */
+    data: AiKnowledgeChunkCreateManyInput | AiKnowledgeChunkCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiKnowledgeChunkIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * AiKnowledgeChunk update
+   */
+  export type AiKnowledgeChunkUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiKnowledgeChunk
+     */
+    select?: AiKnowledgeChunkSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiKnowledgeChunk
+     */
+    omit?: AiKnowledgeChunkOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiKnowledgeChunkInclude<ExtArgs> | null
+    /**
+     * The data needed to update a AiKnowledgeChunk.
+     */
+    data: XOR<AiKnowledgeChunkUpdateInput, AiKnowledgeChunkUncheckedUpdateInput>
+    /**
+     * Choose, which AiKnowledgeChunk to update.
+     */
+    where: AiKnowledgeChunkWhereUniqueInput
+  }
+
+  /**
+   * AiKnowledgeChunk updateMany
+   */
+  export type AiKnowledgeChunkUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update AiKnowledgeChunks.
+     */
+    data: XOR<AiKnowledgeChunkUpdateManyMutationInput, AiKnowledgeChunkUncheckedUpdateManyInput>
+    /**
+     * Filter which AiKnowledgeChunks to update
+     */
+    where?: AiKnowledgeChunkWhereInput
+    /**
+     * Limit how many AiKnowledgeChunks to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * AiKnowledgeChunk updateManyAndReturn
+   */
+  export type AiKnowledgeChunkUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiKnowledgeChunk
+     */
+    select?: AiKnowledgeChunkSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiKnowledgeChunk
+     */
+    omit?: AiKnowledgeChunkOmit<ExtArgs> | null
+    /**
+     * The data used to update AiKnowledgeChunks.
+     */
+    data: XOR<AiKnowledgeChunkUpdateManyMutationInput, AiKnowledgeChunkUncheckedUpdateManyInput>
+    /**
+     * Filter which AiKnowledgeChunks to update
+     */
+    where?: AiKnowledgeChunkWhereInput
+    /**
+     * Limit how many AiKnowledgeChunks to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiKnowledgeChunkIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * AiKnowledgeChunk upsert
+   */
+  export type AiKnowledgeChunkUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiKnowledgeChunk
+     */
+    select?: AiKnowledgeChunkSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiKnowledgeChunk
+     */
+    omit?: AiKnowledgeChunkOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiKnowledgeChunkInclude<ExtArgs> | null
+    /**
+     * The filter to search for the AiKnowledgeChunk to update in case it exists.
+     */
+    where: AiKnowledgeChunkWhereUniqueInput
+    /**
+     * In case the AiKnowledgeChunk found by the `where` argument doesn't exist, create a new AiKnowledgeChunk with this data.
+     */
+    create: XOR<AiKnowledgeChunkCreateInput, AiKnowledgeChunkUncheckedCreateInput>
+    /**
+     * In case the AiKnowledgeChunk was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<AiKnowledgeChunkUpdateInput, AiKnowledgeChunkUncheckedUpdateInput>
+  }
+
+  /**
+   * AiKnowledgeChunk delete
+   */
+  export type AiKnowledgeChunkDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiKnowledgeChunk
+     */
+    select?: AiKnowledgeChunkSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiKnowledgeChunk
+     */
+    omit?: AiKnowledgeChunkOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiKnowledgeChunkInclude<ExtArgs> | null
+    /**
+     * Filter which AiKnowledgeChunk to delete.
+     */
+    where: AiKnowledgeChunkWhereUniqueInput
+  }
+
+  /**
+   * AiKnowledgeChunk deleteMany
+   */
+  export type AiKnowledgeChunkDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which AiKnowledgeChunks to delete
+     */
+    where?: AiKnowledgeChunkWhereInput
+    /**
+     * Limit how many AiKnowledgeChunks to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * AiKnowledgeChunk without action
+   */
+  export type AiKnowledgeChunkDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiKnowledgeChunk
+     */
+    select?: AiKnowledgeChunkSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiKnowledgeChunk
+     */
+    omit?: AiKnowledgeChunkOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiKnowledgeChunkInclude<ExtArgs> | null
   }
 
 
@@ -34207,6 +39250,62 @@ export namespace Prisma {
   export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
 
 
+  export const AiConversationScalarFieldEnum: {
+    id: 'id',
+    userId: 'userId',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type AiConversationScalarFieldEnum = (typeof AiConversationScalarFieldEnum)[keyof typeof AiConversationScalarFieldEnum]
+
+
+  export const AiMessageScalarFieldEnum: {
+    id: 'id',
+    conversationId: 'conversationId',
+    role: 'role',
+    content: 'content',
+    meta: 'meta',
+    createdAt: 'createdAt'
+  };
+
+  export type AiMessageScalarFieldEnum = (typeof AiMessageScalarFieldEnum)[keyof typeof AiMessageScalarFieldEnum]
+
+
+  export const AiKnowledgeBaseScalarFieldEnum: {
+    id: 'id',
+    userId: 'userId',
+    title: 'title',
+    type: 'type',
+    sourceMode: 'sourceMode',
+    description: 'description',
+    chunkSize: 'chunkSize',
+    overlap: 'overlap',
+    linkedAgentId: 'linkedAgentId',
+    linkedAgentName: 'linkedAgentName',
+    status: 'status',
+    chunkCount: 'chunkCount',
+    sourceJson: 'sourceJson',
+    indexError: 'indexError',
+    indexedAt: 'indexedAt',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type AiKnowledgeBaseScalarFieldEnum = (typeof AiKnowledgeBaseScalarFieldEnum)[keyof typeof AiKnowledgeBaseScalarFieldEnum]
+
+
+  export const AiKnowledgeChunkScalarFieldEnum: {
+    id: 'id',
+    knowledgeBaseId: 'knowledgeBaseId',
+    position: 'position',
+    content: 'content',
+    createdAt: 'createdAt'
+  };
+
+  export type AiKnowledgeChunkScalarFieldEnum = (typeof AiKnowledgeChunkScalarFieldEnum)[keyof typeof AiKnowledgeChunkScalarFieldEnum]
+
+
   export const CrmOrganizationProfileScalarFieldEnum: {
     id: 'id',
     name: 'name',
@@ -34601,16 +39700,16 @@ export namespace Prisma {
 
 
   /**
-   * Reference to a field of type 'Float'
+   * Reference to a field of type 'Json'
    */
-  export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>
+  export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Json'>
     
 
 
   /**
-   * Reference to a field of type 'Float[]'
+   * Reference to a field of type 'QueryMode'
    */
-  export type ListFloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float[]'>
+  export type EnumQueryModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QueryMode'>
     
 
 
@@ -34629,16 +39728,16 @@ export namespace Prisma {
 
 
   /**
-   * Reference to a field of type 'Json'
+   * Reference to a field of type 'Float'
    */
-  export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Json'>
+  export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>
     
 
 
   /**
-   * Reference to a field of type 'QueryMode'
+   * Reference to a field of type 'Float[]'
    */
-  export type EnumQueryModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QueryMode'>
+  export type ListFloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float[]'>
     
   /**
    * Deep Input Types
@@ -34848,6 +39947,8 @@ export namespace Prisma {
     campaignsCreated?: CampaignListRelationFilter
     crmFilesUploaded?: CrmFileListRelationFilter
     crmSalesGoal?: XOR<CrmUserSalesGoalNullableScalarRelationFilter, CrmUserSalesGoalWhereInput> | null
+    aiConversation?: XOR<AiConversationNullableScalarRelationFilter, AiConversationWhereInput> | null
+    aiKnowledgeBases?: AiKnowledgeBaseListRelationFilter
   }
 
   export type UserOrderByWithRelationInput = {
@@ -34870,6 +39971,8 @@ export namespace Prisma {
     campaignsCreated?: CampaignOrderByRelationAggregateInput
     crmFilesUploaded?: CrmFileOrderByRelationAggregateInput
     crmSalesGoal?: CrmUserSalesGoalOrderByWithRelationInput
+    aiConversation?: AiConversationOrderByWithRelationInput
+    aiKnowledgeBases?: AiKnowledgeBaseOrderByRelationAggregateInput
   }
 
   export type UserWhereUniqueInput = Prisma.AtLeast<{
@@ -34895,6 +39998,8 @@ export namespace Prisma {
     campaignsCreated?: CampaignListRelationFilter
     crmFilesUploaded?: CrmFileListRelationFilter
     crmSalesGoal?: XOR<CrmUserSalesGoalNullableScalarRelationFilter, CrmUserSalesGoalWhereInput> | null
+    aiConversation?: XOR<AiConversationNullableScalarRelationFilter, AiConversationWhereInput> | null
+    aiKnowledgeBases?: AiKnowledgeBaseListRelationFilter
   }, "id">
 
   export type UserOrderByWithAggregationInput = {
@@ -34927,6 +40032,296 @@ export namespace Prisma {
     lastActivity?: DateTimeNullableWithAggregatesFilter<"User"> | Date | string | null
     createdAt?: DateTimeWithAggregatesFilter<"User"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"User"> | Date | string
+  }
+
+  export type AiConversationWhereInput = {
+    AND?: AiConversationWhereInput | AiConversationWhereInput[]
+    OR?: AiConversationWhereInput[]
+    NOT?: AiConversationWhereInput | AiConversationWhereInput[]
+    id?: StringFilter<"AiConversation"> | string
+    userId?: StringFilter<"AiConversation"> | string
+    createdAt?: DateTimeFilter<"AiConversation"> | Date | string
+    updatedAt?: DateTimeFilter<"AiConversation"> | Date | string
+    user?: XOR<UserScalarRelationFilter, UserWhereInput>
+    messages?: AiMessageListRelationFilter
+  }
+
+  export type AiConversationOrderByWithRelationInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    user?: UserOrderByWithRelationInput
+    messages?: AiMessageOrderByRelationAggregateInput
+  }
+
+  export type AiConversationWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    userId?: string
+    AND?: AiConversationWhereInput | AiConversationWhereInput[]
+    OR?: AiConversationWhereInput[]
+    NOT?: AiConversationWhereInput | AiConversationWhereInput[]
+    createdAt?: DateTimeFilter<"AiConversation"> | Date | string
+    updatedAt?: DateTimeFilter<"AiConversation"> | Date | string
+    user?: XOR<UserScalarRelationFilter, UserWhereInput>
+    messages?: AiMessageListRelationFilter
+  }, "id" | "userId">
+
+  export type AiConversationOrderByWithAggregationInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: AiConversationCountOrderByAggregateInput
+    _max?: AiConversationMaxOrderByAggregateInput
+    _min?: AiConversationMinOrderByAggregateInput
+  }
+
+  export type AiConversationScalarWhereWithAggregatesInput = {
+    AND?: AiConversationScalarWhereWithAggregatesInput | AiConversationScalarWhereWithAggregatesInput[]
+    OR?: AiConversationScalarWhereWithAggregatesInput[]
+    NOT?: AiConversationScalarWhereWithAggregatesInput | AiConversationScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"AiConversation"> | string
+    userId?: StringWithAggregatesFilter<"AiConversation"> | string
+    createdAt?: DateTimeWithAggregatesFilter<"AiConversation"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"AiConversation"> | Date | string
+  }
+
+  export type AiMessageWhereInput = {
+    AND?: AiMessageWhereInput | AiMessageWhereInput[]
+    OR?: AiMessageWhereInput[]
+    NOT?: AiMessageWhereInput | AiMessageWhereInput[]
+    id?: StringFilter<"AiMessage"> | string
+    conversationId?: StringFilter<"AiMessage"> | string
+    role?: StringFilter<"AiMessage"> | string
+    content?: StringFilter<"AiMessage"> | string
+    meta?: JsonNullableFilter<"AiMessage">
+    createdAt?: DateTimeFilter<"AiMessage"> | Date | string
+    conversation?: XOR<AiConversationScalarRelationFilter, AiConversationWhereInput>
+  }
+
+  export type AiMessageOrderByWithRelationInput = {
+    id?: SortOrder
+    conversationId?: SortOrder
+    role?: SortOrder
+    content?: SortOrder
+    meta?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    conversation?: AiConversationOrderByWithRelationInput
+  }
+
+  export type AiMessageWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: AiMessageWhereInput | AiMessageWhereInput[]
+    OR?: AiMessageWhereInput[]
+    NOT?: AiMessageWhereInput | AiMessageWhereInput[]
+    conversationId?: StringFilter<"AiMessage"> | string
+    role?: StringFilter<"AiMessage"> | string
+    content?: StringFilter<"AiMessage"> | string
+    meta?: JsonNullableFilter<"AiMessage">
+    createdAt?: DateTimeFilter<"AiMessage"> | Date | string
+    conversation?: XOR<AiConversationScalarRelationFilter, AiConversationWhereInput>
+  }, "id">
+
+  export type AiMessageOrderByWithAggregationInput = {
+    id?: SortOrder
+    conversationId?: SortOrder
+    role?: SortOrder
+    content?: SortOrder
+    meta?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    _count?: AiMessageCountOrderByAggregateInput
+    _max?: AiMessageMaxOrderByAggregateInput
+    _min?: AiMessageMinOrderByAggregateInput
+  }
+
+  export type AiMessageScalarWhereWithAggregatesInput = {
+    AND?: AiMessageScalarWhereWithAggregatesInput | AiMessageScalarWhereWithAggregatesInput[]
+    OR?: AiMessageScalarWhereWithAggregatesInput[]
+    NOT?: AiMessageScalarWhereWithAggregatesInput | AiMessageScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"AiMessage"> | string
+    conversationId?: StringWithAggregatesFilter<"AiMessage"> | string
+    role?: StringWithAggregatesFilter<"AiMessage"> | string
+    content?: StringWithAggregatesFilter<"AiMessage"> | string
+    meta?: JsonNullableWithAggregatesFilter<"AiMessage">
+    createdAt?: DateTimeWithAggregatesFilter<"AiMessage"> | Date | string
+  }
+
+  export type AiKnowledgeBaseWhereInput = {
+    AND?: AiKnowledgeBaseWhereInput | AiKnowledgeBaseWhereInput[]
+    OR?: AiKnowledgeBaseWhereInput[]
+    NOT?: AiKnowledgeBaseWhereInput | AiKnowledgeBaseWhereInput[]
+    id?: StringFilter<"AiKnowledgeBase"> | string
+    userId?: StringFilter<"AiKnowledgeBase"> | string
+    title?: StringFilter<"AiKnowledgeBase"> | string
+    type?: StringFilter<"AiKnowledgeBase"> | string
+    sourceMode?: StringFilter<"AiKnowledgeBase"> | string
+    description?: StringFilter<"AiKnowledgeBase"> | string
+    chunkSize?: IntFilter<"AiKnowledgeBase"> | number
+    overlap?: IntFilter<"AiKnowledgeBase"> | number
+    linkedAgentId?: StringNullableFilter<"AiKnowledgeBase"> | string | null
+    linkedAgentName?: StringNullableFilter<"AiKnowledgeBase"> | string | null
+    status?: StringFilter<"AiKnowledgeBase"> | string
+    chunkCount?: IntFilter<"AiKnowledgeBase"> | number
+    sourceJson?: JsonNullableFilter<"AiKnowledgeBase">
+    indexError?: StringNullableFilter<"AiKnowledgeBase"> | string | null
+    indexedAt?: DateTimeNullableFilter<"AiKnowledgeBase"> | Date | string | null
+    createdAt?: DateTimeFilter<"AiKnowledgeBase"> | Date | string
+    updatedAt?: DateTimeFilter<"AiKnowledgeBase"> | Date | string
+    user?: XOR<UserScalarRelationFilter, UserWhereInput>
+    chunks?: AiKnowledgeChunkListRelationFilter
+  }
+
+  export type AiKnowledgeBaseOrderByWithRelationInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    title?: SortOrder
+    type?: SortOrder
+    sourceMode?: SortOrder
+    description?: SortOrder
+    chunkSize?: SortOrder
+    overlap?: SortOrder
+    linkedAgentId?: SortOrderInput | SortOrder
+    linkedAgentName?: SortOrderInput | SortOrder
+    status?: SortOrder
+    chunkCount?: SortOrder
+    sourceJson?: SortOrderInput | SortOrder
+    indexError?: SortOrderInput | SortOrder
+    indexedAt?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    user?: UserOrderByWithRelationInput
+    chunks?: AiKnowledgeChunkOrderByRelationAggregateInput
+  }
+
+  export type AiKnowledgeBaseWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: AiKnowledgeBaseWhereInput | AiKnowledgeBaseWhereInput[]
+    OR?: AiKnowledgeBaseWhereInput[]
+    NOT?: AiKnowledgeBaseWhereInput | AiKnowledgeBaseWhereInput[]
+    userId?: StringFilter<"AiKnowledgeBase"> | string
+    title?: StringFilter<"AiKnowledgeBase"> | string
+    type?: StringFilter<"AiKnowledgeBase"> | string
+    sourceMode?: StringFilter<"AiKnowledgeBase"> | string
+    description?: StringFilter<"AiKnowledgeBase"> | string
+    chunkSize?: IntFilter<"AiKnowledgeBase"> | number
+    overlap?: IntFilter<"AiKnowledgeBase"> | number
+    linkedAgentId?: StringNullableFilter<"AiKnowledgeBase"> | string | null
+    linkedAgentName?: StringNullableFilter<"AiKnowledgeBase"> | string | null
+    status?: StringFilter<"AiKnowledgeBase"> | string
+    chunkCount?: IntFilter<"AiKnowledgeBase"> | number
+    sourceJson?: JsonNullableFilter<"AiKnowledgeBase">
+    indexError?: StringNullableFilter<"AiKnowledgeBase"> | string | null
+    indexedAt?: DateTimeNullableFilter<"AiKnowledgeBase"> | Date | string | null
+    createdAt?: DateTimeFilter<"AiKnowledgeBase"> | Date | string
+    updatedAt?: DateTimeFilter<"AiKnowledgeBase"> | Date | string
+    user?: XOR<UserScalarRelationFilter, UserWhereInput>
+    chunks?: AiKnowledgeChunkListRelationFilter
+  }, "id">
+
+  export type AiKnowledgeBaseOrderByWithAggregationInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    title?: SortOrder
+    type?: SortOrder
+    sourceMode?: SortOrder
+    description?: SortOrder
+    chunkSize?: SortOrder
+    overlap?: SortOrder
+    linkedAgentId?: SortOrderInput | SortOrder
+    linkedAgentName?: SortOrderInput | SortOrder
+    status?: SortOrder
+    chunkCount?: SortOrder
+    sourceJson?: SortOrderInput | SortOrder
+    indexError?: SortOrderInput | SortOrder
+    indexedAt?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: AiKnowledgeBaseCountOrderByAggregateInput
+    _avg?: AiKnowledgeBaseAvgOrderByAggregateInput
+    _max?: AiKnowledgeBaseMaxOrderByAggregateInput
+    _min?: AiKnowledgeBaseMinOrderByAggregateInput
+    _sum?: AiKnowledgeBaseSumOrderByAggregateInput
+  }
+
+  export type AiKnowledgeBaseScalarWhereWithAggregatesInput = {
+    AND?: AiKnowledgeBaseScalarWhereWithAggregatesInput | AiKnowledgeBaseScalarWhereWithAggregatesInput[]
+    OR?: AiKnowledgeBaseScalarWhereWithAggregatesInput[]
+    NOT?: AiKnowledgeBaseScalarWhereWithAggregatesInput | AiKnowledgeBaseScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"AiKnowledgeBase"> | string
+    userId?: StringWithAggregatesFilter<"AiKnowledgeBase"> | string
+    title?: StringWithAggregatesFilter<"AiKnowledgeBase"> | string
+    type?: StringWithAggregatesFilter<"AiKnowledgeBase"> | string
+    sourceMode?: StringWithAggregatesFilter<"AiKnowledgeBase"> | string
+    description?: StringWithAggregatesFilter<"AiKnowledgeBase"> | string
+    chunkSize?: IntWithAggregatesFilter<"AiKnowledgeBase"> | number
+    overlap?: IntWithAggregatesFilter<"AiKnowledgeBase"> | number
+    linkedAgentId?: StringNullableWithAggregatesFilter<"AiKnowledgeBase"> | string | null
+    linkedAgentName?: StringNullableWithAggregatesFilter<"AiKnowledgeBase"> | string | null
+    status?: StringWithAggregatesFilter<"AiKnowledgeBase"> | string
+    chunkCount?: IntWithAggregatesFilter<"AiKnowledgeBase"> | number
+    sourceJson?: JsonNullableWithAggregatesFilter<"AiKnowledgeBase">
+    indexError?: StringNullableWithAggregatesFilter<"AiKnowledgeBase"> | string | null
+    indexedAt?: DateTimeNullableWithAggregatesFilter<"AiKnowledgeBase"> | Date | string | null
+    createdAt?: DateTimeWithAggregatesFilter<"AiKnowledgeBase"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"AiKnowledgeBase"> | Date | string
+  }
+
+  export type AiKnowledgeChunkWhereInput = {
+    AND?: AiKnowledgeChunkWhereInput | AiKnowledgeChunkWhereInput[]
+    OR?: AiKnowledgeChunkWhereInput[]
+    NOT?: AiKnowledgeChunkWhereInput | AiKnowledgeChunkWhereInput[]
+    id?: StringFilter<"AiKnowledgeChunk"> | string
+    knowledgeBaseId?: StringFilter<"AiKnowledgeChunk"> | string
+    position?: IntFilter<"AiKnowledgeChunk"> | number
+    content?: StringFilter<"AiKnowledgeChunk"> | string
+    createdAt?: DateTimeFilter<"AiKnowledgeChunk"> | Date | string
+    knowledgeBase?: XOR<AiKnowledgeBaseScalarRelationFilter, AiKnowledgeBaseWhereInput>
+  }
+
+  export type AiKnowledgeChunkOrderByWithRelationInput = {
+    id?: SortOrder
+    knowledgeBaseId?: SortOrder
+    position?: SortOrder
+    content?: SortOrder
+    createdAt?: SortOrder
+    knowledgeBase?: AiKnowledgeBaseOrderByWithRelationInput
+  }
+
+  export type AiKnowledgeChunkWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: AiKnowledgeChunkWhereInput | AiKnowledgeChunkWhereInput[]
+    OR?: AiKnowledgeChunkWhereInput[]
+    NOT?: AiKnowledgeChunkWhereInput | AiKnowledgeChunkWhereInput[]
+    knowledgeBaseId?: StringFilter<"AiKnowledgeChunk"> | string
+    position?: IntFilter<"AiKnowledgeChunk"> | number
+    content?: StringFilter<"AiKnowledgeChunk"> | string
+    createdAt?: DateTimeFilter<"AiKnowledgeChunk"> | Date | string
+    knowledgeBase?: XOR<AiKnowledgeBaseScalarRelationFilter, AiKnowledgeBaseWhereInput>
+  }, "id">
+
+  export type AiKnowledgeChunkOrderByWithAggregationInput = {
+    id?: SortOrder
+    knowledgeBaseId?: SortOrder
+    position?: SortOrder
+    content?: SortOrder
+    createdAt?: SortOrder
+    _count?: AiKnowledgeChunkCountOrderByAggregateInput
+    _avg?: AiKnowledgeChunkAvgOrderByAggregateInput
+    _max?: AiKnowledgeChunkMaxOrderByAggregateInput
+    _min?: AiKnowledgeChunkMinOrderByAggregateInput
+    _sum?: AiKnowledgeChunkSumOrderByAggregateInput
+  }
+
+  export type AiKnowledgeChunkScalarWhereWithAggregatesInput = {
+    AND?: AiKnowledgeChunkScalarWhereWithAggregatesInput | AiKnowledgeChunkScalarWhereWithAggregatesInput[]
+    OR?: AiKnowledgeChunkScalarWhereWithAggregatesInput[]
+    NOT?: AiKnowledgeChunkScalarWhereWithAggregatesInput | AiKnowledgeChunkScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"AiKnowledgeChunk"> | string
+    knowledgeBaseId?: StringWithAggregatesFilter<"AiKnowledgeChunk"> | string
+    position?: IntWithAggregatesFilter<"AiKnowledgeChunk"> | number
+    content?: StringWithAggregatesFilter<"AiKnowledgeChunk"> | string
+    createdAt?: DateTimeWithAggregatesFilter<"AiKnowledgeChunk"> | Date | string
   }
 
   export type CrmOrganizationProfileWhereInput = {
@@ -36793,6 +42188,8 @@ export namespace Prisma {
     campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
+    aiConversation?: AiConversationCreateNestedOneWithoutUserInput
+    aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateInput = {
@@ -36814,6 +42211,8 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
+    aiConversation?: AiConversationUncheckedCreateNestedOneWithoutUserInput
+    aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserUpdateInput = {
@@ -36835,6 +42234,8 @@ export namespace Prisma {
     campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
+    aiConversation?: AiConversationUpdateOneWithoutUserNestedInput
+    aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateInput = {
@@ -36856,6 +42257,8 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
+    aiConversation?: AiConversationUncheckedUpdateOneWithoutUserNestedInput
+    aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type UserCreateManyInput = {
@@ -36894,6 +42297,318 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type AiConversationCreateInput = {
+    id?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    user: UserCreateNestedOneWithoutAiConversationInput
+    messages?: AiMessageCreateNestedManyWithoutConversationInput
+  }
+
+  export type AiConversationUncheckedCreateInput = {
+    id?: string
+    userId: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    messages?: AiMessageUncheckedCreateNestedManyWithoutConversationInput
+  }
+
+  export type AiConversationUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    user?: UserUpdateOneRequiredWithoutAiConversationNestedInput
+    messages?: AiMessageUpdateManyWithoutConversationNestedInput
+  }
+
+  export type AiConversationUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    messages?: AiMessageUncheckedUpdateManyWithoutConversationNestedInput
+  }
+
+  export type AiConversationCreateManyInput = {
+    id?: string
+    userId: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type AiConversationUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type AiConversationUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type AiMessageCreateInput = {
+    id?: string
+    role: string
+    content: string
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    conversation: AiConversationCreateNestedOneWithoutMessagesInput
+  }
+
+  export type AiMessageUncheckedCreateInput = {
+    id?: string
+    conversationId: string
+    role: string
+    content: string
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+  }
+
+  export type AiMessageUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    role?: StringFieldUpdateOperationsInput | string
+    content?: StringFieldUpdateOperationsInput | string
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    conversation?: AiConversationUpdateOneRequiredWithoutMessagesNestedInput
+  }
+
+  export type AiMessageUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    conversationId?: StringFieldUpdateOperationsInput | string
+    role?: StringFieldUpdateOperationsInput | string
+    content?: StringFieldUpdateOperationsInput | string
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type AiMessageCreateManyInput = {
+    id?: string
+    conversationId: string
+    role: string
+    content: string
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+  }
+
+  export type AiMessageUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    role?: StringFieldUpdateOperationsInput | string
+    content?: StringFieldUpdateOperationsInput | string
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type AiMessageUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    conversationId?: StringFieldUpdateOperationsInput | string
+    role?: StringFieldUpdateOperationsInput | string
+    content?: StringFieldUpdateOperationsInput | string
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type AiKnowledgeBaseCreateInput = {
+    id?: string
+    title: string
+    type?: string
+    sourceMode: string
+    description: string
+    chunkSize?: number
+    overlap?: number
+    linkedAgentId?: string | null
+    linkedAgentName?: string | null
+    status?: string
+    chunkCount?: number
+    sourceJson?: NullableJsonNullValueInput | InputJsonValue
+    indexError?: string | null
+    indexedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    user: UserCreateNestedOneWithoutAiKnowledgeBasesInput
+    chunks?: AiKnowledgeChunkCreateNestedManyWithoutKnowledgeBaseInput
+  }
+
+  export type AiKnowledgeBaseUncheckedCreateInput = {
+    id?: string
+    userId: string
+    title: string
+    type?: string
+    sourceMode: string
+    description: string
+    chunkSize?: number
+    overlap?: number
+    linkedAgentId?: string | null
+    linkedAgentName?: string | null
+    status?: string
+    chunkCount?: number
+    sourceJson?: NullableJsonNullValueInput | InputJsonValue
+    indexError?: string | null
+    indexedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    chunks?: AiKnowledgeChunkUncheckedCreateNestedManyWithoutKnowledgeBaseInput
+  }
+
+  export type AiKnowledgeBaseUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+    sourceMode?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    chunkSize?: IntFieldUpdateOperationsInput | number
+    overlap?: IntFieldUpdateOperationsInput | number
+    linkedAgentId?: NullableStringFieldUpdateOperationsInput | string | null
+    linkedAgentName?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: StringFieldUpdateOperationsInput | string
+    chunkCount?: IntFieldUpdateOperationsInput | number
+    sourceJson?: NullableJsonNullValueInput | InputJsonValue
+    indexError?: NullableStringFieldUpdateOperationsInput | string | null
+    indexedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    user?: UserUpdateOneRequiredWithoutAiKnowledgeBasesNestedInput
+    chunks?: AiKnowledgeChunkUpdateManyWithoutKnowledgeBaseNestedInput
+  }
+
+  export type AiKnowledgeBaseUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+    sourceMode?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    chunkSize?: IntFieldUpdateOperationsInput | number
+    overlap?: IntFieldUpdateOperationsInput | number
+    linkedAgentId?: NullableStringFieldUpdateOperationsInput | string | null
+    linkedAgentName?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: StringFieldUpdateOperationsInput | string
+    chunkCount?: IntFieldUpdateOperationsInput | number
+    sourceJson?: NullableJsonNullValueInput | InputJsonValue
+    indexError?: NullableStringFieldUpdateOperationsInput | string | null
+    indexedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    chunks?: AiKnowledgeChunkUncheckedUpdateManyWithoutKnowledgeBaseNestedInput
+  }
+
+  export type AiKnowledgeBaseCreateManyInput = {
+    id?: string
+    userId: string
+    title: string
+    type?: string
+    sourceMode: string
+    description: string
+    chunkSize?: number
+    overlap?: number
+    linkedAgentId?: string | null
+    linkedAgentName?: string | null
+    status?: string
+    chunkCount?: number
+    sourceJson?: NullableJsonNullValueInput | InputJsonValue
+    indexError?: string | null
+    indexedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type AiKnowledgeBaseUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+    sourceMode?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    chunkSize?: IntFieldUpdateOperationsInput | number
+    overlap?: IntFieldUpdateOperationsInput | number
+    linkedAgentId?: NullableStringFieldUpdateOperationsInput | string | null
+    linkedAgentName?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: StringFieldUpdateOperationsInput | string
+    chunkCount?: IntFieldUpdateOperationsInput | number
+    sourceJson?: NullableJsonNullValueInput | InputJsonValue
+    indexError?: NullableStringFieldUpdateOperationsInput | string | null
+    indexedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type AiKnowledgeBaseUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+    sourceMode?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    chunkSize?: IntFieldUpdateOperationsInput | number
+    overlap?: IntFieldUpdateOperationsInput | number
+    linkedAgentId?: NullableStringFieldUpdateOperationsInput | string | null
+    linkedAgentName?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: StringFieldUpdateOperationsInput | string
+    chunkCount?: IntFieldUpdateOperationsInput | number
+    sourceJson?: NullableJsonNullValueInput | InputJsonValue
+    indexError?: NullableStringFieldUpdateOperationsInput | string | null
+    indexedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type AiKnowledgeChunkCreateInput = {
+    id?: string
+    position: number
+    content: string
+    createdAt?: Date | string
+    knowledgeBase: AiKnowledgeBaseCreateNestedOneWithoutChunksInput
+  }
+
+  export type AiKnowledgeChunkUncheckedCreateInput = {
+    id?: string
+    knowledgeBaseId: string
+    position: number
+    content: string
+    createdAt?: Date | string
+  }
+
+  export type AiKnowledgeChunkUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    position?: IntFieldUpdateOperationsInput | number
+    content?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    knowledgeBase?: AiKnowledgeBaseUpdateOneRequiredWithoutChunksNestedInput
+  }
+
+  export type AiKnowledgeChunkUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    knowledgeBaseId?: StringFieldUpdateOperationsInput | string
+    position?: IntFieldUpdateOperationsInput | number
+    content?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type AiKnowledgeChunkCreateManyInput = {
+    id?: string
+    knowledgeBaseId: string
+    position: number
+    content: string
+    createdAt?: Date | string
+  }
+
+  export type AiKnowledgeChunkUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    position?: IntFieldUpdateOperationsInput | number
+    content?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type AiKnowledgeChunkUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    knowledgeBaseId?: StringFieldUpdateOperationsInput | string
+    position?: IntFieldUpdateOperationsInput | number
+    content?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type CrmOrganizationProfileCreateInput = {
@@ -38932,6 +44647,17 @@ export namespace Prisma {
     isNot?: CrmUserSalesGoalWhereInput | null
   }
 
+  export type AiConversationNullableScalarRelationFilter = {
+    is?: AiConversationWhereInput | null
+    isNot?: AiConversationWhereInput | null
+  }
+
+  export type AiKnowledgeBaseListRelationFilter = {
+    every?: AiKnowledgeBaseWhereInput
+    some?: AiKnowledgeBaseWhereInput
+    none?: AiKnowledgeBaseWhereInput
+  }
+
   export type AccountOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
@@ -38957,6 +44683,10 @@ export namespace Prisma {
   }
 
   export type CrmFileOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type AiKnowledgeBaseOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -39011,6 +44741,260 @@ export namespace Prisma {
     _count?: NestedIntNullableFilter<$PrismaModel>
     _min?: NestedDateTimeNullableFilter<$PrismaModel>
     _max?: NestedDateTimeNullableFilter<$PrismaModel>
+  }
+
+  export type AiMessageListRelationFilter = {
+    every?: AiMessageWhereInput
+    some?: AiMessageWhereInput
+    none?: AiMessageWhereInput
+  }
+
+  export type AiMessageOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type AiConversationCountOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type AiConversationMaxOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type AiConversationMinOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+  export type JsonNullableFilter<$PrismaModel = never> =
+    | PatchUndefined<
+        Either<Required<JsonNullableFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonNullableFilterBase<$PrismaModel>>, 'path'>>,
+        Required<JsonNullableFilterBase<$PrismaModel>>
+      >
+    | OptionalFlat<Omit<Required<JsonNullableFilterBase<$PrismaModel>>, 'path'>>
+
+  export type JsonNullableFilterBase<$PrismaModel = never> = {
+    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    path?: string[]
+    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
+    string_contains?: string | StringFieldRefInput<$PrismaModel>
+    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
+    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+  }
+
+  export type AiConversationScalarRelationFilter = {
+    is?: AiConversationWhereInput
+    isNot?: AiConversationWhereInput
+  }
+
+  export type AiMessageCountOrderByAggregateInput = {
+    id?: SortOrder
+    conversationId?: SortOrder
+    role?: SortOrder
+    content?: SortOrder
+    meta?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type AiMessageMaxOrderByAggregateInput = {
+    id?: SortOrder
+    conversationId?: SortOrder
+    role?: SortOrder
+    content?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type AiMessageMinOrderByAggregateInput = {
+    id?: SortOrder
+    conversationId?: SortOrder
+    role?: SortOrder
+    content?: SortOrder
+    createdAt?: SortOrder
+  }
+  export type JsonNullableWithAggregatesFilter<$PrismaModel = never> =
+    | PatchUndefined<
+        Either<Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, 'path'>>,
+        Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>
+      >
+    | OptionalFlat<Omit<Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, 'path'>>
+
+  export type JsonNullableWithAggregatesFilterBase<$PrismaModel = never> = {
+    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    path?: string[]
+    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
+    string_contains?: string | StringFieldRefInput<$PrismaModel>
+    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
+    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedJsonNullableFilter<$PrismaModel>
+    _max?: NestedJsonNullableFilter<$PrismaModel>
+  }
+
+  export type IntFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel>
+    in?: number[] | ListIntFieldRefInput<$PrismaModel>
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntFilter<$PrismaModel> | number
+  }
+
+  export type AiKnowledgeChunkListRelationFilter = {
+    every?: AiKnowledgeChunkWhereInput
+    some?: AiKnowledgeChunkWhereInput
+    none?: AiKnowledgeChunkWhereInput
+  }
+
+  export type AiKnowledgeChunkOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type AiKnowledgeBaseCountOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    title?: SortOrder
+    type?: SortOrder
+    sourceMode?: SortOrder
+    description?: SortOrder
+    chunkSize?: SortOrder
+    overlap?: SortOrder
+    linkedAgentId?: SortOrder
+    linkedAgentName?: SortOrder
+    status?: SortOrder
+    chunkCount?: SortOrder
+    sourceJson?: SortOrder
+    indexError?: SortOrder
+    indexedAt?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type AiKnowledgeBaseAvgOrderByAggregateInput = {
+    chunkSize?: SortOrder
+    overlap?: SortOrder
+    chunkCount?: SortOrder
+  }
+
+  export type AiKnowledgeBaseMaxOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    title?: SortOrder
+    type?: SortOrder
+    sourceMode?: SortOrder
+    description?: SortOrder
+    chunkSize?: SortOrder
+    overlap?: SortOrder
+    linkedAgentId?: SortOrder
+    linkedAgentName?: SortOrder
+    status?: SortOrder
+    chunkCount?: SortOrder
+    indexError?: SortOrder
+    indexedAt?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type AiKnowledgeBaseMinOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    title?: SortOrder
+    type?: SortOrder
+    sourceMode?: SortOrder
+    description?: SortOrder
+    chunkSize?: SortOrder
+    overlap?: SortOrder
+    linkedAgentId?: SortOrder
+    linkedAgentName?: SortOrder
+    status?: SortOrder
+    chunkCount?: SortOrder
+    indexError?: SortOrder
+    indexedAt?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type AiKnowledgeBaseSumOrderByAggregateInput = {
+    chunkSize?: SortOrder
+    overlap?: SortOrder
+    chunkCount?: SortOrder
+  }
+
+  export type IntWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel>
+    in?: number[] | ListIntFieldRefInput<$PrismaModel>
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntWithAggregatesFilter<$PrismaModel> | number
+    _count?: NestedIntFilter<$PrismaModel>
+    _avg?: NestedFloatFilter<$PrismaModel>
+    _sum?: NestedIntFilter<$PrismaModel>
+    _min?: NestedIntFilter<$PrismaModel>
+    _max?: NestedIntFilter<$PrismaModel>
+  }
+
+  export type AiKnowledgeBaseScalarRelationFilter = {
+    is?: AiKnowledgeBaseWhereInput
+    isNot?: AiKnowledgeBaseWhereInput
+  }
+
+  export type AiKnowledgeChunkCountOrderByAggregateInput = {
+    id?: SortOrder
+    knowledgeBaseId?: SortOrder
+    position?: SortOrder
+    content?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type AiKnowledgeChunkAvgOrderByAggregateInput = {
+    position?: SortOrder
+  }
+
+  export type AiKnowledgeChunkMaxOrderByAggregateInput = {
+    id?: SortOrder
+    knowledgeBaseId?: SortOrder
+    position?: SortOrder
+    content?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type AiKnowledgeChunkMinOrderByAggregateInput = {
+    id?: SortOrder
+    knowledgeBaseId?: SortOrder
+    position?: SortOrder
+    content?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type AiKnowledgeChunkSumOrderByAggregateInput = {
+    position?: SortOrder
   }
 
   export type FloatFilter<$PrismaModel = never> = {
@@ -39086,17 +45070,6 @@ export namespace Prisma {
     _max?: NestedFloatFilter<$PrismaModel>
   }
 
-  export type IntFilter<$PrismaModel = never> = {
-    equals?: number | IntFieldRefInput<$PrismaModel>
-    in?: number[] | ListIntFieldRefInput<$PrismaModel>
-    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
-    lt?: number | IntFieldRefInput<$PrismaModel>
-    lte?: number | IntFieldRefInput<$PrismaModel>
-    gt?: number | IntFieldRefInput<$PrismaModel>
-    gte?: number | IntFieldRefInput<$PrismaModel>
-    not?: NestedIntFilter<$PrismaModel> | number
-  }
-
   export type CrmLeadSourceCountOrderByAggregateInput = {
     id?: SortOrder
     slug?: SortOrder
@@ -39127,22 +45100,6 @@ export namespace Prisma {
 
   export type CrmLeadSourceSumOrderByAggregateInput = {
     sortOrder?: SortOrder
-  }
-
-  export type IntWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: number | IntFieldRefInput<$PrismaModel>
-    in?: number[] | ListIntFieldRefInput<$PrismaModel>
-    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
-    lt?: number | IntFieldRefInput<$PrismaModel>
-    lte?: number | IntFieldRefInput<$PrismaModel>
-    gt?: number | IntFieldRefInput<$PrismaModel>
-    gte?: number | IntFieldRefInput<$PrismaModel>
-    not?: NestedIntWithAggregatesFilter<$PrismaModel> | number
-    _count?: NestedIntFilter<$PrismaModel>
-    _avg?: NestedFloatFilter<$PrismaModel>
-    _sum?: NestedIntFilter<$PrismaModel>
-    _min?: NestedIntFilter<$PrismaModel>
-    _max?: NestedIntFilter<$PrismaModel>
   }
 
   export type CrmStageCountOrderByAggregateInput = {
@@ -39285,29 +45242,6 @@ export namespace Prisma {
     weeklyTarget?: SortOrder
     monthlyTarget?: SortOrder
   }
-  export type JsonNullableFilter<$PrismaModel = never> =
-    | PatchUndefined<
-        Either<Required<JsonNullableFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonNullableFilterBase<$PrismaModel>>, 'path'>>,
-        Required<JsonNullableFilterBase<$PrismaModel>>
-      >
-    | OptionalFlat<Omit<Required<JsonNullableFilterBase<$PrismaModel>>, 'path'>>
-
-  export type JsonNullableFilterBase<$PrismaModel = never> = {
-    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
-    path?: string[]
-    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
-    string_contains?: string | StringFieldRefInput<$PrismaModel>
-    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
-    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
-    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
-  }
 
   export type UserNullableScalarRelationFilter = {
     is?: UserWhereInput | null
@@ -39427,32 +45361,6 @@ export namespace Prisma {
 
   export type ContactSumOrderByAggregateInput = {
     estimatedValue?: SortOrder
-  }
-  export type JsonNullableWithAggregatesFilter<$PrismaModel = never> =
-    | PatchUndefined<
-        Either<Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, 'path'>>,
-        Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>
-      >
-    | OptionalFlat<Omit<Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, 'path'>>
-
-  export type JsonNullableWithAggregatesFilterBase<$PrismaModel = never> = {
-    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
-    path?: string[]
-    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
-    string_contains?: string | StringFieldRefInput<$PrismaModel>
-    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
-    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
-    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
-    _count?: NestedIntNullableFilter<$PrismaModel>
-    _min?: NestedJsonNullableFilter<$PrismaModel>
-    _max?: NestedJsonNullableFilter<$PrismaModel>
   }
 
   export type CompanyCompanyListRelationFilter = {
@@ -40305,6 +46213,19 @@ export namespace Prisma {
     connect?: CrmUserSalesGoalWhereUniqueInput
   }
 
+  export type AiConversationCreateNestedOneWithoutUserInput = {
+    create?: XOR<AiConversationCreateWithoutUserInput, AiConversationUncheckedCreateWithoutUserInput>
+    connectOrCreate?: AiConversationCreateOrConnectWithoutUserInput
+    connect?: AiConversationWhereUniqueInput
+  }
+
+  export type AiKnowledgeBaseCreateNestedManyWithoutUserInput = {
+    create?: XOR<AiKnowledgeBaseCreateWithoutUserInput, AiKnowledgeBaseUncheckedCreateWithoutUserInput> | AiKnowledgeBaseCreateWithoutUserInput[] | AiKnowledgeBaseUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: AiKnowledgeBaseCreateOrConnectWithoutUserInput | AiKnowledgeBaseCreateOrConnectWithoutUserInput[]
+    createMany?: AiKnowledgeBaseCreateManyUserInputEnvelope
+    connect?: AiKnowledgeBaseWhereUniqueInput | AiKnowledgeBaseWhereUniqueInput[]
+  }
+
   export type AccountUncheckedCreateNestedManyWithoutUserInput = {
     create?: XOR<AccountCreateWithoutUserInput, AccountUncheckedCreateWithoutUserInput> | AccountCreateWithoutUserInput[] | AccountUncheckedCreateWithoutUserInput[]
     connectOrCreate?: AccountCreateOrConnectWithoutUserInput | AccountCreateOrConnectWithoutUserInput[]
@@ -40358,6 +46279,19 @@ export namespace Prisma {
     create?: XOR<CrmUserSalesGoalCreateWithoutUserInput, CrmUserSalesGoalUncheckedCreateWithoutUserInput>
     connectOrCreate?: CrmUserSalesGoalCreateOrConnectWithoutUserInput
     connect?: CrmUserSalesGoalWhereUniqueInput
+  }
+
+  export type AiConversationUncheckedCreateNestedOneWithoutUserInput = {
+    create?: XOR<AiConversationCreateWithoutUserInput, AiConversationUncheckedCreateWithoutUserInput>
+    connectOrCreate?: AiConversationCreateOrConnectWithoutUserInput
+    connect?: AiConversationWhereUniqueInput
+  }
+
+  export type AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput = {
+    create?: XOR<AiKnowledgeBaseCreateWithoutUserInput, AiKnowledgeBaseUncheckedCreateWithoutUserInput> | AiKnowledgeBaseCreateWithoutUserInput[] | AiKnowledgeBaseUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: AiKnowledgeBaseCreateOrConnectWithoutUserInput | AiKnowledgeBaseCreateOrConnectWithoutUserInput[]
+    createMany?: AiKnowledgeBaseCreateManyUserInputEnvelope
+    connect?: AiKnowledgeBaseWhereUniqueInput | AiKnowledgeBaseWhereUniqueInput[]
   }
 
   export type NullableDateTimeFieldUpdateOperationsInput = {
@@ -40480,6 +46414,30 @@ export namespace Prisma {
     update?: XOR<XOR<CrmUserSalesGoalUpdateToOneWithWhereWithoutUserInput, CrmUserSalesGoalUpdateWithoutUserInput>, CrmUserSalesGoalUncheckedUpdateWithoutUserInput>
   }
 
+  export type AiConversationUpdateOneWithoutUserNestedInput = {
+    create?: XOR<AiConversationCreateWithoutUserInput, AiConversationUncheckedCreateWithoutUserInput>
+    connectOrCreate?: AiConversationCreateOrConnectWithoutUserInput
+    upsert?: AiConversationUpsertWithoutUserInput
+    disconnect?: AiConversationWhereInput | boolean
+    delete?: AiConversationWhereInput | boolean
+    connect?: AiConversationWhereUniqueInput
+    update?: XOR<XOR<AiConversationUpdateToOneWithWhereWithoutUserInput, AiConversationUpdateWithoutUserInput>, AiConversationUncheckedUpdateWithoutUserInput>
+  }
+
+  export type AiKnowledgeBaseUpdateManyWithoutUserNestedInput = {
+    create?: XOR<AiKnowledgeBaseCreateWithoutUserInput, AiKnowledgeBaseUncheckedCreateWithoutUserInput> | AiKnowledgeBaseCreateWithoutUserInput[] | AiKnowledgeBaseUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: AiKnowledgeBaseCreateOrConnectWithoutUserInput | AiKnowledgeBaseCreateOrConnectWithoutUserInput[]
+    upsert?: AiKnowledgeBaseUpsertWithWhereUniqueWithoutUserInput | AiKnowledgeBaseUpsertWithWhereUniqueWithoutUserInput[]
+    createMany?: AiKnowledgeBaseCreateManyUserInputEnvelope
+    set?: AiKnowledgeBaseWhereUniqueInput | AiKnowledgeBaseWhereUniqueInput[]
+    disconnect?: AiKnowledgeBaseWhereUniqueInput | AiKnowledgeBaseWhereUniqueInput[]
+    delete?: AiKnowledgeBaseWhereUniqueInput | AiKnowledgeBaseWhereUniqueInput[]
+    connect?: AiKnowledgeBaseWhereUniqueInput | AiKnowledgeBaseWhereUniqueInput[]
+    update?: AiKnowledgeBaseUpdateWithWhereUniqueWithoutUserInput | AiKnowledgeBaseUpdateWithWhereUniqueWithoutUserInput[]
+    updateMany?: AiKnowledgeBaseUpdateManyWithWhereWithoutUserInput | AiKnowledgeBaseUpdateManyWithWhereWithoutUserInput[]
+    deleteMany?: AiKnowledgeBaseScalarWhereInput | AiKnowledgeBaseScalarWhereInput[]
+  }
+
   export type AccountUncheckedUpdateManyWithoutUserNestedInput = {
     create?: XOR<AccountCreateWithoutUserInput, AccountUncheckedCreateWithoutUserInput> | AccountCreateWithoutUserInput[] | AccountUncheckedCreateWithoutUserInput[]
     connectOrCreate?: AccountCreateOrConnectWithoutUserInput | AccountCreateOrConnectWithoutUserInput[]
@@ -40588,7 +46546,121 @@ export namespace Prisma {
     update?: XOR<XOR<CrmUserSalesGoalUpdateToOneWithWhereWithoutUserInput, CrmUserSalesGoalUpdateWithoutUserInput>, CrmUserSalesGoalUncheckedUpdateWithoutUserInput>
   }
 
-  export type FloatFieldUpdateOperationsInput = {
+  export type AiConversationUncheckedUpdateOneWithoutUserNestedInput = {
+    create?: XOR<AiConversationCreateWithoutUserInput, AiConversationUncheckedCreateWithoutUserInput>
+    connectOrCreate?: AiConversationCreateOrConnectWithoutUserInput
+    upsert?: AiConversationUpsertWithoutUserInput
+    disconnect?: AiConversationWhereInput | boolean
+    delete?: AiConversationWhereInput | boolean
+    connect?: AiConversationWhereUniqueInput
+    update?: XOR<XOR<AiConversationUpdateToOneWithWhereWithoutUserInput, AiConversationUpdateWithoutUserInput>, AiConversationUncheckedUpdateWithoutUserInput>
+  }
+
+  export type AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput = {
+    create?: XOR<AiKnowledgeBaseCreateWithoutUserInput, AiKnowledgeBaseUncheckedCreateWithoutUserInput> | AiKnowledgeBaseCreateWithoutUserInput[] | AiKnowledgeBaseUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: AiKnowledgeBaseCreateOrConnectWithoutUserInput | AiKnowledgeBaseCreateOrConnectWithoutUserInput[]
+    upsert?: AiKnowledgeBaseUpsertWithWhereUniqueWithoutUserInput | AiKnowledgeBaseUpsertWithWhereUniqueWithoutUserInput[]
+    createMany?: AiKnowledgeBaseCreateManyUserInputEnvelope
+    set?: AiKnowledgeBaseWhereUniqueInput | AiKnowledgeBaseWhereUniqueInput[]
+    disconnect?: AiKnowledgeBaseWhereUniqueInput | AiKnowledgeBaseWhereUniqueInput[]
+    delete?: AiKnowledgeBaseWhereUniqueInput | AiKnowledgeBaseWhereUniqueInput[]
+    connect?: AiKnowledgeBaseWhereUniqueInput | AiKnowledgeBaseWhereUniqueInput[]
+    update?: AiKnowledgeBaseUpdateWithWhereUniqueWithoutUserInput | AiKnowledgeBaseUpdateWithWhereUniqueWithoutUserInput[]
+    updateMany?: AiKnowledgeBaseUpdateManyWithWhereWithoutUserInput | AiKnowledgeBaseUpdateManyWithWhereWithoutUserInput[]
+    deleteMany?: AiKnowledgeBaseScalarWhereInput | AiKnowledgeBaseScalarWhereInput[]
+  }
+
+  export type UserCreateNestedOneWithoutAiConversationInput = {
+    create?: XOR<UserCreateWithoutAiConversationInput, UserUncheckedCreateWithoutAiConversationInput>
+    connectOrCreate?: UserCreateOrConnectWithoutAiConversationInput
+    connect?: UserWhereUniqueInput
+  }
+
+  export type AiMessageCreateNestedManyWithoutConversationInput = {
+    create?: XOR<AiMessageCreateWithoutConversationInput, AiMessageUncheckedCreateWithoutConversationInput> | AiMessageCreateWithoutConversationInput[] | AiMessageUncheckedCreateWithoutConversationInput[]
+    connectOrCreate?: AiMessageCreateOrConnectWithoutConversationInput | AiMessageCreateOrConnectWithoutConversationInput[]
+    createMany?: AiMessageCreateManyConversationInputEnvelope
+    connect?: AiMessageWhereUniqueInput | AiMessageWhereUniqueInput[]
+  }
+
+  export type AiMessageUncheckedCreateNestedManyWithoutConversationInput = {
+    create?: XOR<AiMessageCreateWithoutConversationInput, AiMessageUncheckedCreateWithoutConversationInput> | AiMessageCreateWithoutConversationInput[] | AiMessageUncheckedCreateWithoutConversationInput[]
+    connectOrCreate?: AiMessageCreateOrConnectWithoutConversationInput | AiMessageCreateOrConnectWithoutConversationInput[]
+    createMany?: AiMessageCreateManyConversationInputEnvelope
+    connect?: AiMessageWhereUniqueInput | AiMessageWhereUniqueInput[]
+  }
+
+  export type UserUpdateOneRequiredWithoutAiConversationNestedInput = {
+    create?: XOR<UserCreateWithoutAiConversationInput, UserUncheckedCreateWithoutAiConversationInput>
+    connectOrCreate?: UserCreateOrConnectWithoutAiConversationInput
+    upsert?: UserUpsertWithoutAiConversationInput
+    connect?: UserWhereUniqueInput
+    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutAiConversationInput, UserUpdateWithoutAiConversationInput>, UserUncheckedUpdateWithoutAiConversationInput>
+  }
+
+  export type AiMessageUpdateManyWithoutConversationNestedInput = {
+    create?: XOR<AiMessageCreateWithoutConversationInput, AiMessageUncheckedCreateWithoutConversationInput> | AiMessageCreateWithoutConversationInput[] | AiMessageUncheckedCreateWithoutConversationInput[]
+    connectOrCreate?: AiMessageCreateOrConnectWithoutConversationInput | AiMessageCreateOrConnectWithoutConversationInput[]
+    upsert?: AiMessageUpsertWithWhereUniqueWithoutConversationInput | AiMessageUpsertWithWhereUniqueWithoutConversationInput[]
+    createMany?: AiMessageCreateManyConversationInputEnvelope
+    set?: AiMessageWhereUniqueInput | AiMessageWhereUniqueInput[]
+    disconnect?: AiMessageWhereUniqueInput | AiMessageWhereUniqueInput[]
+    delete?: AiMessageWhereUniqueInput | AiMessageWhereUniqueInput[]
+    connect?: AiMessageWhereUniqueInput | AiMessageWhereUniqueInput[]
+    update?: AiMessageUpdateWithWhereUniqueWithoutConversationInput | AiMessageUpdateWithWhereUniqueWithoutConversationInput[]
+    updateMany?: AiMessageUpdateManyWithWhereWithoutConversationInput | AiMessageUpdateManyWithWhereWithoutConversationInput[]
+    deleteMany?: AiMessageScalarWhereInput | AiMessageScalarWhereInput[]
+  }
+
+  export type AiMessageUncheckedUpdateManyWithoutConversationNestedInput = {
+    create?: XOR<AiMessageCreateWithoutConversationInput, AiMessageUncheckedCreateWithoutConversationInput> | AiMessageCreateWithoutConversationInput[] | AiMessageUncheckedCreateWithoutConversationInput[]
+    connectOrCreate?: AiMessageCreateOrConnectWithoutConversationInput | AiMessageCreateOrConnectWithoutConversationInput[]
+    upsert?: AiMessageUpsertWithWhereUniqueWithoutConversationInput | AiMessageUpsertWithWhereUniqueWithoutConversationInput[]
+    createMany?: AiMessageCreateManyConversationInputEnvelope
+    set?: AiMessageWhereUniqueInput | AiMessageWhereUniqueInput[]
+    disconnect?: AiMessageWhereUniqueInput | AiMessageWhereUniqueInput[]
+    delete?: AiMessageWhereUniqueInput | AiMessageWhereUniqueInput[]
+    connect?: AiMessageWhereUniqueInput | AiMessageWhereUniqueInput[]
+    update?: AiMessageUpdateWithWhereUniqueWithoutConversationInput | AiMessageUpdateWithWhereUniqueWithoutConversationInput[]
+    updateMany?: AiMessageUpdateManyWithWhereWithoutConversationInput | AiMessageUpdateManyWithWhereWithoutConversationInput[]
+    deleteMany?: AiMessageScalarWhereInput | AiMessageScalarWhereInput[]
+  }
+
+  export type AiConversationCreateNestedOneWithoutMessagesInput = {
+    create?: XOR<AiConversationCreateWithoutMessagesInput, AiConversationUncheckedCreateWithoutMessagesInput>
+    connectOrCreate?: AiConversationCreateOrConnectWithoutMessagesInput
+    connect?: AiConversationWhereUniqueInput
+  }
+
+  export type AiConversationUpdateOneRequiredWithoutMessagesNestedInput = {
+    create?: XOR<AiConversationCreateWithoutMessagesInput, AiConversationUncheckedCreateWithoutMessagesInput>
+    connectOrCreate?: AiConversationCreateOrConnectWithoutMessagesInput
+    upsert?: AiConversationUpsertWithoutMessagesInput
+    connect?: AiConversationWhereUniqueInput
+    update?: XOR<XOR<AiConversationUpdateToOneWithWhereWithoutMessagesInput, AiConversationUpdateWithoutMessagesInput>, AiConversationUncheckedUpdateWithoutMessagesInput>
+  }
+
+  export type UserCreateNestedOneWithoutAiKnowledgeBasesInput = {
+    create?: XOR<UserCreateWithoutAiKnowledgeBasesInput, UserUncheckedCreateWithoutAiKnowledgeBasesInput>
+    connectOrCreate?: UserCreateOrConnectWithoutAiKnowledgeBasesInput
+    connect?: UserWhereUniqueInput
+  }
+
+  export type AiKnowledgeChunkCreateNestedManyWithoutKnowledgeBaseInput = {
+    create?: XOR<AiKnowledgeChunkCreateWithoutKnowledgeBaseInput, AiKnowledgeChunkUncheckedCreateWithoutKnowledgeBaseInput> | AiKnowledgeChunkCreateWithoutKnowledgeBaseInput[] | AiKnowledgeChunkUncheckedCreateWithoutKnowledgeBaseInput[]
+    connectOrCreate?: AiKnowledgeChunkCreateOrConnectWithoutKnowledgeBaseInput | AiKnowledgeChunkCreateOrConnectWithoutKnowledgeBaseInput[]
+    createMany?: AiKnowledgeChunkCreateManyKnowledgeBaseInputEnvelope
+    connect?: AiKnowledgeChunkWhereUniqueInput | AiKnowledgeChunkWhereUniqueInput[]
+  }
+
+  export type AiKnowledgeChunkUncheckedCreateNestedManyWithoutKnowledgeBaseInput = {
+    create?: XOR<AiKnowledgeChunkCreateWithoutKnowledgeBaseInput, AiKnowledgeChunkUncheckedCreateWithoutKnowledgeBaseInput> | AiKnowledgeChunkCreateWithoutKnowledgeBaseInput[] | AiKnowledgeChunkUncheckedCreateWithoutKnowledgeBaseInput[]
+    connectOrCreate?: AiKnowledgeChunkCreateOrConnectWithoutKnowledgeBaseInput | AiKnowledgeChunkCreateOrConnectWithoutKnowledgeBaseInput[]
+    createMany?: AiKnowledgeChunkCreateManyKnowledgeBaseInputEnvelope
+    connect?: AiKnowledgeChunkWhereUniqueInput | AiKnowledgeChunkWhereUniqueInput[]
+  }
+
+  export type IntFieldUpdateOperationsInput = {
     set?: number
     increment?: number
     decrement?: number
@@ -40596,7 +46668,57 @@ export namespace Prisma {
     divide?: number
   }
 
-  export type IntFieldUpdateOperationsInput = {
+  export type UserUpdateOneRequiredWithoutAiKnowledgeBasesNestedInput = {
+    create?: XOR<UserCreateWithoutAiKnowledgeBasesInput, UserUncheckedCreateWithoutAiKnowledgeBasesInput>
+    connectOrCreate?: UserCreateOrConnectWithoutAiKnowledgeBasesInput
+    upsert?: UserUpsertWithoutAiKnowledgeBasesInput
+    connect?: UserWhereUniqueInput
+    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutAiKnowledgeBasesInput, UserUpdateWithoutAiKnowledgeBasesInput>, UserUncheckedUpdateWithoutAiKnowledgeBasesInput>
+  }
+
+  export type AiKnowledgeChunkUpdateManyWithoutKnowledgeBaseNestedInput = {
+    create?: XOR<AiKnowledgeChunkCreateWithoutKnowledgeBaseInput, AiKnowledgeChunkUncheckedCreateWithoutKnowledgeBaseInput> | AiKnowledgeChunkCreateWithoutKnowledgeBaseInput[] | AiKnowledgeChunkUncheckedCreateWithoutKnowledgeBaseInput[]
+    connectOrCreate?: AiKnowledgeChunkCreateOrConnectWithoutKnowledgeBaseInput | AiKnowledgeChunkCreateOrConnectWithoutKnowledgeBaseInput[]
+    upsert?: AiKnowledgeChunkUpsertWithWhereUniqueWithoutKnowledgeBaseInput | AiKnowledgeChunkUpsertWithWhereUniqueWithoutKnowledgeBaseInput[]
+    createMany?: AiKnowledgeChunkCreateManyKnowledgeBaseInputEnvelope
+    set?: AiKnowledgeChunkWhereUniqueInput | AiKnowledgeChunkWhereUniqueInput[]
+    disconnect?: AiKnowledgeChunkWhereUniqueInput | AiKnowledgeChunkWhereUniqueInput[]
+    delete?: AiKnowledgeChunkWhereUniqueInput | AiKnowledgeChunkWhereUniqueInput[]
+    connect?: AiKnowledgeChunkWhereUniqueInput | AiKnowledgeChunkWhereUniqueInput[]
+    update?: AiKnowledgeChunkUpdateWithWhereUniqueWithoutKnowledgeBaseInput | AiKnowledgeChunkUpdateWithWhereUniqueWithoutKnowledgeBaseInput[]
+    updateMany?: AiKnowledgeChunkUpdateManyWithWhereWithoutKnowledgeBaseInput | AiKnowledgeChunkUpdateManyWithWhereWithoutKnowledgeBaseInput[]
+    deleteMany?: AiKnowledgeChunkScalarWhereInput | AiKnowledgeChunkScalarWhereInput[]
+  }
+
+  export type AiKnowledgeChunkUncheckedUpdateManyWithoutKnowledgeBaseNestedInput = {
+    create?: XOR<AiKnowledgeChunkCreateWithoutKnowledgeBaseInput, AiKnowledgeChunkUncheckedCreateWithoutKnowledgeBaseInput> | AiKnowledgeChunkCreateWithoutKnowledgeBaseInput[] | AiKnowledgeChunkUncheckedCreateWithoutKnowledgeBaseInput[]
+    connectOrCreate?: AiKnowledgeChunkCreateOrConnectWithoutKnowledgeBaseInput | AiKnowledgeChunkCreateOrConnectWithoutKnowledgeBaseInput[]
+    upsert?: AiKnowledgeChunkUpsertWithWhereUniqueWithoutKnowledgeBaseInput | AiKnowledgeChunkUpsertWithWhereUniqueWithoutKnowledgeBaseInput[]
+    createMany?: AiKnowledgeChunkCreateManyKnowledgeBaseInputEnvelope
+    set?: AiKnowledgeChunkWhereUniqueInput | AiKnowledgeChunkWhereUniqueInput[]
+    disconnect?: AiKnowledgeChunkWhereUniqueInput | AiKnowledgeChunkWhereUniqueInput[]
+    delete?: AiKnowledgeChunkWhereUniqueInput | AiKnowledgeChunkWhereUniqueInput[]
+    connect?: AiKnowledgeChunkWhereUniqueInput | AiKnowledgeChunkWhereUniqueInput[]
+    update?: AiKnowledgeChunkUpdateWithWhereUniqueWithoutKnowledgeBaseInput | AiKnowledgeChunkUpdateWithWhereUniqueWithoutKnowledgeBaseInput[]
+    updateMany?: AiKnowledgeChunkUpdateManyWithWhereWithoutKnowledgeBaseInput | AiKnowledgeChunkUpdateManyWithWhereWithoutKnowledgeBaseInput[]
+    deleteMany?: AiKnowledgeChunkScalarWhereInput | AiKnowledgeChunkScalarWhereInput[]
+  }
+
+  export type AiKnowledgeBaseCreateNestedOneWithoutChunksInput = {
+    create?: XOR<AiKnowledgeBaseCreateWithoutChunksInput, AiKnowledgeBaseUncheckedCreateWithoutChunksInput>
+    connectOrCreate?: AiKnowledgeBaseCreateOrConnectWithoutChunksInput
+    connect?: AiKnowledgeBaseWhereUniqueInput
+  }
+
+  export type AiKnowledgeBaseUpdateOneRequiredWithoutChunksNestedInput = {
+    create?: XOR<AiKnowledgeBaseCreateWithoutChunksInput, AiKnowledgeBaseUncheckedCreateWithoutChunksInput>
+    connectOrCreate?: AiKnowledgeBaseCreateOrConnectWithoutChunksInput
+    upsert?: AiKnowledgeBaseUpsertWithoutChunksInput
+    connect?: AiKnowledgeBaseWhereUniqueInput
+    update?: XOR<XOR<AiKnowledgeBaseUpdateToOneWithWhereWithoutChunksInput, AiKnowledgeBaseUpdateWithoutChunksInput>, AiKnowledgeBaseUncheckedUpdateWithoutChunksInput>
+  }
+
+  export type FloatFieldUpdateOperationsInput = {
     set?: number
     increment?: number
     decrement?: number
@@ -41917,6 +48039,45 @@ export namespace Prisma {
     _min?: NestedDateTimeNullableFilter<$PrismaModel>
     _max?: NestedDateTimeNullableFilter<$PrismaModel>
   }
+  export type NestedJsonNullableFilter<$PrismaModel = never> =
+    | PatchUndefined<
+        Either<Required<NestedJsonNullableFilterBase<$PrismaModel>>, Exclude<keyof Required<NestedJsonNullableFilterBase<$PrismaModel>>, 'path'>>,
+        Required<NestedJsonNullableFilterBase<$PrismaModel>>
+      >
+    | OptionalFlat<Omit<Required<NestedJsonNullableFilterBase<$PrismaModel>>, 'path'>>
+
+  export type NestedJsonNullableFilterBase<$PrismaModel = never> = {
+    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    path?: string[]
+    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
+    string_contains?: string | StringFieldRefInput<$PrismaModel>
+    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
+    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+  }
+
+  export type NestedIntWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel>
+    in?: number[] | ListIntFieldRefInput<$PrismaModel>
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntWithAggregatesFilter<$PrismaModel> | number
+    _count?: NestedIntFilter<$PrismaModel>
+    _avg?: NestedFloatFilter<$PrismaModel>
+    _sum?: NestedIntFilter<$PrismaModel>
+    _min?: NestedIntFilter<$PrismaModel>
+    _max?: NestedIntFilter<$PrismaModel>
+  }
 
   export type NestedFloatFilter<$PrismaModel = never> = {
     equals?: number | FloatFieldRefInput<$PrismaModel>
@@ -41943,45 +48104,6 @@ export namespace Prisma {
     _sum?: NestedFloatFilter<$PrismaModel>
     _min?: NestedFloatFilter<$PrismaModel>
     _max?: NestedFloatFilter<$PrismaModel>
-  }
-
-  export type NestedIntWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: number | IntFieldRefInput<$PrismaModel>
-    in?: number[] | ListIntFieldRefInput<$PrismaModel>
-    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
-    lt?: number | IntFieldRefInput<$PrismaModel>
-    lte?: number | IntFieldRefInput<$PrismaModel>
-    gt?: number | IntFieldRefInput<$PrismaModel>
-    gte?: number | IntFieldRefInput<$PrismaModel>
-    not?: NestedIntWithAggregatesFilter<$PrismaModel> | number
-    _count?: NestedIntFilter<$PrismaModel>
-    _avg?: NestedFloatFilter<$PrismaModel>
-    _sum?: NestedIntFilter<$PrismaModel>
-    _min?: NestedIntFilter<$PrismaModel>
-    _max?: NestedIntFilter<$PrismaModel>
-  }
-  export type NestedJsonNullableFilter<$PrismaModel = never> =
-    | PatchUndefined<
-        Either<Required<NestedJsonNullableFilterBase<$PrismaModel>>, Exclude<keyof Required<NestedJsonNullableFilterBase<$PrismaModel>>, 'path'>>,
-        Required<NestedJsonNullableFilterBase<$PrismaModel>>
-      >
-    | OptionalFlat<Omit<Required<NestedJsonNullableFilterBase<$PrismaModel>>, 'path'>>
-
-  export type NestedJsonNullableFilterBase<$PrismaModel = never> = {
-    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
-    path?: string[]
-    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
-    string_contains?: string | StringFieldRefInput<$PrismaModel>
-    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
-    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
-    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
   }
 
   export type AuthorityCreateWithoutRoleInput = {
@@ -42022,6 +48144,8 @@ export namespace Prisma {
     campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
+    aiConversation?: AiConversationCreateNestedOneWithoutUserInput
+    aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutRoleInput = {
@@ -42042,6 +48166,8 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
+    aiConversation?: AiConversationUncheckedCreateNestedOneWithoutUserInput
+    aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutRoleInput = {
@@ -42189,6 +48315,8 @@ export namespace Prisma {
     campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
+    aiConversation?: AiConversationCreateNestedOneWithoutUserInput
+    aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutAccountsInput = {
@@ -42209,6 +48337,8 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
+    aiConversation?: AiConversationUncheckedCreateNestedOneWithoutUserInput
+    aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutAccountsInput = {
@@ -42245,6 +48375,8 @@ export namespace Prisma {
     campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
+    aiConversation?: AiConversationUpdateOneWithoutUserNestedInput
+    aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutAccountsInput = {
@@ -42265,6 +48397,8 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
+    aiConversation?: AiConversationUncheckedUpdateOneWithoutUserNestedInput
+    aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type RoleCreateWithoutUsersInput = {
@@ -42659,6 +48793,75 @@ export namespace Prisma {
     create: XOR<CrmUserSalesGoalCreateWithoutUserInput, CrmUserSalesGoalUncheckedCreateWithoutUserInput>
   }
 
+  export type AiConversationCreateWithoutUserInput = {
+    id?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    messages?: AiMessageCreateNestedManyWithoutConversationInput
+  }
+
+  export type AiConversationUncheckedCreateWithoutUserInput = {
+    id?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    messages?: AiMessageUncheckedCreateNestedManyWithoutConversationInput
+  }
+
+  export type AiConversationCreateOrConnectWithoutUserInput = {
+    where: AiConversationWhereUniqueInput
+    create: XOR<AiConversationCreateWithoutUserInput, AiConversationUncheckedCreateWithoutUserInput>
+  }
+
+  export type AiKnowledgeBaseCreateWithoutUserInput = {
+    id?: string
+    title: string
+    type?: string
+    sourceMode: string
+    description: string
+    chunkSize?: number
+    overlap?: number
+    linkedAgentId?: string | null
+    linkedAgentName?: string | null
+    status?: string
+    chunkCount?: number
+    sourceJson?: NullableJsonNullValueInput | InputJsonValue
+    indexError?: string | null
+    indexedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    chunks?: AiKnowledgeChunkCreateNestedManyWithoutKnowledgeBaseInput
+  }
+
+  export type AiKnowledgeBaseUncheckedCreateWithoutUserInput = {
+    id?: string
+    title: string
+    type?: string
+    sourceMode: string
+    description: string
+    chunkSize?: number
+    overlap?: number
+    linkedAgentId?: string | null
+    linkedAgentName?: string | null
+    status?: string
+    chunkCount?: number
+    sourceJson?: NullableJsonNullValueInput | InputJsonValue
+    indexError?: string | null
+    indexedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    chunks?: AiKnowledgeChunkUncheckedCreateNestedManyWithoutKnowledgeBaseInput
+  }
+
+  export type AiKnowledgeBaseCreateOrConnectWithoutUserInput = {
+    where: AiKnowledgeBaseWhereUniqueInput
+    create: XOR<AiKnowledgeBaseCreateWithoutUserInput, AiKnowledgeBaseUncheckedCreateWithoutUserInput>
+  }
+
+  export type AiKnowledgeBaseCreateManyUserInputEnvelope = {
+    data: AiKnowledgeBaseCreateManyUserInput | AiKnowledgeBaseCreateManyUserInput[]
+    skipDuplicates?: boolean
+  }
+
   export type RoleUpsertWithoutUsersInput = {
     update: XOR<RoleUpdateWithoutUsersInput, RoleUncheckedUpdateWithoutUsersInput>
     create: XOR<RoleCreateWithoutUsersInput, RoleUncheckedCreateWithoutUsersInput>
@@ -42974,6 +49177,523 @@ export namespace Prisma {
     monthlyTarget?: FloatFieldUpdateOperationsInput | number
   }
 
+  export type AiConversationUpsertWithoutUserInput = {
+    update: XOR<AiConversationUpdateWithoutUserInput, AiConversationUncheckedUpdateWithoutUserInput>
+    create: XOR<AiConversationCreateWithoutUserInput, AiConversationUncheckedCreateWithoutUserInput>
+    where?: AiConversationWhereInput
+  }
+
+  export type AiConversationUpdateToOneWithWhereWithoutUserInput = {
+    where?: AiConversationWhereInput
+    data: XOR<AiConversationUpdateWithoutUserInput, AiConversationUncheckedUpdateWithoutUserInput>
+  }
+
+  export type AiConversationUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    messages?: AiMessageUpdateManyWithoutConversationNestedInput
+  }
+
+  export type AiConversationUncheckedUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    messages?: AiMessageUncheckedUpdateManyWithoutConversationNestedInput
+  }
+
+  export type AiKnowledgeBaseUpsertWithWhereUniqueWithoutUserInput = {
+    where: AiKnowledgeBaseWhereUniqueInput
+    update: XOR<AiKnowledgeBaseUpdateWithoutUserInput, AiKnowledgeBaseUncheckedUpdateWithoutUserInput>
+    create: XOR<AiKnowledgeBaseCreateWithoutUserInput, AiKnowledgeBaseUncheckedCreateWithoutUserInput>
+  }
+
+  export type AiKnowledgeBaseUpdateWithWhereUniqueWithoutUserInput = {
+    where: AiKnowledgeBaseWhereUniqueInput
+    data: XOR<AiKnowledgeBaseUpdateWithoutUserInput, AiKnowledgeBaseUncheckedUpdateWithoutUserInput>
+  }
+
+  export type AiKnowledgeBaseUpdateManyWithWhereWithoutUserInput = {
+    where: AiKnowledgeBaseScalarWhereInput
+    data: XOR<AiKnowledgeBaseUpdateManyMutationInput, AiKnowledgeBaseUncheckedUpdateManyWithoutUserInput>
+  }
+
+  export type AiKnowledgeBaseScalarWhereInput = {
+    AND?: AiKnowledgeBaseScalarWhereInput | AiKnowledgeBaseScalarWhereInput[]
+    OR?: AiKnowledgeBaseScalarWhereInput[]
+    NOT?: AiKnowledgeBaseScalarWhereInput | AiKnowledgeBaseScalarWhereInput[]
+    id?: StringFilter<"AiKnowledgeBase"> | string
+    userId?: StringFilter<"AiKnowledgeBase"> | string
+    title?: StringFilter<"AiKnowledgeBase"> | string
+    type?: StringFilter<"AiKnowledgeBase"> | string
+    sourceMode?: StringFilter<"AiKnowledgeBase"> | string
+    description?: StringFilter<"AiKnowledgeBase"> | string
+    chunkSize?: IntFilter<"AiKnowledgeBase"> | number
+    overlap?: IntFilter<"AiKnowledgeBase"> | number
+    linkedAgentId?: StringNullableFilter<"AiKnowledgeBase"> | string | null
+    linkedAgentName?: StringNullableFilter<"AiKnowledgeBase"> | string | null
+    status?: StringFilter<"AiKnowledgeBase"> | string
+    chunkCount?: IntFilter<"AiKnowledgeBase"> | number
+    sourceJson?: JsonNullableFilter<"AiKnowledgeBase">
+    indexError?: StringNullableFilter<"AiKnowledgeBase"> | string | null
+    indexedAt?: DateTimeNullableFilter<"AiKnowledgeBase"> | Date | string | null
+    createdAt?: DateTimeFilter<"AiKnowledgeBase"> | Date | string
+    updatedAt?: DateTimeFilter<"AiKnowledgeBase"> | Date | string
+  }
+
+  export type UserCreateWithoutAiConversationInput = {
+    id?: string
+    name: string
+    phone?: string | null
+    avatar?: string | null
+    status?: string
+    joinedAt?: Date | string
+    lastActivity?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    role: RoleCreateNestedOneWithoutUsersInput
+    accounts?: AccountCreateNestedManyWithoutUserInput
+    contactsAssigned?: ContactCreateNestedManyWithoutUserInput
+    opportunitiesAssigned?: OpportunityCreateNestedManyWithoutUserInput
+    companiesAssigned?: CompanyCreateNestedManyWithoutUserInput
+    activitiesAssigned?: ActivityCreateNestedManyWithoutUserInput
+    campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
+    crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
+    crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
+    aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
+  }
+
+  export type UserUncheckedCreateWithoutAiConversationInput = {
+    id?: string
+    name: string
+    roleId: string
+    phone?: string | null
+    avatar?: string | null
+    status?: string
+    joinedAt?: Date | string
+    lastActivity?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
+    contactsAssigned?: ContactUncheckedCreateNestedManyWithoutUserInput
+    opportunitiesAssigned?: OpportunityUncheckedCreateNestedManyWithoutUserInput
+    companiesAssigned?: CompanyUncheckedCreateNestedManyWithoutUserInput
+    activitiesAssigned?: ActivityUncheckedCreateNestedManyWithoutUserInput
+    campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
+    crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
+    crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
+    aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
+  }
+
+  export type UserCreateOrConnectWithoutAiConversationInput = {
+    where: UserWhereUniqueInput
+    create: XOR<UserCreateWithoutAiConversationInput, UserUncheckedCreateWithoutAiConversationInput>
+  }
+
+  export type AiMessageCreateWithoutConversationInput = {
+    id?: string
+    role: string
+    content: string
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+  }
+
+  export type AiMessageUncheckedCreateWithoutConversationInput = {
+    id?: string
+    role: string
+    content: string
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+  }
+
+  export type AiMessageCreateOrConnectWithoutConversationInput = {
+    where: AiMessageWhereUniqueInput
+    create: XOR<AiMessageCreateWithoutConversationInput, AiMessageUncheckedCreateWithoutConversationInput>
+  }
+
+  export type AiMessageCreateManyConversationInputEnvelope = {
+    data: AiMessageCreateManyConversationInput | AiMessageCreateManyConversationInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type UserUpsertWithoutAiConversationInput = {
+    update: XOR<UserUpdateWithoutAiConversationInput, UserUncheckedUpdateWithoutAiConversationInput>
+    create: XOR<UserCreateWithoutAiConversationInput, UserUncheckedCreateWithoutAiConversationInput>
+    where?: UserWhereInput
+  }
+
+  export type UserUpdateToOneWithWhereWithoutAiConversationInput = {
+    where?: UserWhereInput
+    data: XOR<UserUpdateWithoutAiConversationInput, UserUncheckedUpdateWithoutAiConversationInput>
+  }
+
+  export type UserUpdateWithoutAiConversationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
+    avatar?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: StringFieldUpdateOperationsInput | string
+    joinedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    role?: RoleUpdateOneRequiredWithoutUsersNestedInput
+    accounts?: AccountUpdateManyWithoutUserNestedInput
+    contactsAssigned?: ContactUpdateManyWithoutUserNestedInput
+    opportunitiesAssigned?: OpportunityUpdateManyWithoutUserNestedInput
+    companiesAssigned?: CompanyUpdateManyWithoutUserNestedInput
+    activitiesAssigned?: ActivityUpdateManyWithoutUserNestedInput
+    campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
+    crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
+    crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
+    aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
+  }
+
+  export type UserUncheckedUpdateWithoutAiConversationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    roleId?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
+    avatar?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: StringFieldUpdateOperationsInput | string
+    joinedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
+    contactsAssigned?: ContactUncheckedUpdateManyWithoutUserNestedInput
+    opportunitiesAssigned?: OpportunityUncheckedUpdateManyWithoutUserNestedInput
+    companiesAssigned?: CompanyUncheckedUpdateManyWithoutUserNestedInput
+    activitiesAssigned?: ActivityUncheckedUpdateManyWithoutUserNestedInput
+    campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
+    crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
+    crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
+    aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
+  }
+
+  export type AiMessageUpsertWithWhereUniqueWithoutConversationInput = {
+    where: AiMessageWhereUniqueInput
+    update: XOR<AiMessageUpdateWithoutConversationInput, AiMessageUncheckedUpdateWithoutConversationInput>
+    create: XOR<AiMessageCreateWithoutConversationInput, AiMessageUncheckedCreateWithoutConversationInput>
+  }
+
+  export type AiMessageUpdateWithWhereUniqueWithoutConversationInput = {
+    where: AiMessageWhereUniqueInput
+    data: XOR<AiMessageUpdateWithoutConversationInput, AiMessageUncheckedUpdateWithoutConversationInput>
+  }
+
+  export type AiMessageUpdateManyWithWhereWithoutConversationInput = {
+    where: AiMessageScalarWhereInput
+    data: XOR<AiMessageUpdateManyMutationInput, AiMessageUncheckedUpdateManyWithoutConversationInput>
+  }
+
+  export type AiMessageScalarWhereInput = {
+    AND?: AiMessageScalarWhereInput | AiMessageScalarWhereInput[]
+    OR?: AiMessageScalarWhereInput[]
+    NOT?: AiMessageScalarWhereInput | AiMessageScalarWhereInput[]
+    id?: StringFilter<"AiMessage"> | string
+    conversationId?: StringFilter<"AiMessage"> | string
+    role?: StringFilter<"AiMessage"> | string
+    content?: StringFilter<"AiMessage"> | string
+    meta?: JsonNullableFilter<"AiMessage">
+    createdAt?: DateTimeFilter<"AiMessage"> | Date | string
+  }
+
+  export type AiConversationCreateWithoutMessagesInput = {
+    id?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    user: UserCreateNestedOneWithoutAiConversationInput
+  }
+
+  export type AiConversationUncheckedCreateWithoutMessagesInput = {
+    id?: string
+    userId: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type AiConversationCreateOrConnectWithoutMessagesInput = {
+    where: AiConversationWhereUniqueInput
+    create: XOR<AiConversationCreateWithoutMessagesInput, AiConversationUncheckedCreateWithoutMessagesInput>
+  }
+
+  export type AiConversationUpsertWithoutMessagesInput = {
+    update: XOR<AiConversationUpdateWithoutMessagesInput, AiConversationUncheckedUpdateWithoutMessagesInput>
+    create: XOR<AiConversationCreateWithoutMessagesInput, AiConversationUncheckedCreateWithoutMessagesInput>
+    where?: AiConversationWhereInput
+  }
+
+  export type AiConversationUpdateToOneWithWhereWithoutMessagesInput = {
+    where?: AiConversationWhereInput
+    data: XOR<AiConversationUpdateWithoutMessagesInput, AiConversationUncheckedUpdateWithoutMessagesInput>
+  }
+
+  export type AiConversationUpdateWithoutMessagesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    user?: UserUpdateOneRequiredWithoutAiConversationNestedInput
+  }
+
+  export type AiConversationUncheckedUpdateWithoutMessagesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type UserCreateWithoutAiKnowledgeBasesInput = {
+    id?: string
+    name: string
+    phone?: string | null
+    avatar?: string | null
+    status?: string
+    joinedAt?: Date | string
+    lastActivity?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    role: RoleCreateNestedOneWithoutUsersInput
+    accounts?: AccountCreateNestedManyWithoutUserInput
+    contactsAssigned?: ContactCreateNestedManyWithoutUserInput
+    opportunitiesAssigned?: OpportunityCreateNestedManyWithoutUserInput
+    companiesAssigned?: CompanyCreateNestedManyWithoutUserInput
+    activitiesAssigned?: ActivityCreateNestedManyWithoutUserInput
+    campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
+    crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
+    crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
+    aiConversation?: AiConversationCreateNestedOneWithoutUserInput
+  }
+
+  export type UserUncheckedCreateWithoutAiKnowledgeBasesInput = {
+    id?: string
+    name: string
+    roleId: string
+    phone?: string | null
+    avatar?: string | null
+    status?: string
+    joinedAt?: Date | string
+    lastActivity?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
+    contactsAssigned?: ContactUncheckedCreateNestedManyWithoutUserInput
+    opportunitiesAssigned?: OpportunityUncheckedCreateNestedManyWithoutUserInput
+    companiesAssigned?: CompanyUncheckedCreateNestedManyWithoutUserInput
+    activitiesAssigned?: ActivityUncheckedCreateNestedManyWithoutUserInput
+    campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
+    crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
+    crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
+    aiConversation?: AiConversationUncheckedCreateNestedOneWithoutUserInput
+  }
+
+  export type UserCreateOrConnectWithoutAiKnowledgeBasesInput = {
+    where: UserWhereUniqueInput
+    create: XOR<UserCreateWithoutAiKnowledgeBasesInput, UserUncheckedCreateWithoutAiKnowledgeBasesInput>
+  }
+
+  export type AiKnowledgeChunkCreateWithoutKnowledgeBaseInput = {
+    id?: string
+    position: number
+    content: string
+    createdAt?: Date | string
+  }
+
+  export type AiKnowledgeChunkUncheckedCreateWithoutKnowledgeBaseInput = {
+    id?: string
+    position: number
+    content: string
+    createdAt?: Date | string
+  }
+
+  export type AiKnowledgeChunkCreateOrConnectWithoutKnowledgeBaseInput = {
+    where: AiKnowledgeChunkWhereUniqueInput
+    create: XOR<AiKnowledgeChunkCreateWithoutKnowledgeBaseInput, AiKnowledgeChunkUncheckedCreateWithoutKnowledgeBaseInput>
+  }
+
+  export type AiKnowledgeChunkCreateManyKnowledgeBaseInputEnvelope = {
+    data: AiKnowledgeChunkCreateManyKnowledgeBaseInput | AiKnowledgeChunkCreateManyKnowledgeBaseInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type UserUpsertWithoutAiKnowledgeBasesInput = {
+    update: XOR<UserUpdateWithoutAiKnowledgeBasesInput, UserUncheckedUpdateWithoutAiKnowledgeBasesInput>
+    create: XOR<UserCreateWithoutAiKnowledgeBasesInput, UserUncheckedCreateWithoutAiKnowledgeBasesInput>
+    where?: UserWhereInput
+  }
+
+  export type UserUpdateToOneWithWhereWithoutAiKnowledgeBasesInput = {
+    where?: UserWhereInput
+    data: XOR<UserUpdateWithoutAiKnowledgeBasesInput, UserUncheckedUpdateWithoutAiKnowledgeBasesInput>
+  }
+
+  export type UserUpdateWithoutAiKnowledgeBasesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
+    avatar?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: StringFieldUpdateOperationsInput | string
+    joinedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    role?: RoleUpdateOneRequiredWithoutUsersNestedInput
+    accounts?: AccountUpdateManyWithoutUserNestedInput
+    contactsAssigned?: ContactUpdateManyWithoutUserNestedInput
+    opportunitiesAssigned?: OpportunityUpdateManyWithoutUserNestedInput
+    companiesAssigned?: CompanyUpdateManyWithoutUserNestedInput
+    activitiesAssigned?: ActivityUpdateManyWithoutUserNestedInput
+    campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
+    crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
+    crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
+    aiConversation?: AiConversationUpdateOneWithoutUserNestedInput
+  }
+
+  export type UserUncheckedUpdateWithoutAiKnowledgeBasesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    roleId?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
+    avatar?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: StringFieldUpdateOperationsInput | string
+    joinedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
+    contactsAssigned?: ContactUncheckedUpdateManyWithoutUserNestedInput
+    opportunitiesAssigned?: OpportunityUncheckedUpdateManyWithoutUserNestedInput
+    companiesAssigned?: CompanyUncheckedUpdateManyWithoutUserNestedInput
+    activitiesAssigned?: ActivityUncheckedUpdateManyWithoutUserNestedInput
+    campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
+    crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
+    crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
+    aiConversation?: AiConversationUncheckedUpdateOneWithoutUserNestedInput
+  }
+
+  export type AiKnowledgeChunkUpsertWithWhereUniqueWithoutKnowledgeBaseInput = {
+    where: AiKnowledgeChunkWhereUniqueInput
+    update: XOR<AiKnowledgeChunkUpdateWithoutKnowledgeBaseInput, AiKnowledgeChunkUncheckedUpdateWithoutKnowledgeBaseInput>
+    create: XOR<AiKnowledgeChunkCreateWithoutKnowledgeBaseInput, AiKnowledgeChunkUncheckedCreateWithoutKnowledgeBaseInput>
+  }
+
+  export type AiKnowledgeChunkUpdateWithWhereUniqueWithoutKnowledgeBaseInput = {
+    where: AiKnowledgeChunkWhereUniqueInput
+    data: XOR<AiKnowledgeChunkUpdateWithoutKnowledgeBaseInput, AiKnowledgeChunkUncheckedUpdateWithoutKnowledgeBaseInput>
+  }
+
+  export type AiKnowledgeChunkUpdateManyWithWhereWithoutKnowledgeBaseInput = {
+    where: AiKnowledgeChunkScalarWhereInput
+    data: XOR<AiKnowledgeChunkUpdateManyMutationInput, AiKnowledgeChunkUncheckedUpdateManyWithoutKnowledgeBaseInput>
+  }
+
+  export type AiKnowledgeChunkScalarWhereInput = {
+    AND?: AiKnowledgeChunkScalarWhereInput | AiKnowledgeChunkScalarWhereInput[]
+    OR?: AiKnowledgeChunkScalarWhereInput[]
+    NOT?: AiKnowledgeChunkScalarWhereInput | AiKnowledgeChunkScalarWhereInput[]
+    id?: StringFilter<"AiKnowledgeChunk"> | string
+    knowledgeBaseId?: StringFilter<"AiKnowledgeChunk"> | string
+    position?: IntFilter<"AiKnowledgeChunk"> | number
+    content?: StringFilter<"AiKnowledgeChunk"> | string
+    createdAt?: DateTimeFilter<"AiKnowledgeChunk"> | Date | string
+  }
+
+  export type AiKnowledgeBaseCreateWithoutChunksInput = {
+    id?: string
+    title: string
+    type?: string
+    sourceMode: string
+    description: string
+    chunkSize?: number
+    overlap?: number
+    linkedAgentId?: string | null
+    linkedAgentName?: string | null
+    status?: string
+    chunkCount?: number
+    sourceJson?: NullableJsonNullValueInput | InputJsonValue
+    indexError?: string | null
+    indexedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    user: UserCreateNestedOneWithoutAiKnowledgeBasesInput
+  }
+
+  export type AiKnowledgeBaseUncheckedCreateWithoutChunksInput = {
+    id?: string
+    userId: string
+    title: string
+    type?: string
+    sourceMode: string
+    description: string
+    chunkSize?: number
+    overlap?: number
+    linkedAgentId?: string | null
+    linkedAgentName?: string | null
+    status?: string
+    chunkCount?: number
+    sourceJson?: NullableJsonNullValueInput | InputJsonValue
+    indexError?: string | null
+    indexedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type AiKnowledgeBaseCreateOrConnectWithoutChunksInput = {
+    where: AiKnowledgeBaseWhereUniqueInput
+    create: XOR<AiKnowledgeBaseCreateWithoutChunksInput, AiKnowledgeBaseUncheckedCreateWithoutChunksInput>
+  }
+
+  export type AiKnowledgeBaseUpsertWithoutChunksInput = {
+    update: XOR<AiKnowledgeBaseUpdateWithoutChunksInput, AiKnowledgeBaseUncheckedUpdateWithoutChunksInput>
+    create: XOR<AiKnowledgeBaseCreateWithoutChunksInput, AiKnowledgeBaseUncheckedCreateWithoutChunksInput>
+    where?: AiKnowledgeBaseWhereInput
+  }
+
+  export type AiKnowledgeBaseUpdateToOneWithWhereWithoutChunksInput = {
+    where?: AiKnowledgeBaseWhereInput
+    data: XOR<AiKnowledgeBaseUpdateWithoutChunksInput, AiKnowledgeBaseUncheckedUpdateWithoutChunksInput>
+  }
+
+  export type AiKnowledgeBaseUpdateWithoutChunksInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+    sourceMode?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    chunkSize?: IntFieldUpdateOperationsInput | number
+    overlap?: IntFieldUpdateOperationsInput | number
+    linkedAgentId?: NullableStringFieldUpdateOperationsInput | string | null
+    linkedAgentName?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: StringFieldUpdateOperationsInput | string
+    chunkCount?: IntFieldUpdateOperationsInput | number
+    sourceJson?: NullableJsonNullValueInput | InputJsonValue
+    indexError?: NullableStringFieldUpdateOperationsInput | string | null
+    indexedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    user?: UserUpdateOneRequiredWithoutAiKnowledgeBasesNestedInput
+  }
+
+  export type AiKnowledgeBaseUncheckedUpdateWithoutChunksInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+    sourceMode?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    chunkSize?: IntFieldUpdateOperationsInput | number
+    overlap?: IntFieldUpdateOperationsInput | number
+    linkedAgentId?: NullableStringFieldUpdateOperationsInput | string | null
+    linkedAgentName?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: StringFieldUpdateOperationsInput | string
+    chunkCount?: IntFieldUpdateOperationsInput | number
+    sourceJson?: NullableJsonNullValueInput | InputJsonValue
+    indexError?: NullableStringFieldUpdateOperationsInput | string | null
+    indexedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type UserCreateWithoutCrmSalesGoalInput = {
     id?: string
     name: string
@@ -42992,6 +49712,8 @@ export namespace Prisma {
     activitiesAssigned?: ActivityCreateNestedManyWithoutUserInput
     campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
+    aiConversation?: AiConversationCreateNestedOneWithoutUserInput
+    aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutCrmSalesGoalInput = {
@@ -43012,6 +49734,8 @@ export namespace Prisma {
     activitiesAssigned?: ActivityUncheckedCreateNestedManyWithoutUserInput
     campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
+    aiConversation?: AiConversationUncheckedCreateNestedOneWithoutUserInput
+    aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutCrmSalesGoalInput = {
@@ -43048,6 +49772,8 @@ export namespace Prisma {
     activitiesAssigned?: ActivityUpdateManyWithoutUserNestedInput
     campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
+    aiConversation?: AiConversationUpdateOneWithoutUserNestedInput
+    aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutCrmSalesGoalInput = {
@@ -43068,6 +49794,8 @@ export namespace Prisma {
     activitiesAssigned?: ActivityUncheckedUpdateManyWithoutUserNestedInput
     campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
+    aiConversation?: AiConversationUncheckedUpdateOneWithoutUserNestedInput
+    aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type UserCreateWithoutContactsAssignedInput = {
@@ -43088,6 +49816,8 @@ export namespace Prisma {
     campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
+    aiConversation?: AiConversationCreateNestedOneWithoutUserInput
+    aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutContactsAssignedInput = {
@@ -43108,6 +49838,8 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
+    aiConversation?: AiConversationUncheckedCreateNestedOneWithoutUserInput
+    aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutContactsAssignedInput = {
@@ -43246,6 +49978,8 @@ export namespace Prisma {
     campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
+    aiConversation?: AiConversationUpdateOneWithoutUserNestedInput
+    aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutContactsAssignedInput = {
@@ -43266,6 +50000,8 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
+    aiConversation?: AiConversationUncheckedUpdateOneWithoutUserNestedInput
+    aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type CompanyContactUpsertWithWhereUniqueWithoutContactInput = {
@@ -43403,6 +50139,8 @@ export namespace Prisma {
     campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
+    aiConversation?: AiConversationCreateNestedOneWithoutUserInput
+    aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutCompaniesAssignedInput = {
@@ -43423,6 +50161,8 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
+    aiConversation?: AiConversationUncheckedCreateNestedOneWithoutUserInput
+    aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutCompaniesAssignedInput = {
@@ -43582,6 +50322,8 @@ export namespace Prisma {
     campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
+    aiConversation?: AiConversationUpdateOneWithoutUserNestedInput
+    aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutCompaniesAssignedInput = {
@@ -43602,6 +50344,8 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
+    aiConversation?: AiConversationUncheckedUpdateOneWithoutUserNestedInput
+    aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type CompanyContactUpsertWithWhereUniqueWithoutCompanyInput = {
@@ -43892,6 +50636,8 @@ export namespace Prisma {
     campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
+    aiConversation?: AiConversationCreateNestedOneWithoutUserInput
+    aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutOpportunitiesAssignedInput = {
@@ -43912,6 +50658,8 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
+    aiConversation?: AiConversationUncheckedCreateNestedOneWithoutUserInput
+    aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutOpportunitiesAssignedInput = {
@@ -44048,6 +50796,8 @@ export namespace Prisma {
     campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
+    aiConversation?: AiConversationUpdateOneWithoutUserNestedInput
+    aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutOpportunitiesAssignedInput = {
@@ -44068,6 +50818,8 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
+    aiConversation?: AiConversationUncheckedUpdateOneWithoutUserNestedInput
+    aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type ContactOpportunityUpsertWithWhereUniqueWithoutOpportunityInput = {
@@ -44186,6 +50938,8 @@ export namespace Prisma {
     campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
+    aiConversation?: AiConversationCreateNestedOneWithoutUserInput
+    aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutActivitiesAssignedInput = {
@@ -44206,6 +50960,8 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
+    aiConversation?: AiConversationUncheckedCreateNestedOneWithoutUserInput
+    aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutActivitiesAssignedInput = {
@@ -44302,6 +51058,8 @@ export namespace Prisma {
     campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
+    aiConversation?: AiConversationUpdateOneWithoutUserNestedInput
+    aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutActivitiesAssignedInput = {
@@ -44322,6 +51080,8 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
+    aiConversation?: AiConversationUncheckedUpdateOneWithoutUserNestedInput
+    aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type ContactActivityUpsertWithWhereUniqueWithoutActivityInput = {
@@ -46414,6 +53174,8 @@ export namespace Prisma {
     activitiesAssigned?: ActivityCreateNestedManyWithoutUserInput
     crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
+    aiConversation?: AiConversationCreateNestedOneWithoutUserInput
+    aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutCampaignsCreatedInput = {
@@ -46434,6 +53196,8 @@ export namespace Prisma {
     activitiesAssigned?: ActivityUncheckedCreateNestedManyWithoutUserInput
     crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
+    aiConversation?: AiConversationUncheckedCreateNestedOneWithoutUserInput
+    aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutCampaignsCreatedInput = {
@@ -46470,6 +53234,8 @@ export namespace Prisma {
     activitiesAssigned?: ActivityUpdateManyWithoutUserNestedInput
     crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
+    aiConversation?: AiConversationUpdateOneWithoutUserNestedInput
+    aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutCampaignsCreatedInput = {
@@ -46490,6 +53256,8 @@ export namespace Prisma {
     activitiesAssigned?: ActivityUncheckedUpdateManyWithoutUserNestedInput
     crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
+    aiConversation?: AiConversationUncheckedUpdateOneWithoutUserNestedInput
+    aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type UserCreateWithoutCrmFilesUploadedInput = {
@@ -46510,6 +53278,8 @@ export namespace Prisma {
     activitiesAssigned?: ActivityCreateNestedManyWithoutUserInput
     campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
     crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
+    aiConversation?: AiConversationCreateNestedOneWithoutUserInput
+    aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutCrmFilesUploadedInput = {
@@ -46530,6 +53300,8 @@ export namespace Prisma {
     activitiesAssigned?: ActivityUncheckedCreateNestedManyWithoutUserInput
     campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
+    aiConversation?: AiConversationUncheckedCreateNestedOneWithoutUserInput
+    aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutCrmFilesUploadedInput = {
@@ -46566,6 +53338,8 @@ export namespace Prisma {
     activitiesAssigned?: ActivityUpdateManyWithoutUserNestedInput
     campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
     crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
+    aiConversation?: AiConversationUpdateOneWithoutUserNestedInput
+    aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutCrmFilesUploadedInput = {
@@ -46586,6 +53360,8 @@ export namespace Prisma {
     activitiesAssigned?: ActivityUncheckedUpdateManyWithoutUserNestedInput
     campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
+    aiConversation?: AiConversationUncheckedUpdateOneWithoutUserNestedInput
+    aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type AuthorityCreateManyRoleInput = {
@@ -46638,6 +53414,8 @@ export namespace Prisma {
     campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
+    aiConversation?: AiConversationUpdateOneWithoutUserNestedInput
+    aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutRoleInput = {
@@ -46658,6 +53436,8 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
+    aiConversation?: AiConversationUncheckedUpdateOneWithoutUserNestedInput
+    aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateManyWithoutRoleInput = {
@@ -46791,6 +53571,25 @@ export namespace Prisma {
     relatedEntityId?: string | null
     relatedEntityName?: string | null
     createdAt?: Date | string
+  }
+
+  export type AiKnowledgeBaseCreateManyUserInput = {
+    id?: string
+    title: string
+    type?: string
+    sourceMode: string
+    description: string
+    chunkSize?: number
+    overlap?: number
+    linkedAgentId?: string | null
+    linkedAgentName?: string | null
+    status?: string
+    chunkCount?: number
+    sourceJson?: NullableJsonNullValueInput | InputJsonValue
+    indexError?: string | null
+    indexedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
   }
 
   export type AccountUpdateWithoutUserInput = {
@@ -47191,6 +53990,125 @@ export namespace Prisma {
     relatedEntityType?: NullableStringFieldUpdateOperationsInput | string | null
     relatedEntityId?: NullableStringFieldUpdateOperationsInput | string | null
     relatedEntityName?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type AiKnowledgeBaseUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+    sourceMode?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    chunkSize?: IntFieldUpdateOperationsInput | number
+    overlap?: IntFieldUpdateOperationsInput | number
+    linkedAgentId?: NullableStringFieldUpdateOperationsInput | string | null
+    linkedAgentName?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: StringFieldUpdateOperationsInput | string
+    chunkCount?: IntFieldUpdateOperationsInput | number
+    sourceJson?: NullableJsonNullValueInput | InputJsonValue
+    indexError?: NullableStringFieldUpdateOperationsInput | string | null
+    indexedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    chunks?: AiKnowledgeChunkUpdateManyWithoutKnowledgeBaseNestedInput
+  }
+
+  export type AiKnowledgeBaseUncheckedUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+    sourceMode?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    chunkSize?: IntFieldUpdateOperationsInput | number
+    overlap?: IntFieldUpdateOperationsInput | number
+    linkedAgentId?: NullableStringFieldUpdateOperationsInput | string | null
+    linkedAgentName?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: StringFieldUpdateOperationsInput | string
+    chunkCount?: IntFieldUpdateOperationsInput | number
+    sourceJson?: NullableJsonNullValueInput | InputJsonValue
+    indexError?: NullableStringFieldUpdateOperationsInput | string | null
+    indexedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    chunks?: AiKnowledgeChunkUncheckedUpdateManyWithoutKnowledgeBaseNestedInput
+  }
+
+  export type AiKnowledgeBaseUncheckedUpdateManyWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+    sourceMode?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    chunkSize?: IntFieldUpdateOperationsInput | number
+    overlap?: IntFieldUpdateOperationsInput | number
+    linkedAgentId?: NullableStringFieldUpdateOperationsInput | string | null
+    linkedAgentName?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: StringFieldUpdateOperationsInput | string
+    chunkCount?: IntFieldUpdateOperationsInput | number
+    sourceJson?: NullableJsonNullValueInput | InputJsonValue
+    indexError?: NullableStringFieldUpdateOperationsInput | string | null
+    indexedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type AiMessageCreateManyConversationInput = {
+    id?: string
+    role: string
+    content: string
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+  }
+
+  export type AiMessageUpdateWithoutConversationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    role?: StringFieldUpdateOperationsInput | string
+    content?: StringFieldUpdateOperationsInput | string
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type AiMessageUncheckedUpdateWithoutConversationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    role?: StringFieldUpdateOperationsInput | string
+    content?: StringFieldUpdateOperationsInput | string
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type AiMessageUncheckedUpdateManyWithoutConversationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    role?: StringFieldUpdateOperationsInput | string
+    content?: StringFieldUpdateOperationsInput | string
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type AiKnowledgeChunkCreateManyKnowledgeBaseInput = {
+    id?: string
+    position: number
+    content: string
+    createdAt?: Date | string
+  }
+
+  export type AiKnowledgeChunkUpdateWithoutKnowledgeBaseInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    position?: IntFieldUpdateOperationsInput | number
+    content?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type AiKnowledgeChunkUncheckedUpdateWithoutKnowledgeBaseInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    position?: IntFieldUpdateOperationsInput | number
+    content?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type AiKnowledgeChunkUncheckedUpdateManyWithoutKnowledgeBaseInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    position?: IntFieldUpdateOperationsInput | number
+    content?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 

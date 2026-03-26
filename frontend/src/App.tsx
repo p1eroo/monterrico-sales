@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 import { useAppStore } from '@/store';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
+import { ModuleGate } from '@/components/layout/ModuleGate';
 
 const MainLayout = lazy(() => import('@/components/layout/MainLayout'));
 const Login = lazy(() => import('@/pages/Login'));
@@ -30,6 +31,8 @@ const CampaignResults = lazy(() => import('@/pages/CampaignResults'));
 const Profile = lazy(() => import('@/pages/Profile'));
 const Settings = lazy(() => import('@/pages/Settings'));
 const Files = lazy(() => import('@/pages/Files'));
+const AgentesIa = lazy(() => import('@/pages/AgentesIa'));
+const AgentesIaWorkflow = lazy(() => import('@/pages/AgentesIaWorkflow'));
 
 function LoadingFallback() {
   return (
@@ -108,6 +111,19 @@ export default function App() {
               <Route path="/profile" element={<Profile />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/archivos" element={<Files />} />
+              <Route path="/agentes-ia" element={<AgentesIa />} />
+            </Route>
+            <Route
+              element={
+                <ProtectedRoute>
+                  <ModuleGate />
+                </ProtectedRoute>
+              }
+            >
+              <Route
+                path="/agentes-ia/workflow/:agentId"
+                element={<AgentesIaWorkflow />}
+              />
             </Route>
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>

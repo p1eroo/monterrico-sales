@@ -57,6 +57,24 @@ $ npm run test:e2e
 $ npm run test:cov
 ```
 
+## Asistente IA (CRM)
+
+Rutas bajo el prefijo `api/ai` (autenticación JWT como el resto de la API):
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| `GET` | `/api/ai/conversation` | Historial persistido en PostgreSQL para hidratar el drawer del cliente. |
+| `DELETE` | `/api/ai/conversation` | Borra la conversación del usuario y todos sus mensajes. |
+| `POST` | `/api/ai/chat` | Chat JSON: usa **tools** del CRM (tareas, oportunidades, etc.) cuando hay `OPENAI_API_KEY`. El cuerpo incluye `message`, `context` opcional e `history` opcional. |
+| `POST` | `/api/ai/chat/stream` | **SSE** (texto en vivo, markdown). **No** ejecuta tools; solo modelo de chat. Eventos: fragmentos `delta`, cierre con `done` (incluye `message` y `conversationId`) o `error`. |
+
+**Variables de entorno relevantes** (ver `.env.example`):
+
+- `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_MAX_TOKENS` — proveedor y límites del chat con tools.
+- `AI_CHAT_RETENTION_DAYS` — opcional; si es un entero `> 0`, tras cada respuesta del asistente se borran mensajes de esa conversación más antiguos que N días.
+
+**Frontend:** `VITE_AI_CHAT_STREAM=true` activa el modo stream; sin esa variable se usa `POST /api/ai/chat` (con tools). Los dos modos no se combinan en la implementación actual.
+
 ## Deployment
 
 When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.

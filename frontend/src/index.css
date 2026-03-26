@@ -91,6 +91,9 @@
     --warning-foreground: #7c2d12;
     --info: #3b82f6;
     --info-foreground: #ffffff;
+    /* Builder de flujos IA: puntos de cuadrícula y máscara del minimap */
+    --workflow-grid-dot: rgba(15, 23, 42, 0.08);
+    --workflow-minimap-mask: rgba(241, 245, 249, 0.55);
 }
 
 /* Dark mode - Notion/Linear/Slack/HubSpot inspired */
@@ -132,6 +135,8 @@
     --warning-foreground: #1e293b;
     --info: #60a5fa;
     --info-foreground: #ffffff;
+    --workflow-grid-dot: rgba(148, 163, 184, 0.09);
+    --workflow-minimap-mask: rgba(15, 23, 42, 0.45);
 }
 
 @layer base {
