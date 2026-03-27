@@ -52,7 +52,7 @@ const SOURCE_OPTIONS: {
   {
     value: 'upload',
     label: 'Subir archivos',
-    hint: 'Texto, Markdown, JSON, CSV o HTML (hasta 10 MB/archivo)',
+    hint: 'Texto, Markdown, JSON, CSV, HTML o PDF con texto (hasta 10 MB/archivo)',
   },
   {
     value: 'url',
@@ -70,7 +70,7 @@ const AGENT_NONE = '__none__';
 
 const MAX_KB_UPLOAD_BYTES = 10 * 1024 * 1024;
 const KB_UPLOAD_ACCEPT =
-  '.txt,.md,.markdown,.json,.csv,.tsv,.html,.htm,text/plain,text/markdown,application/json,text/csv,text/html';
+  '.txt,.md,.markdown,.json,.csv,.tsv,.html,.htm,.pdf,text/plain,text/markdown,application/json,text/csv,text/html,application/pdf';
 
 /** Aproximación útil en UI (no es tiktoken; ~3.5 caracteres ≈ 1 token en ES/EN mezclado). */
 function estimateTokensApprox(text: string): number {
@@ -195,7 +195,7 @@ export function NewKnowledgeDialog({ open, onOpenChange }: Props) {
           return;
         }
         knowledgeType = 'documentos';
-        toastDetail = `${uploadFiles.length} archivo(s) · texto plano, Markdown, JSON, CSV o HTML.`;
+        toastDetail = `${uploadFiles.length} archivo(s) · texto plano, Markdown, JSON, CSV, HTML o PDF (con texto).`;
         break;
       case 'url': {
         const urlRaw = endpoint.trim();
@@ -522,7 +522,8 @@ export function NewKnowledgeDialog({ open, onOpenChange }: Props) {
                   <strong>10 MB</strong> por archivo
                 </p>
                 <p className="mt-2 text-[11px] text-muted-foreground">
-                  .txt, .md, .json, .csv, .html (PDF u Office: aún no)
+                  .txt, .md, .json, .csv, .html, .pdf (debe tener texto
+                  seleccionable; Office: aún no)
                 </p>
               </div>
               {uploadFiles.length > 0 && (

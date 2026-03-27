@@ -1,14 +1,22 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Bot,
   ChevronLeft,
   Copy,
   Loader2,
+  Maximize2,
   MessageSquare,
-  Mic,
+  Minimize2,
   Paperclip,
-  Pin,
+  Search,
   Send,
   Sparkles,
   Trash2,
@@ -16,6 +24,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Dialog,
   DialogContent,
@@ -33,13 +42,18 @@ import {
 import { cn } from '@/lib/utils';
 import { buildAssistantContext } from '@/lib/assistantContext';
 import {
-  deleteAiConversation,
-  fetchAiConversation,
+  createAiConversation,
+  deleteAiConversationById,
+  fetchAiConversationById,
+  fetchAiConversations,
   postAiChat,
   streamAiChat,
   type AiChatHistoryItem,
+  type AiConversationMessage,
+  type AiConversationSummary,
 } from '@/lib/aiChatApi';
-import { useAssistantStore } from '@/store/assistantStore';
+import { getAssistantMessageDisplay } from '@/lib/assistantJsonParse';
+import { useAssistantStore, type AssistantMessage } from '@/store/assistantStore';
 import { useAppStore } from '@/store';
 import { AssistantMessageBody } from './AssistantMessageBody';
 
@@ -49,11 +63,81 @@ const SUGGESTIONS = [
   '¿Qué tareas tengo hoy?',
 ];
 
+const CHAT_ATTACH_ACCEPT =
+  '.txt,.md,.markdown,.json,.csv,.tsv,.html,.htm,text/plain,text/markdown,application/json,text/csv,text/html';
+const CHAT_ATTACH_MAX_BYTES = 10 * 1024 * 1024;
+const CHAT_ATTACH_MAX_FILES = 6;
+/** Por mensaje al modelo (aprox.). */
+const CHAT_ATTACH_MAX_EACH_CHARS = 55_000;
+const CHAT_ATTACH_MAX_COMBINED_CHARS = 100_000;
+
+const CHAT_TEXT_EXT = new Set([
+  '.txt',
+  '.md',
+  '.markdown',
+  '.json',
+  '.csv',
+  '.tsv',
+  '.html',
+  '.htm',
+]);
+
+function chatFileExtension(name: string): string {
+  const lower = name.toLowerCase();
+  const i = lower.lastIndexOf('.');
+  return i < 0 ? '' : lower.slice(i);
+}
+
+async function readChatAttachmentFile(
+  file: File,
+): Promise<{ name: string; text: string } | null> {
+  if (!file.size) {
+    toast.error('El archivo está vacío.');
+    return null;
+  }
+  if (file.size > CHAT_ATTACH_MAX_BYTES) {
+    toast.error('Archivo demasiado grande (máx. 10 MB).');
+    return null;
+  }
+  const ext = chatFileExtension(file.name || 'documento');
+  if (!CHAT_TEXT_EXT.has(ext)) {
+    toast.error(
+      'Formato no admitido en el chat. Usa .txt, .md, .json, .csv o .html (PDF u Office: usa Conocimiento → Subir archivos).',
+    );
+    return null;
+  }
+  try {
+    const text = await file.text();
+    const t = text.trim();
+    if (!t.length) {
+      toast.error('No hay texto legible en el archivo.');
+      return null;
+    }
+    return { name: file.name || 'documento', text: t };
+  } catch {
+    toast.error('No se pudo leer el archivo.');
+    return null;
+  }
+}
+
 function formatTime(ts: number) {
   return new Intl.DateTimeFormat('es', {
     hour: '2-digit',
     minute: '2-digit',
   }).format(new Date(ts));
+}
+
+function mapApiMessagesToAssistantStore(
+  rows: AiConversationMessage[],
+): AssistantMessage[] {
+  return rows.map((m) => ({
+    id: m.id,
+    role: m.role === 'assistant' ? 'assistant' : 'user',
+    content: m.content,
+    createdAt: new Date(m.createdAt).getTime(),
+    links: m.links,
+    actions: m.actions,
+  }));
 }
 
 export function AiAssistantDrawer() {
@@ -64,11 +148,13 @@ export function AiAssistantDrawer() {
   const {
     isOpen,
     isMinimized,
-    pinned,
+    chatPanelExpanded,
+    activeConversationId,
     messages,
     setOpen,
     setMinimized,
-    setPinned,
+    setChatPanelExpanded,
+    setActiveConversationId,
     addMessage,
     hydrateMessages,
     clearMessages,
@@ -80,21 +166,57 @@ export function AiAssistantDrawer() {
   const [streamBuffer, setStreamBuffer] = useState<string | null>(null);
   const [clearing, setClearing] = useState(false);
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
+  const [conversations, setConversations] = useState<AiConversationSummary[]>(
+    [],
+  );
+  const [chatSidebarSearch, setChatSidebarSearch] = useState('');
+  const [pendingAttachments, setPendingAttachments] = useState<
+    { id: string; name: string; text: string }[]
+  >([]);
 
   const streamEnabled = import.meta.env.VITE_AI_CHAT_STREAM === 'true';
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const attachInputRef = useRef<HTMLInputElement>(null);
 
-  const scrollToBottom = useCallback(() => {
+  const scrollMessagesToBottom = useCallback(() => {
     const el = scrollRef.current;
-    if (el) {
-      el.scrollTop = el.scrollHeight;
-    }
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
   }, []);
 
+  /** Tras pintar el DOM (incl. hidratar mensajes al abrir el panel). */
+  useLayoutEffect(() => {
+    if (!isOpen || isMinimized) return;
+    scrollMessagesToBottom();
+  }, [
+    isOpen,
+    isMinimized,
+    chatPanelExpanded,
+    messages,
+    streamBuffer,
+    sending,
+    scrollMessagesToBottom,
+  ]);
+
+  /** Segundo pase: el layout a veces asienta la altura un frame después (p. ej. al reabrir). */
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, sending, streamBuffer, scrollToBottom]);
+    if (!isOpen || isMinimized) return;
+    const t1 = window.setTimeout(() => scrollMessagesToBottom(), 0);
+    const t2 = window.setTimeout(() => scrollMessagesToBottom(), 80);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
+  }, [
+    isOpen,
+    isMinimized,
+    chatPanelExpanded,
+    messages.length,
+    streamBuffer,
+    sending,
+    scrollMessagesToBottom,
+  ]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -128,40 +250,120 @@ export function AiAssistantDrawer() {
     if (!isOpen) setConfirmClearOpen(false);
   }, [isOpen]);
 
-  /** Sincroniza con PostgreSQL si el servidor tiene un hilo más reciente que el local (evita pisar un envío en curso). */
+  const bootstrapAssistant = useCallback(async () => {
+    try {
+      let list = await fetchAiConversations();
+      let active = useAssistantStore.getState().activeConversationId;
+      if (!list.length) {
+        const c = await createAiConversation();
+        list = [c];
+        setActiveConversationId(c.id);
+        active = c.id;
+      } else if (!active || !list.some((x) => x.id === active)) {
+        active = list[0].id;
+        setActiveConversationId(active);
+      }
+      setConversations(list);
+      const data = await fetchAiConversationById(active!);
+      hydrateMessages(mapApiMessagesToAssistantStore(data.messages));
+    } catch {
+      /* offline: se mantiene estado local */
+    }
+  }, [hydrateMessages, setActiveConversationId]);
+
   useEffect(() => {
-    if (!isOpen) return;
-    void fetchAiConversation()
-      .then((data) => {
-        if (!data.messages?.length) return;
-        const local = useAssistantStore.getState().messages;
-        const localMax = local.reduce(
-          (a, m) => Math.max(a, m.createdAt),
-          0,
+    if (!isOpen || isMinimized) return;
+    void bootstrapAssistant();
+  }, [isOpen, isMinimized, bootstrapAssistant]);
+
+  const refreshConversationList = useCallback(async () => {
+    try {
+      const list = await fetchAiConversations();
+      setConversations(list);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const filteredConversations = useMemo(() => {
+    const q = chatSidebarSearch.trim().toLowerCase();
+    if (!q) return conversations;
+    return conversations.filter((c) => c.title.toLowerCase().includes(q));
+  }, [conversations, chatSidebarSearch]);
+
+  const startNewChat = useCallback(async () => {
+    if (sending) return;
+    try {
+      const row = await createAiConversation();
+      setActiveConversationId(row.id);
+      clearMessages();
+      setConversations((prev) => [row, ...prev]);
+      toast.success('Nuevo chat');
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : 'No se pudo crear el chat',
+      );
+    }
+  }, [sending, setActiveConversationId, clearMessages]);
+
+  const selectThread = useCallback(
+    async (id: string) => {
+      if (id === activeConversationId || sending) return;
+      setActiveConversationId(id);
+      try {
+        const data = await fetchAiConversationById(id);
+        hydrateMessages(mapApiMessagesToAssistantStore(data.messages));
+      } catch (e) {
+        toast.error(
+          e instanceof Error ? e.message : 'No se pudo cargar el chat',
         );
-        const serverMax = Math.max(
-          ...data.messages.map((m) => new Date(m.createdAt).getTime()),
-        );
-        if (serverMax < localMax) return;
-        hydrateMessages(
-          data.messages.map((m) => ({
-            id: m.id,
-            role: m.role === 'assistant' ? 'assistant' : 'user',
-            content: m.content,
-            createdAt: new Date(m.createdAt).getTime(),
-            links: m.links,
-            actions: m.actions,
-          })),
-        );
-      })
-      .catch(() => {
-        /* offline / error: se mantiene el estado local */
-      });
-  }, [isOpen, hydrateMessages]);
+      }
+    },
+    [
+      activeConversationId,
+      sending,
+      setActiveConversationId,
+      hydrateMessages,
+    ],
+  );
 
   const sendText = async (raw: string) => {
     const text = raw.trim();
-    if (!text || sending) return;
+    if ((!text && pendingAttachments.length === 0) || sending) return;
+
+    const convId = useAssistantStore.getState().activeConversationId;
+    if (!convId) {
+      toast.error('Espera un momento a que cargue el chat.');
+      void bootstrapAssistant();
+      return;
+    }
+
+    const attachmentBlock =
+      pendingAttachments.length > 0
+        ? pendingAttachments
+            .map((a) => {
+              const body =
+                a.text.length > CHAT_ATTACH_MAX_EACH_CHARS
+                  ? `${a.text.slice(0, CHAT_ATTACH_MAX_EACH_CHARS)}\n…(contenido truncado para el envío)`
+                  : a.text;
+              return `--- Archivo: ${a.name} ---\n${body}`;
+            })
+            .join('\n\n')
+        : '';
+
+    let fullMessage = text;
+    if (attachmentBlock) {
+      fullMessage = text
+        ? `${attachmentBlock}\n\n---\nPregunta:\n${text}`
+        : `${attachmentBlock}\n\n---\nInstrucción: Analiza o resume el contenido anterior según resulte útil.`;
+    }
+
+    if (fullMessage.length > CHAT_ATTACH_MAX_COMBINED_CHARS) {
+      toast.error(
+        'El mensaje con archivos supera el límite. Reduce archivos o tamaño.',
+      );
+      return;
+    }
 
     const ctx = buildAssistantContext(location.pathname, {
       id: currentUser.id,
@@ -178,20 +380,36 @@ export function AiAssistantDrawer() {
       )
       .map((m) => ({ role: m.role, content: m.content }));
 
-    addMessage({ role: 'user', content: text });
+    const displayForUser =
+      pendingAttachments.length > 0
+        ? text
+          ? text
+          : `📎 ${pendingAttachments.map((a) => a.name).join(', ')}`
+        : undefined;
+
+    addMessage({
+      role: 'user',
+      content: fullMessage,
+      ...(displayForUser !== undefined
+        ? { displayContent: displayForUser }
+        : {}),
+    });
     setDraft('');
+    setPendingAttachments([]);
     setSending(true);
 
     if (streamEnabled) {
       setStreamBuffer('');
       try {
-        await streamAiChat(text, ctx, history, {
+        await streamAiChat(fullMessage, ctx, history, {
           onDelta: (delta) =>
             setStreamBuffer((prev) => (prev ?? '') + delta),
-          onDone: ({ message }) => {
+          onDone: ({ message, links, actions }) => {
             addMessage({
               role: 'assistant',
               content: message,
+              links,
+              actions,
             });
             setStreamBuffer(null);
           },
@@ -203,7 +421,7 @@ export function AiAssistantDrawer() {
             setStreamBuffer(null);
             toast.error(msg);
           },
-        });
+        }, convId);
       } catch (e) {
         const msg =
           e instanceof Error ? e.message : 'No se pudo contactar al asistente.';
@@ -216,12 +434,13 @@ export function AiAssistantDrawer() {
       } finally {
         setSending(false);
         setStreamBuffer(null);
+        void refreshConversationList();
       }
       return;
     }
 
     try {
-      const res = await postAiChat(text, ctx, history);
+      const res = await postAiChat(fullMessage, ctx, history, convId);
       addMessage({
         role: 'assistant',
         content: res.message,
@@ -238,33 +457,85 @@ export function AiAssistantDrawer() {
       toast.error(msg);
     } finally {
       setSending(false);
+      void refreshConversationList();
     }
   };
 
   const onSubmit = () => void sendText(draft);
 
-  const handleClearChat = async () => {
-    if (messages.length === 0 || clearing) return;
+  const deleteCurrentThread = async () => {
+    const id = activeConversationId;
+    if (!id || clearing) return;
     setClearing(true);
     try {
-      await deleteAiConversation();
-      clearMessages();
+      await deleteAiConversationById(id);
+      let list = await fetchAiConversations();
+      if (!list.length) {
+        const c = await createAiConversation();
+        list = [c];
+      }
+      setConversations(list);
+      const nextId = list[0].id;
+      setActiveConversationId(nextId);
+      const data = await fetchAiConversationById(nextId);
+      hydrateMessages(mapApiMessagesToAssistantStore(data.messages));
+      setPendingAttachments([]);
       setConfirmClearOpen(false);
-      toast.success('Conversación borrada');
+      toast.success('Conversación eliminada');
     } catch (e) {
       toast.error(
         e instanceof Error
           ? e.message
-          : 'No se pudo borrar el historial en el servidor',
+          : 'No se pudo eliminar el chat en el servidor',
       );
     } finally {
       setClearing(false);
     }
   };
 
+  const onAttachSelected = async (list: FileList | null) => {
+    try {
+      if (!list?.length) return;
+      const fileArr = Array.from(list);
+      const room = CHAT_ATTACH_MAX_FILES - pendingAttachments.length;
+      if (room <= 0) {
+        toast.error(`Máximo ${CHAT_ATTACH_MAX_FILES} archivos en cola.`);
+        return;
+      }
+      const toRead = fileArr.slice(0, room);
+      if (fileArr.length > room) {
+        toast(
+          `Solo se añaden ${room} archivo(s) más (${CHAT_ATTACH_MAX_FILES} máx.).`,
+        );
+      }
+      const next: { id: string; name: string; text: string }[] = [];
+      for (const file of toRead) {
+        const parsed = await readChatAttachmentFile(file);
+        if (parsed) {
+          next.push({
+            id: crypto.randomUUID(),
+            name: parsed.name,
+            text: parsed.text,
+          });
+        }
+      }
+      if (next.length) {
+        setPendingAttachments((prev) => [...prev, ...next]);
+      }
+    } finally {
+      if (attachInputRef.current) attachInputRef.current.value = '';
+    }
+  };
+
   const panelWidth = isMinimized
     ? 'w-14 min-w-14'
-    : 'w-full min-w-0 max-w-[420px] sm:max-w-[420px]';
+    : chatPanelExpanded
+      ? 'w-full min-w-0 max-w-[min(100vw-12px,56rem)]'
+      : 'w-full min-w-0 max-w-[min(100vw-12px,560px)] sm:max-w-[600px]';
+
+  const bubbleMaxClass = chatPanelExpanded
+    ? 'max-w-[min(100%,520px)]'
+    : 'max-w-[min(100%,320px)]';
 
   return (
     <>
@@ -317,7 +588,61 @@ export function AiAssistantDrawer() {
             </Tooltip>
           </div>
         ) : (
-          <>
+          <div className="flex min-h-0 min-w-0 flex-1 flex-row">
+            {chatPanelExpanded ? (
+              <div className="flex w-[156px] shrink-0 flex-col border-r border-border bg-muted/20 sm:w-[200px]">
+                <div className="shrink-0 space-y-2 border-b border-border p-2">
+                  <p className="px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Chats
+                  </p>
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={chatSidebarSearch}
+                      onChange={(e) => setChatSidebarSearch(e.target.value)}
+                      placeholder="Buscar"
+                      className="h-8 border-border bg-background pl-8 text-xs"
+                      aria-label="Buscar chats"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-8 w-full gap-1 bg-[#13944C] text-xs text-white hover:bg-[#0f7a3d]"
+                    onClick={() => void startNewChat()}
+                    disabled={sending}
+                  >
+                    Nuevo chat
+                  </Button>
+                </div>
+                <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-1.5">
+                  {filteredConversations.length === 0 ? (
+                    <p className="px-2 py-3 text-center text-[11px] text-muted-foreground">
+                      Sin coincidencias
+                    </p>
+                  ) : (
+                    filteredConversations.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => void selectThread(c.id)}
+                        className={cn(
+                          'mb-1 w-full rounded-lg px-2 py-2 text-left text-xs transition-colors',
+                          'hover:bg-muted/80',
+                          c.id === activeConversationId &&
+                            'bg-[#13944C]/12 font-medium text-[#13944C] dark:bg-[#13944C]/20',
+                        )}
+                      >
+                        <span className="line-clamp-2 break-words">
+                          {c.title}
+                        </span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            ) : null}
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             <header className="flex shrink-0 flex-col gap-1 border-b border-border px-3 py-3">
               <div className="flex items-start gap-2">
                 <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -341,23 +666,26 @@ export function AiAssistantDrawer() {
                         variant="ghost"
                         size="icon"
                         className="size-8"
-                        onClick={() => setPinned(!pinned)}
+                        onClick={() =>
+                          setChatPanelExpanded(!chatPanelExpanded)
+                        }
                         aria-label={
-                          pinned ? 'Desfijar panel' : 'Fijar panel abierto'
+                          chatPanelExpanded
+                            ? 'Vista compacta del chat'
+                            : 'Ampliar chat'
                         }
                       >
-                        <Pin
-                          className={cn(
-                            'size-4',
-                            pinned ? 'text-[#13944C]' : 'text-muted-foreground',
-                          )}
-                        />
+                        {chatPanelExpanded ? (
+                          <Minimize2 className="size-4" />
+                        ) : (
+                          <Maximize2 className="size-4" />
+                        )}
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>
-                      {pinned
-                        ? 'Desfijar (no recordar abierto)'
-                        : 'Fijar estado al recargar'}
+                    <TooltipContent side="bottom" className="max-w-[220px]">
+                      {chatPanelExpanded
+                        ? 'Vista compacta (oculta historial)'
+                        : 'Ampliar panel e historial de chats'}
                     </TooltipContent>
                   </Tooltip>
                   <Tooltip>
@@ -383,15 +711,13 @@ export function AiAssistantDrawer() {
                         size="icon"
                         className="size-8"
                         onClick={() => setConfirmClearOpen(true)}
-                        disabled={messages.length === 0 || clearing}
-                        aria-label="Borrar conversación"
+                        disabled={!activeConversationId || clearing}
+                        aria-label="Eliminar este chat"
                       >
                         <Trash2 className="size-4" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>
-                      Limpiar chat (se pedirá confirmación)
-                    </TooltipContent>
+                    <TooltipContent>Eliminar este hilo del historial</TooltipContent>
                   </Tooltip>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -445,109 +771,124 @@ export function AiAssistantDrawer() {
                   </div>
                 )}
 
-                {messages.map((m) => (
-                  <div
-                    key={m.id}
-                    className={cn(
-                      'flex gap-2',
-                      m.role === 'user' ? 'justify-end' : 'justify-start',
-                    )}
-                  >
-                    {m.role === 'assistant' && (
-                      <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-muted">
-                        <Bot className="size-4 text-[#13944C]" />
-                      </div>
-                    )}
+                {messages.map((m) => {
+                  const disp = getAssistantMessageDisplay(m);
+                  return (
                     <div
+                      key={m.id}
                       className={cn(
-                        'max-w-[min(100%,320px)] rounded-2xl px-3 py-2 shadow-sm',
-                        m.role === 'user'
-                          ? 'rounded-br-md bg-[#13944C] text-white'
-                          : 'rounded-bl-md border border-border bg-card text-card-foreground',
+                        'flex gap-2',
+                        m.role === 'user' ? 'justify-end' : 'justify-start',
                       )}
                     >
-                      {m.role === 'assistant' ? (
-                        <AssistantMessageBody text={m.content} />
-                      ) : (
-                        <p className="whitespace-pre-wrap break-words text-sm">
-                          {m.content}
-                        </p>
-                      )}
-
-                      {m.role === 'assistant' && m.links && m.links.length > 0 && (
-                        <div className="mt-2 flex flex-col gap-1 border-t border-border/60 pt-2">
-                          {m.links.map((link) => (
-                            <button
-                              key={link.href + link.label}
-                              type="button"
-                              className="text-left text-xs font-medium text-[#13944C] underline-offset-2 hover:underline"
-                              onClick={() => navigate(link.href)}
-                            >
-                              👉 {link.label}
-                            </button>
-                          ))}
+                      {m.role === 'assistant' && (
+                        <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-muted">
+                          <Bot className="size-4 text-[#13944C]" />
                         </div>
                       )}
-
-                      {m.role === 'assistant' &&
-                        m.actions &&
-                        m.actions.length > 0 && (
-                          <div className="mt-2 flex flex-wrap gap-1.5 border-t border-border/60 pt-2">
-                            {m.actions.map((a) => (
-                              <Button
-                                key={a.id}
-                                type="button"
-                                variant="secondary"
-                                size="sm"
-                                className="h-7 text-xs"
-                                onClick={() =>
-                                  void sendText(a.prompt ?? a.label)
-                                }
-                              >
-                                {a.label}
-                              </Button>
-                            ))}
-                          </div>
-                        )}
-
                       <div
                         className={cn(
-                          'mt-1.5 flex items-center justify-between gap-2',
-                          m.role === 'user' ? 'text-white/70' : 'text-muted-foreground',
+                          'rounded-2xl px-3 py-2 shadow-sm',
+                          bubbleMaxClass,
+                          m.role === 'user'
+                            ? 'rounded-br-md bg-[#13944C] text-white'
+                            : 'rounded-bl-md border border-border bg-card text-card-foreground',
                         )}
                       >
-                        <span className="text-[10px]">
-                          {formatTime(m.createdAt)}
-                        </span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className={cn(
-                            'size-6',
-                            m.role === 'user'
-                              ? 'text-white/80 hover:bg-white/10 hover:text-white'
-                              : '',
+                        {m.role === 'assistant' ? (
+                          <AssistantMessageBody text={disp.text} />
+                        ) : (
+                          <p className="whitespace-pre-wrap break-words text-sm">
+                            {m.displayContent ?? m.content}
+                          </p>
+                        )}
+
+                        {m.role === 'assistant' &&
+                          disp.links &&
+                          disp.links.length > 0 && (
+                            <div className="mt-2 flex flex-col gap-1 border-t border-border/60 pt-2">
+                              {disp.links.map((link) => (
+                                <button
+                                  key={link.href + link.label}
+                                  type="button"
+                                  className="text-left text-xs font-medium text-[#13944C] underline-offset-2 hover:underline"
+                                  onClick={() => navigate(link.href)}
+                                >
+                                  👉 {link.label}
+                                </button>
+                              ))}
+                            </div>
                           )}
-                          aria-label="Copiar mensaje"
-                          onClick={() => {
-                            void navigator.clipboard.writeText(m.content);
-                            toast.success('Copiado');
-                          }}
+
+                        {m.role === 'assistant' &&
+                          disp.actions &&
+                          disp.actions.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-1.5 border-t border-border/60 pt-2">
+                              {disp.actions.map((a) => (
+                                <Button
+                                  key={a.id}
+                                  type="button"
+                                  variant="secondary"
+                                  size="sm"
+                                  className="h-7 text-xs"
+                                  onClick={() =>
+                                    void sendText(a.prompt ?? a.label)
+                                  }
+                                >
+                                  {a.label}
+                                </Button>
+                              ))}
+                            </div>
+                          )}
+
+                        <div
+                          className={cn(
+                            'mt-1.5 flex items-center justify-between gap-2',
+                            m.role === 'user' ? 'text-white/70' : 'text-muted-foreground',
+                          )}
                         >
-                          <Copy className="size-3" />
-                        </Button>
+                          <span className="text-[10px]">
+                            {formatTime(m.createdAt)}
+                          </span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className={cn(
+                              'size-6',
+                              m.role === 'user'
+                                ? 'text-white/80 hover:bg-white/10 hover:text-white'
+                                : '',
+                            )}
+                            aria-label="Copiar mensaje"
+                            onClick={() => {
+                              const toCopy =
+                                m.role === 'assistant'
+                                  ? disp.text
+                                  : (m.displayContent ?? m.content);
+                              void navigator.clipboard.writeText(toCopy);
+                              toast.success('Copiado');
+                            }}
+                          >
+                            <Copy className="size-3" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
 
                 {streamBuffer !== null && (
                   <div className="flex gap-2">
                     <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-muted">
                       <Bot className="size-4 text-[#13944C]" />
                     </div>
-                    <div className="max-w-[min(100%,320px)] rounded-2xl rounded-bl-md border border-border bg-card px-3 py-2 shadow-sm">
+                    <div
+                      className={cn(
+                        'rounded-2xl rounded-bl-md border border-border bg-card px-3 py-2 shadow-sm',
+                        bubbleMaxClass,
+                      )}
+                    >
                       {streamBuffer.length === 0 ? (
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Loader2 className="size-4 animate-spin text-[#13944C]" />
@@ -577,6 +918,40 @@ export function AiAssistantDrawer() {
             </div>
 
             <footer className="shrink-0 border-t border-border bg-background/95 p-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+              <input
+                ref={attachInputRef}
+                type="file"
+                className="hidden"
+                accept={CHAT_ATTACH_ACCEPT}
+                multiple
+                onChange={(e) => void onAttachSelected(e.target.files)}
+              />
+              {pendingAttachments.length > 0 && (
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {pendingAttachments.map((a) => (
+                    <span
+                      key={a.id}
+                      className="inline-flex max-w-full items-center gap-1 rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[11px] text-foreground"
+                    >
+                      <span className="max-w-[180px] truncate" title={a.name}>
+                        📎 {a.name}
+                      </span>
+                      <button
+                        type="button"
+                        className="rounded-full p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                        aria-label={`Quitar ${a.name}`}
+                        onClick={() =>
+                          setPendingAttachments((prev) =>
+                            prev.filter((p) => p.id !== a.id),
+                          )
+                        }
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
               <div className="flex gap-2">
                 <Textarea
                   ref={inputRef}
@@ -593,43 +968,33 @@ export function AiAssistantDrawer() {
                     }
                   }}
                 />
-                <div className="flex flex-col gap-1">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="size-9 shrink-0 text-muted-foreground"
-                        disabled
-                        aria-label="Adjuntar (próximamente)"
-                      >
-                        <Paperclip className="size-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Adjuntar (próximamente)</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="size-9 shrink-0 text-muted-foreground"
-                        disabled
-                        aria-label="Voz (próximamente)"
-                      >
-                        <Mic className="size-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Voz (próximamente)</TooltipContent>
-                  </Tooltip>
-                </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-11 w-11 shrink-0 self-end rounded-xl text-muted-foreground"
+                      disabled={sending}
+                      aria-label="Adjuntar archivos de texto"
+                      onClick={() => attachInputRef.current?.click()}
+                    >
+                      <Paperclip className="size-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="left" className="max-w-[240px]">
+                    Adjuntar .txt, .md, .json, .csv o .html (se envían al
+                    asistente con tu mensaje).
+                  </TooltipContent>
+                </Tooltip>
                 <Button
                   type="button"
                   size="icon"
-                  className="h-11 w-11 shrink-0 rounded-xl bg-[#13944C] hover:bg-[#0f7a3d]"
-                  disabled={!draft.trim() || sending}
+                  className="h-11 w-11 shrink-0 self-end rounded-xl bg-[#13944C] hover:bg-[#0f7a3d]"
+                  disabled={
+                    (!draft.trim() && pendingAttachments.length === 0) ||
+                    sending
+                  }
                   onClick={onSubmit}
                   aria-label="Enviar"
                 >
@@ -651,7 +1016,8 @@ export function AiAssistantDrawer() {
                 </kbd>
               </p>
             </footer>
-          </>
+            </div>
+          </div>
         )}
       </aside>
     </div>
@@ -670,10 +1036,10 @@ export function AiAssistantDrawer() {
         }}
       >
         <DialogHeader>
-          <DialogTitle>¿Borrar toda la conversación?</DialogTitle>
+          <DialogTitle>¿Eliminar este chat?</DialogTitle>
           <DialogDescription>
-            Se eliminará el historial en el servidor y en este dispositivo. Esta
-            acción no se puede deshacer.
+            Se borrará solo este hilo y sus mensajes en el servidor. El resto de
+            conversaciones en el panel lateral se conservan.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="gap-2 sm:gap-2">
@@ -689,7 +1055,7 @@ export function AiAssistantDrawer() {
             type="button"
             variant="destructive"
             className="gap-2"
-            onClick={() => void handleClearChat()}
+            onClick={() => void deleteCurrentThread()}
             disabled={clearing}
           >
             {clearing ? (
@@ -698,7 +1064,7 @@ export function AiAssistantDrawer() {
                 Borrando…
               </>
             ) : (
-              'Borrar definitivamente'
+              'Eliminar chat'
             )}
           </Button>
         </DialogFooter>

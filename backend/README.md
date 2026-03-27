@@ -67,6 +67,10 @@ Rutas bajo el prefijo `api/ai` (autenticación JWT como el resto de la API):
 | `DELETE` | `/api/ai/conversation` | Borra la conversación del usuario y todos sus mensajes. |
 | `POST` | `/api/ai/chat` | Chat JSON: usa **tools** del CRM (tareas, oportunidades, etc.) cuando hay `OPENAI_API_KEY`. El cuerpo incluye `message`, `context` opcional e `history` opcional. |
 | `POST` | `/api/ai/chat/stream` | **SSE** (texto en vivo, markdown). **No** ejecuta tools; solo modelo de chat. Eventos: fragmentos `delta`, cierre con `done` (incluye `message` y `conversationId`) o `error`. |
+| `GET` | `/api/ai/assistant-instructions` | Textos editables del copiloto (chat con tools y streaming). Requiere uno de: `dashboard.ver`, `configuracion.ver`, `agentes_ia.ver`, `agentes_ia.editar`. |
+| `PATCH` | `/api/ai/assistant-instructions` | Actualiza instrucciones (`instructionsChatTools`, `instructionsStream`). Requiere `configuracion.editar` o `agentes_ia.editar`. |
+
+Los prompts se guardan en PostgreSQL (`AiAssistantInstruction`). El servidor añade siempre contexto de usuario y, en el chat con tools, el bloque técnico del JSON de respuesta.
 
 **Variables de entorno relevantes** (ver `.env.example`):
 
@@ -74,6 +78,19 @@ Rutas bajo el prefijo `api/ai` (autenticación JWT como el resto de la API):
 - `AI_CHAT_RETENTION_DAYS` — opcional; si es un entero `> 0`, tras cada respuesta del asistente se borran mensajes de esa conversación más antiguos que N días.
 
 **Frontend:** `VITE_AI_CHAT_STREAM=true` activa el modo stream; sin esa variable se usa `POST /api/ai/chat` (con tools). Los dos modos no se combinan en la implementación actual.
+
+### Prisma: drift en migraciones (BD remota vs repo)
+
+Si `migrate dev` informa migraciones **aplicadas en la base pero ausentes en** `prisma/migrations/` (p. ej. nombres distintos a `20260428130000_ai_assistant_instructions`) y propone **reset**, **no** uses `migrate reset` en una BD con datos que quieras conservar.
+
+1. Abre `prisma/scripts/repair_ai_assistant_migration_history.sql`, revisa y ejecuta el `DELETE` sobre `"_prisma_migrations"` contra las filas fantasma (solo quitas el historial incoherente, no las tablas de negocio).
+2. Si la tabla `AiAssistantInstruction` **ya existe** y coincide con `schema.prisma`:
+
+   `npx prisma migrate resolve --applied 20260428130000_ai_assistant_instructions`
+
+3. Si esa tabla **no** existe, aplica migraciones con `npx prisma migrate deploy`.
+
+Comprueba permisos `agentes_ia.%` en `Authority` si marcaste la migración como aplicada sin ejecutar el SQL.
 
 ## Deployment
 

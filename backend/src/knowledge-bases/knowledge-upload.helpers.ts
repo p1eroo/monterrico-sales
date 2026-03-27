@@ -1,3 +1,5 @@
+import pdfParse from 'pdf-parse';
+
 /** Extensiones tratadas como texto cuando el MIME es genérico. */
 const TEXT_EXTENSIONS = new Set([
   '.txt',
@@ -19,6 +21,8 @@ const TEXT_MIMES = new Set([
   'text/tab-separated-values',
 ]);
 
+const PDF_MIMES = new Set(['application/pdf', 'application/x-pdf']);
+
 function stripHtmlMinimal(html: string): string {
   return html
     .replace(/<script[\s\S]*?<\/script>/gi, ' ')
@@ -36,7 +40,7 @@ function fileExtension(name: string): string {
 }
 
 /**
- * Devuelve texto UTF-8 indexable o null si el tipo no está soportado (p. ej. PDF).
+ * Devuelve texto UTF-8 indexable o null si el tipo no está soportado o no hay texto extraíble (p. ej. PDF escaneado).
  */
 export type MulterFileLike = {
   buffer: Buffer;
@@ -44,9 +48,26 @@ export type MulterFileLike = {
   originalname?: string;
 };
 
-export function extractIndexableTextFromUpload(
+async function extractPdfText(buffer: Buffer): Promise<string | null> {
+  try {
+    const data = await pdfParse(buffer);
+    const text = (data.text ?? '')
+      .replace(/\u0000/g, '')
+      .replace(/\r\n/g, '\n')
+      .trim();
+    return text.length ? text : null;
+  } catch {
+    return null;
+  }
+}
+
+function isPdfLike(mime: string, ext: string): boolean {
+  return ext === '.pdf' || PDF_MIMES.has(mime);
+}
+
+export async function extractIndexableTextFromUpload(
   file: MulterFileLike,
-): string | null {
+): Promise<string | null> {
   if (!file.buffer?.length) return null;
 
   const rawMime = (file.mimetype || '').toLowerCase();
@@ -54,6 +75,9 @@ export function extractIndexableTextFromUpload(
   const name = file.originalname || '';
   const ext = fileExtension(name);
 
+  if (isPdfLike(mime, ext)) {
+    return extractPdfText(file.buffer);
+  }
   if (TEXT_MIMES.has(mime)) {
     return file.buffer.toString('utf8');
   }

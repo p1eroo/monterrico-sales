@@ -72,19 +72,25 @@ model User {
   campaignsCreated      Campaign[]
   crmFilesUploaded      CrmFile[]
   crmSalesGoal          CrmUserSalesGoal?
-  aiConversation        AiConversation?
+  aiConversations       AiConversation[]
   aiKnowledgeBases      AiKnowledgeBase[]
 }
 
-// ─── Asistente IA (historial por usuario) ───
+// ─── Asistente IA (varios hilos por usuario) ───
 
 model AiConversation {
   id        String      @id @default(cuid())
-  userId    String      @unique
+  userId    String
   user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /**
+   * Primer mensaje del usuario o "Nuevo chat".
+   */
+  title     String      @default("Nuevo chat")
   messages  AiMessage[]
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
+
+  @@index([userId, updatedAt])
 }
 
 model AiMessage {
@@ -156,6 +162,17 @@ model AiKnowledgeChunk {
   createdAt       DateTime        @default(now())
 
   @@index([knowledgeBaseId, position])
+}
+
+/**
+ * Instrucciones editables del copiloto lateral (una fila, id = global).
+ */
+model AiAssistantInstruction {
+  id                    String   @id
+  instructionsChatTools String   @db.Text
+  instructionsStream    String   @db.Text
+  updatedByUserId       String?
+  updatedAt             DateTime @updatedAt
 }
 
 // ─── Configuración CRM (singleton + catálogos + metas por usuario) ───

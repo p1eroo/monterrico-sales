@@ -4,7 +4,9 @@ import { Logger } from '@nestjs/common';
 import { AiService } from './ai.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AiToolsService } from './ai-tools.service';
+import { AssistantInstructionsService } from './assistant-instructions.service';
 import type { ChatHistoryItemDto } from './dto/chat.dto';
+import type { AiChatResponse } from './ai.service';
 
 /** Debe coincidir con `ai.service.ts` (tests de recorte de historial). */
 const MAX_HISTORY_MESSAGES = 24;
@@ -31,6 +33,15 @@ describe('AiService', () => {
           },
         },
         { provide: AiToolsService, useValue: {} },
+        {
+          provide: AssistantInstructionsService,
+          useValue: {
+            getForPromptAssembly: jest.fn().mockResolvedValue({
+              instructionsChatTools: '',
+              instructionsStream: '',
+            }),
+          },
+        },
       ],
     }).compile();
 
@@ -52,6 +63,13 @@ describe('AiService', () => {
         maybePruneConversationMessages: (id: string) => Promise<void>;
       }
     ).maybePruneConversationMessages(conversationId);
+
+  const parseJsonContent = (content: string): AiChatResponse =>
+    (
+      service as unknown as {
+        parseAiJsonContent: (c: string) => AiChatResponse;
+      }
+    ).parseAiJsonContent(content);
 
   describe('sanitizeHistory', () => {
     it('devuelve [] si no hay historial', () => {
@@ -198,6 +216,30 @@ describe('AiService', () => {
       expect(payload?.[0]).toContain('"conversationId":"conv-a"');
 
       logSpy.mockRestore();
+    });
+  });
+
+  describe('parseAiJsonContent', () => {
+    it('parsea JSON con texto antes del objeto', () => {
+      const raw =
+        'Listo. {"message":"Dos empresas.","links":[{"label":"Ver","href":"/empresas"}]}';
+      const out = parseJsonContent(raw);
+      expect(out.message).toBe('Dos empresas.');
+      expect(out.links).toEqual([{ label: 'Ver', href: '/empresas' }]);
+    });
+
+    it('quita fence markdown y parsea', () => {
+      const raw = '```json\n{"message":"Hola"}\n```';
+      expect(parseJsonContent(raw).message).toBe('Hola');
+    });
+
+    it('normaliza comillas tipográficas en el objeto', () => {
+      const withSmart = '{\u201cmessage\u201d:\u201cOk\u201d}';
+      expect(parseJsonContent(withSmart).message).toBe('Ok');
+    });
+
+    it('sin envelope JSON devuelve el texto tal cual', () => {
+      expect(parseJsonContent('  Solo texto  ').message).toBe('Solo texto');
     });
   });
 });

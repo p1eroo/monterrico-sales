@@ -65,6 +65,7 @@ import { NewAgentDialog } from './flows/NewAgentDialog';
 import { NewKnowledgeDialog } from './flows/NewKnowledgeDialog';
 import { NewRuleDialog } from './flows/NewRuleDialog';
 import { LogDetailSheet } from './flows/LogDetailSheet';
+import { AssistantInstructionsTab } from './AssistantInstructionsTab';
 import type { MockLog } from './mockData';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -73,6 +74,7 @@ import { cn } from '@/lib/utils';
 
 const TAB_KEYS = [
   'agentes',
+  'instrucciones',
   'conocimiento',
   'router',
   'contactos',
@@ -201,6 +203,7 @@ export function AgentesIaModule() {
             {(
               [
                 ['agentes', 'Agentes'],
+                ['instrucciones', 'Instrucciones copiloto'],
                 ['conocimiento', 'Conocimiento'],
                 ['router', 'Router Rules'],
                 ['contactos', 'Contactos'],
@@ -215,7 +218,7 @@ export function AgentesIaModule() {
               <TabsTrigger
                 key={k}
                 value={k}
-                className="shrink-0 rounded-none border-0 border-b-2 border-transparent bg-transparent px-3 py-2 text-muted-foreground data-[state=active]:border-[#13944C] data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
+                className="shrink-0 rounded-none border-0 border-b-2 border-transparent bg-transparent px-3 py-2 text-muted-foreground after:hidden data-[state=active]:border-[#13944C] data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
               >
                 {label}
               </TabsTrigger>
@@ -338,6 +341,10 @@ export function AgentesIaModule() {
               </Card>
             ))}
           </div>
+        </TabsContent>
+
+        <TabsContent value="instrucciones" className="mt-0 space-y-4">
+          <AssistantInstructionsTab />
         </TabsContent>
 
         <TabsContent value="conocimiento" className="mt-0 space-y-4">

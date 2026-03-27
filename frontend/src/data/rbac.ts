@@ -23,6 +23,7 @@ export const PERMISSION_MODULES: { id: PermissionModule; label: string }[] = [
   { id: 'roles', label: 'Roles' },
   { id: 'auditoria', label: 'Auditoría' },
   { id: 'configuracion', label: 'Configuración' },
+  { id: 'agentes_ia', label: 'Agentes IA (copiloto)' },
 ];
 
 /**
@@ -49,6 +50,7 @@ export const MODULE_ALLOWED_ACTIONS: Record<
   roles: ['ver', 'crear', 'editar', 'eliminar'],
   auditoria: ['ver'],
   configuracion: ['ver', 'editar'],
+  agentes_ia: ['ver', 'editar'],
 };
 
 export function moduleAllowsAction(
@@ -177,6 +179,8 @@ const ASESOR_PERMISSIONS = [
   'archivos.ver',
   'equipo.ver',
   'usuarios.ver',
+  'agentes_ia.ver',
+  'agentes_ia.editar',
 ];
 const SOLO_LECTURA_PERMISSIONS = allValidPermissionKeys().filter((k) =>
   k.endsWith('.ver'),

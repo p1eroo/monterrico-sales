@@ -18,4 +18,6 @@ export class ChatDto {
   context?: ChatContextDto;
   /** Últimos mensajes antes del `message` actual (memoria multi-turno). */
   history?: ChatHistoryItemDto[];
+  /** Hilo activo (varios chats por usuario). */
+  conversationId?: string;
 }

@@ -162,6 +162,7 @@ exports.Prisma.UserScalarFieldEnum = {
 exports.Prisma.AiConversationScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
+  title: 'title',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
@@ -201,6 +202,14 @@ exports.Prisma.AiKnowledgeChunkScalarFieldEnum = {
   position: 'position',
   content: 'content',
   createdAt: 'createdAt'
+};
+
+exports.Prisma.AiAssistantInstructionScalarFieldEnum = {
+  id: 'id',
+  instructionsChatTools: 'instructionsChatTools',
+  instructionsStream: 'instructionsStream',
+  updatedByUserId: 'updatedByUserId',
+  updatedAt: 'updatedAt'
 };
 
 exports.Prisma.CrmOrganizationProfileScalarFieldEnum = {
@@ -482,6 +491,7 @@ exports.Prisma.ModelName = {
   AiMessage: 'AiMessage',
   AiKnowledgeBase: 'AiKnowledgeBase',
   AiKnowledgeChunk: 'AiKnowledgeChunk',
+  AiAssistantInstruction: 'AiAssistantInstruction',
   CrmOrganizationProfile: 'CrmOrganizationProfile',
   CrmLeadSource: 'CrmLeadSource',
   CrmStage: 'CrmStage',

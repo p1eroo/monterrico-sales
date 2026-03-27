@@ -1,8 +1,20 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
 import { AiToolsService } from './ai-tools.service';
+import { AssistantInstructionsService } from './assistant-instructions.service';
+import {
+  DEFAULT_INSTRUCTIONS_CHAT_TOOLS_BODY,
+  DEFAULT_INSTRUCTIONS_STREAM_BODY,
+  TECHNICAL_APPENDIX_CHAT_TOOLS,
+  effectiveInstructionBody,
+} from './assistant-instructions.defaults';
 import type { ChatContextDto, ChatHistoryItemDto } from './dto/chat.dto';
 
 export type AiChatLink = { label: string; href: string };
@@ -24,6 +36,98 @@ export type AiChatResponse = {
 const MAX_HISTORY_MESSAGES = 24;
 const MAX_HISTORY_TOTAL_CHARS = 24_000;
 const MAX_SINGLE_HISTORY_CONTENT = 8_000;
+
+function stripMarkdownJsonFence(content: string): string {
+  let trimmed = content.trim();
+  if (trimmed.startsWith('```')) {
+    const m = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (m?.[1]) trimmed = m[1].trim();
+  }
+  return trimmed;
+}
+
+function normalizeJsonLikeQuotes(s: string): string {
+  return s
+    .replace(/\u201c/g, '"')
+    .replace(/\u201d/g, '"')
+    .replace(/\u2018/g, "'")
+    .replace(/\u2019/g, "'");
+}
+
+/** Primer objeto `{...}` balanceado (respeta strings y escapes). */
+function extractFirstBalancedJsonObject(s: string): string | null {
+  const start = s.indexOf('{');
+  if (start < 0) return null;
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < s.length; i++) {
+    const c = s[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (inString) {
+      if (c === '\\') {
+        escape = true;
+        continue;
+      }
+      if (c === '"') inString = false;
+      continue;
+    }
+    if (c === '"') {
+      inString = true;
+      continue;
+    }
+    if (c === '{') depth++;
+    else if (c === '}') {
+      depth--;
+      if (depth === 0) return s.slice(start, i + 1);
+    }
+  }
+  return null;
+}
+
+function tryParseAiChatEnvelope(s: string): AiChatResponse | null {
+  for (const candidate of [s, normalizeJsonLikeQuotes(s)]) {
+    try {
+      const j = JSON.parse(candidate) as AiChatResponse;
+      if (typeof j.message === 'string') {
+        return {
+          message: j.message,
+          links: Array.isArray(j.links) ? j.links : undefined,
+          actions: Array.isArray(j.actions) ? j.actions : undefined,
+        };
+      }
+    } catch {
+      /* siguiente intento */
+    }
+  }
+  return null;
+}
+
+/** Evita bucles: misma tanda de tools+args que la ronda anterior → forzar respuesta en texto. */
+function stableToolCallsFingerprint(
+  toolCalls: Array<{
+    type: string;
+    function: { name: string; arguments: string };
+  }>,
+): string {
+  const parts = toolCalls
+    .filter((t) => t.type === 'function')
+    .map((t) => {
+      const raw = (t.function.arguments ?? '').trim() || '{}';
+      let normalized = raw;
+      try {
+        normalized = JSON.stringify(JSON.parse(raw));
+      } catch {
+        /* mantener raw si no es JSON válido */
+      }
+      return `${t.function.name}:${normalized}`;
+    })
+    .sort();
+  return parts.join('|');
+}
 
 const CRM_TOOLS: Record<string, unknown>[] = [
   {
@@ -107,6 +211,114 @@ const CRM_TOOLS: Record<string, unknown>[] = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'count_my_contacts',
+      description:
+        'Cuenta los contactos asignados al usuario (requiere permiso contactos.ver).',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'count_my_companies',
+      description:
+        'Cuenta solo las empresas donde el usuario es el asesor asignado (requiere empresas.ver). No uses esta herramienta si el usuario pide el total de todo el CRM o de todas las empresas del sistema.',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'count_all_companies',
+      description:
+        'Cuenta todas las empresas registradas en el CRM (total global, sin filtrar por asesor). Usar cuando pregunte cuántas empresas hay en total en el sistema, “en todo el CRM”, “en general”, etc. Requiere empresas.ver (equivalente al listado con filtro de todos los asesores).',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'count_my_open_opportunities',
+      description:
+        'Cuenta las oportunidades abiertas asignadas al usuario (requiere permiso oportunidades.ver).',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'count_my_pending_tasks',
+      description:
+        'Cuenta las tareas pendientes (no completadas) asignadas al usuario (requiere permiso actividades.ver).',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'list_my_companies_inactive_days',
+      description:
+        'Empresas asignadas al usuario cuyo registro no se ha actualizado en al menos N días (según updatedAt del CRM). Útil para “sin actividad”.',
+      parameters: {
+        type: 'object',
+        properties: {
+          min_days_inactive: {
+            type: 'number',
+            description:
+              'Mínimo de días sin actualizar el registro (por defecto 12, entre 1 y 365)',
+          },
+          limit: {
+            type: 'number',
+            description: 'Máximo de empresas a devolver (1–25, por defecto 15)',
+          },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'list_my_contacts_inactive_days',
+      description:
+        'Contactos asignados al usuario cuyo registro no se ha actualizado en al menos N días (updatedAt).',
+      parameters: {
+        type: 'object',
+        properties: {
+          min_days_inactive: {
+            type: 'number',
+            description:
+              'Mínimo de días sin actualizar el registro (por defecto 12)',
+          },
+          limit: {
+            type: 'number',
+            description: 'Máximo de contactos a devolver (1–25)',
+          },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'search_my_knowledge',
+      description:
+        'Busca en las bases de conocimiento indexadas del usuario (fragmentos de texto subidos o indexados; búsqueda por palabras, no embeddings). Usar cuando la pregunta pueda estar en documentación interna.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            description:
+              'Palabras clave o frase a buscar (mínimo 2 caracteres)',
+          },
+        },
+        required: ['query'],
+      },
+    },
+  },
 ];
 
 type OpenAiChatMessage = {
@@ -124,8 +336,10 @@ export class AiService {
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
     private readonly tools: AiToolsService,
+    private readonly assistantInstructions: AssistantInstructionsService,
   ) {}
 
+  /** Compatibilidad: devuelve el hilo más reciente del usuario. */
   async getConversationForUser(userId: string): Promise<{
     conversationId: string | null;
     messages: {
@@ -137,8 +351,9 @@ export class AiService {
       actions?: AiChatAction[];
     }[];
   }> {
-    const conv = await this.prisma.aiConversation.findUnique({
+    const conv = await this.prisma.aiConversation.findFirst({
       where: { userId },
+      orderBy: { updatedAt: 'desc' },
       include: {
         messages: {
           orderBy: { createdAt: 'asc' },
@@ -149,6 +364,102 @@ export class AiService {
     if (!conv) {
       return { conversationId: null, messages: [] };
     }
+    return this.mapConversationToClientPayload(conv);
+  }
+
+  async listConversationsForUser(userId: string): Promise<
+    {
+      id: string;
+      title: string;
+      updatedAt: string;
+      messageCount: number;
+    }[]
+  > {
+    const rows = await this.prisma.aiConversation.findMany({
+      where: { userId },
+      orderBy: { updatedAt: 'desc' },
+      take: 100,
+      select: {
+        id: true,
+        title: true,
+        updatedAt: true,
+        _count: { select: { messages: true } },
+      },
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      title: r.title?.trim() || 'Nuevo chat',
+      updatedAt: r.updatedAt.toISOString(),
+      messageCount: r._count.messages,
+    }));
+  }
+
+  async createConversationForUser(userId: string): Promise<{
+    id: string;
+    title: string;
+    updatedAt: string;
+    messageCount: number;
+  }> {
+    const row = await this.prisma.aiConversation.create({
+      data: { userId, title: 'Nuevo chat' },
+    });
+    return {
+      id: row.id,
+      title: row.title,
+      updatedAt: row.updatedAt.toISOString(),
+      messageCount: 0,
+    };
+  }
+
+  async getConversationByIdForUser(
+    userId: string,
+    conversationId: string,
+  ): Promise<{
+    conversationId: string;
+    messages: {
+      id: string;
+      role: string;
+      content: string;
+      createdAt: Date;
+      links?: AiChatLink[];
+      actions?: AiChatAction[];
+    }[];
+  }> {
+    const conv = await this.prisma.aiConversation.findFirst({
+      where: { id: conversationId, userId },
+      include: {
+        messages: {
+          orderBy: { createdAt: 'asc' },
+          take: 200,
+        },
+      },
+    });
+    if (!conv) {
+      throw new NotFoundException('Conversación no encontrada');
+    }
+    return this.mapConversationToClientPayload(conv);
+  }
+
+  private mapConversationToClientPayload(conv: {
+    id: string;
+    messages: {
+      id: string;
+      role: string;
+      content: string;
+      createdAt: Date;
+      meta: unknown;
+    }[];
+  }): {
+    conversationId: string;
+    messages: {
+      id: string;
+      role: string;
+      content: string;
+      createdAt: Date;
+      links?: AiChatLink[];
+      actions?: AiChatAction[];
+    }[];
+  } {
     return {
       conversationId: conv.id,
       messages: conv.messages.map((m) => {
@@ -168,14 +479,86 @@ export class AiService {
     };
   }
 
-  /** Borra la conversación persistida y todos sus mensajes (PostgreSQL). */
+  /** Borra un hilo concreto. */
+  async deleteConversationByIdForUser(
+    userId: string,
+    conversationId: string,
+  ): Promise<void> {
+    const res = await this.prisma.aiConversation.deleteMany({
+      where: { id: conversationId, userId },
+    });
+    if (res.count === 0) return;
+  }
+
+  /**
+   * Compatibilidad API antigua: borra solo el hilo más reciente
+   * (comportamiento cercano al “un chat por usuario” anterior).
+   */
   async deleteConversationForUser(userId: string): Promise<void> {
-    const conv = await this.prisma.aiConversation.findUnique({
+    const conv = await this.prisma.aiConversation.findFirst({
       where: { userId },
+      orderBy: { updatedAt: 'desc' },
       select: { id: true },
     });
     if (!conv) return;
     await this.prisma.aiConversation.delete({ where: { id: conv.id } });
+  }
+
+  private async touchConversationUpdatedAt(conversationId: string): Promise<void> {
+    await this.prisma.aiConversation.update({
+      where: { id: conversationId },
+      data: { updatedAt: new Date() },
+    });
+  }
+
+  private async maybeSetConversationTitleFromUserMessage(
+    conversationId: string,
+    userMessage: string,
+  ): Promise<void> {
+    const row = await this.prisma.aiConversation.findUnique({
+      where: { id: conversationId },
+      select: { title: true },
+    });
+    if (!row) return;
+    const t = (row.title ?? '').trim();
+    if (t && t !== 'Nuevo chat') return;
+    const preview = userMessage.replace(/\s+/g, ' ').trim().slice(0, 72);
+    if (preview.length < 2) return;
+    await this.prisma.aiConversation.update({
+      where: { id: conversationId },
+      data: {
+        title: `${preview}${userMessage.length > 72 ? '…' : ''}`,
+        updatedAt: new Date(),
+      },
+    });
+  }
+
+  private async resolveConversationForChat(
+    userId: string,
+    conversationId: string | undefined,
+  ): Promise<{ id: string }> {
+    const trimmed = conversationId?.trim();
+    if (trimmed) {
+      const found = await this.prisma.aiConversation.findFirst({
+        where: { id: trimmed, userId },
+        select: { id: true },
+      });
+      if (!found) {
+        throw new BadRequestException('Conversación no encontrada');
+      }
+      return found;
+    }
+    const latest = await this.prisma.aiConversation.findFirst({
+      where: { userId },
+      orderBy: { updatedAt: 'desc' },
+      select: { id: true },
+    });
+    if (latest) return latest;
+    const created = await this.prisma.aiConversation.create({
+      data: { userId, title: 'Nuevo chat' },
+      select: { id: true },
+    });
+    return created;
   }
 
   /**
@@ -192,6 +575,7 @@ export class AiService {
       role: string;
     },
     history: ChatHistoryItemDto[] | undefined,
+    conversationId: string | undefined,
     res: Response,
   ): Promise<void> {
     const writeSse = (obj: object) => {
@@ -209,11 +593,10 @@ export class AiService {
       userRole: context?.userRole ?? user.role,
     };
 
-    const conv = await this.prisma.aiConversation.upsert({
-      where: { userId: user.userId },
-      create: { userId: user.userId },
-      update: {},
-    });
+    const conv = await this.resolveConversationForChat(
+      user.userId,
+      conversationId,
+    );
 
     await this.prisma.aiMessage.create({
       data: {
@@ -222,6 +605,9 @@ export class AiService {
         content: userMessage,
       },
     });
+
+    await this.maybeSetConversationTitleFromUserMessage(conv.id, userMessage);
+    await this.touchConversationUpdatedAt(conv.id);
 
     const dbMessages = await this.prisma.aiMessage.findMany({
       where: { conversationId: conv.id },
@@ -250,20 +636,26 @@ export class AiService {
         ? Number.parseInt(maxTokensRaw, 10)
         : undefined;
 
-    const finish = async (fullText: string) => {
+    const finish = async (reply: AiChatResponse) => {
       await this.prisma.aiMessage.create({
         data: {
           conversationId: conv.id,
           role: 'assistant',
-          content: fullText,
-          meta: { links: [], actions: [] },
+          content: reply.message,
+          meta: {
+            links: reply.links ?? [],
+            actions: reply.actions ?? [],
+          },
         },
       });
       await this.maybePruneConversationMessages(conv.id);
+      await this.touchConversationUpdatedAt(conv.id);
       writeSse({
         done: true,
-        message: fullText,
+        message: reply.message,
         conversationId: conv.id,
+        ...(reply.links?.length ? { links: reply.links } : {}),
+        ...(reply.actions?.length ? { actions: reply.actions } : {}),
       });
       res.end();
     };
@@ -271,15 +663,19 @@ export class AiService {
     if (!apiKey?.trim()) {
       const mock = this.mockReply(userMessage, merged, user);
       writeSse({ delta: mock.message });
-      await finish(mock.message);
+      await finish(mock);
       return;
     }
 
-    const system = `Eres el asistente comercial de Taxi Monterrico CRM (ventas, leads, empresas, oportunidades, tareas).
-Responde en español, tono profesional y breve, en **Markdown** (negritas, listas, saltos de línea).
+    const inst = await this.assistantInstructions.getForPromptAssembly();
+    const streamBody = effectiveInstructionBody(
+      inst.instructionsStream,
+      DEFAULT_INSTRUCTIONS_STREAM_BODY,
+    );
+    const system = `${streamBody}
+
 Contexto del usuario (JSON): ${JSON.stringify(merged)}
-Usuario: ${user.name}, rol: ${user.role}.
-No inventes datos de CRM concretos; orienta sobre rutas y buenas prácticas.`;
+Usuario: ${user.name}, rol: ${user.role}.`;
 
     const openaiMessages: OpenAiChatMessage[] = [
       { role: 'system', content: system },
@@ -405,7 +801,7 @@ No inventes datos de CRM concretos; orienta sobre rutas y buenas prácticas.`;
       }),
     );
 
-    await finish(fullText);
+    await finish(this.parseAiJsonContent(fullText));
   }
 
   /** Extrae un fragmento de texto de una línea `data: {...}` del stream de OpenAI. */
@@ -469,6 +865,7 @@ No inventes datos de CRM concretos; orienta sobre rutas y buenas prácticas.`;
       role: string;
     },
     history?: ChatHistoryItemDto[],
+    conversationId?: string,
   ): Promise<AiChatResponse> {
     const apiKey = this.config.get<string>('OPENAI_API_KEY');
     const merged: ChatContextDto = {
@@ -477,11 +874,10 @@ No inventes datos de CRM concretos; orienta sobre rutas y buenas prácticas.`;
       userRole: context?.userRole ?? user.role,
     };
 
-    const conv = await this.prisma.aiConversation.upsert({
-      where: { userId: user.userId },
-      create: { userId: user.userId },
-      update: {},
-    });
+    const conv = await this.resolveConversationForChat(
+      user.userId,
+      conversationId,
+    );
 
     await this.prisma.aiMessage.create({
       data: {
@@ -490,6 +886,9 @@ No inventes datos de CRM concretos; orienta sobre rutas y buenas prácticas.`;
         content: userMessage,
       },
     });
+
+    await this.maybeSetConversationTitleFromUserMessage(conv.id, userMessage);
+    await this.touchConversationUpdatedAt(conv.id);
 
     const dbMessages = await this.prisma.aiMessage.findMany({
       where: { conversationId: conv.id },
@@ -522,8 +921,15 @@ No inventes datos de CRM concretos; orienta sobre rutas y buenas prácticas.`;
         );
       } catch (e) {
         const errMsg = e instanceof Error ? e.message : String(e);
-        this.logger.warn(`OpenAI falló, usando respuesta local: ${errMsg}`);
-        response = this.mockReply(userMessage, merged, user);
+        this.logger.warn(
+          `OpenAI / flujo con herramientas falló, respuesta de error al cliente: ${errMsg}`,
+        );
+        response = this.buildOpenAiFailureResponse(
+          userMessage,
+          merged,
+          user,
+          errMsg,
+        );
       }
     } else {
       response = this.mockReply(userMessage, merged, user);
@@ -542,6 +948,7 @@ No inventes datos de CRM concretos; orienta sobre rutas y buenas prácticas.`;
     });
 
     await this.maybePruneConversationMessages(conv.id);
+    await this.touchConversationUpdatedAt(conv.id);
 
     return { ...response, conversationId: conv.id };
   }
@@ -590,22 +997,13 @@ No inventes datos de CRM concretos; orienta sobre rutas y buenas prácticas.`;
   }
 
   private parseAiJsonContent(content: string): AiChatResponse {
-    let trimmed = content.trim();
-    if (trimmed.startsWith('```')) {
-      const m = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
-      if (m?.[1]) trimmed = m[1].trim();
-    }
-    try {
-      const j = JSON.parse(trimmed) as AiChatResponse;
-      if (typeof j.message === 'string') {
-        return {
-          message: j.message,
-          links: Array.isArray(j.links) ? j.links : undefined,
-          actions: Array.isArray(j.actions) ? j.actions : undefined,
-        };
-      }
-    } catch {
-      /* usar texto plano */
+    const trimmed = stripMarkdownJsonFence(content.trim());
+    const direct = tryParseAiChatEnvelope(trimmed);
+    if (direct) return direct;
+    const extracted = extractFirstBalancedJsonObject(trimmed);
+    if (extracted) {
+      const fromObj = tryParseAiChatEnvelope(extracted);
+      if (fromObj) return fromObj;
     }
     return { message: trimmed };
   }
@@ -617,18 +1015,17 @@ No inventes datos de CRM concretos; orienta sobre rutas y buenas prácticas.`;
     apiKey: string,
     history: { role: 'user' | 'assistant'; content: string }[],
   ): Promise<AiChatResponse> {
-    const system = `Eres el asistente comercial de Taxi Monterrico CRM (ventas, leads, empresas, oportunidades, tareas).
-Responde en español, tono profesional y breve.
-Contexto actual del usuario (JSON): ${JSON.stringify(context)}
+    const inst = await this.assistantInstructions.getForPromptAssembly();
+    const chatBody = effectiveInstructionBody(
+      inst.instructionsChatTools,
+      DEFAULT_INSTRUCTIONS_CHAT_TOOLS_BODY,
+    );
+    const system = `Contexto actual del usuario (JSON): ${JSON.stringify(context)}
 Usuario: ${user.name}, rol: ${user.role}.
 
-Puedes llamar herramientas para obtener datos reales del CRM (tareas, contactos, oportunidades y empresas asignadas al usuario). Solo devuelven datos permitidos por permisos.
+${chatBody}
 
-Cuando tengas la respuesta final para el usuario, devuelve SOLO un objeto JSON válido (sin markdown) con esta forma exacta:
-{"message":"texto principal (puedes usar **negrita** y saltos de línea \\n y listas con guiones)","links":[{"label":"texto","href":"/ruta"}],"actions":[{"id":"slug","label":"texto botón","prompt":"opcional"}]}
-- links: rutas internas del CRM como /opportunities, /empresas, /contactos, /tareas
-- actions: botones de ayuda rápida
-- Si no hay links ni actions, omite las claves o usa arrays vacíos.`;
+${TECHNICAL_APPENDIX_CHAT_TOOLS}`;
 
     const model =
       this.config.get<string>('OPENAI_MODEL')?.trim() || 'gpt-4o-mini';
@@ -658,15 +1055,21 @@ Cuando tengas la respuesta final para el usuario, devuelve SOLO un objeto JSON v
       }),
     );
 
-    const maxIterations = 8;
+    let toolChoice: 'auto' | 'none' = 'auto';
+    let lastToolFingerprint: string | null = null;
+    const maxIterations = 12;
+
     for (let iter = 0; iter < maxIterations; iter++) {
       const roundStartedAt = Date.now();
+      const choiceThisRound = toolChoice;
+      toolChoice = 'auto';
+
       const body: Record<string, unknown> = {
         model,
         temperature: 0.4,
         messages,
         tools: CRM_TOOLS,
-        tool_choice: 'auto',
+        tool_choice: choiceThisRound,
       };
       if (
         maxTokens !== undefined &&
@@ -726,6 +1129,51 @@ Cuando tengas la respuesta final para el usuario, devuelve SOLO un objeto JSON v
 
       const toolCalls = msg.tool_calls;
       if (toolCalls?.length) {
+        if (choiceThisRound === 'none') {
+          this.logger.warn(
+            JSON.stringify({
+              event: 'ai.openai.tool_calls_after_force_none',
+              iteration: iter,
+              tools: toolCalls
+                .filter((t) => t.type === 'function')
+                .map((t) => t.function.name),
+              userId: user.userId,
+            }),
+          );
+          messages.push({
+            role: 'assistant',
+            content: msg.content ?? null,
+            tool_calls: msg.tool_calls,
+          });
+          for (const tc of toolCalls) {
+            if (tc.type !== 'function') continue;
+            messages.push({
+              role: 'tool',
+              tool_call_id: tc.id,
+              content: JSON.stringify({
+                error:
+                  'Esta ronda exige solo el JSON final de respuesta al usuario (message/links/actions). No invoques más herramientas; usa los resultados tool ya recibidos arriba.',
+              }),
+            });
+          }
+          toolChoice = 'none';
+          continue;
+        }
+
+        const fp = stableToolCallsFingerprint(toolCalls);
+        if (lastToolFingerprint !== null && fp === lastToolFingerprint) {
+          this.logger.warn(
+            JSON.stringify({
+              event: 'ai.openai.tool_loop_break',
+              iteration: iter,
+              fingerprint: fp,
+              userId: user.userId,
+            }),
+          );
+          toolChoice = 'none';
+        }
+        lastToolFingerprint = fp;
+
         this.logger.log(
           JSON.stringify({
             event: 'ai.openai.tool_calls',
@@ -786,6 +1234,43 @@ Cuando tengas la respuesta final para el usuario, devuelve SOLO un objeto JSON v
     }
 
     throw new Error('Demasiadas iteraciones de herramientas');
+  }
+
+  /** Cuando falla OpenAI o el bucle de herramientas; no confundir con ausencia de API key. */
+  private buildOpenAiFailureResponse(
+    userMessage: string,
+    context: ChatContextDto,
+    user: { name: string },
+    errMsg: string,
+  ): AiChatResponse {
+    const safePrompt =
+      userMessage.length > 400 ? `${userMessage.slice(0, 400)}…` : userMessage;
+    const first = user.name.split(/\s+/)[0] ?? '';
+    let extra = '';
+    if (
+      errMsg.includes('Demasiadas iteraciones') ||
+      errMsg.includes('iteraciones de herramientas')
+    ) {
+      extra =
+        '\n\n_Sugerencia:_ prueba **Borrar chat** en el asistente y vuelve a preguntar con un hilo más corto.';
+    }
+    return {
+      message: `${first ? `${first}, ` : ''}**no se pudo completar la respuesta con IA.**\n\n${errMsg}${extra}\n\nSi el error se repite, borra la conversación del asistente o contacta al administrador. (Tu sesión e IA están configuradas; este mensaje describe el fallo concreto del intento, no la falta de API key.)`,
+      links: [
+        { label: 'Dashboard', href: '/dashboard' },
+        { label: 'Contactos', href: '/contactos' },
+        { label: 'Empresas', href: '/empresas' },
+      ],
+      actions: safePrompt
+        ? [
+            {
+              id: 'retry-last',
+              label: 'Reintentar la misma pregunta',
+              prompt: safePrompt,
+            },
+          ]
+        : undefined,
+    };
   }
 
   private mockReply(

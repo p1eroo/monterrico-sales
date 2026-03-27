@@ -5,7 +5,10 @@ import type { AiChatAction, AiChatLink } from '@/lib/aiChatApi';
 export type AssistantMessage = {
   id: string;
   role: 'user' | 'assistant';
+  /** Texto enviado al modelo (puede incluir archivos adjuntos en bloque). */
   content: string;
+  /** Texto visible en burbuja (p. ej. solo la pregunta si `content` lleva adjuntos). */
+  displayContent?: string;
   createdAt: number;
   links?: AiChatLink[];
   actions?: AiChatAction[];
@@ -14,12 +17,16 @@ export type AssistantMessage = {
 type AssistantState = {
   isOpen: boolean;
   isMinimized: boolean;
-  pinned: boolean;
+  /** Panel ancho tipo “ampliar chat”. */
+  chatPanelExpanded: boolean;
+  /** Hilo activo en servidor (multi-chat). */
+  activeConversationId: string | null;
   messages: AssistantMessage[];
   setOpen: (open: boolean) => void;
   toggleOpen: () => void;
   setMinimized: (v: boolean) => void;
-  setPinned: (v: boolean) => void;
+  setChatPanelExpanded: (v: boolean) => void;
+  setActiveConversationId: (id: string | null) => void;
   addMessage: (m: Omit<AssistantMessage, 'id' | 'createdAt'> & { id?: string; createdAt?: number }) => void;
   /** Reemplaza el hilo (p. ej. hidratación desde el servidor). */
   hydrateMessages: (messages: AssistantMessage[]) => void;
@@ -33,18 +40,21 @@ export const useAssistantStore = create<AssistantState>()(
     (set) => ({
       isOpen: false,
       isMinimized: false,
-      pinned: false,
+      chatPanelExpanded: false,
+      activeConversationId: null,
       messages: [],
       setOpen: (open) => set({ isOpen: open }),
       toggleOpen: () => set((s) => ({ isOpen: !s.isOpen })),
       setMinimized: (v) => set({ isMinimized: v }),
-      setPinned: (v) => set({ pinned: v }),
+      setChatPanelExpanded: (v) => set({ chatPanelExpanded: v }),
+      setActiveConversationId: (id) => set({ activeConversationId: id }),
       addMessage: (m) =>
         set((s) => {
           const msg: AssistantMessage = {
             id: m.id ?? crypto.randomUUID(),
             role: m.role,
             content: m.content,
+            displayContent: m.displayContent,
             createdAt: m.createdAt ?? Date.now(),
             links: m.links,
             actions: m.actions,
@@ -68,9 +78,10 @@ export const useAssistantStore = create<AssistantState>()(
       name: 'crm-ai-assistant',
       partialize: (s) => ({
         messages: s.messages,
-        pinned: s.pinned,
         isOpen: s.isOpen,
         isMinimized: s.isMinimized,
+        chatPanelExpanded: s.chatPanelExpanded,
+        activeConversationId: s.activeConversationId,
       }),
     },
   ),

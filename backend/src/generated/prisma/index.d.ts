@@ -54,6 +54,11 @@ export type AiKnowledgeBase = $Result.DefaultSelection<Prisma.$AiKnowledgeBasePa
  */
 export type AiKnowledgeChunk = $Result.DefaultSelection<Prisma.$AiKnowledgeChunkPayload>
 /**
+ * Model AiAssistantInstruction
+ * * Instrucciones editables del copiloto lateral (una fila, id = global).
+ */
+export type AiAssistantInstruction = $Result.DefaultSelection<Prisma.$AiAssistantInstructionPayload>
+/**
  * Model CrmOrganizationProfile
  * 
  */
@@ -369,6 +374,16 @@ export class PrismaClient<
     * ```
     */
   get aiKnowledgeChunk(): Prisma.AiKnowledgeChunkDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.aiAssistantInstruction`: Exposes CRUD operations for the **AiAssistantInstruction** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more AiAssistantInstructions
+    * const aiAssistantInstructions = await prisma.aiAssistantInstruction.findMany()
+    * ```
+    */
+  get aiAssistantInstruction(): Prisma.AiAssistantInstructionDelegate<ExtArgs, ClientOptions>;
 
   /**
    * `prisma.crmOrganizationProfile`: Exposes CRUD operations for the **CrmOrganizationProfile** model.
@@ -1041,6 +1056,7 @@ export namespace Prisma {
     AiMessage: 'AiMessage',
     AiKnowledgeBase: 'AiKnowledgeBase',
     AiKnowledgeChunk: 'AiKnowledgeChunk',
+    AiAssistantInstruction: 'AiAssistantInstruction',
     CrmOrganizationProfile: 'CrmOrganizationProfile',
     CrmLeadSource: 'CrmLeadSource',
     CrmStage: 'CrmStage',
@@ -1079,7 +1095,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "role" | "authority" | "account" | "user" | "aiConversation" | "aiMessage" | "aiKnowledgeBase" | "aiKnowledgeChunk" | "crmOrganizationProfile" | "crmLeadSource" | "crmStage" | "crmPriority" | "crmActivityType" | "crmUserSalesGoal" | "contact" | "company" | "client" | "opportunity" | "activity" | "companyContact" | "contactContact" | "contactOpportunity" | "companyCompany" | "companyOpportunity" | "opportunityOpportunity" | "contactActivity" | "companyActivity" | "opportunityActivity" | "campaignEmailSendLog" | "campaign" | "crmFile"
+      modelProps: "role" | "authority" | "account" | "user" | "aiConversation" | "aiMessage" | "aiKnowledgeBase" | "aiKnowledgeChunk" | "aiAssistantInstruction" | "crmOrganizationProfile" | "crmLeadSource" | "crmStage" | "crmPriority" | "crmActivityType" | "crmUserSalesGoal" | "contact" | "company" | "client" | "opportunity" | "activity" | "companyContact" | "contactContact" | "contactOpportunity" | "companyCompany" | "companyOpportunity" | "opportunityOpportunity" | "contactActivity" | "companyActivity" | "opportunityActivity" | "campaignEmailSendLog" | "campaign" | "crmFile"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -1672,6 +1688,80 @@ export namespace Prisma {
           count: {
             args: Prisma.AiKnowledgeChunkCountArgs<ExtArgs>
             result: $Utils.Optional<AiKnowledgeChunkCountAggregateOutputType> | number
+          }
+        }
+      }
+      AiAssistantInstruction: {
+        payload: Prisma.$AiAssistantInstructionPayload<ExtArgs>
+        fields: Prisma.AiAssistantInstructionFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.AiAssistantInstructionFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiAssistantInstructionPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.AiAssistantInstructionFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiAssistantInstructionPayload>
+          }
+          findFirst: {
+            args: Prisma.AiAssistantInstructionFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiAssistantInstructionPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.AiAssistantInstructionFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiAssistantInstructionPayload>
+          }
+          findMany: {
+            args: Prisma.AiAssistantInstructionFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiAssistantInstructionPayload>[]
+          }
+          create: {
+            args: Prisma.AiAssistantInstructionCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiAssistantInstructionPayload>
+          }
+          createMany: {
+            args: Prisma.AiAssistantInstructionCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.AiAssistantInstructionCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiAssistantInstructionPayload>[]
+          }
+          delete: {
+            args: Prisma.AiAssistantInstructionDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiAssistantInstructionPayload>
+          }
+          update: {
+            args: Prisma.AiAssistantInstructionUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiAssistantInstructionPayload>
+          }
+          deleteMany: {
+            args: Prisma.AiAssistantInstructionDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.AiAssistantInstructionUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.AiAssistantInstructionUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiAssistantInstructionPayload>[]
+          }
+          upsert: {
+            args: Prisma.AiAssistantInstructionUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiAssistantInstructionPayload>
+          }
+          aggregate: {
+            args: Prisma.AiAssistantInstructionAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateAiAssistantInstruction>
+          }
+          groupBy: {
+            args: Prisma.AiAssistantInstructionGroupByArgs<ExtArgs>
+            result: $Utils.Optional<AiAssistantInstructionGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.AiAssistantInstructionCountArgs<ExtArgs>
+            result: $Utils.Optional<AiAssistantInstructionCountAggregateOutputType> | number
           }
         }
       }
@@ -3493,6 +3583,7 @@ export namespace Prisma {
     aiMessage?: AiMessageOmit
     aiKnowledgeBase?: AiKnowledgeBaseOmit
     aiKnowledgeChunk?: AiKnowledgeChunkOmit
+    aiAssistantInstruction?: AiAssistantInstructionOmit
     crmOrganizationProfile?: CrmOrganizationProfileOmit
     crmLeadSource?: CrmLeadSourceOmit
     crmStage?: CrmStageOmit
@@ -3643,6 +3734,7 @@ export namespace Prisma {
     activitiesAssigned: number
     campaignsCreated: number
     crmFilesUploaded: number
+    aiConversations: number
     aiKnowledgeBases: number
   }
 
@@ -3654,6 +3746,7 @@ export namespace Prisma {
     activitiesAssigned?: boolean | UserCountOutputTypeCountActivitiesAssignedArgs
     campaignsCreated?: boolean | UserCountOutputTypeCountCampaignsCreatedArgs
     crmFilesUploaded?: boolean | UserCountOutputTypeCountCrmFilesUploadedArgs
+    aiConversations?: boolean | UserCountOutputTypeCountAiConversationsArgs
     aiKnowledgeBases?: boolean | UserCountOutputTypeCountAiKnowledgeBasesArgs
   }
 
@@ -3715,6 +3808,13 @@ export namespace Prisma {
    */
   export type UserCountOutputTypeCountCrmFilesUploadedArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: CrmFileWhereInput
+  }
+
+  /**
+   * UserCountOutputType without action
+   */
+  export type UserCountOutputTypeCountAiConversationsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: AiConversationWhereInput
   }
 
   /**
@@ -7509,7 +7609,7 @@ export namespace Prisma {
     campaignsCreated?: boolean | User$campaignsCreatedArgs<ExtArgs>
     crmFilesUploaded?: boolean | User$crmFilesUploadedArgs<ExtArgs>
     crmSalesGoal?: boolean | User$crmSalesGoalArgs<ExtArgs>
-    aiConversation?: boolean | User$aiConversationArgs<ExtArgs>
+    aiConversations?: boolean | User$aiConversationsArgs<ExtArgs>
     aiKnowledgeBases?: boolean | User$aiKnowledgeBasesArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["user"]>
@@ -7566,7 +7666,7 @@ export namespace Prisma {
     campaignsCreated?: boolean | User$campaignsCreatedArgs<ExtArgs>
     crmFilesUploaded?: boolean | User$crmFilesUploadedArgs<ExtArgs>
     crmSalesGoal?: boolean | User$crmSalesGoalArgs<ExtArgs>
-    aiConversation?: boolean | User$aiConversationArgs<ExtArgs>
+    aiConversations?: boolean | User$aiConversationsArgs<ExtArgs>
     aiKnowledgeBases?: boolean | User$aiKnowledgeBasesArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
   }
@@ -7589,7 +7689,7 @@ export namespace Prisma {
       campaignsCreated: Prisma.$CampaignPayload<ExtArgs>[]
       crmFilesUploaded: Prisma.$CrmFilePayload<ExtArgs>[]
       crmSalesGoal: Prisma.$CrmUserSalesGoalPayload<ExtArgs> | null
-      aiConversation: Prisma.$AiConversationPayload<ExtArgs> | null
+      aiConversations: Prisma.$AiConversationPayload<ExtArgs>[]
       aiKnowledgeBases: Prisma.$AiKnowledgeBasePayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
@@ -8006,7 +8106,7 @@ export namespace Prisma {
     campaignsCreated<T extends User$campaignsCreatedArgs<ExtArgs> = {}>(args?: Subset<T, User$campaignsCreatedArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CampaignPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     crmFilesUploaded<T extends User$crmFilesUploadedArgs<ExtArgs> = {}>(args?: Subset<T, User$crmFilesUploadedArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmFilePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     crmSalesGoal<T extends User$crmSalesGoalArgs<ExtArgs> = {}>(args?: Subset<T, User$crmSalesGoalArgs<ExtArgs>>): Prisma__CrmUserSalesGoalClient<$Result.GetResult<Prisma.$CrmUserSalesGoalPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
-    aiConversation<T extends User$aiConversationArgs<ExtArgs> = {}>(args?: Subset<T, User$aiConversationArgs<ExtArgs>>): Prisma__AiConversationClient<$Result.GetResult<Prisma.$AiConversationPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    aiConversations<T extends User$aiConversationsArgs<ExtArgs> = {}>(args?: Subset<T, User$aiConversationsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AiConversationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     aiKnowledgeBases<T extends User$aiKnowledgeBasesArgs<ExtArgs> = {}>(args?: Subset<T, User$aiKnowledgeBasesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AiKnowledgeBasePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
@@ -8635,9 +8735,9 @@ export namespace Prisma {
   }
 
   /**
-   * User.aiConversation
+   * User.aiConversations
    */
-  export type User$aiConversationArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type User$aiConversationsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
      * Select specific fields to fetch from the AiConversation
      */
@@ -8651,6 +8751,11 @@ export namespace Prisma {
      */
     include?: AiConversationInclude<ExtArgs> | null
     where?: AiConversationWhereInput
+    orderBy?: AiConversationOrderByWithRelationInput | AiConversationOrderByWithRelationInput[]
+    cursor?: AiConversationWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: AiConversationScalarFieldEnum | AiConversationScalarFieldEnum[]
   }
 
   /**
@@ -8709,6 +8814,7 @@ export namespace Prisma {
   export type AiConversationMinAggregateOutputType = {
     id: string | null
     userId: string | null
+    title: string | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -8716,6 +8822,7 @@ export namespace Prisma {
   export type AiConversationMaxAggregateOutputType = {
     id: string | null
     userId: string | null
+    title: string | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -8723,6 +8830,7 @@ export namespace Prisma {
   export type AiConversationCountAggregateOutputType = {
     id: number
     userId: number
+    title: number
     createdAt: number
     updatedAt: number
     _all: number
@@ -8732,6 +8840,7 @@ export namespace Prisma {
   export type AiConversationMinAggregateInputType = {
     id?: true
     userId?: true
+    title?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -8739,6 +8848,7 @@ export namespace Prisma {
   export type AiConversationMaxAggregateInputType = {
     id?: true
     userId?: true
+    title?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -8746,6 +8856,7 @@ export namespace Prisma {
   export type AiConversationCountAggregateInputType = {
     id?: true
     userId?: true
+    title?: true
     createdAt?: true
     updatedAt?: true
     _all?: true
@@ -8826,6 +8937,7 @@ export namespace Prisma {
   export type AiConversationGroupByOutputType = {
     id: string
     userId: string
+    title: string
     createdAt: Date
     updatedAt: Date
     _count: AiConversationCountAggregateOutputType | null
@@ -8850,6 +8962,7 @@ export namespace Prisma {
   export type AiConversationSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
     userId?: boolean
+    title?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     user?: boolean | UserDefaultArgs<ExtArgs>
@@ -8860,6 +8973,7 @@ export namespace Prisma {
   export type AiConversationSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
     userId?: boolean
+    title?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     user?: boolean | UserDefaultArgs<ExtArgs>
@@ -8868,6 +8982,7 @@ export namespace Prisma {
   export type AiConversationSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
     userId?: boolean
+    title?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     user?: boolean | UserDefaultArgs<ExtArgs>
@@ -8876,11 +8991,12 @@ export namespace Prisma {
   export type AiConversationSelectScalar = {
     id?: boolean
     userId?: boolean
+    title?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type AiConversationOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "userId" | "createdAt" | "updatedAt", ExtArgs["result"]["aiConversation"]>
+  export type AiConversationOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "userId" | "title" | "createdAt" | "updatedAt", ExtArgs["result"]["aiConversation"]>
   export type AiConversationInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     user?: boolean | UserDefaultArgs<ExtArgs>
     messages?: boolean | AiConversation$messagesArgs<ExtArgs>
@@ -8902,6 +9018,10 @@ export namespace Prisma {
     scalars: $Extensions.GetPayloadResult<{
       id: string
       userId: string
+      /**
+       * * Primer mensaje del usuario o "Nuevo chat".
+       */
+      title: string
       createdAt: Date
       updatedAt: Date
     }, ExtArgs["result"]["aiConversation"]>
@@ -9331,6 +9451,7 @@ export namespace Prisma {
   interface AiConversationFieldRefs {
     readonly id: FieldRef<"AiConversation", 'String'>
     readonly userId: FieldRef<"AiConversation", 'String'>
+    readonly title: FieldRef<"AiConversation", 'String'>
     readonly createdAt: FieldRef<"AiConversation", 'DateTime'>
     readonly updatedAt: FieldRef<"AiConversation", 'DateTime'>
   }
@@ -13250,6 +13371,1006 @@ export namespace Prisma {
      * Choose, which related nodes to fetch as well
      */
     include?: AiKnowledgeChunkInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model AiAssistantInstruction
+   */
+
+  export type AggregateAiAssistantInstruction = {
+    _count: AiAssistantInstructionCountAggregateOutputType | null
+    _min: AiAssistantInstructionMinAggregateOutputType | null
+    _max: AiAssistantInstructionMaxAggregateOutputType | null
+  }
+
+  export type AiAssistantInstructionMinAggregateOutputType = {
+    id: string | null
+    instructionsChatTools: string | null
+    instructionsStream: string | null
+    updatedByUserId: string | null
+    updatedAt: Date | null
+  }
+
+  export type AiAssistantInstructionMaxAggregateOutputType = {
+    id: string | null
+    instructionsChatTools: string | null
+    instructionsStream: string | null
+    updatedByUserId: string | null
+    updatedAt: Date | null
+  }
+
+  export type AiAssistantInstructionCountAggregateOutputType = {
+    id: number
+    instructionsChatTools: number
+    instructionsStream: number
+    updatedByUserId: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type AiAssistantInstructionMinAggregateInputType = {
+    id?: true
+    instructionsChatTools?: true
+    instructionsStream?: true
+    updatedByUserId?: true
+    updatedAt?: true
+  }
+
+  export type AiAssistantInstructionMaxAggregateInputType = {
+    id?: true
+    instructionsChatTools?: true
+    instructionsStream?: true
+    updatedByUserId?: true
+    updatedAt?: true
+  }
+
+  export type AiAssistantInstructionCountAggregateInputType = {
+    id?: true
+    instructionsChatTools?: true
+    instructionsStream?: true
+    updatedByUserId?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type AiAssistantInstructionAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which AiAssistantInstruction to aggregate.
+     */
+    where?: AiAssistantInstructionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of AiAssistantInstructions to fetch.
+     */
+    orderBy?: AiAssistantInstructionOrderByWithRelationInput | AiAssistantInstructionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: AiAssistantInstructionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` AiAssistantInstructions from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` AiAssistantInstructions.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned AiAssistantInstructions
+    **/
+    _count?: true | AiAssistantInstructionCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: AiAssistantInstructionMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: AiAssistantInstructionMaxAggregateInputType
+  }
+
+  export type GetAiAssistantInstructionAggregateType<T extends AiAssistantInstructionAggregateArgs> = {
+        [P in keyof T & keyof AggregateAiAssistantInstruction]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateAiAssistantInstruction[P]>
+      : GetScalarType<T[P], AggregateAiAssistantInstruction[P]>
+  }
+
+
+
+
+  export type AiAssistantInstructionGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: AiAssistantInstructionWhereInput
+    orderBy?: AiAssistantInstructionOrderByWithAggregationInput | AiAssistantInstructionOrderByWithAggregationInput[]
+    by: AiAssistantInstructionScalarFieldEnum[] | AiAssistantInstructionScalarFieldEnum
+    having?: AiAssistantInstructionScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: AiAssistantInstructionCountAggregateInputType | true
+    _min?: AiAssistantInstructionMinAggregateInputType
+    _max?: AiAssistantInstructionMaxAggregateInputType
+  }
+
+  export type AiAssistantInstructionGroupByOutputType = {
+    id: string
+    instructionsChatTools: string
+    instructionsStream: string
+    updatedByUserId: string | null
+    updatedAt: Date
+    _count: AiAssistantInstructionCountAggregateOutputType | null
+    _min: AiAssistantInstructionMinAggregateOutputType | null
+    _max: AiAssistantInstructionMaxAggregateOutputType | null
+  }
+
+  type GetAiAssistantInstructionGroupByPayload<T extends AiAssistantInstructionGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<AiAssistantInstructionGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof AiAssistantInstructionGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], AiAssistantInstructionGroupByOutputType[P]>
+            : GetScalarType<T[P], AiAssistantInstructionGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type AiAssistantInstructionSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    instructionsChatTools?: boolean
+    instructionsStream?: boolean
+    updatedByUserId?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["aiAssistantInstruction"]>
+
+  export type AiAssistantInstructionSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    instructionsChatTools?: boolean
+    instructionsStream?: boolean
+    updatedByUserId?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["aiAssistantInstruction"]>
+
+  export type AiAssistantInstructionSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    instructionsChatTools?: boolean
+    instructionsStream?: boolean
+    updatedByUserId?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["aiAssistantInstruction"]>
+
+  export type AiAssistantInstructionSelectScalar = {
+    id?: boolean
+    instructionsChatTools?: boolean
+    instructionsStream?: boolean
+    updatedByUserId?: boolean
+    updatedAt?: boolean
+  }
+
+  export type AiAssistantInstructionOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "instructionsChatTools" | "instructionsStream" | "updatedByUserId" | "updatedAt", ExtArgs["result"]["aiAssistantInstruction"]>
+
+  export type $AiAssistantInstructionPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "AiAssistantInstruction"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      instructionsChatTools: string
+      instructionsStream: string
+      updatedByUserId: string | null
+      updatedAt: Date
+    }, ExtArgs["result"]["aiAssistantInstruction"]>
+    composites: {}
+  }
+
+  type AiAssistantInstructionGetPayload<S extends boolean | null | undefined | AiAssistantInstructionDefaultArgs> = $Result.GetResult<Prisma.$AiAssistantInstructionPayload, S>
+
+  type AiAssistantInstructionCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<AiAssistantInstructionFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: AiAssistantInstructionCountAggregateInputType | true
+    }
+
+  export interface AiAssistantInstructionDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['AiAssistantInstruction'], meta: { name: 'AiAssistantInstruction' } }
+    /**
+     * Find zero or one AiAssistantInstruction that matches the filter.
+     * @param {AiAssistantInstructionFindUniqueArgs} args - Arguments to find a AiAssistantInstruction
+     * @example
+     * // Get one AiAssistantInstruction
+     * const aiAssistantInstruction = await prisma.aiAssistantInstruction.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends AiAssistantInstructionFindUniqueArgs>(args: SelectSubset<T, AiAssistantInstructionFindUniqueArgs<ExtArgs>>): Prisma__AiAssistantInstructionClient<$Result.GetResult<Prisma.$AiAssistantInstructionPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one AiAssistantInstruction that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {AiAssistantInstructionFindUniqueOrThrowArgs} args - Arguments to find a AiAssistantInstruction
+     * @example
+     * // Get one AiAssistantInstruction
+     * const aiAssistantInstruction = await prisma.aiAssistantInstruction.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends AiAssistantInstructionFindUniqueOrThrowArgs>(args: SelectSubset<T, AiAssistantInstructionFindUniqueOrThrowArgs<ExtArgs>>): Prisma__AiAssistantInstructionClient<$Result.GetResult<Prisma.$AiAssistantInstructionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first AiAssistantInstruction that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiAssistantInstructionFindFirstArgs} args - Arguments to find a AiAssistantInstruction
+     * @example
+     * // Get one AiAssistantInstruction
+     * const aiAssistantInstruction = await prisma.aiAssistantInstruction.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends AiAssistantInstructionFindFirstArgs>(args?: SelectSubset<T, AiAssistantInstructionFindFirstArgs<ExtArgs>>): Prisma__AiAssistantInstructionClient<$Result.GetResult<Prisma.$AiAssistantInstructionPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first AiAssistantInstruction that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiAssistantInstructionFindFirstOrThrowArgs} args - Arguments to find a AiAssistantInstruction
+     * @example
+     * // Get one AiAssistantInstruction
+     * const aiAssistantInstruction = await prisma.aiAssistantInstruction.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends AiAssistantInstructionFindFirstOrThrowArgs>(args?: SelectSubset<T, AiAssistantInstructionFindFirstOrThrowArgs<ExtArgs>>): Prisma__AiAssistantInstructionClient<$Result.GetResult<Prisma.$AiAssistantInstructionPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more AiAssistantInstructions that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiAssistantInstructionFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all AiAssistantInstructions
+     * const aiAssistantInstructions = await prisma.aiAssistantInstruction.findMany()
+     * 
+     * // Get first 10 AiAssistantInstructions
+     * const aiAssistantInstructions = await prisma.aiAssistantInstruction.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const aiAssistantInstructionWithIdOnly = await prisma.aiAssistantInstruction.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends AiAssistantInstructionFindManyArgs>(args?: SelectSubset<T, AiAssistantInstructionFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AiAssistantInstructionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a AiAssistantInstruction.
+     * @param {AiAssistantInstructionCreateArgs} args - Arguments to create a AiAssistantInstruction.
+     * @example
+     * // Create one AiAssistantInstruction
+     * const AiAssistantInstruction = await prisma.aiAssistantInstruction.create({
+     *   data: {
+     *     // ... data to create a AiAssistantInstruction
+     *   }
+     * })
+     * 
+     */
+    create<T extends AiAssistantInstructionCreateArgs>(args: SelectSubset<T, AiAssistantInstructionCreateArgs<ExtArgs>>): Prisma__AiAssistantInstructionClient<$Result.GetResult<Prisma.$AiAssistantInstructionPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many AiAssistantInstructions.
+     * @param {AiAssistantInstructionCreateManyArgs} args - Arguments to create many AiAssistantInstructions.
+     * @example
+     * // Create many AiAssistantInstructions
+     * const aiAssistantInstruction = await prisma.aiAssistantInstruction.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends AiAssistantInstructionCreateManyArgs>(args?: SelectSubset<T, AiAssistantInstructionCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many AiAssistantInstructions and returns the data saved in the database.
+     * @param {AiAssistantInstructionCreateManyAndReturnArgs} args - Arguments to create many AiAssistantInstructions.
+     * @example
+     * // Create many AiAssistantInstructions
+     * const aiAssistantInstruction = await prisma.aiAssistantInstruction.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many AiAssistantInstructions and only return the `id`
+     * const aiAssistantInstructionWithIdOnly = await prisma.aiAssistantInstruction.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends AiAssistantInstructionCreateManyAndReturnArgs>(args?: SelectSubset<T, AiAssistantInstructionCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AiAssistantInstructionPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a AiAssistantInstruction.
+     * @param {AiAssistantInstructionDeleteArgs} args - Arguments to delete one AiAssistantInstruction.
+     * @example
+     * // Delete one AiAssistantInstruction
+     * const AiAssistantInstruction = await prisma.aiAssistantInstruction.delete({
+     *   where: {
+     *     // ... filter to delete one AiAssistantInstruction
+     *   }
+     * })
+     * 
+     */
+    delete<T extends AiAssistantInstructionDeleteArgs>(args: SelectSubset<T, AiAssistantInstructionDeleteArgs<ExtArgs>>): Prisma__AiAssistantInstructionClient<$Result.GetResult<Prisma.$AiAssistantInstructionPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one AiAssistantInstruction.
+     * @param {AiAssistantInstructionUpdateArgs} args - Arguments to update one AiAssistantInstruction.
+     * @example
+     * // Update one AiAssistantInstruction
+     * const aiAssistantInstruction = await prisma.aiAssistantInstruction.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends AiAssistantInstructionUpdateArgs>(args: SelectSubset<T, AiAssistantInstructionUpdateArgs<ExtArgs>>): Prisma__AiAssistantInstructionClient<$Result.GetResult<Prisma.$AiAssistantInstructionPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more AiAssistantInstructions.
+     * @param {AiAssistantInstructionDeleteManyArgs} args - Arguments to filter AiAssistantInstructions to delete.
+     * @example
+     * // Delete a few AiAssistantInstructions
+     * const { count } = await prisma.aiAssistantInstruction.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends AiAssistantInstructionDeleteManyArgs>(args?: SelectSubset<T, AiAssistantInstructionDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more AiAssistantInstructions.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiAssistantInstructionUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many AiAssistantInstructions
+     * const aiAssistantInstruction = await prisma.aiAssistantInstruction.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends AiAssistantInstructionUpdateManyArgs>(args: SelectSubset<T, AiAssistantInstructionUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more AiAssistantInstructions and returns the data updated in the database.
+     * @param {AiAssistantInstructionUpdateManyAndReturnArgs} args - Arguments to update many AiAssistantInstructions.
+     * @example
+     * // Update many AiAssistantInstructions
+     * const aiAssistantInstruction = await prisma.aiAssistantInstruction.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more AiAssistantInstructions and only return the `id`
+     * const aiAssistantInstructionWithIdOnly = await prisma.aiAssistantInstruction.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends AiAssistantInstructionUpdateManyAndReturnArgs>(args: SelectSubset<T, AiAssistantInstructionUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AiAssistantInstructionPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one AiAssistantInstruction.
+     * @param {AiAssistantInstructionUpsertArgs} args - Arguments to update or create a AiAssistantInstruction.
+     * @example
+     * // Update or create a AiAssistantInstruction
+     * const aiAssistantInstruction = await prisma.aiAssistantInstruction.upsert({
+     *   create: {
+     *     // ... data to create a AiAssistantInstruction
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the AiAssistantInstruction we want to update
+     *   }
+     * })
+     */
+    upsert<T extends AiAssistantInstructionUpsertArgs>(args: SelectSubset<T, AiAssistantInstructionUpsertArgs<ExtArgs>>): Prisma__AiAssistantInstructionClient<$Result.GetResult<Prisma.$AiAssistantInstructionPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of AiAssistantInstructions.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiAssistantInstructionCountArgs} args - Arguments to filter AiAssistantInstructions to count.
+     * @example
+     * // Count the number of AiAssistantInstructions
+     * const count = await prisma.aiAssistantInstruction.count({
+     *   where: {
+     *     // ... the filter for the AiAssistantInstructions we want to count
+     *   }
+     * })
+    **/
+    count<T extends AiAssistantInstructionCountArgs>(
+      args?: Subset<T, AiAssistantInstructionCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], AiAssistantInstructionCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a AiAssistantInstruction.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiAssistantInstructionAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends AiAssistantInstructionAggregateArgs>(args: Subset<T, AiAssistantInstructionAggregateArgs>): Prisma.PrismaPromise<GetAiAssistantInstructionAggregateType<T>>
+
+    /**
+     * Group by AiAssistantInstruction.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiAssistantInstructionGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends AiAssistantInstructionGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: AiAssistantInstructionGroupByArgs['orderBy'] }
+        : { orderBy?: AiAssistantInstructionGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, AiAssistantInstructionGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetAiAssistantInstructionGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the AiAssistantInstruction model
+   */
+  readonly fields: AiAssistantInstructionFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for AiAssistantInstruction.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__AiAssistantInstructionClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the AiAssistantInstruction model
+   */
+  interface AiAssistantInstructionFieldRefs {
+    readonly id: FieldRef<"AiAssistantInstruction", 'String'>
+    readonly instructionsChatTools: FieldRef<"AiAssistantInstruction", 'String'>
+    readonly instructionsStream: FieldRef<"AiAssistantInstruction", 'String'>
+    readonly updatedByUserId: FieldRef<"AiAssistantInstruction", 'String'>
+    readonly updatedAt: FieldRef<"AiAssistantInstruction", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * AiAssistantInstruction findUnique
+   */
+  export type AiAssistantInstructionFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiAssistantInstruction
+     */
+    select?: AiAssistantInstructionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiAssistantInstruction
+     */
+    omit?: AiAssistantInstructionOmit<ExtArgs> | null
+    /**
+     * Filter, which AiAssistantInstruction to fetch.
+     */
+    where: AiAssistantInstructionWhereUniqueInput
+  }
+
+  /**
+   * AiAssistantInstruction findUniqueOrThrow
+   */
+  export type AiAssistantInstructionFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiAssistantInstruction
+     */
+    select?: AiAssistantInstructionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiAssistantInstruction
+     */
+    omit?: AiAssistantInstructionOmit<ExtArgs> | null
+    /**
+     * Filter, which AiAssistantInstruction to fetch.
+     */
+    where: AiAssistantInstructionWhereUniqueInput
+  }
+
+  /**
+   * AiAssistantInstruction findFirst
+   */
+  export type AiAssistantInstructionFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiAssistantInstruction
+     */
+    select?: AiAssistantInstructionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiAssistantInstruction
+     */
+    omit?: AiAssistantInstructionOmit<ExtArgs> | null
+    /**
+     * Filter, which AiAssistantInstruction to fetch.
+     */
+    where?: AiAssistantInstructionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of AiAssistantInstructions to fetch.
+     */
+    orderBy?: AiAssistantInstructionOrderByWithRelationInput | AiAssistantInstructionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for AiAssistantInstructions.
+     */
+    cursor?: AiAssistantInstructionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` AiAssistantInstructions from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` AiAssistantInstructions.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of AiAssistantInstructions.
+     */
+    distinct?: AiAssistantInstructionScalarFieldEnum | AiAssistantInstructionScalarFieldEnum[]
+  }
+
+  /**
+   * AiAssistantInstruction findFirstOrThrow
+   */
+  export type AiAssistantInstructionFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiAssistantInstruction
+     */
+    select?: AiAssistantInstructionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiAssistantInstruction
+     */
+    omit?: AiAssistantInstructionOmit<ExtArgs> | null
+    /**
+     * Filter, which AiAssistantInstruction to fetch.
+     */
+    where?: AiAssistantInstructionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of AiAssistantInstructions to fetch.
+     */
+    orderBy?: AiAssistantInstructionOrderByWithRelationInput | AiAssistantInstructionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for AiAssistantInstructions.
+     */
+    cursor?: AiAssistantInstructionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` AiAssistantInstructions from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` AiAssistantInstructions.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of AiAssistantInstructions.
+     */
+    distinct?: AiAssistantInstructionScalarFieldEnum | AiAssistantInstructionScalarFieldEnum[]
+  }
+
+  /**
+   * AiAssistantInstruction findMany
+   */
+  export type AiAssistantInstructionFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiAssistantInstruction
+     */
+    select?: AiAssistantInstructionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiAssistantInstruction
+     */
+    omit?: AiAssistantInstructionOmit<ExtArgs> | null
+    /**
+     * Filter, which AiAssistantInstructions to fetch.
+     */
+    where?: AiAssistantInstructionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of AiAssistantInstructions to fetch.
+     */
+    orderBy?: AiAssistantInstructionOrderByWithRelationInput | AiAssistantInstructionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing AiAssistantInstructions.
+     */
+    cursor?: AiAssistantInstructionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` AiAssistantInstructions from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` AiAssistantInstructions.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of AiAssistantInstructions.
+     */
+    distinct?: AiAssistantInstructionScalarFieldEnum | AiAssistantInstructionScalarFieldEnum[]
+  }
+
+  /**
+   * AiAssistantInstruction create
+   */
+  export type AiAssistantInstructionCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiAssistantInstruction
+     */
+    select?: AiAssistantInstructionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiAssistantInstruction
+     */
+    omit?: AiAssistantInstructionOmit<ExtArgs> | null
+    /**
+     * The data needed to create a AiAssistantInstruction.
+     */
+    data: XOR<AiAssistantInstructionCreateInput, AiAssistantInstructionUncheckedCreateInput>
+  }
+
+  /**
+   * AiAssistantInstruction createMany
+   */
+  export type AiAssistantInstructionCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many AiAssistantInstructions.
+     */
+    data: AiAssistantInstructionCreateManyInput | AiAssistantInstructionCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * AiAssistantInstruction createManyAndReturn
+   */
+  export type AiAssistantInstructionCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiAssistantInstruction
+     */
+    select?: AiAssistantInstructionSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiAssistantInstruction
+     */
+    omit?: AiAssistantInstructionOmit<ExtArgs> | null
+    /**
+     * The data used to create many AiAssistantInstructions.
+     */
+    data: AiAssistantInstructionCreateManyInput | AiAssistantInstructionCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * AiAssistantInstruction update
+   */
+  export type AiAssistantInstructionUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiAssistantInstruction
+     */
+    select?: AiAssistantInstructionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiAssistantInstruction
+     */
+    omit?: AiAssistantInstructionOmit<ExtArgs> | null
+    /**
+     * The data needed to update a AiAssistantInstruction.
+     */
+    data: XOR<AiAssistantInstructionUpdateInput, AiAssistantInstructionUncheckedUpdateInput>
+    /**
+     * Choose, which AiAssistantInstruction to update.
+     */
+    where: AiAssistantInstructionWhereUniqueInput
+  }
+
+  /**
+   * AiAssistantInstruction updateMany
+   */
+  export type AiAssistantInstructionUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update AiAssistantInstructions.
+     */
+    data: XOR<AiAssistantInstructionUpdateManyMutationInput, AiAssistantInstructionUncheckedUpdateManyInput>
+    /**
+     * Filter which AiAssistantInstructions to update
+     */
+    where?: AiAssistantInstructionWhereInput
+    /**
+     * Limit how many AiAssistantInstructions to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * AiAssistantInstruction updateManyAndReturn
+   */
+  export type AiAssistantInstructionUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiAssistantInstruction
+     */
+    select?: AiAssistantInstructionSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiAssistantInstruction
+     */
+    omit?: AiAssistantInstructionOmit<ExtArgs> | null
+    /**
+     * The data used to update AiAssistantInstructions.
+     */
+    data: XOR<AiAssistantInstructionUpdateManyMutationInput, AiAssistantInstructionUncheckedUpdateManyInput>
+    /**
+     * Filter which AiAssistantInstructions to update
+     */
+    where?: AiAssistantInstructionWhereInput
+    /**
+     * Limit how many AiAssistantInstructions to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * AiAssistantInstruction upsert
+   */
+  export type AiAssistantInstructionUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiAssistantInstruction
+     */
+    select?: AiAssistantInstructionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiAssistantInstruction
+     */
+    omit?: AiAssistantInstructionOmit<ExtArgs> | null
+    /**
+     * The filter to search for the AiAssistantInstruction to update in case it exists.
+     */
+    where: AiAssistantInstructionWhereUniqueInput
+    /**
+     * In case the AiAssistantInstruction found by the `where` argument doesn't exist, create a new AiAssistantInstruction with this data.
+     */
+    create: XOR<AiAssistantInstructionCreateInput, AiAssistantInstructionUncheckedCreateInput>
+    /**
+     * In case the AiAssistantInstruction was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<AiAssistantInstructionUpdateInput, AiAssistantInstructionUncheckedUpdateInput>
+  }
+
+  /**
+   * AiAssistantInstruction delete
+   */
+  export type AiAssistantInstructionDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiAssistantInstruction
+     */
+    select?: AiAssistantInstructionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiAssistantInstruction
+     */
+    omit?: AiAssistantInstructionOmit<ExtArgs> | null
+    /**
+     * Filter which AiAssistantInstruction to delete.
+     */
+    where: AiAssistantInstructionWhereUniqueInput
+  }
+
+  /**
+   * AiAssistantInstruction deleteMany
+   */
+  export type AiAssistantInstructionDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which AiAssistantInstructions to delete
+     */
+    where?: AiAssistantInstructionWhereInput
+    /**
+     * Limit how many AiAssistantInstructions to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * AiAssistantInstruction without action
+   */
+  export type AiAssistantInstructionDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiAssistantInstruction
+     */
+    select?: AiAssistantInstructionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiAssistantInstruction
+     */
+    omit?: AiAssistantInstructionOmit<ExtArgs> | null
   }
 
 
@@ -39253,6 +40374,7 @@ export namespace Prisma {
   export const AiConversationScalarFieldEnum: {
     id: 'id',
     userId: 'userId',
+    title: 'title',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
   };
@@ -39304,6 +40426,17 @@ export namespace Prisma {
   };
 
   export type AiKnowledgeChunkScalarFieldEnum = (typeof AiKnowledgeChunkScalarFieldEnum)[keyof typeof AiKnowledgeChunkScalarFieldEnum]
+
+
+  export const AiAssistantInstructionScalarFieldEnum: {
+    id: 'id',
+    instructionsChatTools: 'instructionsChatTools',
+    instructionsStream: 'instructionsStream',
+    updatedByUserId: 'updatedByUserId',
+    updatedAt: 'updatedAt'
+  };
+
+  export type AiAssistantInstructionScalarFieldEnum = (typeof AiAssistantInstructionScalarFieldEnum)[keyof typeof AiAssistantInstructionScalarFieldEnum]
 
 
   export const CrmOrganizationProfileScalarFieldEnum: {
@@ -39947,7 +41080,7 @@ export namespace Prisma {
     campaignsCreated?: CampaignListRelationFilter
     crmFilesUploaded?: CrmFileListRelationFilter
     crmSalesGoal?: XOR<CrmUserSalesGoalNullableScalarRelationFilter, CrmUserSalesGoalWhereInput> | null
-    aiConversation?: XOR<AiConversationNullableScalarRelationFilter, AiConversationWhereInput> | null
+    aiConversations?: AiConversationListRelationFilter
     aiKnowledgeBases?: AiKnowledgeBaseListRelationFilter
   }
 
@@ -39971,7 +41104,7 @@ export namespace Prisma {
     campaignsCreated?: CampaignOrderByRelationAggregateInput
     crmFilesUploaded?: CrmFileOrderByRelationAggregateInput
     crmSalesGoal?: CrmUserSalesGoalOrderByWithRelationInput
-    aiConversation?: AiConversationOrderByWithRelationInput
+    aiConversations?: AiConversationOrderByRelationAggregateInput
     aiKnowledgeBases?: AiKnowledgeBaseOrderByRelationAggregateInput
   }
 
@@ -39998,7 +41131,7 @@ export namespace Prisma {
     campaignsCreated?: CampaignListRelationFilter
     crmFilesUploaded?: CrmFileListRelationFilter
     crmSalesGoal?: XOR<CrmUserSalesGoalNullableScalarRelationFilter, CrmUserSalesGoalWhereInput> | null
-    aiConversation?: XOR<AiConversationNullableScalarRelationFilter, AiConversationWhereInput> | null
+    aiConversations?: AiConversationListRelationFilter
     aiKnowledgeBases?: AiKnowledgeBaseListRelationFilter
   }, "id">
 
@@ -40040,6 +41173,7 @@ export namespace Prisma {
     NOT?: AiConversationWhereInput | AiConversationWhereInput[]
     id?: StringFilter<"AiConversation"> | string
     userId?: StringFilter<"AiConversation"> | string
+    title?: StringFilter<"AiConversation"> | string
     createdAt?: DateTimeFilter<"AiConversation"> | Date | string
     updatedAt?: DateTimeFilter<"AiConversation"> | Date | string
     user?: XOR<UserScalarRelationFilter, UserWhereInput>
@@ -40049,6 +41183,7 @@ export namespace Prisma {
   export type AiConversationOrderByWithRelationInput = {
     id?: SortOrder
     userId?: SortOrder
+    title?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     user?: UserOrderByWithRelationInput
@@ -40057,19 +41192,21 @@ export namespace Prisma {
 
   export type AiConversationWhereUniqueInput = Prisma.AtLeast<{
     id?: string
-    userId?: string
     AND?: AiConversationWhereInput | AiConversationWhereInput[]
     OR?: AiConversationWhereInput[]
     NOT?: AiConversationWhereInput | AiConversationWhereInput[]
+    userId?: StringFilter<"AiConversation"> | string
+    title?: StringFilter<"AiConversation"> | string
     createdAt?: DateTimeFilter<"AiConversation"> | Date | string
     updatedAt?: DateTimeFilter<"AiConversation"> | Date | string
     user?: XOR<UserScalarRelationFilter, UserWhereInput>
     messages?: AiMessageListRelationFilter
-  }, "id" | "userId">
+  }, "id">
 
   export type AiConversationOrderByWithAggregationInput = {
     id?: SortOrder
     userId?: SortOrder
+    title?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     _count?: AiConversationCountOrderByAggregateInput
@@ -40083,6 +41220,7 @@ export namespace Prisma {
     NOT?: AiConversationScalarWhereWithAggregatesInput | AiConversationScalarWhereWithAggregatesInput[]
     id?: StringWithAggregatesFilter<"AiConversation"> | string
     userId?: StringWithAggregatesFilter<"AiConversation"> | string
+    title?: StringWithAggregatesFilter<"AiConversation"> | string
     createdAt?: DateTimeWithAggregatesFilter<"AiConversation"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"AiConversation"> | Date | string
   }
@@ -40322,6 +41460,58 @@ export namespace Prisma {
     position?: IntWithAggregatesFilter<"AiKnowledgeChunk"> | number
     content?: StringWithAggregatesFilter<"AiKnowledgeChunk"> | string
     createdAt?: DateTimeWithAggregatesFilter<"AiKnowledgeChunk"> | Date | string
+  }
+
+  export type AiAssistantInstructionWhereInput = {
+    AND?: AiAssistantInstructionWhereInput | AiAssistantInstructionWhereInput[]
+    OR?: AiAssistantInstructionWhereInput[]
+    NOT?: AiAssistantInstructionWhereInput | AiAssistantInstructionWhereInput[]
+    id?: StringFilter<"AiAssistantInstruction"> | string
+    instructionsChatTools?: StringFilter<"AiAssistantInstruction"> | string
+    instructionsStream?: StringFilter<"AiAssistantInstruction"> | string
+    updatedByUserId?: StringNullableFilter<"AiAssistantInstruction"> | string | null
+    updatedAt?: DateTimeFilter<"AiAssistantInstruction"> | Date | string
+  }
+
+  export type AiAssistantInstructionOrderByWithRelationInput = {
+    id?: SortOrder
+    instructionsChatTools?: SortOrder
+    instructionsStream?: SortOrder
+    updatedByUserId?: SortOrderInput | SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type AiAssistantInstructionWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: AiAssistantInstructionWhereInput | AiAssistantInstructionWhereInput[]
+    OR?: AiAssistantInstructionWhereInput[]
+    NOT?: AiAssistantInstructionWhereInput | AiAssistantInstructionWhereInput[]
+    instructionsChatTools?: StringFilter<"AiAssistantInstruction"> | string
+    instructionsStream?: StringFilter<"AiAssistantInstruction"> | string
+    updatedByUserId?: StringNullableFilter<"AiAssistantInstruction"> | string | null
+    updatedAt?: DateTimeFilter<"AiAssistantInstruction"> | Date | string
+  }, "id">
+
+  export type AiAssistantInstructionOrderByWithAggregationInput = {
+    id?: SortOrder
+    instructionsChatTools?: SortOrder
+    instructionsStream?: SortOrder
+    updatedByUserId?: SortOrderInput | SortOrder
+    updatedAt?: SortOrder
+    _count?: AiAssistantInstructionCountOrderByAggregateInput
+    _max?: AiAssistantInstructionMaxOrderByAggregateInput
+    _min?: AiAssistantInstructionMinOrderByAggregateInput
+  }
+
+  export type AiAssistantInstructionScalarWhereWithAggregatesInput = {
+    AND?: AiAssistantInstructionScalarWhereWithAggregatesInput | AiAssistantInstructionScalarWhereWithAggregatesInput[]
+    OR?: AiAssistantInstructionScalarWhereWithAggregatesInput[]
+    NOT?: AiAssistantInstructionScalarWhereWithAggregatesInput | AiAssistantInstructionScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"AiAssistantInstruction"> | string
+    instructionsChatTools?: StringWithAggregatesFilter<"AiAssistantInstruction"> | string
+    instructionsStream?: StringWithAggregatesFilter<"AiAssistantInstruction"> | string
+    updatedByUserId?: StringNullableWithAggregatesFilter<"AiAssistantInstruction"> | string | null
+    updatedAt?: DateTimeWithAggregatesFilter<"AiAssistantInstruction"> | Date | string
   }
 
   export type CrmOrganizationProfileWhereInput = {
@@ -42188,7 +43378,7 @@ export namespace Prisma {
     campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
-    aiConversation?: AiConversationCreateNestedOneWithoutUserInput
+    aiConversations?: AiConversationCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
   }
 
@@ -42211,7 +43401,7 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
-    aiConversation?: AiConversationUncheckedCreateNestedOneWithoutUserInput
+    aiConversations?: AiConversationUncheckedCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
   }
 
@@ -42234,7 +43424,7 @@ export namespace Prisma {
     campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
-    aiConversation?: AiConversationUpdateOneWithoutUserNestedInput
+    aiConversations?: AiConversationUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
   }
 
@@ -42257,7 +43447,7 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
-    aiConversation?: AiConversationUncheckedUpdateOneWithoutUserNestedInput
+    aiConversations?: AiConversationUncheckedUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
   }
 
@@ -42301,15 +43491,17 @@ export namespace Prisma {
 
   export type AiConversationCreateInput = {
     id?: string
+    title?: string
     createdAt?: Date | string
     updatedAt?: Date | string
-    user: UserCreateNestedOneWithoutAiConversationInput
+    user: UserCreateNestedOneWithoutAiConversationsInput
     messages?: AiMessageCreateNestedManyWithoutConversationInput
   }
 
   export type AiConversationUncheckedCreateInput = {
     id?: string
     userId: string
+    title?: string
     createdAt?: Date | string
     updatedAt?: Date | string
     messages?: AiMessageUncheckedCreateNestedManyWithoutConversationInput
@@ -42317,15 +43509,17 @@ export namespace Prisma {
 
   export type AiConversationUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    user?: UserUpdateOneRequiredWithoutAiConversationNestedInput
+    user?: UserUpdateOneRequiredWithoutAiConversationsNestedInput
     messages?: AiMessageUpdateManyWithoutConversationNestedInput
   }
 
   export type AiConversationUncheckedUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
     userId?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     messages?: AiMessageUncheckedUpdateManyWithoutConversationNestedInput
@@ -42334,12 +43528,14 @@ export namespace Prisma {
   export type AiConversationCreateManyInput = {
     id?: string
     userId: string
+    title?: string
     createdAt?: Date | string
     updatedAt?: Date | string
   }
 
   export type AiConversationUpdateManyMutationInput = {
     id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -42347,6 +43543,7 @@ export namespace Prisma {
   export type AiConversationUncheckedUpdateManyInput = {
     id?: StringFieldUpdateOperationsInput | string
     userId?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -42609,6 +43806,62 @@ export namespace Prisma {
     position?: IntFieldUpdateOperationsInput | number
     content?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type AiAssistantInstructionCreateInput = {
+    id: string
+    instructionsChatTools: string
+    instructionsStream: string
+    updatedByUserId?: string | null
+    updatedAt?: Date | string
+  }
+
+  export type AiAssistantInstructionUncheckedCreateInput = {
+    id: string
+    instructionsChatTools: string
+    instructionsStream: string
+    updatedByUserId?: string | null
+    updatedAt?: Date | string
+  }
+
+  export type AiAssistantInstructionUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    instructionsChatTools?: StringFieldUpdateOperationsInput | string
+    instructionsStream?: StringFieldUpdateOperationsInput | string
+    updatedByUserId?: NullableStringFieldUpdateOperationsInput | string | null
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type AiAssistantInstructionUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    instructionsChatTools?: StringFieldUpdateOperationsInput | string
+    instructionsStream?: StringFieldUpdateOperationsInput | string
+    updatedByUserId?: NullableStringFieldUpdateOperationsInput | string | null
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type AiAssistantInstructionCreateManyInput = {
+    id: string
+    instructionsChatTools: string
+    instructionsStream: string
+    updatedByUserId?: string | null
+    updatedAt?: Date | string
+  }
+
+  export type AiAssistantInstructionUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    instructionsChatTools?: StringFieldUpdateOperationsInput | string
+    instructionsStream?: StringFieldUpdateOperationsInput | string
+    updatedByUserId?: NullableStringFieldUpdateOperationsInput | string | null
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type AiAssistantInstructionUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    instructionsChatTools?: StringFieldUpdateOperationsInput | string
+    instructionsStream?: StringFieldUpdateOperationsInput | string
+    updatedByUserId?: NullableStringFieldUpdateOperationsInput | string | null
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type CrmOrganizationProfileCreateInput = {
@@ -44647,9 +45900,10 @@ export namespace Prisma {
     isNot?: CrmUserSalesGoalWhereInput | null
   }
 
-  export type AiConversationNullableScalarRelationFilter = {
-    is?: AiConversationWhereInput | null
-    isNot?: AiConversationWhereInput | null
+  export type AiConversationListRelationFilter = {
+    every?: AiConversationWhereInput
+    some?: AiConversationWhereInput
+    none?: AiConversationWhereInput
   }
 
   export type AiKnowledgeBaseListRelationFilter = {
@@ -44683,6 +45937,10 @@ export namespace Prisma {
   }
 
   export type CrmFileOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type AiConversationOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -44756,6 +46014,7 @@ export namespace Prisma {
   export type AiConversationCountOrderByAggregateInput = {
     id?: SortOrder
     userId?: SortOrder
+    title?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -44763,6 +46022,7 @@ export namespace Prisma {
   export type AiConversationMaxOrderByAggregateInput = {
     id?: SortOrder
     userId?: SortOrder
+    title?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -44770,6 +46030,7 @@ export namespace Prisma {
   export type AiConversationMinOrderByAggregateInput = {
     id?: SortOrder
     userId?: SortOrder
+    title?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -44995,6 +46256,30 @@ export namespace Prisma {
 
   export type AiKnowledgeChunkSumOrderByAggregateInput = {
     position?: SortOrder
+  }
+
+  export type AiAssistantInstructionCountOrderByAggregateInput = {
+    id?: SortOrder
+    instructionsChatTools?: SortOrder
+    instructionsStream?: SortOrder
+    updatedByUserId?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type AiAssistantInstructionMaxOrderByAggregateInput = {
+    id?: SortOrder
+    instructionsChatTools?: SortOrder
+    instructionsStream?: SortOrder
+    updatedByUserId?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type AiAssistantInstructionMinOrderByAggregateInput = {
+    id?: SortOrder
+    instructionsChatTools?: SortOrder
+    instructionsStream?: SortOrder
+    updatedByUserId?: SortOrder
+    updatedAt?: SortOrder
   }
 
   export type FloatFilter<$PrismaModel = never> = {
@@ -46213,10 +47498,11 @@ export namespace Prisma {
     connect?: CrmUserSalesGoalWhereUniqueInput
   }
 
-  export type AiConversationCreateNestedOneWithoutUserInput = {
-    create?: XOR<AiConversationCreateWithoutUserInput, AiConversationUncheckedCreateWithoutUserInput>
-    connectOrCreate?: AiConversationCreateOrConnectWithoutUserInput
-    connect?: AiConversationWhereUniqueInput
+  export type AiConversationCreateNestedManyWithoutUserInput = {
+    create?: XOR<AiConversationCreateWithoutUserInput, AiConversationUncheckedCreateWithoutUserInput> | AiConversationCreateWithoutUserInput[] | AiConversationUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: AiConversationCreateOrConnectWithoutUserInput | AiConversationCreateOrConnectWithoutUserInput[]
+    createMany?: AiConversationCreateManyUserInputEnvelope
+    connect?: AiConversationWhereUniqueInput | AiConversationWhereUniqueInput[]
   }
 
   export type AiKnowledgeBaseCreateNestedManyWithoutUserInput = {
@@ -46281,10 +47567,11 @@ export namespace Prisma {
     connect?: CrmUserSalesGoalWhereUniqueInput
   }
 
-  export type AiConversationUncheckedCreateNestedOneWithoutUserInput = {
-    create?: XOR<AiConversationCreateWithoutUserInput, AiConversationUncheckedCreateWithoutUserInput>
-    connectOrCreate?: AiConversationCreateOrConnectWithoutUserInput
-    connect?: AiConversationWhereUniqueInput
+  export type AiConversationUncheckedCreateNestedManyWithoutUserInput = {
+    create?: XOR<AiConversationCreateWithoutUserInput, AiConversationUncheckedCreateWithoutUserInput> | AiConversationCreateWithoutUserInput[] | AiConversationUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: AiConversationCreateOrConnectWithoutUserInput | AiConversationCreateOrConnectWithoutUserInput[]
+    createMany?: AiConversationCreateManyUserInputEnvelope
+    connect?: AiConversationWhereUniqueInput | AiConversationWhereUniqueInput[]
   }
 
   export type AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput = {
@@ -46414,14 +47701,18 @@ export namespace Prisma {
     update?: XOR<XOR<CrmUserSalesGoalUpdateToOneWithWhereWithoutUserInput, CrmUserSalesGoalUpdateWithoutUserInput>, CrmUserSalesGoalUncheckedUpdateWithoutUserInput>
   }
 
-  export type AiConversationUpdateOneWithoutUserNestedInput = {
-    create?: XOR<AiConversationCreateWithoutUserInput, AiConversationUncheckedCreateWithoutUserInput>
-    connectOrCreate?: AiConversationCreateOrConnectWithoutUserInput
-    upsert?: AiConversationUpsertWithoutUserInput
-    disconnect?: AiConversationWhereInput | boolean
-    delete?: AiConversationWhereInput | boolean
-    connect?: AiConversationWhereUniqueInput
-    update?: XOR<XOR<AiConversationUpdateToOneWithWhereWithoutUserInput, AiConversationUpdateWithoutUserInput>, AiConversationUncheckedUpdateWithoutUserInput>
+  export type AiConversationUpdateManyWithoutUserNestedInput = {
+    create?: XOR<AiConversationCreateWithoutUserInput, AiConversationUncheckedCreateWithoutUserInput> | AiConversationCreateWithoutUserInput[] | AiConversationUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: AiConversationCreateOrConnectWithoutUserInput | AiConversationCreateOrConnectWithoutUserInput[]
+    upsert?: AiConversationUpsertWithWhereUniqueWithoutUserInput | AiConversationUpsertWithWhereUniqueWithoutUserInput[]
+    createMany?: AiConversationCreateManyUserInputEnvelope
+    set?: AiConversationWhereUniqueInput | AiConversationWhereUniqueInput[]
+    disconnect?: AiConversationWhereUniqueInput | AiConversationWhereUniqueInput[]
+    delete?: AiConversationWhereUniqueInput | AiConversationWhereUniqueInput[]
+    connect?: AiConversationWhereUniqueInput | AiConversationWhereUniqueInput[]
+    update?: AiConversationUpdateWithWhereUniqueWithoutUserInput | AiConversationUpdateWithWhereUniqueWithoutUserInput[]
+    updateMany?: AiConversationUpdateManyWithWhereWithoutUserInput | AiConversationUpdateManyWithWhereWithoutUserInput[]
+    deleteMany?: AiConversationScalarWhereInput | AiConversationScalarWhereInput[]
   }
 
   export type AiKnowledgeBaseUpdateManyWithoutUserNestedInput = {
@@ -46546,14 +47837,18 @@ export namespace Prisma {
     update?: XOR<XOR<CrmUserSalesGoalUpdateToOneWithWhereWithoutUserInput, CrmUserSalesGoalUpdateWithoutUserInput>, CrmUserSalesGoalUncheckedUpdateWithoutUserInput>
   }
 
-  export type AiConversationUncheckedUpdateOneWithoutUserNestedInput = {
-    create?: XOR<AiConversationCreateWithoutUserInput, AiConversationUncheckedCreateWithoutUserInput>
-    connectOrCreate?: AiConversationCreateOrConnectWithoutUserInput
-    upsert?: AiConversationUpsertWithoutUserInput
-    disconnect?: AiConversationWhereInput | boolean
-    delete?: AiConversationWhereInput | boolean
-    connect?: AiConversationWhereUniqueInput
-    update?: XOR<XOR<AiConversationUpdateToOneWithWhereWithoutUserInput, AiConversationUpdateWithoutUserInput>, AiConversationUncheckedUpdateWithoutUserInput>
+  export type AiConversationUncheckedUpdateManyWithoutUserNestedInput = {
+    create?: XOR<AiConversationCreateWithoutUserInput, AiConversationUncheckedCreateWithoutUserInput> | AiConversationCreateWithoutUserInput[] | AiConversationUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: AiConversationCreateOrConnectWithoutUserInput | AiConversationCreateOrConnectWithoutUserInput[]
+    upsert?: AiConversationUpsertWithWhereUniqueWithoutUserInput | AiConversationUpsertWithWhereUniqueWithoutUserInput[]
+    createMany?: AiConversationCreateManyUserInputEnvelope
+    set?: AiConversationWhereUniqueInput | AiConversationWhereUniqueInput[]
+    disconnect?: AiConversationWhereUniqueInput | AiConversationWhereUniqueInput[]
+    delete?: AiConversationWhereUniqueInput | AiConversationWhereUniqueInput[]
+    connect?: AiConversationWhereUniqueInput | AiConversationWhereUniqueInput[]
+    update?: AiConversationUpdateWithWhereUniqueWithoutUserInput | AiConversationUpdateWithWhereUniqueWithoutUserInput[]
+    updateMany?: AiConversationUpdateManyWithWhereWithoutUserInput | AiConversationUpdateManyWithWhereWithoutUserInput[]
+    deleteMany?: AiConversationScalarWhereInput | AiConversationScalarWhereInput[]
   }
 
   export type AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput = {
@@ -46570,9 +47865,9 @@ export namespace Prisma {
     deleteMany?: AiKnowledgeBaseScalarWhereInput | AiKnowledgeBaseScalarWhereInput[]
   }
 
-  export type UserCreateNestedOneWithoutAiConversationInput = {
-    create?: XOR<UserCreateWithoutAiConversationInput, UserUncheckedCreateWithoutAiConversationInput>
-    connectOrCreate?: UserCreateOrConnectWithoutAiConversationInput
+  export type UserCreateNestedOneWithoutAiConversationsInput = {
+    create?: XOR<UserCreateWithoutAiConversationsInput, UserUncheckedCreateWithoutAiConversationsInput>
+    connectOrCreate?: UserCreateOrConnectWithoutAiConversationsInput
     connect?: UserWhereUniqueInput
   }
 
@@ -46590,12 +47885,12 @@ export namespace Prisma {
     connect?: AiMessageWhereUniqueInput | AiMessageWhereUniqueInput[]
   }
 
-  export type UserUpdateOneRequiredWithoutAiConversationNestedInput = {
-    create?: XOR<UserCreateWithoutAiConversationInput, UserUncheckedCreateWithoutAiConversationInput>
-    connectOrCreate?: UserCreateOrConnectWithoutAiConversationInput
-    upsert?: UserUpsertWithoutAiConversationInput
+  export type UserUpdateOneRequiredWithoutAiConversationsNestedInput = {
+    create?: XOR<UserCreateWithoutAiConversationsInput, UserUncheckedCreateWithoutAiConversationsInput>
+    connectOrCreate?: UserCreateOrConnectWithoutAiConversationsInput
+    upsert?: UserUpsertWithoutAiConversationsInput
     connect?: UserWhereUniqueInput
-    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutAiConversationInput, UserUpdateWithoutAiConversationInput>, UserUncheckedUpdateWithoutAiConversationInput>
+    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutAiConversationsInput, UserUpdateWithoutAiConversationsInput>, UserUncheckedUpdateWithoutAiConversationsInput>
   }
 
   export type AiMessageUpdateManyWithoutConversationNestedInput = {
@@ -48144,7 +49439,7 @@ export namespace Prisma {
     campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
-    aiConversation?: AiConversationCreateNestedOneWithoutUserInput
+    aiConversations?: AiConversationCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
   }
 
@@ -48166,7 +49461,7 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
-    aiConversation?: AiConversationUncheckedCreateNestedOneWithoutUserInput
+    aiConversations?: AiConversationUncheckedCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
   }
 
@@ -48315,7 +49610,7 @@ export namespace Prisma {
     campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
-    aiConversation?: AiConversationCreateNestedOneWithoutUserInput
+    aiConversations?: AiConversationCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
   }
 
@@ -48337,7 +49632,7 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
-    aiConversation?: AiConversationUncheckedCreateNestedOneWithoutUserInput
+    aiConversations?: AiConversationUncheckedCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
   }
 
@@ -48375,7 +49670,7 @@ export namespace Prisma {
     campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
-    aiConversation?: AiConversationUpdateOneWithoutUserNestedInput
+    aiConversations?: AiConversationUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
   }
 
@@ -48397,7 +49692,7 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
-    aiConversation?: AiConversationUncheckedUpdateOneWithoutUserNestedInput
+    aiConversations?: AiConversationUncheckedUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
   }
 
@@ -48795,6 +50090,7 @@ export namespace Prisma {
 
   export type AiConversationCreateWithoutUserInput = {
     id?: string
+    title?: string
     createdAt?: Date | string
     updatedAt?: Date | string
     messages?: AiMessageCreateNestedManyWithoutConversationInput
@@ -48802,6 +50098,7 @@ export namespace Prisma {
 
   export type AiConversationUncheckedCreateWithoutUserInput = {
     id?: string
+    title?: string
     createdAt?: Date | string
     updatedAt?: Date | string
     messages?: AiMessageUncheckedCreateNestedManyWithoutConversationInput
@@ -48810,6 +50107,11 @@ export namespace Prisma {
   export type AiConversationCreateOrConnectWithoutUserInput = {
     where: AiConversationWhereUniqueInput
     create: XOR<AiConversationCreateWithoutUserInput, AiConversationUncheckedCreateWithoutUserInput>
+  }
+
+  export type AiConversationCreateManyUserInputEnvelope = {
+    data: AiConversationCreateManyUserInput | AiConversationCreateManyUserInput[]
+    skipDuplicates?: boolean
   }
 
   export type AiKnowledgeBaseCreateWithoutUserInput = {
@@ -49177,29 +50479,31 @@ export namespace Prisma {
     monthlyTarget?: FloatFieldUpdateOperationsInput | number
   }
 
-  export type AiConversationUpsertWithoutUserInput = {
+  export type AiConversationUpsertWithWhereUniqueWithoutUserInput = {
+    where: AiConversationWhereUniqueInput
     update: XOR<AiConversationUpdateWithoutUserInput, AiConversationUncheckedUpdateWithoutUserInput>
     create: XOR<AiConversationCreateWithoutUserInput, AiConversationUncheckedCreateWithoutUserInput>
-    where?: AiConversationWhereInput
   }
 
-  export type AiConversationUpdateToOneWithWhereWithoutUserInput = {
-    where?: AiConversationWhereInput
+  export type AiConversationUpdateWithWhereUniqueWithoutUserInput = {
+    where: AiConversationWhereUniqueInput
     data: XOR<AiConversationUpdateWithoutUserInput, AiConversationUncheckedUpdateWithoutUserInput>
   }
 
-  export type AiConversationUpdateWithoutUserInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    messages?: AiMessageUpdateManyWithoutConversationNestedInput
+  export type AiConversationUpdateManyWithWhereWithoutUserInput = {
+    where: AiConversationScalarWhereInput
+    data: XOR<AiConversationUpdateManyMutationInput, AiConversationUncheckedUpdateManyWithoutUserInput>
   }
 
-  export type AiConversationUncheckedUpdateWithoutUserInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    messages?: AiMessageUncheckedUpdateManyWithoutConversationNestedInput
+  export type AiConversationScalarWhereInput = {
+    AND?: AiConversationScalarWhereInput | AiConversationScalarWhereInput[]
+    OR?: AiConversationScalarWhereInput[]
+    NOT?: AiConversationScalarWhereInput | AiConversationScalarWhereInput[]
+    id?: StringFilter<"AiConversation"> | string
+    userId?: StringFilter<"AiConversation"> | string
+    title?: StringFilter<"AiConversation"> | string
+    createdAt?: DateTimeFilter<"AiConversation"> | Date | string
+    updatedAt?: DateTimeFilter<"AiConversation"> | Date | string
   }
 
   export type AiKnowledgeBaseUpsertWithWhereUniqueWithoutUserInput = {
@@ -49241,7 +50545,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"AiKnowledgeBase"> | Date | string
   }
 
-  export type UserCreateWithoutAiConversationInput = {
+  export type UserCreateWithoutAiConversationsInput = {
     id?: string
     name: string
     phone?: string | null
@@ -49263,7 +50567,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
   }
 
-  export type UserUncheckedCreateWithoutAiConversationInput = {
+  export type UserUncheckedCreateWithoutAiConversationsInput = {
     id?: string
     name: string
     roleId: string
@@ -49285,9 +50589,9 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
   }
 
-  export type UserCreateOrConnectWithoutAiConversationInput = {
+  export type UserCreateOrConnectWithoutAiConversationsInput = {
     where: UserWhereUniqueInput
-    create: XOR<UserCreateWithoutAiConversationInput, UserUncheckedCreateWithoutAiConversationInput>
+    create: XOR<UserCreateWithoutAiConversationsInput, UserUncheckedCreateWithoutAiConversationsInput>
   }
 
   export type AiMessageCreateWithoutConversationInput = {
@@ -49316,18 +50620,18 @@ export namespace Prisma {
     skipDuplicates?: boolean
   }
 
-  export type UserUpsertWithoutAiConversationInput = {
-    update: XOR<UserUpdateWithoutAiConversationInput, UserUncheckedUpdateWithoutAiConversationInput>
-    create: XOR<UserCreateWithoutAiConversationInput, UserUncheckedCreateWithoutAiConversationInput>
+  export type UserUpsertWithoutAiConversationsInput = {
+    update: XOR<UserUpdateWithoutAiConversationsInput, UserUncheckedUpdateWithoutAiConversationsInput>
+    create: XOR<UserCreateWithoutAiConversationsInput, UserUncheckedCreateWithoutAiConversationsInput>
     where?: UserWhereInput
   }
 
-  export type UserUpdateToOneWithWhereWithoutAiConversationInput = {
+  export type UserUpdateToOneWithWhereWithoutAiConversationsInput = {
     where?: UserWhereInput
-    data: XOR<UserUpdateWithoutAiConversationInput, UserUncheckedUpdateWithoutAiConversationInput>
+    data: XOR<UserUpdateWithoutAiConversationsInput, UserUncheckedUpdateWithoutAiConversationsInput>
   }
 
-  export type UserUpdateWithoutAiConversationInput = {
+  export type UserUpdateWithoutAiConversationsInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     phone?: NullableStringFieldUpdateOperationsInput | string | null
@@ -49349,7 +50653,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
   }
 
-  export type UserUncheckedUpdateWithoutAiConversationInput = {
+  export type UserUncheckedUpdateWithoutAiConversationsInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     roleId?: StringFieldUpdateOperationsInput | string
@@ -49401,14 +50705,16 @@ export namespace Prisma {
 
   export type AiConversationCreateWithoutMessagesInput = {
     id?: string
+    title?: string
     createdAt?: Date | string
     updatedAt?: Date | string
-    user: UserCreateNestedOneWithoutAiConversationInput
+    user: UserCreateNestedOneWithoutAiConversationsInput
   }
 
   export type AiConversationUncheckedCreateWithoutMessagesInput = {
     id?: string
     userId: string
+    title?: string
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -49431,14 +50737,16 @@ export namespace Prisma {
 
   export type AiConversationUpdateWithoutMessagesInput = {
     id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    user?: UserUpdateOneRequiredWithoutAiConversationNestedInput
+    user?: UserUpdateOneRequiredWithoutAiConversationsNestedInput
   }
 
   export type AiConversationUncheckedUpdateWithoutMessagesInput = {
     id?: StringFieldUpdateOperationsInput | string
     userId?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -49462,7 +50770,7 @@ export namespace Prisma {
     campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
-    aiConversation?: AiConversationCreateNestedOneWithoutUserInput
+    aiConversations?: AiConversationCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutAiKnowledgeBasesInput = {
@@ -49484,7 +50792,7 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
-    aiConversation?: AiConversationUncheckedCreateNestedOneWithoutUserInput
+    aiConversations?: AiConversationUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutAiKnowledgeBasesInput = {
@@ -49546,7 +50854,7 @@ export namespace Prisma {
     campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
-    aiConversation?: AiConversationUpdateOneWithoutUserNestedInput
+    aiConversations?: AiConversationUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutAiKnowledgeBasesInput = {
@@ -49568,7 +50876,7 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
-    aiConversation?: AiConversationUncheckedUpdateOneWithoutUserNestedInput
+    aiConversations?: AiConversationUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type AiKnowledgeChunkUpsertWithWhereUniqueWithoutKnowledgeBaseInput = {
@@ -49712,7 +51020,7 @@ export namespace Prisma {
     activitiesAssigned?: ActivityCreateNestedManyWithoutUserInput
     campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
-    aiConversation?: AiConversationCreateNestedOneWithoutUserInput
+    aiConversations?: AiConversationCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
   }
 
@@ -49734,7 +51042,7 @@ export namespace Prisma {
     activitiesAssigned?: ActivityUncheckedCreateNestedManyWithoutUserInput
     campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
-    aiConversation?: AiConversationUncheckedCreateNestedOneWithoutUserInput
+    aiConversations?: AiConversationUncheckedCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
   }
 
@@ -49772,7 +51080,7 @@ export namespace Prisma {
     activitiesAssigned?: ActivityUpdateManyWithoutUserNestedInput
     campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
-    aiConversation?: AiConversationUpdateOneWithoutUserNestedInput
+    aiConversations?: AiConversationUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
   }
 
@@ -49794,7 +51102,7 @@ export namespace Prisma {
     activitiesAssigned?: ActivityUncheckedUpdateManyWithoutUserNestedInput
     campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
-    aiConversation?: AiConversationUncheckedUpdateOneWithoutUserNestedInput
+    aiConversations?: AiConversationUncheckedUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
   }
 
@@ -49816,7 +51124,7 @@ export namespace Prisma {
     campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
-    aiConversation?: AiConversationCreateNestedOneWithoutUserInput
+    aiConversations?: AiConversationCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
   }
 
@@ -49838,7 +51146,7 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
-    aiConversation?: AiConversationUncheckedCreateNestedOneWithoutUserInput
+    aiConversations?: AiConversationUncheckedCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
   }
 
@@ -49978,7 +51286,7 @@ export namespace Prisma {
     campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
-    aiConversation?: AiConversationUpdateOneWithoutUserNestedInput
+    aiConversations?: AiConversationUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
   }
 
@@ -50000,7 +51308,7 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
-    aiConversation?: AiConversationUncheckedUpdateOneWithoutUserNestedInput
+    aiConversations?: AiConversationUncheckedUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
   }
 
@@ -50139,7 +51447,7 @@ export namespace Prisma {
     campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
-    aiConversation?: AiConversationCreateNestedOneWithoutUserInput
+    aiConversations?: AiConversationCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
   }
 
@@ -50161,7 +51469,7 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
-    aiConversation?: AiConversationUncheckedCreateNestedOneWithoutUserInput
+    aiConversations?: AiConversationUncheckedCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
   }
 
@@ -50322,7 +51630,7 @@ export namespace Prisma {
     campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
-    aiConversation?: AiConversationUpdateOneWithoutUserNestedInput
+    aiConversations?: AiConversationUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
   }
 
@@ -50344,7 +51652,7 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
-    aiConversation?: AiConversationUncheckedUpdateOneWithoutUserNestedInput
+    aiConversations?: AiConversationUncheckedUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
   }
 
@@ -50636,7 +51944,7 @@ export namespace Prisma {
     campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
-    aiConversation?: AiConversationCreateNestedOneWithoutUserInput
+    aiConversations?: AiConversationCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
   }
 
@@ -50658,7 +51966,7 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
-    aiConversation?: AiConversationUncheckedCreateNestedOneWithoutUserInput
+    aiConversations?: AiConversationUncheckedCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
   }
 
@@ -50796,7 +52104,7 @@ export namespace Prisma {
     campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
-    aiConversation?: AiConversationUpdateOneWithoutUserNestedInput
+    aiConversations?: AiConversationUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
   }
 
@@ -50818,7 +52126,7 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
-    aiConversation?: AiConversationUncheckedUpdateOneWithoutUserNestedInput
+    aiConversations?: AiConversationUncheckedUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
   }
 
@@ -50938,7 +52246,7 @@ export namespace Prisma {
     campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
-    aiConversation?: AiConversationCreateNestedOneWithoutUserInput
+    aiConversations?: AiConversationCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
   }
 
@@ -50960,7 +52268,7 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
-    aiConversation?: AiConversationUncheckedCreateNestedOneWithoutUserInput
+    aiConversations?: AiConversationUncheckedCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
   }
 
@@ -51058,7 +52366,7 @@ export namespace Prisma {
     campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
-    aiConversation?: AiConversationUpdateOneWithoutUserNestedInput
+    aiConversations?: AiConversationUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
   }
 
@@ -51080,7 +52388,7 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
-    aiConversation?: AiConversationUncheckedUpdateOneWithoutUserNestedInput
+    aiConversations?: AiConversationUncheckedUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
   }
 
@@ -53174,7 +54482,7 @@ export namespace Prisma {
     activitiesAssigned?: ActivityCreateNestedManyWithoutUserInput
     crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
-    aiConversation?: AiConversationCreateNestedOneWithoutUserInput
+    aiConversations?: AiConversationCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
   }
 
@@ -53196,7 +54504,7 @@ export namespace Prisma {
     activitiesAssigned?: ActivityUncheckedCreateNestedManyWithoutUserInput
     crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
-    aiConversation?: AiConversationUncheckedCreateNestedOneWithoutUserInput
+    aiConversations?: AiConversationUncheckedCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
   }
 
@@ -53234,7 +54542,7 @@ export namespace Prisma {
     activitiesAssigned?: ActivityUpdateManyWithoutUserNestedInput
     crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
-    aiConversation?: AiConversationUpdateOneWithoutUserNestedInput
+    aiConversations?: AiConversationUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
   }
 
@@ -53256,7 +54564,7 @@ export namespace Prisma {
     activitiesAssigned?: ActivityUncheckedUpdateManyWithoutUserNestedInput
     crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
-    aiConversation?: AiConversationUncheckedUpdateOneWithoutUserNestedInput
+    aiConversations?: AiConversationUncheckedUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
   }
 
@@ -53278,7 +54586,7 @@ export namespace Prisma {
     activitiesAssigned?: ActivityCreateNestedManyWithoutUserInput
     campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
     crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
-    aiConversation?: AiConversationCreateNestedOneWithoutUserInput
+    aiConversations?: AiConversationCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
   }
 
@@ -53300,7 +54608,7 @@ export namespace Prisma {
     activitiesAssigned?: ActivityUncheckedCreateNestedManyWithoutUserInput
     campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
-    aiConversation?: AiConversationUncheckedCreateNestedOneWithoutUserInput
+    aiConversations?: AiConversationUncheckedCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
   }
 
@@ -53338,7 +54646,7 @@ export namespace Prisma {
     activitiesAssigned?: ActivityUpdateManyWithoutUserNestedInput
     campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
     crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
-    aiConversation?: AiConversationUpdateOneWithoutUserNestedInput
+    aiConversations?: AiConversationUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
   }
 
@@ -53360,7 +54668,7 @@ export namespace Prisma {
     activitiesAssigned?: ActivityUncheckedUpdateManyWithoutUserNestedInput
     campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
-    aiConversation?: AiConversationUncheckedUpdateOneWithoutUserNestedInput
+    aiConversations?: AiConversationUncheckedUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
   }
 
@@ -53414,7 +54722,7 @@ export namespace Prisma {
     campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
-    aiConversation?: AiConversationUpdateOneWithoutUserNestedInput
+    aiConversations?: AiConversationUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
   }
 
@@ -53436,7 +54744,7 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
-    aiConversation?: AiConversationUncheckedUpdateOneWithoutUserNestedInput
+    aiConversations?: AiConversationUncheckedUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
   }
 
@@ -53571,6 +54879,13 @@ export namespace Prisma {
     relatedEntityId?: string | null
     relatedEntityName?: string | null
     createdAt?: Date | string
+  }
+
+  export type AiConversationCreateManyUserInput = {
+    id?: string
+    title?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
   }
 
   export type AiKnowledgeBaseCreateManyUserInput = {
@@ -53991,6 +55306,29 @@ export namespace Prisma {
     relatedEntityId?: NullableStringFieldUpdateOperationsInput | string | null
     relatedEntityName?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type AiConversationUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    messages?: AiMessageUpdateManyWithoutConversationNestedInput
+  }
+
+  export type AiConversationUncheckedUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    messages?: AiMessageUncheckedUpdateManyWithoutConversationNestedInput
+  }
+
+  export type AiConversationUncheckedUpdateManyWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type AiKnowledgeBaseUpdateWithoutUserInput = {

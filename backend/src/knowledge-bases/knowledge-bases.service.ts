@@ -292,7 +292,7 @@ export class KnowledgeBasesService {
     const parts: string[] = [];
 
     for (const f of files) {
-      const text = extractIndexableTextFromUpload(f);
+      const text = await extractIndexableTextFromUpload(f);
       const label = f.originalname || 'archivo';
       if (text == null) {
         skipped.push(label);
@@ -310,7 +310,7 @@ export class KnowledgeBasesService {
     if (parts.length === 0) {
       const hint =
         skipped.length > 0
-          ? `Ningún archivo tenía texto indexable (${skipped.slice(0, 12).join(', ')}${skipped.length > 12 ? '…' : ''}). Tipos admitidos: .txt, .md, .json, .csv, .html.`
+          ? `Ningún archivo tenía texto indexable (${skipped.slice(0, 12).join(', ')}${skipped.length > 12 ? '…' : ''}). Tipos admitidos: .txt, .md, .json, .csv, .html, .pdf (PDF solo con texto seleccionable; escaneados sin OCR no).`
           : 'No se pudo leer texto de los archivos';
       throw new BadRequestException(hint);
     }

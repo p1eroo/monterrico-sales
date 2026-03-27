@@ -33,6 +33,13 @@ export type AiConversationResponse = {
   messages: AiConversationMessage[];
 };
 
+export type AiConversationSummary = {
+  id: string;
+  title: string;
+  updatedAt: string;
+  messageCount: number;
+};
+
 export type AiChatRequestContext = {
   userId: string;
   currentPage: string;
@@ -50,6 +57,7 @@ export async function postAiChat(
   message: string,
   context: AiChatRequestContext,
   history?: AiChatHistoryItem[],
+  conversationId?: string | null,
 ): Promise<AiChatResponse> {
   return api<AiChatResponse>('/api/ai/chat', {
     method: 'POST',
@@ -57,6 +65,7 @@ export async function postAiChat(
       message,
       context,
       ...(history && history.length > 0 ? { history } : {}),
+      ...(conversationId ? { conversationId } : {}),
     }),
   });
 }
@@ -66,7 +75,33 @@ export async function fetchAiConversation(): Promise<AiConversationResponse> {
   return api<AiConversationResponse>('/api/ai/conversation');
 }
 
-/** Elimina la conversación en servidor (mensajes incluidos). Idempotente. */
+/** Lista de hilos para la barra lateral. */
+export async function fetchAiConversations(): Promise<AiConversationSummary[]> {
+  return api<AiConversationSummary[]>('/api/ai/conversations');
+}
+
+/** Crea un hilo vacío. */
+export async function createAiConversation(): Promise<AiConversationSummary> {
+  return api<AiConversationSummary>('/api/ai/conversations', {
+    method: 'POST',
+  });
+}
+
+/** Mensajes de un hilo. */
+export async function fetchAiConversationById(
+  id: string,
+): Promise<AiConversationResponse> {
+  return api<AiConversationResponse>(`/api/ai/conversations/${id}`);
+}
+
+/** Elimina un hilo concreto. */
+export async function deleteAiConversationById(id: string): Promise<void> {
+  await api<Record<string, never>>(`/api/ai/conversations/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+/** Compat: borra el hilo más reciente. */
 export async function deleteAiConversation(): Promise<void> {
   await api<Record<string, never>>('/api/ai/conversation', {
     method: 'DELETE',
@@ -75,7 +110,12 @@ export async function deleteAiConversation(): Promise<void> {
 
 export type StreamAiChatCallbacks = {
   onDelta: (delta: string) => void;
-  onDone: (payload: { message: string; conversationId?: string }) => void;
+  onDone: (payload: {
+    message: string;
+    conversationId?: string;
+    links?: AiChatLink[];
+    actions?: AiChatAction[];
+  }) => void;
   onError: (message: string) => void;
 };
 
@@ -88,6 +128,7 @@ export async function streamAiChat(
   context: AiChatRequestContext,
   history: AiChatHistoryItem[] | undefined,
   callbacks: StreamAiChatCallbacks,
+  conversationId?: string | null,
 ): Promise<void> {
   const token = getAccessToken();
   const res = await fetch(`${API_BASE}/api/ai/chat/stream`, {
@@ -100,6 +141,7 @@ export async function streamAiChat(
       message,
       context,
       ...(history && history.length > 0 ? { history } : {}),
+      ...(conversationId ? { conversationId } : {}),
     }),
   });
 
@@ -136,6 +178,8 @@ export async function streamAiChat(
         message?: string;
         conversationId?: string;
         error?: string;
+        links?: AiChatLink[];
+        actions?: AiChatAction[];
       };
       if (typeof j.error === 'string' && j.error.length > 0) {
         callbacks.onError(j.error);
@@ -148,6 +192,8 @@ export async function streamAiChat(
         callbacks.onDone({
           message: j.message,
           conversationId: j.conversationId,
+          links: Array.isArray(j.links) ? j.links : undefined,
+          actions: Array.isArray(j.actions) ? j.actions : undefined,
         });
         return true;
       }

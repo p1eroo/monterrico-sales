@@ -97,7 +97,8 @@ export type PermissionModule =
   | 'usuarios'
   | 'roles'
   | 'auditoria'
-  | 'configuracion';
+  | 'configuracion'
+  | 'agentes_ia';
 
 /** RBAC: Tipos de permiso por módulo */
 export type PermissionAction =
