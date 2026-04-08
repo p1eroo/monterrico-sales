@@ -50,6 +50,20 @@ export class ContactsController {
     });
   }
 
+  @Get('etapa-counts')
+  @RequirePermissions('contactos.ver')
+  etapaTabCounts(
+    @Query('search') search?: string,
+    @Query('fuente') fuente?: string,
+    @Query('assignedTo') assignedTo?: string,
+  ) {
+    return this.contactsService.etapaTabCounts({
+      search: search?.trim() || undefined,
+      fuente: fuente?.trim() || undefined,
+      assignedTo: assignedTo?.trim() || undefined,
+    });
+  }
+
   @Post(':id/companies')
   @RequirePermissions('contactos.editar')
   addCompany(

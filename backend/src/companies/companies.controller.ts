@@ -48,6 +48,25 @@ export class CompaniesController {
     });
   }
 
+  /** Conteos por etapa para pestañas del listado (sin `etapa` en query). */
+  @Get('summary/etapa-counts')
+  @RequirePermissions('empresas.ver')
+  summaryEtapaCounts(
+    @Query('search') search?: string,
+    @Query('rubro') rubro?: string,
+    @Query('tipo') tipo?: string,
+    @Query('fuente') fuente?: string,
+    @Query('assignedTo') assignedTo?: string,
+  ) {
+    return this.companiesService.summaryEtapaCounts({
+      search: search?.trim() || undefined,
+      rubro: rubro?.trim() || undefined,
+      tipo: tipo?.trim() || undefined,
+      fuente: fuente?.trim() || undefined,
+      assignedTo: assignedTo?.trim() || undefined,
+    });
+  }
+
   /** Debe ir antes de @Get(':id') para no capturar "summary" como id. */
   @Get('summary')
   @RequirePermissions('empresas.ver')

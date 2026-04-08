@@ -62,6 +62,23 @@ type CompanySummaryDbRow = Prisma.CompanyGetPayload<{
 
 const CONTACTS_PREVIEW_MAX = 80;
 
+/** Orden de pestañas de etapa en listado empresas (alineado con `Empresas.tsx`). */
+const COMPANY_SUMMARY_TAB_ETAPAS = [
+  'lead',
+  'contacto',
+  'reunion_agendada',
+  'reunion_efectiva',
+  'propuesta_economica',
+  'negociacion',
+  'licitacion',
+  'licitacion_etapa_final',
+  'cierre_ganado',
+  'firma_contrato',
+  'activo',
+  'cierre_perdido',
+  'inactivo',
+] as const;
+
 @Injectable()
 export class CompaniesService {
   constructor(
@@ -249,23 +266,15 @@ export class CompaniesService {
   }
 
   /**
-   * Listado paginado con agregados por empresa (sin cargar todos los contactos en el cliente).
-   * Filtro por etapa: empresas con al menos un contacto en esa etapa (no coincide siempre con la etapa “display” por peso).
+   * Filtros del listado summary sin la condición de etapa (búsqueda, rubro, tipo, fuente, asesor).
    */
-  async findAllSummary(opts?: {
-    page?: number;
-    limit?: number;
+  private buildCompanySummaryAndParts(opts?: {
     search?: string;
     rubro?: string;
     tipo?: string;
-    etapa?: string;
     fuente?: string;
     assignedTo?: string;
-  }) {
-    const page = Math.max(1, opts?.page ?? 1);
-    const limit = Math.min(5000, Math.max(1, opts?.limit ?? 25));
-    const skip = (page - 1) * limit;
-
+  }): Prisma.CompanyWhereInput[] {
     const andParts: Prisma.CompanyWhereInput[] = [];
 
     if (opts?.search?.trim()) {
@@ -293,19 +302,6 @@ export class CompaniesService {
     }
     if (opts?.rubro?.trim()) andParts.push({ rubro: opts.rubro.trim() });
     if (opts?.tipo?.trim()) andParts.push({ tipo: opts.tipo.trim() });
-    const etapaQ = opts?.etapa?.trim();
-    if (etapaQ) {
-      andParts.push({
-        OR: [
-          { etapa: etapaQ },
-          {
-            contacts: {
-              some: { contact: { etapa: etapaQ } },
-            },
-          },
-        ],
-      });
-    }
     const fuenteQ = opts?.fuente?.trim();
     if (fuenteQ) {
       andParts.push({
@@ -327,6 +323,80 @@ export class CompaniesService {
           {
             contacts: {
               some: { contact: { assignedTo: advQ } },
+            },
+          },
+        ],
+      });
+    }
+    return andParts;
+  }
+
+  /**
+   * Conteos por etapa para pestañas dinámicas (misma lógica OR empresa / contacto que `findAllSummary`).
+   */
+  async summaryEtapaCounts(opts?: {
+    search?: string;
+    rubro?: string;
+    tipo?: string;
+    fuente?: string;
+    assignedTo?: string;
+  }): Promise<{ counts: Record<string, number> }> {
+    const andParts = this.buildCompanySummaryAndParts(opts);
+    const countForEtapa = (etapaQ: string) =>
+      this.prisma.company.count({
+        where: {
+          AND: [
+            ...andParts,
+            {
+              OR: [
+                { etapa: etapaQ },
+                {
+                  contacts: {
+                    some: { contact: { etapa: etapaQ } },
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      });
+    const results = await Promise.all(
+      COMPANY_SUMMARY_TAB_ETAPAS.map((slug) => countForEtapa(slug)),
+    );
+    const counts: Record<string, number> = {};
+    COMPANY_SUMMARY_TAB_ETAPAS.forEach((slug, i) => {
+      counts[slug] = results[i] ?? 0;
+    });
+    return { counts };
+  }
+
+  /**
+   * Listado paginado con agregados por empresa (sin cargar todos los contactos en el cliente).
+   * Filtro por etapa: empresas con al menos un contacto en esa etapa (no coincide siempre con la etapa “display” por peso).
+   */
+  async findAllSummary(opts?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    rubro?: string;
+    tipo?: string;
+    etapa?: string;
+    fuente?: string;
+    assignedTo?: string;
+  }) {
+    const page = Math.max(1, opts?.page ?? 1);
+    const limit = Math.min(5000, Math.max(1, opts?.limit ?? 25));
+    const skip = (page - 1) * limit;
+
+    const andParts = this.buildCompanySummaryAndParts(opts);
+    const etapaQ = opts?.etapa?.trim();
+    if (etapaQ) {
+      andParts.push({
+        OR: [
+          { etapa: etapaQ },
+          {
+            contacts: {
+              some: { contact: { etapa: etapaQ } },
             },
           },
         ],

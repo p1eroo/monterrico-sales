@@ -330,6 +330,22 @@ export async function contactListPaginated(params?: {
   return api<ContactListPaginatedResponse>(url);
 }
 
+/** Conteos por etapa para pestañas del listado (mismos filtros que GET /contacts salvo etapa). */
+export async function contactListEtapaCounts(params?: {
+  search?: string;
+  fuente?: string;
+  assignedTo?: string;
+}): Promise<{ counts: Record<string, number> }> {
+  const sp = new URLSearchParams();
+  if (params?.search?.trim()) sp.set('search', params.search.trim());
+  if (params?.fuente?.trim()) sp.set('fuente', params.fuente.trim());
+  if (params?.assignedTo?.trim()) sp.set('assignedTo', params.assignedTo.trim());
+  const qs = sp.toString();
+  return api<{ counts: Record<string, number> }>(
+    qs ? `/contacts/etapa-counts?${qs}` : '/contacts/etapa-counts',
+  );
+}
+
 /** Listar todos los contactos (hasta 5000) para Pipeline, Empresas, etc. */
 export async function contactListAll(opts?: {
   etapa?: string;

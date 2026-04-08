@@ -12,6 +12,23 @@ import { EntitySyncService } from '../sync/entity-sync.service';
 import { slugifyForUrl } from '../common/url-slug.util';
 import { CrmConfigService } from '../crm-config/crm-config.service';
 
+/** Orden de pestañas de etapa en listado contactos (alineado con Empresas). */
+const CONTACT_TAB_ETAPAS = [
+  'lead',
+  'contacto',
+  'reunion_agendada',
+  'reunion_efectiva',
+  'propuesta_economica',
+  'negociacion',
+  'licitacion',
+  'licitacion_etapa_final',
+  'cierre_ganado',
+  'firma_contrato',
+  'activo',
+  'cierre_perdido',
+  'inactivo',
+] as const;
+
 const contactIncludeList = {
   companies: { include: { company: true } },
   user: { select: { id: true, name: true } },
@@ -384,18 +401,12 @@ export class ContactsService {
     return this.findOne(row.id);
   }
 
-  async findAll(opts?: {
-    page?: number;
-    limit?: number;
+  private contactListWhere(opts?: {
     search?: string;
     etapa?: string;
     fuente?: string;
     assignedTo?: string;
-  }) {
-    const page = Math.max(1, opts?.page ?? 1);
-    const limit = Math.min(5000, Math.max(1, opts?.limit ?? 25));
-    const skip = (page - 1) * limit;
-
+  }): Prisma.ContactWhereInput {
     const where: Prisma.ContactWhereInput = {};
     if (opts?.search?.trim()) {
       const q = opts.search.trim();
@@ -418,6 +429,44 @@ export class ContactsService {
     if (opts?.etapa?.trim()) where.etapa = opts.etapa.trim();
     if (opts?.fuente?.trim()) where.fuente = opts.fuente.trim();
     if (opts?.assignedTo?.trim()) where.assignedTo = opts.assignedTo.trim();
+    return where;
+  }
+
+  /**
+   * Conteos por etapa para pestañas (mismos filtros que GET /contacts salvo etapa).
+   */
+  async etapaTabCounts(opts?: {
+    search?: string;
+    fuente?: string;
+    assignedTo?: string;
+  }): Promise<{ counts: Record<string, number> }> {
+    const results = await Promise.all(
+      CONTACT_TAB_ETAPAS.map((slug) =>
+        this.prisma.contact.count({
+          where: this.contactListWhere({ ...opts, etapa: slug }),
+        }),
+      ),
+    );
+    const counts: Record<string, number> = {};
+    CONTACT_TAB_ETAPAS.forEach((slug, i) => {
+      counts[slug] = results[i] ?? 0;
+    });
+    return { counts };
+  }
+
+  async findAll(opts?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    etapa?: string;
+    fuente?: string;
+    assignedTo?: string;
+  }) {
+    const page = Math.max(1, opts?.page ?? 1);
+    const limit = Math.min(5000, Math.max(1, opts?.limit ?? 25));
+    const skip = (page - 1) * limit;
+
+    const where = this.contactListWhere(opts);
 
     const [rows, total] = await Promise.all([
       this.prisma.contact.findMany({

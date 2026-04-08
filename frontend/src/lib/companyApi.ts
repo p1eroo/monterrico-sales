@@ -116,6 +116,28 @@ export async function companyListSummaryPaginated(params?: {
   );
 }
 
+/** Conteos por etapa para pestañas del listado (mismos filtros que summary salvo etapa). */
+export async function companySummaryEtapaCounts(params?: {
+  search?: string;
+  rubro?: string;
+  tipo?: string;
+  fuente?: string;
+  assignedTo?: string;
+}): Promise<{ counts: Record<string, number> }> {
+  const sp = new URLSearchParams();
+  if (params?.search?.trim()) sp.set('search', params.search.trim());
+  if (params?.rubro?.trim()) sp.set('rubro', params.rubro.trim());
+  if (params?.tipo?.trim()) sp.set('tipo', params.tipo.trim());
+  if (params?.fuente?.trim()) sp.set('fuente', params.fuente.trim());
+  if (params?.assignedTo?.trim()) sp.set('assignedTo', params.assignedTo.trim());
+  const qs = sp.toString();
+  return api<{ counts: Record<string, number> }>(
+    qs
+      ? `/companies/summary/etapa-counts?${qs}`
+      : '/companies/summary/etapa-counts',
+  );
+}
+
 /** Listar todas las empresas (hasta 5000) para Empresas, ContactoDetail, etc. */
 export async function companyListAll(opts?: {
   rubro?: string;

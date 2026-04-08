@@ -38,7 +38,7 @@ import {
 import { formatCurrency } from '@/lib/formatters';
 import { api } from '@/lib/api';
 import { contactDetailHref } from '@/lib/detailRoutes';
-import type { Contact } from '@/types';
+import type { Contact, Etapa } from '@/types';
 import { companyListAll } from '@/lib/companyApi';
 import {
   type ApiContactDetail,
@@ -46,6 +46,7 @@ import {
   isLikelyContactCuid,
   mapApiContactRowToContact,
   contactListPaginated,
+  contactListEtapaCounts,
   primaryCompanyIdFromApiContact,
 } from '@/lib/contactApi';
 import { buildOptimisticContact } from '@/lib/optimisticEntities';
@@ -84,21 +85,25 @@ function previewEmpresaCell(row: ContactImportPreviewRow): string {
   return '—';
 }
 
+const etapaOrder: Etapa[] = [
+  'lead',
+  'contacto',
+  'reunion_agendada',
+  'reunion_efectiva',
+  'propuesta_economica',
+  'negociacion',
+  'licitacion',
+  'licitacion_etapa_final',
+  'cierre_ganado',
+  'firma_contrato',
+  'activo',
+  'cierre_perdido',
+  'inactivo',
+];
+
 const etapaTabs: { value: string; label: string }[] = [
   { value: 'todos', label: 'Todos' },
-  { value: 'lead', label: 'Lead' },
-  { value: 'contacto', label: 'Contacto' },
-  { value: 'reunion_agendada', label: 'Reunión Agendada' },
-  { value: 'reunion_efectiva', label: 'Reunión Efectiva' },
-  { value: 'propuesta_economica', label: 'Propuesta Económica' },
-  { value: 'negociacion', label: 'Negociación' },
-  { value: 'licitacion', label: 'Licitación' },
-  { value: 'licitacion_etapa_final', label: 'Licitación Etapa Final' },
-  { value: 'cierre_ganado', label: 'Cierre Ganado' },
-  { value: 'firma_contrato', label: 'Firma de Contrato' },
-  { value: 'activo', label: 'Activo' },
-  { value: 'cierre_perdido', label: 'Cierre Perdido' },
-  { value: 'inactivo', label: 'Inactivo' },
+  ...etapaOrder.map((e) => ({ value: e, label: etapaLabels[e] })),
 ];
 
 export default function ContactosPage() {
@@ -136,6 +141,10 @@ export default function ContactosPage() {
   );
   const [previewContact, setPreviewContact] = useState<Contact | null>(null);
   const [editContact, setEditContact] = useState<Contact | null>(null);
+  const [etapaTabCounts, setEtapaTabCounts] = useState<Record<
+    string,
+    number
+  > | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search), 400);
@@ -169,6 +178,23 @@ export default function ContactosPage() {
     void loadApiContacts();
   }, [loadApiContacts]);
 
+  const loadEtapaTabCounts = useCallback(async () => {
+    try {
+      const { counts } = await contactListEtapaCounts({
+        search: searchDebounced || undefined,
+        fuente: sourceFilter === 'todos' ? undefined : sourceFilter,
+        assignedTo: advisorFilter === 'todos' ? undefined : advisorFilter,
+      });
+      setEtapaTabCounts(counts);
+    } catch {
+      setEtapaTabCounts({});
+    }
+  }, [searchDebounced, sourceFilter, advisorFilter]);
+
+  useEffect(() => {
+    void loadEtapaTabCounts();
+  }, [loadEtapaTabCounts]);
+
   const paginatedContacts = useMemo(
     () => apiRows.map(mapApiContactRowToContact),
     [apiRows],
@@ -179,6 +205,32 @@ export default function ContactosPage() {
     const pending = pendingContacts.filter((c) => !apiIds.has(c.id));
     return [...pending, ...paginatedContacts];
   }, [paginatedContacts, pendingContacts]);
+
+  const effectiveEtapaTabCounts = useMemo((): Record<string, number> => {
+    const base = etapaTabCounts ? { ...etapaTabCounts } : null;
+    if (!base) return {};
+    for (const p of pendingContacts) {
+      const key = p.etapa;
+      base[key] = (base[key] ?? 0) + 1;
+    }
+    return base;
+  }, [etapaTabCounts, pendingContacts]);
+
+  const visibleEtapaTabs = useMemo(() => {
+    const rest = etapaTabs.slice(1);
+    if (etapaTabCounts == null) {
+      return rest;
+    }
+    return rest.filter((tab) => (effectiveEtapaTabCounts[tab.value] ?? 0) > 0);
+  }, [etapaTabCounts, effectiveEtapaTabCounts]);
+
+  useEffect(() => {
+    if (etapaTabCounts == null) return;
+    if (etapaFilter === 'todos') return;
+    if ((effectiveEtapaTabCounts[etapaFilter] ?? 0) > 0) return;
+    setEtapaFilter('todos');
+    setPage(1);
+  }, [etapaTabCounts, etapaFilter, effectiveEtapaTabCounts]);
 
   function openContactDetail(contact: Contact) {
     if (isPendingContactId(contact.id)) {
@@ -765,7 +817,7 @@ export default function ContactosPage() {
         >
           <Users className="size-3.5" /> Total: {totalContacts}
         </Badge>
-        {etapaTabs.slice(1).map((tab) => (
+        {visibleEtapaTabs.map((tab) => (
           <Badge
             key={tab.value}
             variant={etapaFilter === tab.value ? 'secondary' : 'outline'}

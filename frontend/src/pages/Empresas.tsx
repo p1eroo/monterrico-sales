@@ -48,6 +48,7 @@ import {
   type ApiCompanyRecord,
   type CompanySummaryRow,
   companyListSummaryPaginated,
+  companySummaryEtapaCounts,
   isLikelyCompanyCuid,
 } from '@/lib/companyApi';
 import { isLikelyContactCuid, contactCreate } from '@/lib/contactApi';
@@ -278,6 +279,10 @@ export default function EmpresasPage() {
   const [editEmpresa, setEditEmpresa] = useState<EmpresaSummaryRow | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [empresaToDelete, setEmpresaToDelete] = useState<EmpresaSummaryRow | null>(null);
+  const [etapaTabCounts, setEtapaTabCounts] = useState<Record<
+    string,
+    number
+  > | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search), 400);
@@ -321,6 +326,31 @@ export default function EmpresasPage() {
     void loadSummary();
   }, [loadSummary]);
 
+  const loadEtapaTabCounts = useCallback(async () => {
+    try {
+      const { counts } = await companySummaryEtapaCounts({
+        search: searchDebounced || undefined,
+        fuente: sourceFilter === 'todos' ? undefined : sourceFilter,
+        assignedTo: advisorFilter === 'todos' ? undefined : advisorFilter,
+        rubro: rubroFilter === 'todos' ? undefined : rubroFilter,
+        tipo: tipoFilter === 'todos' ? undefined : tipoFilter,
+      });
+      setEtapaTabCounts(counts);
+    } catch {
+      setEtapaTabCounts({});
+    }
+  }, [
+    searchDebounced,
+    sourceFilter,
+    advisorFilter,
+    rubroFilter,
+    tipoFilter,
+  ]);
+
+  useEffect(() => {
+    void loadEtapaTabCounts();
+  }, [loadEtapaTabCounts]);
+
   const filtersDefault =
     !searchDebounced &&
     sourceFilter === 'todos' &&
@@ -348,6 +378,50 @@ export default function EmpresasPage() {
       .map(localCompanyToSummary);
     return [...locals, ...summaryRows];
   }, [summaryRows, page, filtersDefault, standaloneCompanies]);
+
+  /** Conteos de pestañas: servidor + empresas solo locales (cuentan como etapa lead). */
+  const effectiveEtapaTabCounts = useMemo((): Record<string, number> => {
+    const base = etapaTabCounts ? { ...etapaTabCounts } : null;
+    if (!base) return {};
+    if (!(page === 1 && filtersDefault && standaloneCompanies.length > 0)) {
+      return base;
+    }
+    const names = new Set(
+      summaryRows.map((r) => r.name.trim().toLowerCase()),
+    );
+    let extraLead = 0;
+    for (const c of standaloneCompanies) {
+      if (!names.has(c.name.trim().toLowerCase())) {
+        extraLead += 1;
+      }
+    }
+    if (extraLead > 0) {
+      base.lead = (base.lead ?? 0) + extraLead;
+    }
+    return base;
+  }, [
+    etapaTabCounts,
+    page,
+    filtersDefault,
+    standaloneCompanies,
+    summaryRows,
+  ]);
+
+  const visibleEtapaTabs = useMemo(() => {
+    const rest = etapaTabs.slice(1);
+    if (etapaTabCounts == null) {
+      return rest;
+    }
+    return rest.filter((tab) => (effectiveEtapaTabCounts[tab.value] ?? 0) > 0);
+  }, [etapaTabCounts, effectiveEtapaTabCounts]);
+
+  useEffect(() => {
+    if (etapaTabCounts == null) return;
+    if (etapaFilter === 'todos') return;
+    if ((effectiveEtapaTabCounts[etapaFilter] ?? 0) > 0) return;
+    setEtapaFilter('todos');
+    setPage(1);
+  }, [etapaTabCounts, etapaFilter, effectiveEtapaTabCounts]);
 
   async function handleNewEmpresaSubmit(data: NewCompanyData) {
     const monto = Number(data.facturacion);
@@ -862,7 +936,7 @@ export default function EmpresasPage() {
         >
           <Briefcase className="size-3.5" /> Total: {total}
         </Badge>
-        {etapaTabs.slice(1).map((tab) => (
+        {visibleEtapaTabs.map((tab) => (
           <Badge
             key={tab.value}
             variant={etapaFilter === tab.value ? 'secondary' : 'outline'}

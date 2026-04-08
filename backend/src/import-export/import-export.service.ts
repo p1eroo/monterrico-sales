@@ -217,6 +217,40 @@ export class ImportExportService {
     return false;
   }
 
+  /** Correo mínimamente válido para usar como nombre de contacto (solo si no hay nombre ni doc). */
+  private looksLikeEmailForContactImport(s: string): boolean {
+    const t = s.trim();
+    if (t.length < 5 || !t.includes('@')) return false;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t);
+  }
+
+  private isCompanyImportPlaceholderName(s: string | undefined): boolean {
+    const t = s?.trim() ?? '';
+    return !t || /^empresa ruc /i.test(t);
+  }
+
+  /**
+   * Nombre o razón social ya aportados en CSV (no placeholder): no hace falta consultar SUNAT.
+   */
+  private companyImportHasUsableIdentityFields(
+    name: string,
+    razonSocial?: string,
+  ): boolean {
+    const n = name?.trim();
+    const rz = razonSocial?.trim();
+    return (
+      (!!n && !this.isCompanyImportPlaceholderName(n)) ||
+      (!!rz && !this.isCompanyImportPlaceholderName(rz))
+    );
+  }
+
+  private companyImportHasUsableIdentity(dto: CreateCompanyDto): boolean {
+    return this.companyImportHasUsableIdentityFields(
+      dto.name ?? '',
+      dto.razonSocial,
+    );
+  }
+
   /**
    * Desempate de duplicados en import: si hay DNI de 8 dígitos, la clave es el documento;
    * si no, el nombre normalizado.
@@ -279,6 +313,20 @@ export class ImportExportService {
     };
 
     if (this.looksLikeDniForFactiliza(docTypeStr, docDigits)) {
+      const csvName = params.nameFromCsv.trim();
+      if (csvName) {
+        return {
+          name: formatImportedPersonName(csvName),
+          telefono: params.telefono,
+          correo: params.correo,
+          docType: params.docType?.trim() || 'DNI',
+          docNumber: docDigits,
+          departamento: params.departamento?.trim() || undefined,
+          provincia: params.provincia?.trim() || undefined,
+          distrito: params.distrito?.trim() || undefined,
+          direccion: params.direccion?.trim() || undefined,
+        };
+      }
       try {
         const data = await this.factiliza.consultarDni(docDigits);
         const apiFullName = (
@@ -316,6 +364,20 @@ export class ImportExportService {
     }
 
     if (this.looksLikeCeeForFactiliza(docTypeStr) && docRawTrim) {
+      const csvNameCee = params.nameFromCsv.trim();
+      if (csvNameCee) {
+        return {
+          name: formatImportedPersonName(csvNameCee),
+          telefono: params.telefono,
+          correo: params.correo,
+          docType: params.docType?.trim() || 'CEE',
+          docNumber: docRawTrim,
+          departamento: params.departamento?.trim() || undefined,
+          provincia: params.provincia?.trim() || undefined,
+          distrito: params.distrito?.trim() || undefined,
+          direccion: params.direccion?.trim() || undefined,
+        };
+      }
       try {
         const data = await this.factiliza.consultarCee(docRawTrim);
         const apiFullName = (
@@ -417,10 +479,20 @@ export class ImportExportService {
     if (!ruc || ruc.length !== 11) {
       return dto;
     }
+    if (this.companyImportHasUsableIdentity(dto)) {
+      const n = dto.name?.trim();
+      const rz = dto.razonSocial?.trim();
+      return {
+        ...dto,
+        ruc,
+        name: n ? formatImportedCompanyName(n) : dto.name,
+        razonSocial: rz ? formatImportedCompanyName(rz) : dto.razonSocial,
+      };
+    }
     try {
       const data = await this.factiliza.consultarRuc(ruc);
       const rs = data.nombre_o_razon_social?.trim();
-      const placeholderName = /^empresa ruc /i.test(dto.name?.trim() ?? '');
+      const placeholderName = this.isCompanyImportPlaceholderName(dto.name);
       const nameRaw =
         dto.name?.trim() && !placeholderName
           ? dto.name.trim()
@@ -1483,6 +1555,11 @@ export class ImportExportService {
       const csvColumns = this.buildCompanyImportPreviewCsvColumns(rows[0]!, row);
 
       const nombreEmpresa = rowGet(row, headerIndex, ['nombre', 'name']);
+      const razonRowPreview = rowGet(
+        row,
+        headerIndex,
+        ['razon_social', 'razonsocial'],
+      ).trim();
       const fuente = rowGet(row, headerIndex, ['fuente', 'source']);
       const factRaw = rowGet(row, headerIndex, [
         'facturacion_estimada',
@@ -1573,9 +1650,18 @@ export class ImportExportService {
         companyKeyForDup = `__new__:${rd || 'sin-ruc'}:${this.foldContactImportKey(
           nombreEmpresaTrim || provisionalName,
         )}`;
-        /** Alta nueva: RUC consultable en SUNAT vía Factiliza al importar. */
+        const omitirSunatPreview = this.companyImportHasUsableIdentityFields(
+          nombreEmpresaTrim,
+          razonRowPreview || undefined,
+        );
+        /** Alta nueva: SUNAT solo si no hay nombre/razón útiles en el CSV. */
         empresaResumen = rucRaw
-          ? `${rd || rucRaw.trim()} (SUNAT)`
+          ? omitirSunatPreview
+            ? (nombreEmpresaTrim &&
+                !this.isCompanyImportPlaceholderName(nombreEmpresaTrim)
+                ? nombreEmpresaTrim
+                : razonRowPreview) || provisionalName
+            : `${rd || rucRaw.trim()} (SUNAT)`
           : provisionalName;
       }
 
@@ -1588,12 +1674,23 @@ export class ImportExportService {
         'contacto_doc_numero',
         'contacto_doc',
       ]);
+      const contactoCorreoPreview = rowGet(row, headerIndex, [
+        'contacto_correo',
+        'contacto_email',
+      ]).trim();
       const docDigitsEarly = contactoDocNum.replace(/\D/g, '');
-      const puedeNombreDoc =
-        !!contactoNombreCsv ||
+      const hasDocForFactiliza =
         this.looksLikeDniForFactiliza(contactoDocTipo, docDigitsEarly) ||
         (this.looksLikeCeeForFactiliza(contactoDocTipo) &&
           !!contactoDocNum.trim());
+      const puedeContactoDesdeCorreoSolo =
+        this.looksLikeEmailForContactImport(contactoCorreoPreview) &&
+        !contactoNombreCsv &&
+        !hasDocForFactiliza;
+      const puedeNombreDoc =
+        !!contactoNombreCsv ||
+        hasDocForFactiliza ||
+        puedeContactoDesdeCorreoSolo;
 
       if (!puedeNombreDoc) {
         out.push({
@@ -1614,6 +1711,7 @@ export class ImportExportService {
         contactoNombreCsv,
         contactoDocTipo,
         contactoDocNum,
+        contactoCorreo: contactoCorreoPreview,
       });
       if (surf.error) {
         out.push({
@@ -1631,7 +1729,10 @@ export class ImportExportService {
         continue;
       }
 
-      const dupRowKey = `${companyKeyForDup}|${this.contactImportRowDedupeKey(contactoNombreCsv, contactoDocNum)}`;
+      const dupRowKey = `${companyKeyForDup}|${this.contactImportRowDedupeKey(
+        surf.nameForExistCheck || contactoNombreCsv,
+        contactoDocNum,
+      )}`;
       const dupFile = fileCompanyContactDup.get(dupRowKey);
       if (dupFile !== undefined) {
         out.push({
@@ -1689,6 +1790,7 @@ export class ImportExportService {
     contactoNombreCsv: string;
     contactoDocTipo: string;
     contactoDocNum: string;
+    contactoCorreo?: string;
   }): {
     contactoVista: string;
     nameForExistCheck: string;
@@ -1699,6 +1801,7 @@ export class ImportExportService {
     const docRaw = params.contactoDocNum.trim();
     const docDigits = docRaw.replace(/\D/g, '');
     const ncsv = params.contactoNombreCsv.trim();
+    const correo = (params.contactoCorreo ?? '').trim();
 
     if (this.looksLikeDniForFactiliza(params.contactoDocTipo, docDigits)) {
       if (!ncsv) {
@@ -1737,6 +1840,13 @@ export class ImportExportService {
       };
     }
     if (!ncsv) {
+      if (this.looksLikeEmailForContactImport(correo)) {
+        return {
+          contactoVista: correo,
+          nameForExistCheck: correo,
+          docDigits: '',
+        };
+      }
       return {
         contactoVista: '',
         nameForExistCheck: '',
@@ -1916,12 +2026,24 @@ export class ImportExportService {
         'contacto_doc_numero',
         'contacto_doc',
       ]);
+      const contactoCorreo = rowGet(
+        row,
+        headerIndex,
+        ['contacto_correo', 'contacto_email'],
+      ).trim();
       const docDigitsEarly = contactoDocNum.replace(/\D/g, '');
-      const puedeNombreDoc =
-        !!contactoNombreCsv ||
+      const hasDocForFactiliza =
         this.looksLikeDniForFactiliza(contactoDocTipo, docDigitsEarly) ||
         (this.looksLikeCeeForFactiliza(contactoDocTipo) &&
           !!contactoDocNum.trim());
+      const puedeContactoDesdeCorreoSolo =
+        this.looksLikeEmailForContactImport(contactoCorreo) &&
+        !contactoNombreCsv &&
+        !hasDocForFactiliza;
+      const puedeNombreDoc =
+        !!contactoNombreCsv ||
+        hasDocForFactiliza ||
+        puedeContactoDesdeCorreoSolo;
 
       if (!puedeNombreDoc) {
         created += 1;
@@ -1930,11 +2052,6 @@ export class ImportExportService {
 
       const contactoTel =
         rowGet(row, headerIndex, ['contacto_telefono']).trim() || '-';
-      const contactoCorreo = rowGet(
-        row,
-        headerIndex,
-        ['contacto_correo', 'contacto_email'],
-      ).trim();
       const contactFuente = fuente.trim();
 
       const merged = await this.enrichContactFromFactilizaByDocument({
@@ -1953,7 +2070,15 @@ export class ImportExportService {
           rowGet(row, headerIndex, ['contacto_direccion']) || undefined,
       });
 
-      if (!merged.name.trim()) {
+      let mergedContact = merged;
+      if (puedeContactoDesdeCorreoSolo && !mergedContact.name.trim()) {
+        mergedContact = {
+          ...mergedContact,
+          name: contactoCorreo.trim(),
+        };
+      }
+
+      if (!mergedContact.name.trim()) {
         errors.push({
           row: excelRow,
           message:
@@ -1966,12 +2091,12 @@ export class ImportExportService {
         rowGet(row, headerIndex, ['contacto_cliente_recuperado']),
       );
 
-      const docDigitsMerged = (merged.docNumber ?? '').replace(/\D/g, '');
+      const docDigitsMerged = (mergedContact.docNumber ?? '').replace(/\D/g, '');
 
       const existingContactId = await this.findContactIdForCompanyImport(
-        contactoNombreCsv,
+        mergedContact.name.trim(),
         companyId,
-        merged.docNumber,
+        mergedContact.docNumber,
         docDigitsMerged,
       );
 
@@ -2004,20 +2129,20 @@ export class ImportExportService {
           );
         } else {
           await this.contactsService.create({
-            name: merged.name.trim(),
-            telefono: merged.telefono,
-            correo: merged.correo,
+            name: mergedContact.name.trim(),
+            telefono: mergedContact.telefono,
+            correo: mergedContact.correo,
             fuente: contactFuente,
             cargo: rowGet(row, headerIndex, ['contacto_cargo']) || undefined,
             etapa: etapaSlug,
             estimatedValue: facturacionEstimada,
             assignedTo: assignedRow || undefined,
-            docType: merged.docType,
-            docNumber: merged.docNumber,
-            departamento: merged.departamento,
-            provincia: merged.provincia,
-            distrito: merged.distrito,
-            direccion: merged.direccion,
+            docType: mergedContact.docType,
+            docNumber: mergedContact.docNumber,
+            departamento: mergedContact.departamento,
+            provincia: mergedContact.provincia,
+            distrito: mergedContact.distrito,
+            direccion: mergedContact.direccion,
             ...(contactoClienteRec
               ? { clienteRecuperado: contactoClienteRec }
               : {}),
