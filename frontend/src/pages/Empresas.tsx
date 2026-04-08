@@ -16,7 +16,12 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { CompanyEditDialog, type CompanyEditSavePayload } from '@/components/shared/CompanyEditDialog';
 import { CompanyPreviewSheet } from '@/components/shared/CompanyPreviewSheet';
-import { NewCompanyWizard, type NewCompanyData } from '@/components/shared/NewCompanyWizard';
+import {
+  NewCompanyWizard,
+  type NewCompanyData,
+  type NewCompanyWizardSubmitMeta,
+} from '@/components/shared/NewCompanyWizard';
+import { newCompanyDataToPatchBody } from '@/lib/companyWizardMap';
 
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { Button } from '@/components/ui/button';
@@ -423,14 +428,34 @@ export default function EmpresasPage() {
     setPage(1);
   }, [etapaTabCounts, etapaFilter, effectiveEtapaTabCounts]);
 
-  async function handleNewEmpresaSubmit(data: NewCompanyData) {
+  async function handleNewEmpresaSubmit(
+    data: NewCompanyData,
+    meta: NewCompanyWizardSubmitMeta,
+  ) {
+    if (!data.origenLead) {
+      toast.error('Selecciona la fuente del lead');
+      return;
+    }
+
+    if (meta.mode === 'update' && meta.existingCompanyId) {
+      try {
+        await api(`/companies/${meta.existingCompanyId}`, {
+          method: 'PATCH',
+          body: JSON.stringify(newCompanyDataToPatchBody(data)),
+        });
+        await loadSummary();
+        toast.success(`Empresa "${data.nombreComercial.trim()}" actualizada`);
+      } catch (e) {
+        toast.error(
+          e instanceof Error ? e.message : 'No se pudo actualizar la empresa',
+        );
+      }
+      return;
+    }
+
     const monto = Number(data.facturacion);
     if (!Number.isFinite(monto) || monto <= 0) {
       toast.error('La facturación estimada debe ser mayor que 0');
-      return;
-    }
-    if (!data.origenLead) {
-      toast.error('Selecciona la fuente del lead');
       return;
     }
 
@@ -768,16 +793,6 @@ export default function EmpresasPage() {
                       >
                         Estado
                       </TableHead>
-                      <TableHead className="min-w-[12rem] max-w-[20rem] whitespace-normal align-bottom">
-                        ruc(SUNAT)
-                      </TableHead>
-                      <TableHead className="min-w-[11rem] max-w-[18rem] whitespace-normal align-bottom">
-                        doc(SUNAT)
-                      </TableHead>
-                      <TableHead className="min-w-[8rem] align-bottom">Etapa (sistema)</TableHead>
-                      <TableHead className="min-w-[8rem] text-right align-bottom">
-                        Valor resuelto
-                      </TableHead>
                       {companyImportPreviewCsvKeys.map((key) => (
                         <TableHead
                           key={key}
@@ -821,20 +836,6 @@ export default function EmpresasPage() {
                                 Error
                               </Badge>
                             )}
-                          </TableCell>
-                          <TableCell className="max-w-[20rem] break-words align-top text-muted-foreground">
-                            {importPreviewCell(row.empresaResumen)}
-                          </TableCell>
-                          <TableCell className="max-w-[18rem] break-words align-top">
-                            {importPreviewCell(row.contactoVista)}
-                          </TableCell>
-                          <TableCell className="max-w-[14rem] break-words align-top text-xs">
-                            {importPreviewCell(row.etapa)}
-                          </TableCell>
-                          <TableCell className="max-w-[10rem] whitespace-nowrap text-right align-top tabular-nums">
-                            {Number.isFinite(row.facturacionEstimada)
-                              ? formatCurrency(row.facturacionEstimada)
-                              : importPreviewCell(undefined)}
                           </TableCell>
                           {companyImportPreviewCsvKeys.map((key) => (
                             <TableCell
@@ -1168,7 +1169,7 @@ export default function EmpresasPage() {
             </Table>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {displayRows.map((emp) => {
               const rubro = parseRubroFromApi(emp.rubro);
               const tipo = parseTipoFromApi(emp.tipo);
@@ -1176,10 +1177,10 @@ export default function EmpresasPage() {
               return (
               <Card
                 key={rowKey}
-                className="cursor-pointer transition-shadow hover:shadow-md"
+                className="cursor-pointer gap-0 py-0 transition-shadow hover:shadow-md"
                 onClick={() => openCompanyDetail(emp)}
               >
-                <CardContent className="p-5">
+                <CardContent className="p-4">
                   <div className="flex items-start gap-3">
                     <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
                       <Building2 className="size-5 text-muted-foreground" />

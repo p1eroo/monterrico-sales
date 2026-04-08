@@ -18,7 +18,12 @@ import { QuickActionsWithDialogs } from '@/components/shared/QuickActionsWithDia
 import { LinkedOpportunitiesCard } from '@/components/shared/LinkedOpportunitiesCard';
 import { LinkedContactsCard } from '@/components/shared/LinkedContactsCard';
 import { LinkedCompaniesCard } from '@/components/shared/LinkedCompaniesCard';
-import { NewCompanyWizard, type NewCompanyData } from '@/components/shared/NewCompanyWizard';
+import {
+  NewCompanyWizard,
+  type NewCompanyData,
+  type NewCompanyWizardSubmitMeta,
+} from '@/components/shared/NewCompanyWizard';
+import { newCompanyDataToPatchBody } from '@/lib/companyWizardMap';
 import {
   NewOpportunityFormDialog,
   buildOpportunityCreateBody,
@@ -48,6 +53,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { api } from '@/lib/api';
+import { type ApiCompanyRecord } from '@/lib/companyApi';
 import { isEntityDetailApiParam } from '@/lib/detailRoutes';
 import {
   type ApiOpportunityDetail,
@@ -60,6 +66,7 @@ import {
 import {
   type ApiContactDetail,
   type ApiContactListRow,
+  contactAddCompany,
   contactListAll,
   contactRemoveCompany,
   isLikelyContactCuid,
@@ -346,43 +353,63 @@ export default function OportunidadDetailPage() {
         };
 
         if (w) {
-          const factEmpresa = (() => {
-            const f = Number(w.facturacion);
-            if (Number.isFinite(f) && f > 0) return f;
-            return data.estimatedValue > 0 ? data.estimatedValue : 0;
-          })();
-          if (factEmpresa <= 0) {
-            toast.error(
-              'Indica facturación estimada en el paso de oportunidad o un valor estimado del contacto mayor que 0',
-            );
-            return;
+          const coPatchId = data.newCompanyWizardUpdate?.companyId;
+          if (coPatchId) {
+            if (!w.origenLead) {
+              toast.error('Selecciona la fuente del lead en el wizard de empresa');
+              return;
+            }
+            try {
+              await api(`/companies/${coPatchId}`, {
+                method: 'PATCH',
+                body: JSON.stringify(newCompanyDataToPatchBody(w)),
+              });
+            } catch (err) {
+              toast.error(
+                err instanceof Error ? err.message : 'No se pudo actualizar la empresa',
+              );
+              return;
+            }
+            baseBody.companyId = coPatchId;
+          } else {
+            const factEmpresa = (() => {
+              const f = Number(w.facturacion);
+              if (Number.isFinite(f) && f > 0) return f;
+              return data.estimatedValue > 0 ? data.estimatedValue : 0;
+            })();
+            if (factEmpresa <= 0) {
+              toast.error(
+                'Indica facturación estimada en el paso de oportunidad o un valor estimado del contacto mayor que 0',
+              );
+              return;
+            }
+            if (!w.origenLead) {
+              toast.error('Selecciona la fuente del lead en el wizard de empresa');
+              return;
+            }
+            baseBody.newCompany = {
+              name: w.nombreComercial.trim(),
+              razonSocial: w.razonSocial.trim() || undefined,
+              ruc: w.ruc.trim() || undefined,
+              telefono: w.telefono.trim() || undefined,
+              domain: w.dominio.trim() || undefined,
+              rubro: w.rubro || undefined,
+              tipo: w.tipoEmpresa || undefined,
+              linkedin: w.linkedin.trim() || undefined,
+              correo: w.correo.trim() || undefined,
+              distrito: w.distrito.trim() || undefined,
+              provincia: w.provincia.trim() || undefined,
+              departamento: w.departamento.trim() || undefined,
+              direccion: w.direccion.trim() || undefined,
+              facturacionEstimada: factEmpresa,
+              fuente: w.origenLead,
+              clienteRecuperado: w.clienteRecuperado,
+              etapa: w.etapa,
+              ...(w.propietario && isLikelyContactCuid(w.propietario)
+                ? { assignedTo: w.propietario }
+                : {}),
+            };
           }
-          if (!w.origenLead) {
-            toast.error('Selecciona la fuente del lead en el wizard de empresa');
-            return;
-          }
-          baseBody.newCompany = {
-            name: w.nombreComercial.trim(),
-            razonSocial: w.razonSocial.trim() || undefined,
-            ruc: w.ruc.trim() || undefined,
-            telefono: w.telefono.trim() || undefined,
-            domain: w.dominio.trim() || undefined,
-            rubro: w.rubro || undefined,
-            tipo: w.tipoEmpresa || undefined,
-            linkedin: w.linkedin.trim() || undefined,
-            correo: w.correo.trim() || undefined,
-            distrito: w.distrito.trim() || undefined,
-            provincia: w.provincia.trim() || undefined,
-            departamento: w.departamento.trim() || undefined,
-            direccion: w.direccion.trim() || undefined,
-            facturacionEstimada: factEmpresa,
-            fuente: w.origenLead,
-            clienteRecuperado: w.clienteRecuperado,
-            etapa: w.etapa,
-            ...(w.propietario && isLikelyContactCuid(w.propietario)
-              ? { assignedTo: w.propietario }
-              : {}),
-          };
         } else if (data.companyId) {
           baseBody.companyId = data.companyId;
         }
@@ -467,8 +494,64 @@ export default function OportunidadDetailPage() {
     toast.success('Contacto desvinculado de la oportunidad');
   }
 
-  function handleAddCompany(data: NewCompanyData) {
+  async function handleAddCompany(
+    data: NewCompanyData,
+    meta?: NewCompanyWizardSubmitMeta,
+  ) {
     if (!linkedContact) return;
+    if (fromApi && routeId && isLikelyContactCuid(linkedContact.id)) {
+      try {
+        if (meta?.mode === 'update' && meta.existingCompanyId) {
+          await api(`/companies/${meta.existingCompanyId}`, {
+            method: 'PATCH',
+            body: JSON.stringify(newCompanyDataToPatchBody(data)),
+          });
+          const isPrimary = !(apiRecord?.companies?.length);
+          await contactAddCompany(linkedContact.id, meta.existingCompanyId, isPrimary);
+          const updatedOpp = await api<ApiOpportunityDetail>(`/opportunities/${routeId}`);
+          setApiRecord(updatedOpp);
+          setNewCompanyDialogOpen(false);
+          toast.success('Empresa actualizada y vinculada correctamente');
+          return;
+        }
+
+        const created = await api<ApiCompanyRecord>('/companies', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: data.nombreComercial.trim(),
+            razonSocial: data.razonSocial.trim() || undefined,
+            ruc: data.ruc.trim() || undefined,
+            telefono: data.telefono.trim() || undefined,
+            domain: data.dominio.trim() || undefined,
+            rubro: data.rubro || undefined,
+            tipo: data.tipoEmpresa || undefined,
+            linkedin: data.linkedin.trim() || undefined,
+            correo: data.correo.trim() || undefined,
+            distrito: data.distrito.trim() || undefined,
+            provincia: data.provincia.trim() || undefined,
+            departamento: data.departamento.trim() || undefined,
+            direccion: data.direccion.trim() || undefined,
+            facturacionEstimada: (() => {
+              const f = Number(data.facturacion);
+              if (Number.isFinite(f) && f > 0) return f;
+              return Math.max(linkedContact.estimatedValue ?? 0, 1);
+            })(),
+            fuente: data.origenLead || linkedContact.fuente,
+            etapa: data.etapa || linkedContact.etapa,
+            clienteRecuperado: data.clienteRecuperado,
+          }),
+        });
+        const isPrimary = !(apiRecord?.companies?.length);
+        await contactAddCompany(linkedContact.id, created.id, isPrimary);
+        const updatedOpp = await api<ApiOpportunityDetail>(`/opportunities/${routeId}`);
+        setApiRecord(updatedOpp);
+        setNewCompanyDialogOpen(false);
+        toast.success('Empresa creada y vinculada correctamente');
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'No se pudo crear la empresa');
+      }
+      return;
+    }
     const companies = [...(linkedContact.companies ?? []), {
       name: data.nombreComercial,
       rubro: data.rubro || undefined,

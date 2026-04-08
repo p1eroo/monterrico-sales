@@ -525,7 +525,10 @@ export default function OpportunitiesPage() {
 
       {/* Tabs & Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList variant="line" className="w-full justify-start overflow-x-auto">
+        <TabsList
+          variant="line"
+          className="scrollbar-none w-full justify-start overflow-x-auto"
+        >
           {statusTabs.map((tab) => (
             <TabsTrigger key={tab.value} value={tab.value}>
               {tab.label}
@@ -786,7 +789,7 @@ function OpportunitiesGrid({
   canDelete: boolean;
 }) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {data.map((opp) => {
         const pending = isPendingOpportunityId(opp.id);
         return (
@@ -794,12 +797,12 @@ function OpportunitiesGrid({
           key={opp.id}
           className={
             pending
-              ? 'group border-dashed bg-muted/30'
-              : 'group cursor-pointer transition-all hover:shadow-md hover:border-[#13944C]/30'
+              ? 'group gap-0 border-dashed bg-muted/30 py-0'
+              : 'group cursor-pointer gap-0 py-0 transition-all hover:shadow-md hover:border-[#13944C]/30'
           }
           onClick={() => onOpenDetail(opp)}
         >
-          <CardContent className="p-5">
+          <CardContent className="p-4">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">

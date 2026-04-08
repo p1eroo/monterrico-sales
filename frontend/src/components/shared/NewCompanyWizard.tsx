@@ -3,9 +3,10 @@ import { useCrmConfigStore } from '@/store/crmConfigStore';
 import { Check, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { factilizaApi } from '@/lib/factilizaApi';
-import type { Etapa, CompanyRubro, CompanyTipo, ContactSource } from '@/types';
+import type { CompanyRubro, CompanyTipo, ContactSource, Etapa } from '@/types';
 import { companyRubroLabels, companyTipoLabels, etapaLabels, contactSourceLabels } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
+import { cn } from '@/lib/utils';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,41 +17,28 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import {
+  emptyNewCompanyForm,
+  type NewCompanyData,
+} from '@/lib/newCompanyData';
+import { companyGetByRuc } from '@/lib/companyApi';
+import {
+  mapApiCompanyRecordToNewCompanyData,
+} from '@/lib/companyWizardMap';
 
-export interface NewCompanyData {
-  ruc: string;
-  razonSocial: string;
-  rubro: CompanyRubro | '';
-  tipoEmpresa: CompanyTipo | '';
-  nombreComercial: string;
-  telefono: string;
-  distrito: string;
-  provincia: string;
-  departamento: string;
-  direccion: string;
-  dominio: string;
-  linkedin: string;
-  correo: string;
-  origenLead: ContactSource | '';
-  propietario: string;
-  clienteRecuperado: 'si' | 'no';
-  nombreNegocio: string;
-  etapa: Etapa;
-  facturacion: string;
-  fechaCierre: string;
-}
+export type { NewCompanyData };
 
-const emptyForm: NewCompanyData = {
-  ruc: '', razonSocial: '', rubro: '', tipoEmpresa: '', nombreComercial: '',
-  telefono: '', distrito: '', provincia: '', departamento: '', direccion: '',
-  dominio: '', linkedin: '', correo: '', origenLead: '', propietario: '',
-  clienteRecuperado: 'no', nombreNegocio: '', etapa: 'lead', facturacion: '', fechaCierre: '',
+const emptyForm = emptyNewCompanyForm;
+
+export type NewCompanyWizardSubmitMeta = {
+  mode: 'create' | 'update';
+  existingCompanyId?: string;
 };
 
 interface NewCompanyWizardProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: NewCompanyData) => void;
+  onSubmit: (data: NewCompanyData, meta: NewCompanyWizardSubmitMeta) => void;
   title?: string;
   description?: string;
   /** Valores iniciales (p. ej. desde el wizard de contacto) */
@@ -81,6 +69,8 @@ export function NewCompanyWizard({
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<NewCompanyData>(() => mergeCompanyForm(defaultValues));
   const [rucLookupLoading, setRucLookupLoading] = useState(false);
+  const [existingCompanyId, setExistingCompanyId] = useState<string | null>(null);
+  const [loadedRucDigits, setLoadedRucDigits] = useState<string | null>(null);
   const { activeUsers } = useUsers();
   const bundle = useCrmConfigStore((s) => s.bundle);
 
@@ -112,17 +102,44 @@ export function NewCompanyWizard({
     }
     setRucLookupLoading(true);
     try {
-      const data = await factilizaApi.consultarRuc(ruc);
-      setForm((s) => ({
-        ...s,
-        razonSocial: data.nombre_o_razon_social ?? s.razonSocial,
-        nombreComercial: data.nombre_o_razon_social ?? s.nombreComercial,
-        departamento: data.departamento ?? s.departamento,
-        provincia: data.provincia ?? s.provincia,
-        distrito: data.distrito ?? s.distrito,
-        direccion: data.direccion_completa ?? data.direccion ?? s.direccion,
-      }));
-      toast.success('Datos de empresa cargados correctamente');
+      let loadedFromCrm = false;
+      try {
+        const record = await companyGetByRuc(ruc);
+        const mapped = mapApiCompanyRecordToNewCompanyData(record);
+        setForm((s) => ({
+          ...s,
+          ...mapped,
+          ruc: mapped.ruc || ruc,
+        }));
+        setExistingCompanyId(record.id);
+        setLoadedRucDigits(ruc);
+        loadedFromCrm = true;
+        toast.success('Empresa encontrada: datos cargados desde el sistema');
+      } catch (err) {
+        const st = (err as Error & { status?: number }).status;
+        if (st !== 404) {
+          toast.error(
+            err instanceof Error ? err.message : 'No se pudo buscar la empresa por RUC',
+          );
+          return;
+        }
+      }
+
+      if (!loadedFromCrm) {
+        setExistingCompanyId(null);
+        setLoadedRucDigits(null);
+        const data = await factilizaApi.consultarRuc(ruc);
+        setForm((s) => ({
+          ...s,
+          razonSocial: data.nombre_o_razon_social ?? s.razonSocial,
+          nombreComercial: data.nombre_o_razon_social ?? s.nombreComercial,
+          departamento: data.departamento ?? s.departamento,
+          provincia: data.provincia ?? s.provincia,
+          distrito: data.distrito ?? s.distrito,
+          direccion: data.direccion_completa ?? data.direccion ?? s.direccion,
+        }));
+        toast.success('Datos de SUNAT cargados correctamente');
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'No se pudo consultar el RUC');
     } finally {
@@ -134,6 +151,8 @@ export function NewCompanyWizard({
     if (!open) return;
     setForm(mergeCompanyForm(defaultValues));
     setStep(0);
+    setExistingCompanyId(null);
+    setLoadedRucDigits(null);
     // defaultValues se fija al abrir desde el padre; no incluir en deps para evitar resets por referencia nueva
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -143,6 +162,8 @@ export function NewCompanyWizard({
     if (!value) {
       setStep(0);
       setForm({ ...emptyForm });
+      setExistingCompanyId(null);
+      setLoadedRucDigits(null);
     }
   }
 
@@ -173,15 +194,31 @@ export function NewCompanyWizard({
       toast.error('Selecciona la fuente del lead');
       return;
     }
+    const nombreNegocio = form.nombreNegocio.trim() || form.nombreComercial.trim();
+
+    if (existingCompanyId) {
+      onSubmit(
+        { ...form, nombreNegocio },
+        { mode: 'update', existingCompanyId },
+      );
+      setStep(0);
+      setForm({ ...emptyForm });
+      setExistingCompanyId(null);
+      setLoadedRucDigits(null);
+      onOpenChange(false);
+      return;
+    }
+
     const fact = Number(form.facturacion);
     if (!Number.isFinite(fact) || fact <= 0) {
       toast.error('La facturación estimada es obligatoria y debe ser mayor que 0');
       return;
     }
-    const nombreNegocio = form.nombreNegocio.trim() || form.nombreComercial.trim();
-    onSubmit({ ...form, nombreNegocio });
+    onSubmit({ ...form, nombreNegocio }, { mode: 'create' });
     setStep(0);
     setForm({ ...emptyForm });
+    setExistingCompanyId(null);
+    setLoadedRucDigits(null);
     onOpenChange(false);
   }
 
@@ -234,7 +271,19 @@ export function NewCompanyWizard({
                     placeholder="20XXXXXXXXX — Enter para buscar"
                     maxLength={11}
                     value={form.ruc}
-                    onChange={(e) => set('ruc', e.target.value)}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      set('ruc', v);
+                      const norm = v.replace(/\D/g, '');
+                      if (
+                        existingCompanyId &&
+                        loadedRucDigits &&
+                        norm !== loadedRucDigits
+                      ) {
+                        setExistingCompanyId(null);
+                        setLoadedRucDigits(null);
+                      }
+                    }}
                     onKeyDown={(e) => {
                       const val = (e.currentTarget as HTMLInputElement).value;
                       if (e.key === 'Enter' && val.trim().replace(/\D/g, '').length === 11) {
@@ -351,7 +400,19 @@ export function NewCompanyWizard({
           )}
 
           {step === 2 && (
-            <div className="grid gap-4 grid-cols-2">
+            <div
+              className={cn(
+                'grid gap-4 grid-cols-2',
+                existingCompanyId && 'pointer-events-none opacity-60',
+              )}
+              aria-disabled={existingCompanyId ? true : undefined}
+            >
+              {existingCompanyId ? (
+                <p className="col-span-2 text-sm text-muted-foreground">
+                  Esta empresa ya está en el sistema: solo se actualizarán los datos de la cuenta.
+                  La sección de oportunidad no aplica en este flujo.
+                </p>
+              ) : null}
               <div className="space-y-2">
                 <Label>Nombre de la oportunidad</Label>
                 <Input placeholder="Nombre de la oportunidad" value={form.nombreNegocio} onChange={(e) => set('nombreNegocio', e.target.value)} />
@@ -395,7 +456,7 @@ export function NewCompanyWizard({
               </Button>
             ) : (
               <Button type="button" className="bg-[#13944C] hover:bg-[#0f7a3d]" onClick={handleSubmit}>
-                {confirmButtonLabel}
+                {existingCompanyId ? 'Actualizar empresa' : confirmButtonLabel}
               </Button>
             )}
           </div>

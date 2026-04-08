@@ -67,6 +67,13 @@ export class CompaniesController {
     });
   }
 
+  /** Debe ir antes de @Get(':id'). */
+  @Get('by-ruc/:ruc')
+  @RequirePermissions('empresas.ver')
+  findOneByRuc(@Param('ruc') ruc: string) {
+    return this.companiesService.findOneByRucParam(ruc);
+  }
+
   /** Debe ir antes de @Get(':id') para no capturar "summary" como id. */
   @Get('summary')
   @RequirePermissions('empresas.ver')

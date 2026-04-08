@@ -36,6 +36,12 @@ export type CompanyListPaginatedResponse = {
   totalPages: number;
 };
 
+/** Obtener empresa por RUC (11 dígitos). 404 si no existe en el CRM. */
+export async function companyGetByRuc(rucDigits: string): Promise<ApiCompanyRecord> {
+  const d = rucDigits.replace(/\D/g, '');
+  return api<ApiCompanyRecord>(`/companies/by-ruc/${encodeURIComponent(d)}`);
+}
+
 /** Listar empresas paginado */
 export async function companyListPaginated(params?: {
   page?: number;

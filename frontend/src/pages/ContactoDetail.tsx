@@ -29,7 +29,12 @@ import { DetailLayout } from '@/components/shared/DetailLayout';
 import { LinkedOpportunitiesCard } from '@/components/shared/LinkedOpportunitiesCard';
 import { LinkedCompaniesCard } from '@/components/shared/LinkedCompaniesCard';
 import { LinkedContactsCard } from '@/components/shared/LinkedContactsCard';
-import { NewCompanyWizard, type NewCompanyData } from '@/components/shared/NewCompanyWizard';
+import {
+  NewCompanyWizard,
+  type NewCompanyData,
+  type NewCompanyWizardSubmitMeta,
+} from '@/components/shared/NewCompanyWizard';
+import { newCompanyDataToPatchBody } from '@/lib/companyWizardMap';
 import {
   NewOpportunityFormDialog,
   buildOpportunityCreateBody,
@@ -474,10 +479,30 @@ export default function ContactoDetailPage() {
     setAssignDialogOpen(false);
   }
 
-  async function handleAddCompany(data: NewCompanyData) {
+  async function handleAddCompany(
+    data: NewCompanyData,
+    meta?: NewCompanyWizardSubmitMeta,
+  ) {
     if (!contact) return;
     if (fromApi && routeId) {
       try {
+        if (meta?.mode === 'update' && meta.existingCompanyId) {
+          await api(`/companies/${meta.existingCompanyId}`, {
+            method: 'PATCH',
+            body: JSON.stringify(newCompanyDataToPatchBody(data)),
+          });
+          const isPrimary = !(apiRecord?.companies?.length);
+          const updated = await contactAddCompany(
+            routeId,
+            meta.existingCompanyId,
+            isPrimary,
+          );
+          setApiRecord(updated);
+          setAddCompanyOpen(false);
+          toast.success('Empresa actualizada y vinculada correctamente');
+          return;
+        }
+
         const created = await api<ApiCompanyRecord>('/companies', {
           method: 'POST',
           body: JSON.stringify({
@@ -663,43 +688,63 @@ export default function ContactoDetailPage() {
         };
 
         if (w) {
-          const factEmpresa = (() => {
-            const f = Number(w.facturacion);
-            if (Number.isFinite(f) && f > 0) return f;
-            return data.estimatedValue > 0 ? data.estimatedValue : 0;
-          })();
-          if (factEmpresa <= 0) {
-            toast.error(
-              'Indica facturación estimada en el wizard de empresa o un valor estimado del contacto mayor que 0',
-            );
-            return;
+          const coPatchId = data.newCompanyWizardUpdate?.companyId;
+          if (coPatchId) {
+            if (!w.origenLead) {
+              toast.error('Selecciona la fuente del lead en el wizard de empresa');
+              return;
+            }
+            try {
+              await api(`/companies/${coPatchId}`, {
+                method: 'PATCH',
+                body: JSON.stringify(newCompanyDataToPatchBody(w)),
+              });
+            } catch (err) {
+              toast.error(
+                err instanceof Error ? err.message : 'No se pudo actualizar la empresa',
+              );
+              return;
+            }
+            baseBody.companyId = coPatchId;
+          } else {
+            const factEmpresa = (() => {
+              const f = Number(w.facturacion);
+              if (Number.isFinite(f) && f > 0) return f;
+              return data.estimatedValue > 0 ? data.estimatedValue : 0;
+            })();
+            if (factEmpresa <= 0) {
+              toast.error(
+                'Indica facturación estimada en el wizard de empresa o un valor estimado del contacto mayor que 0',
+              );
+              return;
+            }
+            if (!w.origenLead) {
+              toast.error('Selecciona la fuente del lead en el wizard de empresa');
+              return;
+            }
+            baseBody.newCompany = {
+              name: w.nombreComercial.trim(),
+              razonSocial: w.razonSocial.trim() || undefined,
+              ruc: w.ruc.trim() || undefined,
+              telefono: w.telefono.trim() || undefined,
+              domain: w.dominio.trim() || undefined,
+              rubro: w.rubro || undefined,
+              tipo: w.tipoEmpresa || undefined,
+              linkedin: w.linkedin.trim() || undefined,
+              correo: w.correo.trim() || undefined,
+              distrito: w.distrito.trim() || undefined,
+              provincia: w.provincia.trim() || undefined,
+              departamento: w.departamento.trim() || undefined,
+              direccion: w.direccion.trim() || undefined,
+              facturacionEstimada: factEmpresa,
+              fuente: w.origenLead,
+              clienteRecuperado: w.clienteRecuperado,
+              etapa: w.etapa,
+              ...(w.propietario && isLikelyContactCuid(w.propietario)
+                ? { assignedTo: w.propietario }
+                : {}),
+            };
           }
-          if (!w.origenLead) {
-            toast.error('Selecciona la fuente del lead en el wizard de empresa');
-            return;
-          }
-          baseBody.newCompany = {
-            name: w.nombreComercial.trim(),
-            razonSocial: w.razonSocial.trim() || undefined,
-            ruc: w.ruc.trim() || undefined,
-            telefono: w.telefono.trim() || undefined,
-            domain: w.dominio.trim() || undefined,
-            rubro: w.rubro || undefined,
-            tipo: w.tipoEmpresa || undefined,
-            linkedin: w.linkedin.trim() || undefined,
-            correo: w.correo.trim() || undefined,
-            distrito: w.distrito.trim() || undefined,
-            provincia: w.provincia.trim() || undefined,
-            departamento: w.departamento.trim() || undefined,
-            direccion: w.direccion.trim() || undefined,
-            facturacionEstimada: factEmpresa,
-            fuente: w.origenLead,
-            clienteRecuperado: w.clienteRecuperado,
-            etapa: w.etapa,
-            ...(w.propietario && isLikelyContactCuid(w.propietario)
-              ? { assignedTo: w.propietario }
-              : {}),
-          };
         } else if (data.companyId) {
           baseBody.companyId = data.companyId;
         }

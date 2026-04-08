@@ -39,7 +39,11 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { NewCompanyWizard, type NewCompanyData } from '@/components/shared/NewCompanyWizard';
+import {
+  NewCompanyWizard,
+  type NewCompanyData,
+  type NewCompanyWizardSubmitMeta,
+} from '@/components/shared/NewCompanyWizard';
 import { LinkExistingDialog, type LinkExistingItem } from '@/components/shared/LinkExistingDialog';
 
 export interface NewContactData {
@@ -64,6 +68,8 @@ export interface NewContactData {
   direccion?: string;
   /** Wizard de empresa embebido: se persiste al guardar el contacto (empresa + opcional oportunidad) */
   newCompanyWizardData?: NewCompanyData;
+  /** Si el RUC ya existía: PATCH empresa y vincular por id (sin crear empresa nueva ni oportunidad desde el wizard) */
+  newCompanyWizardUpdate?: { companyId: string };
 }
 
 interface NewContactWizardProps {
@@ -144,6 +150,7 @@ export function NewContactWizard({
   }, [bundle]);
 
   const [pendingNewCompany, setPendingNewCompany] = useState<NewCompanyData | null>(null);
+  const [wizardCompanyPatchId, setWizardCompanyPatchId] = useState<string | null>(null);
   const [companyWizardOpen, setCompanyWizardOpen] = useState(false);
   const [companyWizardDefaults, setCompanyWizardDefaults] = useState<Partial<NewCompanyData>>({});
 
@@ -173,6 +180,7 @@ export function NewContactWizard({
     setDistrito(d?.distrito ?? '');
     setDireccion(d?.direccion ?? '');
     setPendingNewCompany(null);
+    setWizardCompanyPatchId(null);
     setCompanyWizardOpen(false);
     setCompanyWizardDefaults({});
   }, []);
@@ -225,10 +233,19 @@ export function NewContactWizard({
     setLinkCompanySelectedIds([]);
   }
 
-  function handleCompanyWizardSubmit(data: NewCompanyData) {
+  function handleCompanyWizardSubmit(
+    data: NewCompanyData,
+    meta: NewCompanyWizardSubmitMeta,
+  ) {
     setPendingNewCompany(data);
     setCompany(data.nombreComercial.trim());
-    setCompanyId(null);
+    if (meta.mode === 'update' && meta.existingCompanyId) {
+      setWizardCompanyPatchId(meta.existingCompanyId);
+      setCompanyId(meta.existingCompanyId);
+    } else {
+      setWizardCompanyPatchId(null);
+      setCompanyId(null);
+    }
     setCompanyWizardOpen(false);
   }
 
@@ -357,7 +374,14 @@ export function NewContactWizard({
       provincia: provincia.trim() || undefined,
       distrito: distrito.trim() || undefined,
       direccion: direccion.trim() || undefined,
-      ...(pendingNewCompany ? { newCompanyWizardData: pendingNewCompany } : {}),
+      ...(pendingNewCompany
+        ? {
+            newCompanyWizardData: pendingNewCompany,
+            ...(wizardCompanyPatchId
+              ? { newCompanyWizardUpdate: { companyId: wizardCompanyPatchId } }
+              : {}),
+          }
+        : {}),
     });
   }
 

@@ -40,6 +40,7 @@ import { api } from '@/lib/api';
 import { contactDetailHref } from '@/lib/detailRoutes';
 import type { Contact, Etapa } from '@/types';
 import { companyListAll } from '@/lib/companyApi';
+import { newCompanyDataToPatchBody } from '@/lib/companyWizardMap';
 import {
   type ApiContactDetail,
   type ApiContactListRow,
@@ -341,6 +342,75 @@ export default function ContactosPage() {
     }
     if (data.newCompanyWizardData) {
       const w = data.newCompanyWizardData;
+      const existingCoId = data.newCompanyWizardUpdate?.companyId;
+
+      if (existingCoId) {
+        if (!w.origenLead) {
+          toast.error('Selecciona la fuente del lead en el wizard de empresa');
+          return;
+        }
+        try {
+          await api(`/companies/${existingCoId}`, {
+            method: 'PATCH',
+            body: JSON.stringify(newCompanyDataToPatchBody(w)),
+          });
+        } catch (e) {
+          toast.error(
+            e instanceof Error ? e.message : 'No se pudo actualizar la empresa',
+          );
+          return;
+        }
+
+        const body: Record<string, unknown> = {
+          name: data.name.trim(),
+          telefono: data.phone.trim(),
+          correo: data.email.trim(),
+          fuente: data.source,
+          etapa: data.etapaCiclo,
+          estimatedValue: data.estimatedValue,
+          cargo: data.cargo?.trim() || undefined,
+          docType: data.docType || undefined,
+          docNumber: data.docNumber?.trim() || undefined,
+          departamento: data.departamento?.trim() || undefined,
+          provincia: data.provincia?.trim() || undefined,
+          distrito: data.distrito?.trim() || undefined,
+          direccion: data.direccion?.trim() || undefined,
+          clienteRecuperado: data.clienteRecuperado,
+          companyId: existingCoId,
+        };
+        if (data.assignedTo && isLikelyContactCuid(data.assignedTo)) {
+          body.assignedTo = data.assignedTo;
+        }
+
+        const optId = generateOptimisticId('c');
+        addPendingContact(
+          buildOptimisticContact(optId, data, {
+            companyDisplayName: w.nombreComercial.trim(),
+          }),
+        );
+
+        try {
+          await api<ApiContactDetail>('/contacts', {
+            method: 'POST',
+            body: JSON.stringify(body),
+          });
+        } catch (e) {
+          removePendingContact(optId);
+          toast.error(
+            e instanceof Error ? e.message : 'No se pudo crear el contacto en el servidor',
+          );
+          return;
+        }
+
+        removePendingContact(optId);
+        await loadApiContacts();
+        toast.success(
+          `Contacto "${data.name}" creado · empresa "${w.nombreComercial.trim()}" actualizada`,
+        );
+        setNewContactOpen(false);
+        return;
+      }
+
       const factEmpresa = (() => {
         const f = Number(w.facturacion);
         if (Number.isFinite(f) && f > 0) return f;
@@ -1183,16 +1253,24 @@ function ContactsGrid({
   onDelete,
 }: ContactsGridProps) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {data.map((contact) => {
         const pending = isPendingContactId(contact.id);
+        const tel = contact.telefono?.trim() ?? '';
+        const mail = contact.correo?.trim() ?? '';
+        const showTel = !!tel && tel !== '-';
+        const showMail = !!mail;
         return (
         <Card
           key={contact.id}
-          className={pending ? 'border-dashed bg-muted/30' : 'cursor-pointer transition-shadow hover:shadow-md'}
+          className={
+            pending
+              ? 'gap-0 border-dashed bg-muted/30 py-0'
+              : 'cursor-pointer gap-0 py-0 transition-shadow hover:shadow-md'
+          }
           onClick={() => onView(contact)}
         >
-          <CardContent className="p-5">
+          <CardContent className="p-4">
             <div className="flex items-start justify-between">
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
@@ -1237,14 +1315,20 @@ function ContactsGrid({
               )}
             </div>
 
-            <div className="mt-3 space-y-1.5 text-sm text-muted-foreground">
-              <p className="flex items-center gap-2 truncate">
-                <Phone className="size-3 shrink-0" /> {contact.telefono}
-              </p>
-              <p className="flex items-center gap-2 truncate">
-                <Mail className="size-3 shrink-0" /> {contact.correo}
-              </p>
-            </div>
+            {(showTel || showMail) && (
+              <div className="mt-3 space-y-1.5 text-sm text-muted-foreground">
+                {showTel && (
+                  <p className="flex items-center gap-2 truncate">
+                    <Phone className="size-3 shrink-0" /> {tel}
+                  </p>
+                )}
+                {showMail && (
+                  <p className="flex items-center gap-2 truncate">
+                    <Mail className="size-3 shrink-0" /> {mail}
+                  </p>
+                )}
+              </div>
+            )}
 
             <div className="mt-3 flex items-center justify-between border-t pt-3">
               <span className="flex items-center gap-1 text-sm font-semibold text-emerald-600">

@@ -477,6 +477,44 @@ export class CompaniesService {
     };
   }
 
+  /**
+   * Busca empresa por RUC (11 dígitos), tolerando distintos formatos guardados en BD.
+   */
+  async findOneByRucParam(rucParam: string) {
+    const raw = rucParam?.trim() ?? '';
+    const digits = raw.replace(/\D/g, '');
+    if (digits.length !== 11) {
+      throw new BadRequestException('El RUC debe tener 11 dígitos');
+    }
+
+    let row = await this.prisma.company.findFirst({
+      where: {
+        OR: [{ ruc: digits }, { ruc: raw }],
+      },
+      select: { id: true },
+    });
+
+    if (!row) {
+      const candidates = await this.prisma.company.findMany({
+        where: {
+          ruc: { contains: digits },
+        },
+        take: 40,
+        select: { id: true, ruc: true },
+      });
+      const match = candidates.find(
+        (c) => (c.ruc ?? '').replace(/\D/g, '') === digits,
+      );
+      if (match) row = { id: match.id };
+    }
+
+    if (!row) {
+      throw new NotFoundException('No hay empresa con ese RUC');
+    }
+
+    return this.findOne(row.id);
+  }
+
   async findOne(idOrSlug: string) {
     const id = await this.resolveCompanyId(idOrSlug);
     const company = await this.prisma.company.findUnique({
