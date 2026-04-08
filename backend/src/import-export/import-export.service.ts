@@ -9,6 +9,10 @@ import {
   buildHeaderIndex,
   rowGet,
 } from '../common/csv.util';
+import {
+  formatImportedCompanyName,
+  formatImportedPersonName,
+} from '../common/import-display-name.util';
 import { inferCompanyDomainFromContactEmail } from '../common/email-domain.util';
 import type { Prisma } from '../generated/prisma';
 import type { CreateContactDto } from '../contacts/dto/create-contact.dto';
@@ -63,6 +67,8 @@ export type CompanyImportPreviewRowDto = {
   facturacionEstimada: number;
   ok: boolean;
   error?: string;
+  /** Encabezado original del CSV → valor de celda (vacío como string vacío). */
+  csvColumns: Record<string, string>;
 };
 
 export type CompanyImportPreviewResultDto = {
@@ -284,7 +290,7 @@ export class ImportExportService {
         const name = params.nameFromCsv.trim() || apiFullName;
 
         return {
-          name,
+          name: formatImportedPersonName(name),
           telefono: params.telefono,
           correo: params.correo,
           docType: params.docType?.trim() || 'DNI',
@@ -303,6 +309,7 @@ export class ImportExportService {
       } catch {
         return {
           ...base,
+          name: formatImportedPersonName(base.name),
           docNumber: docDigits || base.docNumber,
         };
       }
@@ -320,7 +327,7 @@ export class ImportExportService {
         const name = params.nameFromCsv.trim() || apiFullName;
 
         return {
-          name,
+          name: formatImportedPersonName(name),
           telefono: params.telefono,
           correo: params.correo,
           docType: params.docType?.trim() || 'CEE',
@@ -333,12 +340,16 @@ export class ImportExportService {
       } catch {
         return {
           ...base,
+          name: formatImportedPersonName(base.name),
           docNumber: docRawTrim,
         };
       }
     }
 
-    return base;
+    return {
+      ...base,
+      name: formatImportedPersonName(base.name),
+    };
   }
 
   /** Vincula contacto a empresa si aún no lo está; solo un contacto primario por empresa. */
@@ -410,14 +421,18 @@ export class ImportExportService {
       const data = await this.factiliza.consultarRuc(ruc);
       const rs = data.nombre_o_razon_social?.trim();
       const placeholderName = /^empresa ruc /i.test(dto.name?.trim() ?? '');
+      const nameRaw =
+        dto.name?.trim() && !placeholderName
+          ? dto.name.trim()
+          : rs || dto.name || '';
+      const razonRaw = dto.razonSocial?.trim() || rs || undefined;
       return {
         ...dto,
         ruc,
-        name:
-          dto.name?.trim() && !placeholderName
-            ? dto.name.trim()
-            : rs || dto.name,
-        razonSocial: dto.razonSocial?.trim() || rs || undefined,
+        name: nameRaw ? formatImportedCompanyName(nameRaw) : nameRaw,
+        razonSocial: razonRaw
+          ? formatImportedCompanyName(razonRaw)
+          : undefined,
         departamento: dto.departamento?.trim() || data.departamento || undefined,
         provincia: dto.provincia?.trim() || data.provincia || undefined,
         distrito: dto.distrito?.trim() || data.distrito || undefined,
@@ -428,7 +443,14 @@ export class ImportExportService {
           undefined,
       };
     } catch {
-      return { ...dto, ruc };
+      const n = dto.name?.trim();
+      const rz = dto.razonSocial?.trim();
+      return {
+        ...dto,
+        ruc,
+        name: n ? formatImportedCompanyName(n) : dto.name,
+        razonSocial: rz ? formatImportedCompanyName(rz) : dto.razonSocial,
+      };
     }
   }
 
@@ -530,6 +552,24 @@ export class ImportExportService {
     const rucNorm = r ? r.replace(/\D/g, '') || r : '';
     if (rucNorm) return rucNorm;
     return n;
+  }
+
+  /** Mapa ordenado de columnas del archivo para la vista previa (etiqueta legible → valor). */
+  private buildCompanyImportPreviewCsvColumns(
+    headerRow: string[],
+    dataRow: string[],
+  ): Record<string, string> {
+    const seen = new Map<string, number>();
+    const out: Record<string, string> = {};
+    for (let i = 0; i < headerRow.length; i++) {
+      const raw = headerRow[i]?.trim() ?? '';
+      let label = raw || `Columna ${i + 1}`;
+      const n = (seen.get(label) ?? 0) + 1;
+      seen.set(label, n);
+      if (n > 1) label = `${label} (${n})`;
+      out[label] = (dataRow[i] ?? '').trim();
+    }
+    return out;
   }
 
   private async findCompanyByNameInsensitive(nombre: string) {
@@ -663,7 +703,7 @@ export class ImportExportService {
         if (willRename && !dryRun) {
           await this.prisma.company.update({
             where: { id: found.id },
-            data: { name: nombre },
+            data: { name: formatImportedCompanyName(nombre) },
           });
         }
         let resumen = `Existente: ${found.name}`;
@@ -707,7 +747,7 @@ export class ImportExportService {
       }
 
       const draft: CreateCompanyDto = {
-        name: newName,
+        name: formatImportedCompanyName(newName),
         ruc: digits || rucRaw,
         facturacionEstimada: params.contactEstimatedValue,
         fuente: params.contactFuente,
@@ -772,7 +812,7 @@ export class ImportExportService {
       };
     }
     const onlyNameCo: CreateCompanyDto = {
-      name: nombre,
+      name: formatImportedCompanyName(nombre),
       facturacionEstimada: params.contactEstimatedValue,
       fuente: params.contactFuente,
       etapa: params.contactEtapa,
@@ -782,7 +822,7 @@ export class ImportExportService {
     return {
       ok: true,
       newCompany: onlyNameCo,
-      empresaResumen: `Nueva empresa · ${nombre}`,
+      empresaResumen: `Nueva empresa · ${onlyNameCo.name}`,
       dedupeCompanyKey: this.buildNewCompanyDedupeKey(onlyNameCo),
     };
   }
@@ -843,6 +883,9 @@ export class ImportExportService {
         'company_ruc',
       ]);
       const empresaNombreT = empresaNombre.trim();
+      const empresaNombrePreview = empresaNombreT
+        ? formatImportedCompanyName(empresaNombreT)
+        : '';
       const empresaRucT = empresaRuc.trim();
       const empresaPreview = this.previewEmpresaLabel(empresaNombre, empresaRuc);
       const puedeNombreReniec =
@@ -857,7 +900,7 @@ export class ImportExportService {
           fuente,
           etapa: 'lead',
           valorEstimado: 0,
-          empresaNombre: empresaNombreT,
+          empresaNombre: empresaNombrePreview,
           empresaRuc: empresaRucT,
           empresaResumen: empresaPreview,
           ok: false,
@@ -866,9 +909,11 @@ export class ImportExportService {
         });
         continue;
       }
-      const nombreVistaPrevia =
-        nombreCsv ||
-        `(Nombre vía RENIEC · DNI ${docDigitsPv})`;
+      const nombreVistaPrevia = nombreCsv
+        ? formatImportedPersonName(nombreCsv)
+        : docDigitsPv
+          ? `${docDigitsPv} (SUNAT)`
+          : '';
       const nombre = nombreVistaPrevia;
       const valorRaw = rowGet(row, headerIndex, [
         'valor_estimado',
@@ -886,7 +931,7 @@ export class ImportExportService {
           fuente,
           etapa: rowGet(row, headerIndex, ['etapa', 'stage']) || 'lead',
           valorEstimado: 0,
-          empresaNombre: empresaNombreT,
+          empresaNombre: empresaNombrePreview,
           empresaRuc: empresaRucT,
           empresaResumen: empresaPreview,
           ok: false,
@@ -920,7 +965,7 @@ export class ImportExportService {
           fuente,
           etapa: etapaRaw || 'lead',
           valorEstimado: estimatedValue,
-          empresaNombre: empresaNombreT,
+          empresaNombre: empresaNombrePreview,
           empresaRuc: empresaRucT,
           empresaResumen: empresaPreview,
           ok: false,
@@ -962,7 +1007,7 @@ export class ImportExportService {
             fuente,
             etapa: etapaRow,
             valorEstimado: estimatedValue,
-            empresaNombre: empresaNombreT,
+            empresaNombre: empresaNombrePreview,
             empresaRuc: empresaRucT,
             empresaResumen: empresaPreview,
             ok: false,
@@ -986,7 +1031,7 @@ export class ImportExportService {
             fuente,
             etapa: etapaRow,
             valorEstimado: estimatedValue,
-            empresaNombre: empresaNombreT,
+            empresaNombre: empresaNombrePreview,
             empresaRuc: empresaRucT,
             empresaResumen: empresaPreview,
             ok: false,
@@ -1009,7 +1054,7 @@ export class ImportExportService {
           fuente,
           etapa: etapaRow,
           valorEstimado: estimatedValue,
-          empresaNombre: empresaNombreT,
+          empresaNombre: empresaNombrePreview,
           empresaRuc: empresaRucT,
           empresaResumen,
           ok: false,
@@ -1032,7 +1077,7 @@ export class ImportExportService {
           fuente,
           etapa: etapaRow,
           valorEstimado: estimatedValue,
-          empresaNombre: empresaNombreT,
+          empresaNombre: empresaNombrePreview,
           empresaRuc: empresaRucT,
           empresaResumen,
           ok: false,
@@ -1050,7 +1095,7 @@ export class ImportExportService {
         fuente,
         etapa: etapaRow,
         valorEstimado: estimatedValue,
-        empresaNombre: empresaNombreT,
+        empresaNombre: empresaNombrePreview,
         empresaRuc: empresaRucT,
         empresaResumen,
         ok: true,
@@ -1435,6 +1480,8 @@ export class ImportExportService {
         continue;
       }
 
+      const csvColumns = this.buildCompanyImportPreviewCsvColumns(rows[0]!, row);
+
       const nombreEmpresa = rowGet(row, headerIndex, ['nombre', 'name']);
       const fuente = rowGet(row, headerIndex, ['fuente', 'source']);
       const factRaw = rowGet(row, headerIndex, [
@@ -1461,11 +1508,16 @@ export class ImportExportService {
             : 0,
           ok: false,
           error,
+          csvColumns,
         });
       };
 
-      if (!nombreEmpresaTrim || !fuente?.trim()) {
-        pushErr('Faltan nombre de empresa o fuente');
+      if (!fuente?.trim()) {
+        pushErr('Falta fuente');
+        continue;
+      }
+      if (!nombreEmpresaTrim && !rucRaw) {
+        pushErr('Indica nombre de empresa o RUC');
         continue;
       }
       if (
@@ -1497,9 +1549,10 @@ export class ImportExportService {
       const existingRuc = rucRaw
         ? await this.findCompanyByRucInput(rucRaw)
         : null;
-      const existingName = existingRuc
-        ? null
-        : await this.findCompanyByNameInsensitive(nombreEmpresaTrim);
+      const existingName =
+        existingRuc || !nombreEmpresaTrim
+          ? null
+          : await this.findCompanyByNameInsensitive(nombreEmpresaTrim);
 
       let empresaResumen: string;
       let companyId: string | null = null;
@@ -1515,10 +1568,15 @@ export class ImportExportService {
         companyKeyForDup = existingName.id;
       } else {
         const rd = rucRaw.replace(/\D/g, '');
-        companyKeyForDup = `__new__:${rd || 'sin-ruc'}:${this.foldContactImportKey(nombreEmpresaTrim)}`;
+        const provisionalName =
+          nombreEmpresaTrim || `Empresa RUC ${rd || rucRaw}`;
+        companyKeyForDup = `__new__:${rd || 'sin-ruc'}:${this.foldContactImportKey(
+          nombreEmpresaTrim || provisionalName,
+        )}`;
+        /** Alta nueva: RUC consultable en SUNAT vía Factiliza al importar. */
         empresaResumen = rucRaw
-          ? `Nueva empresa · ${nombreEmpresaTrim} (datos SUNAT al importar si el RUC es válido)`
-          : `Nueva empresa · ${nombreEmpresaTrim}`;
+          ? `${rd || rucRaw.trim()} (SUNAT)`
+          : provisionalName;
       }
 
       const contactoNombreCsv = rowGet(row, headerIndex, [
@@ -1547,6 +1605,7 @@ export class ImportExportService {
           etapa: etapaSlug,
           facturacionEstimada,
           ok: true,
+          csvColumns,
         });
         continue;
       }
@@ -1567,6 +1626,7 @@ export class ImportExportService {
           facturacionEstimada,
           ok: false,
           error: surf.error,
+          csvColumns,
         });
         continue;
       }
@@ -1584,6 +1644,7 @@ export class ImportExportService {
           facturacionEstimada,
           ok: false,
           error: `Duplicado en el archivo respecto a la fila ${dupFile} (misma empresa y mismo contacto).`,
+          csvColumns,
         });
         continue;
       }
@@ -1609,6 +1670,7 @@ export class ImportExportService {
         etapa: etapaSlug,
         facturacionEstimada,
         ok: true,
+        csvColumns,
       });
     }
 
@@ -1641,31 +1703,35 @@ export class ImportExportService {
     if (this.looksLikeDniForFactiliza(params.contactoDocTipo, docDigits)) {
       if (!ncsv) {
         return {
-          contactoVista: `(Nombre vía RENIEC · DNI ${docDigits})`,
+          contactoVista: `${docDigits} (SUNAT)`,
           nameForExistCheck: '',
           docDigits,
           docStored: docDigits,
         };
       }
+      const nameFmt = formatImportedPersonName(ncsv);
       return {
-        contactoVista: ncsv,
-        nameForExistCheck: ncsv,
+        contactoVista: nameFmt,
+        nameForExistCheck: nameFmt,
         docDigits,
         docStored: docDigits,
       };
     }
     if (this.looksLikeCeeForFactiliza(params.contactoDocTipo) && docRaw) {
       if (!ncsv) {
+        const docShow =
+          docRaw.replace(/\s+/g, '').trim() || docRaw.trim();
         return {
-          contactoVista: '(Nombre vía Factiliza · CEE)',
+          contactoVista: `${docShow} (SUNAT)`,
           nameForExistCheck: '',
           docDigits: '',
           docStored: docRaw,
         };
       }
+      const nameFmtCee = formatImportedPersonName(ncsv);
       return {
-        contactoVista: ncsv,
-        nameForExistCheck: ncsv,
+        contactoVista: nameFmtCee,
+        nameForExistCheck: nameFmtCee,
         docDigits: '',
         docStored: docRaw,
       };
@@ -1679,9 +1745,10 @@ export class ImportExportService {
           'Contacto: falta nombre o documento inválido (DNI/CEE) para completar datos',
       };
     }
+    const nameFmtFinal = formatImportedPersonName(ncsv);
     return {
-      contactoVista: ncsv,
-      nameForExistCheck: ncsv,
+      contactoVista: nameFmtFinal,
+      nameForExistCheck: nameFmtFinal,
       docDigits,
       docStored: docRaw || undefined,
     };
@@ -1716,6 +1783,8 @@ export class ImportExportService {
 
       const nombreEmpresa = rowGet(row, headerIndex, ['nombre', 'name']);
       const fuente = rowGet(row, headerIndex, ['fuente', 'source']);
+      const rucRaw = rowGet(row, headerIndex, ['ruc']).trim();
+      const nombreEmpresaTrim = nombreEmpresa.trim();
       const factRaw = rowGet(row, headerIndex, [
         'facturacion_estimada',
         'facturacion',
@@ -1724,10 +1793,17 @@ export class ImportExportService {
       const facturacionEstimada = Number.parseFloat(
         factRaw.replace(',', '.'),
       );
-      if (!nombreEmpresa?.trim() || !fuente?.trim()) {
+      if (!fuente?.trim()) {
         errors.push({
           row: excelRow,
-          message: 'Faltan nombre de empresa o fuente',
+          message: 'Falta fuente',
+        });
+        continue;
+      }
+      if (!nombreEmpresaTrim && !rucRaw) {
+        errors.push({
+          row: excelRow,
+          message: 'Indica nombre de empresa o RUC',
         });
         continue;
       }
@@ -1771,27 +1847,33 @@ export class ImportExportService {
       const assignedRow =
         rowGet(row, headerIndex, ['asignado_a', 'assignedto']) || undefined;
 
-      const rucRaw = rowGet(row, headerIndex, ['ruc']).trim();
-      const nombreEmpresaTrim = nombreEmpresa.trim();
-
       let companyId: string;
       try {
         const existingRuc =
           rucRaw ? await this.findCompanyByRucInput(rucRaw) : null;
-        const existingName = existingRuc
-          ? null
-          : await this.findCompanyByNameInsensitive(nombreEmpresaTrim);
+        const existingName =
+          existingRuc || !nombreEmpresaTrim
+            ? null
+            : await this.findCompanyByNameInsensitive(nombreEmpresaTrim);
 
         if (existingRuc) {
           companyId = existingRuc.id;
         } else if (existingName) {
           companyId = existingName.id;
         } else {
+          const rucDigits = rucRaw.replace(/\D/g, '');
+          const nameForCreate =
+            nombreEmpresaTrim || `Empresa RUC ${rucDigits || rucRaw}`;
+          const razonRow = rowGet(
+            row,
+            headerIndex,
+            ['razon_social', 'razonsocial'],
+          ).trim();
           let dto: CreateCompanyDto = {
-            name: nombreEmpresaTrim,
-            razonSocial:
-              rowGet(row, headerIndex, ['razon_social', 'razonsocial']) ||
-              undefined,
+            name: formatImportedCompanyName(nameForCreate),
+            razonSocial: razonRow
+              ? formatImportedCompanyName(razonRow)
+              : undefined,
             ruc: rucRaw || undefined,
             telefono: rowGet(row, headerIndex, ['telefono']) || undefined,
             domain: rowGet(row, headerIndex, ['domain', 'dominio']) || undefined,
