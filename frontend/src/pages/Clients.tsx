@@ -23,6 +23,7 @@ import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { rightDrawerSheetContentClass } from '@/lib/rightPanelShell';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -372,7 +373,10 @@ export default function Clients() {
       </div>
 
       <Sheet open={!!selectedClient} onOpenChange={(open) => !open && setSelectedClient(null)}>
-        <SheetContent className="overflow-y-auto border-l-0 bg-gradient-to-br from-sky-50 via-background to-rose-50 shadow-[-4px_0_24px_-4px_rgba(0,0,0,0.12)] dark:from-sky-950 dark:via-background dark:to-rose-950 dark:shadow-[-4px_0_24px_-4px_rgba(0,0,0,0.4)] sm:max-w-lg">
+        <SheetContent
+          side="right"
+          className={rightDrawerSheetContentClass('lg', 'overflow-y-auto')}
+        >
           {selectedClient && (
             <>
               <SheetHeader className="pb-2">

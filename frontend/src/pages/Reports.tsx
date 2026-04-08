@@ -35,6 +35,9 @@ import {
   getSourceLabelFromCatalog,
   getStageLabelFromCatalog,
 } from '@/store/crmConfigStore';
+import { ChartCardBody } from '@/components/shared/ChartCardBody';
+import { chartHasAnyValue } from '@/lib/chartEmpty';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const COLORS = ['#13944C', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];
 
@@ -124,6 +127,30 @@ export default function Reports() {
   const followUpsData = summary?.followUpsByMonth ?? [];
   const salesByMonthData = summary?.salesByMonth ?? [];
   const performanceByAdvisor = summary?.performanceByAdvisor ?? [];
+
+  const chartH = 'h-[300px]';
+
+  const periodChartEmpty =
+    !loading && (!summary || !chartHasAnyValue(leadsByPeriodData, ['leads', 'nuevos']));
+  const sourceChartEmpty =
+    !loading && (!summary || !chartHasAnyValue(leadsBySourceData, ['value']));
+  const conversionChartEmpty =
+    !loading && (!summary || !chartHasAnyValue(conversionData, ['tasa']));
+  const advisorChartEmpty =
+    !loading &&
+    (!summary || !chartHasAnyValue(performanceByAdvisor, ['leads', 'ventas']));
+  const salesChartEmpty =
+    !loading && (!summary || !chartHasAnyValue(salesByMonthData, ['ventas', 'meta']));
+  const pipelineChartEmpty =
+    !loading &&
+    (!summary || !chartHasAnyValue(opportunitiesByStageData, ['value', 'count']));
+  const activitiesChartEmpty =
+    !loading &&
+    (!summary ||
+      !chartHasAnyValue(activitiesByTypeData, ['llamadas', 'reuniones', 'correos']));
+  const followUpsChartEmpty =
+    !loading &&
+    (!summary || !chartHasAnyValue(followUpsData, ['completados', 'pendientes']));
 
   const summaryCards = useMemo(
     () => [
@@ -245,30 +272,43 @@ export default function Reports() {
 
       {/* Summary Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {summaryCards.map((card) => (
-          <Card key={card.label} className="py-0">
-            <CardContent className="px-4 py-3">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">{card.label}</p>
-                <div className={`flex size-10 items-center justify-center rounded-lg ${card.bg}`}>
-                  <card.icon className={`size-5 ${card.color}`} />
-                </div>
-              </div>
-              <p className="mt-2 text-2xl font-bold">{card.value}</p>
-              <p
-                className={`mt-1 text-xs ${
-                  card.trendType === 'positive'
-                    ? 'text-emerald-600'
-                    : card.trendType === 'negative'
-                      ? 'text-red-600'
-                      : 'text-muted-foreground'
-                }`}
-              >
-                {card.trend}
-              </p>
-            </CardContent>
-          </Card>
-        ))}
+        {loading
+          ? Array.from({ length: 4 }, (_, i) => (
+              <Card key={`sk-${i}`} className="py-0">
+                <CardContent className="space-y-3 px-4 py-3">
+                  <div className="flex items-center justify-between">
+                    <Skeleton className="h-4 w-[55%]" />
+                    <Skeleton className="size-10 rounded-lg" />
+                  </div>
+                  <Skeleton className="h-8 w-[40%]" />
+                  <Skeleton className="h-3 w-[70%]" />
+                </CardContent>
+              </Card>
+            ))
+          : summaryCards.map((card) => (
+              <Card key={card.label} className="py-0">
+                <CardContent className="px-4 py-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">{card.label}</p>
+                    <div className={`flex size-10 items-center justify-center rounded-lg ${card.bg}`}>
+                      <card.icon className={`size-5 ${card.color}`} />
+                    </div>
+                  </div>
+                  <p className="mt-2 text-2xl font-bold">{card.value}</p>
+                  <p
+                    className={`mt-1 text-xs ${
+                      card.trendType === 'positive'
+                        ? 'text-emerald-600'
+                        : card.trendType === 'negative'
+                          ? 'text-red-600'
+                          : 'text-muted-foreground'
+                    }`}
+                  >
+                    {card.trend}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
       </div>
 
       {/* Charts Grid */}
@@ -280,48 +320,56 @@ export default function Reports() {
             <CardDescription>Evolución de captación de contactos en el tiempo</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={leadsByPeriodData}>
-                <defs>
-                  <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#13944C" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#13944C" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="colorNuevos" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartTheme.gridStroke} />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-                <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: '8px',
-                    border: `1px solid ${chartTheme.tooltipBorder}`,
-                    backgroundColor: chartTheme.tooltipBg,
-                    fontSize: '13px',
-                  }}
-                />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
-                <Area
-                  type="monotone"
-                  dataKey="leads"
-                  name="Total Contactos"
-                  stroke="#13944C"
-                  strokeWidth={2}
-                  fill="url(#colorLeads)"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="nuevos"
-                  name="Nuevos"
-                  stroke="#3b82f6"
-                  strokeWidth={2}
-                  fill="url(#colorNuevos)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            <ChartCardBody
+              loading={loading}
+              isEmpty={periodChartEmpty}
+              variant="area"
+              emptyMessage="Sin evolución de contactos en este periodo."
+              className={chartH}
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={leadsByPeriodData}>
+                  <defs>
+                    <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#13944C" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#13944C" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="colorNuevos" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartTheme.gridStroke} />
+                  <XAxis dataKey="name" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: '8px',
+                      border: `1px solid ${chartTheme.tooltipBorder}`,
+                      backgroundColor: chartTheme.tooltipBg,
+                      fontSize: '13px',
+                    }}
+                  />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
+                  <Area
+                    type="monotone"
+                    dataKey="leads"
+                    name="Total Contactos"
+                    stroke="#13944C"
+                    strokeWidth={2}
+                    fill="url(#colorLeads)"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="nuevos"
+                    name="Nuevos"
+                    stroke="#3b82f6"
+                    strokeWidth={2}
+                    fill="url(#colorNuevos)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </ChartCardBody>
           </CardContent>
         </Card>
 
@@ -332,35 +380,43 @@ export default function Reports() {
             <CardDescription>Distribución de contactos según canal de origen</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={leadsBySourceData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={65}
-                  outerRadius={100}
-                  paddingAngle={3}
-                  dataKey="value"
-                  nameKey="name"
-                  label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
-                  labelLine={{ strokeWidth: 1 }}
-                  style={{ fontSize: '11px' }}
-                >
-                  {leadsBySourceData.map((_entry, index) => (
-                    <Cell key={`cell-source-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: '8px',
-                    border: `1px solid ${chartTheme.tooltipBorder}`,
-                    backgroundColor: chartTheme.tooltipBg,
-                    fontSize: '13px',
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+            <ChartCardBody
+              loading={loading}
+              isEmpty={sourceChartEmpty}
+              variant="donut"
+              emptyMessage="Sin contactos por fuente en este periodo."
+              className={chartH}
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={leadsBySourceData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={65}
+                    outerRadius={100}
+                    paddingAngle={3}
+                    dataKey="value"
+                    nameKey="name"
+                    label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                    labelLine={{ strokeWidth: 1 }}
+                    style={{ fontSize: '11px' }}
+                  >
+                    {leadsBySourceData.map((_entry, index) => (
+                      <Cell key={`cell-source-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: '8px',
+                      border: `1px solid ${chartTheme.tooltipBorder}`,
+                      backgroundColor: chartTheme.tooltipBg,
+                      fontSize: '13px',
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </ChartCardBody>
           </CardContent>
         </Card>
 
@@ -371,36 +427,44 @@ export default function Reports() {
             <CardDescription>Porcentaje de conversión mensual de contactos a clientes</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={conversionData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartTheme.gridStroke} />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-                <YAxis
-                  tick={{ fontSize: 12 }}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(v) => `${v}%`}
-                />
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: '8px',
-                    border: `1px solid ${chartTheme.tooltipBorder}`,
-                    backgroundColor: chartTheme.tooltipBg,
-                    fontSize: '13px',
-                  }}
-                  formatter={(value?: number) => [`${(value ?? 0)}%`, 'Conversión']}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="tasa"
-                  name="Tasa de Conversión"
-                  stroke="#8b5cf6"
-                  strokeWidth={2.5}
-                  dot={{ r: 5, fill: '#8b5cf6', strokeWidth: 2, stroke: '#fff' }}
-                  activeDot={{ r: 7 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            <ChartCardBody
+              loading={loading}
+              isEmpty={conversionChartEmpty}
+              variant="line"
+              emptyMessage="Sin datos de conversión en este periodo."
+              className={chartH}
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={conversionData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartTheme.gridStroke} />
+                  <XAxis dataKey="name" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                  <YAxis
+                    tick={{ fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(v) => `${v}%`}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: '8px',
+                      border: `1px solid ${chartTheme.tooltipBorder}`,
+                      backgroundColor: chartTheme.tooltipBg,
+                      fontSize: '13px',
+                    }}
+                    formatter={(value?: number) => [`${(value ?? 0)}%`, 'Conversión']}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="tasa"
+                    name="Tasa de Conversión"
+                    stroke="#8b5cf6"
+                    strokeWidth={2.5}
+                    dot={{ r: 5, fill: '#8b5cf6', strokeWidth: 2, stroke: '#fff' }}
+                    activeDot={{ r: 7 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartCardBody>
           </CardContent>
         </Card>
 
@@ -411,31 +475,39 @@ export default function Reports() {
             <CardDescription>Contactos asignados y ventas cerradas por ejecutivo</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={performanceByAdvisor} layout="vertical" margin={{ left: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={chartTheme.gridStroke} />
-                <XAxis type="number" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-                <YAxis
-                  type="category"
-                  dataKey="name"
-                  tick={{ fontSize: 12 }}
-                  tickLine={false}
-                  axisLine={false}
-                  width={80}
-                />
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: '8px',
-                    border: `1px solid ${chartTheme.tooltipBorder}`,
-                    backgroundColor: chartTheme.tooltipBg,
-                    fontSize: '13px',
-                  }}
-                />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
-                <Bar dataKey="leads" name="Contactos" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={14} />
-                <Bar dataKey="ventas" name="Ventas" fill="#13944C" radius={[0, 4, 4, 0]} barSize={14} />
-              </BarChart>
-            </ResponsiveContainer>
+            <ChartCardBody
+              loading={loading}
+              isEmpty={advisorChartEmpty}
+              variant="barHorizontal"
+              emptyMessage="Sin rendimiento por asesor en este periodo."
+              className={chartH}
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={performanceByAdvisor} layout="vertical" margin={{ left: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={chartTheme.gridStroke} />
+                  <XAxis type="number" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    tick={{ fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={false}
+                    width={80}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: '8px',
+                      border: `1px solid ${chartTheme.tooltipBorder}`,
+                      backgroundColor: chartTheme.tooltipBg,
+                      fontSize: '13px',
+                    }}
+                  />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
+                  <Bar dataKey="leads" name="Contactos" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={14} />
+                  <Bar dataKey="ventas" name="Ventas" fill="#13944C" radius={[0, 4, 4, 0]} barSize={14} />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartCardBody>
           </CardContent>
         </Card>
 
@@ -446,30 +518,38 @@ export default function Reports() {
             <CardDescription>Ingresos mensuales vs meta establecida</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={salesByMonthData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartTheme.gridStroke} />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-                <YAxis
-                  tick={{ fontSize: 12 }}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
-                />
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: '8px',
-                    border: `1px solid ${chartTheme.tooltipBorder}`,
-                    backgroundColor: chartTheme.tooltipBg,
-                    fontSize: '13px',
-                  }}
-                  formatter={(value?: number) => [formatCurrency(value ?? 0)]}
-                />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
-                <Bar dataKey="ventas" name="Ventas" fill="#13944C" radius={[4, 4, 0, 0]} barSize={28} />
-                <Bar dataKey="meta" name="Meta" fill={chartTheme.metaBar} radius={[4, 4, 0, 0]} barSize={28} />
-              </BarChart>
-            </ResponsiveContainer>
+            <ChartCardBody
+              loading={loading}
+              isEmpty={salesChartEmpty}
+              variant="bar"
+              emptyMessage="Sin ventas por mes en este periodo."
+              className={chartH}
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={salesByMonthData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartTheme.gridStroke} />
+                  <XAxis dataKey="name" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                  <YAxis
+                    tick={{ fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: '8px',
+                      border: `1px solid ${chartTheme.tooltipBorder}`,
+                      backgroundColor: chartTheme.tooltipBg,
+                      fontSize: '13px',
+                    }}
+                    formatter={(value?: number) => [formatCurrency(value ?? 0)]}
+                  />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
+                  <Bar dataKey="ventas" name="Ventas" fill="#13944C" radius={[4, 4, 0, 0]} barSize={28} />
+                  <Bar dataKey="meta" name="Meta" fill={chartTheme.metaBar} radius={[4, 4, 0, 0]} barSize={28} />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartCardBody>
           </CardContent>
         </Card>
 
@@ -480,35 +560,43 @@ export default function Reports() {
             <CardDescription>Valor total de oportunidades por etapa del embudo</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={opportunitiesByStageData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartTheme.gridStroke} />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                <YAxis
-                  tick={{ fontSize: 12 }}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
-                />
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: '8px',
-                    border: `1px solid ${chartTheme.tooltipBorder}`,
-                    backgroundColor: chartTheme.tooltipBg,
-                    fontSize: '13px',
-                  }}
-                  formatter={(value?: number, name?: string) => [
-                    name === 'value' ? formatCurrency(value ?? 0) : (value ?? 0),
-                    name === 'value' ? 'Valor' : 'Oportunidades',
-                  ]}
-                />
-                <Bar dataKey="value" name="Valor" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={36}>
-                  {opportunitiesByStageData.map((_entry, index) => (
-                    <Cell key={`cell-pipeline-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            <ChartCardBody
+              loading={loading}
+              isEmpty={pipelineChartEmpty}
+              variant="bar"
+              emptyMessage="Sin oportunidades por etapa en este periodo."
+              className={chartH}
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={opportunitiesByStageData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartTheme.gridStroke} />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                  <YAxis
+                    tick={{ fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: '8px',
+                      border: `1px solid ${chartTheme.tooltipBorder}`,
+                      backgroundColor: chartTheme.tooltipBg,
+                      fontSize: '13px',
+                    }}
+                    formatter={(value?: number, name?: string) => [
+                      name === 'value' ? formatCurrency(value ?? 0) : (value ?? 0),
+                      name === 'value' ? 'Valor' : 'Oportunidades',
+                    ]}
+                  />
+                  <Bar dataKey="value" name="Valor" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={36}>
+                    {opportunitiesByStageData.map((_entry, index) => (
+                      <Cell key={`cell-pipeline-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartCardBody>
           </CardContent>
         </Card>
 
@@ -519,25 +607,33 @@ export default function Reports() {
             <CardDescription>Desglose mensual por tipo de actividad comercial</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={activitiesByTypeData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartTheme.gridStroke} />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-                <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: '8px',
-                    border: `1px solid ${chartTheme.tooltipBorder}`,
-                    backgroundColor: chartTheme.tooltipBg,
-                    fontSize: '13px',
-                  }}
-                />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
-                <Bar dataKey="llamadas" name="Llamadas" stackId="a" fill="#13944C" />
-                <Bar dataKey="reuniones" name="Reuniones" stackId="a" fill="#3b82f6" />
-                <Bar dataKey="correos" name="Correos" stackId="a" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <ChartCardBody
+              loading={loading}
+              isEmpty={activitiesChartEmpty}
+              variant="stackedBar"
+              emptyMessage="Sin actividades registradas en este periodo."
+              className={chartH}
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={activitiesByTypeData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartTheme.gridStroke} />
+                  <XAxis dataKey="name" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: '8px',
+                      border: `1px solid ${chartTheme.tooltipBorder}`,
+                      backgroundColor: chartTheme.tooltipBg,
+                      fontSize: '13px',
+                    }}
+                  />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
+                  <Bar dataKey="llamadas" name="Llamadas" stackId="a" fill="#13944C" />
+                  <Bar dataKey="reuniones" name="Reuniones" stackId="a" fill="#3b82f6" />
+                  <Bar dataKey="correos" name="Correos" stackId="a" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartCardBody>
           </CardContent>
         </Card>
 
@@ -548,40 +644,48 @@ export default function Reports() {
             <CardDescription>Actividades completadas vs pendientes por mes</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={followUpsData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartTheme.gridStroke} />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-                <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: '8px',
-                    border: `1px solid ${chartTheme.tooltipBorder}`,
-                    backgroundColor: chartTheme.tooltipBg,
-                    fontSize: '13px',
-                  }}
-                />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
-                <Line
-                  type="monotone"
-                  dataKey="completados"
-                  name="Completados"
-                  stroke="#13944C"
-                  strokeWidth={2.5}
-                  dot={{ r: 4, fill: '#13944C', strokeWidth: 2, stroke: '#fff' }}
-                  activeDot={{ r: 6 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="pendientes"
-                  name="Pendientes"
-                  stroke="#ec4899"
-                  strokeWidth={2.5}
-                  dot={{ r: 4, fill: '#ec4899', strokeWidth: 2, stroke: '#fff' }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            <ChartCardBody
+              loading={loading}
+              isEmpty={followUpsChartEmpty}
+              variant="line"
+              emptyMessage="Sin seguimientos en este periodo."
+              className={chartH}
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={followUpsData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartTheme.gridStroke} />
+                  <XAxis dataKey="name" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: '8px',
+                      border: `1px solid ${chartTheme.tooltipBorder}`,
+                      backgroundColor: chartTheme.tooltipBg,
+                      fontSize: '13px',
+                    }}
+                  />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
+                  <Line
+                    type="monotone"
+                    dataKey="completados"
+                    name="Completados"
+                    stroke="#13944C"
+                    strokeWidth={2.5}
+                    dot={{ r: 4, fill: '#13944C', strokeWidth: 2, stroke: '#fff' }}
+                    activeDot={{ r: 6 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="pendientes"
+                    name="Pendientes"
+                    stroke="#ec4899"
+                    strokeWidth={2.5}
+                    dot={{ r: 4, fill: '#ec4899', strokeWidth: 2, stroke: '#fff' }}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartCardBody>
           </CardContent>
         </Card>
       </div>

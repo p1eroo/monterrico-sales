@@ -7,7 +7,7 @@ import {
   Building2, Globe, DollarSign, CalendarDays, MapPin,
   FileArchive, Loader2, CheckSquare,
 } from 'lucide-react';
-import type { Contact, Etapa, CompanyRubro, CompanyTipo, ContactSource } from '@/types';
+import type { Contact, Etapa, CompanyRubro, CompanyTipo } from '@/types';
 import {
   contactSourceLabels, etapaLabels,
   companyRubroLabels,
@@ -36,6 +36,7 @@ import {
   type NewOpportunityFormValues,
 } from '@/components/shared/NewOpportunityFormDialog';
 import { TasksTab, type TasksTabHandle } from '@/components/shared/TasksTab';
+import { ContactEditDialog, type ContactEditSavePayload } from '@/components/shared/ContactEditDialog';
 import { ChangeEtapaDialog } from '@/components/shared/ChangeEtapaDialog';
 import { AssignDialog } from '@/components/shared/AssignDialog';
 import { EntityFilesTab } from '@/components/files';
@@ -43,14 +44,6 @@ import { EntityFilesTab } from '@/components/files';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { nextPendingTaskForContact } from '@/lib/nextPendingTask';
 import { useActivities } from '@/hooks/useActivities';
@@ -296,14 +289,6 @@ export default function ContactoDetailPage() {
   const [linkCompanySearch, setLinkCompanySearch] = useState('');
   const [newContactOpen, setNewContactOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editForm, setEditForm] = useState({
-    name: '',
-    cargo: '',
-    telefono: '',
-    correo: '',
-    fuente: '' as ContactSource,
-    estimatedValue: 0,
-  });
 
   useEffect(() => {
     setContactActivities(initialActivities);
@@ -354,53 +339,41 @@ export default function ContactoDetailPage() {
   }
 
   function handleOpenEditDialog() {
-    if (!contact) return;
-    setEditForm({
-      name: contact.name,
-      cargo: contact.cargo ?? '',
-      telefono: contact.telefono,
-      correo: contact.correo,
-      fuente: contact.fuente,
-      estimatedValue: contact.estimatedValue,
-    });
     setEditDialogOpen(true);
   }
 
-  function handleSaveEdit() {
+  async function handlePersistContactEdit(payload: ContactEditSavePayload) {
     if (!contact) return;
     if (fromApi && routeId) {
-      void (async () => {
-        try {
-          const updated = await api<ApiContactDetail>(`/contacts/${routeId}`, {
-            method: 'PATCH',
-            body: JSON.stringify({
-              name: editForm.name.trim(),
-              cargo: editForm.cargo.trim() || null,
-              telefono: editForm.telefono.trim(),
-              correo: editForm.correo.trim(),
-              fuente: editForm.fuente,
-              estimatedValue: editForm.estimatedValue,
-            }),
-          });
-          setApiRecord(updated);
-          toast.success('Contacto actualizado correctamente');
-          setEditDialogOpen(false);
-        } catch (e) {
-          toast.error(e instanceof Error ? e.message : 'No se pudo guardar');
-        }
-      })();
+      try {
+        const updated = await api<ApiContactDetail>(`/contacts/${routeId}`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            name: payload.name,
+            cargo: payload.cargo || null,
+            telefono: payload.telefono,
+            correo: payload.correo,
+            fuente: payload.fuente,
+            estimatedValue: payload.estimatedValue,
+          }),
+        });
+        setApiRecord(updated);
+        toast.success('Contacto actualizado correctamente');
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'No se pudo guardar');
+        throw e;
+      }
       return;
     }
     updateContact(contact.id, {
-      name: editForm.name,
-      cargo: editForm.cargo || undefined,
-      telefono: editForm.telefono,
-      correo: editForm.correo,
-      fuente: editForm.fuente,
-      estimatedValue: editForm.estimatedValue,
+      name: payload.name,
+      cargo: payload.cargo || undefined,
+      telefono: payload.telefono,
+      correo: payload.correo,
+      fuente: payload.fuente,
+      estimatedValue: payload.estimatedValue,
     });
     toast.success('Contacto actualizado correctamente');
-    setEditDialogOpen(false);
   }
 
 
@@ -1062,56 +1035,12 @@ export default function ContactoDetailPage() {
 
     </DetailLayout>
 
-      {/* Edit Dialog */}
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Editar Contacto</DialogTitle>
-            <DialogDescription>Modifica los datos del contacto.</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-2">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-name">Nombre</Label>
-                <Input id="edit-name" value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-cargo">Cargo</Label>
-                <Input id="edit-cargo" value={editForm.cargo} onChange={(e) => setEditForm((f) => ({ ...f, cargo: e.target.value }))} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-phone">Teléfono</Label>
-                <Input id="edit-phone" value={editForm.telefono} onChange={(e) => setEditForm((f) => ({ ...f, telefono: e.target.value }))} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-email">Correo</Label>
-                <Input id="edit-email" type="email" value={editForm.correo} onChange={(e) => setEditForm((f) => ({ ...f, correo: e.target.value }))} />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Fuente</Label>
-              <Select value={editForm.fuente} onValueChange={(v) => setEditForm((f) => ({ ...f, fuente: v as ContactSource }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(contactSourceLabels).map(([key, label]) => (
-                    <SelectItem key={key} value={key}>{label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-value">Valor estimado (S/)</Label>
-              <Input id="edit-value" type="number" min={0} value={editForm.estimatedValue} onChange={(e) => setEditForm((f) => ({ ...f, estimatedValue: Number(e.target.value) }))} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSaveEdit} disabled={!editForm.name.trim()}>Guardar cambios</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ContactEditDialog
+        contact={contact}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        onSave={handlePersistContactEdit}
+      />
 
       <NewCompanyWizard
         open={addCompanyOpen}

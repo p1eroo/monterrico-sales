@@ -14,6 +14,8 @@ import { isLikelyOpportunityCuid } from '@/lib/opportunityApi';
 import { getPrimaryCompany } from '@/lib/utils';
 
 import { PageHeader } from '@/components/shared/PageHeader';
+import { ContactEditDialog, type ContactEditSavePayload } from '@/components/shared/ContactEditDialog';
+import { ContactPreviewSheet } from '@/components/shared/ContactPreviewSheet';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
@@ -132,6 +134,8 @@ export default function ContactosPage() {
   const [pendingImportFile, setPendingImportFile] = useState<File | null>(
     null,
   );
+  const [previewContact, setPreviewContact] = useState<Contact | null>(null);
+  const [editContact, setEditContact] = useState<Contact | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search), 400);
@@ -182,6 +186,44 @@ export default function ContactosPage() {
       return;
     }
     navigate(contactDetailHref(contact));
+  }
+
+  function openContactPreview(contact: Contact) {
+    setPreviewContact(contact);
+  }
+
+  function openContactEdit(contact: Contact) {
+    if (isPendingContactId(contact.id)) {
+      toast.info('Guardando contacto en el servidor…');
+      return;
+    }
+    if (!isLikelyContactCuid(contact.id)) {
+      toast.error('Solo se pueden editar contactos guardados en el servidor');
+      return;
+    }
+    setEditContact(contact);
+  }
+
+  async function handleSaveContactFromList(payload: ContactEditSavePayload) {
+    if (!editContact) return;
+    try {
+      await api<ApiContactDetail>(`/contacts/${editContact.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          name: payload.name,
+          cargo: payload.cargo || null,
+          telefono: payload.telefono,
+          correo: payload.correo,
+          fuente: payload.fuente,
+          estimatedValue: payload.estimatedValue,
+        }),
+      });
+      await loadApiContacts();
+      toast.success('Contacto actualizado correctamente');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'No se pudo guardar');
+      throw e;
+    }
   }
   const startIndex = totalContacts === 0 ? 0 : (page - 1) * ITEMS_PER_PAGE + 1;
   const endIndex = Math.min(page * ITEMS_PER_PAGE, totalContacts);
@@ -835,6 +877,8 @@ export default function ContactosPage() {
             }
             isPendingContactId={isPendingContactId}
             onView={openContactDetail}
+            onPreview={openContactPreview}
+            onEdit={openContactEdit}
             onDelete={(id) => { setContactToDelete(id); setDeleteDialogOpen(true); }}
           />
         ) : (
@@ -842,6 +886,8 @@ export default function ContactosPage() {
             contacts={displayedContacts}
             isPendingContactId={isPendingContactId}
             onView={openContactDetail}
+            onPreview={openContactPreview}
+            onEdit={openContactEdit}
             onDelete={(id) => { setContactToDelete(id); setDeleteDialogOpen(true); }}
           />
         )}
@@ -899,9 +945,36 @@ export default function ContactosPage() {
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         title="Eliminar Contacto"
-        description="¿Estás seguro de que deseas eliminar este contacto? Esta acción no se puede deshacer."
+        description="¿Estás seguro que deseas eliminar este contacto? Esta acción no se puede deshacer."
         onConfirm={handleDelete}
         variant="destructive"
+      />
+
+      <ContactPreviewSheet
+        contact={previewContact}
+        open={previewContact !== null}
+        onOpenChange={(open) => {
+          if (!open) setPreviewContact(null);
+        }}
+        onOpenFullDetail={() => {
+          const c = previewContact;
+          setPreviewContact(null);
+          if (c) openContactDetail(c);
+        }}
+        onEdit={() => {
+          const c = previewContact;
+          setPreviewContact(null);
+          if (c) openContactEdit(c);
+        }}
+      />
+
+      <ContactEditDialog
+        contact={editContact}
+        open={editContact !== null}
+        onOpenChange={(open) => {
+          if (!open) setEditContact(null);
+        }}
+        onSave={handleSaveContactFromList}
       />
     </div>
   );
@@ -917,6 +990,8 @@ interface ContactsTableProps {
   onToggleSelect: (id: string) => void;
   isPendingContactId: (id: string) => boolean;
   onView: (contact: Contact) => void;
+  onPreview: (contact: Contact) => void;
+  onEdit: (contact: Contact) => void;
   onDelete: (id: string) => void;
 }
 
@@ -928,6 +1003,8 @@ function ContactsTable({
   onToggleSelect,
   isPendingContactId,
   onView,
+  onPreview,
+  onEdit,
   onDelete,
 }: ContactsTableProps) {
   return (
@@ -1012,10 +1089,10 @@ function ContactsTable({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => onView(contact)}>
+                    <DropdownMenuItem onClick={() => onPreview(contact)}>
                       <Eye /> Ver
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onView(contact)}>
+                    <DropdownMenuItem onClick={() => onEdit(contact)}>
                       <Pencil /> Editar
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
@@ -1040,10 +1117,19 @@ interface ContactsGridProps {
   contacts: Contact[];
   isPendingContactId: (id: string) => boolean;
   onView: (contact: Contact) => void;
+  onPreview: (contact: Contact) => void;
+  onEdit: (contact: Contact) => void;
   onDelete: (id: string) => void;
 }
 
-function ContactsGrid({ contacts: data, isPendingContactId, onView, onDelete }: ContactsGridProps) {
+function ContactsGrid({
+  contacts: data,
+  isPendingContactId,
+  onView,
+  onPreview,
+  onEdit,
+  onDelete,
+}: ContactsGridProps) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {data.map((contact) => {
@@ -1077,9 +1163,12 @@ function ContactsGrid({ contacts: data, isPendingContactId, onView, onDelete }: 
                     <MoreHorizontal className="size-3.5" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => onView(contact)}>
+                  <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => onPreview(contact)}>
                     <Eye /> Ver
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onEdit(contact)}>
+                    <Pencil /> Editar
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem variant="destructive" onClick={() => onDelete(contact.id)}>

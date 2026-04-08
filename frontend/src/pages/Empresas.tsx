@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import {
   Search, Building2, Users, ChevronRight, ChevronLeft, Briefcase,
   FileSpreadsheet, Upload, Download, Plus, List, Grid3X3, DollarSign, Loader2,
+  Eye, Pencil, Trash2, MoreHorizontal,
 } from 'lucide-react';
 import type { Etapa, CompanyRubro, CompanyTipo, Company, ContactSource } from '@/types';
 import { companyRubroLabels, companyTipoLabels, etapaLabels, contactSourceLabels } from '@/data/mock';
@@ -12,6 +13,9 @@ import { useCompaniesStore } from '@/store/companiesStore';
 
 import { PageHeader } from '@/components/shared/PageHeader';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { CompanyEditDialog, type CompanyEditSavePayload } from '@/components/shared/CompanyEditDialog';
+import { CompanyPreviewSheet } from '@/components/shared/CompanyPreviewSheet';
 import { NewCompanyWizard, type NewCompanyData } from '@/components/shared/NewCompanyWizard';
 
 import { StatusBadge } from '@/components/shared/StatusBadge';
@@ -31,6 +35,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { formatCurrency } from '@/lib/formatters';
+import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
 import { usePermissions } from '@/hooks/usePermissions';
 import {
@@ -55,6 +60,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const etapaOrder: Etapa[] = ['lead', 'contacto', 'reunion_agendada', 'reunion_efectiva', 'propuesta_economica', 'negociacion', 'licitacion', 'licitacion_etapa_final', 'cierre_ganado', 'firma_contrato', 'activo', 'cierre_perdido', 'inactivo'];
 
@@ -222,11 +234,19 @@ function sourceLabelFromApi(s: string | null | undefined): string {
     : s;
 }
 
+function importPreviewCell(v: string | undefined) {
+  const t = (v ?? '').trim();
+  if (t === '') {
+    return <span className="text-muted-foreground">—</span>;
+  }
+  return t;
+}
+
 const ITEMS_PER_PAGE = 25;
 
 export default function EmpresasPage() {
   const navigate = useNavigate();
-  const { companies: standaloneCompanies } = useCompaniesStore();
+  const { companies: standaloneCompanies, updateCompany, deleteCompany } = useCompaniesStore();
 
   const [summaryRows, setSummaryRows] = useState<CompanySummaryRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -254,6 +274,10 @@ export default function EmpresasPage() {
   const [exportBusy, setExportBusy] = useState(false);
   const { users, activeUsers } = useUsers();
   const { hasPermission } = usePermissions();
+  const [previewEmpresa, setPreviewEmpresa] = useState<EmpresaSummaryRow | null>(null);
+  const [editEmpresa, setEditEmpresa] = useState<EmpresaSummaryRow | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [empresaToDelete, setEmpresaToDelete] = useState<EmpresaSummaryRow | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search), 400);
@@ -304,6 +328,13 @@ export default function EmpresasPage() {
     rubroFilter === 'todos' &&
     tipoFilter === 'todos' &&
     advisorFilter === 'todos';
+
+  const companyImportPreviewCsvKeys = useMemo(() => {
+    const withCols = importPreviewData?.rows.find(
+      (r) => r.csvColumns && Object.keys(r.csvColumns).length > 0,
+    );
+    return withCols ? Object.keys(withCols.csvColumns) : [];
+  }, [importPreviewData]);
 
   const displayRows = useMemo((): EmpresaSummaryRow[] => {
     if (page !== 1 || !filtersDefault || standaloneCompanies.length === 0) {
@@ -425,6 +456,86 @@ export default function EmpresasPage() {
       toast.warning(
         `Empresa y contacto guardados. ${opportunityApiError} (la oportunidad quedó pendiente).`,
       );
+    }
+  }
+
+  function openCompanyDetail(emp: EmpresaSummaryRow) {
+    navigate(empresaDetailPath(emp));
+  }
+
+  function openCompanyPreview(emp: EmpresaSummaryRow) {
+    setPreviewEmpresa(emp);
+  }
+
+  function openCompanyEdit(emp: EmpresaSummaryRow) {
+    if (!hasPermission('empresas.editar')) {
+      toast.error('No tienes permiso para editar empresas');
+      return;
+    }
+    setEditEmpresa(emp);
+  }
+
+  function requestDeleteCompany(emp: EmpresaSummaryRow) {
+    if (!hasPermission('empresas.eliminar')) {
+      toast.error('No tienes permiso para eliminar empresas');
+      return;
+    }
+    setEmpresaToDelete(emp);
+    setDeleteDialogOpen(true);
+  }
+
+  async function handleSaveCompanyFromList(payload: CompanyEditSavePayload) {
+    if (!editEmpresa) return;
+    try {
+      if (editEmpresa.isLocalOnly) {
+        updateCompany(editEmpresa.id, {
+          name: payload.name,
+          domain: payload.domain || undefined,
+          rubro: (payload.rubro || undefined) as CompanyRubro | undefined,
+          tipo: (payload.tipo || undefined) as CompanyTipo | undefined,
+        });
+        await loadSummary();
+        toast.success('Empresa actualizada correctamente');
+        return;
+      }
+      await api<ApiCompanyRecord>(`/companies/${editEmpresa.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          name: payload.name,
+          domain: payload.domain?.trim() || undefined,
+          telefono: payload.telefono.trim() || undefined,
+          rubro: payload.rubro || undefined,
+          tipo: payload.tipo || undefined,
+        }),
+      });
+      await loadSummary();
+      toast.success('Empresa actualizada correctamente');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'No se pudo guardar');
+      throw e;
+    }
+  }
+
+  async function handleConfirmDeleteEmpresa() {
+    if (!empresaToDelete) return;
+    try {
+      if (empresaToDelete.isLocalOnly) {
+        deleteCompany(empresaToDelete.id);
+        await loadSummary();
+        toast.success('Empresa eliminada correctamente');
+        return;
+      }
+      if (!isLikelyCompanyCuid(empresaToDelete.id)) {
+        toast.error('Solo se pueden eliminar empresas guardadas en el servidor');
+        return;
+      }
+      await api(`/companies/${empresaToDelete.id}`, { method: 'DELETE' });
+      await loadSummary();
+      toast.success('Empresa eliminada correctamente');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'No se pudo eliminar');
+    } finally {
+      setEmpresaToDelete(null);
     }
   }
 
@@ -566,65 +677,109 @@ export default function EmpresasPage() {
               ) : null}
             </DialogDescription>
           </DialogHeader>
-          <div className="min-h-0 flex-1 overflow-auto px-6 py-3">
+          <div className="min-h-0 flex-1 overflow-hidden px-6 py-3">
             {importPreviewData && importPreviewData.rows.length > 0 ? (
-              <Table className="w-full table-fixed">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-11">Fila</TableHead>
-                    <TableHead className="w-[4.5rem]">Estado</TableHead>
-                    <TableHead className="w-[14%]">Empresa</TableHead>
-                    <TableHead className="w-[8%]">RUC</TableHead>
-                    <TableHead className="w-[14%]">Resumen</TableHead>
-                    <TableHead className="w-[14%]">Contacto</TableHead>
-                    <TableHead className="w-[9%]">Etapa</TableHead>
-                    <TableHead className="w-[9%] text-right">Fact. est.</TableHead>
-                    <TableHead className="min-w-[18%]">Motivo</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {importPreviewData.rows
-                    .slice()
-                    .sort((a, b) => a.row - b.row)
-                    .map((row) => (
-                      <TableRow key={row.row}>
-                        <TableCell className="tabular-nums text-muted-foreground">
-                          {row.row}
-                        </TableCell>
-                        <TableCell>
-                          {row.ok ? (
-                            <Badge variant="secondary" className="font-normal">
-                              OK
-                            </Badge>
-                          ) : (
-                            <Badge variant="destructive" className="font-normal">
-                              Error
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="break-words text-sm align-top">
-                          {row.empresaNombre || '—'}
-                        </TableCell>
-                        <TableCell className="break-all text-xs align-top text-muted-foreground">
-                          {row.empresaRuc || '—'}
-                        </TableCell>
-                        <TableCell className="break-words text-xs align-top text-muted-foreground">
-                          {row.empresaResumen}
-                        </TableCell>
-                        <TableCell className="break-words text-sm align-top">
-                          {row.contactoVista || '—'}
-                        </TableCell>
-                        <TableCell className="text-sm align-top">{row.etapa}</TableCell>
-                        <TableCell className="text-right text-sm align-top tabular-nums">
-                          {formatCurrency(row.facturacionEstimada)}
-                        </TableCell>
-                        <TableCell className="break-words text-sm align-top text-muted-foreground">
-                          {row.ok ? '—' : row.error ?? '—'}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                </TableBody>
-              </Table>
+              <div className="max-h-[min(58vh,560px)] overflow-auto rounded-md border">
+                <Table className="w-max min-w-full text-sm">
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="sticky left-0 z-20 w-12 min-w-12 whitespace-nowrap bg-background px-2 shadow-[2px_0_6px_-4px_rgba(0,0,0,0.25)]">
+                        Fila
+                      </TableHead>
+                      <TableHead
+                        className={cn(
+                          'sticky z-20 w-[5.5rem] min-w-[5.5rem] whitespace-nowrap bg-background px-2 shadow-[2px_0_6px_-4px_rgba(0,0,0,0.25)]',
+                          'left-12',
+                        )}
+                      >
+                        Estado
+                      </TableHead>
+                      <TableHead className="min-w-[12rem] max-w-[20rem] whitespace-normal align-bottom">
+                        ruc(SUNAT)
+                      </TableHead>
+                      <TableHead className="min-w-[11rem] max-w-[18rem] whitespace-normal align-bottom">
+                        doc(SUNAT)
+                      </TableHead>
+                      <TableHead className="min-w-[8rem] align-bottom">Etapa (sistema)</TableHead>
+                      <TableHead className="min-w-[8rem] text-right align-bottom">
+                        Valor resuelto
+                      </TableHead>
+                      {companyImportPreviewCsvKeys.map((key) => (
+                        <TableHead
+                          key={key}
+                          className="min-w-[8rem] max-w-[16rem] align-bottom font-normal text-muted-foreground"
+                        >
+                          {key}
+                        </TableHead>
+                      ))}
+                      <TableHead className="min-w-[12rem] max-w-[24rem] align-bottom">
+                        Motivo / detalle
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {importPreviewData.rows
+                      .slice()
+                      .sort((a, b) => a.row - b.row)
+                      .map((row) => (
+                        <TableRow key={row.row}>
+                          <TableCell
+                            className={cn(
+                              'sticky left-0 z-10 bg-background px-2 align-top tabular-nums text-muted-foreground shadow-[2px_0_6px_-4px_rgba(0,0,0,0.2)]',
+                            )}
+                          >
+                            {row.row}
+                          </TableCell>
+                          <TableCell
+                            className={cn(
+                              'sticky left-12 z-10 bg-background px-2 align-top shadow-[2px_0_6px_-4px_rgba(0,0,0,0.2)]',
+                            )}
+                          >
+                            {row.ok ? (
+                              <Badge
+                                variant="outline"
+                                className="border-emerald-200 bg-emerald-50 font-normal text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
+                              >
+                                OK
+                              </Badge>
+                            ) : (
+                              <Badge variant="destructive" className="font-normal">
+                                Error
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="max-w-[20rem] break-words align-top text-muted-foreground">
+                            {importPreviewCell(row.empresaResumen)}
+                          </TableCell>
+                          <TableCell className="max-w-[18rem] break-words align-top">
+                            {importPreviewCell(row.contactoVista)}
+                          </TableCell>
+                          <TableCell className="max-w-[14rem] break-words align-top text-xs">
+                            {importPreviewCell(row.etapa)}
+                          </TableCell>
+                          <TableCell className="max-w-[10rem] whitespace-nowrap text-right align-top tabular-nums">
+                            {Number.isFinite(row.facturacionEstimada)
+                              ? formatCurrency(row.facturacionEstimada)
+                              : importPreviewCell(undefined)}
+                          </TableCell>
+                          {companyImportPreviewCsvKeys.map((key) => (
+                            <TableCell
+                              key={`${row.row}-${key}`}
+                              className="max-w-[16rem] break-words align-top text-xs"
+                            >
+                              {importPreviewCell(row.csvColumns?.[key])}
+                            </TableCell>
+                          ))}
+                          <TableCell className="max-w-[24rem] break-words align-top text-muted-foreground">
+                            {row.ok
+                              ? importPreviewCell(undefined)
+                              : importPreviewCell(row.error)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              </div>
             ) : importPreviewData ? (
               <p className="text-sm text-muted-foreground">No hay filas que mostrar.</p>
             ) : null}
@@ -851,7 +1006,7 @@ export default function EmpresasPage() {
                   <TableRow
                     key={rowKey}
                     className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => navigate(empresaDetailPath(emp))}
+                    onClick={() => openCompanyDetail(emp)}
                   >
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -904,10 +1059,33 @@ export default function EmpresasPage() {
                     <TableCell className="text-right font-medium text-emerald-600">
                       {formatCurrency(emp.totalEstimatedValue)}
                     </TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="icon-sm">
-                        <ChevronRight className="size-4" />
-                      </Button>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon-sm" aria-label="Acciones">
+                            <MoreHorizontal className="size-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openCompanyPreview(emp)}>
+                            <Eye /> Ver
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => openCompanyEdit(emp)}
+                            disabled={!hasPermission('empresas.editar')}
+                          >
+                            <Pencil /> Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onClick={() => requestDeleteCompany(emp)}
+                            disabled={!hasPermission('empresas.eliminar')}
+                          >
+                            <Trash2 /> Eliminar
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                   );
@@ -925,19 +1103,45 @@ export default function EmpresasPage() {
               <Card
                 key={rowKey}
                 className="cursor-pointer transition-shadow hover:shadow-md"
-                onClick={() => navigate(empresaDetailPath(emp))}
+                onClick={() => openCompanyDetail(emp)}
               >
                 <CardContent className="p-5">
                   <div className="flex items-start gap-3">
                     <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
                       <Building2 className="size-5 text-muted-foreground" />
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div className="min-w-0 flex-1">
                       <h3 className="font-semibold truncate">{emp.name}</h3>
                       {emp.domain && (
                         <p className="text-xs text-muted-foreground truncate">{emp.domain}</p>
                       )}
                     </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        <Button variant="ghost" size="icon-xs" aria-label="Acciones">
+                          <MoreHorizontal className="size-3.5" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => openCompanyPreview(emp)}>
+                          <Eye /> Ver
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => openCompanyEdit(emp)}
+                          disabled={!hasPermission('empresas.editar')}
+                        >
+                          <Pencil /> Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          variant="destructive"
+                          onClick={() => requestDeleteCompany(emp)}
+                          disabled={!hasPermission('empresas.eliminar')}
+                        >
+                          <Trash2 /> Eliminar
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
 
                   <div className="mt-3 flex flex-wrap gap-1.5">
@@ -1020,6 +1224,49 @@ export default function EmpresasPage() {
         open={newEmpresaOpen}
         onOpenChange={setNewEmpresaOpen}
         onSubmit={handleNewEmpresaSubmit}
+      />
+
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => {
+          setDeleteDialogOpen(open);
+          if (!open) setEmpresaToDelete(null);
+        }}
+        title="Eliminar empresa"
+        description={
+          empresaToDelete
+            ? `¿EStás seguro que deseas eliminar esta empresa? Esta acción no se puede deshacer.`
+            : ''
+        }
+        onConfirm={() => void handleConfirmDeleteEmpresa()}
+        variant="destructive"
+      />
+
+      <CompanyPreviewSheet
+        row={previewEmpresa}
+        open={previewEmpresa !== null}
+        onOpenChange={(open) => {
+          if (!open) setPreviewEmpresa(null);
+        }}
+        onOpenFullDetail={() => {
+          const e = previewEmpresa;
+          setPreviewEmpresa(null);
+          if (e) openCompanyDetail(e);
+        }}
+        onEdit={() => {
+          const e = previewEmpresa;
+          setPreviewEmpresa(null);
+          if (e) openCompanyEdit(e);
+        }}
+      />
+
+      <CompanyEditDialog
+        row={editEmpresa}
+        open={editEmpresa !== null}
+        onOpenChange={(open) => {
+          if (!open) setEditEmpresa(null);
+        }}
+        onSave={handleSaveCompanyFromList}
       />
     </div>
   );

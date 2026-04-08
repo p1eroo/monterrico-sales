@@ -21,6 +21,9 @@ import {
   buildOpportunityCreateBody,
   type NewOpportunityFormValues,
 } from '@/components/shared/NewOpportunityFormDialog';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { OpportunityEditDialog } from '@/components/shared/OpportunityEditDialog';
+import { OpportunityPreviewSheet } from '@/components/shared/OpportunityPreviewSheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -43,6 +46,7 @@ import { api } from '@/lib/api';
 import { opportunityDetailHref } from '@/lib/detailRoutes';
 import {
   type ApiOpportunityListRow,
+  isLikelyOpportunityCuid,
   mapApiOpportunityToOpportunity,
   opportunityListAll,
 } from '@/lib/opportunityApi';
@@ -163,6 +167,10 @@ export default function OpportunitiesPage() {
   const [activeTab, setActiveTab] = useState('todas');
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [newDialogOpen, setNewDialogOpen] = useState(false);
+  const [previewOpportunity, setPreviewOpportunity] = useState<Opportunity | null>(null);
+  const [editOpportunity, setEditOpportunity] = useState<Opportunity | null>(null);
+  const [oppToDelete, setOppToDelete] = useState<Opportunity | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const { hasPermission } = usePermissions();
   const importInputRef = useRef<HTMLInputElement>(null);
   const [importBusy, setImportBusy] = useState(false);
@@ -266,6 +274,60 @@ export default function OpportunitiesPage() {
 
   function openOppImport() {
     importInputRef.current?.click();
+  }
+
+  function openOpportunityPreview(opp: Opportunity) {
+    if (isPendingOpportunityId(opp.id)) {
+      toast.info('Guardando oportunidad en el servidor…');
+      return;
+    }
+    setPreviewOpportunity(opp);
+  }
+
+  function openOpportunityEdit(opp: Opportunity) {
+    if (!hasPermission('oportunidades.editar')) {
+      toast.error('No tienes permiso para editar oportunidades');
+      return;
+    }
+    if (isPendingOpportunityId(opp.id)) {
+      toast.info('Espera a que termine de guardarse la oportunidad');
+      return;
+    }
+    if (!isLikelyOpportunityCuid(opp.id)) {
+      toast.error('Solo se pueden editar oportunidades guardadas en el servidor');
+      return;
+    }
+    setEditOpportunity(opp);
+  }
+
+  function requestDeleteOpportunity(opp: Opportunity) {
+    if (!hasPermission('oportunidades.eliminar')) {
+      toast.error('No tienes permiso para eliminar oportunidades');
+      return;
+    }
+    if (isPendingOpportunityId(opp.id)) {
+      toast.info('Espera a que termine de guardarse la oportunidad');
+      return;
+    }
+    setOppToDelete(opp);
+    setDeleteDialogOpen(true);
+  }
+
+  async function handleConfirmDeleteOpportunity() {
+    if (!oppToDelete) return;
+    try {
+      if (!isLikelyOpportunityCuid(oppToDelete.id)) {
+        toast.error('Solo se pueden eliminar oportunidades guardadas en el servidor');
+        return;
+      }
+      await api(`/opportunities/${oppToDelete.id}`, { method: 'DELETE' });
+      await loadApiOpportunities();
+      toast.success('Oportunidad eliminada correctamente');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'No se pudo eliminar');
+    } finally {
+      setOppToDelete(null);
+    }
   }
 
   async function onOppImportChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -493,12 +555,22 @@ export default function OpportunitiesPage() {
               data={filteredOpportunities}
               isPendingOpportunityId={isPendingOpportunityId}
               onOpenDetail={openOpportunityDetail}
+              onOpenPreview={openOpportunityPreview}
+              onOpenEdit={openOpportunityEdit}
+              onRequestDelete={requestDeleteOpportunity}
+              canEdit={hasPermission('oportunidades.editar')}
+              canDelete={hasPermission('oportunidades.eliminar')}
             />
           ) : (
             <OpportunitiesGrid
               data={filteredOpportunities}
               isPendingOpportunityId={isPendingOpportunityId}
               onOpenDetail={openOpportunityDetail}
+              onOpenPreview={openOpportunityPreview}
+              onOpenEdit={openOpportunityEdit}
+              onRequestDelete={requestDeleteOpportunity}
+              canEdit={hasPermission('oportunidades.editar')}
+              canDelete={hasPermission('oportunidades.eliminar')}
             />
           )}
         </TabsContent>
@@ -521,6 +593,49 @@ export default function OpportunitiesPage() {
         onOpenChange={setNewDialogOpen}
         onCreate={handleCreateOpportunity}
       />
+
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => {
+          setDeleteDialogOpen(open);
+          if (!open) setOppToDelete(null);
+        }}
+        title="Eliminar oportunidad"
+        description={
+          oppToDelete
+            ? `¿Estás seguro que deseas eliminar esta oportunidad? Esta acción no se puede deshacer.`
+            : ''
+        }
+        onConfirm={() => void handleConfirmDeleteOpportunity()}
+        variant="destructive"
+      />
+
+      <OpportunityPreviewSheet
+        opportunity={previewOpportunity}
+        open={previewOpportunity !== null}
+        onOpenChange={(open) => {
+          if (!open) setPreviewOpportunity(null);
+        }}
+        onOpenFullDetail={() => {
+          const o = previewOpportunity;
+          setPreviewOpportunity(null);
+          if (o) openOpportunityDetail(o);
+        }}
+        onEdit={() => {
+          const o = previewOpportunity;
+          setPreviewOpportunity(null);
+          if (o) openOpportunityEdit(o);
+        }}
+      />
+
+      <OpportunityEditDialog
+        opportunity={editOpportunity}
+        open={editOpportunity !== null}
+        onOpenChange={(open) => {
+          if (!open) setEditOpportunity(null);
+        }}
+        onSaved={() => void loadApiOpportunities()}
+      />
     </div>
   );
 }
@@ -531,10 +646,20 @@ function OpportunitiesTable({
   data,
   isPendingOpportunityId,
   onOpenDetail,
+  onOpenPreview,
+  onOpenEdit,
+  onRequestDelete,
+  canEdit,
+  canDelete,
 }: {
   data: Opportunity[];
   isPendingOpportunityId: (id: string) => boolean;
   onOpenDetail: (opp: Opportunity) => void;
+  onOpenPreview: (opp: Opportunity) => void;
+  onOpenEdit: (opp: Opportunity) => void;
+  onRequestDelete: (opp: Opportunity) => void;
+  canEdit: boolean;
+  canDelete: boolean;
 }) {
   return (
     <div className="rounded-lg border">
@@ -602,22 +727,29 @@ function OpportunitiesTable({
               <TableCell className="hidden sm:table-cell">
                 <OpportunityStatusBadge status={opp.status} />
               </TableCell>
-              <TableCell>
+              <TableCell onClick={(e) => e.stopPropagation()}>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon-sm">
+                    <Button variant="ghost" size="icon-sm" aria-label="Acciones">
                       <MoreHorizontal className="size-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onOpenDetail(opp); }}>
-                      <Eye /> Ver detalle
+                    <DropdownMenuItem onClick={() => onOpenPreview(opp)}>
+                      <Eye /> Ver
                     </DropdownMenuItem>
-                    <DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => onOpenEdit(opp)}
+                      disabled={!canEdit || pending}
+                    >
                       <Pencil /> Editar
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem variant="destructive">
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onClick={() => onRequestDelete(opp)}
+                      disabled={!canDelete || pending}
+                    >
                       <Trash2 /> Eliminar
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -638,10 +770,20 @@ function OpportunitiesGrid({
   data,
   isPendingOpportunityId,
   onOpenDetail,
+  onOpenPreview,
+  onOpenEdit,
+  onRequestDelete,
+  canEdit,
+  canDelete,
 }: {
   data: Opportunity[];
   isPendingOpportunityId: (id: string) => boolean;
   onOpenDetail: (opp: Opportunity) => void;
+  onOpenPreview: (opp: Opportunity) => void;
+  onOpenEdit: (opp: Opportunity) => void;
+  onRequestDelete: (opp: Opportunity) => void;
+  canEdit: boolean;
+  canDelete: boolean;
 }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -680,10 +822,23 @@ function OpportunitiesGrid({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onOpenDetail(opp); }}><Eye /> Ver</DropdownMenuItem>
-                  <DropdownMenuItem><Pencil /> Editar</DropdownMenuItem>
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onOpenPreview(opp); }}>
+                    <Eye /> Ver
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={!canEdit || pending}
+                    onClick={(e) => { e.stopPropagation(); onOpenEdit(opp); }}
+                  >
+                    <Pencil /> Editar
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem variant="destructive"><Trash2 /> Eliminar</DropdownMenuItem>
+                  <DropdownMenuItem
+                    variant="destructive"
+                    disabled={!canDelete || pending}
+                    onClick={(e) => { e.stopPropagation(); onRequestDelete(opp); }}
+                  >
+                    <Trash2 /> Eliminar
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

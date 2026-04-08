@@ -19,6 +19,7 @@ import { getInactiveCompanies } from '@/lib/inactiveCompanies';
 import { markDailyBriefingShown } from '@/lib/dailyOverview';
 import { activities, calendarEvents, activityTypeLabels } from '@/data/mock';
 import { cn } from '@/lib/utils';
+import { rightDrawerDialogContentClass } from '@/lib/rightPanelShell';
 import type { Activity, CalendarEvent } from '@/types';
 
 
@@ -121,18 +122,12 @@ export function DailyBriefingPanel({
           data-slot="sheet-overlay"
         />
         <DialogPrimitive.Content
-          className={cn(
-            'fixed inset-y-0 right-0 z-50 flex h-full w-full flex-col border-l bg-background shadow-xl',
-            'w-full sm:w-[380px] sm:max-w-[380px]',
-            'data-[state=closed]:animate-out data-[state=closed]:slide-out-to-right data-[state=closed]:duration-300',
-            'data-[state=open]:animate-in data-[state=open]:slide-in-from-right data-[state=open]:duration-500',
-            'rounded-l-2xl'
-          )}
+          className={rightDrawerDialogContentClass('briefing', 'rounded-l-2xl')}
           onEscapeKeyDown={handleClose}
           onPointerDownOutside={handleClose}
         >
           {/* Sticky Header */}
-          <div className="sticky top-0 z-10 flex shrink-0 items-center justify-between gap-3 border-b bg-background px-5 py-4">
+          <div className="sticky top-0 z-10 flex shrink-0 items-center justify-between gap-3 border-b border-border/50 bg-background/70 px-5 py-4 backdrop-blur-md supports-[backdrop-filter]:bg-background/60 dark:bg-background/50">
             <h2 className="text-xl font-semibold text-foreground">Resumen de hoy</h2>
             <div className="flex items-center gap-1">
               <Button
@@ -312,7 +307,7 @@ export function DailyBriefingPanel({
           </ScrollArea>
 
           {/* Sticky Footer */}
-          <div className="sticky bottom-0 shrink-0 border-t bg-background px-5 py-4">
+          <div className="sticky bottom-0 shrink-0 border-t border-border/50 bg-background/70 px-5 py-4 backdrop-blur-md supports-[backdrop-filter]:bg-background/60 dark:bg-background/50">
             <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
               <Checkbox
                 checked={dontShowAgainToday}

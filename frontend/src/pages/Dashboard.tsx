@@ -55,6 +55,8 @@ import {
   type AnalyticsSummary,
 } from '@/lib/analyticsApi';
 import { useCrmConfigStore, getStageLabelFromCatalog, getSourceLabelFromCatalog } from '@/store/crmConfigStore';
+import { ChartCardBody } from '@/components/shared/ChartCardBody';
+import { chartHasAnyValue } from '@/lib/chartEmpty';
 
 const PIE_COLORS = ['#13944C', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899'];
 const FUNNEL_COLORS = ['#13944C', '#22c55e', '#3b82f6', '#f59e0b', '#8b5cf6', '#06b6d4'];
@@ -155,6 +157,19 @@ export default function Dashboard() {
   const salesByMonthData = summary?.salesByMonth ?? [];
 
   const kpis = summary?.kpis;
+
+  const salesChartEmpty =
+    !summaryLoading &&
+    (!summary || !chartHasAnyValue(salesByMonthData, ['ventas', 'meta']));
+  const sourceChartEmpty =
+    !summaryLoading &&
+    (!summary || !chartHasAnyValue(leadsBySourceData, ['value']));
+  const funnelChartEmpty =
+    !summaryLoading &&
+    (!summary || !chartHasAnyValue(funnelData, ['value']));
+  const advisorChartEmpty =
+    !summaryLoading &&
+    (!summary || !chartHasAnyValue(performanceByAdvisor, ['leads', 'ventas']));
 
   return (
     <div className="space-y-6">
@@ -272,7 +287,12 @@ export default function Dashboard() {
             <CardTitle className="text-base">Ventas por Mes</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-72">
+            <ChartCardBody
+              loading={summaryLoading}
+              isEmpty={salesChartEmpty}
+              variant="bar"
+              emptyMessage="Sin datos de ventas en este periodo."
+            >
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={salesByMonthData} barGap={4}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
@@ -293,7 +313,7 @@ export default function Dashboard() {
                   <Bar dataKey="meta" fill="#3b82f6" radius={[4, 4, 0, 0]} opacity={0.5} name="meta" />
                 </BarChart>
               </ResponsiveContainer>
-            </div>
+            </ChartCardBody>
           </CardContent>
         </Card>
 
@@ -303,7 +323,12 @@ export default function Dashboard() {
             <CardTitle className="text-base">Contactos por Fuente</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-72">
+            <ChartCardBody
+              loading={summaryLoading}
+              isEmpty={sourceChartEmpty}
+              variant="donut"
+              emptyMessage="Sin contactos por fuente en este periodo."
+            >
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -329,7 +354,7 @@ export default function Dashboard() {
                   />
                 </PieChart>
               </ResponsiveContainer>
-            </div>
+            </ChartCardBody>
           </CardContent>
         </Card>
       </div>
@@ -342,7 +367,12 @@ export default function Dashboard() {
             <CardTitle className="text-base">Funnel de Ventas</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-72">
+            <ChartCardBody
+              loading={summaryLoading}
+              isEmpty={funnelChartEmpty}
+              variant="barHorizontal"
+              emptyMessage="Sin datos de embudo en este periodo."
+            >
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={funnelData} layout="vertical" barSize={24}>
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e5e7eb" />
@@ -363,7 +393,7 @@ export default function Dashboard() {
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
-            </div>
+            </ChartCardBody>
           </CardContent>
         </Card>
 
@@ -373,7 +403,12 @@ export default function Dashboard() {
             <CardTitle className="text-base">Rendimiento por Asesor</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-72">
+            <ChartCardBody
+              loading={summaryLoading}
+              isEmpty={advisorChartEmpty}
+              variant="bar"
+              emptyMessage="Sin rendimiento por asesor en este periodo."
+            >
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={performanceByAdvisor} barGap={4}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
@@ -384,7 +419,7 @@ export default function Dashboard() {
                   <Bar dataKey="ventas" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Ventas" />
                 </BarChart>
               </ResponsiveContainer>
-            </div>
+            </ChartCardBody>
           </CardContent>
         </Card>
       </div>
@@ -398,6 +433,11 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
+              {latestContacts.length === 0 ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  Aún no hay contactos registrados.
+                </p>
+              ) : null}
               {latestContacts.map((contact) => (
                 <div
                   key={contact.id}
@@ -428,6 +468,11 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
+              {!summaryLoading && pendingActivities.length === 0 ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  No hay actividades pendientes en este periodo.
+                </p>
+              ) : null}
               {pendingActivities.map((activity) => {
                 const t = (activity.type ?? '').toLowerCase();
                 const IconComp = activityIconMap[t] ?? Clock;

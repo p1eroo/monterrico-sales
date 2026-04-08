@@ -6,6 +6,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import { rightDrawerSheetContentClass } from '@/lib/rightPanelShell';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -135,7 +136,7 @@ export function NotificationDrawer({
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent
           side="right"
-          className="flex w-full flex-col gap-0 border-l-0 bg-gradient-to-br from-sky-50 via-background to-rose-50 p-0 shadow-[-4px_0_24px_-4px_rgba(0,0,0,0.12)] dark:from-sky-950 dark:via-background dark:to-rose-950 dark:shadow-[-4px_0_24px_-4px_rgba(0,0,0,0.4)] sm:max-w-[440px] md:max-w-[480px]"
+          className={rightDrawerSheetContentClass('notifications')}
           showCloseButton={false}
         >
           <InactiveCompaniesPanel
@@ -151,7 +152,7 @@ export function NotificationDrawer({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="flex w-full flex-col gap-0 border-l-0 bg-gradient-to-br from-sky-50 via-background to-rose-50 p-0 shadow-[-4px_0_24px_-4px_rgba(0,0,0,0.12)] dark:from-sky-950 dark:via-background dark:to-rose-950 dark:shadow-[-4px_0_24px_-4px_rgba(0,0,0,0.4)] sm:max-w-[440px] md:max-w-[480px]"
+        className={rightDrawerSheetContentClass('notifications')}
         showCloseButton={false}
       >
         {/* Header */}

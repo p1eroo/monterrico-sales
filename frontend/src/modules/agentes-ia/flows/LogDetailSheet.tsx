@@ -8,6 +8,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import type { MockLog } from '../mockData';
+import { rightDrawerSheetContentClass } from '@/lib/rightPanelShell';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -22,7 +23,10 @@ export function LogDetailSheet({ log, open, onOpenChange }: Props) {
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="flex w-full flex-col gap-4 overflow-y-auto sm:max-w-md">
+      <SheetContent
+        side="right"
+        className={rightDrawerSheetContentClass('md', 'gap-4 overflow-y-auto p-6')}
+      >
         <SheetHeader className="text-left">
           <SheetTitle>Detalle de traza</SheetTitle>
           <SheetDescription>

@@ -45,6 +45,7 @@ export type CompanyImportPreviewRow = {
   facturacionEstimada: number;
   ok: boolean;
   error?: string;
+  csvColumns: Record<string, string>;
 };
 
 export type CompanyImportPreviewResult = {
