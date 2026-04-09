@@ -5,6 +5,7 @@ import { useGoalsStore } from '@/store/goalsStore';
 import { useAnalyticsGoalStore } from '@/store/analyticsGoalStore';
 import { useAppStore } from '@/store';
 import { formatCurrencyShort } from '@/lib/formatters';
+import { utcYearMonthKey } from '@/lib/monthlySales';
 import { cn } from '@/lib/utils';
 
 export type GoalPeriod = 'weekly' | 'monthly';
@@ -36,12 +37,12 @@ export function GoalCard({
   periodLabelCapitalize = false,
 }: GoalCardProps) {
   const { currentUser } = useAppStore();
-  const {
-    getGlobalWeeklyGoal,
-    getUserWeeklyGoal,
-    getGlobalMonthlyGoal,
-    getUserMonthlyGoal,
-  } = useGoalsStore();
+  const { getGlobalWeeklyGoal, getUserWeeklyGoal } = useGoalsStore();
+  const ymUtc = utcYearMonthKey();
+  const teamMonthlyOrgGoal = useGoalsStore((s) => s.monthlyOrgByYm[ymUtc] ?? 0);
+  const personalMonthlyOrgGoal = useGoalsStore(
+    (s) => s.advisorMonthlyByYm[currentUser.id]?.[ymUtc] ?? 0,
+  );
 
   const teamWeekly = useAnalyticsGoalStore((s) => s.teamWeeklyClosed);
   const myWeekly = useAnalyticsGoalStore((s) => s.myWeeklyClosed);
@@ -59,8 +60,8 @@ export function GoalCard({
         ? getGlobalWeeklyGoal()
         : getUserWeeklyGoal(currentUser.id)
       : showGlobal
-        ? getGlobalMonthlyGoal()
-        : getUserMonthlyGoal(currentUser.id);
+        ? teamMonthlyOrgGoal
+        : personalMonthlyOrgGoal;
 
   const sales =
     period === 'weekly'

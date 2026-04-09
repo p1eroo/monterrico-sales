@@ -186,12 +186,12 @@ export default function Reports() {
         trendType: kpis ? changeTone(kpis.changes.sales) : 'neutral',
       },
       {
-        label: 'Actividades Realizadas',
+        label: 'Tareas completadas',
         value: kpis ? String(kpis.activitiesCompleted) : '—',
         icon: Activity,
         color: 'text-purple-600 dark:text-purple-400',
         bg: 'bg-purple-50 dark:bg-purple-900/30',
-        trend: 'Completadas en el periodo',
+        trend: 'En el periodo seleccionado',
         trendType: 'neutral' as const,
       },
     ],
@@ -640,15 +640,15 @@ export default function Reports() {
         {/* 8. Tareas - LineChart */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Seguimientos</CardTitle>
-            <CardDescription>Actividades completadas vs pendientes por mes</CardDescription>
+            <CardTitle className="text-base">Tareas</CardTitle>
+            <CardDescription>Completadas vs pendientes por mes</CardDescription>
           </CardHeader>
           <CardContent>
             <ChartCardBody
               loading={loading}
               isEmpty={followUpsChartEmpty}
               variant="line"
-              emptyMessage="Sin seguimientos en este periodo."
+              emptyMessage="Sin tareas en este periodo."
               className={chartH}
             >
               <ResponsiveContainer width="100%" height="100%">
@@ -668,7 +668,7 @@ export default function Reports() {
                   <Line
                     type="monotone"
                     dataKey="completados"
-                    name="Completados"
+                    name="Completadas"
                     stroke="#13944C"
                     strokeWidth={2.5}
                     dot={{ r: 4, fill: '#13944C', strokeWidth: 2, stroke: '#fff' }}

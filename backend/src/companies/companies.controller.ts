@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { CompaniesService } from './companies.service';
@@ -15,6 +16,8 @@ import { UpdateCompanyDto } from './dto/update-company.dto';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 
+type AuthedReq = { user: { userId: string; name: string } };
+
 @Controller('companies')
 @UseGuards(PermissionsGuard)
 export class CompaniesController {
@@ -22,8 +25,11 @@ export class CompaniesController {
 
   @Post()
   @RequirePermissions('empresas.crear')
-  create(@Body() createCompanyDto: CreateCompanyDto) {
-    return this.companiesService.create(createCompanyDto);
+  create(@Body() createCompanyDto: CreateCompanyDto, @Req() req: AuthedReq) {
+    return this.companiesService.create(createCompanyDto, {
+      userId: req.user.userId,
+      userName: req.user.name,
+    });
   }
 
   @Get()
@@ -111,13 +117,23 @@ export class CompaniesController {
 
   @Patch(':id')
   @RequirePermissions('empresas.editar')
-  update(@Param('id') id: string, @Body() updateCompanyDto: UpdateCompanyDto) {
-    return this.companiesService.update(id, updateCompanyDto);
+  update(
+    @Param('id') id: string,
+    @Body() updateCompanyDto: UpdateCompanyDto,
+    @Req() req: AuthedReq,
+  ) {
+    return this.companiesService.update(id, updateCompanyDto, {
+      userId: req.user.userId,
+      userName: req.user.name,
+    });
   }
 
   @Delete(':id')
   @RequirePermissions('empresas.eliminar')
-  remove(@Param('id') id: string) {
-    return this.companiesService.remove(id);
+  remove(@Param('id') id: string, @Req() req: AuthedReq) {
+    return this.companiesService.remove(id, {
+      userId: req.user.userId,
+      userName: req.user.name,
+    });
   }
 }

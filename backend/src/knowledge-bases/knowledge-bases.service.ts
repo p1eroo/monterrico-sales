@@ -11,6 +11,7 @@ import {
   DEFAULT_OVERLAP_TOKENS,
 } from './knowledge-ingest.constants';
 import { extractIndexableTextFromUpload } from './knowledge-upload.helpers';
+import { EmbeddingsService } from '../ai/embeddings.service';
 
 const TOKEN_CHAR_RATIO = 3.5;
 const MAX_URL_INGEST_CHARS = 2_000_000;
@@ -66,7 +67,10 @@ export type KnowledgeBaseListItem = {
 
 @Injectable()
 export class KnowledgeBasesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly embeddingsService: EmbeddingsService,
+  ) {}
 
   private toListItem(row: AiKnowledgeBase): KnowledgeBaseListItem {
     return {
@@ -214,8 +218,8 @@ export class KnowledgeBasesService {
 
     const chunkCount = chunksPayload.length;
 
-    const row = await this.prisma.$transaction(async (tx) => {
-      const base = await tx.aiKnowledgeBase.create({
+    const { base, createdChunks } = await this.prisma.$transaction(async (tx) => {
+      const createdBase = await tx.aiKnowledgeBase.create({
         data: {
           userId,
           title,
@@ -234,20 +238,28 @@ export class KnowledgeBasesService {
         },
       });
 
-      if (chunksPayload.length > 0) {
-        await tx.aiKnowledgeChunk.createMany({
-          data: chunksPayload.map((c) => ({
-            knowledgeBaseId: base.id,
-            position: c.position,
-            content: c.content,
-          })),
-        });
+      if (chunksPayload.length === 0) {
+        return { base: createdBase, createdChunks: [] as { id: string; content: string }[] };
       }
 
-      return base;
+      const created = await tx.aiKnowledgeChunk.createManyAndReturn({
+        data: chunksPayload.map((c) => ({
+          knowledgeBaseId: createdBase.id,
+          position: c.position,
+          content: c.content,
+        })),
+      });
+      return {
+        base: createdBase,
+        createdChunks: created.map((c) => ({ id: c.id, content: c.content })),
+      };
     });
 
-    return this.toListItem(row);
+    if (createdChunks.length > 0 && status === 'indexado') {
+      await this.embeddingsService.persistEmbeddingsForNewChunks(createdChunks);
+    }
+
+    return this.toListItem(base);
   }
 
   async createFromUpload(
@@ -336,8 +348,8 @@ export class KnowledgeBasesService {
       skippedFiles: skipped.length ? skipped : undefined,
     };
 
-    const row = await this.prisma.$transaction(async (tx) => {
-      const base = await tx.aiKnowledgeBase.create({
+    const { base, createdChunks } = await this.prisma.$transaction(async (tx) => {
+      const createdBase = await tx.aiKnowledgeBase.create({
         data: {
           userId,
           title,
@@ -356,18 +368,23 @@ export class KnowledgeBasesService {
         },
       });
 
-      await tx.aiKnowledgeChunk.createMany({
+      const created = await tx.aiKnowledgeChunk.createManyAndReturn({
         data: chunksPayload.map((c) => ({
-          knowledgeBaseId: base.id,
+          knowledgeBaseId: createdBase.id,
           position: c.position,
           content: c.content,
         })),
       });
 
-      return base;
+      return {
+        base: createdBase,
+        createdChunks: created.map((c) => ({ id: c.id, content: c.content })),
+      };
     });
 
-    return this.toListItem(row);
+    await this.embeddingsService.persistEmbeddingsForNewChunks(createdChunks);
+
+    return this.toListItem(base);
   }
 
   async deleteForUser(userId: string, id: string): Promise<void> {

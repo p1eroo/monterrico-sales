@@ -7,6 +7,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { PermissionsGuard } from './guards/permissions.guard';
 import { JWT_SECRET } from './auth.constants';
 import { MediaModule } from '../media/media.module';
+import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { MediaModule } from '../media/media.module';
       signOptions: { expiresIn: '7d' },
     }),
     MediaModule,
+    ActivityLogsModule,
   ],
   providers: [AuthService, JwtStrategy, PermissionsGuard],
   controllers: [AuthController],

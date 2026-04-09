@@ -22,6 +22,8 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { ImportExportModule } from './import-export/import-export.module';
 import { AiModule } from './ai/ai.module';
 import { KnowledgeBasesModule } from './knowledge-bases/knowledge-bases.module';
+import { ActivityLogsModule } from './activity-logs/activity-logs.module';
+import { AuditDetailModule } from './audit-detail/audit-detail.module';
 
 @Module({
   imports: [
@@ -57,6 +59,8 @@ import { KnowledgeBasesModule } from './knowledge-bases/knowledge-bases.module';
     }),
     AiModule,
     KnowledgeBasesModule,
+    ActivityLogsModule,
+    AuditDetailModule,
   ],
   controllers: [AppController],
   providers: [

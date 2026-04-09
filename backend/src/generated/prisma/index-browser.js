@@ -159,6 +159,42 @@ exports.Prisma.UserScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.ActivityLogScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  userName: 'userName',
+  action: 'action',
+  module: 'module',
+  entityType: 'entityType',
+  entityId: 'entityId',
+  entityName: 'entityName',
+  description: 'description',
+  status: 'status',
+  isCritical: 'isCritical',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.AuditChangeSetScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  userName: 'userName',
+  action: 'action',
+  module: 'module',
+  entityType: 'entityType',
+  entityId: 'entityId',
+  entityName: 'entityName',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.AuditChangeEntryScalarFieldEnum = {
+  id: 'id',
+  changeSetId: 'changeSetId',
+  fieldKey: 'fieldKey',
+  fieldLabel: 'fieldLabel',
+  oldValue: 'oldValue',
+  newValue: 'newValue'
+};
+
 exports.Prisma.AiConversationScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
@@ -220,7 +256,15 @@ exports.Prisma.CrmOrganizationProfileScalarFieldEnum = {
   contactPhone: 'contactPhone',
   address: 'address',
   globalWeeklyGoal: 'globalWeeklyGoal',
-  globalMonthlyGoal: 'globalMonthlyGoal',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.CrmMonthlySalesTargetScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  periodStart: 'periodStart',
+  amount: 'amount',
+  createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
 
@@ -265,6 +309,15 @@ exports.Prisma.CrmUserSalesGoalScalarFieldEnum = {
   userId: 'userId',
   weeklyTarget: 'weeklyTarget',
   monthlyTarget: 'monthlyTarget'
+};
+
+exports.Prisma.CrmUserMonthlySalesTargetScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  periodStart: 'periodStart',
+  amount: 'amount',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
 };
 
 exports.Prisma.ContactScalarFieldEnum = {
@@ -487,17 +540,22 @@ exports.Prisma.ModelName = {
   Authority: 'Authority',
   Account: 'Account',
   User: 'User',
+  ActivityLog: 'ActivityLog',
+  AuditChangeSet: 'AuditChangeSet',
+  AuditChangeEntry: 'AuditChangeEntry',
   AiConversation: 'AiConversation',
   AiMessage: 'AiMessage',
   AiKnowledgeBase: 'AiKnowledgeBase',
   AiKnowledgeChunk: 'AiKnowledgeChunk',
   AiAssistantInstruction: 'AiAssistantInstruction',
   CrmOrganizationProfile: 'CrmOrganizationProfile',
+  CrmMonthlySalesTarget: 'CrmMonthlySalesTarget',
   CrmLeadSource: 'CrmLeadSource',
   CrmStage: 'CrmStage',
   CrmPriority: 'CrmPriority',
   CrmActivityType: 'CrmActivityType',
   CrmUserSalesGoal: 'CrmUserSalesGoal',
+  CrmUserMonthlySalesTarget: 'CrmUserMonthlySalesTarget',
   Contact: 'Contact',
   Company: 'Company',
   Client: 'Client',

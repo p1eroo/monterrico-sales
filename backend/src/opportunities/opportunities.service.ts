@@ -10,6 +10,11 @@ import { UpdateOpportunityDto } from './dto/update-opportunity.dto';
 import { EntitySyncService } from '../sync/entity-sync.service';
 import { slugifyForUrl } from '../common/url-slug.util';
 import { CrmConfigService } from '../crm-config/crm-config.service';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
+import type { ActivityActor } from '../activity-logs/activity-logs.types';
+import { AuditDetailService } from '../audit-detail/audit-detail.service';
+import { buildChangeEntries } from '../common/audit-diff.util';
+import { OPPORTUNITY_FIELD_LABELS } from '../audit-detail/audit-field-labels';
 
 /** Estados de pipeline derivados de la etapa (no se usa `suspendida`). */
 type PipelineOpportunityStatus = 'abierta' | 'ganada' | 'perdida';
@@ -46,6 +51,8 @@ export class OpportunitiesService {
     private readonly prisma: PrismaService,
     private readonly entitySync: EntitySyncService,
     private readonly crmConfig: CrmConfigService,
+    private readonly activityLogs: ActivityLogsService,
+    private readonly auditDetail: AuditDetailService,
   ) {}
 
   private async probabilityForEtapa(
@@ -158,7 +165,7 @@ export class OpportunitiesService {
     throw new NotFoundException('Oportunidad no encontrada');
   }
 
-  async create(dto: CreateOpportunityDto) {
+  async create(dto: CreateOpportunityDto, actor?: ActivityActor) {
     const title = dto.title?.trim();
     if (!title) {
       throw new BadRequestException('El título es obligatorio');
@@ -262,6 +269,16 @@ export class OpportunitiesService {
     });
 
     await this.entitySync.propagateFromOpportunityAllCompanies(created.id);
+
+    await this.activityLogs.record(actor ?? null, {
+      action: 'crear',
+      module: 'oportunidades',
+      entityType: 'Oportunidad',
+      entityId: created.id,
+      entityName: created.title,
+      description: `Oportunidad creada: ${created.title}`,
+    });
+
     return created;
   }
 
@@ -318,9 +335,33 @@ export class OpportunitiesService {
     return opp;
   }
 
-  async update(idOrSlug: string, dto: UpdateOpportunityDto) {
+  async update(idOrSlug: string, dto: UpdateOpportunityDto, actor: ActivityActor) {
     const id = await this.resolveOpportunityId(idOrSlug);
-    await this.findOne(id);
+    const primaryLink = await this.prisma.contactOpportunity.findFirst({
+      where: { opportunityId: id },
+      select: { contactId: true },
+    });
+    const snapshot = await this.prisma.opportunity.findUnique({
+      where: { id },
+      select: {
+        title: true,
+        amount: true,
+        probability: true,
+        etapa: true,
+        status: true,
+        priority: true,
+        expectedCloseDate: true,
+        assignedTo: true,
+      },
+    });
+    if (!snapshot) {
+      throw new NotFoundException('Oportunidad no encontrada');
+    }
+
+    const before: Record<string, unknown> = {
+      ...snapshot,
+      primaryContactId: primaryLink?.contactId ?? '',
+    };
 
     const data: Record<string, string | number | Date | null | undefined> = {};
 
@@ -428,14 +469,128 @@ export class OpportunitiesService {
       await this.entitySync.propagateFromOpportunityAllCompanies(id);
     }
 
+    const auditPatch: Record<string, unknown> = { ...data };
+    delete auditPatch.urlSlug;
+    let diffEntries = buildChangeEntries(
+      before,
+      auditPatch,
+      OPPORTUNITY_FIELD_LABELS,
+      ['urlSlug'],
+    );
+
+    if (hasContactLinkUpdate) {
+      const raw = dto.contactId;
+      const oldPrimary = (primaryLink?.contactId ?? '') as string;
+      let newPrimary = oldPrimary;
+      if (raw === null || (typeof raw === 'string' && raw.trim() === '')) {
+        newPrimary = '';
+      } else if (typeof raw === 'string') {
+        newPrimary = raw.trim();
+      }
+      if (oldPrimary !== newPrimary) {
+        diffEntries = [
+          ...diffEntries,
+          {
+            fieldKey: 'primaryContactId',
+            fieldLabel: OPPORTUNITY_FIELD_LABELS.primaryContactId,
+            oldValue: oldPrimary,
+            newValue: newPrimary,
+          },
+        ];
+      }
+    }
+
+    const etapaChanged =
+      dto.etapa !== undefined && dto.etapa.trim() !== snapshot.etapa;
+    const assigneeChanged =
+      dto.assignedTo !== undefined &&
+      (dto.assignedTo?.trim() || null) !== (snapshot.assignedTo ?? null);
+
+    let action = 'actualizar';
+    let description = 'Oportunidad actualizada.';
+    if (etapaChanged) {
+      action = 'cambiar_etapa';
+      description = `Etapa de la oportunidad: ${snapshot.etapa} → ${dto.etapa!.trim()}`;
+    } else if (
+      assigneeChanged &&
+      dto.title === undefined &&
+      dto.amount === undefined &&
+      dto.probability === undefined &&
+      dto.status === undefined &&
+      dto.expectedCloseDate === undefined &&
+      dto.priority === undefined &&
+      dto.contactId === undefined
+    ) {
+      action = 'asignar';
+      description = 'Asesor de la oportunidad actualizado.';
+    } else if (dto.contactId !== undefined) {
+      description =
+        dto.contactId === null ||
+        (typeof dto.contactId === 'string' && dto.contactId.trim() === '')
+          ? 'Se desvinculó el contacto principal de la oportunidad.'
+          : 'Se actualizó el contacto vinculado a la oportunidad.';
+    }
+
+    const displayTitle =
+      typeof data.title === 'string' ? data.title : snapshot.title;
+
+    await this.auditDetail.record(actor, {
+      action,
+      module: 'oportunidades',
+      entityType: 'Oportunidad',
+      entityId: id,
+      entityName: displayTitle,
+      entries: diffEntries,
+    });
+
+    await this.activityLogs.record(actor, {
+      action,
+      module: 'oportunidades',
+      entityType: 'Oportunidad',
+      entityId: id,
+      entityName: displayTitle,
+      description,
+    });
+
     return this.findOne(id);
   }
 
-  async remove(idOrSlug: string) {
+  async remove(idOrSlug: string, actor: ActivityActor) {
     const id = await this.resolveOpportunityId(idOrSlug);
-    await this.findOne(id);
-    return this.prisma.opportunity.delete({
+    const row = await this.prisma.opportunity.findUnique({
+      where: { id },
+      select: { title: true },
+    });
+    if (!row) {
+      throw new NotFoundException('Oportunidad no encontrada');
+    }
+    const deleted = await this.prisma.opportunity.delete({
       where: { id },
     });
+    await this.auditDetail.record(actor, {
+      action: 'eliminar',
+      module: 'oportunidades',
+      entityType: 'Oportunidad',
+      entityId: id,
+      entityName: row.title,
+      entries: [
+        {
+          fieldKey: '_registro',
+          fieldLabel: 'Registro',
+          oldValue: row.title,
+          newValue: '(eliminado)',
+        },
+      ],
+    });
+    await this.activityLogs.record(actor, {
+      action: 'eliminar',
+      module: 'oportunidades',
+      entityType: 'Oportunidad',
+      entityId: id,
+      entityName: row.title,
+      description: `Oportunidad eliminada: ${row.title}`,
+      isCritical: true,
+    });
+    return deleted;
   }
 }

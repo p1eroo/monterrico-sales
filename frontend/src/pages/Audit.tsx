@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Search,
   Filter,
@@ -15,9 +15,11 @@ import {
   Activity,
   History,
 } from 'lucide-react';
-import type { ActivityLog } from '@/types';
-import { activityLogs, auditLogs, actionLabels, moduleLabels } from '@/data/auditMock';
+import type { ActivityLog, AuditLog } from '@/types';
+import { actionLabels, moduleLabels } from '@/data/auditMock';
 import { useUsers } from '@/hooks/useUsers';
+import { fetchActivityLogs } from '@/lib/activityLogsApi';
+import { fetchAuditDetailLogs } from '@/lib/auditDetailApi';
 
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -88,7 +90,8 @@ function getActionBadgeVariant(action: string, isCritical?: boolean) {
 export default function AuditPage() {
   const { users } = useUsers();
   const [activeTab, setActiveTab] = useState<'actividad' | 'auditoria'>('actividad');
-  const [search, setSearch] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [userFilter, setUserFilter] = useState<string>('todos');
   const [moduleFilter, setModuleFilter] = useState<string>('todos');
   const [actionFilter, setActionFilter] = useState<string>('todos');
@@ -97,66 +100,125 @@ export default function AuditPage() {
   const [previewLog, setPreviewLog] = useState<ActivityLog | null>(null);
   const [expandedAudit, setExpandedAudit] = useState<string | null>(null);
 
-  const filteredActivityLogs = useMemo(() => {
-    return activityLogs.filter((log) => {
-      const matchSearch =
-        !search ||
-        log.userName.toLowerCase().includes(search.toLowerCase()) ||
-        log.description.toLowerCase().includes(search.toLowerCase()) ||
-        (log.entityName ?? '').toLowerCase().includes(search.toLowerCase()) ||
-        actionLabels[log.action]?.toLowerCase().includes(search.toLowerCase());
-      const matchUser = userFilter === 'todos' || log.userId === userFilter;
-      const matchModule = moduleFilter === 'todos' || log.module === moduleFilter;
-      const matchAction = actionFilter === 'todos' || log.action === actionFilter;
-      return matchSearch && matchUser && matchModule && matchAction;
-    });
-  }, [search, userFilter, moduleFilter, actionFilter]);
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+  const [activityTotal, setActivityTotal] = useState(0);
+  const [activityTotalPages, setActivityTotalPages] = useState(0);
+  const [activityLoading, setActivityLoading] = useState(true);
+  const [activityError, setActivityError] = useState<string | null>(null);
 
-  const filteredAuditLogs = useMemo(() => {
-    return auditLogs.filter((log) => {
-      const matchSearch =
-        !search ||
-        log.userName.toLowerCase().includes(search.toLowerCase()) ||
-        log.entityName.toLowerCase().includes(search.toLowerCase()) ||
-        log.entries.some(
-          (e) =>
-            e.fieldChanged.toLowerCase().includes(search.toLowerCase()) ||
-            e.oldValue.toLowerCase().includes(search.toLowerCase()) ||
-            e.newValue.toLowerCase().includes(search.toLowerCase())
-        );
-      const matchUser = userFilter === 'todos' || log.userId === userFilter;
-      const matchModule =
-        moduleFilter === 'todos' ||
-        (log.entityType === 'Contacto' && moduleFilter === 'contactos') ||
-        (log.entityType === 'Empresa' && moduleFilter === 'empresas') ||
-        (log.entityType === 'Oportunidad' && moduleFilter === 'oportunidades') ||
-        (log.entityType === 'Usuario' && moduleFilter === 'usuarios') ||
-        (log.entityType === 'Rol' && moduleFilter === 'roles');
-      const matchAction = actionFilter === 'todos' || log.action === actionFilter;
-      return matchSearch && matchUser && matchModule && matchAction;
-    });
-  }, [search, userFilter, moduleFilter, actionFilter]);
+  const [auditDetailLogs, setAuditDetailLogs] = useState<AuditLog[]>([]);
+  const [auditTotal, setAuditTotal] = useState(0);
+  const [auditTotalPages, setAuditTotalPages] = useState(0);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditError, setAuditError] = useState<string | null>(null);
 
-  const activityPages = Math.ceil(filteredActivityLogs.length / PAGE_SIZE);
-  const auditPages = Math.ceil(filteredAuditLogs.length / PAGE_SIZE);
-  const paginatedActivity = filteredActivityLogs.slice(
-    (page - 1) * PAGE_SIZE,
-    page * PAGE_SIZE
-  );
-  const paginatedAudit = filteredAuditLogs.slice(
-    (page - 1) * PAGE_SIZE,
-    page * PAGE_SIZE
-  );
+  useEffect(() => {
+    const t = window.setTimeout(() => setDebouncedSearch(searchInput), 400);
+    return () => window.clearTimeout(t);
+  }, [searchInput]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, userFilter, moduleFilter, actionFilter]);
+
+  useEffect(() => {
+    if (activeTab !== 'actividad') {
+      return;
+    }
+    let cancelled = false;
+    setActivityLoading(true);
+    setActivityError(null);
+    fetchActivityLogs({
+      page,
+      limit: PAGE_SIZE,
+      search: debouncedSearch.trim() || undefined,
+      userId: userFilter === 'todos' ? undefined : userFilter,
+      module: moduleFilter === 'todos' ? undefined : moduleFilter,
+      action: actionFilter === 'todos' ? undefined : actionFilter,
+    })
+      .then((res) => {
+        if (cancelled) return;
+        setActivityLogs(res.data);
+        setActivityTotal(res.total);
+        setActivityTotalPages(res.totalPages);
+      })
+      .catch((err: Error) => {
+        if (cancelled) return;
+        setActivityError(err.message ?? 'No se pudieron cargar los registros');
+        setActivityLogs([]);
+        setActivityTotal(0);
+        setActivityTotalPages(0);
+      })
+      .finally(() => {
+        if (!cancelled) setActivityLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    activeTab,
+    page,
+    debouncedSearch,
+    userFilter,
+    moduleFilter,
+    actionFilter,
+  ]);
+
+  useEffect(() => {
+    if (activeTab !== 'auditoria') {
+      return;
+    }
+    let cancelled = false;
+    setAuditLoading(true);
+    setAuditError(null);
+    fetchAuditDetailLogs({
+      page,
+      limit: PAGE_SIZE,
+      search: debouncedSearch.trim() || undefined,
+      userId: userFilter === 'todos' ? undefined : userFilter,
+      module: moduleFilter === 'todos' ? undefined : moduleFilter,
+      action: actionFilter === 'todos' ? undefined : actionFilter,
+    })
+      .then((res) => {
+        if (cancelled) return;
+        setAuditDetailLogs(res.data);
+        setAuditTotal(res.total);
+        setAuditTotalPages(res.totalPages);
+      })
+      .catch((err: Error) => {
+        if (cancelled) return;
+        setAuditError(err.message ?? 'No se pudo cargar la auditoría detallada');
+        setAuditDetailLogs([]);
+        setAuditTotal(0);
+        setAuditTotalPages(0);
+      })
+      .finally(() => {
+        if (!cancelled) setAuditLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    activeTab,
+    page,
+    debouncedSearch,
+    userFilter,
+    moduleFilter,
+    actionFilter,
+  ]);
+
+  const paginatedActivity = activityLogs;
+  const paginatedAudit = auditDetailLogs;
 
   const activityByDate = useMemo(() => {
     const groups: Record<string, ActivityLog[]> = {};
-    for (const log of filteredActivityLogs) {
+    for (const log of activityLogs) {
       const key = log.timestamp.slice(0, 10);
       if (!groups[key]) groups[key] = [];
       groups[key].push(log);
     }
     return Object.entries(groups).sort(([a], [b]) => b.localeCompare(a));
-  }, [filteredActivityLogs]);
+  }, [activityLogs]);
 
   function copyToClipboard(text: string) {
     navigator.clipboard.writeText(text);
@@ -193,8 +255,8 @@ export default function AuditPage() {
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Buscar por usuario, entidad, acción..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 className="pl-9"
               />
             </div>
@@ -242,6 +304,11 @@ export default function AuditPage() {
         </div>
 
         <TabsContent value="actividad" className="space-y-4">
+          {activityError ? (
+            <p className="text-sm text-destructive" role="alert">
+              {activityError}
+            </p>
+          ) : null}
           <div className="flex items-center gap-2">
             <Button
               variant={viewMode === 'table' ? 'secondary' : 'ghost'}
@@ -276,7 +343,14 @@ export default function AuditPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginatedActivity.map((log) => {
+                  {activityLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
+                        Cargando actividad…
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
+                  {!activityLoading && paginatedActivity.map((log) => {
                     const ActionIcon = getActionIcon(log.action);
                     return (
                       <TableRow
@@ -350,7 +424,7 @@ export default function AuditPage() {
                   })}
                 </TableBody>
               </Table>
-              {filteredActivityLogs.length === 0 && (
+              {!activityLoading && activityTotal === 0 && (
                 <CardContent className="py-12">
                   <EmptyState
                     icon={Activity}
@@ -359,10 +433,10 @@ export default function AuditPage() {
                   />
                 </CardContent>
               )}
-              {activityPages > 1 && (
+              {!activityLoading && activityTotalPages > 1 && (
                 <div className="flex items-center justify-between border-t px-4 py-3">
                   <p className="text-sm text-muted-foreground">
-                    {filteredActivityLogs.length} registro{filteredActivityLogs.length !== 1 ? 's' : ''}
+                    {activityTotal} registro{activityTotal !== 1 ? 's' : ''}
                   </p>
                   <div className="flex gap-2">
                     <Button
@@ -376,7 +450,7 @@ export default function AuditPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      disabled={page >= (activeTab === 'actividad' ? activityPages : auditPages)}
+                      disabled={page >= activityTotalPages}
                       onClick={() => setPage((p) => p + 1)}
                     >
                       <ChevronRight className="size-4" />
@@ -387,6 +461,12 @@ export default function AuditPage() {
             </Card>
           ) : (
             <div className="space-y-6">
+              {activityLoading ? (
+                <p className="text-sm text-muted-foreground">Cargando actividad…</p>
+              ) : null}
+              {!activityLoading && activityError ? (
+                <p className="text-sm text-destructive">{activityError}</p>
+              ) : null}
               {activityByDate.map(([dateKey, logs]) => (
                 <div key={dateKey}>
                   <h3 className="mb-3 text-sm font-semibold text-muted-foreground">
@@ -438,6 +518,11 @@ export default function AuditPage() {
         </TabsContent>
 
         <TabsContent value="auditoria" className="space-y-4">
+          {auditError ? (
+            <p className="text-sm text-destructive" role="alert">
+              {auditError}
+            </p>
+          ) : null}
           <Card>
             <Table>
               <TableHeader>
@@ -452,7 +537,15 @@ export default function AuditPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginatedAudit.map((log) => (
+                {auditLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
+                      Cargando auditoría detallada…
+                    </TableCell>
+                  </TableRow>
+                ) : null}
+                {!auditLoading &&
+                  paginatedAudit.map((log) => (
                   <React.Fragment key={log.id}>
                     <TableRow
                       className={cn(
@@ -486,7 +579,7 @@ export default function AuditPage() {
                       <TableCell>{log.entityName}</TableCell>
                       <TableCell>
                         <Badge variant="secondary">
-                          {actionLabels[log.action]}
+                          {actionLabels[log.action] ?? log.action}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
@@ -539,19 +632,19 @@ export default function AuditPage() {
                 ))}
               </TableBody>
             </Table>
-            {filteredAuditLogs.length === 0 && (
+            {!auditLoading && auditTotal === 0 && (
               <CardContent className="py-12">
                 <EmptyState
                   icon={History}
-                  title="Sin registros de auditoría"
-                  description="No hay cambios detallados que coincidan con los filtros."
+                  title="Sin registros de auditoría detallada"
+                  description="Aún no hay cambios campo a campo registrados o no coinciden con los filtros. Edita un contacto, empresa u oportunidad para generar entradas."
                 />
               </CardContent>
             )}
-            {auditPages > 1 && (
+            {!auditLoading && auditTotalPages > 1 && (
               <div className="flex items-center justify-between border-t px-4 py-3">
                 <p className="text-sm text-muted-foreground">
-                  {filteredAuditLogs.length} registro{filteredAuditLogs.length !== 1 ? 's' : ''}
+                  {auditTotal} registro{auditTotal !== 1 ? 's' : ''}
                 </p>
                 <div className="flex gap-2">
                   <Button
@@ -565,7 +658,11 @@ export default function AuditPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    disabled={page >= (activeTab === 'actividad' ? activityPages : auditPages)}
+                    disabled={
+                      activeTab === 'actividad'
+                        ? page >= activityTotalPages
+                        : page >= auditTotalPages
+                    }
                     onClick={() => setPage((p) => p + 1)}
                   >
                     <ChevronRight className="size-4" />
@@ -597,11 +694,11 @@ export default function AuditPage() {
                 </div>
                 <div>
                   <p className="font-medium text-muted-foreground">Acción</p>
-                  <p>{actionLabels[previewLog.action]}</p>
+                  <p>{actionLabels[previewLog.action] ?? previewLog.action}</p>
                 </div>
                 <div>
                   <p className="font-medium text-muted-foreground">Módulo</p>
-                  <p>{moduleLabels[previewLog.module]}</p>
+                  <p>{moduleLabels[previewLog.module] ?? previewLog.module}</p>
                 </div>
                 <div>
                   <p className="font-medium text-muted-foreground">Descripción</p>

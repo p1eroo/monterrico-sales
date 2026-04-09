@@ -11,6 +11,11 @@ import { EntitySyncService } from '../sync/entity-sync.service';
 import { ClientsService } from '../clients/clients.service';
 import { slugifyForUrl } from '../common/url-slug.util';
 import { CrmConfigService } from '../crm-config/crm-config.service';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
+import type { ActivityActor } from '../activity-logs/activity-logs.types';
+import { AuditDetailService } from '../audit-detail/audit-detail.service';
+import { buildChangeEntries } from '../common/audit-diff.util';
+import { COMPANY_FIELD_LABELS } from '../audit-detail/audit-field-labels';
 
 /** Select slim para listado: excluye linkedin, correo, direcciones */
 const companySelectListSlim = {
@@ -86,6 +91,8 @@ export class CompaniesService {
     private readonly entitySync: EntitySyncService,
     private readonly clientsService: ClientsService,
     private readonly crmConfig: CrmConfigService,
+    private readonly activityLogs: ActivityLogsService,
+    private readonly auditDetail: AuditDetailService,
   ) {}
 
   private async assertUserExists(id: string): Promise<void> {
@@ -139,7 +146,7 @@ export class CompaniesService {
     throw new NotFoundException('Empresa no encontrada');
   }
 
-  async create(dto: CreateCompanyDto) {
+  async create(dto: CreateCompanyDto, actor?: ActivityActor) {
     const name = dto.name?.trim();
     if (!name) {
       throw new BadRequestException('El nombre de la empresa es obligatorio');
@@ -218,6 +225,16 @@ export class CompaniesService {
 
     await this.entitySync.propagateFromCompany(company.id);
     await this.clientsService.ensureClientForCierreGanado(company.id);
+
+    await this.activityLogs.record(actor ?? null, {
+      action: 'crear',
+      module: 'empresas',
+      entityType: 'Empresa',
+      entityId: company.id,
+      entityName: company.name,
+      description: `Empresa creada: ${company.name}`,
+    });
+
     return this.findOne(company.id);
   }
 
@@ -529,9 +546,34 @@ export class CompaniesService {
     return company;
   }
 
-  async update(idOrSlug: string, dto: UpdateCompanyDto) {
+  async update(idOrSlug: string, dto: UpdateCompanyDto, actor: ActivityActor) {
     const id = await this.resolveCompanyId(idOrSlug);
-    await this.findOne(id);
+    const snapshot = await this.prisma.company.findUnique({
+      where: { id },
+      select: {
+        name: true,
+        razonSocial: true,
+        ruc: true,
+        telefono: true,
+        domain: true,
+        rubro: true,
+        tipo: true,
+        linkedin: true,
+        correo: true,
+        distrito: true,
+        provincia: true,
+        departamento: true,
+        direccion: true,
+        facturacionEstimada: true,
+        fuente: true,
+        clienteRecuperado: true,
+        etapa: true,
+        assignedTo: true,
+      },
+    });
+    if (!snapshot) {
+      throw new NotFoundException('Empresa no encontrada');
+    }
 
     const data: Record<string, string | number | null | undefined> = {};
 
@@ -619,14 +661,82 @@ export class CompaniesService {
 
     await this.clientsService.ensureClientForCierreGanado(id);
 
+    const etapaChanged =
+      dto.etapa !== undefined && dto.etapa.trim() !== snapshot.etapa;
+    const action = etapaChanged ? 'cambiar_etapa' : 'actualizar';
+    const description = etapaChanged
+      ? `Etapa de la empresa: ${snapshot.etapa} → ${dto.etapa!.trim()}`
+      : 'Datos de la empresa actualizados.';
+
+    const auditPatch: Record<string, unknown> = { ...data };
+    delete auditPatch.urlSlug;
+    const before = { ...snapshot } as Record<string, unknown>;
+    const diffEntries = buildChangeEntries(
+      before,
+      auditPatch,
+      COMPANY_FIELD_LABELS,
+      ['urlSlug'],
+    );
+    const displayName =
+      typeof data.name === 'string' ? data.name : snapshot.name;
+
+    await this.auditDetail.record(actor, {
+      action,
+      module: 'empresas',
+      entityType: 'Empresa',
+      entityId: id,
+      entityName: displayName,
+      entries: diffEntries,
+    });
+
+    await this.activityLogs.record(actor, {
+      action,
+      module: 'empresas',
+      entityType: 'Empresa',
+      entityId: id,
+      entityName: displayName,
+      description,
+    });
+
     return this.findOne(id);
   }
 
-  async remove(idOrSlug: string) {
+  async remove(idOrSlug: string, actor: ActivityActor) {
     const id = await this.resolveCompanyId(idOrSlug);
-    await this.findOne(id);
-    return this.prisma.company.delete({
+    const row = await this.prisma.company.findUnique({
+      where: { id },
+      select: { name: true },
+    });
+    if (!row) {
+      throw new NotFoundException('Empresa no encontrada');
+    }
+    const deleted = await this.prisma.company.delete({
       where: { id },
     });
+    await this.auditDetail.record(actor, {
+      action: 'eliminar',
+      module: 'empresas',
+      entityType: 'Empresa',
+      entityId: id,
+      entityName: row.name,
+      entries: [
+        {
+          fieldKey: '_registro',
+          fieldLabel: 'Registro',
+          oldValue: row.name,
+          newValue: '(eliminado)',
+        },
+      ],
+    });
+    await this.activityLogs.record(actor, {
+      action: 'eliminar',
+      module: 'empresas',
+      entityType: 'Empresa',
+      entityId: id,
+      entityName: row.name,
+      description: `Empresa eliminada: ${row.name}`,
+      isCritical: true,
+    });
+    return deleted;
   }
 }

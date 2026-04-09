@@ -25,6 +25,7 @@ export type AnalyticsSummary = {
     id: string;
     title: string;
     type: string;
+    taskKind: string | null;
     status: string;
     dueDate: string;
     contactName: string;

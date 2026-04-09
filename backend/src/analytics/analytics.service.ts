@@ -70,6 +70,9 @@ function endOfUtcMonth(d: Date): Date {
   return x;
 }
 
+/** Seguimiento operativo: solo filas de tarea (modelo Activity con type=tarea + taskKind). */
+const TASK_ACTIVITY_FILTER = { type: 'tarea' } as const;
+
 @Injectable()
 export class AnalyticsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -188,12 +191,14 @@ export class AnalyticsService {
       }),
       this.prisma.activity.count({
         where: {
+          ...TASK_ACTIVITY_FILTER,
           status: 'pendiente',
           ...(advisorId ? { assignedTo: advisorId } : {}),
         },
       }),
       this.prisma.activity.count({
         where: {
+          ...TASK_ACTIVITY_FILTER,
           status: 'pendiente',
           dueDate: { lt: new Date() },
           ...(advisorId ? { assignedTo: advisorId } : {}),
@@ -201,6 +206,7 @@ export class AnalyticsService {
       }),
       this.prisma.activity.count({
         where: {
+          ...TASK_ACTIVITY_FILTER,
           completedAt: { gte: from, lte: to },
           ...(advisorId ? { assignedTo: advisorId } : {}),
         },
@@ -240,13 +246,40 @@ export class AnalyticsService {
 
     const months = eachMonthBetween(from, to);
 
-    const org = await this.prisma.crmOrganizationProfile.findUnique({
-      where: { id: 'default' },
-      select: { globalMonthlyGoal: true },
+    const monthStartDates = months.map((ym) => {
+      const [y, m] = ym.split('-').map((x) => parseInt(x, 10));
+      return new Date(Date.UTC(y, m - 1, 1, 0, 0, 0, 0));
     });
-    const monthlyMeta = org?.globalMonthlyGoal ?? 0;
-    const metaLine =
-      months.length > 0 ? Math.round((monthlyMeta / months.length) * 100) / 100 : 0;
+
+    /** Sin asesor: meta equipo por mes. Con asesor: solo filas CrmUserMonthlySalesTarget (mes sin fila → 0). */
+    const metaByYm = new Map<string, number>();
+    const advisorMetaByYm = new Map<string, number>();
+    if (advisorId) {
+      const userMonthRows =
+        monthStartDates.length > 0
+          ? await this.prisma.crmUserMonthlySalesTarget.findMany({
+              where: {
+                userId: advisorId,
+                periodStart: { in: monthStartDates },
+              },
+              select: { periodStart: true, amount: true },
+            })
+          : [];
+      for (const row of userMonthRows) {
+        advisorMetaByYm.set(monthKey(row.periodStart), row.amount);
+      }
+    } else if (monthStartDates.length > 0) {
+      const monthlyTargetRows = await this.prisma.crmMonthlySalesTarget.findMany({
+        where: {
+          organizationId: 'default',
+          periodStart: { in: monthStartDates },
+        },
+        select: { periodStart: true, amount: true },
+      });
+      for (const row of monthlyTargetRows) {
+        metaByYm.set(monthKey(row.periodStart), row.amount);
+      }
+    }
 
     const salesByMonth = await Promise.all(
       months.map(async (ym) => {
@@ -261,10 +294,13 @@ export class AnalyticsService {
           ),
           _sum: { amount: true },
         });
+        const meta = advisorId
+          ? (advisorMetaByYm.get(ym) ?? 0)
+          : (metaByYm.get(ym) ?? 0);
         return {
           name: monthLabelEs(ym),
           ventas: agg._sum.amount ?? 0,
-          meta: metaLine,
+          meta,
         };
       }),
     );
@@ -323,6 +359,7 @@ export class AnalyticsService {
 
     const pendingActivities = await this.prisma.activity.findMany({
       where: {
+        ...TASK_ACTIVITY_FILTER,
         status: 'pendiente',
         ...(advisorId ? { assignedTo: advisorId } : {}),
       },
@@ -340,6 +377,7 @@ export class AnalyticsService {
       id: a.id,
       title: a.title,
       type: a.type,
+      taskKind: a.taskKind,
       status:
         a.dueDate < new Date() && a.status === 'pendiente' ? 'vencida' : a.status,
       dueDate: a.dueDate.toISOString(),
@@ -447,12 +485,14 @@ export class AnalyticsService {
         const [completados, pendientes] = await Promise.all([
           this.prisma.activity.count({
             where: {
+              ...TASK_ACTIVITY_FILTER,
               completedAt: { gte: cFrom, lte: cTo },
               ...adv,
             },
           }),
           this.prisma.activity.count({
             where: {
+              ...TASK_ACTIVITY_FILTER,
               status: 'pendiente',
               dueDate: { gte: cFrom, lte: cTo },
               ...adv,

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -46,6 +46,95 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 
+const MONTH_SHORT_ES = [
+  'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+  'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic',
+] as const;
+
+function labelYearMonthEs(ym: string) {
+  const [y, m] = ym.split('-').map(Number);
+  return `${MONTH_SHORT_ES[(m ?? 1) - 1]} ${y}`;
+}
+
+/** Doce claves YYYY-MM para un año calendario (UTC). */
+function yearMonthKeysUtc(year: number): string[] {
+  const keys: string[] = [];
+  for (let month = 1; month <= 12; month++) {
+    keys.push(`${year}-${String(month).padStart(2, '0')}`);
+  }
+  return keys;
+}
+
+function utcCalendarYearNow(): number {
+  return new Date().getUTCFullYear();
+}
+
+/** Años elegibles en el selector (ancla al año UTC actual en cada render). */
+function teamGoalYearSelectRange(): number[] {
+  const y = utcCalendarYearNow();
+  return Array.from({ length: 8 }, (_, i) => y - 3 + i);
+}
+
+/**
+ * Diff completo para PUT: incluye cambios en cualquier mes, no solo los visibles.
+ * Omite entradas que no cambiarían el estado en servidor.
+ */
+function buildMonthlyGoalsPatch(
+  monthlyOrgByYm: Record<string, number>,
+  lastSyncedMonthlyByYm: Record<string, number>,
+): Record<string, number> {
+  const keys = new Set([
+    ...Object.keys(monthlyOrgByYm),
+    ...Object.keys(lastSyncedMonthlyByYm),
+  ]);
+  const monthlyPatch: Record<string, number> = {};
+  for (const ym of keys) {
+    const edited = monthlyOrgByYm[ym];
+    const was = lastSyncedMonthlyByYm[ym];
+    if (edited !== undefined) {
+      if (edited <= 0) {
+        if (was !== undefined) monthlyPatch[ym] = 0;
+      } else if (edited !== was) {
+        monthlyPatch[ym] = edited;
+      }
+    } else if (was !== undefined) {
+      monthlyPatch[ym] = 0;
+    }
+  }
+  return monthlyPatch;
+}
+
+function buildAdvisorMonthlyGoalsPatch(
+  draft: Record<string, Record<string, number>>,
+  synced: Record<string, Record<string, number>>,
+): Record<string, Record<string, number>> | undefined {
+  const userIds = new Set([...Object.keys(draft), ...Object.keys(synced)]);
+  const out: Record<string, Record<string, number>> = {};
+  for (const uid of userIds) {
+    const d = draft[uid] ?? {};
+    const s = synced[uid] ?? {};
+    const keys = new Set([...Object.keys(d), ...Object.keys(s)]);
+    const innerPatch: Record<string, number> = {};
+    for (const ym of keys) {
+      const edited = d[ym];
+      const was = s[ym];
+      if (edited !== undefined) {
+        if (edited <= 0) {
+          if (was !== undefined) innerPatch[ym] = 0;
+        } else if (edited !== was) {
+          innerPatch[ym] = edited;
+        }
+      } else if (was !== undefined) {
+        innerPatch[ym] = 0;
+      }
+    }
+    if (Object.keys(innerPatch).length > 0) {
+      out[uid] = innerPatch;
+    }
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
 const NAV_SECTIONS = [
   { id: 'general', label: 'General', icon: Building2 },
   { id: 'metas', label: 'Metas', icon: Target },
@@ -75,19 +164,51 @@ function GoalsSettingsCard() {
   const {
     globalWeeklyGoal,
     userWeeklyGoals,
-    globalMonthlyGoal,
-    userMonthlyGoals,
+    monthlyOrgByYm,
     setGlobalWeeklyGoal,
     setUserWeeklyGoal,
-    setGlobalMonthlyGoal,
-    setUserMonthlyGoal,
+    setMonthlyOrgForYm,
+    advisorMonthlyByYm,
+    setAdvisorMonthlyForUserYm,
   } = useGoalsStore();
 
   const setBundle = useCrmConfigStore((s) => s.setBundle);
 
+  const [teamGoalYear, setTeamGoalYear] = useState(utcCalendarYearNow);
+  const [advisorMonthYear, setAdvisorMonthYear] = useState(utcCalendarYearNow);
+  const [advisorPickerId, setAdvisorPickerId] = useState('');
+  const monthKeysForYear = useMemo(
+    () => yearMonthKeysUtc(teamGoalYear),
+    [teamGoalYear],
+  );
+  const teamGoalYearOptions = useMemo(() => {
+    const base = teamGoalYearSelectRange();
+    const set = new Set(base);
+    set.add(teamGoalYear);
+    return [...set].sort((a, b) => a - b);
+  }, [teamGoalYear]);
+
   const roleUsers = users.filter((u) =>
     ['asesor', 'admin', 'supervisor'].includes(u.role),
   );
+
+  useEffect(() => {
+    if (roleUsers.length === 0) return;
+    if (!advisorPickerId || !roleUsers.some((u) => u.id === advisorPickerId)) {
+      setAdvisorPickerId(roleUsers[0].id);
+    }
+  }, [roleUsers, advisorPickerId]);
+
+  const advisorMonthKeysForYear = useMemo(
+    () => yearMonthKeysUtc(advisorMonthYear),
+    [advisorMonthYear],
+  );
+  const advisorGoalYearOptions = useMemo(() => {
+    const base = teamGoalYearSelectRange();
+    const set = new Set(base);
+    set.add(advisorMonthYear);
+    return [...set].sort((a, b) => a - b);
+  }, [advisorMonthYear]);
 
   const [saving, setSaving] = useState(false);
 
@@ -97,15 +218,21 @@ function GoalsSettingsCard() {
     try {
       const byUserId: Record<string, { weekly?: number; monthly?: number }> = {};
       for (const u of roleUsers) {
-        byUserId[u.id] = {
-          weekly: userWeeklyGoals[u.id] ?? 0,
-          monthly: userMonthlyGoals[u.id] ?? 0,
-        };
+        byUserId[u.id] = { weekly: userWeeklyGoals[u.id] ?? 0 };
       }
+      const {
+        monthlyOrgByYm: mo,
+        lastSyncedMonthlyByYm: synced,
+        advisorMonthlyByYm: advDraft,
+        lastSyncedAdvisorMonthlyByYm: advSynced,
+      } = useGoalsStore.getState();
+      const monthlyPatch = buildMonthlyGoalsPatch(mo, synced);
+      const advisorPatch = buildAdvisorMonthlyGoalsPatch(advDraft, advSynced);
       const b = await putCrmSalesGoals({
         globalWeekly: globalWeeklyGoal,
-        globalMonthly: globalMonthlyGoal,
         byUserId,
+        ...(Object.keys(monthlyPatch).length > 0 ? { monthlyByYm: monthlyPatch } : {}),
+        ...(advisorPatch ? { advisorMonthlyByYm: advisorPatch } : {}),
       });
       setBundle(b);
       hydrateGoalsFromBundle(b, currentUser.id);
@@ -184,34 +311,153 @@ function GoalsSettingsCard() {
           </TabsContent>
 
           <TabsContent value="mes" className="mt-0 space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="global-monthly">Meta global del equipo (S/ por mes)</Label>
-              <Input
-                id="global-monthly"
-                type="number"
-                min={0}
-                disabled={!canEditGoals}
-                value={globalMonthlyGoal}
-                onChange={(e) => setGlobalMonthlyGoal(Number(e.target.value) || 0)}
-              />
-            </div>
-            <div>
-              <Label className="mb-3 block">Meta mensual por asesor (S/ por mes)</Label>
-              <div className="space-y-3">
-                {roleUsers.map((u) => (
-                  <div key={`monthly-${u.id}`} className="flex items-center justify-between gap-4 rounded-lg border p-3">
-                    <span className="text-sm font-medium">{u.name}</span>
+            <div className="space-y-4 rounded-lg border p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div className="space-y-1">
+                  <Label className="text-base">Meta del equipo por mes calendario</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Elige el año (UTC, mismo criterio que reportes). Mes vacío = sin meta para ese mes.
+                    Puedes editar varios años y guardar una vez: se envían todos los cambios pendientes.
+                  </p>
+                </div>
+                <div className="space-y-1.5 sm:w-44">
+                  <Label htmlFor="team-goal-year" className="text-muted-foreground">
+                    Año
+                  </Label>
+                  <Select
+                    value={String(teamGoalYear)}
+                    onValueChange={(v) => setTeamGoalYear(Number(v))}
+                  >
+                    <SelectTrigger id="team-goal-year" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {teamGoalYearOptions.map((y) => (
+                        <SelectItem key={y} value={String(y)}>
+                          {y}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {monthKeysForYear.map((ym) => (
+                  <div
+                    key={ym}
+                    className="flex items-center justify-between gap-3 rounded-md border border-border/60 px-3 py-2"
+                  >
+                    <span className="text-sm font-medium tabular-nums text-muted-foreground">
+                      {labelYearMonthEs(ym)}
+                    </span>
                     <Input
                       type="number"
                       min={0}
                       disabled={!canEditGoals}
-                      className="w-32"
-                      value={userMonthlyGoals[u.id] ?? 0}
-                      onChange={(e) => setUserMonthlyGoal(u.id, Number(e.target.value) || 0)}
+                      className="w-40"
+                      placeholder="0"
+                      value={monthlyOrgByYm[ym] ?? ''}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        if (raw === '') {
+                          setMonthlyOrgForYm(ym, undefined);
+                          return;
+                        }
+                        const n = Number(raw);
+                        if (!Number.isFinite(n)) return;
+                        setMonthlyOrgForYm(ym, n);
+                      }}
                     />
                   </div>
                 ))}
               </div>
+            </div>
+
+            <div className="space-y-4 rounded-lg border p-4">
+              <div className="space-y-1">
+                <Label className="text-base">Meta por mes y por asesor</Label>
+                <p className="text-sm text-muted-foreground">
+                  UTC (igual que reportes). En &quot;Ventas cerradas por mes&quot; con filtro por asesor,
+                  cada barra usa el monto de ese mes; sin valor guardado, la meta de ese mes es 0. La meta
+                  mensual del dashboard personal también toma el mes calendario actual desde aquí.
+                </p>
+              </div>
+              {roleUsers.length > 0 && advisorPickerId ? (
+                <>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      <Label htmlFor="advisor-pick-monthly" className="text-muted-foreground">
+                        Asesor
+                      </Label>
+                      <Select
+                        value={advisorPickerId}
+                        onValueChange={setAdvisorPickerId}
+                      >
+                        <SelectTrigger id="advisor-pick-monthly" className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {roleUsers.map((u) => (
+                            <SelectItem key={u.id} value={u.id}>
+                              {u.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5 sm:w-44">
+                      <Label htmlFor="advisor-goal-year" className="text-muted-foreground">
+                        Año
+                      </Label>
+                      <Select
+                        value={String(advisorMonthYear)}
+                        onValueChange={(v) => setAdvisorMonthYear(Number(v))}
+                      >
+                        <SelectTrigger id="advisor-goal-year" className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {advisorGoalYearOptions.map((y) => (
+                            <SelectItem key={y} value={String(y)}>
+                              {y}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {advisorMonthKeysForYear.map((ym) => (
+                      <div
+                        key={`${advisorPickerId}-${ym}`}
+                        className="flex items-center justify-between gap-3 rounded-md border border-border/60 px-3 py-2"
+                      >
+                        <span className="text-sm font-medium tabular-nums text-muted-foreground">
+                          {labelYearMonthEs(ym)}
+                        </span>
+                        <Input
+                          type="number"
+                          min={0}
+                          disabled={!canEditGoals}
+                          className="w-40"
+                          placeholder="0"
+                          value={advisorMonthlyByYm[advisorPickerId]?.[ym] ?? ''}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            if (raw === '') {
+                              setAdvisorMonthlyForUserYm(advisorPickerId, ym, undefined);
+                              return;
+                            }
+                            const n = Number(raw);
+                            if (!Number.isFinite(n)) return;
+                            setAdvisorMonthlyForUserYm(advisorPickerId, ym, n);
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : null}
             </div>
           </TabsContent>
         </Tabs>

@@ -255,13 +255,13 @@ export default function Dashboard() {
           icon={UserPlus}
         />
         <MetricCard
-          title="Actividades Pendientes"
+          title="Tareas pendientes"
           value={kpis?.pendingActivities ?? '—'}
           changeType="neutral"
           icon={CalendarCheck}
         />
         <MetricCard
-          title="Seguimientos Vencidos"
+          title="Tareas vencidas"
           value={kpis?.overdueFollowUps ?? '—'}
           change={
             kpis && kpis.overdueFollowUps > 0 ? 'Requiere atención' : undefined
@@ -461,20 +461,22 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Actividades pendientes / vencidas */}
+        {/* Tareas pendientes / vencidas */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Actividades pendientes</CardTitle>
+            <CardTitle className="text-base">Tareas pendientes</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {!summaryLoading && pendingActivities.length === 0 ? (
                 <p className="py-8 text-center text-sm text-muted-foreground">
-                  No hay actividades pendientes en este periodo.
+                  No hay tareas pendientes.
                 </p>
               ) : null}
               {pendingActivities.map((activity) => {
-                const t = (activity.type ?? '').toLowerCase();
+                const t = (
+                  activity.taskKind ?? activity.type ?? ''
+                ).toLowerCase();
                 const IconComp = activityIconMap[t] ?? Clock;
                 return (
                   <div

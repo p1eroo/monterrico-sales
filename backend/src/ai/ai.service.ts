@@ -305,7 +305,7 @@ const CRM_TOOLS: Record<string, unknown>[] = [
     function: {
       name: 'search_my_knowledge',
       description:
-        'Busca en las bases de conocimiento indexadas del usuario (fragmentos de texto subidos o indexados; búsqueda por palabras, no embeddings). Usar cuando la pregunta pueda estar en documentación interna.',
+        'Busca en las bases de conocimiento indexadas (RAG): por similitud semántica con embeddings en PostgreSQL/pgvector cuando está configurado, y por palabras en el texto. Usar cuando la pregunta pueda estar en documentación interna.',
       parameters: {
         type: 'object',
         properties: {

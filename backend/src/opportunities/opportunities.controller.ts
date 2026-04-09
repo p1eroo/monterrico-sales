@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { OpportunitiesService } from './opportunities.service';
@@ -15,6 +16,8 @@ import { UpdateOpportunityDto } from './dto/update-opportunity.dto';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 
+type AuthedReq = { user: { userId: string; name: string } };
+
 @Controller('opportunities')
 @UseGuards(PermissionsGuard)
 export class OpportunitiesController {
@@ -22,8 +25,14 @@ export class OpportunitiesController {
 
   @Post()
   @RequirePermissions('oportunidades.crear')
-  create(@Body() createOpportunityDto: CreateOpportunityDto) {
-    return this.opportunitiesService.create(createOpportunityDto);
+  create(
+    @Body() createOpportunityDto: CreateOpportunityDto,
+    @Req() req: AuthedReq,
+  ) {
+    return this.opportunitiesService.create(createOpportunityDto, {
+      userId: req.user.userId,
+      userName: req.user.name,
+    });
   }
 
   @Get()
@@ -61,13 +70,20 @@ export class OpportunitiesController {
   update(
     @Param('id') id: string,
     @Body() updateOpportunityDto: UpdateOpportunityDto,
+    @Req() req: AuthedReq,
   ) {
-    return this.opportunitiesService.update(id, updateOpportunityDto);
+    return this.opportunitiesService.update(id, updateOpportunityDto, {
+      userId: req.user.userId,
+      userName: req.user.name,
+    });
   }
 
   @Delete(':id')
   @RequirePermissions('oportunidades.eliminar')
-  remove(@Param('id') id: string) {
-    return this.opportunitiesService.remove(id);
+  remove(@Param('id') id: string, @Req() req: AuthedReq) {
+    return this.opportunitiesService.remove(id, {
+      userId: req.user.userId,
+      userName: req.user.name,
+    });
   }
 }

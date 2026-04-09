@@ -34,6 +34,21 @@ export type Account = $Result.DefaultSelection<Prisma.$AccountPayload>
  */
 export type User = $Result.DefaultSelection<Prisma.$UserPayload>
 /**
+ * Model ActivityLog
+ * 
+ */
+export type ActivityLog = $Result.DefaultSelection<Prisma.$ActivityLogPayload>
+/**
+ * Model AuditChangeSet
+ * 
+ */
+export type AuditChangeSet = $Result.DefaultSelection<Prisma.$AuditChangeSetPayload>
+/**
+ * Model AuditChangeEntry
+ * 
+ */
+export type AuditChangeEntry = $Result.DefaultSelection<Prisma.$AuditChangeEntryPayload>
+/**
  * Model AiConversation
  * 
  */
@@ -64,6 +79,11 @@ export type AiAssistantInstruction = $Result.DefaultSelection<Prisma.$AiAssistan
  */
 export type CrmOrganizationProfile = $Result.DefaultSelection<Prisma.$CrmOrganizationProfilePayload>
 /**
+ * Model CrmMonthlySalesTarget
+ * * Meta de facturación del equipo por mes calendario (UTC). Sin fila → meta 0 en reportes / dashboard.
+ */
+export type CrmMonthlySalesTarget = $Result.DefaultSelection<Prisma.$CrmMonthlySalesTargetPayload>
+/**
  * Model CrmLeadSource
  * 
  */
@@ -88,6 +108,11 @@ export type CrmActivityType = $Result.DefaultSelection<Prisma.$CrmActivityTypePa
  * 
  */
 export type CrmUserSalesGoal = $Result.DefaultSelection<Prisma.$CrmUserSalesGoalPayload>
+/**
+ * Model CrmUserMonthlySalesTarget
+ * * Meta de ventas del asesor por mes calendario (UTC). Mes sin fila → meta 0 en reportes / tarjeta mensual.
+ */
+export type CrmUserMonthlySalesTarget = $Result.DefaultSelection<Prisma.$CrmUserMonthlySalesTargetPayload>
 /**
  * Model Contact
  * 
@@ -336,6 +361,36 @@ export class PrismaClient<
   get user(): Prisma.UserDelegate<ExtArgs, ClientOptions>;
 
   /**
+   * `prisma.activityLog`: Exposes CRUD operations for the **ActivityLog** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more ActivityLogs
+    * const activityLogs = await prisma.activityLog.findMany()
+    * ```
+    */
+  get activityLog(): Prisma.ActivityLogDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.auditChangeSet`: Exposes CRUD operations for the **AuditChangeSet** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more AuditChangeSets
+    * const auditChangeSets = await prisma.auditChangeSet.findMany()
+    * ```
+    */
+  get auditChangeSet(): Prisma.AuditChangeSetDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.auditChangeEntry`: Exposes CRUD operations for the **AuditChangeEntry** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more AuditChangeEntries
+    * const auditChangeEntries = await prisma.auditChangeEntry.findMany()
+    * ```
+    */
+  get auditChangeEntry(): Prisma.AuditChangeEntryDelegate<ExtArgs, ClientOptions>;
+
+  /**
    * `prisma.aiConversation`: Exposes CRUD operations for the **AiConversation** model.
     * Example usage:
     * ```ts
@@ -396,6 +451,16 @@ export class PrismaClient<
   get crmOrganizationProfile(): Prisma.CrmOrganizationProfileDelegate<ExtArgs, ClientOptions>;
 
   /**
+   * `prisma.crmMonthlySalesTarget`: Exposes CRUD operations for the **CrmMonthlySalesTarget** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more CrmMonthlySalesTargets
+    * const crmMonthlySalesTargets = await prisma.crmMonthlySalesTarget.findMany()
+    * ```
+    */
+  get crmMonthlySalesTarget(): Prisma.CrmMonthlySalesTargetDelegate<ExtArgs, ClientOptions>;
+
+  /**
    * `prisma.crmLeadSource`: Exposes CRUD operations for the **CrmLeadSource** model.
     * Example usage:
     * ```ts
@@ -444,6 +509,16 @@ export class PrismaClient<
     * ```
     */
   get crmUserSalesGoal(): Prisma.CrmUserSalesGoalDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.crmUserMonthlySalesTarget`: Exposes CRUD operations for the **CrmUserMonthlySalesTarget** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more CrmUserMonthlySalesTargets
+    * const crmUserMonthlySalesTargets = await prisma.crmUserMonthlySalesTarget.findMany()
+    * ```
+    */
+  get crmUserMonthlySalesTarget(): Prisma.CrmUserMonthlySalesTargetDelegate<ExtArgs, ClientOptions>;
 
   /**
    * `prisma.contact`: Exposes CRUD operations for the **Contact** model.
@@ -1052,17 +1127,22 @@ export namespace Prisma {
     Authority: 'Authority',
     Account: 'Account',
     User: 'User',
+    ActivityLog: 'ActivityLog',
+    AuditChangeSet: 'AuditChangeSet',
+    AuditChangeEntry: 'AuditChangeEntry',
     AiConversation: 'AiConversation',
     AiMessage: 'AiMessage',
     AiKnowledgeBase: 'AiKnowledgeBase',
     AiKnowledgeChunk: 'AiKnowledgeChunk',
     AiAssistantInstruction: 'AiAssistantInstruction',
     CrmOrganizationProfile: 'CrmOrganizationProfile',
+    CrmMonthlySalesTarget: 'CrmMonthlySalesTarget',
     CrmLeadSource: 'CrmLeadSource',
     CrmStage: 'CrmStage',
     CrmPriority: 'CrmPriority',
     CrmActivityType: 'CrmActivityType',
     CrmUserSalesGoal: 'CrmUserSalesGoal',
+    CrmUserMonthlySalesTarget: 'CrmUserMonthlySalesTarget',
     Contact: 'Contact',
     Company: 'Company',
     Client: 'Client',
@@ -1095,7 +1175,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "role" | "authority" | "account" | "user" | "aiConversation" | "aiMessage" | "aiKnowledgeBase" | "aiKnowledgeChunk" | "aiAssistantInstruction" | "crmOrganizationProfile" | "crmLeadSource" | "crmStage" | "crmPriority" | "crmActivityType" | "crmUserSalesGoal" | "contact" | "company" | "client" | "opportunity" | "activity" | "companyContact" | "contactContact" | "contactOpportunity" | "companyCompany" | "companyOpportunity" | "opportunityOpportunity" | "contactActivity" | "companyActivity" | "opportunityActivity" | "campaignEmailSendLog" | "campaign" | "crmFile"
+      modelProps: "role" | "authority" | "account" | "user" | "activityLog" | "auditChangeSet" | "auditChangeEntry" | "aiConversation" | "aiMessage" | "aiKnowledgeBase" | "aiKnowledgeChunk" | "aiAssistantInstruction" | "crmOrganizationProfile" | "crmMonthlySalesTarget" | "crmLeadSource" | "crmStage" | "crmPriority" | "crmActivityType" | "crmUserSalesGoal" | "crmUserMonthlySalesTarget" | "contact" | "company" | "client" | "opportunity" | "activity" | "companyContact" | "contactContact" | "contactOpportunity" | "companyCompany" | "companyOpportunity" | "opportunityOpportunity" | "contactActivity" | "companyActivity" | "opportunityActivity" | "campaignEmailSendLog" | "campaign" | "crmFile"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -1392,6 +1472,228 @@ export namespace Prisma {
           count: {
             args: Prisma.UserCountArgs<ExtArgs>
             result: $Utils.Optional<UserCountAggregateOutputType> | number
+          }
+        }
+      }
+      ActivityLog: {
+        payload: Prisma.$ActivityLogPayload<ExtArgs>
+        fields: Prisma.ActivityLogFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.ActivityLogFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ActivityLogPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.ActivityLogFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ActivityLogPayload>
+          }
+          findFirst: {
+            args: Prisma.ActivityLogFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ActivityLogPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.ActivityLogFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ActivityLogPayload>
+          }
+          findMany: {
+            args: Prisma.ActivityLogFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ActivityLogPayload>[]
+          }
+          create: {
+            args: Prisma.ActivityLogCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ActivityLogPayload>
+          }
+          createMany: {
+            args: Prisma.ActivityLogCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.ActivityLogCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ActivityLogPayload>[]
+          }
+          delete: {
+            args: Prisma.ActivityLogDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ActivityLogPayload>
+          }
+          update: {
+            args: Prisma.ActivityLogUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ActivityLogPayload>
+          }
+          deleteMany: {
+            args: Prisma.ActivityLogDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.ActivityLogUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.ActivityLogUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ActivityLogPayload>[]
+          }
+          upsert: {
+            args: Prisma.ActivityLogUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ActivityLogPayload>
+          }
+          aggregate: {
+            args: Prisma.ActivityLogAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateActivityLog>
+          }
+          groupBy: {
+            args: Prisma.ActivityLogGroupByArgs<ExtArgs>
+            result: $Utils.Optional<ActivityLogGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.ActivityLogCountArgs<ExtArgs>
+            result: $Utils.Optional<ActivityLogCountAggregateOutputType> | number
+          }
+        }
+      }
+      AuditChangeSet: {
+        payload: Prisma.$AuditChangeSetPayload<ExtArgs>
+        fields: Prisma.AuditChangeSetFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.AuditChangeSetFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AuditChangeSetPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.AuditChangeSetFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AuditChangeSetPayload>
+          }
+          findFirst: {
+            args: Prisma.AuditChangeSetFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AuditChangeSetPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.AuditChangeSetFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AuditChangeSetPayload>
+          }
+          findMany: {
+            args: Prisma.AuditChangeSetFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AuditChangeSetPayload>[]
+          }
+          create: {
+            args: Prisma.AuditChangeSetCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AuditChangeSetPayload>
+          }
+          createMany: {
+            args: Prisma.AuditChangeSetCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.AuditChangeSetCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AuditChangeSetPayload>[]
+          }
+          delete: {
+            args: Prisma.AuditChangeSetDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AuditChangeSetPayload>
+          }
+          update: {
+            args: Prisma.AuditChangeSetUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AuditChangeSetPayload>
+          }
+          deleteMany: {
+            args: Prisma.AuditChangeSetDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.AuditChangeSetUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.AuditChangeSetUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AuditChangeSetPayload>[]
+          }
+          upsert: {
+            args: Prisma.AuditChangeSetUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AuditChangeSetPayload>
+          }
+          aggregate: {
+            args: Prisma.AuditChangeSetAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateAuditChangeSet>
+          }
+          groupBy: {
+            args: Prisma.AuditChangeSetGroupByArgs<ExtArgs>
+            result: $Utils.Optional<AuditChangeSetGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.AuditChangeSetCountArgs<ExtArgs>
+            result: $Utils.Optional<AuditChangeSetCountAggregateOutputType> | number
+          }
+        }
+      }
+      AuditChangeEntry: {
+        payload: Prisma.$AuditChangeEntryPayload<ExtArgs>
+        fields: Prisma.AuditChangeEntryFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.AuditChangeEntryFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AuditChangeEntryPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.AuditChangeEntryFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AuditChangeEntryPayload>
+          }
+          findFirst: {
+            args: Prisma.AuditChangeEntryFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AuditChangeEntryPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.AuditChangeEntryFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AuditChangeEntryPayload>
+          }
+          findMany: {
+            args: Prisma.AuditChangeEntryFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AuditChangeEntryPayload>[]
+          }
+          create: {
+            args: Prisma.AuditChangeEntryCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AuditChangeEntryPayload>
+          }
+          createMany: {
+            args: Prisma.AuditChangeEntryCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.AuditChangeEntryCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AuditChangeEntryPayload>[]
+          }
+          delete: {
+            args: Prisma.AuditChangeEntryDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AuditChangeEntryPayload>
+          }
+          update: {
+            args: Prisma.AuditChangeEntryUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AuditChangeEntryPayload>
+          }
+          deleteMany: {
+            args: Prisma.AuditChangeEntryDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.AuditChangeEntryUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.AuditChangeEntryUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AuditChangeEntryPayload>[]
+          }
+          upsert: {
+            args: Prisma.AuditChangeEntryUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AuditChangeEntryPayload>
+          }
+          aggregate: {
+            args: Prisma.AuditChangeEntryAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateAuditChangeEntry>
+          }
+          groupBy: {
+            args: Prisma.AuditChangeEntryGroupByArgs<ExtArgs>
+            result: $Utils.Optional<AuditChangeEntryGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.AuditChangeEntryCountArgs<ExtArgs>
+            result: $Utils.Optional<AuditChangeEntryCountAggregateOutputType> | number
           }
         }
       }
@@ -1839,6 +2141,80 @@ export namespace Prisma {
           }
         }
       }
+      CrmMonthlySalesTarget: {
+        payload: Prisma.$CrmMonthlySalesTargetPayload<ExtArgs>
+        fields: Prisma.CrmMonthlySalesTargetFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.CrmMonthlySalesTargetFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmMonthlySalesTargetPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.CrmMonthlySalesTargetFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmMonthlySalesTargetPayload>
+          }
+          findFirst: {
+            args: Prisma.CrmMonthlySalesTargetFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmMonthlySalesTargetPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.CrmMonthlySalesTargetFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmMonthlySalesTargetPayload>
+          }
+          findMany: {
+            args: Prisma.CrmMonthlySalesTargetFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmMonthlySalesTargetPayload>[]
+          }
+          create: {
+            args: Prisma.CrmMonthlySalesTargetCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmMonthlySalesTargetPayload>
+          }
+          createMany: {
+            args: Prisma.CrmMonthlySalesTargetCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.CrmMonthlySalesTargetCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmMonthlySalesTargetPayload>[]
+          }
+          delete: {
+            args: Prisma.CrmMonthlySalesTargetDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmMonthlySalesTargetPayload>
+          }
+          update: {
+            args: Prisma.CrmMonthlySalesTargetUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmMonthlySalesTargetPayload>
+          }
+          deleteMany: {
+            args: Prisma.CrmMonthlySalesTargetDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.CrmMonthlySalesTargetUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.CrmMonthlySalesTargetUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmMonthlySalesTargetPayload>[]
+          }
+          upsert: {
+            args: Prisma.CrmMonthlySalesTargetUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmMonthlySalesTargetPayload>
+          }
+          aggregate: {
+            args: Prisma.CrmMonthlySalesTargetAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateCrmMonthlySalesTarget>
+          }
+          groupBy: {
+            args: Prisma.CrmMonthlySalesTargetGroupByArgs<ExtArgs>
+            result: $Utils.Optional<CrmMonthlySalesTargetGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.CrmMonthlySalesTargetCountArgs<ExtArgs>
+            result: $Utils.Optional<CrmMonthlySalesTargetCountAggregateOutputType> | number
+          }
+        }
+      }
       CrmLeadSource: {
         payload: Prisma.$CrmLeadSourcePayload<ExtArgs>
         fields: Prisma.CrmLeadSourceFieldRefs
@@ -2206,6 +2582,80 @@ export namespace Prisma {
           count: {
             args: Prisma.CrmUserSalesGoalCountArgs<ExtArgs>
             result: $Utils.Optional<CrmUserSalesGoalCountAggregateOutputType> | number
+          }
+        }
+      }
+      CrmUserMonthlySalesTarget: {
+        payload: Prisma.$CrmUserMonthlySalesTargetPayload<ExtArgs>
+        fields: Prisma.CrmUserMonthlySalesTargetFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.CrmUserMonthlySalesTargetFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmUserMonthlySalesTargetPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.CrmUserMonthlySalesTargetFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmUserMonthlySalesTargetPayload>
+          }
+          findFirst: {
+            args: Prisma.CrmUserMonthlySalesTargetFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmUserMonthlySalesTargetPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.CrmUserMonthlySalesTargetFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmUserMonthlySalesTargetPayload>
+          }
+          findMany: {
+            args: Prisma.CrmUserMonthlySalesTargetFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmUserMonthlySalesTargetPayload>[]
+          }
+          create: {
+            args: Prisma.CrmUserMonthlySalesTargetCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmUserMonthlySalesTargetPayload>
+          }
+          createMany: {
+            args: Prisma.CrmUserMonthlySalesTargetCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.CrmUserMonthlySalesTargetCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmUserMonthlySalesTargetPayload>[]
+          }
+          delete: {
+            args: Prisma.CrmUserMonthlySalesTargetDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmUserMonthlySalesTargetPayload>
+          }
+          update: {
+            args: Prisma.CrmUserMonthlySalesTargetUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmUserMonthlySalesTargetPayload>
+          }
+          deleteMany: {
+            args: Prisma.CrmUserMonthlySalesTargetDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.CrmUserMonthlySalesTargetUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.CrmUserMonthlySalesTargetUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmUserMonthlySalesTargetPayload>[]
+          }
+          upsert: {
+            args: Prisma.CrmUserMonthlySalesTargetUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmUserMonthlySalesTargetPayload>
+          }
+          aggregate: {
+            args: Prisma.CrmUserMonthlySalesTargetAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateCrmUserMonthlySalesTarget>
+          }
+          groupBy: {
+            args: Prisma.CrmUserMonthlySalesTargetGroupByArgs<ExtArgs>
+            result: $Utils.Optional<CrmUserMonthlySalesTargetGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.CrmUserMonthlySalesTargetCountArgs<ExtArgs>
+            result: $Utils.Optional<CrmUserMonthlySalesTargetCountAggregateOutputType> | number
           }
         }
       }
@@ -3579,17 +4029,22 @@ export namespace Prisma {
     authority?: AuthorityOmit
     account?: AccountOmit
     user?: UserOmit
+    activityLog?: ActivityLogOmit
+    auditChangeSet?: AuditChangeSetOmit
+    auditChangeEntry?: AuditChangeEntryOmit
     aiConversation?: AiConversationOmit
     aiMessage?: AiMessageOmit
     aiKnowledgeBase?: AiKnowledgeBaseOmit
     aiKnowledgeChunk?: AiKnowledgeChunkOmit
     aiAssistantInstruction?: AiAssistantInstructionOmit
     crmOrganizationProfile?: CrmOrganizationProfileOmit
+    crmMonthlySalesTarget?: CrmMonthlySalesTargetOmit
     crmLeadSource?: CrmLeadSourceOmit
     crmStage?: CrmStageOmit
     crmPriority?: CrmPriorityOmit
     crmActivityType?: CrmActivityTypeOmit
     crmUserSalesGoal?: CrmUserSalesGoalOmit
+    crmUserMonthlySalesTarget?: CrmUserMonthlySalesTargetOmit
     contact?: ContactOmit
     company?: CompanyOmit
     client?: ClientOmit
@@ -3734,8 +4189,11 @@ export namespace Prisma {
     activitiesAssigned: number
     campaignsCreated: number
     crmFilesUploaded: number
+    crmUserMonthlySalesTargets: number
     aiConversations: number
     aiKnowledgeBases: number
+    activityLogs: number
+    auditChangeSets: number
   }
 
   export type UserCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -3746,8 +4204,11 @@ export namespace Prisma {
     activitiesAssigned?: boolean | UserCountOutputTypeCountActivitiesAssignedArgs
     campaignsCreated?: boolean | UserCountOutputTypeCountCampaignsCreatedArgs
     crmFilesUploaded?: boolean | UserCountOutputTypeCountCrmFilesUploadedArgs
+    crmUserMonthlySalesTargets?: boolean | UserCountOutputTypeCountCrmUserMonthlySalesTargetsArgs
     aiConversations?: boolean | UserCountOutputTypeCountAiConversationsArgs
     aiKnowledgeBases?: boolean | UserCountOutputTypeCountAiKnowledgeBasesArgs
+    activityLogs?: boolean | UserCountOutputTypeCountActivityLogsArgs
+    auditChangeSets?: boolean | UserCountOutputTypeCountAuditChangeSetsArgs
   }
 
   // Custom InputTypes
@@ -3813,6 +4274,13 @@ export namespace Prisma {
   /**
    * UserCountOutputType without action
    */
+  export type UserCountOutputTypeCountCrmUserMonthlySalesTargetsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: CrmUserMonthlySalesTargetWhereInput
+  }
+
+  /**
+   * UserCountOutputType without action
+   */
   export type UserCountOutputTypeCountAiConversationsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: AiConversationWhereInput
   }
@@ -3822,6 +4290,51 @@ export namespace Prisma {
    */
   export type UserCountOutputTypeCountAiKnowledgeBasesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: AiKnowledgeBaseWhereInput
+  }
+
+  /**
+   * UserCountOutputType without action
+   */
+  export type UserCountOutputTypeCountActivityLogsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: ActivityLogWhereInput
+  }
+
+  /**
+   * UserCountOutputType without action
+   */
+  export type UserCountOutputTypeCountAuditChangeSetsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: AuditChangeSetWhereInput
+  }
+
+
+  /**
+   * Count Type AuditChangeSetCountOutputType
+   */
+
+  export type AuditChangeSetCountOutputType = {
+    entries: number
+  }
+
+  export type AuditChangeSetCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    entries?: boolean | AuditChangeSetCountOutputTypeCountEntriesArgs
+  }
+
+  // Custom InputTypes
+  /**
+   * AuditChangeSetCountOutputType without action
+   */
+  export type AuditChangeSetCountOutputTypeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AuditChangeSetCountOutputType
+     */
+    select?: AuditChangeSetCountOutputTypeSelect<ExtArgs> | null
+  }
+
+  /**
+   * AuditChangeSetCountOutputType without action
+   */
+  export type AuditChangeSetCountOutputTypeCountEntriesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: AuditChangeEntryWhereInput
   }
 
 
@@ -3884,6 +4397,37 @@ export namespace Prisma {
    */
   export type AiKnowledgeBaseCountOutputTypeCountChunksArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: AiKnowledgeChunkWhereInput
+  }
+
+
+  /**
+   * Count Type CrmOrganizationProfileCountOutputType
+   */
+
+  export type CrmOrganizationProfileCountOutputType = {
+    monthlySalesTargets: number
+  }
+
+  export type CrmOrganizationProfileCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    monthlySalesTargets?: boolean | CrmOrganizationProfileCountOutputTypeCountMonthlySalesTargetsArgs
+  }
+
+  // Custom InputTypes
+  /**
+   * CrmOrganizationProfileCountOutputType without action
+   */
+  export type CrmOrganizationProfileCountOutputTypeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmOrganizationProfileCountOutputType
+     */
+    select?: CrmOrganizationProfileCountOutputTypeSelect<ExtArgs> | null
+  }
+
+  /**
+   * CrmOrganizationProfileCountOutputType without action
+   */
+  export type CrmOrganizationProfileCountOutputTypeCountMonthlySalesTargetsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: CrmMonthlySalesTargetWhereInput
   }
 
 
@@ -7609,8 +8153,11 @@ export namespace Prisma {
     campaignsCreated?: boolean | User$campaignsCreatedArgs<ExtArgs>
     crmFilesUploaded?: boolean | User$crmFilesUploadedArgs<ExtArgs>
     crmSalesGoal?: boolean | User$crmSalesGoalArgs<ExtArgs>
+    crmUserMonthlySalesTargets?: boolean | User$crmUserMonthlySalesTargetsArgs<ExtArgs>
     aiConversations?: boolean | User$aiConversationsArgs<ExtArgs>
     aiKnowledgeBases?: boolean | User$aiKnowledgeBasesArgs<ExtArgs>
+    activityLogs?: boolean | User$activityLogsArgs<ExtArgs>
+    auditChangeSets?: boolean | User$auditChangeSetsArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["user"]>
 
@@ -7666,8 +8213,11 @@ export namespace Prisma {
     campaignsCreated?: boolean | User$campaignsCreatedArgs<ExtArgs>
     crmFilesUploaded?: boolean | User$crmFilesUploadedArgs<ExtArgs>
     crmSalesGoal?: boolean | User$crmSalesGoalArgs<ExtArgs>
+    crmUserMonthlySalesTargets?: boolean | User$crmUserMonthlySalesTargetsArgs<ExtArgs>
     aiConversations?: boolean | User$aiConversationsArgs<ExtArgs>
     aiKnowledgeBases?: boolean | User$aiKnowledgeBasesArgs<ExtArgs>
+    activityLogs?: boolean | User$activityLogsArgs<ExtArgs>
+    auditChangeSets?: boolean | User$auditChangeSetsArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type UserIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -7689,8 +8239,11 @@ export namespace Prisma {
       campaignsCreated: Prisma.$CampaignPayload<ExtArgs>[]
       crmFilesUploaded: Prisma.$CrmFilePayload<ExtArgs>[]
       crmSalesGoal: Prisma.$CrmUserSalesGoalPayload<ExtArgs> | null
+      crmUserMonthlySalesTargets: Prisma.$CrmUserMonthlySalesTargetPayload<ExtArgs>[]
       aiConversations: Prisma.$AiConversationPayload<ExtArgs>[]
       aiKnowledgeBases: Prisma.$AiKnowledgeBasePayload<ExtArgs>[]
+      activityLogs: Prisma.$ActivityLogPayload<ExtArgs>[]
+      auditChangeSets: Prisma.$AuditChangeSetPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -8106,8 +8659,11 @@ export namespace Prisma {
     campaignsCreated<T extends User$campaignsCreatedArgs<ExtArgs> = {}>(args?: Subset<T, User$campaignsCreatedArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CampaignPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     crmFilesUploaded<T extends User$crmFilesUploadedArgs<ExtArgs> = {}>(args?: Subset<T, User$crmFilesUploadedArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmFilePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     crmSalesGoal<T extends User$crmSalesGoalArgs<ExtArgs> = {}>(args?: Subset<T, User$crmSalesGoalArgs<ExtArgs>>): Prisma__CrmUserSalesGoalClient<$Result.GetResult<Prisma.$CrmUserSalesGoalPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    crmUserMonthlySalesTargets<T extends User$crmUserMonthlySalesTargetsArgs<ExtArgs> = {}>(args?: Subset<T, User$crmUserMonthlySalesTargetsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmUserMonthlySalesTargetPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     aiConversations<T extends User$aiConversationsArgs<ExtArgs> = {}>(args?: Subset<T, User$aiConversationsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AiConversationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     aiKnowledgeBases<T extends User$aiKnowledgeBasesArgs<ExtArgs> = {}>(args?: Subset<T, User$aiKnowledgeBasesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AiKnowledgeBasePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    activityLogs<T extends User$activityLogsArgs<ExtArgs> = {}>(args?: Subset<T, User$activityLogsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ActivityLogPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    auditChangeSets<T extends User$auditChangeSetsArgs<ExtArgs> = {}>(args?: Subset<T, User$auditChangeSetsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AuditChangeSetPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -8735,6 +9291,30 @@ export namespace Prisma {
   }
 
   /**
+   * User.crmUserMonthlySalesTargets
+   */
+  export type User$crmUserMonthlySalesTargetsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmUserMonthlySalesTarget
+     */
+    select?: CrmUserMonthlySalesTargetSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmUserMonthlySalesTarget
+     */
+    omit?: CrmUserMonthlySalesTargetOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmUserMonthlySalesTargetInclude<ExtArgs> | null
+    where?: CrmUserMonthlySalesTargetWhereInput
+    orderBy?: CrmUserMonthlySalesTargetOrderByWithRelationInput | CrmUserMonthlySalesTargetOrderByWithRelationInput[]
+    cursor?: CrmUserMonthlySalesTargetWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: CrmUserMonthlySalesTargetScalarFieldEnum | CrmUserMonthlySalesTargetScalarFieldEnum[]
+  }
+
+  /**
    * User.aiConversations
    */
   export type User$aiConversationsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -8783,6 +9363,54 @@ export namespace Prisma {
   }
 
   /**
+   * User.activityLogs
+   */
+  export type User$activityLogsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ActivityLog
+     */
+    select?: ActivityLogSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ActivityLog
+     */
+    omit?: ActivityLogOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ActivityLogInclude<ExtArgs> | null
+    where?: ActivityLogWhereInput
+    orderBy?: ActivityLogOrderByWithRelationInput | ActivityLogOrderByWithRelationInput[]
+    cursor?: ActivityLogWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: ActivityLogScalarFieldEnum | ActivityLogScalarFieldEnum[]
+  }
+
+  /**
+   * User.auditChangeSets
+   */
+  export type User$auditChangeSetsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AuditChangeSet
+     */
+    select?: AuditChangeSetSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AuditChangeSet
+     */
+    omit?: AuditChangeSetOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AuditChangeSetInclude<ExtArgs> | null
+    where?: AuditChangeSetWhereInput
+    orderBy?: AuditChangeSetOrderByWithRelationInput | AuditChangeSetOrderByWithRelationInput[]
+    cursor?: AuditChangeSetWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: AuditChangeSetScalarFieldEnum | AuditChangeSetScalarFieldEnum[]
+  }
+
+  /**
    * User without action
    */
   export type UserDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -8798,6 +9426,3422 @@ export namespace Prisma {
      * Choose, which related nodes to fetch as well
      */
     include?: UserInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model ActivityLog
+   */
+
+  export type AggregateActivityLog = {
+    _count: ActivityLogCountAggregateOutputType | null
+    _min: ActivityLogMinAggregateOutputType | null
+    _max: ActivityLogMaxAggregateOutputType | null
+  }
+
+  export type ActivityLogMinAggregateOutputType = {
+    id: string | null
+    userId: string | null
+    userName: string | null
+    action: string | null
+    module: string | null
+    entityType: string | null
+    entityId: string | null
+    entityName: string | null
+    description: string | null
+    status: string | null
+    isCritical: boolean | null
+    createdAt: Date | null
+  }
+
+  export type ActivityLogMaxAggregateOutputType = {
+    id: string | null
+    userId: string | null
+    userName: string | null
+    action: string | null
+    module: string | null
+    entityType: string | null
+    entityId: string | null
+    entityName: string | null
+    description: string | null
+    status: string | null
+    isCritical: boolean | null
+    createdAt: Date | null
+  }
+
+  export type ActivityLogCountAggregateOutputType = {
+    id: number
+    userId: number
+    userName: number
+    action: number
+    module: number
+    entityType: number
+    entityId: number
+    entityName: number
+    description: number
+    status: number
+    isCritical: number
+    createdAt: number
+    _all: number
+  }
+
+
+  export type ActivityLogMinAggregateInputType = {
+    id?: true
+    userId?: true
+    userName?: true
+    action?: true
+    module?: true
+    entityType?: true
+    entityId?: true
+    entityName?: true
+    description?: true
+    status?: true
+    isCritical?: true
+    createdAt?: true
+  }
+
+  export type ActivityLogMaxAggregateInputType = {
+    id?: true
+    userId?: true
+    userName?: true
+    action?: true
+    module?: true
+    entityType?: true
+    entityId?: true
+    entityName?: true
+    description?: true
+    status?: true
+    isCritical?: true
+    createdAt?: true
+  }
+
+  export type ActivityLogCountAggregateInputType = {
+    id?: true
+    userId?: true
+    userName?: true
+    action?: true
+    module?: true
+    entityType?: true
+    entityId?: true
+    entityName?: true
+    description?: true
+    status?: true
+    isCritical?: true
+    createdAt?: true
+    _all?: true
+  }
+
+  export type ActivityLogAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which ActivityLog to aggregate.
+     */
+    where?: ActivityLogWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ActivityLogs to fetch.
+     */
+    orderBy?: ActivityLogOrderByWithRelationInput | ActivityLogOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: ActivityLogWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ActivityLogs from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ActivityLogs.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned ActivityLogs
+    **/
+    _count?: true | ActivityLogCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: ActivityLogMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: ActivityLogMaxAggregateInputType
+  }
+
+  export type GetActivityLogAggregateType<T extends ActivityLogAggregateArgs> = {
+        [P in keyof T & keyof AggregateActivityLog]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateActivityLog[P]>
+      : GetScalarType<T[P], AggregateActivityLog[P]>
+  }
+
+
+
+
+  export type ActivityLogGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: ActivityLogWhereInput
+    orderBy?: ActivityLogOrderByWithAggregationInput | ActivityLogOrderByWithAggregationInput[]
+    by: ActivityLogScalarFieldEnum[] | ActivityLogScalarFieldEnum
+    having?: ActivityLogScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: ActivityLogCountAggregateInputType | true
+    _min?: ActivityLogMinAggregateInputType
+    _max?: ActivityLogMaxAggregateInputType
+  }
+
+  export type ActivityLogGroupByOutputType = {
+    id: string
+    userId: string | null
+    userName: string
+    action: string
+    module: string
+    entityType: string
+    entityId: string | null
+    entityName: string | null
+    description: string
+    status: string
+    isCritical: boolean
+    createdAt: Date
+    _count: ActivityLogCountAggregateOutputType | null
+    _min: ActivityLogMinAggregateOutputType | null
+    _max: ActivityLogMaxAggregateOutputType | null
+  }
+
+  type GetActivityLogGroupByPayload<T extends ActivityLogGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<ActivityLogGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof ActivityLogGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], ActivityLogGroupByOutputType[P]>
+            : GetScalarType<T[P], ActivityLogGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type ActivityLogSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    userName?: boolean
+    action?: boolean
+    module?: boolean
+    entityType?: boolean
+    entityId?: boolean
+    entityName?: boolean
+    description?: boolean
+    status?: boolean
+    isCritical?: boolean
+    createdAt?: boolean
+    user?: boolean | ActivityLog$userArgs<ExtArgs>
+  }, ExtArgs["result"]["activityLog"]>
+
+  export type ActivityLogSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    userName?: boolean
+    action?: boolean
+    module?: boolean
+    entityType?: boolean
+    entityId?: boolean
+    entityName?: boolean
+    description?: boolean
+    status?: boolean
+    isCritical?: boolean
+    createdAt?: boolean
+    user?: boolean | ActivityLog$userArgs<ExtArgs>
+  }, ExtArgs["result"]["activityLog"]>
+
+  export type ActivityLogSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    userName?: boolean
+    action?: boolean
+    module?: boolean
+    entityType?: boolean
+    entityId?: boolean
+    entityName?: boolean
+    description?: boolean
+    status?: boolean
+    isCritical?: boolean
+    createdAt?: boolean
+    user?: boolean | ActivityLog$userArgs<ExtArgs>
+  }, ExtArgs["result"]["activityLog"]>
+
+  export type ActivityLogSelectScalar = {
+    id?: boolean
+    userId?: boolean
+    userName?: boolean
+    action?: boolean
+    module?: boolean
+    entityType?: boolean
+    entityId?: boolean
+    entityName?: boolean
+    description?: boolean
+    status?: boolean
+    isCritical?: boolean
+    createdAt?: boolean
+  }
+
+  export type ActivityLogOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "userId" | "userName" | "action" | "module" | "entityType" | "entityId" | "entityName" | "description" | "status" | "isCritical" | "createdAt", ExtArgs["result"]["activityLog"]>
+  export type ActivityLogInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | ActivityLog$userArgs<ExtArgs>
+  }
+  export type ActivityLogIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | ActivityLog$userArgs<ExtArgs>
+  }
+  export type ActivityLogIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | ActivityLog$userArgs<ExtArgs>
+  }
+
+  export type $ActivityLogPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "ActivityLog"
+    objects: {
+      user: Prisma.$UserPayload<ExtArgs> | null
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      userId: string | null
+      /**
+       * * Nombre del usuario en el momento del evento
+       */
+      userName: string
+      action: string
+      module: string
+      entityType: string
+      entityId: string | null
+      entityName: string | null
+      description: string
+      status: string
+      isCritical: boolean
+      createdAt: Date
+    }, ExtArgs["result"]["activityLog"]>
+    composites: {}
+  }
+
+  type ActivityLogGetPayload<S extends boolean | null | undefined | ActivityLogDefaultArgs> = $Result.GetResult<Prisma.$ActivityLogPayload, S>
+
+  type ActivityLogCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<ActivityLogFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: ActivityLogCountAggregateInputType | true
+    }
+
+  export interface ActivityLogDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['ActivityLog'], meta: { name: 'ActivityLog' } }
+    /**
+     * Find zero or one ActivityLog that matches the filter.
+     * @param {ActivityLogFindUniqueArgs} args - Arguments to find a ActivityLog
+     * @example
+     * // Get one ActivityLog
+     * const activityLog = await prisma.activityLog.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends ActivityLogFindUniqueArgs>(args: SelectSubset<T, ActivityLogFindUniqueArgs<ExtArgs>>): Prisma__ActivityLogClient<$Result.GetResult<Prisma.$ActivityLogPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one ActivityLog that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {ActivityLogFindUniqueOrThrowArgs} args - Arguments to find a ActivityLog
+     * @example
+     * // Get one ActivityLog
+     * const activityLog = await prisma.activityLog.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends ActivityLogFindUniqueOrThrowArgs>(args: SelectSubset<T, ActivityLogFindUniqueOrThrowArgs<ExtArgs>>): Prisma__ActivityLogClient<$Result.GetResult<Prisma.$ActivityLogPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first ActivityLog that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ActivityLogFindFirstArgs} args - Arguments to find a ActivityLog
+     * @example
+     * // Get one ActivityLog
+     * const activityLog = await prisma.activityLog.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends ActivityLogFindFirstArgs>(args?: SelectSubset<T, ActivityLogFindFirstArgs<ExtArgs>>): Prisma__ActivityLogClient<$Result.GetResult<Prisma.$ActivityLogPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first ActivityLog that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ActivityLogFindFirstOrThrowArgs} args - Arguments to find a ActivityLog
+     * @example
+     * // Get one ActivityLog
+     * const activityLog = await prisma.activityLog.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends ActivityLogFindFirstOrThrowArgs>(args?: SelectSubset<T, ActivityLogFindFirstOrThrowArgs<ExtArgs>>): Prisma__ActivityLogClient<$Result.GetResult<Prisma.$ActivityLogPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more ActivityLogs that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ActivityLogFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all ActivityLogs
+     * const activityLogs = await prisma.activityLog.findMany()
+     * 
+     * // Get first 10 ActivityLogs
+     * const activityLogs = await prisma.activityLog.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const activityLogWithIdOnly = await prisma.activityLog.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends ActivityLogFindManyArgs>(args?: SelectSubset<T, ActivityLogFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ActivityLogPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a ActivityLog.
+     * @param {ActivityLogCreateArgs} args - Arguments to create a ActivityLog.
+     * @example
+     * // Create one ActivityLog
+     * const ActivityLog = await prisma.activityLog.create({
+     *   data: {
+     *     // ... data to create a ActivityLog
+     *   }
+     * })
+     * 
+     */
+    create<T extends ActivityLogCreateArgs>(args: SelectSubset<T, ActivityLogCreateArgs<ExtArgs>>): Prisma__ActivityLogClient<$Result.GetResult<Prisma.$ActivityLogPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many ActivityLogs.
+     * @param {ActivityLogCreateManyArgs} args - Arguments to create many ActivityLogs.
+     * @example
+     * // Create many ActivityLogs
+     * const activityLog = await prisma.activityLog.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends ActivityLogCreateManyArgs>(args?: SelectSubset<T, ActivityLogCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many ActivityLogs and returns the data saved in the database.
+     * @param {ActivityLogCreateManyAndReturnArgs} args - Arguments to create many ActivityLogs.
+     * @example
+     * // Create many ActivityLogs
+     * const activityLog = await prisma.activityLog.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many ActivityLogs and only return the `id`
+     * const activityLogWithIdOnly = await prisma.activityLog.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends ActivityLogCreateManyAndReturnArgs>(args?: SelectSubset<T, ActivityLogCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ActivityLogPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a ActivityLog.
+     * @param {ActivityLogDeleteArgs} args - Arguments to delete one ActivityLog.
+     * @example
+     * // Delete one ActivityLog
+     * const ActivityLog = await prisma.activityLog.delete({
+     *   where: {
+     *     // ... filter to delete one ActivityLog
+     *   }
+     * })
+     * 
+     */
+    delete<T extends ActivityLogDeleteArgs>(args: SelectSubset<T, ActivityLogDeleteArgs<ExtArgs>>): Prisma__ActivityLogClient<$Result.GetResult<Prisma.$ActivityLogPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one ActivityLog.
+     * @param {ActivityLogUpdateArgs} args - Arguments to update one ActivityLog.
+     * @example
+     * // Update one ActivityLog
+     * const activityLog = await prisma.activityLog.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends ActivityLogUpdateArgs>(args: SelectSubset<T, ActivityLogUpdateArgs<ExtArgs>>): Prisma__ActivityLogClient<$Result.GetResult<Prisma.$ActivityLogPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more ActivityLogs.
+     * @param {ActivityLogDeleteManyArgs} args - Arguments to filter ActivityLogs to delete.
+     * @example
+     * // Delete a few ActivityLogs
+     * const { count } = await prisma.activityLog.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends ActivityLogDeleteManyArgs>(args?: SelectSubset<T, ActivityLogDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more ActivityLogs.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ActivityLogUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many ActivityLogs
+     * const activityLog = await prisma.activityLog.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends ActivityLogUpdateManyArgs>(args: SelectSubset<T, ActivityLogUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more ActivityLogs and returns the data updated in the database.
+     * @param {ActivityLogUpdateManyAndReturnArgs} args - Arguments to update many ActivityLogs.
+     * @example
+     * // Update many ActivityLogs
+     * const activityLog = await prisma.activityLog.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more ActivityLogs and only return the `id`
+     * const activityLogWithIdOnly = await prisma.activityLog.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends ActivityLogUpdateManyAndReturnArgs>(args: SelectSubset<T, ActivityLogUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ActivityLogPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one ActivityLog.
+     * @param {ActivityLogUpsertArgs} args - Arguments to update or create a ActivityLog.
+     * @example
+     * // Update or create a ActivityLog
+     * const activityLog = await prisma.activityLog.upsert({
+     *   create: {
+     *     // ... data to create a ActivityLog
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the ActivityLog we want to update
+     *   }
+     * })
+     */
+    upsert<T extends ActivityLogUpsertArgs>(args: SelectSubset<T, ActivityLogUpsertArgs<ExtArgs>>): Prisma__ActivityLogClient<$Result.GetResult<Prisma.$ActivityLogPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of ActivityLogs.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ActivityLogCountArgs} args - Arguments to filter ActivityLogs to count.
+     * @example
+     * // Count the number of ActivityLogs
+     * const count = await prisma.activityLog.count({
+     *   where: {
+     *     // ... the filter for the ActivityLogs we want to count
+     *   }
+     * })
+    **/
+    count<T extends ActivityLogCountArgs>(
+      args?: Subset<T, ActivityLogCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], ActivityLogCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a ActivityLog.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ActivityLogAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends ActivityLogAggregateArgs>(args: Subset<T, ActivityLogAggregateArgs>): Prisma.PrismaPromise<GetActivityLogAggregateType<T>>
+
+    /**
+     * Group by ActivityLog.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ActivityLogGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends ActivityLogGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: ActivityLogGroupByArgs['orderBy'] }
+        : { orderBy?: ActivityLogGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, ActivityLogGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetActivityLogGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the ActivityLog model
+   */
+  readonly fields: ActivityLogFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for ActivityLog.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__ActivityLogClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    user<T extends ActivityLog$userArgs<ExtArgs> = {}>(args?: Subset<T, ActivityLog$userArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the ActivityLog model
+   */
+  interface ActivityLogFieldRefs {
+    readonly id: FieldRef<"ActivityLog", 'String'>
+    readonly userId: FieldRef<"ActivityLog", 'String'>
+    readonly userName: FieldRef<"ActivityLog", 'String'>
+    readonly action: FieldRef<"ActivityLog", 'String'>
+    readonly module: FieldRef<"ActivityLog", 'String'>
+    readonly entityType: FieldRef<"ActivityLog", 'String'>
+    readonly entityId: FieldRef<"ActivityLog", 'String'>
+    readonly entityName: FieldRef<"ActivityLog", 'String'>
+    readonly description: FieldRef<"ActivityLog", 'String'>
+    readonly status: FieldRef<"ActivityLog", 'String'>
+    readonly isCritical: FieldRef<"ActivityLog", 'Boolean'>
+    readonly createdAt: FieldRef<"ActivityLog", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * ActivityLog findUnique
+   */
+  export type ActivityLogFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ActivityLog
+     */
+    select?: ActivityLogSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ActivityLog
+     */
+    omit?: ActivityLogOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ActivityLogInclude<ExtArgs> | null
+    /**
+     * Filter, which ActivityLog to fetch.
+     */
+    where: ActivityLogWhereUniqueInput
+  }
+
+  /**
+   * ActivityLog findUniqueOrThrow
+   */
+  export type ActivityLogFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ActivityLog
+     */
+    select?: ActivityLogSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ActivityLog
+     */
+    omit?: ActivityLogOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ActivityLogInclude<ExtArgs> | null
+    /**
+     * Filter, which ActivityLog to fetch.
+     */
+    where: ActivityLogWhereUniqueInput
+  }
+
+  /**
+   * ActivityLog findFirst
+   */
+  export type ActivityLogFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ActivityLog
+     */
+    select?: ActivityLogSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ActivityLog
+     */
+    omit?: ActivityLogOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ActivityLogInclude<ExtArgs> | null
+    /**
+     * Filter, which ActivityLog to fetch.
+     */
+    where?: ActivityLogWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ActivityLogs to fetch.
+     */
+    orderBy?: ActivityLogOrderByWithRelationInput | ActivityLogOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for ActivityLogs.
+     */
+    cursor?: ActivityLogWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ActivityLogs from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ActivityLogs.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of ActivityLogs.
+     */
+    distinct?: ActivityLogScalarFieldEnum | ActivityLogScalarFieldEnum[]
+  }
+
+  /**
+   * ActivityLog findFirstOrThrow
+   */
+  export type ActivityLogFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ActivityLog
+     */
+    select?: ActivityLogSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ActivityLog
+     */
+    omit?: ActivityLogOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ActivityLogInclude<ExtArgs> | null
+    /**
+     * Filter, which ActivityLog to fetch.
+     */
+    where?: ActivityLogWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ActivityLogs to fetch.
+     */
+    orderBy?: ActivityLogOrderByWithRelationInput | ActivityLogOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for ActivityLogs.
+     */
+    cursor?: ActivityLogWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ActivityLogs from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ActivityLogs.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of ActivityLogs.
+     */
+    distinct?: ActivityLogScalarFieldEnum | ActivityLogScalarFieldEnum[]
+  }
+
+  /**
+   * ActivityLog findMany
+   */
+  export type ActivityLogFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ActivityLog
+     */
+    select?: ActivityLogSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ActivityLog
+     */
+    omit?: ActivityLogOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ActivityLogInclude<ExtArgs> | null
+    /**
+     * Filter, which ActivityLogs to fetch.
+     */
+    where?: ActivityLogWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ActivityLogs to fetch.
+     */
+    orderBy?: ActivityLogOrderByWithRelationInput | ActivityLogOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing ActivityLogs.
+     */
+    cursor?: ActivityLogWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ActivityLogs from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ActivityLogs.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of ActivityLogs.
+     */
+    distinct?: ActivityLogScalarFieldEnum | ActivityLogScalarFieldEnum[]
+  }
+
+  /**
+   * ActivityLog create
+   */
+  export type ActivityLogCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ActivityLog
+     */
+    select?: ActivityLogSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ActivityLog
+     */
+    omit?: ActivityLogOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ActivityLogInclude<ExtArgs> | null
+    /**
+     * The data needed to create a ActivityLog.
+     */
+    data: XOR<ActivityLogCreateInput, ActivityLogUncheckedCreateInput>
+  }
+
+  /**
+   * ActivityLog createMany
+   */
+  export type ActivityLogCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many ActivityLogs.
+     */
+    data: ActivityLogCreateManyInput | ActivityLogCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * ActivityLog createManyAndReturn
+   */
+  export type ActivityLogCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ActivityLog
+     */
+    select?: ActivityLogSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the ActivityLog
+     */
+    omit?: ActivityLogOmit<ExtArgs> | null
+    /**
+     * The data used to create many ActivityLogs.
+     */
+    data: ActivityLogCreateManyInput | ActivityLogCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ActivityLogIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * ActivityLog update
+   */
+  export type ActivityLogUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ActivityLog
+     */
+    select?: ActivityLogSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ActivityLog
+     */
+    omit?: ActivityLogOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ActivityLogInclude<ExtArgs> | null
+    /**
+     * The data needed to update a ActivityLog.
+     */
+    data: XOR<ActivityLogUpdateInput, ActivityLogUncheckedUpdateInput>
+    /**
+     * Choose, which ActivityLog to update.
+     */
+    where: ActivityLogWhereUniqueInput
+  }
+
+  /**
+   * ActivityLog updateMany
+   */
+  export type ActivityLogUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update ActivityLogs.
+     */
+    data: XOR<ActivityLogUpdateManyMutationInput, ActivityLogUncheckedUpdateManyInput>
+    /**
+     * Filter which ActivityLogs to update
+     */
+    where?: ActivityLogWhereInput
+    /**
+     * Limit how many ActivityLogs to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * ActivityLog updateManyAndReturn
+   */
+  export type ActivityLogUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ActivityLog
+     */
+    select?: ActivityLogSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the ActivityLog
+     */
+    omit?: ActivityLogOmit<ExtArgs> | null
+    /**
+     * The data used to update ActivityLogs.
+     */
+    data: XOR<ActivityLogUpdateManyMutationInput, ActivityLogUncheckedUpdateManyInput>
+    /**
+     * Filter which ActivityLogs to update
+     */
+    where?: ActivityLogWhereInput
+    /**
+     * Limit how many ActivityLogs to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ActivityLogIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * ActivityLog upsert
+   */
+  export type ActivityLogUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ActivityLog
+     */
+    select?: ActivityLogSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ActivityLog
+     */
+    omit?: ActivityLogOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ActivityLogInclude<ExtArgs> | null
+    /**
+     * The filter to search for the ActivityLog to update in case it exists.
+     */
+    where: ActivityLogWhereUniqueInput
+    /**
+     * In case the ActivityLog found by the `where` argument doesn't exist, create a new ActivityLog with this data.
+     */
+    create: XOR<ActivityLogCreateInput, ActivityLogUncheckedCreateInput>
+    /**
+     * In case the ActivityLog was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<ActivityLogUpdateInput, ActivityLogUncheckedUpdateInput>
+  }
+
+  /**
+   * ActivityLog delete
+   */
+  export type ActivityLogDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ActivityLog
+     */
+    select?: ActivityLogSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ActivityLog
+     */
+    omit?: ActivityLogOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ActivityLogInclude<ExtArgs> | null
+    /**
+     * Filter which ActivityLog to delete.
+     */
+    where: ActivityLogWhereUniqueInput
+  }
+
+  /**
+   * ActivityLog deleteMany
+   */
+  export type ActivityLogDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which ActivityLogs to delete
+     */
+    where?: ActivityLogWhereInput
+    /**
+     * Limit how many ActivityLogs to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * ActivityLog.user
+   */
+  export type ActivityLog$userArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the User
+     */
+    select?: UserSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the User
+     */
+    omit?: UserOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserInclude<ExtArgs> | null
+    where?: UserWhereInput
+  }
+
+  /**
+   * ActivityLog without action
+   */
+  export type ActivityLogDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ActivityLog
+     */
+    select?: ActivityLogSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ActivityLog
+     */
+    omit?: ActivityLogOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ActivityLogInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model AuditChangeSet
+   */
+
+  export type AggregateAuditChangeSet = {
+    _count: AuditChangeSetCountAggregateOutputType | null
+    _min: AuditChangeSetMinAggregateOutputType | null
+    _max: AuditChangeSetMaxAggregateOutputType | null
+  }
+
+  export type AuditChangeSetMinAggregateOutputType = {
+    id: string | null
+    userId: string | null
+    userName: string | null
+    action: string | null
+    module: string | null
+    entityType: string | null
+    entityId: string | null
+    entityName: string | null
+    createdAt: Date | null
+  }
+
+  export type AuditChangeSetMaxAggregateOutputType = {
+    id: string | null
+    userId: string | null
+    userName: string | null
+    action: string | null
+    module: string | null
+    entityType: string | null
+    entityId: string | null
+    entityName: string | null
+    createdAt: Date | null
+  }
+
+  export type AuditChangeSetCountAggregateOutputType = {
+    id: number
+    userId: number
+    userName: number
+    action: number
+    module: number
+    entityType: number
+    entityId: number
+    entityName: number
+    createdAt: number
+    _all: number
+  }
+
+
+  export type AuditChangeSetMinAggregateInputType = {
+    id?: true
+    userId?: true
+    userName?: true
+    action?: true
+    module?: true
+    entityType?: true
+    entityId?: true
+    entityName?: true
+    createdAt?: true
+  }
+
+  export type AuditChangeSetMaxAggregateInputType = {
+    id?: true
+    userId?: true
+    userName?: true
+    action?: true
+    module?: true
+    entityType?: true
+    entityId?: true
+    entityName?: true
+    createdAt?: true
+  }
+
+  export type AuditChangeSetCountAggregateInputType = {
+    id?: true
+    userId?: true
+    userName?: true
+    action?: true
+    module?: true
+    entityType?: true
+    entityId?: true
+    entityName?: true
+    createdAt?: true
+    _all?: true
+  }
+
+  export type AuditChangeSetAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which AuditChangeSet to aggregate.
+     */
+    where?: AuditChangeSetWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of AuditChangeSets to fetch.
+     */
+    orderBy?: AuditChangeSetOrderByWithRelationInput | AuditChangeSetOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: AuditChangeSetWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` AuditChangeSets from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` AuditChangeSets.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned AuditChangeSets
+    **/
+    _count?: true | AuditChangeSetCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: AuditChangeSetMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: AuditChangeSetMaxAggregateInputType
+  }
+
+  export type GetAuditChangeSetAggregateType<T extends AuditChangeSetAggregateArgs> = {
+        [P in keyof T & keyof AggregateAuditChangeSet]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateAuditChangeSet[P]>
+      : GetScalarType<T[P], AggregateAuditChangeSet[P]>
+  }
+
+
+
+
+  export type AuditChangeSetGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: AuditChangeSetWhereInput
+    orderBy?: AuditChangeSetOrderByWithAggregationInput | AuditChangeSetOrderByWithAggregationInput[]
+    by: AuditChangeSetScalarFieldEnum[] | AuditChangeSetScalarFieldEnum
+    having?: AuditChangeSetScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: AuditChangeSetCountAggregateInputType | true
+    _min?: AuditChangeSetMinAggregateInputType
+    _max?: AuditChangeSetMaxAggregateInputType
+  }
+
+  export type AuditChangeSetGroupByOutputType = {
+    id: string
+    userId: string | null
+    userName: string
+    action: string
+    module: string
+    entityType: string
+    entityId: string
+    entityName: string | null
+    createdAt: Date
+    _count: AuditChangeSetCountAggregateOutputType | null
+    _min: AuditChangeSetMinAggregateOutputType | null
+    _max: AuditChangeSetMaxAggregateOutputType | null
+  }
+
+  type GetAuditChangeSetGroupByPayload<T extends AuditChangeSetGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<AuditChangeSetGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof AuditChangeSetGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], AuditChangeSetGroupByOutputType[P]>
+            : GetScalarType<T[P], AuditChangeSetGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type AuditChangeSetSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    userName?: boolean
+    action?: boolean
+    module?: boolean
+    entityType?: boolean
+    entityId?: boolean
+    entityName?: boolean
+    createdAt?: boolean
+    user?: boolean | AuditChangeSet$userArgs<ExtArgs>
+    entries?: boolean | AuditChangeSet$entriesArgs<ExtArgs>
+    _count?: boolean | AuditChangeSetCountOutputTypeDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["auditChangeSet"]>
+
+  export type AuditChangeSetSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    userName?: boolean
+    action?: boolean
+    module?: boolean
+    entityType?: boolean
+    entityId?: boolean
+    entityName?: boolean
+    createdAt?: boolean
+    user?: boolean | AuditChangeSet$userArgs<ExtArgs>
+  }, ExtArgs["result"]["auditChangeSet"]>
+
+  export type AuditChangeSetSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    userName?: boolean
+    action?: boolean
+    module?: boolean
+    entityType?: boolean
+    entityId?: boolean
+    entityName?: boolean
+    createdAt?: boolean
+    user?: boolean | AuditChangeSet$userArgs<ExtArgs>
+  }, ExtArgs["result"]["auditChangeSet"]>
+
+  export type AuditChangeSetSelectScalar = {
+    id?: boolean
+    userId?: boolean
+    userName?: boolean
+    action?: boolean
+    module?: boolean
+    entityType?: boolean
+    entityId?: boolean
+    entityName?: boolean
+    createdAt?: boolean
+  }
+
+  export type AuditChangeSetOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "userId" | "userName" | "action" | "module" | "entityType" | "entityId" | "entityName" | "createdAt", ExtArgs["result"]["auditChangeSet"]>
+  export type AuditChangeSetInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | AuditChangeSet$userArgs<ExtArgs>
+    entries?: boolean | AuditChangeSet$entriesArgs<ExtArgs>
+    _count?: boolean | AuditChangeSetCountOutputTypeDefaultArgs<ExtArgs>
+  }
+  export type AuditChangeSetIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | AuditChangeSet$userArgs<ExtArgs>
+  }
+  export type AuditChangeSetIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | AuditChangeSet$userArgs<ExtArgs>
+  }
+
+  export type $AuditChangeSetPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "AuditChangeSet"
+    objects: {
+      user: Prisma.$UserPayload<ExtArgs> | null
+      entries: Prisma.$AuditChangeEntryPayload<ExtArgs>[]
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      userId: string | null
+      userName: string
+      action: string
+      module: string
+      entityType: string
+      entityId: string
+      entityName: string | null
+      createdAt: Date
+    }, ExtArgs["result"]["auditChangeSet"]>
+    composites: {}
+  }
+
+  type AuditChangeSetGetPayload<S extends boolean | null | undefined | AuditChangeSetDefaultArgs> = $Result.GetResult<Prisma.$AuditChangeSetPayload, S>
+
+  type AuditChangeSetCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<AuditChangeSetFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: AuditChangeSetCountAggregateInputType | true
+    }
+
+  export interface AuditChangeSetDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['AuditChangeSet'], meta: { name: 'AuditChangeSet' } }
+    /**
+     * Find zero or one AuditChangeSet that matches the filter.
+     * @param {AuditChangeSetFindUniqueArgs} args - Arguments to find a AuditChangeSet
+     * @example
+     * // Get one AuditChangeSet
+     * const auditChangeSet = await prisma.auditChangeSet.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends AuditChangeSetFindUniqueArgs>(args: SelectSubset<T, AuditChangeSetFindUniqueArgs<ExtArgs>>): Prisma__AuditChangeSetClient<$Result.GetResult<Prisma.$AuditChangeSetPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one AuditChangeSet that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {AuditChangeSetFindUniqueOrThrowArgs} args - Arguments to find a AuditChangeSet
+     * @example
+     * // Get one AuditChangeSet
+     * const auditChangeSet = await prisma.auditChangeSet.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends AuditChangeSetFindUniqueOrThrowArgs>(args: SelectSubset<T, AuditChangeSetFindUniqueOrThrowArgs<ExtArgs>>): Prisma__AuditChangeSetClient<$Result.GetResult<Prisma.$AuditChangeSetPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first AuditChangeSet that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AuditChangeSetFindFirstArgs} args - Arguments to find a AuditChangeSet
+     * @example
+     * // Get one AuditChangeSet
+     * const auditChangeSet = await prisma.auditChangeSet.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends AuditChangeSetFindFirstArgs>(args?: SelectSubset<T, AuditChangeSetFindFirstArgs<ExtArgs>>): Prisma__AuditChangeSetClient<$Result.GetResult<Prisma.$AuditChangeSetPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first AuditChangeSet that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AuditChangeSetFindFirstOrThrowArgs} args - Arguments to find a AuditChangeSet
+     * @example
+     * // Get one AuditChangeSet
+     * const auditChangeSet = await prisma.auditChangeSet.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends AuditChangeSetFindFirstOrThrowArgs>(args?: SelectSubset<T, AuditChangeSetFindFirstOrThrowArgs<ExtArgs>>): Prisma__AuditChangeSetClient<$Result.GetResult<Prisma.$AuditChangeSetPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more AuditChangeSets that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AuditChangeSetFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all AuditChangeSets
+     * const auditChangeSets = await prisma.auditChangeSet.findMany()
+     * 
+     * // Get first 10 AuditChangeSets
+     * const auditChangeSets = await prisma.auditChangeSet.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const auditChangeSetWithIdOnly = await prisma.auditChangeSet.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends AuditChangeSetFindManyArgs>(args?: SelectSubset<T, AuditChangeSetFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AuditChangeSetPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a AuditChangeSet.
+     * @param {AuditChangeSetCreateArgs} args - Arguments to create a AuditChangeSet.
+     * @example
+     * // Create one AuditChangeSet
+     * const AuditChangeSet = await prisma.auditChangeSet.create({
+     *   data: {
+     *     // ... data to create a AuditChangeSet
+     *   }
+     * })
+     * 
+     */
+    create<T extends AuditChangeSetCreateArgs>(args: SelectSubset<T, AuditChangeSetCreateArgs<ExtArgs>>): Prisma__AuditChangeSetClient<$Result.GetResult<Prisma.$AuditChangeSetPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many AuditChangeSets.
+     * @param {AuditChangeSetCreateManyArgs} args - Arguments to create many AuditChangeSets.
+     * @example
+     * // Create many AuditChangeSets
+     * const auditChangeSet = await prisma.auditChangeSet.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends AuditChangeSetCreateManyArgs>(args?: SelectSubset<T, AuditChangeSetCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many AuditChangeSets and returns the data saved in the database.
+     * @param {AuditChangeSetCreateManyAndReturnArgs} args - Arguments to create many AuditChangeSets.
+     * @example
+     * // Create many AuditChangeSets
+     * const auditChangeSet = await prisma.auditChangeSet.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many AuditChangeSets and only return the `id`
+     * const auditChangeSetWithIdOnly = await prisma.auditChangeSet.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends AuditChangeSetCreateManyAndReturnArgs>(args?: SelectSubset<T, AuditChangeSetCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AuditChangeSetPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a AuditChangeSet.
+     * @param {AuditChangeSetDeleteArgs} args - Arguments to delete one AuditChangeSet.
+     * @example
+     * // Delete one AuditChangeSet
+     * const AuditChangeSet = await prisma.auditChangeSet.delete({
+     *   where: {
+     *     // ... filter to delete one AuditChangeSet
+     *   }
+     * })
+     * 
+     */
+    delete<T extends AuditChangeSetDeleteArgs>(args: SelectSubset<T, AuditChangeSetDeleteArgs<ExtArgs>>): Prisma__AuditChangeSetClient<$Result.GetResult<Prisma.$AuditChangeSetPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one AuditChangeSet.
+     * @param {AuditChangeSetUpdateArgs} args - Arguments to update one AuditChangeSet.
+     * @example
+     * // Update one AuditChangeSet
+     * const auditChangeSet = await prisma.auditChangeSet.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends AuditChangeSetUpdateArgs>(args: SelectSubset<T, AuditChangeSetUpdateArgs<ExtArgs>>): Prisma__AuditChangeSetClient<$Result.GetResult<Prisma.$AuditChangeSetPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more AuditChangeSets.
+     * @param {AuditChangeSetDeleteManyArgs} args - Arguments to filter AuditChangeSets to delete.
+     * @example
+     * // Delete a few AuditChangeSets
+     * const { count } = await prisma.auditChangeSet.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends AuditChangeSetDeleteManyArgs>(args?: SelectSubset<T, AuditChangeSetDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more AuditChangeSets.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AuditChangeSetUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many AuditChangeSets
+     * const auditChangeSet = await prisma.auditChangeSet.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends AuditChangeSetUpdateManyArgs>(args: SelectSubset<T, AuditChangeSetUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more AuditChangeSets and returns the data updated in the database.
+     * @param {AuditChangeSetUpdateManyAndReturnArgs} args - Arguments to update many AuditChangeSets.
+     * @example
+     * // Update many AuditChangeSets
+     * const auditChangeSet = await prisma.auditChangeSet.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more AuditChangeSets and only return the `id`
+     * const auditChangeSetWithIdOnly = await prisma.auditChangeSet.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends AuditChangeSetUpdateManyAndReturnArgs>(args: SelectSubset<T, AuditChangeSetUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AuditChangeSetPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one AuditChangeSet.
+     * @param {AuditChangeSetUpsertArgs} args - Arguments to update or create a AuditChangeSet.
+     * @example
+     * // Update or create a AuditChangeSet
+     * const auditChangeSet = await prisma.auditChangeSet.upsert({
+     *   create: {
+     *     // ... data to create a AuditChangeSet
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the AuditChangeSet we want to update
+     *   }
+     * })
+     */
+    upsert<T extends AuditChangeSetUpsertArgs>(args: SelectSubset<T, AuditChangeSetUpsertArgs<ExtArgs>>): Prisma__AuditChangeSetClient<$Result.GetResult<Prisma.$AuditChangeSetPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of AuditChangeSets.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AuditChangeSetCountArgs} args - Arguments to filter AuditChangeSets to count.
+     * @example
+     * // Count the number of AuditChangeSets
+     * const count = await prisma.auditChangeSet.count({
+     *   where: {
+     *     // ... the filter for the AuditChangeSets we want to count
+     *   }
+     * })
+    **/
+    count<T extends AuditChangeSetCountArgs>(
+      args?: Subset<T, AuditChangeSetCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], AuditChangeSetCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a AuditChangeSet.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AuditChangeSetAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends AuditChangeSetAggregateArgs>(args: Subset<T, AuditChangeSetAggregateArgs>): Prisma.PrismaPromise<GetAuditChangeSetAggregateType<T>>
+
+    /**
+     * Group by AuditChangeSet.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AuditChangeSetGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends AuditChangeSetGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: AuditChangeSetGroupByArgs['orderBy'] }
+        : { orderBy?: AuditChangeSetGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, AuditChangeSetGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetAuditChangeSetGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the AuditChangeSet model
+   */
+  readonly fields: AuditChangeSetFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for AuditChangeSet.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__AuditChangeSetClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    user<T extends AuditChangeSet$userArgs<ExtArgs> = {}>(args?: Subset<T, AuditChangeSet$userArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    entries<T extends AuditChangeSet$entriesArgs<ExtArgs> = {}>(args?: Subset<T, AuditChangeSet$entriesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AuditChangeEntryPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the AuditChangeSet model
+   */
+  interface AuditChangeSetFieldRefs {
+    readonly id: FieldRef<"AuditChangeSet", 'String'>
+    readonly userId: FieldRef<"AuditChangeSet", 'String'>
+    readonly userName: FieldRef<"AuditChangeSet", 'String'>
+    readonly action: FieldRef<"AuditChangeSet", 'String'>
+    readonly module: FieldRef<"AuditChangeSet", 'String'>
+    readonly entityType: FieldRef<"AuditChangeSet", 'String'>
+    readonly entityId: FieldRef<"AuditChangeSet", 'String'>
+    readonly entityName: FieldRef<"AuditChangeSet", 'String'>
+    readonly createdAt: FieldRef<"AuditChangeSet", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * AuditChangeSet findUnique
+   */
+  export type AuditChangeSetFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AuditChangeSet
+     */
+    select?: AuditChangeSetSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AuditChangeSet
+     */
+    omit?: AuditChangeSetOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AuditChangeSetInclude<ExtArgs> | null
+    /**
+     * Filter, which AuditChangeSet to fetch.
+     */
+    where: AuditChangeSetWhereUniqueInput
+  }
+
+  /**
+   * AuditChangeSet findUniqueOrThrow
+   */
+  export type AuditChangeSetFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AuditChangeSet
+     */
+    select?: AuditChangeSetSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AuditChangeSet
+     */
+    omit?: AuditChangeSetOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AuditChangeSetInclude<ExtArgs> | null
+    /**
+     * Filter, which AuditChangeSet to fetch.
+     */
+    where: AuditChangeSetWhereUniqueInput
+  }
+
+  /**
+   * AuditChangeSet findFirst
+   */
+  export type AuditChangeSetFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AuditChangeSet
+     */
+    select?: AuditChangeSetSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AuditChangeSet
+     */
+    omit?: AuditChangeSetOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AuditChangeSetInclude<ExtArgs> | null
+    /**
+     * Filter, which AuditChangeSet to fetch.
+     */
+    where?: AuditChangeSetWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of AuditChangeSets to fetch.
+     */
+    orderBy?: AuditChangeSetOrderByWithRelationInput | AuditChangeSetOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for AuditChangeSets.
+     */
+    cursor?: AuditChangeSetWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` AuditChangeSets from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` AuditChangeSets.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of AuditChangeSets.
+     */
+    distinct?: AuditChangeSetScalarFieldEnum | AuditChangeSetScalarFieldEnum[]
+  }
+
+  /**
+   * AuditChangeSet findFirstOrThrow
+   */
+  export type AuditChangeSetFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AuditChangeSet
+     */
+    select?: AuditChangeSetSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AuditChangeSet
+     */
+    omit?: AuditChangeSetOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AuditChangeSetInclude<ExtArgs> | null
+    /**
+     * Filter, which AuditChangeSet to fetch.
+     */
+    where?: AuditChangeSetWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of AuditChangeSets to fetch.
+     */
+    orderBy?: AuditChangeSetOrderByWithRelationInput | AuditChangeSetOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for AuditChangeSets.
+     */
+    cursor?: AuditChangeSetWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` AuditChangeSets from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` AuditChangeSets.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of AuditChangeSets.
+     */
+    distinct?: AuditChangeSetScalarFieldEnum | AuditChangeSetScalarFieldEnum[]
+  }
+
+  /**
+   * AuditChangeSet findMany
+   */
+  export type AuditChangeSetFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AuditChangeSet
+     */
+    select?: AuditChangeSetSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AuditChangeSet
+     */
+    omit?: AuditChangeSetOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AuditChangeSetInclude<ExtArgs> | null
+    /**
+     * Filter, which AuditChangeSets to fetch.
+     */
+    where?: AuditChangeSetWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of AuditChangeSets to fetch.
+     */
+    orderBy?: AuditChangeSetOrderByWithRelationInput | AuditChangeSetOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing AuditChangeSets.
+     */
+    cursor?: AuditChangeSetWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` AuditChangeSets from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` AuditChangeSets.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of AuditChangeSets.
+     */
+    distinct?: AuditChangeSetScalarFieldEnum | AuditChangeSetScalarFieldEnum[]
+  }
+
+  /**
+   * AuditChangeSet create
+   */
+  export type AuditChangeSetCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AuditChangeSet
+     */
+    select?: AuditChangeSetSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AuditChangeSet
+     */
+    omit?: AuditChangeSetOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AuditChangeSetInclude<ExtArgs> | null
+    /**
+     * The data needed to create a AuditChangeSet.
+     */
+    data: XOR<AuditChangeSetCreateInput, AuditChangeSetUncheckedCreateInput>
+  }
+
+  /**
+   * AuditChangeSet createMany
+   */
+  export type AuditChangeSetCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many AuditChangeSets.
+     */
+    data: AuditChangeSetCreateManyInput | AuditChangeSetCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * AuditChangeSet createManyAndReturn
+   */
+  export type AuditChangeSetCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AuditChangeSet
+     */
+    select?: AuditChangeSetSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the AuditChangeSet
+     */
+    omit?: AuditChangeSetOmit<ExtArgs> | null
+    /**
+     * The data used to create many AuditChangeSets.
+     */
+    data: AuditChangeSetCreateManyInput | AuditChangeSetCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AuditChangeSetIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * AuditChangeSet update
+   */
+  export type AuditChangeSetUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AuditChangeSet
+     */
+    select?: AuditChangeSetSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AuditChangeSet
+     */
+    omit?: AuditChangeSetOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AuditChangeSetInclude<ExtArgs> | null
+    /**
+     * The data needed to update a AuditChangeSet.
+     */
+    data: XOR<AuditChangeSetUpdateInput, AuditChangeSetUncheckedUpdateInput>
+    /**
+     * Choose, which AuditChangeSet to update.
+     */
+    where: AuditChangeSetWhereUniqueInput
+  }
+
+  /**
+   * AuditChangeSet updateMany
+   */
+  export type AuditChangeSetUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update AuditChangeSets.
+     */
+    data: XOR<AuditChangeSetUpdateManyMutationInput, AuditChangeSetUncheckedUpdateManyInput>
+    /**
+     * Filter which AuditChangeSets to update
+     */
+    where?: AuditChangeSetWhereInput
+    /**
+     * Limit how many AuditChangeSets to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * AuditChangeSet updateManyAndReturn
+   */
+  export type AuditChangeSetUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AuditChangeSet
+     */
+    select?: AuditChangeSetSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the AuditChangeSet
+     */
+    omit?: AuditChangeSetOmit<ExtArgs> | null
+    /**
+     * The data used to update AuditChangeSets.
+     */
+    data: XOR<AuditChangeSetUpdateManyMutationInput, AuditChangeSetUncheckedUpdateManyInput>
+    /**
+     * Filter which AuditChangeSets to update
+     */
+    where?: AuditChangeSetWhereInput
+    /**
+     * Limit how many AuditChangeSets to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AuditChangeSetIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * AuditChangeSet upsert
+   */
+  export type AuditChangeSetUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AuditChangeSet
+     */
+    select?: AuditChangeSetSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AuditChangeSet
+     */
+    omit?: AuditChangeSetOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AuditChangeSetInclude<ExtArgs> | null
+    /**
+     * The filter to search for the AuditChangeSet to update in case it exists.
+     */
+    where: AuditChangeSetWhereUniqueInput
+    /**
+     * In case the AuditChangeSet found by the `where` argument doesn't exist, create a new AuditChangeSet with this data.
+     */
+    create: XOR<AuditChangeSetCreateInput, AuditChangeSetUncheckedCreateInput>
+    /**
+     * In case the AuditChangeSet was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<AuditChangeSetUpdateInput, AuditChangeSetUncheckedUpdateInput>
+  }
+
+  /**
+   * AuditChangeSet delete
+   */
+  export type AuditChangeSetDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AuditChangeSet
+     */
+    select?: AuditChangeSetSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AuditChangeSet
+     */
+    omit?: AuditChangeSetOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AuditChangeSetInclude<ExtArgs> | null
+    /**
+     * Filter which AuditChangeSet to delete.
+     */
+    where: AuditChangeSetWhereUniqueInput
+  }
+
+  /**
+   * AuditChangeSet deleteMany
+   */
+  export type AuditChangeSetDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which AuditChangeSets to delete
+     */
+    where?: AuditChangeSetWhereInput
+    /**
+     * Limit how many AuditChangeSets to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * AuditChangeSet.user
+   */
+  export type AuditChangeSet$userArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the User
+     */
+    select?: UserSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the User
+     */
+    omit?: UserOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserInclude<ExtArgs> | null
+    where?: UserWhereInput
+  }
+
+  /**
+   * AuditChangeSet.entries
+   */
+  export type AuditChangeSet$entriesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AuditChangeEntry
+     */
+    select?: AuditChangeEntrySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AuditChangeEntry
+     */
+    omit?: AuditChangeEntryOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AuditChangeEntryInclude<ExtArgs> | null
+    where?: AuditChangeEntryWhereInput
+    orderBy?: AuditChangeEntryOrderByWithRelationInput | AuditChangeEntryOrderByWithRelationInput[]
+    cursor?: AuditChangeEntryWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: AuditChangeEntryScalarFieldEnum | AuditChangeEntryScalarFieldEnum[]
+  }
+
+  /**
+   * AuditChangeSet without action
+   */
+  export type AuditChangeSetDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AuditChangeSet
+     */
+    select?: AuditChangeSetSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AuditChangeSet
+     */
+    omit?: AuditChangeSetOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AuditChangeSetInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model AuditChangeEntry
+   */
+
+  export type AggregateAuditChangeEntry = {
+    _count: AuditChangeEntryCountAggregateOutputType | null
+    _min: AuditChangeEntryMinAggregateOutputType | null
+    _max: AuditChangeEntryMaxAggregateOutputType | null
+  }
+
+  export type AuditChangeEntryMinAggregateOutputType = {
+    id: string | null
+    changeSetId: string | null
+    fieldKey: string | null
+    fieldLabel: string | null
+    oldValue: string | null
+    newValue: string | null
+  }
+
+  export type AuditChangeEntryMaxAggregateOutputType = {
+    id: string | null
+    changeSetId: string | null
+    fieldKey: string | null
+    fieldLabel: string | null
+    oldValue: string | null
+    newValue: string | null
+  }
+
+  export type AuditChangeEntryCountAggregateOutputType = {
+    id: number
+    changeSetId: number
+    fieldKey: number
+    fieldLabel: number
+    oldValue: number
+    newValue: number
+    _all: number
+  }
+
+
+  export type AuditChangeEntryMinAggregateInputType = {
+    id?: true
+    changeSetId?: true
+    fieldKey?: true
+    fieldLabel?: true
+    oldValue?: true
+    newValue?: true
+  }
+
+  export type AuditChangeEntryMaxAggregateInputType = {
+    id?: true
+    changeSetId?: true
+    fieldKey?: true
+    fieldLabel?: true
+    oldValue?: true
+    newValue?: true
+  }
+
+  export type AuditChangeEntryCountAggregateInputType = {
+    id?: true
+    changeSetId?: true
+    fieldKey?: true
+    fieldLabel?: true
+    oldValue?: true
+    newValue?: true
+    _all?: true
+  }
+
+  export type AuditChangeEntryAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which AuditChangeEntry to aggregate.
+     */
+    where?: AuditChangeEntryWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of AuditChangeEntries to fetch.
+     */
+    orderBy?: AuditChangeEntryOrderByWithRelationInput | AuditChangeEntryOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: AuditChangeEntryWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` AuditChangeEntries from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` AuditChangeEntries.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned AuditChangeEntries
+    **/
+    _count?: true | AuditChangeEntryCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: AuditChangeEntryMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: AuditChangeEntryMaxAggregateInputType
+  }
+
+  export type GetAuditChangeEntryAggregateType<T extends AuditChangeEntryAggregateArgs> = {
+        [P in keyof T & keyof AggregateAuditChangeEntry]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateAuditChangeEntry[P]>
+      : GetScalarType<T[P], AggregateAuditChangeEntry[P]>
+  }
+
+
+
+
+  export type AuditChangeEntryGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: AuditChangeEntryWhereInput
+    orderBy?: AuditChangeEntryOrderByWithAggregationInput | AuditChangeEntryOrderByWithAggregationInput[]
+    by: AuditChangeEntryScalarFieldEnum[] | AuditChangeEntryScalarFieldEnum
+    having?: AuditChangeEntryScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: AuditChangeEntryCountAggregateInputType | true
+    _min?: AuditChangeEntryMinAggregateInputType
+    _max?: AuditChangeEntryMaxAggregateInputType
+  }
+
+  export type AuditChangeEntryGroupByOutputType = {
+    id: string
+    changeSetId: string
+    fieldKey: string
+    fieldLabel: string
+    oldValue: string
+    newValue: string
+    _count: AuditChangeEntryCountAggregateOutputType | null
+    _min: AuditChangeEntryMinAggregateOutputType | null
+    _max: AuditChangeEntryMaxAggregateOutputType | null
+  }
+
+  type GetAuditChangeEntryGroupByPayload<T extends AuditChangeEntryGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<AuditChangeEntryGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof AuditChangeEntryGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], AuditChangeEntryGroupByOutputType[P]>
+            : GetScalarType<T[P], AuditChangeEntryGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type AuditChangeEntrySelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    changeSetId?: boolean
+    fieldKey?: boolean
+    fieldLabel?: boolean
+    oldValue?: boolean
+    newValue?: boolean
+    changeSet?: boolean | AuditChangeSetDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["auditChangeEntry"]>
+
+  export type AuditChangeEntrySelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    changeSetId?: boolean
+    fieldKey?: boolean
+    fieldLabel?: boolean
+    oldValue?: boolean
+    newValue?: boolean
+    changeSet?: boolean | AuditChangeSetDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["auditChangeEntry"]>
+
+  export type AuditChangeEntrySelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    changeSetId?: boolean
+    fieldKey?: boolean
+    fieldLabel?: boolean
+    oldValue?: boolean
+    newValue?: boolean
+    changeSet?: boolean | AuditChangeSetDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["auditChangeEntry"]>
+
+  export type AuditChangeEntrySelectScalar = {
+    id?: boolean
+    changeSetId?: boolean
+    fieldKey?: boolean
+    fieldLabel?: boolean
+    oldValue?: boolean
+    newValue?: boolean
+  }
+
+  export type AuditChangeEntryOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "changeSetId" | "fieldKey" | "fieldLabel" | "oldValue" | "newValue", ExtArgs["result"]["auditChangeEntry"]>
+  export type AuditChangeEntryInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    changeSet?: boolean | AuditChangeSetDefaultArgs<ExtArgs>
+  }
+  export type AuditChangeEntryIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    changeSet?: boolean | AuditChangeSetDefaultArgs<ExtArgs>
+  }
+  export type AuditChangeEntryIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    changeSet?: boolean | AuditChangeSetDefaultArgs<ExtArgs>
+  }
+
+  export type $AuditChangeEntryPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "AuditChangeEntry"
+    objects: {
+      changeSet: Prisma.$AuditChangeSetPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      changeSetId: string
+      fieldKey: string
+      fieldLabel: string
+      oldValue: string
+      newValue: string
+    }, ExtArgs["result"]["auditChangeEntry"]>
+    composites: {}
+  }
+
+  type AuditChangeEntryGetPayload<S extends boolean | null | undefined | AuditChangeEntryDefaultArgs> = $Result.GetResult<Prisma.$AuditChangeEntryPayload, S>
+
+  type AuditChangeEntryCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<AuditChangeEntryFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: AuditChangeEntryCountAggregateInputType | true
+    }
+
+  export interface AuditChangeEntryDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['AuditChangeEntry'], meta: { name: 'AuditChangeEntry' } }
+    /**
+     * Find zero or one AuditChangeEntry that matches the filter.
+     * @param {AuditChangeEntryFindUniqueArgs} args - Arguments to find a AuditChangeEntry
+     * @example
+     * // Get one AuditChangeEntry
+     * const auditChangeEntry = await prisma.auditChangeEntry.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends AuditChangeEntryFindUniqueArgs>(args: SelectSubset<T, AuditChangeEntryFindUniqueArgs<ExtArgs>>): Prisma__AuditChangeEntryClient<$Result.GetResult<Prisma.$AuditChangeEntryPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one AuditChangeEntry that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {AuditChangeEntryFindUniqueOrThrowArgs} args - Arguments to find a AuditChangeEntry
+     * @example
+     * // Get one AuditChangeEntry
+     * const auditChangeEntry = await prisma.auditChangeEntry.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends AuditChangeEntryFindUniqueOrThrowArgs>(args: SelectSubset<T, AuditChangeEntryFindUniqueOrThrowArgs<ExtArgs>>): Prisma__AuditChangeEntryClient<$Result.GetResult<Prisma.$AuditChangeEntryPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first AuditChangeEntry that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AuditChangeEntryFindFirstArgs} args - Arguments to find a AuditChangeEntry
+     * @example
+     * // Get one AuditChangeEntry
+     * const auditChangeEntry = await prisma.auditChangeEntry.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends AuditChangeEntryFindFirstArgs>(args?: SelectSubset<T, AuditChangeEntryFindFirstArgs<ExtArgs>>): Prisma__AuditChangeEntryClient<$Result.GetResult<Prisma.$AuditChangeEntryPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first AuditChangeEntry that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AuditChangeEntryFindFirstOrThrowArgs} args - Arguments to find a AuditChangeEntry
+     * @example
+     * // Get one AuditChangeEntry
+     * const auditChangeEntry = await prisma.auditChangeEntry.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends AuditChangeEntryFindFirstOrThrowArgs>(args?: SelectSubset<T, AuditChangeEntryFindFirstOrThrowArgs<ExtArgs>>): Prisma__AuditChangeEntryClient<$Result.GetResult<Prisma.$AuditChangeEntryPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more AuditChangeEntries that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AuditChangeEntryFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all AuditChangeEntries
+     * const auditChangeEntries = await prisma.auditChangeEntry.findMany()
+     * 
+     * // Get first 10 AuditChangeEntries
+     * const auditChangeEntries = await prisma.auditChangeEntry.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const auditChangeEntryWithIdOnly = await prisma.auditChangeEntry.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends AuditChangeEntryFindManyArgs>(args?: SelectSubset<T, AuditChangeEntryFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AuditChangeEntryPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a AuditChangeEntry.
+     * @param {AuditChangeEntryCreateArgs} args - Arguments to create a AuditChangeEntry.
+     * @example
+     * // Create one AuditChangeEntry
+     * const AuditChangeEntry = await prisma.auditChangeEntry.create({
+     *   data: {
+     *     // ... data to create a AuditChangeEntry
+     *   }
+     * })
+     * 
+     */
+    create<T extends AuditChangeEntryCreateArgs>(args: SelectSubset<T, AuditChangeEntryCreateArgs<ExtArgs>>): Prisma__AuditChangeEntryClient<$Result.GetResult<Prisma.$AuditChangeEntryPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many AuditChangeEntries.
+     * @param {AuditChangeEntryCreateManyArgs} args - Arguments to create many AuditChangeEntries.
+     * @example
+     * // Create many AuditChangeEntries
+     * const auditChangeEntry = await prisma.auditChangeEntry.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends AuditChangeEntryCreateManyArgs>(args?: SelectSubset<T, AuditChangeEntryCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many AuditChangeEntries and returns the data saved in the database.
+     * @param {AuditChangeEntryCreateManyAndReturnArgs} args - Arguments to create many AuditChangeEntries.
+     * @example
+     * // Create many AuditChangeEntries
+     * const auditChangeEntry = await prisma.auditChangeEntry.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many AuditChangeEntries and only return the `id`
+     * const auditChangeEntryWithIdOnly = await prisma.auditChangeEntry.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends AuditChangeEntryCreateManyAndReturnArgs>(args?: SelectSubset<T, AuditChangeEntryCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AuditChangeEntryPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a AuditChangeEntry.
+     * @param {AuditChangeEntryDeleteArgs} args - Arguments to delete one AuditChangeEntry.
+     * @example
+     * // Delete one AuditChangeEntry
+     * const AuditChangeEntry = await prisma.auditChangeEntry.delete({
+     *   where: {
+     *     // ... filter to delete one AuditChangeEntry
+     *   }
+     * })
+     * 
+     */
+    delete<T extends AuditChangeEntryDeleteArgs>(args: SelectSubset<T, AuditChangeEntryDeleteArgs<ExtArgs>>): Prisma__AuditChangeEntryClient<$Result.GetResult<Prisma.$AuditChangeEntryPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one AuditChangeEntry.
+     * @param {AuditChangeEntryUpdateArgs} args - Arguments to update one AuditChangeEntry.
+     * @example
+     * // Update one AuditChangeEntry
+     * const auditChangeEntry = await prisma.auditChangeEntry.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends AuditChangeEntryUpdateArgs>(args: SelectSubset<T, AuditChangeEntryUpdateArgs<ExtArgs>>): Prisma__AuditChangeEntryClient<$Result.GetResult<Prisma.$AuditChangeEntryPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more AuditChangeEntries.
+     * @param {AuditChangeEntryDeleteManyArgs} args - Arguments to filter AuditChangeEntries to delete.
+     * @example
+     * // Delete a few AuditChangeEntries
+     * const { count } = await prisma.auditChangeEntry.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends AuditChangeEntryDeleteManyArgs>(args?: SelectSubset<T, AuditChangeEntryDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more AuditChangeEntries.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AuditChangeEntryUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many AuditChangeEntries
+     * const auditChangeEntry = await prisma.auditChangeEntry.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends AuditChangeEntryUpdateManyArgs>(args: SelectSubset<T, AuditChangeEntryUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more AuditChangeEntries and returns the data updated in the database.
+     * @param {AuditChangeEntryUpdateManyAndReturnArgs} args - Arguments to update many AuditChangeEntries.
+     * @example
+     * // Update many AuditChangeEntries
+     * const auditChangeEntry = await prisma.auditChangeEntry.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more AuditChangeEntries and only return the `id`
+     * const auditChangeEntryWithIdOnly = await prisma.auditChangeEntry.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends AuditChangeEntryUpdateManyAndReturnArgs>(args: SelectSubset<T, AuditChangeEntryUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AuditChangeEntryPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one AuditChangeEntry.
+     * @param {AuditChangeEntryUpsertArgs} args - Arguments to update or create a AuditChangeEntry.
+     * @example
+     * // Update or create a AuditChangeEntry
+     * const auditChangeEntry = await prisma.auditChangeEntry.upsert({
+     *   create: {
+     *     // ... data to create a AuditChangeEntry
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the AuditChangeEntry we want to update
+     *   }
+     * })
+     */
+    upsert<T extends AuditChangeEntryUpsertArgs>(args: SelectSubset<T, AuditChangeEntryUpsertArgs<ExtArgs>>): Prisma__AuditChangeEntryClient<$Result.GetResult<Prisma.$AuditChangeEntryPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of AuditChangeEntries.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AuditChangeEntryCountArgs} args - Arguments to filter AuditChangeEntries to count.
+     * @example
+     * // Count the number of AuditChangeEntries
+     * const count = await prisma.auditChangeEntry.count({
+     *   where: {
+     *     // ... the filter for the AuditChangeEntries we want to count
+     *   }
+     * })
+    **/
+    count<T extends AuditChangeEntryCountArgs>(
+      args?: Subset<T, AuditChangeEntryCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], AuditChangeEntryCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a AuditChangeEntry.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AuditChangeEntryAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends AuditChangeEntryAggregateArgs>(args: Subset<T, AuditChangeEntryAggregateArgs>): Prisma.PrismaPromise<GetAuditChangeEntryAggregateType<T>>
+
+    /**
+     * Group by AuditChangeEntry.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AuditChangeEntryGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends AuditChangeEntryGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: AuditChangeEntryGroupByArgs['orderBy'] }
+        : { orderBy?: AuditChangeEntryGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, AuditChangeEntryGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetAuditChangeEntryGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the AuditChangeEntry model
+   */
+  readonly fields: AuditChangeEntryFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for AuditChangeEntry.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__AuditChangeEntryClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    changeSet<T extends AuditChangeSetDefaultArgs<ExtArgs> = {}>(args?: Subset<T, AuditChangeSetDefaultArgs<ExtArgs>>): Prisma__AuditChangeSetClient<$Result.GetResult<Prisma.$AuditChangeSetPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the AuditChangeEntry model
+   */
+  interface AuditChangeEntryFieldRefs {
+    readonly id: FieldRef<"AuditChangeEntry", 'String'>
+    readonly changeSetId: FieldRef<"AuditChangeEntry", 'String'>
+    readonly fieldKey: FieldRef<"AuditChangeEntry", 'String'>
+    readonly fieldLabel: FieldRef<"AuditChangeEntry", 'String'>
+    readonly oldValue: FieldRef<"AuditChangeEntry", 'String'>
+    readonly newValue: FieldRef<"AuditChangeEntry", 'String'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * AuditChangeEntry findUnique
+   */
+  export type AuditChangeEntryFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AuditChangeEntry
+     */
+    select?: AuditChangeEntrySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AuditChangeEntry
+     */
+    omit?: AuditChangeEntryOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AuditChangeEntryInclude<ExtArgs> | null
+    /**
+     * Filter, which AuditChangeEntry to fetch.
+     */
+    where: AuditChangeEntryWhereUniqueInput
+  }
+
+  /**
+   * AuditChangeEntry findUniqueOrThrow
+   */
+  export type AuditChangeEntryFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AuditChangeEntry
+     */
+    select?: AuditChangeEntrySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AuditChangeEntry
+     */
+    omit?: AuditChangeEntryOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AuditChangeEntryInclude<ExtArgs> | null
+    /**
+     * Filter, which AuditChangeEntry to fetch.
+     */
+    where: AuditChangeEntryWhereUniqueInput
+  }
+
+  /**
+   * AuditChangeEntry findFirst
+   */
+  export type AuditChangeEntryFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AuditChangeEntry
+     */
+    select?: AuditChangeEntrySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AuditChangeEntry
+     */
+    omit?: AuditChangeEntryOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AuditChangeEntryInclude<ExtArgs> | null
+    /**
+     * Filter, which AuditChangeEntry to fetch.
+     */
+    where?: AuditChangeEntryWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of AuditChangeEntries to fetch.
+     */
+    orderBy?: AuditChangeEntryOrderByWithRelationInput | AuditChangeEntryOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for AuditChangeEntries.
+     */
+    cursor?: AuditChangeEntryWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` AuditChangeEntries from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` AuditChangeEntries.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of AuditChangeEntries.
+     */
+    distinct?: AuditChangeEntryScalarFieldEnum | AuditChangeEntryScalarFieldEnum[]
+  }
+
+  /**
+   * AuditChangeEntry findFirstOrThrow
+   */
+  export type AuditChangeEntryFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AuditChangeEntry
+     */
+    select?: AuditChangeEntrySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AuditChangeEntry
+     */
+    omit?: AuditChangeEntryOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AuditChangeEntryInclude<ExtArgs> | null
+    /**
+     * Filter, which AuditChangeEntry to fetch.
+     */
+    where?: AuditChangeEntryWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of AuditChangeEntries to fetch.
+     */
+    orderBy?: AuditChangeEntryOrderByWithRelationInput | AuditChangeEntryOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for AuditChangeEntries.
+     */
+    cursor?: AuditChangeEntryWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` AuditChangeEntries from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` AuditChangeEntries.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of AuditChangeEntries.
+     */
+    distinct?: AuditChangeEntryScalarFieldEnum | AuditChangeEntryScalarFieldEnum[]
+  }
+
+  /**
+   * AuditChangeEntry findMany
+   */
+  export type AuditChangeEntryFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AuditChangeEntry
+     */
+    select?: AuditChangeEntrySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AuditChangeEntry
+     */
+    omit?: AuditChangeEntryOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AuditChangeEntryInclude<ExtArgs> | null
+    /**
+     * Filter, which AuditChangeEntries to fetch.
+     */
+    where?: AuditChangeEntryWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of AuditChangeEntries to fetch.
+     */
+    orderBy?: AuditChangeEntryOrderByWithRelationInput | AuditChangeEntryOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing AuditChangeEntries.
+     */
+    cursor?: AuditChangeEntryWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` AuditChangeEntries from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` AuditChangeEntries.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of AuditChangeEntries.
+     */
+    distinct?: AuditChangeEntryScalarFieldEnum | AuditChangeEntryScalarFieldEnum[]
+  }
+
+  /**
+   * AuditChangeEntry create
+   */
+  export type AuditChangeEntryCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AuditChangeEntry
+     */
+    select?: AuditChangeEntrySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AuditChangeEntry
+     */
+    omit?: AuditChangeEntryOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AuditChangeEntryInclude<ExtArgs> | null
+    /**
+     * The data needed to create a AuditChangeEntry.
+     */
+    data: XOR<AuditChangeEntryCreateInput, AuditChangeEntryUncheckedCreateInput>
+  }
+
+  /**
+   * AuditChangeEntry createMany
+   */
+  export type AuditChangeEntryCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many AuditChangeEntries.
+     */
+    data: AuditChangeEntryCreateManyInput | AuditChangeEntryCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * AuditChangeEntry createManyAndReturn
+   */
+  export type AuditChangeEntryCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AuditChangeEntry
+     */
+    select?: AuditChangeEntrySelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the AuditChangeEntry
+     */
+    omit?: AuditChangeEntryOmit<ExtArgs> | null
+    /**
+     * The data used to create many AuditChangeEntries.
+     */
+    data: AuditChangeEntryCreateManyInput | AuditChangeEntryCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AuditChangeEntryIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * AuditChangeEntry update
+   */
+  export type AuditChangeEntryUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AuditChangeEntry
+     */
+    select?: AuditChangeEntrySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AuditChangeEntry
+     */
+    omit?: AuditChangeEntryOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AuditChangeEntryInclude<ExtArgs> | null
+    /**
+     * The data needed to update a AuditChangeEntry.
+     */
+    data: XOR<AuditChangeEntryUpdateInput, AuditChangeEntryUncheckedUpdateInput>
+    /**
+     * Choose, which AuditChangeEntry to update.
+     */
+    where: AuditChangeEntryWhereUniqueInput
+  }
+
+  /**
+   * AuditChangeEntry updateMany
+   */
+  export type AuditChangeEntryUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update AuditChangeEntries.
+     */
+    data: XOR<AuditChangeEntryUpdateManyMutationInput, AuditChangeEntryUncheckedUpdateManyInput>
+    /**
+     * Filter which AuditChangeEntries to update
+     */
+    where?: AuditChangeEntryWhereInput
+    /**
+     * Limit how many AuditChangeEntries to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * AuditChangeEntry updateManyAndReturn
+   */
+  export type AuditChangeEntryUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AuditChangeEntry
+     */
+    select?: AuditChangeEntrySelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the AuditChangeEntry
+     */
+    omit?: AuditChangeEntryOmit<ExtArgs> | null
+    /**
+     * The data used to update AuditChangeEntries.
+     */
+    data: XOR<AuditChangeEntryUpdateManyMutationInput, AuditChangeEntryUncheckedUpdateManyInput>
+    /**
+     * Filter which AuditChangeEntries to update
+     */
+    where?: AuditChangeEntryWhereInput
+    /**
+     * Limit how many AuditChangeEntries to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AuditChangeEntryIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * AuditChangeEntry upsert
+   */
+  export type AuditChangeEntryUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AuditChangeEntry
+     */
+    select?: AuditChangeEntrySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AuditChangeEntry
+     */
+    omit?: AuditChangeEntryOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AuditChangeEntryInclude<ExtArgs> | null
+    /**
+     * The filter to search for the AuditChangeEntry to update in case it exists.
+     */
+    where: AuditChangeEntryWhereUniqueInput
+    /**
+     * In case the AuditChangeEntry found by the `where` argument doesn't exist, create a new AuditChangeEntry with this data.
+     */
+    create: XOR<AuditChangeEntryCreateInput, AuditChangeEntryUncheckedCreateInput>
+    /**
+     * In case the AuditChangeEntry was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<AuditChangeEntryUpdateInput, AuditChangeEntryUncheckedUpdateInput>
+  }
+
+  /**
+   * AuditChangeEntry delete
+   */
+  export type AuditChangeEntryDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AuditChangeEntry
+     */
+    select?: AuditChangeEntrySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AuditChangeEntry
+     */
+    omit?: AuditChangeEntryOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AuditChangeEntryInclude<ExtArgs> | null
+    /**
+     * Filter which AuditChangeEntry to delete.
+     */
+    where: AuditChangeEntryWhereUniqueInput
+  }
+
+  /**
+   * AuditChangeEntry deleteMany
+   */
+  export type AuditChangeEntryDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which AuditChangeEntries to delete
+     */
+    where?: AuditChangeEntryWhereInput
+    /**
+     * Limit how many AuditChangeEntries to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * AuditChangeEntry without action
+   */
+  export type AuditChangeEntryDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AuditChangeEntry
+     */
+    select?: AuditChangeEntrySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AuditChangeEntry
+     */
+    omit?: AuditChangeEntryOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AuditChangeEntryInclude<ExtArgs> | null
   }
 
 
@@ -14388,12 +18432,10 @@ export namespace Prisma {
 
   export type CrmOrganizationProfileAvgAggregateOutputType = {
     globalWeeklyGoal: number | null
-    globalMonthlyGoal: number | null
   }
 
   export type CrmOrganizationProfileSumAggregateOutputType = {
     globalWeeklyGoal: number | null
-    globalMonthlyGoal: number | null
   }
 
   export type CrmOrganizationProfileMinAggregateOutputType = {
@@ -14404,7 +18446,6 @@ export namespace Prisma {
     contactPhone: string | null
     address: string | null
     globalWeeklyGoal: number | null
-    globalMonthlyGoal: number | null
     updatedAt: Date | null
   }
 
@@ -14416,7 +18457,6 @@ export namespace Prisma {
     contactPhone: string | null
     address: string | null
     globalWeeklyGoal: number | null
-    globalMonthlyGoal: number | null
     updatedAt: Date | null
   }
 
@@ -14428,7 +18468,6 @@ export namespace Prisma {
     contactPhone: number
     address: number
     globalWeeklyGoal: number
-    globalMonthlyGoal: number
     updatedAt: number
     _all: number
   }
@@ -14436,12 +18475,10 @@ export namespace Prisma {
 
   export type CrmOrganizationProfileAvgAggregateInputType = {
     globalWeeklyGoal?: true
-    globalMonthlyGoal?: true
   }
 
   export type CrmOrganizationProfileSumAggregateInputType = {
     globalWeeklyGoal?: true
-    globalMonthlyGoal?: true
   }
 
   export type CrmOrganizationProfileMinAggregateInputType = {
@@ -14452,7 +18489,6 @@ export namespace Prisma {
     contactPhone?: true
     address?: true
     globalWeeklyGoal?: true
-    globalMonthlyGoal?: true
     updatedAt?: true
   }
 
@@ -14464,7 +18500,6 @@ export namespace Prisma {
     contactPhone?: true
     address?: true
     globalWeeklyGoal?: true
-    globalMonthlyGoal?: true
     updatedAt?: true
   }
 
@@ -14476,7 +18511,6 @@ export namespace Prisma {
     contactPhone?: true
     address?: true
     globalWeeklyGoal?: true
-    globalMonthlyGoal?: true
     updatedAt?: true
     _all?: true
   }
@@ -14575,7 +18609,6 @@ export namespace Prisma {
     contactPhone: string
     address: string
     globalWeeklyGoal: number
-    globalMonthlyGoal: number
     updatedAt: Date
     _count: CrmOrganizationProfileCountAggregateOutputType | null
     _avg: CrmOrganizationProfileAvgAggregateOutputType | null
@@ -14606,8 +18639,9 @@ export namespace Prisma {
     contactPhone?: boolean
     address?: boolean
     globalWeeklyGoal?: boolean
-    globalMonthlyGoal?: boolean
     updatedAt?: boolean
+    monthlySalesTargets?: boolean | CrmOrganizationProfile$monthlySalesTargetsArgs<ExtArgs>
+    _count?: boolean | CrmOrganizationProfileCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["crmOrganizationProfile"]>
 
   export type CrmOrganizationProfileSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
@@ -14618,7 +18652,6 @@ export namespace Prisma {
     contactPhone?: boolean
     address?: boolean
     globalWeeklyGoal?: boolean
-    globalMonthlyGoal?: boolean
     updatedAt?: boolean
   }, ExtArgs["result"]["crmOrganizationProfile"]>
 
@@ -14630,7 +18663,6 @@ export namespace Prisma {
     contactPhone?: boolean
     address?: boolean
     globalWeeklyGoal?: boolean
-    globalMonthlyGoal?: boolean
     updatedAt?: boolean
   }, ExtArgs["result"]["crmOrganizationProfile"]>
 
@@ -14642,15 +18674,22 @@ export namespace Prisma {
     contactPhone?: boolean
     address?: boolean
     globalWeeklyGoal?: boolean
-    globalMonthlyGoal?: boolean
     updatedAt?: boolean
   }
 
-  export type CrmOrganizationProfileOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "description" | "contactEmail" | "contactPhone" | "address" | "globalWeeklyGoal" | "globalMonthlyGoal" | "updatedAt", ExtArgs["result"]["crmOrganizationProfile"]>
+  export type CrmOrganizationProfileOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "description" | "contactEmail" | "contactPhone" | "address" | "globalWeeklyGoal" | "updatedAt", ExtArgs["result"]["crmOrganizationProfile"]>
+  export type CrmOrganizationProfileInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    monthlySalesTargets?: boolean | CrmOrganizationProfile$monthlySalesTargetsArgs<ExtArgs>
+    _count?: boolean | CrmOrganizationProfileCountOutputTypeDefaultArgs<ExtArgs>
+  }
+  export type CrmOrganizationProfileIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
+  export type CrmOrganizationProfileIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
 
   export type $CrmOrganizationProfilePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "CrmOrganizationProfile"
-    objects: {}
+    objects: {
+      monthlySalesTargets: Prisma.$CrmMonthlySalesTargetPayload<ExtArgs>[]
+    }
     scalars: $Extensions.GetPayloadResult<{
       id: string
       name: string
@@ -14659,7 +18698,6 @@ export namespace Prisma {
       contactPhone: string
       address: string
       globalWeeklyGoal: number
-      globalMonthlyGoal: number
       updatedAt: Date
     }, ExtArgs["result"]["crmOrganizationProfile"]>
     composites: {}
@@ -15055,6 +19093,7 @@ export namespace Prisma {
    */
   export interface Prisma__CrmOrganizationProfileClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
+    monthlySalesTargets<T extends CrmOrganizationProfile$monthlySalesTargetsArgs<ExtArgs> = {}>(args?: Subset<T, CrmOrganizationProfile$monthlySalesTargetsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmMonthlySalesTargetPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -15091,7 +19130,6 @@ export namespace Prisma {
     readonly contactPhone: FieldRef<"CrmOrganizationProfile", 'String'>
     readonly address: FieldRef<"CrmOrganizationProfile", 'String'>
     readonly globalWeeklyGoal: FieldRef<"CrmOrganizationProfile", 'Float'>
-    readonly globalMonthlyGoal: FieldRef<"CrmOrganizationProfile", 'Float'>
     readonly updatedAt: FieldRef<"CrmOrganizationProfile", 'DateTime'>
   }
     
@@ -15109,6 +19147,10 @@ export namespace Prisma {
      * Omit specific fields from the CrmOrganizationProfile
      */
     omit?: CrmOrganizationProfileOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmOrganizationProfileInclude<ExtArgs> | null
     /**
      * Filter, which CrmOrganizationProfile to fetch.
      */
@@ -15128,6 +19170,10 @@ export namespace Prisma {
      */
     omit?: CrmOrganizationProfileOmit<ExtArgs> | null
     /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmOrganizationProfileInclude<ExtArgs> | null
+    /**
      * Filter, which CrmOrganizationProfile to fetch.
      */
     where: CrmOrganizationProfileWhereUniqueInput
@@ -15145,6 +19191,10 @@ export namespace Prisma {
      * Omit specific fields from the CrmOrganizationProfile
      */
     omit?: CrmOrganizationProfileOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmOrganizationProfileInclude<ExtArgs> | null
     /**
      * Filter, which CrmOrganizationProfile to fetch.
      */
@@ -15194,6 +19244,10 @@ export namespace Prisma {
      */
     omit?: CrmOrganizationProfileOmit<ExtArgs> | null
     /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmOrganizationProfileInclude<ExtArgs> | null
+    /**
      * Filter, which CrmOrganizationProfile to fetch.
      */
     where?: CrmOrganizationProfileWhereInput
@@ -15241,6 +19295,10 @@ export namespace Prisma {
      * Omit specific fields from the CrmOrganizationProfile
      */
     omit?: CrmOrganizationProfileOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmOrganizationProfileInclude<ExtArgs> | null
     /**
      * Filter, which CrmOrganizationProfiles to fetch.
      */
@@ -15290,6 +19348,10 @@ export namespace Prisma {
      */
     omit?: CrmOrganizationProfileOmit<ExtArgs> | null
     /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmOrganizationProfileInclude<ExtArgs> | null
+    /**
      * The data needed to create a CrmOrganizationProfile.
      */
     data: XOR<CrmOrganizationProfileCreateInput, CrmOrganizationProfileUncheckedCreateInput>
@@ -15337,6 +19399,10 @@ export namespace Prisma {
      * Omit specific fields from the CrmOrganizationProfile
      */
     omit?: CrmOrganizationProfileOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmOrganizationProfileInclude<ExtArgs> | null
     /**
      * The data needed to update a CrmOrganizationProfile.
      */
@@ -15404,6 +19470,10 @@ export namespace Prisma {
      */
     omit?: CrmOrganizationProfileOmit<ExtArgs> | null
     /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmOrganizationProfileInclude<ExtArgs> | null
+    /**
      * The filter to search for the CrmOrganizationProfile to update in case it exists.
      */
     where: CrmOrganizationProfileWhereUniqueInput
@@ -15430,6 +19500,10 @@ export namespace Prisma {
      */
     omit?: CrmOrganizationProfileOmit<ExtArgs> | null
     /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmOrganizationProfileInclude<ExtArgs> | null
+    /**
      * Filter which CrmOrganizationProfile to delete.
      */
     where: CrmOrganizationProfileWhereUniqueInput
@@ -15450,6 +19524,30 @@ export namespace Prisma {
   }
 
   /**
+   * CrmOrganizationProfile.monthlySalesTargets
+   */
+  export type CrmOrganizationProfile$monthlySalesTargetsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmMonthlySalesTarget
+     */
+    select?: CrmMonthlySalesTargetSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmMonthlySalesTarget
+     */
+    omit?: CrmMonthlySalesTargetOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmMonthlySalesTargetInclude<ExtArgs> | null
+    where?: CrmMonthlySalesTargetWhereInput
+    orderBy?: CrmMonthlySalesTargetOrderByWithRelationInput | CrmMonthlySalesTargetOrderByWithRelationInput[]
+    cursor?: CrmMonthlySalesTargetWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: CrmMonthlySalesTargetScalarFieldEnum | CrmMonthlySalesTargetScalarFieldEnum[]
+  }
+
+  /**
    * CrmOrganizationProfile without action
    */
   export type CrmOrganizationProfileDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -15461,6 +19559,1120 @@ export namespace Prisma {
      * Omit specific fields from the CrmOrganizationProfile
      */
     omit?: CrmOrganizationProfileOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmOrganizationProfileInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model CrmMonthlySalesTarget
+   */
+
+  export type AggregateCrmMonthlySalesTarget = {
+    _count: CrmMonthlySalesTargetCountAggregateOutputType | null
+    _avg: CrmMonthlySalesTargetAvgAggregateOutputType | null
+    _sum: CrmMonthlySalesTargetSumAggregateOutputType | null
+    _min: CrmMonthlySalesTargetMinAggregateOutputType | null
+    _max: CrmMonthlySalesTargetMaxAggregateOutputType | null
+  }
+
+  export type CrmMonthlySalesTargetAvgAggregateOutputType = {
+    amount: number | null
+  }
+
+  export type CrmMonthlySalesTargetSumAggregateOutputType = {
+    amount: number | null
+  }
+
+  export type CrmMonthlySalesTargetMinAggregateOutputType = {
+    id: string | null
+    organizationId: string | null
+    periodStart: Date | null
+    amount: number | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type CrmMonthlySalesTargetMaxAggregateOutputType = {
+    id: string | null
+    organizationId: string | null
+    periodStart: Date | null
+    amount: number | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type CrmMonthlySalesTargetCountAggregateOutputType = {
+    id: number
+    organizationId: number
+    periodStart: number
+    amount: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type CrmMonthlySalesTargetAvgAggregateInputType = {
+    amount?: true
+  }
+
+  export type CrmMonthlySalesTargetSumAggregateInputType = {
+    amount?: true
+  }
+
+  export type CrmMonthlySalesTargetMinAggregateInputType = {
+    id?: true
+    organizationId?: true
+    periodStart?: true
+    amount?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type CrmMonthlySalesTargetMaxAggregateInputType = {
+    id?: true
+    organizationId?: true
+    periodStart?: true
+    amount?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type CrmMonthlySalesTargetCountAggregateInputType = {
+    id?: true
+    organizationId?: true
+    periodStart?: true
+    amount?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type CrmMonthlySalesTargetAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which CrmMonthlySalesTarget to aggregate.
+     */
+    where?: CrmMonthlySalesTargetWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmMonthlySalesTargets to fetch.
+     */
+    orderBy?: CrmMonthlySalesTargetOrderByWithRelationInput | CrmMonthlySalesTargetOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: CrmMonthlySalesTargetWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmMonthlySalesTargets from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmMonthlySalesTargets.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned CrmMonthlySalesTargets
+    **/
+    _count?: true | CrmMonthlySalesTargetCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: CrmMonthlySalesTargetAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: CrmMonthlySalesTargetSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: CrmMonthlySalesTargetMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: CrmMonthlySalesTargetMaxAggregateInputType
+  }
+
+  export type GetCrmMonthlySalesTargetAggregateType<T extends CrmMonthlySalesTargetAggregateArgs> = {
+        [P in keyof T & keyof AggregateCrmMonthlySalesTarget]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateCrmMonthlySalesTarget[P]>
+      : GetScalarType<T[P], AggregateCrmMonthlySalesTarget[P]>
+  }
+
+
+
+
+  export type CrmMonthlySalesTargetGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: CrmMonthlySalesTargetWhereInput
+    orderBy?: CrmMonthlySalesTargetOrderByWithAggregationInput | CrmMonthlySalesTargetOrderByWithAggregationInput[]
+    by: CrmMonthlySalesTargetScalarFieldEnum[] | CrmMonthlySalesTargetScalarFieldEnum
+    having?: CrmMonthlySalesTargetScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: CrmMonthlySalesTargetCountAggregateInputType | true
+    _avg?: CrmMonthlySalesTargetAvgAggregateInputType
+    _sum?: CrmMonthlySalesTargetSumAggregateInputType
+    _min?: CrmMonthlySalesTargetMinAggregateInputType
+    _max?: CrmMonthlySalesTargetMaxAggregateInputType
+  }
+
+  export type CrmMonthlySalesTargetGroupByOutputType = {
+    id: string
+    organizationId: string
+    periodStart: Date
+    amount: number
+    createdAt: Date
+    updatedAt: Date
+    _count: CrmMonthlySalesTargetCountAggregateOutputType | null
+    _avg: CrmMonthlySalesTargetAvgAggregateOutputType | null
+    _sum: CrmMonthlySalesTargetSumAggregateOutputType | null
+    _min: CrmMonthlySalesTargetMinAggregateOutputType | null
+    _max: CrmMonthlySalesTargetMaxAggregateOutputType | null
+  }
+
+  type GetCrmMonthlySalesTargetGroupByPayload<T extends CrmMonthlySalesTargetGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<CrmMonthlySalesTargetGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof CrmMonthlySalesTargetGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], CrmMonthlySalesTargetGroupByOutputType[P]>
+            : GetScalarType<T[P], CrmMonthlySalesTargetGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type CrmMonthlySalesTargetSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    organizationId?: boolean
+    periodStart?: boolean
+    amount?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    organization?: boolean | CrmOrganizationProfileDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["crmMonthlySalesTarget"]>
+
+  export type CrmMonthlySalesTargetSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    organizationId?: boolean
+    periodStart?: boolean
+    amount?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    organization?: boolean | CrmOrganizationProfileDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["crmMonthlySalesTarget"]>
+
+  export type CrmMonthlySalesTargetSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    organizationId?: boolean
+    periodStart?: boolean
+    amount?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    organization?: boolean | CrmOrganizationProfileDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["crmMonthlySalesTarget"]>
+
+  export type CrmMonthlySalesTargetSelectScalar = {
+    id?: boolean
+    organizationId?: boolean
+    periodStart?: boolean
+    amount?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type CrmMonthlySalesTargetOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "organizationId" | "periodStart" | "amount" | "createdAt" | "updatedAt", ExtArgs["result"]["crmMonthlySalesTarget"]>
+  export type CrmMonthlySalesTargetInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    organization?: boolean | CrmOrganizationProfileDefaultArgs<ExtArgs>
+  }
+  export type CrmMonthlySalesTargetIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    organization?: boolean | CrmOrganizationProfileDefaultArgs<ExtArgs>
+  }
+  export type CrmMonthlySalesTargetIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    organization?: boolean | CrmOrganizationProfileDefaultArgs<ExtArgs>
+  }
+
+  export type $CrmMonthlySalesTargetPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "CrmMonthlySalesTarget"
+    objects: {
+      organization: Prisma.$CrmOrganizationProfilePayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      organizationId: string
+      periodStart: Date
+      amount: number
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["crmMonthlySalesTarget"]>
+    composites: {}
+  }
+
+  type CrmMonthlySalesTargetGetPayload<S extends boolean | null | undefined | CrmMonthlySalesTargetDefaultArgs> = $Result.GetResult<Prisma.$CrmMonthlySalesTargetPayload, S>
+
+  type CrmMonthlySalesTargetCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<CrmMonthlySalesTargetFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: CrmMonthlySalesTargetCountAggregateInputType | true
+    }
+
+  export interface CrmMonthlySalesTargetDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['CrmMonthlySalesTarget'], meta: { name: 'CrmMonthlySalesTarget' } }
+    /**
+     * Find zero or one CrmMonthlySalesTarget that matches the filter.
+     * @param {CrmMonthlySalesTargetFindUniqueArgs} args - Arguments to find a CrmMonthlySalesTarget
+     * @example
+     * // Get one CrmMonthlySalesTarget
+     * const crmMonthlySalesTarget = await prisma.crmMonthlySalesTarget.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends CrmMonthlySalesTargetFindUniqueArgs>(args: SelectSubset<T, CrmMonthlySalesTargetFindUniqueArgs<ExtArgs>>): Prisma__CrmMonthlySalesTargetClient<$Result.GetResult<Prisma.$CrmMonthlySalesTargetPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one CrmMonthlySalesTarget that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {CrmMonthlySalesTargetFindUniqueOrThrowArgs} args - Arguments to find a CrmMonthlySalesTarget
+     * @example
+     * // Get one CrmMonthlySalesTarget
+     * const crmMonthlySalesTarget = await prisma.crmMonthlySalesTarget.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends CrmMonthlySalesTargetFindUniqueOrThrowArgs>(args: SelectSubset<T, CrmMonthlySalesTargetFindUniqueOrThrowArgs<ExtArgs>>): Prisma__CrmMonthlySalesTargetClient<$Result.GetResult<Prisma.$CrmMonthlySalesTargetPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first CrmMonthlySalesTarget that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmMonthlySalesTargetFindFirstArgs} args - Arguments to find a CrmMonthlySalesTarget
+     * @example
+     * // Get one CrmMonthlySalesTarget
+     * const crmMonthlySalesTarget = await prisma.crmMonthlySalesTarget.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends CrmMonthlySalesTargetFindFirstArgs>(args?: SelectSubset<T, CrmMonthlySalesTargetFindFirstArgs<ExtArgs>>): Prisma__CrmMonthlySalesTargetClient<$Result.GetResult<Prisma.$CrmMonthlySalesTargetPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first CrmMonthlySalesTarget that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmMonthlySalesTargetFindFirstOrThrowArgs} args - Arguments to find a CrmMonthlySalesTarget
+     * @example
+     * // Get one CrmMonthlySalesTarget
+     * const crmMonthlySalesTarget = await prisma.crmMonthlySalesTarget.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends CrmMonthlySalesTargetFindFirstOrThrowArgs>(args?: SelectSubset<T, CrmMonthlySalesTargetFindFirstOrThrowArgs<ExtArgs>>): Prisma__CrmMonthlySalesTargetClient<$Result.GetResult<Prisma.$CrmMonthlySalesTargetPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more CrmMonthlySalesTargets that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmMonthlySalesTargetFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all CrmMonthlySalesTargets
+     * const crmMonthlySalesTargets = await prisma.crmMonthlySalesTarget.findMany()
+     * 
+     * // Get first 10 CrmMonthlySalesTargets
+     * const crmMonthlySalesTargets = await prisma.crmMonthlySalesTarget.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const crmMonthlySalesTargetWithIdOnly = await prisma.crmMonthlySalesTarget.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends CrmMonthlySalesTargetFindManyArgs>(args?: SelectSubset<T, CrmMonthlySalesTargetFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmMonthlySalesTargetPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a CrmMonthlySalesTarget.
+     * @param {CrmMonthlySalesTargetCreateArgs} args - Arguments to create a CrmMonthlySalesTarget.
+     * @example
+     * // Create one CrmMonthlySalesTarget
+     * const CrmMonthlySalesTarget = await prisma.crmMonthlySalesTarget.create({
+     *   data: {
+     *     // ... data to create a CrmMonthlySalesTarget
+     *   }
+     * })
+     * 
+     */
+    create<T extends CrmMonthlySalesTargetCreateArgs>(args: SelectSubset<T, CrmMonthlySalesTargetCreateArgs<ExtArgs>>): Prisma__CrmMonthlySalesTargetClient<$Result.GetResult<Prisma.$CrmMonthlySalesTargetPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many CrmMonthlySalesTargets.
+     * @param {CrmMonthlySalesTargetCreateManyArgs} args - Arguments to create many CrmMonthlySalesTargets.
+     * @example
+     * // Create many CrmMonthlySalesTargets
+     * const crmMonthlySalesTarget = await prisma.crmMonthlySalesTarget.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends CrmMonthlySalesTargetCreateManyArgs>(args?: SelectSubset<T, CrmMonthlySalesTargetCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many CrmMonthlySalesTargets and returns the data saved in the database.
+     * @param {CrmMonthlySalesTargetCreateManyAndReturnArgs} args - Arguments to create many CrmMonthlySalesTargets.
+     * @example
+     * // Create many CrmMonthlySalesTargets
+     * const crmMonthlySalesTarget = await prisma.crmMonthlySalesTarget.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many CrmMonthlySalesTargets and only return the `id`
+     * const crmMonthlySalesTargetWithIdOnly = await prisma.crmMonthlySalesTarget.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends CrmMonthlySalesTargetCreateManyAndReturnArgs>(args?: SelectSubset<T, CrmMonthlySalesTargetCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmMonthlySalesTargetPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a CrmMonthlySalesTarget.
+     * @param {CrmMonthlySalesTargetDeleteArgs} args - Arguments to delete one CrmMonthlySalesTarget.
+     * @example
+     * // Delete one CrmMonthlySalesTarget
+     * const CrmMonthlySalesTarget = await prisma.crmMonthlySalesTarget.delete({
+     *   where: {
+     *     // ... filter to delete one CrmMonthlySalesTarget
+     *   }
+     * })
+     * 
+     */
+    delete<T extends CrmMonthlySalesTargetDeleteArgs>(args: SelectSubset<T, CrmMonthlySalesTargetDeleteArgs<ExtArgs>>): Prisma__CrmMonthlySalesTargetClient<$Result.GetResult<Prisma.$CrmMonthlySalesTargetPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one CrmMonthlySalesTarget.
+     * @param {CrmMonthlySalesTargetUpdateArgs} args - Arguments to update one CrmMonthlySalesTarget.
+     * @example
+     * // Update one CrmMonthlySalesTarget
+     * const crmMonthlySalesTarget = await prisma.crmMonthlySalesTarget.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends CrmMonthlySalesTargetUpdateArgs>(args: SelectSubset<T, CrmMonthlySalesTargetUpdateArgs<ExtArgs>>): Prisma__CrmMonthlySalesTargetClient<$Result.GetResult<Prisma.$CrmMonthlySalesTargetPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more CrmMonthlySalesTargets.
+     * @param {CrmMonthlySalesTargetDeleteManyArgs} args - Arguments to filter CrmMonthlySalesTargets to delete.
+     * @example
+     * // Delete a few CrmMonthlySalesTargets
+     * const { count } = await prisma.crmMonthlySalesTarget.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends CrmMonthlySalesTargetDeleteManyArgs>(args?: SelectSubset<T, CrmMonthlySalesTargetDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more CrmMonthlySalesTargets.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmMonthlySalesTargetUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many CrmMonthlySalesTargets
+     * const crmMonthlySalesTarget = await prisma.crmMonthlySalesTarget.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends CrmMonthlySalesTargetUpdateManyArgs>(args: SelectSubset<T, CrmMonthlySalesTargetUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more CrmMonthlySalesTargets and returns the data updated in the database.
+     * @param {CrmMonthlySalesTargetUpdateManyAndReturnArgs} args - Arguments to update many CrmMonthlySalesTargets.
+     * @example
+     * // Update many CrmMonthlySalesTargets
+     * const crmMonthlySalesTarget = await prisma.crmMonthlySalesTarget.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more CrmMonthlySalesTargets and only return the `id`
+     * const crmMonthlySalesTargetWithIdOnly = await prisma.crmMonthlySalesTarget.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends CrmMonthlySalesTargetUpdateManyAndReturnArgs>(args: SelectSubset<T, CrmMonthlySalesTargetUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmMonthlySalesTargetPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one CrmMonthlySalesTarget.
+     * @param {CrmMonthlySalesTargetUpsertArgs} args - Arguments to update or create a CrmMonthlySalesTarget.
+     * @example
+     * // Update or create a CrmMonthlySalesTarget
+     * const crmMonthlySalesTarget = await prisma.crmMonthlySalesTarget.upsert({
+     *   create: {
+     *     // ... data to create a CrmMonthlySalesTarget
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the CrmMonthlySalesTarget we want to update
+     *   }
+     * })
+     */
+    upsert<T extends CrmMonthlySalesTargetUpsertArgs>(args: SelectSubset<T, CrmMonthlySalesTargetUpsertArgs<ExtArgs>>): Prisma__CrmMonthlySalesTargetClient<$Result.GetResult<Prisma.$CrmMonthlySalesTargetPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of CrmMonthlySalesTargets.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmMonthlySalesTargetCountArgs} args - Arguments to filter CrmMonthlySalesTargets to count.
+     * @example
+     * // Count the number of CrmMonthlySalesTargets
+     * const count = await prisma.crmMonthlySalesTarget.count({
+     *   where: {
+     *     // ... the filter for the CrmMonthlySalesTargets we want to count
+     *   }
+     * })
+    **/
+    count<T extends CrmMonthlySalesTargetCountArgs>(
+      args?: Subset<T, CrmMonthlySalesTargetCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], CrmMonthlySalesTargetCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a CrmMonthlySalesTarget.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmMonthlySalesTargetAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends CrmMonthlySalesTargetAggregateArgs>(args: Subset<T, CrmMonthlySalesTargetAggregateArgs>): Prisma.PrismaPromise<GetCrmMonthlySalesTargetAggregateType<T>>
+
+    /**
+     * Group by CrmMonthlySalesTarget.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmMonthlySalesTargetGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends CrmMonthlySalesTargetGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: CrmMonthlySalesTargetGroupByArgs['orderBy'] }
+        : { orderBy?: CrmMonthlySalesTargetGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, CrmMonthlySalesTargetGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetCrmMonthlySalesTargetGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the CrmMonthlySalesTarget model
+   */
+  readonly fields: CrmMonthlySalesTargetFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for CrmMonthlySalesTarget.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__CrmMonthlySalesTargetClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    organization<T extends CrmOrganizationProfileDefaultArgs<ExtArgs> = {}>(args?: Subset<T, CrmOrganizationProfileDefaultArgs<ExtArgs>>): Prisma__CrmOrganizationProfileClient<$Result.GetResult<Prisma.$CrmOrganizationProfilePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the CrmMonthlySalesTarget model
+   */
+  interface CrmMonthlySalesTargetFieldRefs {
+    readonly id: FieldRef<"CrmMonthlySalesTarget", 'String'>
+    readonly organizationId: FieldRef<"CrmMonthlySalesTarget", 'String'>
+    readonly periodStart: FieldRef<"CrmMonthlySalesTarget", 'DateTime'>
+    readonly amount: FieldRef<"CrmMonthlySalesTarget", 'Float'>
+    readonly createdAt: FieldRef<"CrmMonthlySalesTarget", 'DateTime'>
+    readonly updatedAt: FieldRef<"CrmMonthlySalesTarget", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * CrmMonthlySalesTarget findUnique
+   */
+  export type CrmMonthlySalesTargetFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmMonthlySalesTarget
+     */
+    select?: CrmMonthlySalesTargetSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmMonthlySalesTarget
+     */
+    omit?: CrmMonthlySalesTargetOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmMonthlySalesTargetInclude<ExtArgs> | null
+    /**
+     * Filter, which CrmMonthlySalesTarget to fetch.
+     */
+    where: CrmMonthlySalesTargetWhereUniqueInput
+  }
+
+  /**
+   * CrmMonthlySalesTarget findUniqueOrThrow
+   */
+  export type CrmMonthlySalesTargetFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmMonthlySalesTarget
+     */
+    select?: CrmMonthlySalesTargetSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmMonthlySalesTarget
+     */
+    omit?: CrmMonthlySalesTargetOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmMonthlySalesTargetInclude<ExtArgs> | null
+    /**
+     * Filter, which CrmMonthlySalesTarget to fetch.
+     */
+    where: CrmMonthlySalesTargetWhereUniqueInput
+  }
+
+  /**
+   * CrmMonthlySalesTarget findFirst
+   */
+  export type CrmMonthlySalesTargetFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmMonthlySalesTarget
+     */
+    select?: CrmMonthlySalesTargetSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmMonthlySalesTarget
+     */
+    omit?: CrmMonthlySalesTargetOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmMonthlySalesTargetInclude<ExtArgs> | null
+    /**
+     * Filter, which CrmMonthlySalesTarget to fetch.
+     */
+    where?: CrmMonthlySalesTargetWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmMonthlySalesTargets to fetch.
+     */
+    orderBy?: CrmMonthlySalesTargetOrderByWithRelationInput | CrmMonthlySalesTargetOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for CrmMonthlySalesTargets.
+     */
+    cursor?: CrmMonthlySalesTargetWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmMonthlySalesTargets from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmMonthlySalesTargets.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CrmMonthlySalesTargets.
+     */
+    distinct?: CrmMonthlySalesTargetScalarFieldEnum | CrmMonthlySalesTargetScalarFieldEnum[]
+  }
+
+  /**
+   * CrmMonthlySalesTarget findFirstOrThrow
+   */
+  export type CrmMonthlySalesTargetFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmMonthlySalesTarget
+     */
+    select?: CrmMonthlySalesTargetSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmMonthlySalesTarget
+     */
+    omit?: CrmMonthlySalesTargetOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmMonthlySalesTargetInclude<ExtArgs> | null
+    /**
+     * Filter, which CrmMonthlySalesTarget to fetch.
+     */
+    where?: CrmMonthlySalesTargetWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmMonthlySalesTargets to fetch.
+     */
+    orderBy?: CrmMonthlySalesTargetOrderByWithRelationInput | CrmMonthlySalesTargetOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for CrmMonthlySalesTargets.
+     */
+    cursor?: CrmMonthlySalesTargetWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmMonthlySalesTargets from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmMonthlySalesTargets.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CrmMonthlySalesTargets.
+     */
+    distinct?: CrmMonthlySalesTargetScalarFieldEnum | CrmMonthlySalesTargetScalarFieldEnum[]
+  }
+
+  /**
+   * CrmMonthlySalesTarget findMany
+   */
+  export type CrmMonthlySalesTargetFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmMonthlySalesTarget
+     */
+    select?: CrmMonthlySalesTargetSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmMonthlySalesTarget
+     */
+    omit?: CrmMonthlySalesTargetOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmMonthlySalesTargetInclude<ExtArgs> | null
+    /**
+     * Filter, which CrmMonthlySalesTargets to fetch.
+     */
+    where?: CrmMonthlySalesTargetWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmMonthlySalesTargets to fetch.
+     */
+    orderBy?: CrmMonthlySalesTargetOrderByWithRelationInput | CrmMonthlySalesTargetOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing CrmMonthlySalesTargets.
+     */
+    cursor?: CrmMonthlySalesTargetWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmMonthlySalesTargets from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmMonthlySalesTargets.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CrmMonthlySalesTargets.
+     */
+    distinct?: CrmMonthlySalesTargetScalarFieldEnum | CrmMonthlySalesTargetScalarFieldEnum[]
+  }
+
+  /**
+   * CrmMonthlySalesTarget create
+   */
+  export type CrmMonthlySalesTargetCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmMonthlySalesTarget
+     */
+    select?: CrmMonthlySalesTargetSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmMonthlySalesTarget
+     */
+    omit?: CrmMonthlySalesTargetOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmMonthlySalesTargetInclude<ExtArgs> | null
+    /**
+     * The data needed to create a CrmMonthlySalesTarget.
+     */
+    data: XOR<CrmMonthlySalesTargetCreateInput, CrmMonthlySalesTargetUncheckedCreateInput>
+  }
+
+  /**
+   * CrmMonthlySalesTarget createMany
+   */
+  export type CrmMonthlySalesTargetCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many CrmMonthlySalesTargets.
+     */
+    data: CrmMonthlySalesTargetCreateManyInput | CrmMonthlySalesTargetCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * CrmMonthlySalesTarget createManyAndReturn
+   */
+  export type CrmMonthlySalesTargetCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmMonthlySalesTarget
+     */
+    select?: CrmMonthlySalesTargetSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmMonthlySalesTarget
+     */
+    omit?: CrmMonthlySalesTargetOmit<ExtArgs> | null
+    /**
+     * The data used to create many CrmMonthlySalesTargets.
+     */
+    data: CrmMonthlySalesTargetCreateManyInput | CrmMonthlySalesTargetCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmMonthlySalesTargetIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * CrmMonthlySalesTarget update
+   */
+  export type CrmMonthlySalesTargetUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmMonthlySalesTarget
+     */
+    select?: CrmMonthlySalesTargetSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmMonthlySalesTarget
+     */
+    omit?: CrmMonthlySalesTargetOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmMonthlySalesTargetInclude<ExtArgs> | null
+    /**
+     * The data needed to update a CrmMonthlySalesTarget.
+     */
+    data: XOR<CrmMonthlySalesTargetUpdateInput, CrmMonthlySalesTargetUncheckedUpdateInput>
+    /**
+     * Choose, which CrmMonthlySalesTarget to update.
+     */
+    where: CrmMonthlySalesTargetWhereUniqueInput
+  }
+
+  /**
+   * CrmMonthlySalesTarget updateMany
+   */
+  export type CrmMonthlySalesTargetUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update CrmMonthlySalesTargets.
+     */
+    data: XOR<CrmMonthlySalesTargetUpdateManyMutationInput, CrmMonthlySalesTargetUncheckedUpdateManyInput>
+    /**
+     * Filter which CrmMonthlySalesTargets to update
+     */
+    where?: CrmMonthlySalesTargetWhereInput
+    /**
+     * Limit how many CrmMonthlySalesTargets to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * CrmMonthlySalesTarget updateManyAndReturn
+   */
+  export type CrmMonthlySalesTargetUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmMonthlySalesTarget
+     */
+    select?: CrmMonthlySalesTargetSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmMonthlySalesTarget
+     */
+    omit?: CrmMonthlySalesTargetOmit<ExtArgs> | null
+    /**
+     * The data used to update CrmMonthlySalesTargets.
+     */
+    data: XOR<CrmMonthlySalesTargetUpdateManyMutationInput, CrmMonthlySalesTargetUncheckedUpdateManyInput>
+    /**
+     * Filter which CrmMonthlySalesTargets to update
+     */
+    where?: CrmMonthlySalesTargetWhereInput
+    /**
+     * Limit how many CrmMonthlySalesTargets to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmMonthlySalesTargetIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * CrmMonthlySalesTarget upsert
+   */
+  export type CrmMonthlySalesTargetUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmMonthlySalesTarget
+     */
+    select?: CrmMonthlySalesTargetSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmMonthlySalesTarget
+     */
+    omit?: CrmMonthlySalesTargetOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmMonthlySalesTargetInclude<ExtArgs> | null
+    /**
+     * The filter to search for the CrmMonthlySalesTarget to update in case it exists.
+     */
+    where: CrmMonthlySalesTargetWhereUniqueInput
+    /**
+     * In case the CrmMonthlySalesTarget found by the `where` argument doesn't exist, create a new CrmMonthlySalesTarget with this data.
+     */
+    create: XOR<CrmMonthlySalesTargetCreateInput, CrmMonthlySalesTargetUncheckedCreateInput>
+    /**
+     * In case the CrmMonthlySalesTarget was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<CrmMonthlySalesTargetUpdateInput, CrmMonthlySalesTargetUncheckedUpdateInput>
+  }
+
+  /**
+   * CrmMonthlySalesTarget delete
+   */
+  export type CrmMonthlySalesTargetDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmMonthlySalesTarget
+     */
+    select?: CrmMonthlySalesTargetSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmMonthlySalesTarget
+     */
+    omit?: CrmMonthlySalesTargetOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmMonthlySalesTargetInclude<ExtArgs> | null
+    /**
+     * Filter which CrmMonthlySalesTarget to delete.
+     */
+    where: CrmMonthlySalesTargetWhereUniqueInput
+  }
+
+  /**
+   * CrmMonthlySalesTarget deleteMany
+   */
+  export type CrmMonthlySalesTargetDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which CrmMonthlySalesTargets to delete
+     */
+    where?: CrmMonthlySalesTargetWhereInput
+    /**
+     * Limit how many CrmMonthlySalesTargets to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * CrmMonthlySalesTarget without action
+   */
+  export type CrmMonthlySalesTargetDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmMonthlySalesTarget
+     */
+    select?: CrmMonthlySalesTargetSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmMonthlySalesTarget
+     */
+    omit?: CrmMonthlySalesTargetOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmMonthlySalesTargetInclude<ExtArgs> | null
   }
 
 
@@ -20744,6 +25956,1116 @@ export namespace Prisma {
      * Choose, which related nodes to fetch as well
      */
     include?: CrmUserSalesGoalInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model CrmUserMonthlySalesTarget
+   */
+
+  export type AggregateCrmUserMonthlySalesTarget = {
+    _count: CrmUserMonthlySalesTargetCountAggregateOutputType | null
+    _avg: CrmUserMonthlySalesTargetAvgAggregateOutputType | null
+    _sum: CrmUserMonthlySalesTargetSumAggregateOutputType | null
+    _min: CrmUserMonthlySalesTargetMinAggregateOutputType | null
+    _max: CrmUserMonthlySalesTargetMaxAggregateOutputType | null
+  }
+
+  export type CrmUserMonthlySalesTargetAvgAggregateOutputType = {
+    amount: number | null
+  }
+
+  export type CrmUserMonthlySalesTargetSumAggregateOutputType = {
+    amount: number | null
+  }
+
+  export type CrmUserMonthlySalesTargetMinAggregateOutputType = {
+    id: string | null
+    userId: string | null
+    periodStart: Date | null
+    amount: number | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type CrmUserMonthlySalesTargetMaxAggregateOutputType = {
+    id: string | null
+    userId: string | null
+    periodStart: Date | null
+    amount: number | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type CrmUserMonthlySalesTargetCountAggregateOutputType = {
+    id: number
+    userId: number
+    periodStart: number
+    amount: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type CrmUserMonthlySalesTargetAvgAggregateInputType = {
+    amount?: true
+  }
+
+  export type CrmUserMonthlySalesTargetSumAggregateInputType = {
+    amount?: true
+  }
+
+  export type CrmUserMonthlySalesTargetMinAggregateInputType = {
+    id?: true
+    userId?: true
+    periodStart?: true
+    amount?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type CrmUserMonthlySalesTargetMaxAggregateInputType = {
+    id?: true
+    userId?: true
+    periodStart?: true
+    amount?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type CrmUserMonthlySalesTargetCountAggregateInputType = {
+    id?: true
+    userId?: true
+    periodStart?: true
+    amount?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type CrmUserMonthlySalesTargetAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which CrmUserMonthlySalesTarget to aggregate.
+     */
+    where?: CrmUserMonthlySalesTargetWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmUserMonthlySalesTargets to fetch.
+     */
+    orderBy?: CrmUserMonthlySalesTargetOrderByWithRelationInput | CrmUserMonthlySalesTargetOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: CrmUserMonthlySalesTargetWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmUserMonthlySalesTargets from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmUserMonthlySalesTargets.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned CrmUserMonthlySalesTargets
+    **/
+    _count?: true | CrmUserMonthlySalesTargetCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: CrmUserMonthlySalesTargetAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: CrmUserMonthlySalesTargetSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: CrmUserMonthlySalesTargetMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: CrmUserMonthlySalesTargetMaxAggregateInputType
+  }
+
+  export type GetCrmUserMonthlySalesTargetAggregateType<T extends CrmUserMonthlySalesTargetAggregateArgs> = {
+        [P in keyof T & keyof AggregateCrmUserMonthlySalesTarget]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateCrmUserMonthlySalesTarget[P]>
+      : GetScalarType<T[P], AggregateCrmUserMonthlySalesTarget[P]>
+  }
+
+
+
+
+  export type CrmUserMonthlySalesTargetGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: CrmUserMonthlySalesTargetWhereInput
+    orderBy?: CrmUserMonthlySalesTargetOrderByWithAggregationInput | CrmUserMonthlySalesTargetOrderByWithAggregationInput[]
+    by: CrmUserMonthlySalesTargetScalarFieldEnum[] | CrmUserMonthlySalesTargetScalarFieldEnum
+    having?: CrmUserMonthlySalesTargetScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: CrmUserMonthlySalesTargetCountAggregateInputType | true
+    _avg?: CrmUserMonthlySalesTargetAvgAggregateInputType
+    _sum?: CrmUserMonthlySalesTargetSumAggregateInputType
+    _min?: CrmUserMonthlySalesTargetMinAggregateInputType
+    _max?: CrmUserMonthlySalesTargetMaxAggregateInputType
+  }
+
+  export type CrmUserMonthlySalesTargetGroupByOutputType = {
+    id: string
+    userId: string
+    periodStart: Date
+    amount: number
+    createdAt: Date
+    updatedAt: Date
+    _count: CrmUserMonthlySalesTargetCountAggregateOutputType | null
+    _avg: CrmUserMonthlySalesTargetAvgAggregateOutputType | null
+    _sum: CrmUserMonthlySalesTargetSumAggregateOutputType | null
+    _min: CrmUserMonthlySalesTargetMinAggregateOutputType | null
+    _max: CrmUserMonthlySalesTargetMaxAggregateOutputType | null
+  }
+
+  type GetCrmUserMonthlySalesTargetGroupByPayload<T extends CrmUserMonthlySalesTargetGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<CrmUserMonthlySalesTargetGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof CrmUserMonthlySalesTargetGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], CrmUserMonthlySalesTargetGroupByOutputType[P]>
+            : GetScalarType<T[P], CrmUserMonthlySalesTargetGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type CrmUserMonthlySalesTargetSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    periodStart?: boolean
+    amount?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["crmUserMonthlySalesTarget"]>
+
+  export type CrmUserMonthlySalesTargetSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    periodStart?: boolean
+    amount?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["crmUserMonthlySalesTarget"]>
+
+  export type CrmUserMonthlySalesTargetSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    periodStart?: boolean
+    amount?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["crmUserMonthlySalesTarget"]>
+
+  export type CrmUserMonthlySalesTargetSelectScalar = {
+    id?: boolean
+    userId?: boolean
+    periodStart?: boolean
+    amount?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type CrmUserMonthlySalesTargetOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "userId" | "periodStart" | "amount" | "createdAt" | "updatedAt", ExtArgs["result"]["crmUserMonthlySalesTarget"]>
+  export type CrmUserMonthlySalesTargetInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }
+  export type CrmUserMonthlySalesTargetIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }
+  export type CrmUserMonthlySalesTargetIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }
+
+  export type $CrmUserMonthlySalesTargetPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "CrmUserMonthlySalesTarget"
+    objects: {
+      user: Prisma.$UserPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      userId: string
+      periodStart: Date
+      amount: number
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["crmUserMonthlySalesTarget"]>
+    composites: {}
+  }
+
+  type CrmUserMonthlySalesTargetGetPayload<S extends boolean | null | undefined | CrmUserMonthlySalesTargetDefaultArgs> = $Result.GetResult<Prisma.$CrmUserMonthlySalesTargetPayload, S>
+
+  type CrmUserMonthlySalesTargetCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<CrmUserMonthlySalesTargetFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: CrmUserMonthlySalesTargetCountAggregateInputType | true
+    }
+
+  export interface CrmUserMonthlySalesTargetDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['CrmUserMonthlySalesTarget'], meta: { name: 'CrmUserMonthlySalesTarget' } }
+    /**
+     * Find zero or one CrmUserMonthlySalesTarget that matches the filter.
+     * @param {CrmUserMonthlySalesTargetFindUniqueArgs} args - Arguments to find a CrmUserMonthlySalesTarget
+     * @example
+     * // Get one CrmUserMonthlySalesTarget
+     * const crmUserMonthlySalesTarget = await prisma.crmUserMonthlySalesTarget.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends CrmUserMonthlySalesTargetFindUniqueArgs>(args: SelectSubset<T, CrmUserMonthlySalesTargetFindUniqueArgs<ExtArgs>>): Prisma__CrmUserMonthlySalesTargetClient<$Result.GetResult<Prisma.$CrmUserMonthlySalesTargetPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one CrmUserMonthlySalesTarget that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {CrmUserMonthlySalesTargetFindUniqueOrThrowArgs} args - Arguments to find a CrmUserMonthlySalesTarget
+     * @example
+     * // Get one CrmUserMonthlySalesTarget
+     * const crmUserMonthlySalesTarget = await prisma.crmUserMonthlySalesTarget.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends CrmUserMonthlySalesTargetFindUniqueOrThrowArgs>(args: SelectSubset<T, CrmUserMonthlySalesTargetFindUniqueOrThrowArgs<ExtArgs>>): Prisma__CrmUserMonthlySalesTargetClient<$Result.GetResult<Prisma.$CrmUserMonthlySalesTargetPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first CrmUserMonthlySalesTarget that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmUserMonthlySalesTargetFindFirstArgs} args - Arguments to find a CrmUserMonthlySalesTarget
+     * @example
+     * // Get one CrmUserMonthlySalesTarget
+     * const crmUserMonthlySalesTarget = await prisma.crmUserMonthlySalesTarget.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends CrmUserMonthlySalesTargetFindFirstArgs>(args?: SelectSubset<T, CrmUserMonthlySalesTargetFindFirstArgs<ExtArgs>>): Prisma__CrmUserMonthlySalesTargetClient<$Result.GetResult<Prisma.$CrmUserMonthlySalesTargetPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first CrmUserMonthlySalesTarget that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmUserMonthlySalesTargetFindFirstOrThrowArgs} args - Arguments to find a CrmUserMonthlySalesTarget
+     * @example
+     * // Get one CrmUserMonthlySalesTarget
+     * const crmUserMonthlySalesTarget = await prisma.crmUserMonthlySalesTarget.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends CrmUserMonthlySalesTargetFindFirstOrThrowArgs>(args?: SelectSubset<T, CrmUserMonthlySalesTargetFindFirstOrThrowArgs<ExtArgs>>): Prisma__CrmUserMonthlySalesTargetClient<$Result.GetResult<Prisma.$CrmUserMonthlySalesTargetPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more CrmUserMonthlySalesTargets that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmUserMonthlySalesTargetFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all CrmUserMonthlySalesTargets
+     * const crmUserMonthlySalesTargets = await prisma.crmUserMonthlySalesTarget.findMany()
+     * 
+     * // Get first 10 CrmUserMonthlySalesTargets
+     * const crmUserMonthlySalesTargets = await prisma.crmUserMonthlySalesTarget.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const crmUserMonthlySalesTargetWithIdOnly = await prisma.crmUserMonthlySalesTarget.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends CrmUserMonthlySalesTargetFindManyArgs>(args?: SelectSubset<T, CrmUserMonthlySalesTargetFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmUserMonthlySalesTargetPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a CrmUserMonthlySalesTarget.
+     * @param {CrmUserMonthlySalesTargetCreateArgs} args - Arguments to create a CrmUserMonthlySalesTarget.
+     * @example
+     * // Create one CrmUserMonthlySalesTarget
+     * const CrmUserMonthlySalesTarget = await prisma.crmUserMonthlySalesTarget.create({
+     *   data: {
+     *     // ... data to create a CrmUserMonthlySalesTarget
+     *   }
+     * })
+     * 
+     */
+    create<T extends CrmUserMonthlySalesTargetCreateArgs>(args: SelectSubset<T, CrmUserMonthlySalesTargetCreateArgs<ExtArgs>>): Prisma__CrmUserMonthlySalesTargetClient<$Result.GetResult<Prisma.$CrmUserMonthlySalesTargetPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many CrmUserMonthlySalesTargets.
+     * @param {CrmUserMonthlySalesTargetCreateManyArgs} args - Arguments to create many CrmUserMonthlySalesTargets.
+     * @example
+     * // Create many CrmUserMonthlySalesTargets
+     * const crmUserMonthlySalesTarget = await prisma.crmUserMonthlySalesTarget.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends CrmUserMonthlySalesTargetCreateManyArgs>(args?: SelectSubset<T, CrmUserMonthlySalesTargetCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many CrmUserMonthlySalesTargets and returns the data saved in the database.
+     * @param {CrmUserMonthlySalesTargetCreateManyAndReturnArgs} args - Arguments to create many CrmUserMonthlySalesTargets.
+     * @example
+     * // Create many CrmUserMonthlySalesTargets
+     * const crmUserMonthlySalesTarget = await prisma.crmUserMonthlySalesTarget.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many CrmUserMonthlySalesTargets and only return the `id`
+     * const crmUserMonthlySalesTargetWithIdOnly = await prisma.crmUserMonthlySalesTarget.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends CrmUserMonthlySalesTargetCreateManyAndReturnArgs>(args?: SelectSubset<T, CrmUserMonthlySalesTargetCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmUserMonthlySalesTargetPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a CrmUserMonthlySalesTarget.
+     * @param {CrmUserMonthlySalesTargetDeleteArgs} args - Arguments to delete one CrmUserMonthlySalesTarget.
+     * @example
+     * // Delete one CrmUserMonthlySalesTarget
+     * const CrmUserMonthlySalesTarget = await prisma.crmUserMonthlySalesTarget.delete({
+     *   where: {
+     *     // ... filter to delete one CrmUserMonthlySalesTarget
+     *   }
+     * })
+     * 
+     */
+    delete<T extends CrmUserMonthlySalesTargetDeleteArgs>(args: SelectSubset<T, CrmUserMonthlySalesTargetDeleteArgs<ExtArgs>>): Prisma__CrmUserMonthlySalesTargetClient<$Result.GetResult<Prisma.$CrmUserMonthlySalesTargetPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one CrmUserMonthlySalesTarget.
+     * @param {CrmUserMonthlySalesTargetUpdateArgs} args - Arguments to update one CrmUserMonthlySalesTarget.
+     * @example
+     * // Update one CrmUserMonthlySalesTarget
+     * const crmUserMonthlySalesTarget = await prisma.crmUserMonthlySalesTarget.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends CrmUserMonthlySalesTargetUpdateArgs>(args: SelectSubset<T, CrmUserMonthlySalesTargetUpdateArgs<ExtArgs>>): Prisma__CrmUserMonthlySalesTargetClient<$Result.GetResult<Prisma.$CrmUserMonthlySalesTargetPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more CrmUserMonthlySalesTargets.
+     * @param {CrmUserMonthlySalesTargetDeleteManyArgs} args - Arguments to filter CrmUserMonthlySalesTargets to delete.
+     * @example
+     * // Delete a few CrmUserMonthlySalesTargets
+     * const { count } = await prisma.crmUserMonthlySalesTarget.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends CrmUserMonthlySalesTargetDeleteManyArgs>(args?: SelectSubset<T, CrmUserMonthlySalesTargetDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more CrmUserMonthlySalesTargets.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmUserMonthlySalesTargetUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many CrmUserMonthlySalesTargets
+     * const crmUserMonthlySalesTarget = await prisma.crmUserMonthlySalesTarget.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends CrmUserMonthlySalesTargetUpdateManyArgs>(args: SelectSubset<T, CrmUserMonthlySalesTargetUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more CrmUserMonthlySalesTargets and returns the data updated in the database.
+     * @param {CrmUserMonthlySalesTargetUpdateManyAndReturnArgs} args - Arguments to update many CrmUserMonthlySalesTargets.
+     * @example
+     * // Update many CrmUserMonthlySalesTargets
+     * const crmUserMonthlySalesTarget = await prisma.crmUserMonthlySalesTarget.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more CrmUserMonthlySalesTargets and only return the `id`
+     * const crmUserMonthlySalesTargetWithIdOnly = await prisma.crmUserMonthlySalesTarget.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends CrmUserMonthlySalesTargetUpdateManyAndReturnArgs>(args: SelectSubset<T, CrmUserMonthlySalesTargetUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmUserMonthlySalesTargetPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one CrmUserMonthlySalesTarget.
+     * @param {CrmUserMonthlySalesTargetUpsertArgs} args - Arguments to update or create a CrmUserMonthlySalesTarget.
+     * @example
+     * // Update or create a CrmUserMonthlySalesTarget
+     * const crmUserMonthlySalesTarget = await prisma.crmUserMonthlySalesTarget.upsert({
+     *   create: {
+     *     // ... data to create a CrmUserMonthlySalesTarget
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the CrmUserMonthlySalesTarget we want to update
+     *   }
+     * })
+     */
+    upsert<T extends CrmUserMonthlySalesTargetUpsertArgs>(args: SelectSubset<T, CrmUserMonthlySalesTargetUpsertArgs<ExtArgs>>): Prisma__CrmUserMonthlySalesTargetClient<$Result.GetResult<Prisma.$CrmUserMonthlySalesTargetPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of CrmUserMonthlySalesTargets.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmUserMonthlySalesTargetCountArgs} args - Arguments to filter CrmUserMonthlySalesTargets to count.
+     * @example
+     * // Count the number of CrmUserMonthlySalesTargets
+     * const count = await prisma.crmUserMonthlySalesTarget.count({
+     *   where: {
+     *     // ... the filter for the CrmUserMonthlySalesTargets we want to count
+     *   }
+     * })
+    **/
+    count<T extends CrmUserMonthlySalesTargetCountArgs>(
+      args?: Subset<T, CrmUserMonthlySalesTargetCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], CrmUserMonthlySalesTargetCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a CrmUserMonthlySalesTarget.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmUserMonthlySalesTargetAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends CrmUserMonthlySalesTargetAggregateArgs>(args: Subset<T, CrmUserMonthlySalesTargetAggregateArgs>): Prisma.PrismaPromise<GetCrmUserMonthlySalesTargetAggregateType<T>>
+
+    /**
+     * Group by CrmUserMonthlySalesTarget.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmUserMonthlySalesTargetGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends CrmUserMonthlySalesTargetGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: CrmUserMonthlySalesTargetGroupByArgs['orderBy'] }
+        : { orderBy?: CrmUserMonthlySalesTargetGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, CrmUserMonthlySalesTargetGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetCrmUserMonthlySalesTargetGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the CrmUserMonthlySalesTarget model
+   */
+  readonly fields: CrmUserMonthlySalesTargetFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for CrmUserMonthlySalesTarget.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__CrmUserMonthlySalesTargetClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    user<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the CrmUserMonthlySalesTarget model
+   */
+  interface CrmUserMonthlySalesTargetFieldRefs {
+    readonly id: FieldRef<"CrmUserMonthlySalesTarget", 'String'>
+    readonly userId: FieldRef<"CrmUserMonthlySalesTarget", 'String'>
+    readonly periodStart: FieldRef<"CrmUserMonthlySalesTarget", 'DateTime'>
+    readonly amount: FieldRef<"CrmUserMonthlySalesTarget", 'Float'>
+    readonly createdAt: FieldRef<"CrmUserMonthlySalesTarget", 'DateTime'>
+    readonly updatedAt: FieldRef<"CrmUserMonthlySalesTarget", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * CrmUserMonthlySalesTarget findUnique
+   */
+  export type CrmUserMonthlySalesTargetFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmUserMonthlySalesTarget
+     */
+    select?: CrmUserMonthlySalesTargetSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmUserMonthlySalesTarget
+     */
+    omit?: CrmUserMonthlySalesTargetOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmUserMonthlySalesTargetInclude<ExtArgs> | null
+    /**
+     * Filter, which CrmUserMonthlySalesTarget to fetch.
+     */
+    where: CrmUserMonthlySalesTargetWhereUniqueInput
+  }
+
+  /**
+   * CrmUserMonthlySalesTarget findUniqueOrThrow
+   */
+  export type CrmUserMonthlySalesTargetFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmUserMonthlySalesTarget
+     */
+    select?: CrmUserMonthlySalesTargetSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmUserMonthlySalesTarget
+     */
+    omit?: CrmUserMonthlySalesTargetOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmUserMonthlySalesTargetInclude<ExtArgs> | null
+    /**
+     * Filter, which CrmUserMonthlySalesTarget to fetch.
+     */
+    where: CrmUserMonthlySalesTargetWhereUniqueInput
+  }
+
+  /**
+   * CrmUserMonthlySalesTarget findFirst
+   */
+  export type CrmUserMonthlySalesTargetFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmUserMonthlySalesTarget
+     */
+    select?: CrmUserMonthlySalesTargetSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmUserMonthlySalesTarget
+     */
+    omit?: CrmUserMonthlySalesTargetOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmUserMonthlySalesTargetInclude<ExtArgs> | null
+    /**
+     * Filter, which CrmUserMonthlySalesTarget to fetch.
+     */
+    where?: CrmUserMonthlySalesTargetWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmUserMonthlySalesTargets to fetch.
+     */
+    orderBy?: CrmUserMonthlySalesTargetOrderByWithRelationInput | CrmUserMonthlySalesTargetOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for CrmUserMonthlySalesTargets.
+     */
+    cursor?: CrmUserMonthlySalesTargetWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmUserMonthlySalesTargets from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmUserMonthlySalesTargets.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CrmUserMonthlySalesTargets.
+     */
+    distinct?: CrmUserMonthlySalesTargetScalarFieldEnum | CrmUserMonthlySalesTargetScalarFieldEnum[]
+  }
+
+  /**
+   * CrmUserMonthlySalesTarget findFirstOrThrow
+   */
+  export type CrmUserMonthlySalesTargetFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmUserMonthlySalesTarget
+     */
+    select?: CrmUserMonthlySalesTargetSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmUserMonthlySalesTarget
+     */
+    omit?: CrmUserMonthlySalesTargetOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmUserMonthlySalesTargetInclude<ExtArgs> | null
+    /**
+     * Filter, which CrmUserMonthlySalesTarget to fetch.
+     */
+    where?: CrmUserMonthlySalesTargetWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmUserMonthlySalesTargets to fetch.
+     */
+    orderBy?: CrmUserMonthlySalesTargetOrderByWithRelationInput | CrmUserMonthlySalesTargetOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for CrmUserMonthlySalesTargets.
+     */
+    cursor?: CrmUserMonthlySalesTargetWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmUserMonthlySalesTargets from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmUserMonthlySalesTargets.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CrmUserMonthlySalesTargets.
+     */
+    distinct?: CrmUserMonthlySalesTargetScalarFieldEnum | CrmUserMonthlySalesTargetScalarFieldEnum[]
+  }
+
+  /**
+   * CrmUserMonthlySalesTarget findMany
+   */
+  export type CrmUserMonthlySalesTargetFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmUserMonthlySalesTarget
+     */
+    select?: CrmUserMonthlySalesTargetSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmUserMonthlySalesTarget
+     */
+    omit?: CrmUserMonthlySalesTargetOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmUserMonthlySalesTargetInclude<ExtArgs> | null
+    /**
+     * Filter, which CrmUserMonthlySalesTargets to fetch.
+     */
+    where?: CrmUserMonthlySalesTargetWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmUserMonthlySalesTargets to fetch.
+     */
+    orderBy?: CrmUserMonthlySalesTargetOrderByWithRelationInput | CrmUserMonthlySalesTargetOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing CrmUserMonthlySalesTargets.
+     */
+    cursor?: CrmUserMonthlySalesTargetWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmUserMonthlySalesTargets from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmUserMonthlySalesTargets.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CrmUserMonthlySalesTargets.
+     */
+    distinct?: CrmUserMonthlySalesTargetScalarFieldEnum | CrmUserMonthlySalesTargetScalarFieldEnum[]
+  }
+
+  /**
+   * CrmUserMonthlySalesTarget create
+   */
+  export type CrmUserMonthlySalesTargetCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmUserMonthlySalesTarget
+     */
+    select?: CrmUserMonthlySalesTargetSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmUserMonthlySalesTarget
+     */
+    omit?: CrmUserMonthlySalesTargetOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmUserMonthlySalesTargetInclude<ExtArgs> | null
+    /**
+     * The data needed to create a CrmUserMonthlySalesTarget.
+     */
+    data: XOR<CrmUserMonthlySalesTargetCreateInput, CrmUserMonthlySalesTargetUncheckedCreateInput>
+  }
+
+  /**
+   * CrmUserMonthlySalesTarget createMany
+   */
+  export type CrmUserMonthlySalesTargetCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many CrmUserMonthlySalesTargets.
+     */
+    data: CrmUserMonthlySalesTargetCreateManyInput | CrmUserMonthlySalesTargetCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * CrmUserMonthlySalesTarget createManyAndReturn
+   */
+  export type CrmUserMonthlySalesTargetCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmUserMonthlySalesTarget
+     */
+    select?: CrmUserMonthlySalesTargetSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmUserMonthlySalesTarget
+     */
+    omit?: CrmUserMonthlySalesTargetOmit<ExtArgs> | null
+    /**
+     * The data used to create many CrmUserMonthlySalesTargets.
+     */
+    data: CrmUserMonthlySalesTargetCreateManyInput | CrmUserMonthlySalesTargetCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmUserMonthlySalesTargetIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * CrmUserMonthlySalesTarget update
+   */
+  export type CrmUserMonthlySalesTargetUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmUserMonthlySalesTarget
+     */
+    select?: CrmUserMonthlySalesTargetSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmUserMonthlySalesTarget
+     */
+    omit?: CrmUserMonthlySalesTargetOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmUserMonthlySalesTargetInclude<ExtArgs> | null
+    /**
+     * The data needed to update a CrmUserMonthlySalesTarget.
+     */
+    data: XOR<CrmUserMonthlySalesTargetUpdateInput, CrmUserMonthlySalesTargetUncheckedUpdateInput>
+    /**
+     * Choose, which CrmUserMonthlySalesTarget to update.
+     */
+    where: CrmUserMonthlySalesTargetWhereUniqueInput
+  }
+
+  /**
+   * CrmUserMonthlySalesTarget updateMany
+   */
+  export type CrmUserMonthlySalesTargetUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update CrmUserMonthlySalesTargets.
+     */
+    data: XOR<CrmUserMonthlySalesTargetUpdateManyMutationInput, CrmUserMonthlySalesTargetUncheckedUpdateManyInput>
+    /**
+     * Filter which CrmUserMonthlySalesTargets to update
+     */
+    where?: CrmUserMonthlySalesTargetWhereInput
+    /**
+     * Limit how many CrmUserMonthlySalesTargets to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * CrmUserMonthlySalesTarget updateManyAndReturn
+   */
+  export type CrmUserMonthlySalesTargetUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmUserMonthlySalesTarget
+     */
+    select?: CrmUserMonthlySalesTargetSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmUserMonthlySalesTarget
+     */
+    omit?: CrmUserMonthlySalesTargetOmit<ExtArgs> | null
+    /**
+     * The data used to update CrmUserMonthlySalesTargets.
+     */
+    data: XOR<CrmUserMonthlySalesTargetUpdateManyMutationInput, CrmUserMonthlySalesTargetUncheckedUpdateManyInput>
+    /**
+     * Filter which CrmUserMonthlySalesTargets to update
+     */
+    where?: CrmUserMonthlySalesTargetWhereInput
+    /**
+     * Limit how many CrmUserMonthlySalesTargets to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmUserMonthlySalesTargetIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * CrmUserMonthlySalesTarget upsert
+   */
+  export type CrmUserMonthlySalesTargetUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmUserMonthlySalesTarget
+     */
+    select?: CrmUserMonthlySalesTargetSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmUserMonthlySalesTarget
+     */
+    omit?: CrmUserMonthlySalesTargetOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmUserMonthlySalesTargetInclude<ExtArgs> | null
+    /**
+     * The filter to search for the CrmUserMonthlySalesTarget to update in case it exists.
+     */
+    where: CrmUserMonthlySalesTargetWhereUniqueInput
+    /**
+     * In case the CrmUserMonthlySalesTarget found by the `where` argument doesn't exist, create a new CrmUserMonthlySalesTarget with this data.
+     */
+    create: XOR<CrmUserMonthlySalesTargetCreateInput, CrmUserMonthlySalesTargetUncheckedCreateInput>
+    /**
+     * In case the CrmUserMonthlySalesTarget was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<CrmUserMonthlySalesTargetUpdateInput, CrmUserMonthlySalesTargetUncheckedUpdateInput>
+  }
+
+  /**
+   * CrmUserMonthlySalesTarget delete
+   */
+  export type CrmUserMonthlySalesTargetDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmUserMonthlySalesTarget
+     */
+    select?: CrmUserMonthlySalesTargetSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmUserMonthlySalesTarget
+     */
+    omit?: CrmUserMonthlySalesTargetOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmUserMonthlySalesTargetInclude<ExtArgs> | null
+    /**
+     * Filter which CrmUserMonthlySalesTarget to delete.
+     */
+    where: CrmUserMonthlySalesTargetWhereUniqueInput
+  }
+
+  /**
+   * CrmUserMonthlySalesTarget deleteMany
+   */
+  export type CrmUserMonthlySalesTargetDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which CrmUserMonthlySalesTargets to delete
+     */
+    where?: CrmUserMonthlySalesTargetWhereInput
+    /**
+     * Limit how many CrmUserMonthlySalesTargets to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * CrmUserMonthlySalesTarget without action
+   */
+  export type CrmUserMonthlySalesTargetDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmUserMonthlySalesTarget
+     */
+    select?: CrmUserMonthlySalesTargetSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmUserMonthlySalesTarget
+     */
+    omit?: CrmUserMonthlySalesTargetOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmUserMonthlySalesTargetInclude<ExtArgs> | null
   }
 
 
@@ -40371,6 +46693,51 @@ export namespace Prisma {
   export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
 
 
+  export const ActivityLogScalarFieldEnum: {
+    id: 'id',
+    userId: 'userId',
+    userName: 'userName',
+    action: 'action',
+    module: 'module',
+    entityType: 'entityType',
+    entityId: 'entityId',
+    entityName: 'entityName',
+    description: 'description',
+    status: 'status',
+    isCritical: 'isCritical',
+    createdAt: 'createdAt'
+  };
+
+  export type ActivityLogScalarFieldEnum = (typeof ActivityLogScalarFieldEnum)[keyof typeof ActivityLogScalarFieldEnum]
+
+
+  export const AuditChangeSetScalarFieldEnum: {
+    id: 'id',
+    userId: 'userId',
+    userName: 'userName',
+    action: 'action',
+    module: 'module',
+    entityType: 'entityType',
+    entityId: 'entityId',
+    entityName: 'entityName',
+    createdAt: 'createdAt'
+  };
+
+  export type AuditChangeSetScalarFieldEnum = (typeof AuditChangeSetScalarFieldEnum)[keyof typeof AuditChangeSetScalarFieldEnum]
+
+
+  export const AuditChangeEntryScalarFieldEnum: {
+    id: 'id',
+    changeSetId: 'changeSetId',
+    fieldKey: 'fieldKey',
+    fieldLabel: 'fieldLabel',
+    oldValue: 'oldValue',
+    newValue: 'newValue'
+  };
+
+  export type AuditChangeEntryScalarFieldEnum = (typeof AuditChangeEntryScalarFieldEnum)[keyof typeof AuditChangeEntryScalarFieldEnum]
+
+
   export const AiConversationScalarFieldEnum: {
     id: 'id',
     userId: 'userId',
@@ -40447,11 +46814,22 @@ export namespace Prisma {
     contactPhone: 'contactPhone',
     address: 'address',
     globalWeeklyGoal: 'globalWeeklyGoal',
-    globalMonthlyGoal: 'globalMonthlyGoal',
     updatedAt: 'updatedAt'
   };
 
   export type CrmOrganizationProfileScalarFieldEnum = (typeof CrmOrganizationProfileScalarFieldEnum)[keyof typeof CrmOrganizationProfileScalarFieldEnum]
+
+
+  export const CrmMonthlySalesTargetScalarFieldEnum: {
+    id: 'id',
+    organizationId: 'organizationId',
+    periodStart: 'periodStart',
+    amount: 'amount',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type CrmMonthlySalesTargetScalarFieldEnum = (typeof CrmMonthlySalesTargetScalarFieldEnum)[keyof typeof CrmMonthlySalesTargetScalarFieldEnum]
 
 
   export const CrmLeadSourceScalarFieldEnum: {
@@ -40510,6 +46888,18 @@ export namespace Prisma {
   };
 
   export type CrmUserSalesGoalScalarFieldEnum = (typeof CrmUserSalesGoalScalarFieldEnum)[keyof typeof CrmUserSalesGoalScalarFieldEnum]
+
+
+  export const CrmUserMonthlySalesTargetScalarFieldEnum: {
+    id: 'id',
+    userId: 'userId',
+    periodStart: 'periodStart',
+    amount: 'amount',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type CrmUserMonthlySalesTargetScalarFieldEnum = (typeof CrmUserMonthlySalesTargetScalarFieldEnum)[keyof typeof CrmUserMonthlySalesTargetScalarFieldEnum]
 
 
   export const ContactScalarFieldEnum: {
@@ -41080,8 +47470,11 @@ export namespace Prisma {
     campaignsCreated?: CampaignListRelationFilter
     crmFilesUploaded?: CrmFileListRelationFilter
     crmSalesGoal?: XOR<CrmUserSalesGoalNullableScalarRelationFilter, CrmUserSalesGoalWhereInput> | null
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetListRelationFilter
     aiConversations?: AiConversationListRelationFilter
     aiKnowledgeBases?: AiKnowledgeBaseListRelationFilter
+    activityLogs?: ActivityLogListRelationFilter
+    auditChangeSets?: AuditChangeSetListRelationFilter
   }
 
   export type UserOrderByWithRelationInput = {
@@ -41104,8 +47497,11 @@ export namespace Prisma {
     campaignsCreated?: CampaignOrderByRelationAggregateInput
     crmFilesUploaded?: CrmFileOrderByRelationAggregateInput
     crmSalesGoal?: CrmUserSalesGoalOrderByWithRelationInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetOrderByRelationAggregateInput
     aiConversations?: AiConversationOrderByRelationAggregateInput
     aiKnowledgeBases?: AiKnowledgeBaseOrderByRelationAggregateInput
+    activityLogs?: ActivityLogOrderByRelationAggregateInput
+    auditChangeSets?: AuditChangeSetOrderByRelationAggregateInput
   }
 
   export type UserWhereUniqueInput = Prisma.AtLeast<{
@@ -41131,8 +47527,11 @@ export namespace Prisma {
     campaignsCreated?: CampaignListRelationFilter
     crmFilesUploaded?: CrmFileListRelationFilter
     crmSalesGoal?: XOR<CrmUserSalesGoalNullableScalarRelationFilter, CrmUserSalesGoalWhereInput> | null
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetListRelationFilter
     aiConversations?: AiConversationListRelationFilter
     aiKnowledgeBases?: AiKnowledgeBaseListRelationFilter
+    activityLogs?: ActivityLogListRelationFilter
+    auditChangeSets?: AuditChangeSetListRelationFilter
   }, "id">
 
   export type UserOrderByWithAggregationInput = {
@@ -41165,6 +47564,234 @@ export namespace Prisma {
     lastActivity?: DateTimeNullableWithAggregatesFilter<"User"> | Date | string | null
     createdAt?: DateTimeWithAggregatesFilter<"User"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"User"> | Date | string
+  }
+
+  export type ActivityLogWhereInput = {
+    AND?: ActivityLogWhereInput | ActivityLogWhereInput[]
+    OR?: ActivityLogWhereInput[]
+    NOT?: ActivityLogWhereInput | ActivityLogWhereInput[]
+    id?: StringFilter<"ActivityLog"> | string
+    userId?: StringNullableFilter<"ActivityLog"> | string | null
+    userName?: StringFilter<"ActivityLog"> | string
+    action?: StringFilter<"ActivityLog"> | string
+    module?: StringFilter<"ActivityLog"> | string
+    entityType?: StringFilter<"ActivityLog"> | string
+    entityId?: StringNullableFilter<"ActivityLog"> | string | null
+    entityName?: StringNullableFilter<"ActivityLog"> | string | null
+    description?: StringFilter<"ActivityLog"> | string
+    status?: StringFilter<"ActivityLog"> | string
+    isCritical?: BoolFilter<"ActivityLog"> | boolean
+    createdAt?: DateTimeFilter<"ActivityLog"> | Date | string
+    user?: XOR<UserNullableScalarRelationFilter, UserWhereInput> | null
+  }
+
+  export type ActivityLogOrderByWithRelationInput = {
+    id?: SortOrder
+    userId?: SortOrderInput | SortOrder
+    userName?: SortOrder
+    action?: SortOrder
+    module?: SortOrder
+    entityType?: SortOrder
+    entityId?: SortOrderInput | SortOrder
+    entityName?: SortOrderInput | SortOrder
+    description?: SortOrder
+    status?: SortOrder
+    isCritical?: SortOrder
+    createdAt?: SortOrder
+    user?: UserOrderByWithRelationInput
+  }
+
+  export type ActivityLogWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: ActivityLogWhereInput | ActivityLogWhereInput[]
+    OR?: ActivityLogWhereInput[]
+    NOT?: ActivityLogWhereInput | ActivityLogWhereInput[]
+    userId?: StringNullableFilter<"ActivityLog"> | string | null
+    userName?: StringFilter<"ActivityLog"> | string
+    action?: StringFilter<"ActivityLog"> | string
+    module?: StringFilter<"ActivityLog"> | string
+    entityType?: StringFilter<"ActivityLog"> | string
+    entityId?: StringNullableFilter<"ActivityLog"> | string | null
+    entityName?: StringNullableFilter<"ActivityLog"> | string | null
+    description?: StringFilter<"ActivityLog"> | string
+    status?: StringFilter<"ActivityLog"> | string
+    isCritical?: BoolFilter<"ActivityLog"> | boolean
+    createdAt?: DateTimeFilter<"ActivityLog"> | Date | string
+    user?: XOR<UserNullableScalarRelationFilter, UserWhereInput> | null
+  }, "id">
+
+  export type ActivityLogOrderByWithAggregationInput = {
+    id?: SortOrder
+    userId?: SortOrderInput | SortOrder
+    userName?: SortOrder
+    action?: SortOrder
+    module?: SortOrder
+    entityType?: SortOrder
+    entityId?: SortOrderInput | SortOrder
+    entityName?: SortOrderInput | SortOrder
+    description?: SortOrder
+    status?: SortOrder
+    isCritical?: SortOrder
+    createdAt?: SortOrder
+    _count?: ActivityLogCountOrderByAggregateInput
+    _max?: ActivityLogMaxOrderByAggregateInput
+    _min?: ActivityLogMinOrderByAggregateInput
+  }
+
+  export type ActivityLogScalarWhereWithAggregatesInput = {
+    AND?: ActivityLogScalarWhereWithAggregatesInput | ActivityLogScalarWhereWithAggregatesInput[]
+    OR?: ActivityLogScalarWhereWithAggregatesInput[]
+    NOT?: ActivityLogScalarWhereWithAggregatesInput | ActivityLogScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"ActivityLog"> | string
+    userId?: StringNullableWithAggregatesFilter<"ActivityLog"> | string | null
+    userName?: StringWithAggregatesFilter<"ActivityLog"> | string
+    action?: StringWithAggregatesFilter<"ActivityLog"> | string
+    module?: StringWithAggregatesFilter<"ActivityLog"> | string
+    entityType?: StringWithAggregatesFilter<"ActivityLog"> | string
+    entityId?: StringNullableWithAggregatesFilter<"ActivityLog"> | string | null
+    entityName?: StringNullableWithAggregatesFilter<"ActivityLog"> | string | null
+    description?: StringWithAggregatesFilter<"ActivityLog"> | string
+    status?: StringWithAggregatesFilter<"ActivityLog"> | string
+    isCritical?: BoolWithAggregatesFilter<"ActivityLog"> | boolean
+    createdAt?: DateTimeWithAggregatesFilter<"ActivityLog"> | Date | string
+  }
+
+  export type AuditChangeSetWhereInput = {
+    AND?: AuditChangeSetWhereInput | AuditChangeSetWhereInput[]
+    OR?: AuditChangeSetWhereInput[]
+    NOT?: AuditChangeSetWhereInput | AuditChangeSetWhereInput[]
+    id?: StringFilter<"AuditChangeSet"> | string
+    userId?: StringNullableFilter<"AuditChangeSet"> | string | null
+    userName?: StringFilter<"AuditChangeSet"> | string
+    action?: StringFilter<"AuditChangeSet"> | string
+    module?: StringFilter<"AuditChangeSet"> | string
+    entityType?: StringFilter<"AuditChangeSet"> | string
+    entityId?: StringFilter<"AuditChangeSet"> | string
+    entityName?: StringNullableFilter<"AuditChangeSet"> | string | null
+    createdAt?: DateTimeFilter<"AuditChangeSet"> | Date | string
+    user?: XOR<UserNullableScalarRelationFilter, UserWhereInput> | null
+    entries?: AuditChangeEntryListRelationFilter
+  }
+
+  export type AuditChangeSetOrderByWithRelationInput = {
+    id?: SortOrder
+    userId?: SortOrderInput | SortOrder
+    userName?: SortOrder
+    action?: SortOrder
+    module?: SortOrder
+    entityType?: SortOrder
+    entityId?: SortOrder
+    entityName?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    user?: UserOrderByWithRelationInput
+    entries?: AuditChangeEntryOrderByRelationAggregateInput
+  }
+
+  export type AuditChangeSetWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: AuditChangeSetWhereInput | AuditChangeSetWhereInput[]
+    OR?: AuditChangeSetWhereInput[]
+    NOT?: AuditChangeSetWhereInput | AuditChangeSetWhereInput[]
+    userId?: StringNullableFilter<"AuditChangeSet"> | string | null
+    userName?: StringFilter<"AuditChangeSet"> | string
+    action?: StringFilter<"AuditChangeSet"> | string
+    module?: StringFilter<"AuditChangeSet"> | string
+    entityType?: StringFilter<"AuditChangeSet"> | string
+    entityId?: StringFilter<"AuditChangeSet"> | string
+    entityName?: StringNullableFilter<"AuditChangeSet"> | string | null
+    createdAt?: DateTimeFilter<"AuditChangeSet"> | Date | string
+    user?: XOR<UserNullableScalarRelationFilter, UserWhereInput> | null
+    entries?: AuditChangeEntryListRelationFilter
+  }, "id">
+
+  export type AuditChangeSetOrderByWithAggregationInput = {
+    id?: SortOrder
+    userId?: SortOrderInput | SortOrder
+    userName?: SortOrder
+    action?: SortOrder
+    module?: SortOrder
+    entityType?: SortOrder
+    entityId?: SortOrder
+    entityName?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    _count?: AuditChangeSetCountOrderByAggregateInput
+    _max?: AuditChangeSetMaxOrderByAggregateInput
+    _min?: AuditChangeSetMinOrderByAggregateInput
+  }
+
+  export type AuditChangeSetScalarWhereWithAggregatesInput = {
+    AND?: AuditChangeSetScalarWhereWithAggregatesInput | AuditChangeSetScalarWhereWithAggregatesInput[]
+    OR?: AuditChangeSetScalarWhereWithAggregatesInput[]
+    NOT?: AuditChangeSetScalarWhereWithAggregatesInput | AuditChangeSetScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"AuditChangeSet"> | string
+    userId?: StringNullableWithAggregatesFilter<"AuditChangeSet"> | string | null
+    userName?: StringWithAggregatesFilter<"AuditChangeSet"> | string
+    action?: StringWithAggregatesFilter<"AuditChangeSet"> | string
+    module?: StringWithAggregatesFilter<"AuditChangeSet"> | string
+    entityType?: StringWithAggregatesFilter<"AuditChangeSet"> | string
+    entityId?: StringWithAggregatesFilter<"AuditChangeSet"> | string
+    entityName?: StringNullableWithAggregatesFilter<"AuditChangeSet"> | string | null
+    createdAt?: DateTimeWithAggregatesFilter<"AuditChangeSet"> | Date | string
+  }
+
+  export type AuditChangeEntryWhereInput = {
+    AND?: AuditChangeEntryWhereInput | AuditChangeEntryWhereInput[]
+    OR?: AuditChangeEntryWhereInput[]
+    NOT?: AuditChangeEntryWhereInput | AuditChangeEntryWhereInput[]
+    id?: StringFilter<"AuditChangeEntry"> | string
+    changeSetId?: StringFilter<"AuditChangeEntry"> | string
+    fieldKey?: StringFilter<"AuditChangeEntry"> | string
+    fieldLabel?: StringFilter<"AuditChangeEntry"> | string
+    oldValue?: StringFilter<"AuditChangeEntry"> | string
+    newValue?: StringFilter<"AuditChangeEntry"> | string
+    changeSet?: XOR<AuditChangeSetScalarRelationFilter, AuditChangeSetWhereInput>
+  }
+
+  export type AuditChangeEntryOrderByWithRelationInput = {
+    id?: SortOrder
+    changeSetId?: SortOrder
+    fieldKey?: SortOrder
+    fieldLabel?: SortOrder
+    oldValue?: SortOrder
+    newValue?: SortOrder
+    changeSet?: AuditChangeSetOrderByWithRelationInput
+  }
+
+  export type AuditChangeEntryWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: AuditChangeEntryWhereInput | AuditChangeEntryWhereInput[]
+    OR?: AuditChangeEntryWhereInput[]
+    NOT?: AuditChangeEntryWhereInput | AuditChangeEntryWhereInput[]
+    changeSetId?: StringFilter<"AuditChangeEntry"> | string
+    fieldKey?: StringFilter<"AuditChangeEntry"> | string
+    fieldLabel?: StringFilter<"AuditChangeEntry"> | string
+    oldValue?: StringFilter<"AuditChangeEntry"> | string
+    newValue?: StringFilter<"AuditChangeEntry"> | string
+    changeSet?: XOR<AuditChangeSetScalarRelationFilter, AuditChangeSetWhereInput>
+  }, "id">
+
+  export type AuditChangeEntryOrderByWithAggregationInput = {
+    id?: SortOrder
+    changeSetId?: SortOrder
+    fieldKey?: SortOrder
+    fieldLabel?: SortOrder
+    oldValue?: SortOrder
+    newValue?: SortOrder
+    _count?: AuditChangeEntryCountOrderByAggregateInput
+    _max?: AuditChangeEntryMaxOrderByAggregateInput
+    _min?: AuditChangeEntryMinOrderByAggregateInput
+  }
+
+  export type AuditChangeEntryScalarWhereWithAggregatesInput = {
+    AND?: AuditChangeEntryScalarWhereWithAggregatesInput | AuditChangeEntryScalarWhereWithAggregatesInput[]
+    OR?: AuditChangeEntryScalarWhereWithAggregatesInput[]
+    NOT?: AuditChangeEntryScalarWhereWithAggregatesInput | AuditChangeEntryScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"AuditChangeEntry"> | string
+    changeSetId?: StringWithAggregatesFilter<"AuditChangeEntry"> | string
+    fieldKey?: StringWithAggregatesFilter<"AuditChangeEntry"> | string
+    fieldLabel?: StringWithAggregatesFilter<"AuditChangeEntry"> | string
+    oldValue?: StringWithAggregatesFilter<"AuditChangeEntry"> | string
+    newValue?: StringWithAggregatesFilter<"AuditChangeEntry"> | string
   }
 
   export type AiConversationWhereInput = {
@@ -41525,8 +48152,8 @@ export namespace Prisma {
     contactPhone?: StringFilter<"CrmOrganizationProfile"> | string
     address?: StringFilter<"CrmOrganizationProfile"> | string
     globalWeeklyGoal?: FloatFilter<"CrmOrganizationProfile"> | number
-    globalMonthlyGoal?: FloatFilter<"CrmOrganizationProfile"> | number
     updatedAt?: DateTimeFilter<"CrmOrganizationProfile"> | Date | string
+    monthlySalesTargets?: CrmMonthlySalesTargetListRelationFilter
   }
 
   export type CrmOrganizationProfileOrderByWithRelationInput = {
@@ -41537,8 +48164,8 @@ export namespace Prisma {
     contactPhone?: SortOrder
     address?: SortOrder
     globalWeeklyGoal?: SortOrder
-    globalMonthlyGoal?: SortOrder
     updatedAt?: SortOrder
+    monthlySalesTargets?: CrmMonthlySalesTargetOrderByRelationAggregateInput
   }
 
   export type CrmOrganizationProfileWhereUniqueInput = Prisma.AtLeast<{
@@ -41552,8 +48179,8 @@ export namespace Prisma {
     contactPhone?: StringFilter<"CrmOrganizationProfile"> | string
     address?: StringFilter<"CrmOrganizationProfile"> | string
     globalWeeklyGoal?: FloatFilter<"CrmOrganizationProfile"> | number
-    globalMonthlyGoal?: FloatFilter<"CrmOrganizationProfile"> | number
     updatedAt?: DateTimeFilter<"CrmOrganizationProfile"> | Date | string
+    monthlySalesTargets?: CrmMonthlySalesTargetListRelationFilter
   }, "id">
 
   export type CrmOrganizationProfileOrderByWithAggregationInput = {
@@ -41564,7 +48191,6 @@ export namespace Prisma {
     contactPhone?: SortOrder
     address?: SortOrder
     globalWeeklyGoal?: SortOrder
-    globalMonthlyGoal?: SortOrder
     updatedAt?: SortOrder
     _count?: CrmOrganizationProfileCountOrderByAggregateInput
     _avg?: CrmOrganizationProfileAvgOrderByAggregateInput
@@ -41584,8 +48210,70 @@ export namespace Prisma {
     contactPhone?: StringWithAggregatesFilter<"CrmOrganizationProfile"> | string
     address?: StringWithAggregatesFilter<"CrmOrganizationProfile"> | string
     globalWeeklyGoal?: FloatWithAggregatesFilter<"CrmOrganizationProfile"> | number
-    globalMonthlyGoal?: FloatWithAggregatesFilter<"CrmOrganizationProfile"> | number
     updatedAt?: DateTimeWithAggregatesFilter<"CrmOrganizationProfile"> | Date | string
+  }
+
+  export type CrmMonthlySalesTargetWhereInput = {
+    AND?: CrmMonthlySalesTargetWhereInput | CrmMonthlySalesTargetWhereInput[]
+    OR?: CrmMonthlySalesTargetWhereInput[]
+    NOT?: CrmMonthlySalesTargetWhereInput | CrmMonthlySalesTargetWhereInput[]
+    id?: StringFilter<"CrmMonthlySalesTarget"> | string
+    organizationId?: StringFilter<"CrmMonthlySalesTarget"> | string
+    periodStart?: DateTimeFilter<"CrmMonthlySalesTarget"> | Date | string
+    amount?: FloatFilter<"CrmMonthlySalesTarget"> | number
+    createdAt?: DateTimeFilter<"CrmMonthlySalesTarget"> | Date | string
+    updatedAt?: DateTimeFilter<"CrmMonthlySalesTarget"> | Date | string
+    organization?: XOR<CrmOrganizationProfileScalarRelationFilter, CrmOrganizationProfileWhereInput>
+  }
+
+  export type CrmMonthlySalesTargetOrderByWithRelationInput = {
+    id?: SortOrder
+    organizationId?: SortOrder
+    periodStart?: SortOrder
+    amount?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    organization?: CrmOrganizationProfileOrderByWithRelationInput
+  }
+
+  export type CrmMonthlySalesTargetWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    organizationId_periodStart?: CrmMonthlySalesTargetOrganizationIdPeriodStartCompoundUniqueInput
+    AND?: CrmMonthlySalesTargetWhereInput | CrmMonthlySalesTargetWhereInput[]
+    OR?: CrmMonthlySalesTargetWhereInput[]
+    NOT?: CrmMonthlySalesTargetWhereInput | CrmMonthlySalesTargetWhereInput[]
+    organizationId?: StringFilter<"CrmMonthlySalesTarget"> | string
+    periodStart?: DateTimeFilter<"CrmMonthlySalesTarget"> | Date | string
+    amount?: FloatFilter<"CrmMonthlySalesTarget"> | number
+    createdAt?: DateTimeFilter<"CrmMonthlySalesTarget"> | Date | string
+    updatedAt?: DateTimeFilter<"CrmMonthlySalesTarget"> | Date | string
+    organization?: XOR<CrmOrganizationProfileScalarRelationFilter, CrmOrganizationProfileWhereInput>
+  }, "id" | "organizationId_periodStart">
+
+  export type CrmMonthlySalesTargetOrderByWithAggregationInput = {
+    id?: SortOrder
+    organizationId?: SortOrder
+    periodStart?: SortOrder
+    amount?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: CrmMonthlySalesTargetCountOrderByAggregateInput
+    _avg?: CrmMonthlySalesTargetAvgOrderByAggregateInput
+    _max?: CrmMonthlySalesTargetMaxOrderByAggregateInput
+    _min?: CrmMonthlySalesTargetMinOrderByAggregateInput
+    _sum?: CrmMonthlySalesTargetSumOrderByAggregateInput
+  }
+
+  export type CrmMonthlySalesTargetScalarWhereWithAggregatesInput = {
+    AND?: CrmMonthlySalesTargetScalarWhereWithAggregatesInput | CrmMonthlySalesTargetScalarWhereWithAggregatesInput[]
+    OR?: CrmMonthlySalesTargetScalarWhereWithAggregatesInput[]
+    NOT?: CrmMonthlySalesTargetScalarWhereWithAggregatesInput | CrmMonthlySalesTargetScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"CrmMonthlySalesTarget"> | string
+    organizationId?: StringWithAggregatesFilter<"CrmMonthlySalesTarget"> | string
+    periodStart?: DateTimeWithAggregatesFilter<"CrmMonthlySalesTarget"> | Date | string
+    amount?: FloatWithAggregatesFilter<"CrmMonthlySalesTarget"> | number
+    createdAt?: DateTimeWithAggregatesFilter<"CrmMonthlySalesTarget"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"CrmMonthlySalesTarget"> | Date | string
   }
 
   export type CrmLeadSourceWhereInput = {
@@ -41874,6 +48562,69 @@ export namespace Prisma {
     userId?: StringWithAggregatesFilter<"CrmUserSalesGoal"> | string
     weeklyTarget?: FloatWithAggregatesFilter<"CrmUserSalesGoal"> | number
     monthlyTarget?: FloatWithAggregatesFilter<"CrmUserSalesGoal"> | number
+  }
+
+  export type CrmUserMonthlySalesTargetWhereInput = {
+    AND?: CrmUserMonthlySalesTargetWhereInput | CrmUserMonthlySalesTargetWhereInput[]
+    OR?: CrmUserMonthlySalesTargetWhereInput[]
+    NOT?: CrmUserMonthlySalesTargetWhereInput | CrmUserMonthlySalesTargetWhereInput[]
+    id?: StringFilter<"CrmUserMonthlySalesTarget"> | string
+    userId?: StringFilter<"CrmUserMonthlySalesTarget"> | string
+    periodStart?: DateTimeFilter<"CrmUserMonthlySalesTarget"> | Date | string
+    amount?: FloatFilter<"CrmUserMonthlySalesTarget"> | number
+    createdAt?: DateTimeFilter<"CrmUserMonthlySalesTarget"> | Date | string
+    updatedAt?: DateTimeFilter<"CrmUserMonthlySalesTarget"> | Date | string
+    user?: XOR<UserScalarRelationFilter, UserWhereInput>
+  }
+
+  export type CrmUserMonthlySalesTargetOrderByWithRelationInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    periodStart?: SortOrder
+    amount?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    user?: UserOrderByWithRelationInput
+  }
+
+  export type CrmUserMonthlySalesTargetWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    userId_periodStart?: CrmUserMonthlySalesTargetUserIdPeriodStartCompoundUniqueInput
+    AND?: CrmUserMonthlySalesTargetWhereInput | CrmUserMonthlySalesTargetWhereInput[]
+    OR?: CrmUserMonthlySalesTargetWhereInput[]
+    NOT?: CrmUserMonthlySalesTargetWhereInput | CrmUserMonthlySalesTargetWhereInput[]
+    userId?: StringFilter<"CrmUserMonthlySalesTarget"> | string
+    periodStart?: DateTimeFilter<"CrmUserMonthlySalesTarget"> | Date | string
+    amount?: FloatFilter<"CrmUserMonthlySalesTarget"> | number
+    createdAt?: DateTimeFilter<"CrmUserMonthlySalesTarget"> | Date | string
+    updatedAt?: DateTimeFilter<"CrmUserMonthlySalesTarget"> | Date | string
+    user?: XOR<UserScalarRelationFilter, UserWhereInput>
+  }, "id" | "userId_periodStart">
+
+  export type CrmUserMonthlySalesTargetOrderByWithAggregationInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    periodStart?: SortOrder
+    amount?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: CrmUserMonthlySalesTargetCountOrderByAggregateInput
+    _avg?: CrmUserMonthlySalesTargetAvgOrderByAggregateInput
+    _max?: CrmUserMonthlySalesTargetMaxOrderByAggregateInput
+    _min?: CrmUserMonthlySalesTargetMinOrderByAggregateInput
+    _sum?: CrmUserMonthlySalesTargetSumOrderByAggregateInput
+  }
+
+  export type CrmUserMonthlySalesTargetScalarWhereWithAggregatesInput = {
+    AND?: CrmUserMonthlySalesTargetScalarWhereWithAggregatesInput | CrmUserMonthlySalesTargetScalarWhereWithAggregatesInput[]
+    OR?: CrmUserMonthlySalesTargetScalarWhereWithAggregatesInput[]
+    NOT?: CrmUserMonthlySalesTargetScalarWhereWithAggregatesInput | CrmUserMonthlySalesTargetScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"CrmUserMonthlySalesTarget"> | string
+    userId?: StringWithAggregatesFilter<"CrmUserMonthlySalesTarget"> | string
+    periodStart?: DateTimeWithAggregatesFilter<"CrmUserMonthlySalesTarget"> | Date | string
+    amount?: FloatWithAggregatesFilter<"CrmUserMonthlySalesTarget"> | number
+    createdAt?: DateTimeWithAggregatesFilter<"CrmUserMonthlySalesTarget"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"CrmUserMonthlySalesTarget"> | Date | string
   }
 
   export type ContactWhereInput = {
@@ -43378,8 +50129,11 @@ export namespace Prisma {
     campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetCreateNestedManyWithoutUserInput
     aiConversations?: AiConversationCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
+    activityLogs?: ActivityLogCreateNestedManyWithoutUserInput
+    auditChangeSets?: AuditChangeSetCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateInput = {
@@ -43401,8 +50155,11 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUncheckedCreateNestedManyWithoutUserInput
     aiConversations?: AiConversationUncheckedCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
+    activityLogs?: ActivityLogUncheckedCreateNestedManyWithoutUserInput
+    auditChangeSets?: AuditChangeSetUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserUpdateInput = {
@@ -43424,8 +50181,11 @@ export namespace Prisma {
     campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUpdateManyWithoutUserNestedInput
     aiConversations?: AiConversationUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
+    activityLogs?: ActivityLogUpdateManyWithoutUserNestedInput
+    auditChangeSets?: AuditChangeSetUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateInput = {
@@ -43447,8 +50207,11 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUncheckedUpdateManyWithoutUserNestedInput
     aiConversations?: AiConversationUncheckedUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
+    activityLogs?: ActivityLogUncheckedUpdateManyWithoutUserNestedInput
+    auditChangeSets?: AuditChangeSetUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type UserCreateManyInput = {
@@ -43487,6 +50250,259 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ActivityLogCreateInput = {
+    id?: string
+    userName: string
+    action: string
+    module: string
+    entityType: string
+    entityId?: string | null
+    entityName?: string | null
+    description: string
+    status?: string
+    isCritical?: boolean
+    createdAt?: Date | string
+    user?: UserCreateNestedOneWithoutActivityLogsInput
+  }
+
+  export type ActivityLogUncheckedCreateInput = {
+    id?: string
+    userId?: string | null
+    userName: string
+    action: string
+    module: string
+    entityType: string
+    entityId?: string | null
+    entityName?: string | null
+    description: string
+    status?: string
+    isCritical?: boolean
+    createdAt?: Date | string
+  }
+
+  export type ActivityLogUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userName?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    module?: StringFieldUpdateOperationsInput | string
+    entityType?: StringFieldUpdateOperationsInput | string
+    entityId?: NullableStringFieldUpdateOperationsInput | string | null
+    entityName?: NullableStringFieldUpdateOperationsInput | string | null
+    description?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    isCritical?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    user?: UserUpdateOneWithoutActivityLogsNestedInput
+  }
+
+  export type ActivityLogUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: NullableStringFieldUpdateOperationsInput | string | null
+    userName?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    module?: StringFieldUpdateOperationsInput | string
+    entityType?: StringFieldUpdateOperationsInput | string
+    entityId?: NullableStringFieldUpdateOperationsInput | string | null
+    entityName?: NullableStringFieldUpdateOperationsInput | string | null
+    description?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    isCritical?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ActivityLogCreateManyInput = {
+    id?: string
+    userId?: string | null
+    userName: string
+    action: string
+    module: string
+    entityType: string
+    entityId?: string | null
+    entityName?: string | null
+    description: string
+    status?: string
+    isCritical?: boolean
+    createdAt?: Date | string
+  }
+
+  export type ActivityLogUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userName?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    module?: StringFieldUpdateOperationsInput | string
+    entityType?: StringFieldUpdateOperationsInput | string
+    entityId?: NullableStringFieldUpdateOperationsInput | string | null
+    entityName?: NullableStringFieldUpdateOperationsInput | string | null
+    description?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    isCritical?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ActivityLogUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: NullableStringFieldUpdateOperationsInput | string | null
+    userName?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    module?: StringFieldUpdateOperationsInput | string
+    entityType?: StringFieldUpdateOperationsInput | string
+    entityId?: NullableStringFieldUpdateOperationsInput | string | null
+    entityName?: NullableStringFieldUpdateOperationsInput | string | null
+    description?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    isCritical?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type AuditChangeSetCreateInput = {
+    id?: string
+    userName: string
+    action: string
+    module: string
+    entityType: string
+    entityId: string
+    entityName?: string | null
+    createdAt?: Date | string
+    user?: UserCreateNestedOneWithoutAuditChangeSetsInput
+    entries?: AuditChangeEntryCreateNestedManyWithoutChangeSetInput
+  }
+
+  export type AuditChangeSetUncheckedCreateInput = {
+    id?: string
+    userId?: string | null
+    userName: string
+    action: string
+    module: string
+    entityType: string
+    entityId: string
+    entityName?: string | null
+    createdAt?: Date | string
+    entries?: AuditChangeEntryUncheckedCreateNestedManyWithoutChangeSetInput
+  }
+
+  export type AuditChangeSetUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userName?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    module?: StringFieldUpdateOperationsInput | string
+    entityType?: StringFieldUpdateOperationsInput | string
+    entityId?: StringFieldUpdateOperationsInput | string
+    entityName?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    user?: UserUpdateOneWithoutAuditChangeSetsNestedInput
+    entries?: AuditChangeEntryUpdateManyWithoutChangeSetNestedInput
+  }
+
+  export type AuditChangeSetUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: NullableStringFieldUpdateOperationsInput | string | null
+    userName?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    module?: StringFieldUpdateOperationsInput | string
+    entityType?: StringFieldUpdateOperationsInput | string
+    entityId?: StringFieldUpdateOperationsInput | string
+    entityName?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    entries?: AuditChangeEntryUncheckedUpdateManyWithoutChangeSetNestedInput
+  }
+
+  export type AuditChangeSetCreateManyInput = {
+    id?: string
+    userId?: string | null
+    userName: string
+    action: string
+    module: string
+    entityType: string
+    entityId: string
+    entityName?: string | null
+    createdAt?: Date | string
+  }
+
+  export type AuditChangeSetUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userName?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    module?: StringFieldUpdateOperationsInput | string
+    entityType?: StringFieldUpdateOperationsInput | string
+    entityId?: StringFieldUpdateOperationsInput | string
+    entityName?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type AuditChangeSetUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: NullableStringFieldUpdateOperationsInput | string | null
+    userName?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    module?: StringFieldUpdateOperationsInput | string
+    entityType?: StringFieldUpdateOperationsInput | string
+    entityId?: StringFieldUpdateOperationsInput | string
+    entityName?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type AuditChangeEntryCreateInput = {
+    id?: string
+    fieldKey: string
+    fieldLabel: string
+    oldValue: string
+    newValue: string
+    changeSet: AuditChangeSetCreateNestedOneWithoutEntriesInput
+  }
+
+  export type AuditChangeEntryUncheckedCreateInput = {
+    id?: string
+    changeSetId: string
+    fieldKey: string
+    fieldLabel: string
+    oldValue: string
+    newValue: string
+  }
+
+  export type AuditChangeEntryUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    fieldKey?: StringFieldUpdateOperationsInput | string
+    fieldLabel?: StringFieldUpdateOperationsInput | string
+    oldValue?: StringFieldUpdateOperationsInput | string
+    newValue?: StringFieldUpdateOperationsInput | string
+    changeSet?: AuditChangeSetUpdateOneRequiredWithoutEntriesNestedInput
+  }
+
+  export type AuditChangeEntryUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    changeSetId?: StringFieldUpdateOperationsInput | string
+    fieldKey?: StringFieldUpdateOperationsInput | string
+    fieldLabel?: StringFieldUpdateOperationsInput | string
+    oldValue?: StringFieldUpdateOperationsInput | string
+    newValue?: StringFieldUpdateOperationsInput | string
+  }
+
+  export type AuditChangeEntryCreateManyInput = {
+    id?: string
+    changeSetId: string
+    fieldKey: string
+    fieldLabel: string
+    oldValue: string
+    newValue: string
+  }
+
+  export type AuditChangeEntryUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    fieldKey?: StringFieldUpdateOperationsInput | string
+    fieldLabel?: StringFieldUpdateOperationsInput | string
+    oldValue?: StringFieldUpdateOperationsInput | string
+    newValue?: StringFieldUpdateOperationsInput | string
+  }
+
+  export type AuditChangeEntryUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    changeSetId?: StringFieldUpdateOperationsInput | string
+    fieldKey?: StringFieldUpdateOperationsInput | string
+    fieldLabel?: StringFieldUpdateOperationsInput | string
+    oldValue?: StringFieldUpdateOperationsInput | string
+    newValue?: StringFieldUpdateOperationsInput | string
   }
 
   export type AiConversationCreateInput = {
@@ -43872,8 +50888,8 @@ export namespace Prisma {
     contactPhone?: string
     address?: string
     globalWeeklyGoal?: number
-    globalMonthlyGoal?: number
     updatedAt?: Date | string
+    monthlySalesTargets?: CrmMonthlySalesTargetCreateNestedManyWithoutOrganizationInput
   }
 
   export type CrmOrganizationProfileUncheckedCreateInput = {
@@ -43884,8 +50900,8 @@ export namespace Prisma {
     contactPhone?: string
     address?: string
     globalWeeklyGoal?: number
-    globalMonthlyGoal?: number
     updatedAt?: Date | string
+    monthlySalesTargets?: CrmMonthlySalesTargetUncheckedCreateNestedManyWithoutOrganizationInput
   }
 
   export type CrmOrganizationProfileUpdateInput = {
@@ -43896,8 +50912,8 @@ export namespace Prisma {
     contactPhone?: StringFieldUpdateOperationsInput | string
     address?: StringFieldUpdateOperationsInput | string
     globalWeeklyGoal?: FloatFieldUpdateOperationsInput | number
-    globalMonthlyGoal?: FloatFieldUpdateOperationsInput | number
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    monthlySalesTargets?: CrmMonthlySalesTargetUpdateManyWithoutOrganizationNestedInput
   }
 
   export type CrmOrganizationProfileUncheckedUpdateInput = {
@@ -43908,8 +50924,8 @@ export namespace Prisma {
     contactPhone?: StringFieldUpdateOperationsInput | string
     address?: StringFieldUpdateOperationsInput | string
     globalWeeklyGoal?: FloatFieldUpdateOperationsInput | number
-    globalMonthlyGoal?: FloatFieldUpdateOperationsInput | number
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    monthlySalesTargets?: CrmMonthlySalesTargetUncheckedUpdateManyWithoutOrganizationNestedInput
   }
 
   export type CrmOrganizationProfileCreateManyInput = {
@@ -43920,7 +50936,6 @@ export namespace Prisma {
     contactPhone?: string
     address?: string
     globalWeeklyGoal?: number
-    globalMonthlyGoal?: number
     updatedAt?: Date | string
   }
 
@@ -43932,7 +50947,6 @@ export namespace Prisma {
     contactPhone?: StringFieldUpdateOperationsInput | string
     address?: StringFieldUpdateOperationsInput | string
     globalWeeklyGoal?: FloatFieldUpdateOperationsInput | number
-    globalMonthlyGoal?: FloatFieldUpdateOperationsInput | number
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
@@ -43944,7 +50958,68 @@ export namespace Prisma {
     contactPhone?: StringFieldUpdateOperationsInput | string
     address?: StringFieldUpdateOperationsInput | string
     globalWeeklyGoal?: FloatFieldUpdateOperationsInput | number
-    globalMonthlyGoal?: FloatFieldUpdateOperationsInput | number
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CrmMonthlySalesTargetCreateInput = {
+    id?: string
+    periodStart: Date | string
+    amount?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    organization?: CrmOrganizationProfileCreateNestedOneWithoutMonthlySalesTargetsInput
+  }
+
+  export type CrmMonthlySalesTargetUncheckedCreateInput = {
+    id?: string
+    organizationId?: string
+    periodStart: Date | string
+    amount?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type CrmMonthlySalesTargetUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    periodStart?: DateTimeFieldUpdateOperationsInput | Date | string
+    amount?: FloatFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    organization?: CrmOrganizationProfileUpdateOneRequiredWithoutMonthlySalesTargetsNestedInput
+  }
+
+  export type CrmMonthlySalesTargetUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    organizationId?: StringFieldUpdateOperationsInput | string
+    periodStart?: DateTimeFieldUpdateOperationsInput | Date | string
+    amount?: FloatFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CrmMonthlySalesTargetCreateManyInput = {
+    id?: string
+    organizationId?: string
+    periodStart: Date | string
+    amount?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type CrmMonthlySalesTargetUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    periodStart?: DateTimeFieldUpdateOperationsInput | Date | string
+    amount?: FloatFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CrmMonthlySalesTargetUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    organizationId?: StringFieldUpdateOperationsInput | string
+    periodStart?: DateTimeFieldUpdateOperationsInput | Date | string
+    amount?: FloatFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
@@ -44246,6 +51321,68 @@ export namespace Prisma {
     userId?: StringFieldUpdateOperationsInput | string
     weeklyTarget?: FloatFieldUpdateOperationsInput | number
     monthlyTarget?: FloatFieldUpdateOperationsInput | number
+  }
+
+  export type CrmUserMonthlySalesTargetCreateInput = {
+    id?: string
+    periodStart: Date | string
+    amount?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    user: UserCreateNestedOneWithoutCrmUserMonthlySalesTargetsInput
+  }
+
+  export type CrmUserMonthlySalesTargetUncheckedCreateInput = {
+    id?: string
+    userId: string
+    periodStart: Date | string
+    amount?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type CrmUserMonthlySalesTargetUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    periodStart?: DateTimeFieldUpdateOperationsInput | Date | string
+    amount?: FloatFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    user?: UserUpdateOneRequiredWithoutCrmUserMonthlySalesTargetsNestedInput
+  }
+
+  export type CrmUserMonthlySalesTargetUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    periodStart?: DateTimeFieldUpdateOperationsInput | Date | string
+    amount?: FloatFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CrmUserMonthlySalesTargetCreateManyInput = {
+    id?: string
+    userId: string
+    periodStart: Date | string
+    amount?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type CrmUserMonthlySalesTargetUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    periodStart?: DateTimeFieldUpdateOperationsInput | Date | string
+    amount?: FloatFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CrmUserMonthlySalesTargetUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    periodStart?: DateTimeFieldUpdateOperationsInput | Date | string
+    amount?: FloatFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type ContactCreateInput = {
@@ -45900,6 +53037,12 @@ export namespace Prisma {
     isNot?: CrmUserSalesGoalWhereInput | null
   }
 
+  export type CrmUserMonthlySalesTargetListRelationFilter = {
+    every?: CrmUserMonthlySalesTargetWhereInput
+    some?: CrmUserMonthlySalesTargetWhereInput
+    none?: CrmUserMonthlySalesTargetWhereInput
+  }
+
   export type AiConversationListRelationFilter = {
     every?: AiConversationWhereInput
     some?: AiConversationWhereInput
@@ -45910,6 +53053,18 @@ export namespace Prisma {
     every?: AiKnowledgeBaseWhereInput
     some?: AiKnowledgeBaseWhereInput
     none?: AiKnowledgeBaseWhereInput
+  }
+
+  export type ActivityLogListRelationFilter = {
+    every?: ActivityLogWhereInput
+    some?: ActivityLogWhereInput
+    none?: ActivityLogWhereInput
+  }
+
+  export type AuditChangeSetListRelationFilter = {
+    every?: AuditChangeSetWhereInput
+    some?: AuditChangeSetWhereInput
+    none?: AuditChangeSetWhereInput
   }
 
   export type AccountOrderByRelationAggregateInput = {
@@ -45940,11 +53095,23 @@ export namespace Prisma {
     _count?: SortOrder
   }
 
+  export type CrmUserMonthlySalesTargetOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
   export type AiConversationOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
   export type AiKnowledgeBaseOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type ActivityLogOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type AuditChangeSetOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -45999,6 +53166,134 @@ export namespace Prisma {
     _count?: NestedIntNullableFilter<$PrismaModel>
     _min?: NestedDateTimeNullableFilter<$PrismaModel>
     _max?: NestedDateTimeNullableFilter<$PrismaModel>
+  }
+
+  export type UserNullableScalarRelationFilter = {
+    is?: UserWhereInput | null
+    isNot?: UserWhereInput | null
+  }
+
+  export type ActivityLogCountOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    userName?: SortOrder
+    action?: SortOrder
+    module?: SortOrder
+    entityType?: SortOrder
+    entityId?: SortOrder
+    entityName?: SortOrder
+    description?: SortOrder
+    status?: SortOrder
+    isCritical?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type ActivityLogMaxOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    userName?: SortOrder
+    action?: SortOrder
+    module?: SortOrder
+    entityType?: SortOrder
+    entityId?: SortOrder
+    entityName?: SortOrder
+    description?: SortOrder
+    status?: SortOrder
+    isCritical?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type ActivityLogMinOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    userName?: SortOrder
+    action?: SortOrder
+    module?: SortOrder
+    entityType?: SortOrder
+    entityId?: SortOrder
+    entityName?: SortOrder
+    description?: SortOrder
+    status?: SortOrder
+    isCritical?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type AuditChangeEntryListRelationFilter = {
+    every?: AuditChangeEntryWhereInput
+    some?: AuditChangeEntryWhereInput
+    none?: AuditChangeEntryWhereInput
+  }
+
+  export type AuditChangeEntryOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type AuditChangeSetCountOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    userName?: SortOrder
+    action?: SortOrder
+    module?: SortOrder
+    entityType?: SortOrder
+    entityId?: SortOrder
+    entityName?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type AuditChangeSetMaxOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    userName?: SortOrder
+    action?: SortOrder
+    module?: SortOrder
+    entityType?: SortOrder
+    entityId?: SortOrder
+    entityName?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type AuditChangeSetMinOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    userName?: SortOrder
+    action?: SortOrder
+    module?: SortOrder
+    entityType?: SortOrder
+    entityId?: SortOrder
+    entityName?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type AuditChangeSetScalarRelationFilter = {
+    is?: AuditChangeSetWhereInput
+    isNot?: AuditChangeSetWhereInput
+  }
+
+  export type AuditChangeEntryCountOrderByAggregateInput = {
+    id?: SortOrder
+    changeSetId?: SortOrder
+    fieldKey?: SortOrder
+    fieldLabel?: SortOrder
+    oldValue?: SortOrder
+    newValue?: SortOrder
+  }
+
+  export type AuditChangeEntryMaxOrderByAggregateInput = {
+    id?: SortOrder
+    changeSetId?: SortOrder
+    fieldKey?: SortOrder
+    fieldLabel?: SortOrder
+    oldValue?: SortOrder
+    newValue?: SortOrder
+  }
+
+  export type AuditChangeEntryMinOrderByAggregateInput = {
+    id?: SortOrder
+    changeSetId?: SortOrder
+    fieldKey?: SortOrder
+    fieldLabel?: SortOrder
+    oldValue?: SortOrder
+    newValue?: SortOrder
   }
 
   export type AiMessageListRelationFilter = {
@@ -46293,6 +53588,16 @@ export namespace Prisma {
     not?: NestedFloatFilter<$PrismaModel> | number
   }
 
+  export type CrmMonthlySalesTargetListRelationFilter = {
+    every?: CrmMonthlySalesTargetWhereInput
+    some?: CrmMonthlySalesTargetWhereInput
+    none?: CrmMonthlySalesTargetWhereInput
+  }
+
+  export type CrmMonthlySalesTargetOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
   export type CrmOrganizationProfileCountOrderByAggregateInput = {
     id?: SortOrder
     name?: SortOrder
@@ -46301,13 +53606,11 @@ export namespace Prisma {
     contactPhone?: SortOrder
     address?: SortOrder
     globalWeeklyGoal?: SortOrder
-    globalMonthlyGoal?: SortOrder
     updatedAt?: SortOrder
   }
 
   export type CrmOrganizationProfileAvgOrderByAggregateInput = {
     globalWeeklyGoal?: SortOrder
-    globalMonthlyGoal?: SortOrder
   }
 
   export type CrmOrganizationProfileMaxOrderByAggregateInput = {
@@ -46318,7 +53621,6 @@ export namespace Prisma {
     contactPhone?: SortOrder
     address?: SortOrder
     globalWeeklyGoal?: SortOrder
-    globalMonthlyGoal?: SortOrder
     updatedAt?: SortOrder
   }
 
@@ -46330,13 +53632,11 @@ export namespace Prisma {
     contactPhone?: SortOrder
     address?: SortOrder
     globalWeeklyGoal?: SortOrder
-    globalMonthlyGoal?: SortOrder
     updatedAt?: SortOrder
   }
 
   export type CrmOrganizationProfileSumOrderByAggregateInput = {
     globalWeeklyGoal?: SortOrder
-    globalMonthlyGoal?: SortOrder
   }
 
   export type FloatWithAggregatesFilter<$PrismaModel = never> = {
@@ -46353,6 +53653,51 @@ export namespace Prisma {
     _sum?: NestedFloatFilter<$PrismaModel>
     _min?: NestedFloatFilter<$PrismaModel>
     _max?: NestedFloatFilter<$PrismaModel>
+  }
+
+  export type CrmOrganizationProfileScalarRelationFilter = {
+    is?: CrmOrganizationProfileWhereInput
+    isNot?: CrmOrganizationProfileWhereInput
+  }
+
+  export type CrmMonthlySalesTargetOrganizationIdPeriodStartCompoundUniqueInput = {
+    organizationId: string
+    periodStart: Date | string
+  }
+
+  export type CrmMonthlySalesTargetCountOrderByAggregateInput = {
+    id?: SortOrder
+    organizationId?: SortOrder
+    periodStart?: SortOrder
+    amount?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type CrmMonthlySalesTargetAvgOrderByAggregateInput = {
+    amount?: SortOrder
+  }
+
+  export type CrmMonthlySalesTargetMaxOrderByAggregateInput = {
+    id?: SortOrder
+    organizationId?: SortOrder
+    periodStart?: SortOrder
+    amount?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type CrmMonthlySalesTargetMinOrderByAggregateInput = {
+    id?: SortOrder
+    organizationId?: SortOrder
+    periodStart?: SortOrder
+    amount?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type CrmMonthlySalesTargetSumOrderByAggregateInput = {
+    amount?: SortOrder
   }
 
   export type CrmLeadSourceCountOrderByAggregateInput = {
@@ -46528,9 +53873,44 @@ export namespace Prisma {
     monthlyTarget?: SortOrder
   }
 
-  export type UserNullableScalarRelationFilter = {
-    is?: UserWhereInput | null
-    isNot?: UserWhereInput | null
+  export type CrmUserMonthlySalesTargetUserIdPeriodStartCompoundUniqueInput = {
+    userId: string
+    periodStart: Date | string
+  }
+
+  export type CrmUserMonthlySalesTargetCountOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    periodStart?: SortOrder
+    amount?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type CrmUserMonthlySalesTargetAvgOrderByAggregateInput = {
+    amount?: SortOrder
+  }
+
+  export type CrmUserMonthlySalesTargetMaxOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    periodStart?: SortOrder
+    amount?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type CrmUserMonthlySalesTargetMinOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    periodStart?: SortOrder
+    amount?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type CrmUserMonthlySalesTargetSumOrderByAggregateInput = {
+    amount?: SortOrder
   }
 
   export type CompanyContactListRelationFilter = {
@@ -47498,6 +54878,13 @@ export namespace Prisma {
     connect?: CrmUserSalesGoalWhereUniqueInput
   }
 
+  export type CrmUserMonthlySalesTargetCreateNestedManyWithoutUserInput = {
+    create?: XOR<CrmUserMonthlySalesTargetCreateWithoutUserInput, CrmUserMonthlySalesTargetUncheckedCreateWithoutUserInput> | CrmUserMonthlySalesTargetCreateWithoutUserInput[] | CrmUserMonthlySalesTargetUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: CrmUserMonthlySalesTargetCreateOrConnectWithoutUserInput | CrmUserMonthlySalesTargetCreateOrConnectWithoutUserInput[]
+    createMany?: CrmUserMonthlySalesTargetCreateManyUserInputEnvelope
+    connect?: CrmUserMonthlySalesTargetWhereUniqueInput | CrmUserMonthlySalesTargetWhereUniqueInput[]
+  }
+
   export type AiConversationCreateNestedManyWithoutUserInput = {
     create?: XOR<AiConversationCreateWithoutUserInput, AiConversationUncheckedCreateWithoutUserInput> | AiConversationCreateWithoutUserInput[] | AiConversationUncheckedCreateWithoutUserInput[]
     connectOrCreate?: AiConversationCreateOrConnectWithoutUserInput | AiConversationCreateOrConnectWithoutUserInput[]
@@ -47510,6 +54897,20 @@ export namespace Prisma {
     connectOrCreate?: AiKnowledgeBaseCreateOrConnectWithoutUserInput | AiKnowledgeBaseCreateOrConnectWithoutUserInput[]
     createMany?: AiKnowledgeBaseCreateManyUserInputEnvelope
     connect?: AiKnowledgeBaseWhereUniqueInput | AiKnowledgeBaseWhereUniqueInput[]
+  }
+
+  export type ActivityLogCreateNestedManyWithoutUserInput = {
+    create?: XOR<ActivityLogCreateWithoutUserInput, ActivityLogUncheckedCreateWithoutUserInput> | ActivityLogCreateWithoutUserInput[] | ActivityLogUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: ActivityLogCreateOrConnectWithoutUserInput | ActivityLogCreateOrConnectWithoutUserInput[]
+    createMany?: ActivityLogCreateManyUserInputEnvelope
+    connect?: ActivityLogWhereUniqueInput | ActivityLogWhereUniqueInput[]
+  }
+
+  export type AuditChangeSetCreateNestedManyWithoutUserInput = {
+    create?: XOR<AuditChangeSetCreateWithoutUserInput, AuditChangeSetUncheckedCreateWithoutUserInput> | AuditChangeSetCreateWithoutUserInput[] | AuditChangeSetUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: AuditChangeSetCreateOrConnectWithoutUserInput | AuditChangeSetCreateOrConnectWithoutUserInput[]
+    createMany?: AuditChangeSetCreateManyUserInputEnvelope
+    connect?: AuditChangeSetWhereUniqueInput | AuditChangeSetWhereUniqueInput[]
   }
 
   export type AccountUncheckedCreateNestedManyWithoutUserInput = {
@@ -47567,6 +54968,13 @@ export namespace Prisma {
     connect?: CrmUserSalesGoalWhereUniqueInput
   }
 
+  export type CrmUserMonthlySalesTargetUncheckedCreateNestedManyWithoutUserInput = {
+    create?: XOR<CrmUserMonthlySalesTargetCreateWithoutUserInput, CrmUserMonthlySalesTargetUncheckedCreateWithoutUserInput> | CrmUserMonthlySalesTargetCreateWithoutUserInput[] | CrmUserMonthlySalesTargetUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: CrmUserMonthlySalesTargetCreateOrConnectWithoutUserInput | CrmUserMonthlySalesTargetCreateOrConnectWithoutUserInput[]
+    createMany?: CrmUserMonthlySalesTargetCreateManyUserInputEnvelope
+    connect?: CrmUserMonthlySalesTargetWhereUniqueInput | CrmUserMonthlySalesTargetWhereUniqueInput[]
+  }
+
   export type AiConversationUncheckedCreateNestedManyWithoutUserInput = {
     create?: XOR<AiConversationCreateWithoutUserInput, AiConversationUncheckedCreateWithoutUserInput> | AiConversationCreateWithoutUserInput[] | AiConversationUncheckedCreateWithoutUserInput[]
     connectOrCreate?: AiConversationCreateOrConnectWithoutUserInput | AiConversationCreateOrConnectWithoutUserInput[]
@@ -47579,6 +54987,20 @@ export namespace Prisma {
     connectOrCreate?: AiKnowledgeBaseCreateOrConnectWithoutUserInput | AiKnowledgeBaseCreateOrConnectWithoutUserInput[]
     createMany?: AiKnowledgeBaseCreateManyUserInputEnvelope
     connect?: AiKnowledgeBaseWhereUniqueInput | AiKnowledgeBaseWhereUniqueInput[]
+  }
+
+  export type ActivityLogUncheckedCreateNestedManyWithoutUserInput = {
+    create?: XOR<ActivityLogCreateWithoutUserInput, ActivityLogUncheckedCreateWithoutUserInput> | ActivityLogCreateWithoutUserInput[] | ActivityLogUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: ActivityLogCreateOrConnectWithoutUserInput | ActivityLogCreateOrConnectWithoutUserInput[]
+    createMany?: ActivityLogCreateManyUserInputEnvelope
+    connect?: ActivityLogWhereUniqueInput | ActivityLogWhereUniqueInput[]
+  }
+
+  export type AuditChangeSetUncheckedCreateNestedManyWithoutUserInput = {
+    create?: XOR<AuditChangeSetCreateWithoutUserInput, AuditChangeSetUncheckedCreateWithoutUserInput> | AuditChangeSetCreateWithoutUserInput[] | AuditChangeSetUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: AuditChangeSetCreateOrConnectWithoutUserInput | AuditChangeSetCreateOrConnectWithoutUserInput[]
+    createMany?: AuditChangeSetCreateManyUserInputEnvelope
+    connect?: AuditChangeSetWhereUniqueInput | AuditChangeSetWhereUniqueInput[]
   }
 
   export type NullableDateTimeFieldUpdateOperationsInput = {
@@ -47701,6 +55123,20 @@ export namespace Prisma {
     update?: XOR<XOR<CrmUserSalesGoalUpdateToOneWithWhereWithoutUserInput, CrmUserSalesGoalUpdateWithoutUserInput>, CrmUserSalesGoalUncheckedUpdateWithoutUserInput>
   }
 
+  export type CrmUserMonthlySalesTargetUpdateManyWithoutUserNestedInput = {
+    create?: XOR<CrmUserMonthlySalesTargetCreateWithoutUserInput, CrmUserMonthlySalesTargetUncheckedCreateWithoutUserInput> | CrmUserMonthlySalesTargetCreateWithoutUserInput[] | CrmUserMonthlySalesTargetUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: CrmUserMonthlySalesTargetCreateOrConnectWithoutUserInput | CrmUserMonthlySalesTargetCreateOrConnectWithoutUserInput[]
+    upsert?: CrmUserMonthlySalesTargetUpsertWithWhereUniqueWithoutUserInput | CrmUserMonthlySalesTargetUpsertWithWhereUniqueWithoutUserInput[]
+    createMany?: CrmUserMonthlySalesTargetCreateManyUserInputEnvelope
+    set?: CrmUserMonthlySalesTargetWhereUniqueInput | CrmUserMonthlySalesTargetWhereUniqueInput[]
+    disconnect?: CrmUserMonthlySalesTargetWhereUniqueInput | CrmUserMonthlySalesTargetWhereUniqueInput[]
+    delete?: CrmUserMonthlySalesTargetWhereUniqueInput | CrmUserMonthlySalesTargetWhereUniqueInput[]
+    connect?: CrmUserMonthlySalesTargetWhereUniqueInput | CrmUserMonthlySalesTargetWhereUniqueInput[]
+    update?: CrmUserMonthlySalesTargetUpdateWithWhereUniqueWithoutUserInput | CrmUserMonthlySalesTargetUpdateWithWhereUniqueWithoutUserInput[]
+    updateMany?: CrmUserMonthlySalesTargetUpdateManyWithWhereWithoutUserInput | CrmUserMonthlySalesTargetUpdateManyWithWhereWithoutUserInput[]
+    deleteMany?: CrmUserMonthlySalesTargetScalarWhereInput | CrmUserMonthlySalesTargetScalarWhereInput[]
+  }
+
   export type AiConversationUpdateManyWithoutUserNestedInput = {
     create?: XOR<AiConversationCreateWithoutUserInput, AiConversationUncheckedCreateWithoutUserInput> | AiConversationCreateWithoutUserInput[] | AiConversationUncheckedCreateWithoutUserInput[]
     connectOrCreate?: AiConversationCreateOrConnectWithoutUserInput | AiConversationCreateOrConnectWithoutUserInput[]
@@ -47727,6 +55163,34 @@ export namespace Prisma {
     update?: AiKnowledgeBaseUpdateWithWhereUniqueWithoutUserInput | AiKnowledgeBaseUpdateWithWhereUniqueWithoutUserInput[]
     updateMany?: AiKnowledgeBaseUpdateManyWithWhereWithoutUserInput | AiKnowledgeBaseUpdateManyWithWhereWithoutUserInput[]
     deleteMany?: AiKnowledgeBaseScalarWhereInput | AiKnowledgeBaseScalarWhereInput[]
+  }
+
+  export type ActivityLogUpdateManyWithoutUserNestedInput = {
+    create?: XOR<ActivityLogCreateWithoutUserInput, ActivityLogUncheckedCreateWithoutUserInput> | ActivityLogCreateWithoutUserInput[] | ActivityLogUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: ActivityLogCreateOrConnectWithoutUserInput | ActivityLogCreateOrConnectWithoutUserInput[]
+    upsert?: ActivityLogUpsertWithWhereUniqueWithoutUserInput | ActivityLogUpsertWithWhereUniqueWithoutUserInput[]
+    createMany?: ActivityLogCreateManyUserInputEnvelope
+    set?: ActivityLogWhereUniqueInput | ActivityLogWhereUniqueInput[]
+    disconnect?: ActivityLogWhereUniqueInput | ActivityLogWhereUniqueInput[]
+    delete?: ActivityLogWhereUniqueInput | ActivityLogWhereUniqueInput[]
+    connect?: ActivityLogWhereUniqueInput | ActivityLogWhereUniqueInput[]
+    update?: ActivityLogUpdateWithWhereUniqueWithoutUserInput | ActivityLogUpdateWithWhereUniqueWithoutUserInput[]
+    updateMany?: ActivityLogUpdateManyWithWhereWithoutUserInput | ActivityLogUpdateManyWithWhereWithoutUserInput[]
+    deleteMany?: ActivityLogScalarWhereInput | ActivityLogScalarWhereInput[]
+  }
+
+  export type AuditChangeSetUpdateManyWithoutUserNestedInput = {
+    create?: XOR<AuditChangeSetCreateWithoutUserInput, AuditChangeSetUncheckedCreateWithoutUserInput> | AuditChangeSetCreateWithoutUserInput[] | AuditChangeSetUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: AuditChangeSetCreateOrConnectWithoutUserInput | AuditChangeSetCreateOrConnectWithoutUserInput[]
+    upsert?: AuditChangeSetUpsertWithWhereUniqueWithoutUserInput | AuditChangeSetUpsertWithWhereUniqueWithoutUserInput[]
+    createMany?: AuditChangeSetCreateManyUserInputEnvelope
+    set?: AuditChangeSetWhereUniqueInput | AuditChangeSetWhereUniqueInput[]
+    disconnect?: AuditChangeSetWhereUniqueInput | AuditChangeSetWhereUniqueInput[]
+    delete?: AuditChangeSetWhereUniqueInput | AuditChangeSetWhereUniqueInput[]
+    connect?: AuditChangeSetWhereUniqueInput | AuditChangeSetWhereUniqueInput[]
+    update?: AuditChangeSetUpdateWithWhereUniqueWithoutUserInput | AuditChangeSetUpdateWithWhereUniqueWithoutUserInput[]
+    updateMany?: AuditChangeSetUpdateManyWithWhereWithoutUserInput | AuditChangeSetUpdateManyWithWhereWithoutUserInput[]
+    deleteMany?: AuditChangeSetScalarWhereInput | AuditChangeSetScalarWhereInput[]
   }
 
   export type AccountUncheckedUpdateManyWithoutUserNestedInput = {
@@ -47837,6 +55301,20 @@ export namespace Prisma {
     update?: XOR<XOR<CrmUserSalesGoalUpdateToOneWithWhereWithoutUserInput, CrmUserSalesGoalUpdateWithoutUserInput>, CrmUserSalesGoalUncheckedUpdateWithoutUserInput>
   }
 
+  export type CrmUserMonthlySalesTargetUncheckedUpdateManyWithoutUserNestedInput = {
+    create?: XOR<CrmUserMonthlySalesTargetCreateWithoutUserInput, CrmUserMonthlySalesTargetUncheckedCreateWithoutUserInput> | CrmUserMonthlySalesTargetCreateWithoutUserInput[] | CrmUserMonthlySalesTargetUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: CrmUserMonthlySalesTargetCreateOrConnectWithoutUserInput | CrmUserMonthlySalesTargetCreateOrConnectWithoutUserInput[]
+    upsert?: CrmUserMonthlySalesTargetUpsertWithWhereUniqueWithoutUserInput | CrmUserMonthlySalesTargetUpsertWithWhereUniqueWithoutUserInput[]
+    createMany?: CrmUserMonthlySalesTargetCreateManyUserInputEnvelope
+    set?: CrmUserMonthlySalesTargetWhereUniqueInput | CrmUserMonthlySalesTargetWhereUniqueInput[]
+    disconnect?: CrmUserMonthlySalesTargetWhereUniqueInput | CrmUserMonthlySalesTargetWhereUniqueInput[]
+    delete?: CrmUserMonthlySalesTargetWhereUniqueInput | CrmUserMonthlySalesTargetWhereUniqueInput[]
+    connect?: CrmUserMonthlySalesTargetWhereUniqueInput | CrmUserMonthlySalesTargetWhereUniqueInput[]
+    update?: CrmUserMonthlySalesTargetUpdateWithWhereUniqueWithoutUserInput | CrmUserMonthlySalesTargetUpdateWithWhereUniqueWithoutUserInput[]
+    updateMany?: CrmUserMonthlySalesTargetUpdateManyWithWhereWithoutUserInput | CrmUserMonthlySalesTargetUpdateManyWithWhereWithoutUserInput[]
+    deleteMany?: CrmUserMonthlySalesTargetScalarWhereInput | CrmUserMonthlySalesTargetScalarWhereInput[]
+  }
+
   export type AiConversationUncheckedUpdateManyWithoutUserNestedInput = {
     create?: XOR<AiConversationCreateWithoutUserInput, AiConversationUncheckedCreateWithoutUserInput> | AiConversationCreateWithoutUserInput[] | AiConversationUncheckedCreateWithoutUserInput[]
     connectOrCreate?: AiConversationCreateOrConnectWithoutUserInput | AiConversationCreateOrConnectWithoutUserInput[]
@@ -47863,6 +55341,122 @@ export namespace Prisma {
     update?: AiKnowledgeBaseUpdateWithWhereUniqueWithoutUserInput | AiKnowledgeBaseUpdateWithWhereUniqueWithoutUserInput[]
     updateMany?: AiKnowledgeBaseUpdateManyWithWhereWithoutUserInput | AiKnowledgeBaseUpdateManyWithWhereWithoutUserInput[]
     deleteMany?: AiKnowledgeBaseScalarWhereInput | AiKnowledgeBaseScalarWhereInput[]
+  }
+
+  export type ActivityLogUncheckedUpdateManyWithoutUserNestedInput = {
+    create?: XOR<ActivityLogCreateWithoutUserInput, ActivityLogUncheckedCreateWithoutUserInput> | ActivityLogCreateWithoutUserInput[] | ActivityLogUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: ActivityLogCreateOrConnectWithoutUserInput | ActivityLogCreateOrConnectWithoutUserInput[]
+    upsert?: ActivityLogUpsertWithWhereUniqueWithoutUserInput | ActivityLogUpsertWithWhereUniqueWithoutUserInput[]
+    createMany?: ActivityLogCreateManyUserInputEnvelope
+    set?: ActivityLogWhereUniqueInput | ActivityLogWhereUniqueInput[]
+    disconnect?: ActivityLogWhereUniqueInput | ActivityLogWhereUniqueInput[]
+    delete?: ActivityLogWhereUniqueInput | ActivityLogWhereUniqueInput[]
+    connect?: ActivityLogWhereUniqueInput | ActivityLogWhereUniqueInput[]
+    update?: ActivityLogUpdateWithWhereUniqueWithoutUserInput | ActivityLogUpdateWithWhereUniqueWithoutUserInput[]
+    updateMany?: ActivityLogUpdateManyWithWhereWithoutUserInput | ActivityLogUpdateManyWithWhereWithoutUserInput[]
+    deleteMany?: ActivityLogScalarWhereInput | ActivityLogScalarWhereInput[]
+  }
+
+  export type AuditChangeSetUncheckedUpdateManyWithoutUserNestedInput = {
+    create?: XOR<AuditChangeSetCreateWithoutUserInput, AuditChangeSetUncheckedCreateWithoutUserInput> | AuditChangeSetCreateWithoutUserInput[] | AuditChangeSetUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: AuditChangeSetCreateOrConnectWithoutUserInput | AuditChangeSetCreateOrConnectWithoutUserInput[]
+    upsert?: AuditChangeSetUpsertWithWhereUniqueWithoutUserInput | AuditChangeSetUpsertWithWhereUniqueWithoutUserInput[]
+    createMany?: AuditChangeSetCreateManyUserInputEnvelope
+    set?: AuditChangeSetWhereUniqueInput | AuditChangeSetWhereUniqueInput[]
+    disconnect?: AuditChangeSetWhereUniqueInput | AuditChangeSetWhereUniqueInput[]
+    delete?: AuditChangeSetWhereUniqueInput | AuditChangeSetWhereUniqueInput[]
+    connect?: AuditChangeSetWhereUniqueInput | AuditChangeSetWhereUniqueInput[]
+    update?: AuditChangeSetUpdateWithWhereUniqueWithoutUserInput | AuditChangeSetUpdateWithWhereUniqueWithoutUserInput[]
+    updateMany?: AuditChangeSetUpdateManyWithWhereWithoutUserInput | AuditChangeSetUpdateManyWithWhereWithoutUserInput[]
+    deleteMany?: AuditChangeSetScalarWhereInput | AuditChangeSetScalarWhereInput[]
+  }
+
+  export type UserCreateNestedOneWithoutActivityLogsInput = {
+    create?: XOR<UserCreateWithoutActivityLogsInput, UserUncheckedCreateWithoutActivityLogsInput>
+    connectOrCreate?: UserCreateOrConnectWithoutActivityLogsInput
+    connect?: UserWhereUniqueInput
+  }
+
+  export type UserUpdateOneWithoutActivityLogsNestedInput = {
+    create?: XOR<UserCreateWithoutActivityLogsInput, UserUncheckedCreateWithoutActivityLogsInput>
+    connectOrCreate?: UserCreateOrConnectWithoutActivityLogsInput
+    upsert?: UserUpsertWithoutActivityLogsInput
+    disconnect?: UserWhereInput | boolean
+    delete?: UserWhereInput | boolean
+    connect?: UserWhereUniqueInput
+    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutActivityLogsInput, UserUpdateWithoutActivityLogsInput>, UserUncheckedUpdateWithoutActivityLogsInput>
+  }
+
+  export type UserCreateNestedOneWithoutAuditChangeSetsInput = {
+    create?: XOR<UserCreateWithoutAuditChangeSetsInput, UserUncheckedCreateWithoutAuditChangeSetsInput>
+    connectOrCreate?: UserCreateOrConnectWithoutAuditChangeSetsInput
+    connect?: UserWhereUniqueInput
+  }
+
+  export type AuditChangeEntryCreateNestedManyWithoutChangeSetInput = {
+    create?: XOR<AuditChangeEntryCreateWithoutChangeSetInput, AuditChangeEntryUncheckedCreateWithoutChangeSetInput> | AuditChangeEntryCreateWithoutChangeSetInput[] | AuditChangeEntryUncheckedCreateWithoutChangeSetInput[]
+    connectOrCreate?: AuditChangeEntryCreateOrConnectWithoutChangeSetInput | AuditChangeEntryCreateOrConnectWithoutChangeSetInput[]
+    createMany?: AuditChangeEntryCreateManyChangeSetInputEnvelope
+    connect?: AuditChangeEntryWhereUniqueInput | AuditChangeEntryWhereUniqueInput[]
+  }
+
+  export type AuditChangeEntryUncheckedCreateNestedManyWithoutChangeSetInput = {
+    create?: XOR<AuditChangeEntryCreateWithoutChangeSetInput, AuditChangeEntryUncheckedCreateWithoutChangeSetInput> | AuditChangeEntryCreateWithoutChangeSetInput[] | AuditChangeEntryUncheckedCreateWithoutChangeSetInput[]
+    connectOrCreate?: AuditChangeEntryCreateOrConnectWithoutChangeSetInput | AuditChangeEntryCreateOrConnectWithoutChangeSetInput[]
+    createMany?: AuditChangeEntryCreateManyChangeSetInputEnvelope
+    connect?: AuditChangeEntryWhereUniqueInput | AuditChangeEntryWhereUniqueInput[]
+  }
+
+  export type UserUpdateOneWithoutAuditChangeSetsNestedInput = {
+    create?: XOR<UserCreateWithoutAuditChangeSetsInput, UserUncheckedCreateWithoutAuditChangeSetsInput>
+    connectOrCreate?: UserCreateOrConnectWithoutAuditChangeSetsInput
+    upsert?: UserUpsertWithoutAuditChangeSetsInput
+    disconnect?: UserWhereInput | boolean
+    delete?: UserWhereInput | boolean
+    connect?: UserWhereUniqueInput
+    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutAuditChangeSetsInput, UserUpdateWithoutAuditChangeSetsInput>, UserUncheckedUpdateWithoutAuditChangeSetsInput>
+  }
+
+  export type AuditChangeEntryUpdateManyWithoutChangeSetNestedInput = {
+    create?: XOR<AuditChangeEntryCreateWithoutChangeSetInput, AuditChangeEntryUncheckedCreateWithoutChangeSetInput> | AuditChangeEntryCreateWithoutChangeSetInput[] | AuditChangeEntryUncheckedCreateWithoutChangeSetInput[]
+    connectOrCreate?: AuditChangeEntryCreateOrConnectWithoutChangeSetInput | AuditChangeEntryCreateOrConnectWithoutChangeSetInput[]
+    upsert?: AuditChangeEntryUpsertWithWhereUniqueWithoutChangeSetInput | AuditChangeEntryUpsertWithWhereUniqueWithoutChangeSetInput[]
+    createMany?: AuditChangeEntryCreateManyChangeSetInputEnvelope
+    set?: AuditChangeEntryWhereUniqueInput | AuditChangeEntryWhereUniqueInput[]
+    disconnect?: AuditChangeEntryWhereUniqueInput | AuditChangeEntryWhereUniqueInput[]
+    delete?: AuditChangeEntryWhereUniqueInput | AuditChangeEntryWhereUniqueInput[]
+    connect?: AuditChangeEntryWhereUniqueInput | AuditChangeEntryWhereUniqueInput[]
+    update?: AuditChangeEntryUpdateWithWhereUniqueWithoutChangeSetInput | AuditChangeEntryUpdateWithWhereUniqueWithoutChangeSetInput[]
+    updateMany?: AuditChangeEntryUpdateManyWithWhereWithoutChangeSetInput | AuditChangeEntryUpdateManyWithWhereWithoutChangeSetInput[]
+    deleteMany?: AuditChangeEntryScalarWhereInput | AuditChangeEntryScalarWhereInput[]
+  }
+
+  export type AuditChangeEntryUncheckedUpdateManyWithoutChangeSetNestedInput = {
+    create?: XOR<AuditChangeEntryCreateWithoutChangeSetInput, AuditChangeEntryUncheckedCreateWithoutChangeSetInput> | AuditChangeEntryCreateWithoutChangeSetInput[] | AuditChangeEntryUncheckedCreateWithoutChangeSetInput[]
+    connectOrCreate?: AuditChangeEntryCreateOrConnectWithoutChangeSetInput | AuditChangeEntryCreateOrConnectWithoutChangeSetInput[]
+    upsert?: AuditChangeEntryUpsertWithWhereUniqueWithoutChangeSetInput | AuditChangeEntryUpsertWithWhereUniqueWithoutChangeSetInput[]
+    createMany?: AuditChangeEntryCreateManyChangeSetInputEnvelope
+    set?: AuditChangeEntryWhereUniqueInput | AuditChangeEntryWhereUniqueInput[]
+    disconnect?: AuditChangeEntryWhereUniqueInput | AuditChangeEntryWhereUniqueInput[]
+    delete?: AuditChangeEntryWhereUniqueInput | AuditChangeEntryWhereUniqueInput[]
+    connect?: AuditChangeEntryWhereUniqueInput | AuditChangeEntryWhereUniqueInput[]
+    update?: AuditChangeEntryUpdateWithWhereUniqueWithoutChangeSetInput | AuditChangeEntryUpdateWithWhereUniqueWithoutChangeSetInput[]
+    updateMany?: AuditChangeEntryUpdateManyWithWhereWithoutChangeSetInput | AuditChangeEntryUpdateManyWithWhereWithoutChangeSetInput[]
+    deleteMany?: AuditChangeEntryScalarWhereInput | AuditChangeEntryScalarWhereInput[]
+  }
+
+  export type AuditChangeSetCreateNestedOneWithoutEntriesInput = {
+    create?: XOR<AuditChangeSetCreateWithoutEntriesInput, AuditChangeSetUncheckedCreateWithoutEntriesInput>
+    connectOrCreate?: AuditChangeSetCreateOrConnectWithoutEntriesInput
+    connect?: AuditChangeSetWhereUniqueInput
+  }
+
+  export type AuditChangeSetUpdateOneRequiredWithoutEntriesNestedInput = {
+    create?: XOR<AuditChangeSetCreateWithoutEntriesInput, AuditChangeSetUncheckedCreateWithoutEntriesInput>
+    connectOrCreate?: AuditChangeSetCreateOrConnectWithoutEntriesInput
+    upsert?: AuditChangeSetUpsertWithoutEntriesInput
+    connect?: AuditChangeSetWhereUniqueInput
+    update?: XOR<XOR<AuditChangeSetUpdateToOneWithWhereWithoutEntriesInput, AuditChangeSetUpdateWithoutEntriesInput>, AuditChangeSetUncheckedUpdateWithoutEntriesInput>
   }
 
   export type UserCreateNestedOneWithoutAiConversationsInput = {
@@ -48013,12 +55607,68 @@ export namespace Prisma {
     update?: XOR<XOR<AiKnowledgeBaseUpdateToOneWithWhereWithoutChunksInput, AiKnowledgeBaseUpdateWithoutChunksInput>, AiKnowledgeBaseUncheckedUpdateWithoutChunksInput>
   }
 
+  export type CrmMonthlySalesTargetCreateNestedManyWithoutOrganizationInput = {
+    create?: XOR<CrmMonthlySalesTargetCreateWithoutOrganizationInput, CrmMonthlySalesTargetUncheckedCreateWithoutOrganizationInput> | CrmMonthlySalesTargetCreateWithoutOrganizationInput[] | CrmMonthlySalesTargetUncheckedCreateWithoutOrganizationInput[]
+    connectOrCreate?: CrmMonthlySalesTargetCreateOrConnectWithoutOrganizationInput | CrmMonthlySalesTargetCreateOrConnectWithoutOrganizationInput[]
+    createMany?: CrmMonthlySalesTargetCreateManyOrganizationInputEnvelope
+    connect?: CrmMonthlySalesTargetWhereUniqueInput | CrmMonthlySalesTargetWhereUniqueInput[]
+  }
+
+  export type CrmMonthlySalesTargetUncheckedCreateNestedManyWithoutOrganizationInput = {
+    create?: XOR<CrmMonthlySalesTargetCreateWithoutOrganizationInput, CrmMonthlySalesTargetUncheckedCreateWithoutOrganizationInput> | CrmMonthlySalesTargetCreateWithoutOrganizationInput[] | CrmMonthlySalesTargetUncheckedCreateWithoutOrganizationInput[]
+    connectOrCreate?: CrmMonthlySalesTargetCreateOrConnectWithoutOrganizationInput | CrmMonthlySalesTargetCreateOrConnectWithoutOrganizationInput[]
+    createMany?: CrmMonthlySalesTargetCreateManyOrganizationInputEnvelope
+    connect?: CrmMonthlySalesTargetWhereUniqueInput | CrmMonthlySalesTargetWhereUniqueInput[]
+  }
+
   export type FloatFieldUpdateOperationsInput = {
     set?: number
     increment?: number
     decrement?: number
     multiply?: number
     divide?: number
+  }
+
+  export type CrmMonthlySalesTargetUpdateManyWithoutOrganizationNestedInput = {
+    create?: XOR<CrmMonthlySalesTargetCreateWithoutOrganizationInput, CrmMonthlySalesTargetUncheckedCreateWithoutOrganizationInput> | CrmMonthlySalesTargetCreateWithoutOrganizationInput[] | CrmMonthlySalesTargetUncheckedCreateWithoutOrganizationInput[]
+    connectOrCreate?: CrmMonthlySalesTargetCreateOrConnectWithoutOrganizationInput | CrmMonthlySalesTargetCreateOrConnectWithoutOrganizationInput[]
+    upsert?: CrmMonthlySalesTargetUpsertWithWhereUniqueWithoutOrganizationInput | CrmMonthlySalesTargetUpsertWithWhereUniqueWithoutOrganizationInput[]
+    createMany?: CrmMonthlySalesTargetCreateManyOrganizationInputEnvelope
+    set?: CrmMonthlySalesTargetWhereUniqueInput | CrmMonthlySalesTargetWhereUniqueInput[]
+    disconnect?: CrmMonthlySalesTargetWhereUniqueInput | CrmMonthlySalesTargetWhereUniqueInput[]
+    delete?: CrmMonthlySalesTargetWhereUniqueInput | CrmMonthlySalesTargetWhereUniqueInput[]
+    connect?: CrmMonthlySalesTargetWhereUniqueInput | CrmMonthlySalesTargetWhereUniqueInput[]
+    update?: CrmMonthlySalesTargetUpdateWithWhereUniqueWithoutOrganizationInput | CrmMonthlySalesTargetUpdateWithWhereUniqueWithoutOrganizationInput[]
+    updateMany?: CrmMonthlySalesTargetUpdateManyWithWhereWithoutOrganizationInput | CrmMonthlySalesTargetUpdateManyWithWhereWithoutOrganizationInput[]
+    deleteMany?: CrmMonthlySalesTargetScalarWhereInput | CrmMonthlySalesTargetScalarWhereInput[]
+  }
+
+  export type CrmMonthlySalesTargetUncheckedUpdateManyWithoutOrganizationNestedInput = {
+    create?: XOR<CrmMonthlySalesTargetCreateWithoutOrganizationInput, CrmMonthlySalesTargetUncheckedCreateWithoutOrganizationInput> | CrmMonthlySalesTargetCreateWithoutOrganizationInput[] | CrmMonthlySalesTargetUncheckedCreateWithoutOrganizationInput[]
+    connectOrCreate?: CrmMonthlySalesTargetCreateOrConnectWithoutOrganizationInput | CrmMonthlySalesTargetCreateOrConnectWithoutOrganizationInput[]
+    upsert?: CrmMonthlySalesTargetUpsertWithWhereUniqueWithoutOrganizationInput | CrmMonthlySalesTargetUpsertWithWhereUniqueWithoutOrganizationInput[]
+    createMany?: CrmMonthlySalesTargetCreateManyOrganizationInputEnvelope
+    set?: CrmMonthlySalesTargetWhereUniqueInput | CrmMonthlySalesTargetWhereUniqueInput[]
+    disconnect?: CrmMonthlySalesTargetWhereUniqueInput | CrmMonthlySalesTargetWhereUniqueInput[]
+    delete?: CrmMonthlySalesTargetWhereUniqueInput | CrmMonthlySalesTargetWhereUniqueInput[]
+    connect?: CrmMonthlySalesTargetWhereUniqueInput | CrmMonthlySalesTargetWhereUniqueInput[]
+    update?: CrmMonthlySalesTargetUpdateWithWhereUniqueWithoutOrganizationInput | CrmMonthlySalesTargetUpdateWithWhereUniqueWithoutOrganizationInput[]
+    updateMany?: CrmMonthlySalesTargetUpdateManyWithWhereWithoutOrganizationInput | CrmMonthlySalesTargetUpdateManyWithWhereWithoutOrganizationInput[]
+    deleteMany?: CrmMonthlySalesTargetScalarWhereInput | CrmMonthlySalesTargetScalarWhereInput[]
+  }
+
+  export type CrmOrganizationProfileCreateNestedOneWithoutMonthlySalesTargetsInput = {
+    create?: XOR<CrmOrganizationProfileCreateWithoutMonthlySalesTargetsInput, CrmOrganizationProfileUncheckedCreateWithoutMonthlySalesTargetsInput>
+    connectOrCreate?: CrmOrganizationProfileCreateOrConnectWithoutMonthlySalesTargetsInput
+    connect?: CrmOrganizationProfileWhereUniqueInput
+  }
+
+  export type CrmOrganizationProfileUpdateOneRequiredWithoutMonthlySalesTargetsNestedInput = {
+    create?: XOR<CrmOrganizationProfileCreateWithoutMonthlySalesTargetsInput, CrmOrganizationProfileUncheckedCreateWithoutMonthlySalesTargetsInput>
+    connectOrCreate?: CrmOrganizationProfileCreateOrConnectWithoutMonthlySalesTargetsInput
+    upsert?: CrmOrganizationProfileUpsertWithoutMonthlySalesTargetsInput
+    connect?: CrmOrganizationProfileWhereUniqueInput
+    update?: XOR<XOR<CrmOrganizationProfileUpdateToOneWithWhereWithoutMonthlySalesTargetsInput, CrmOrganizationProfileUpdateWithoutMonthlySalesTargetsInput>, CrmOrganizationProfileUncheckedUpdateWithoutMonthlySalesTargetsInput>
   }
 
   export type UserCreateNestedOneWithoutCrmSalesGoalInput = {
@@ -48033,6 +55683,20 @@ export namespace Prisma {
     upsert?: UserUpsertWithoutCrmSalesGoalInput
     connect?: UserWhereUniqueInput
     update?: XOR<XOR<UserUpdateToOneWithWhereWithoutCrmSalesGoalInput, UserUpdateWithoutCrmSalesGoalInput>, UserUncheckedUpdateWithoutCrmSalesGoalInput>
+  }
+
+  export type UserCreateNestedOneWithoutCrmUserMonthlySalesTargetsInput = {
+    create?: XOR<UserCreateWithoutCrmUserMonthlySalesTargetsInput, UserUncheckedCreateWithoutCrmUserMonthlySalesTargetsInput>
+    connectOrCreate?: UserCreateOrConnectWithoutCrmUserMonthlySalesTargetsInput
+    connect?: UserWhereUniqueInput
+  }
+
+  export type UserUpdateOneRequiredWithoutCrmUserMonthlySalesTargetsNestedInput = {
+    create?: XOR<UserCreateWithoutCrmUserMonthlySalesTargetsInput, UserUncheckedCreateWithoutCrmUserMonthlySalesTargetsInput>
+    connectOrCreate?: UserCreateOrConnectWithoutCrmUserMonthlySalesTargetsInput
+    upsert?: UserUpsertWithoutCrmUserMonthlySalesTargetsInput
+    connect?: UserWhereUniqueInput
+    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutCrmUserMonthlySalesTargetsInput, UserUpdateWithoutCrmUserMonthlySalesTargetsInput>, UserUncheckedUpdateWithoutCrmUserMonthlySalesTargetsInput>
   }
 
   export type UserCreateNestedOneWithoutContactsAssignedInput = {
@@ -49439,8 +57103,11 @@ export namespace Prisma {
     campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetCreateNestedManyWithoutUserInput
     aiConversations?: AiConversationCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
+    activityLogs?: ActivityLogCreateNestedManyWithoutUserInput
+    auditChangeSets?: AuditChangeSetCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutRoleInput = {
@@ -49461,8 +57128,11 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUncheckedCreateNestedManyWithoutUserInput
     aiConversations?: AiConversationUncheckedCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
+    activityLogs?: ActivityLogUncheckedCreateNestedManyWithoutUserInput
+    auditChangeSets?: AuditChangeSetUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutRoleInput = {
@@ -49610,8 +57280,11 @@ export namespace Prisma {
     campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetCreateNestedManyWithoutUserInput
     aiConversations?: AiConversationCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
+    activityLogs?: ActivityLogCreateNestedManyWithoutUserInput
+    auditChangeSets?: AuditChangeSetCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutAccountsInput = {
@@ -49632,8 +57305,11 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUncheckedCreateNestedManyWithoutUserInput
     aiConversations?: AiConversationUncheckedCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
+    activityLogs?: ActivityLogUncheckedCreateNestedManyWithoutUserInput
+    auditChangeSets?: AuditChangeSetUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutAccountsInput = {
@@ -49670,8 +57346,11 @@ export namespace Prisma {
     campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUpdateManyWithoutUserNestedInput
     aiConversations?: AiConversationUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
+    activityLogs?: ActivityLogUpdateManyWithoutUserNestedInput
+    auditChangeSets?: AuditChangeSetUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutAccountsInput = {
@@ -49692,8 +57371,11 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUncheckedUpdateManyWithoutUserNestedInput
     aiConversations?: AiConversationUncheckedUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
+    activityLogs?: ActivityLogUncheckedUpdateManyWithoutUserNestedInput
+    auditChangeSets?: AuditChangeSetUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type RoleCreateWithoutUsersInput = {
@@ -50088,6 +57770,32 @@ export namespace Prisma {
     create: XOR<CrmUserSalesGoalCreateWithoutUserInput, CrmUserSalesGoalUncheckedCreateWithoutUserInput>
   }
 
+  export type CrmUserMonthlySalesTargetCreateWithoutUserInput = {
+    id?: string
+    periodStart: Date | string
+    amount?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type CrmUserMonthlySalesTargetUncheckedCreateWithoutUserInput = {
+    id?: string
+    periodStart: Date | string
+    amount?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type CrmUserMonthlySalesTargetCreateOrConnectWithoutUserInput = {
+    where: CrmUserMonthlySalesTargetWhereUniqueInput
+    create: XOR<CrmUserMonthlySalesTargetCreateWithoutUserInput, CrmUserMonthlySalesTargetUncheckedCreateWithoutUserInput>
+  }
+
+  export type CrmUserMonthlySalesTargetCreateManyUserInputEnvelope = {
+    data: CrmUserMonthlySalesTargetCreateManyUserInput | CrmUserMonthlySalesTargetCreateManyUserInput[]
+    skipDuplicates?: boolean
+  }
+
   export type AiConversationCreateWithoutUserInput = {
     id?: string
     title?: string
@@ -50161,6 +57869,78 @@ export namespace Prisma {
 
   export type AiKnowledgeBaseCreateManyUserInputEnvelope = {
     data: AiKnowledgeBaseCreateManyUserInput | AiKnowledgeBaseCreateManyUserInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type ActivityLogCreateWithoutUserInput = {
+    id?: string
+    userName: string
+    action: string
+    module: string
+    entityType: string
+    entityId?: string | null
+    entityName?: string | null
+    description: string
+    status?: string
+    isCritical?: boolean
+    createdAt?: Date | string
+  }
+
+  export type ActivityLogUncheckedCreateWithoutUserInput = {
+    id?: string
+    userName: string
+    action: string
+    module: string
+    entityType: string
+    entityId?: string | null
+    entityName?: string | null
+    description: string
+    status?: string
+    isCritical?: boolean
+    createdAt?: Date | string
+  }
+
+  export type ActivityLogCreateOrConnectWithoutUserInput = {
+    where: ActivityLogWhereUniqueInput
+    create: XOR<ActivityLogCreateWithoutUserInput, ActivityLogUncheckedCreateWithoutUserInput>
+  }
+
+  export type ActivityLogCreateManyUserInputEnvelope = {
+    data: ActivityLogCreateManyUserInput | ActivityLogCreateManyUserInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type AuditChangeSetCreateWithoutUserInput = {
+    id?: string
+    userName: string
+    action: string
+    module: string
+    entityType: string
+    entityId: string
+    entityName?: string | null
+    createdAt?: Date | string
+    entries?: AuditChangeEntryCreateNestedManyWithoutChangeSetInput
+  }
+
+  export type AuditChangeSetUncheckedCreateWithoutUserInput = {
+    id?: string
+    userName: string
+    action: string
+    module: string
+    entityType: string
+    entityId: string
+    entityName?: string | null
+    createdAt?: Date | string
+    entries?: AuditChangeEntryUncheckedCreateNestedManyWithoutChangeSetInput
+  }
+
+  export type AuditChangeSetCreateOrConnectWithoutUserInput = {
+    where: AuditChangeSetWhereUniqueInput
+    create: XOR<AuditChangeSetCreateWithoutUserInput, AuditChangeSetUncheckedCreateWithoutUserInput>
+  }
+
+  export type AuditChangeSetCreateManyUserInputEnvelope = {
+    data: AuditChangeSetCreateManyUserInput | AuditChangeSetCreateManyUserInput[]
     skipDuplicates?: boolean
   }
 
@@ -50479,6 +58259,34 @@ export namespace Prisma {
     monthlyTarget?: FloatFieldUpdateOperationsInput | number
   }
 
+  export type CrmUserMonthlySalesTargetUpsertWithWhereUniqueWithoutUserInput = {
+    where: CrmUserMonthlySalesTargetWhereUniqueInput
+    update: XOR<CrmUserMonthlySalesTargetUpdateWithoutUserInput, CrmUserMonthlySalesTargetUncheckedUpdateWithoutUserInput>
+    create: XOR<CrmUserMonthlySalesTargetCreateWithoutUserInput, CrmUserMonthlySalesTargetUncheckedCreateWithoutUserInput>
+  }
+
+  export type CrmUserMonthlySalesTargetUpdateWithWhereUniqueWithoutUserInput = {
+    where: CrmUserMonthlySalesTargetWhereUniqueInput
+    data: XOR<CrmUserMonthlySalesTargetUpdateWithoutUserInput, CrmUserMonthlySalesTargetUncheckedUpdateWithoutUserInput>
+  }
+
+  export type CrmUserMonthlySalesTargetUpdateManyWithWhereWithoutUserInput = {
+    where: CrmUserMonthlySalesTargetScalarWhereInput
+    data: XOR<CrmUserMonthlySalesTargetUpdateManyMutationInput, CrmUserMonthlySalesTargetUncheckedUpdateManyWithoutUserInput>
+  }
+
+  export type CrmUserMonthlySalesTargetScalarWhereInput = {
+    AND?: CrmUserMonthlySalesTargetScalarWhereInput | CrmUserMonthlySalesTargetScalarWhereInput[]
+    OR?: CrmUserMonthlySalesTargetScalarWhereInput[]
+    NOT?: CrmUserMonthlySalesTargetScalarWhereInput | CrmUserMonthlySalesTargetScalarWhereInput[]
+    id?: StringFilter<"CrmUserMonthlySalesTarget"> | string
+    userId?: StringFilter<"CrmUserMonthlySalesTarget"> | string
+    periodStart?: DateTimeFilter<"CrmUserMonthlySalesTarget"> | Date | string
+    amount?: FloatFilter<"CrmUserMonthlySalesTarget"> | number
+    createdAt?: DateTimeFilter<"CrmUserMonthlySalesTarget"> | Date | string
+    updatedAt?: DateTimeFilter<"CrmUserMonthlySalesTarget"> | Date | string
+  }
+
   export type AiConversationUpsertWithWhereUniqueWithoutUserInput = {
     where: AiConversationWhereUniqueInput
     update: XOR<AiConversationUpdateWithoutUserInput, AiConversationUncheckedUpdateWithoutUserInput>
@@ -50545,6 +58353,421 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"AiKnowledgeBase"> | Date | string
   }
 
+  export type ActivityLogUpsertWithWhereUniqueWithoutUserInput = {
+    where: ActivityLogWhereUniqueInput
+    update: XOR<ActivityLogUpdateWithoutUserInput, ActivityLogUncheckedUpdateWithoutUserInput>
+    create: XOR<ActivityLogCreateWithoutUserInput, ActivityLogUncheckedCreateWithoutUserInput>
+  }
+
+  export type ActivityLogUpdateWithWhereUniqueWithoutUserInput = {
+    where: ActivityLogWhereUniqueInput
+    data: XOR<ActivityLogUpdateWithoutUserInput, ActivityLogUncheckedUpdateWithoutUserInput>
+  }
+
+  export type ActivityLogUpdateManyWithWhereWithoutUserInput = {
+    where: ActivityLogScalarWhereInput
+    data: XOR<ActivityLogUpdateManyMutationInput, ActivityLogUncheckedUpdateManyWithoutUserInput>
+  }
+
+  export type ActivityLogScalarWhereInput = {
+    AND?: ActivityLogScalarWhereInput | ActivityLogScalarWhereInput[]
+    OR?: ActivityLogScalarWhereInput[]
+    NOT?: ActivityLogScalarWhereInput | ActivityLogScalarWhereInput[]
+    id?: StringFilter<"ActivityLog"> | string
+    userId?: StringNullableFilter<"ActivityLog"> | string | null
+    userName?: StringFilter<"ActivityLog"> | string
+    action?: StringFilter<"ActivityLog"> | string
+    module?: StringFilter<"ActivityLog"> | string
+    entityType?: StringFilter<"ActivityLog"> | string
+    entityId?: StringNullableFilter<"ActivityLog"> | string | null
+    entityName?: StringNullableFilter<"ActivityLog"> | string | null
+    description?: StringFilter<"ActivityLog"> | string
+    status?: StringFilter<"ActivityLog"> | string
+    isCritical?: BoolFilter<"ActivityLog"> | boolean
+    createdAt?: DateTimeFilter<"ActivityLog"> | Date | string
+  }
+
+  export type AuditChangeSetUpsertWithWhereUniqueWithoutUserInput = {
+    where: AuditChangeSetWhereUniqueInput
+    update: XOR<AuditChangeSetUpdateWithoutUserInput, AuditChangeSetUncheckedUpdateWithoutUserInput>
+    create: XOR<AuditChangeSetCreateWithoutUserInput, AuditChangeSetUncheckedCreateWithoutUserInput>
+  }
+
+  export type AuditChangeSetUpdateWithWhereUniqueWithoutUserInput = {
+    where: AuditChangeSetWhereUniqueInput
+    data: XOR<AuditChangeSetUpdateWithoutUserInput, AuditChangeSetUncheckedUpdateWithoutUserInput>
+  }
+
+  export type AuditChangeSetUpdateManyWithWhereWithoutUserInput = {
+    where: AuditChangeSetScalarWhereInput
+    data: XOR<AuditChangeSetUpdateManyMutationInput, AuditChangeSetUncheckedUpdateManyWithoutUserInput>
+  }
+
+  export type AuditChangeSetScalarWhereInput = {
+    AND?: AuditChangeSetScalarWhereInput | AuditChangeSetScalarWhereInput[]
+    OR?: AuditChangeSetScalarWhereInput[]
+    NOT?: AuditChangeSetScalarWhereInput | AuditChangeSetScalarWhereInput[]
+    id?: StringFilter<"AuditChangeSet"> | string
+    userId?: StringNullableFilter<"AuditChangeSet"> | string | null
+    userName?: StringFilter<"AuditChangeSet"> | string
+    action?: StringFilter<"AuditChangeSet"> | string
+    module?: StringFilter<"AuditChangeSet"> | string
+    entityType?: StringFilter<"AuditChangeSet"> | string
+    entityId?: StringFilter<"AuditChangeSet"> | string
+    entityName?: StringNullableFilter<"AuditChangeSet"> | string | null
+    createdAt?: DateTimeFilter<"AuditChangeSet"> | Date | string
+  }
+
+  export type UserCreateWithoutActivityLogsInput = {
+    id?: string
+    name: string
+    phone?: string | null
+    avatar?: string | null
+    status?: string
+    joinedAt?: Date | string
+    lastActivity?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    role: RoleCreateNestedOneWithoutUsersInput
+    accounts?: AccountCreateNestedManyWithoutUserInput
+    contactsAssigned?: ContactCreateNestedManyWithoutUserInput
+    opportunitiesAssigned?: OpportunityCreateNestedManyWithoutUserInput
+    companiesAssigned?: CompanyCreateNestedManyWithoutUserInput
+    activitiesAssigned?: ActivityCreateNestedManyWithoutUserInput
+    campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
+    crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
+    crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetCreateNestedManyWithoutUserInput
+    aiConversations?: AiConversationCreateNestedManyWithoutUserInput
+    aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
+    auditChangeSets?: AuditChangeSetCreateNestedManyWithoutUserInput
+  }
+
+  export type UserUncheckedCreateWithoutActivityLogsInput = {
+    id?: string
+    name: string
+    roleId: string
+    phone?: string | null
+    avatar?: string | null
+    status?: string
+    joinedAt?: Date | string
+    lastActivity?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
+    contactsAssigned?: ContactUncheckedCreateNestedManyWithoutUserInput
+    opportunitiesAssigned?: OpportunityUncheckedCreateNestedManyWithoutUserInput
+    companiesAssigned?: CompanyUncheckedCreateNestedManyWithoutUserInput
+    activitiesAssigned?: ActivityUncheckedCreateNestedManyWithoutUserInput
+    campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
+    crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
+    crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUncheckedCreateNestedManyWithoutUserInput
+    aiConversations?: AiConversationUncheckedCreateNestedManyWithoutUserInput
+    aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
+    auditChangeSets?: AuditChangeSetUncheckedCreateNestedManyWithoutUserInput
+  }
+
+  export type UserCreateOrConnectWithoutActivityLogsInput = {
+    where: UserWhereUniqueInput
+    create: XOR<UserCreateWithoutActivityLogsInput, UserUncheckedCreateWithoutActivityLogsInput>
+  }
+
+  export type UserUpsertWithoutActivityLogsInput = {
+    update: XOR<UserUpdateWithoutActivityLogsInput, UserUncheckedUpdateWithoutActivityLogsInput>
+    create: XOR<UserCreateWithoutActivityLogsInput, UserUncheckedCreateWithoutActivityLogsInput>
+    where?: UserWhereInput
+  }
+
+  export type UserUpdateToOneWithWhereWithoutActivityLogsInput = {
+    where?: UserWhereInput
+    data: XOR<UserUpdateWithoutActivityLogsInput, UserUncheckedUpdateWithoutActivityLogsInput>
+  }
+
+  export type UserUpdateWithoutActivityLogsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
+    avatar?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: StringFieldUpdateOperationsInput | string
+    joinedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    role?: RoleUpdateOneRequiredWithoutUsersNestedInput
+    accounts?: AccountUpdateManyWithoutUserNestedInput
+    contactsAssigned?: ContactUpdateManyWithoutUserNestedInput
+    opportunitiesAssigned?: OpportunityUpdateManyWithoutUserNestedInput
+    companiesAssigned?: CompanyUpdateManyWithoutUserNestedInput
+    activitiesAssigned?: ActivityUpdateManyWithoutUserNestedInput
+    campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
+    crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
+    crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUpdateManyWithoutUserNestedInput
+    aiConversations?: AiConversationUpdateManyWithoutUserNestedInput
+    aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
+    auditChangeSets?: AuditChangeSetUpdateManyWithoutUserNestedInput
+  }
+
+  export type UserUncheckedUpdateWithoutActivityLogsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    roleId?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
+    avatar?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: StringFieldUpdateOperationsInput | string
+    joinedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
+    contactsAssigned?: ContactUncheckedUpdateManyWithoutUserNestedInput
+    opportunitiesAssigned?: OpportunityUncheckedUpdateManyWithoutUserNestedInput
+    companiesAssigned?: CompanyUncheckedUpdateManyWithoutUserNestedInput
+    activitiesAssigned?: ActivityUncheckedUpdateManyWithoutUserNestedInput
+    campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
+    crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
+    crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUncheckedUpdateManyWithoutUserNestedInput
+    aiConversations?: AiConversationUncheckedUpdateManyWithoutUserNestedInput
+    aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
+    auditChangeSets?: AuditChangeSetUncheckedUpdateManyWithoutUserNestedInput
+  }
+
+  export type UserCreateWithoutAuditChangeSetsInput = {
+    id?: string
+    name: string
+    phone?: string | null
+    avatar?: string | null
+    status?: string
+    joinedAt?: Date | string
+    lastActivity?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    role: RoleCreateNestedOneWithoutUsersInput
+    accounts?: AccountCreateNestedManyWithoutUserInput
+    contactsAssigned?: ContactCreateNestedManyWithoutUserInput
+    opportunitiesAssigned?: OpportunityCreateNestedManyWithoutUserInput
+    companiesAssigned?: CompanyCreateNestedManyWithoutUserInput
+    activitiesAssigned?: ActivityCreateNestedManyWithoutUserInput
+    campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
+    crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
+    crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetCreateNestedManyWithoutUserInput
+    aiConversations?: AiConversationCreateNestedManyWithoutUserInput
+    aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
+    activityLogs?: ActivityLogCreateNestedManyWithoutUserInput
+  }
+
+  export type UserUncheckedCreateWithoutAuditChangeSetsInput = {
+    id?: string
+    name: string
+    roleId: string
+    phone?: string | null
+    avatar?: string | null
+    status?: string
+    joinedAt?: Date | string
+    lastActivity?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
+    contactsAssigned?: ContactUncheckedCreateNestedManyWithoutUserInput
+    opportunitiesAssigned?: OpportunityUncheckedCreateNestedManyWithoutUserInput
+    companiesAssigned?: CompanyUncheckedCreateNestedManyWithoutUserInput
+    activitiesAssigned?: ActivityUncheckedCreateNestedManyWithoutUserInput
+    campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
+    crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
+    crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUncheckedCreateNestedManyWithoutUserInput
+    aiConversations?: AiConversationUncheckedCreateNestedManyWithoutUserInput
+    aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
+    activityLogs?: ActivityLogUncheckedCreateNestedManyWithoutUserInput
+  }
+
+  export type UserCreateOrConnectWithoutAuditChangeSetsInput = {
+    where: UserWhereUniqueInput
+    create: XOR<UserCreateWithoutAuditChangeSetsInput, UserUncheckedCreateWithoutAuditChangeSetsInput>
+  }
+
+  export type AuditChangeEntryCreateWithoutChangeSetInput = {
+    id?: string
+    fieldKey: string
+    fieldLabel: string
+    oldValue: string
+    newValue: string
+  }
+
+  export type AuditChangeEntryUncheckedCreateWithoutChangeSetInput = {
+    id?: string
+    fieldKey: string
+    fieldLabel: string
+    oldValue: string
+    newValue: string
+  }
+
+  export type AuditChangeEntryCreateOrConnectWithoutChangeSetInput = {
+    where: AuditChangeEntryWhereUniqueInput
+    create: XOR<AuditChangeEntryCreateWithoutChangeSetInput, AuditChangeEntryUncheckedCreateWithoutChangeSetInput>
+  }
+
+  export type AuditChangeEntryCreateManyChangeSetInputEnvelope = {
+    data: AuditChangeEntryCreateManyChangeSetInput | AuditChangeEntryCreateManyChangeSetInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type UserUpsertWithoutAuditChangeSetsInput = {
+    update: XOR<UserUpdateWithoutAuditChangeSetsInput, UserUncheckedUpdateWithoutAuditChangeSetsInput>
+    create: XOR<UserCreateWithoutAuditChangeSetsInput, UserUncheckedCreateWithoutAuditChangeSetsInput>
+    where?: UserWhereInput
+  }
+
+  export type UserUpdateToOneWithWhereWithoutAuditChangeSetsInput = {
+    where?: UserWhereInput
+    data: XOR<UserUpdateWithoutAuditChangeSetsInput, UserUncheckedUpdateWithoutAuditChangeSetsInput>
+  }
+
+  export type UserUpdateWithoutAuditChangeSetsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
+    avatar?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: StringFieldUpdateOperationsInput | string
+    joinedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    role?: RoleUpdateOneRequiredWithoutUsersNestedInput
+    accounts?: AccountUpdateManyWithoutUserNestedInput
+    contactsAssigned?: ContactUpdateManyWithoutUserNestedInput
+    opportunitiesAssigned?: OpportunityUpdateManyWithoutUserNestedInput
+    companiesAssigned?: CompanyUpdateManyWithoutUserNestedInput
+    activitiesAssigned?: ActivityUpdateManyWithoutUserNestedInput
+    campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
+    crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
+    crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUpdateManyWithoutUserNestedInput
+    aiConversations?: AiConversationUpdateManyWithoutUserNestedInput
+    aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
+    activityLogs?: ActivityLogUpdateManyWithoutUserNestedInput
+  }
+
+  export type UserUncheckedUpdateWithoutAuditChangeSetsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    roleId?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
+    avatar?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: StringFieldUpdateOperationsInput | string
+    joinedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
+    contactsAssigned?: ContactUncheckedUpdateManyWithoutUserNestedInput
+    opportunitiesAssigned?: OpportunityUncheckedUpdateManyWithoutUserNestedInput
+    companiesAssigned?: CompanyUncheckedUpdateManyWithoutUserNestedInput
+    activitiesAssigned?: ActivityUncheckedUpdateManyWithoutUserNestedInput
+    campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
+    crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
+    crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUncheckedUpdateManyWithoutUserNestedInput
+    aiConversations?: AiConversationUncheckedUpdateManyWithoutUserNestedInput
+    aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
+    activityLogs?: ActivityLogUncheckedUpdateManyWithoutUserNestedInput
+  }
+
+  export type AuditChangeEntryUpsertWithWhereUniqueWithoutChangeSetInput = {
+    where: AuditChangeEntryWhereUniqueInput
+    update: XOR<AuditChangeEntryUpdateWithoutChangeSetInput, AuditChangeEntryUncheckedUpdateWithoutChangeSetInput>
+    create: XOR<AuditChangeEntryCreateWithoutChangeSetInput, AuditChangeEntryUncheckedCreateWithoutChangeSetInput>
+  }
+
+  export type AuditChangeEntryUpdateWithWhereUniqueWithoutChangeSetInput = {
+    where: AuditChangeEntryWhereUniqueInput
+    data: XOR<AuditChangeEntryUpdateWithoutChangeSetInput, AuditChangeEntryUncheckedUpdateWithoutChangeSetInput>
+  }
+
+  export type AuditChangeEntryUpdateManyWithWhereWithoutChangeSetInput = {
+    where: AuditChangeEntryScalarWhereInput
+    data: XOR<AuditChangeEntryUpdateManyMutationInput, AuditChangeEntryUncheckedUpdateManyWithoutChangeSetInput>
+  }
+
+  export type AuditChangeEntryScalarWhereInput = {
+    AND?: AuditChangeEntryScalarWhereInput | AuditChangeEntryScalarWhereInput[]
+    OR?: AuditChangeEntryScalarWhereInput[]
+    NOT?: AuditChangeEntryScalarWhereInput | AuditChangeEntryScalarWhereInput[]
+    id?: StringFilter<"AuditChangeEntry"> | string
+    changeSetId?: StringFilter<"AuditChangeEntry"> | string
+    fieldKey?: StringFilter<"AuditChangeEntry"> | string
+    fieldLabel?: StringFilter<"AuditChangeEntry"> | string
+    oldValue?: StringFilter<"AuditChangeEntry"> | string
+    newValue?: StringFilter<"AuditChangeEntry"> | string
+  }
+
+  export type AuditChangeSetCreateWithoutEntriesInput = {
+    id?: string
+    userName: string
+    action: string
+    module: string
+    entityType: string
+    entityId: string
+    entityName?: string | null
+    createdAt?: Date | string
+    user?: UserCreateNestedOneWithoutAuditChangeSetsInput
+  }
+
+  export type AuditChangeSetUncheckedCreateWithoutEntriesInput = {
+    id?: string
+    userId?: string | null
+    userName: string
+    action: string
+    module: string
+    entityType: string
+    entityId: string
+    entityName?: string | null
+    createdAt?: Date | string
+  }
+
+  export type AuditChangeSetCreateOrConnectWithoutEntriesInput = {
+    where: AuditChangeSetWhereUniqueInput
+    create: XOR<AuditChangeSetCreateWithoutEntriesInput, AuditChangeSetUncheckedCreateWithoutEntriesInput>
+  }
+
+  export type AuditChangeSetUpsertWithoutEntriesInput = {
+    update: XOR<AuditChangeSetUpdateWithoutEntriesInput, AuditChangeSetUncheckedUpdateWithoutEntriesInput>
+    create: XOR<AuditChangeSetCreateWithoutEntriesInput, AuditChangeSetUncheckedCreateWithoutEntriesInput>
+    where?: AuditChangeSetWhereInput
+  }
+
+  export type AuditChangeSetUpdateToOneWithWhereWithoutEntriesInput = {
+    where?: AuditChangeSetWhereInput
+    data: XOR<AuditChangeSetUpdateWithoutEntriesInput, AuditChangeSetUncheckedUpdateWithoutEntriesInput>
+  }
+
+  export type AuditChangeSetUpdateWithoutEntriesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userName?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    module?: StringFieldUpdateOperationsInput | string
+    entityType?: StringFieldUpdateOperationsInput | string
+    entityId?: StringFieldUpdateOperationsInput | string
+    entityName?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    user?: UserUpdateOneWithoutAuditChangeSetsNestedInput
+  }
+
+  export type AuditChangeSetUncheckedUpdateWithoutEntriesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: NullableStringFieldUpdateOperationsInput | string | null
+    userName?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    module?: StringFieldUpdateOperationsInput | string
+    entityType?: StringFieldUpdateOperationsInput | string
+    entityId?: StringFieldUpdateOperationsInput | string
+    entityName?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type UserCreateWithoutAiConversationsInput = {
     id?: string
     name: string
@@ -50564,7 +58787,10 @@ export namespace Prisma {
     campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
+    activityLogs?: ActivityLogCreateNestedManyWithoutUserInput
+    auditChangeSets?: AuditChangeSetCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutAiConversationsInput = {
@@ -50586,7 +58812,10 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUncheckedCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
+    activityLogs?: ActivityLogUncheckedCreateNestedManyWithoutUserInput
+    auditChangeSets?: AuditChangeSetUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutAiConversationsInput = {
@@ -50650,7 +58879,10 @@ export namespace Prisma {
     campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
+    activityLogs?: ActivityLogUpdateManyWithoutUserNestedInput
+    auditChangeSets?: AuditChangeSetUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutAiConversationsInput = {
@@ -50672,7 +58904,10 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUncheckedUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
+    activityLogs?: ActivityLogUncheckedUpdateManyWithoutUserNestedInput
+    auditChangeSets?: AuditChangeSetUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type AiMessageUpsertWithWhereUniqueWithoutConversationInput = {
@@ -50770,7 +59005,10 @@ export namespace Prisma {
     campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetCreateNestedManyWithoutUserInput
     aiConversations?: AiConversationCreateNestedManyWithoutUserInput
+    activityLogs?: ActivityLogCreateNestedManyWithoutUserInput
+    auditChangeSets?: AuditChangeSetCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutAiKnowledgeBasesInput = {
@@ -50792,7 +59030,10 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUncheckedCreateNestedManyWithoutUserInput
     aiConversations?: AiConversationUncheckedCreateNestedManyWithoutUserInput
+    activityLogs?: ActivityLogUncheckedCreateNestedManyWithoutUserInput
+    auditChangeSets?: AuditChangeSetUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutAiKnowledgeBasesInput = {
@@ -50854,7 +59095,10 @@ export namespace Prisma {
     campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUpdateManyWithoutUserNestedInput
     aiConversations?: AiConversationUpdateManyWithoutUserNestedInput
+    activityLogs?: ActivityLogUpdateManyWithoutUserNestedInput
+    auditChangeSets?: AuditChangeSetUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutAiKnowledgeBasesInput = {
@@ -50876,7 +59120,10 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUncheckedUpdateManyWithoutUserNestedInput
     aiConversations?: AiConversationUncheckedUpdateManyWithoutUserNestedInput
+    activityLogs?: ActivityLogUncheckedUpdateManyWithoutUserNestedInput
+    auditChangeSets?: AuditChangeSetUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type AiKnowledgeChunkUpsertWithWhereUniqueWithoutKnowledgeBaseInput = {
@@ -51002,6 +59249,120 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type CrmMonthlySalesTargetCreateWithoutOrganizationInput = {
+    id?: string
+    periodStart: Date | string
+    amount?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type CrmMonthlySalesTargetUncheckedCreateWithoutOrganizationInput = {
+    id?: string
+    periodStart: Date | string
+    amount?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type CrmMonthlySalesTargetCreateOrConnectWithoutOrganizationInput = {
+    where: CrmMonthlySalesTargetWhereUniqueInput
+    create: XOR<CrmMonthlySalesTargetCreateWithoutOrganizationInput, CrmMonthlySalesTargetUncheckedCreateWithoutOrganizationInput>
+  }
+
+  export type CrmMonthlySalesTargetCreateManyOrganizationInputEnvelope = {
+    data: CrmMonthlySalesTargetCreateManyOrganizationInput | CrmMonthlySalesTargetCreateManyOrganizationInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type CrmMonthlySalesTargetUpsertWithWhereUniqueWithoutOrganizationInput = {
+    where: CrmMonthlySalesTargetWhereUniqueInput
+    update: XOR<CrmMonthlySalesTargetUpdateWithoutOrganizationInput, CrmMonthlySalesTargetUncheckedUpdateWithoutOrganizationInput>
+    create: XOR<CrmMonthlySalesTargetCreateWithoutOrganizationInput, CrmMonthlySalesTargetUncheckedCreateWithoutOrganizationInput>
+  }
+
+  export type CrmMonthlySalesTargetUpdateWithWhereUniqueWithoutOrganizationInput = {
+    where: CrmMonthlySalesTargetWhereUniqueInput
+    data: XOR<CrmMonthlySalesTargetUpdateWithoutOrganizationInput, CrmMonthlySalesTargetUncheckedUpdateWithoutOrganizationInput>
+  }
+
+  export type CrmMonthlySalesTargetUpdateManyWithWhereWithoutOrganizationInput = {
+    where: CrmMonthlySalesTargetScalarWhereInput
+    data: XOR<CrmMonthlySalesTargetUpdateManyMutationInput, CrmMonthlySalesTargetUncheckedUpdateManyWithoutOrganizationInput>
+  }
+
+  export type CrmMonthlySalesTargetScalarWhereInput = {
+    AND?: CrmMonthlySalesTargetScalarWhereInput | CrmMonthlySalesTargetScalarWhereInput[]
+    OR?: CrmMonthlySalesTargetScalarWhereInput[]
+    NOT?: CrmMonthlySalesTargetScalarWhereInput | CrmMonthlySalesTargetScalarWhereInput[]
+    id?: StringFilter<"CrmMonthlySalesTarget"> | string
+    organizationId?: StringFilter<"CrmMonthlySalesTarget"> | string
+    periodStart?: DateTimeFilter<"CrmMonthlySalesTarget"> | Date | string
+    amount?: FloatFilter<"CrmMonthlySalesTarget"> | number
+    createdAt?: DateTimeFilter<"CrmMonthlySalesTarget"> | Date | string
+    updatedAt?: DateTimeFilter<"CrmMonthlySalesTarget"> | Date | string
+  }
+
+  export type CrmOrganizationProfileCreateWithoutMonthlySalesTargetsInput = {
+    id?: string
+    name?: string
+    description?: string
+    contactEmail?: string
+    contactPhone?: string
+    address?: string
+    globalWeeklyGoal?: number
+    updatedAt?: Date | string
+  }
+
+  export type CrmOrganizationProfileUncheckedCreateWithoutMonthlySalesTargetsInput = {
+    id?: string
+    name?: string
+    description?: string
+    contactEmail?: string
+    contactPhone?: string
+    address?: string
+    globalWeeklyGoal?: number
+    updatedAt?: Date | string
+  }
+
+  export type CrmOrganizationProfileCreateOrConnectWithoutMonthlySalesTargetsInput = {
+    where: CrmOrganizationProfileWhereUniqueInput
+    create: XOR<CrmOrganizationProfileCreateWithoutMonthlySalesTargetsInput, CrmOrganizationProfileUncheckedCreateWithoutMonthlySalesTargetsInput>
+  }
+
+  export type CrmOrganizationProfileUpsertWithoutMonthlySalesTargetsInput = {
+    update: XOR<CrmOrganizationProfileUpdateWithoutMonthlySalesTargetsInput, CrmOrganizationProfileUncheckedUpdateWithoutMonthlySalesTargetsInput>
+    create: XOR<CrmOrganizationProfileCreateWithoutMonthlySalesTargetsInput, CrmOrganizationProfileUncheckedCreateWithoutMonthlySalesTargetsInput>
+    where?: CrmOrganizationProfileWhereInput
+  }
+
+  export type CrmOrganizationProfileUpdateToOneWithWhereWithoutMonthlySalesTargetsInput = {
+    where?: CrmOrganizationProfileWhereInput
+    data: XOR<CrmOrganizationProfileUpdateWithoutMonthlySalesTargetsInput, CrmOrganizationProfileUncheckedUpdateWithoutMonthlySalesTargetsInput>
+  }
+
+  export type CrmOrganizationProfileUpdateWithoutMonthlySalesTargetsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    contactEmail?: StringFieldUpdateOperationsInput | string
+    contactPhone?: StringFieldUpdateOperationsInput | string
+    address?: StringFieldUpdateOperationsInput | string
+    globalWeeklyGoal?: FloatFieldUpdateOperationsInput | number
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CrmOrganizationProfileUncheckedUpdateWithoutMonthlySalesTargetsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    contactEmail?: StringFieldUpdateOperationsInput | string
+    contactPhone?: StringFieldUpdateOperationsInput | string
+    address?: StringFieldUpdateOperationsInput | string
+    globalWeeklyGoal?: FloatFieldUpdateOperationsInput | number
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type UserCreateWithoutCrmSalesGoalInput = {
     id?: string
     name: string
@@ -51020,8 +59381,11 @@ export namespace Prisma {
     activitiesAssigned?: ActivityCreateNestedManyWithoutUserInput
     campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetCreateNestedManyWithoutUserInput
     aiConversations?: AiConversationCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
+    activityLogs?: ActivityLogCreateNestedManyWithoutUserInput
+    auditChangeSets?: AuditChangeSetCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutCrmSalesGoalInput = {
@@ -51042,8 +59406,11 @@ export namespace Prisma {
     activitiesAssigned?: ActivityUncheckedCreateNestedManyWithoutUserInput
     campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUncheckedCreateNestedManyWithoutUserInput
     aiConversations?: AiConversationUncheckedCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
+    activityLogs?: ActivityLogUncheckedCreateNestedManyWithoutUserInput
+    auditChangeSets?: AuditChangeSetUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutCrmSalesGoalInput = {
@@ -51080,8 +59447,11 @@ export namespace Prisma {
     activitiesAssigned?: ActivityUpdateManyWithoutUserNestedInput
     campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUpdateManyWithoutUserNestedInput
     aiConversations?: AiConversationUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
+    activityLogs?: ActivityLogUpdateManyWithoutUserNestedInput
+    auditChangeSets?: AuditChangeSetUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutCrmSalesGoalInput = {
@@ -51102,8 +59472,127 @@ export namespace Prisma {
     activitiesAssigned?: ActivityUncheckedUpdateManyWithoutUserNestedInput
     campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUncheckedUpdateManyWithoutUserNestedInput
     aiConversations?: AiConversationUncheckedUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
+    activityLogs?: ActivityLogUncheckedUpdateManyWithoutUserNestedInput
+    auditChangeSets?: AuditChangeSetUncheckedUpdateManyWithoutUserNestedInput
+  }
+
+  export type UserCreateWithoutCrmUserMonthlySalesTargetsInput = {
+    id?: string
+    name: string
+    phone?: string | null
+    avatar?: string | null
+    status?: string
+    joinedAt?: Date | string
+    lastActivity?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    role: RoleCreateNestedOneWithoutUsersInput
+    accounts?: AccountCreateNestedManyWithoutUserInput
+    contactsAssigned?: ContactCreateNestedManyWithoutUserInput
+    opportunitiesAssigned?: OpportunityCreateNestedManyWithoutUserInput
+    companiesAssigned?: CompanyCreateNestedManyWithoutUserInput
+    activitiesAssigned?: ActivityCreateNestedManyWithoutUserInput
+    campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
+    crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
+    crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
+    aiConversations?: AiConversationCreateNestedManyWithoutUserInput
+    aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
+    activityLogs?: ActivityLogCreateNestedManyWithoutUserInput
+    auditChangeSets?: AuditChangeSetCreateNestedManyWithoutUserInput
+  }
+
+  export type UserUncheckedCreateWithoutCrmUserMonthlySalesTargetsInput = {
+    id?: string
+    name: string
+    roleId: string
+    phone?: string | null
+    avatar?: string | null
+    status?: string
+    joinedAt?: Date | string
+    lastActivity?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
+    contactsAssigned?: ContactUncheckedCreateNestedManyWithoutUserInput
+    opportunitiesAssigned?: OpportunityUncheckedCreateNestedManyWithoutUserInput
+    companiesAssigned?: CompanyUncheckedCreateNestedManyWithoutUserInput
+    activitiesAssigned?: ActivityUncheckedCreateNestedManyWithoutUserInput
+    campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
+    crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
+    crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
+    aiConversations?: AiConversationUncheckedCreateNestedManyWithoutUserInput
+    aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
+    activityLogs?: ActivityLogUncheckedCreateNestedManyWithoutUserInput
+    auditChangeSets?: AuditChangeSetUncheckedCreateNestedManyWithoutUserInput
+  }
+
+  export type UserCreateOrConnectWithoutCrmUserMonthlySalesTargetsInput = {
+    where: UserWhereUniqueInput
+    create: XOR<UserCreateWithoutCrmUserMonthlySalesTargetsInput, UserUncheckedCreateWithoutCrmUserMonthlySalesTargetsInput>
+  }
+
+  export type UserUpsertWithoutCrmUserMonthlySalesTargetsInput = {
+    update: XOR<UserUpdateWithoutCrmUserMonthlySalesTargetsInput, UserUncheckedUpdateWithoutCrmUserMonthlySalesTargetsInput>
+    create: XOR<UserCreateWithoutCrmUserMonthlySalesTargetsInput, UserUncheckedCreateWithoutCrmUserMonthlySalesTargetsInput>
+    where?: UserWhereInput
+  }
+
+  export type UserUpdateToOneWithWhereWithoutCrmUserMonthlySalesTargetsInput = {
+    where?: UserWhereInput
+    data: XOR<UserUpdateWithoutCrmUserMonthlySalesTargetsInput, UserUncheckedUpdateWithoutCrmUserMonthlySalesTargetsInput>
+  }
+
+  export type UserUpdateWithoutCrmUserMonthlySalesTargetsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
+    avatar?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: StringFieldUpdateOperationsInput | string
+    joinedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    role?: RoleUpdateOneRequiredWithoutUsersNestedInput
+    accounts?: AccountUpdateManyWithoutUserNestedInput
+    contactsAssigned?: ContactUpdateManyWithoutUserNestedInput
+    opportunitiesAssigned?: OpportunityUpdateManyWithoutUserNestedInput
+    companiesAssigned?: CompanyUpdateManyWithoutUserNestedInput
+    activitiesAssigned?: ActivityUpdateManyWithoutUserNestedInput
+    campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
+    crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
+    crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
+    aiConversations?: AiConversationUpdateManyWithoutUserNestedInput
+    aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
+    activityLogs?: ActivityLogUpdateManyWithoutUserNestedInput
+    auditChangeSets?: AuditChangeSetUpdateManyWithoutUserNestedInput
+  }
+
+  export type UserUncheckedUpdateWithoutCrmUserMonthlySalesTargetsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    roleId?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
+    avatar?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: StringFieldUpdateOperationsInput | string
+    joinedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
+    contactsAssigned?: ContactUncheckedUpdateManyWithoutUserNestedInput
+    opportunitiesAssigned?: OpportunityUncheckedUpdateManyWithoutUserNestedInput
+    companiesAssigned?: CompanyUncheckedUpdateManyWithoutUserNestedInput
+    activitiesAssigned?: ActivityUncheckedUpdateManyWithoutUserNestedInput
+    campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
+    crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
+    crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
+    aiConversations?: AiConversationUncheckedUpdateManyWithoutUserNestedInput
+    aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
+    activityLogs?: ActivityLogUncheckedUpdateManyWithoutUserNestedInput
+    auditChangeSets?: AuditChangeSetUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type UserCreateWithoutContactsAssignedInput = {
@@ -51124,8 +59613,11 @@ export namespace Prisma {
     campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetCreateNestedManyWithoutUserInput
     aiConversations?: AiConversationCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
+    activityLogs?: ActivityLogCreateNestedManyWithoutUserInput
+    auditChangeSets?: AuditChangeSetCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutContactsAssignedInput = {
@@ -51146,8 +59638,11 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUncheckedCreateNestedManyWithoutUserInput
     aiConversations?: AiConversationUncheckedCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
+    activityLogs?: ActivityLogUncheckedCreateNestedManyWithoutUserInput
+    auditChangeSets?: AuditChangeSetUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutContactsAssignedInput = {
@@ -51286,8 +59781,11 @@ export namespace Prisma {
     campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUpdateManyWithoutUserNestedInput
     aiConversations?: AiConversationUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
+    activityLogs?: ActivityLogUpdateManyWithoutUserNestedInput
+    auditChangeSets?: AuditChangeSetUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutContactsAssignedInput = {
@@ -51308,8 +59806,11 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUncheckedUpdateManyWithoutUserNestedInput
     aiConversations?: AiConversationUncheckedUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
+    activityLogs?: ActivityLogUncheckedUpdateManyWithoutUserNestedInput
+    auditChangeSets?: AuditChangeSetUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type CompanyContactUpsertWithWhereUniqueWithoutContactInput = {
@@ -51447,8 +59948,11 @@ export namespace Prisma {
     campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetCreateNestedManyWithoutUserInput
     aiConversations?: AiConversationCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
+    activityLogs?: ActivityLogCreateNestedManyWithoutUserInput
+    auditChangeSets?: AuditChangeSetCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutCompaniesAssignedInput = {
@@ -51469,8 +59973,11 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUncheckedCreateNestedManyWithoutUserInput
     aiConversations?: AiConversationUncheckedCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
+    activityLogs?: ActivityLogUncheckedCreateNestedManyWithoutUserInput
+    auditChangeSets?: AuditChangeSetUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutCompaniesAssignedInput = {
@@ -51630,8 +60137,11 @@ export namespace Prisma {
     campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUpdateManyWithoutUserNestedInput
     aiConversations?: AiConversationUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
+    activityLogs?: ActivityLogUpdateManyWithoutUserNestedInput
+    auditChangeSets?: AuditChangeSetUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutCompaniesAssignedInput = {
@@ -51652,8 +60162,11 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUncheckedUpdateManyWithoutUserNestedInput
     aiConversations?: AiConversationUncheckedUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
+    activityLogs?: ActivityLogUncheckedUpdateManyWithoutUserNestedInput
+    auditChangeSets?: AuditChangeSetUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type CompanyContactUpsertWithWhereUniqueWithoutCompanyInput = {
@@ -51944,8 +60457,11 @@ export namespace Prisma {
     campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetCreateNestedManyWithoutUserInput
     aiConversations?: AiConversationCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
+    activityLogs?: ActivityLogCreateNestedManyWithoutUserInput
+    auditChangeSets?: AuditChangeSetCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutOpportunitiesAssignedInput = {
@@ -51966,8 +60482,11 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUncheckedCreateNestedManyWithoutUserInput
     aiConversations?: AiConversationUncheckedCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
+    activityLogs?: ActivityLogUncheckedCreateNestedManyWithoutUserInput
+    auditChangeSets?: AuditChangeSetUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutOpportunitiesAssignedInput = {
@@ -52104,8 +60623,11 @@ export namespace Prisma {
     campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUpdateManyWithoutUserNestedInput
     aiConversations?: AiConversationUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
+    activityLogs?: ActivityLogUpdateManyWithoutUserNestedInput
+    auditChangeSets?: AuditChangeSetUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutOpportunitiesAssignedInput = {
@@ -52126,8 +60648,11 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUncheckedUpdateManyWithoutUserNestedInput
     aiConversations?: AiConversationUncheckedUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
+    activityLogs?: ActivityLogUncheckedUpdateManyWithoutUserNestedInput
+    auditChangeSets?: AuditChangeSetUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type ContactOpportunityUpsertWithWhereUniqueWithoutOpportunityInput = {
@@ -52246,8 +60771,11 @@ export namespace Prisma {
     campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetCreateNestedManyWithoutUserInput
     aiConversations?: AiConversationCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
+    activityLogs?: ActivityLogCreateNestedManyWithoutUserInput
+    auditChangeSets?: AuditChangeSetCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutActivitiesAssignedInput = {
@@ -52268,8 +60796,11 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
     crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUncheckedCreateNestedManyWithoutUserInput
     aiConversations?: AiConversationUncheckedCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
+    activityLogs?: ActivityLogUncheckedCreateNestedManyWithoutUserInput
+    auditChangeSets?: AuditChangeSetUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutActivitiesAssignedInput = {
@@ -52366,8 +60897,11 @@ export namespace Prisma {
     campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUpdateManyWithoutUserNestedInput
     aiConversations?: AiConversationUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
+    activityLogs?: ActivityLogUpdateManyWithoutUserNestedInput
+    auditChangeSets?: AuditChangeSetUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutActivitiesAssignedInput = {
@@ -52388,8 +60922,11 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUncheckedUpdateManyWithoutUserNestedInput
     aiConversations?: AiConversationUncheckedUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
+    activityLogs?: ActivityLogUncheckedUpdateManyWithoutUserNestedInput
+    auditChangeSets?: AuditChangeSetUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type ContactActivityUpsertWithWhereUniqueWithoutActivityInput = {
@@ -54482,8 +63019,11 @@ export namespace Prisma {
     activitiesAssigned?: ActivityCreateNestedManyWithoutUserInput
     crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetCreateNestedManyWithoutUserInput
     aiConversations?: AiConversationCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
+    activityLogs?: ActivityLogCreateNestedManyWithoutUserInput
+    auditChangeSets?: AuditChangeSetCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutCampaignsCreatedInput = {
@@ -54504,8 +63044,11 @@ export namespace Prisma {
     activitiesAssigned?: ActivityUncheckedCreateNestedManyWithoutUserInput
     crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUncheckedCreateNestedManyWithoutUserInput
     aiConversations?: AiConversationUncheckedCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
+    activityLogs?: ActivityLogUncheckedCreateNestedManyWithoutUserInput
+    auditChangeSets?: AuditChangeSetUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutCampaignsCreatedInput = {
@@ -54542,8 +63085,11 @@ export namespace Prisma {
     activitiesAssigned?: ActivityUpdateManyWithoutUserNestedInput
     crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUpdateManyWithoutUserNestedInput
     aiConversations?: AiConversationUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
+    activityLogs?: ActivityLogUpdateManyWithoutUserNestedInput
+    auditChangeSets?: AuditChangeSetUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutCampaignsCreatedInput = {
@@ -54564,8 +63110,11 @@ export namespace Prisma {
     activitiesAssigned?: ActivityUncheckedUpdateManyWithoutUserNestedInput
     crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUncheckedUpdateManyWithoutUserNestedInput
     aiConversations?: AiConversationUncheckedUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
+    activityLogs?: ActivityLogUncheckedUpdateManyWithoutUserNestedInput
+    auditChangeSets?: AuditChangeSetUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type UserCreateWithoutCrmFilesUploadedInput = {
@@ -54586,8 +63135,11 @@ export namespace Prisma {
     activitiesAssigned?: ActivityCreateNestedManyWithoutUserInput
     campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
     crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetCreateNestedManyWithoutUserInput
     aiConversations?: AiConversationCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
+    activityLogs?: ActivityLogCreateNestedManyWithoutUserInput
+    auditChangeSets?: AuditChangeSetCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutCrmFilesUploadedInput = {
@@ -54608,8 +63160,11 @@ export namespace Prisma {
     activitiesAssigned?: ActivityUncheckedCreateNestedManyWithoutUserInput
     campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUncheckedCreateNestedManyWithoutUserInput
     aiConversations?: AiConversationUncheckedCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
+    activityLogs?: ActivityLogUncheckedCreateNestedManyWithoutUserInput
+    auditChangeSets?: AuditChangeSetUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutCrmFilesUploadedInput = {
@@ -54646,8 +63201,11 @@ export namespace Prisma {
     activitiesAssigned?: ActivityUpdateManyWithoutUserNestedInput
     campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
     crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUpdateManyWithoutUserNestedInput
     aiConversations?: AiConversationUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
+    activityLogs?: ActivityLogUpdateManyWithoutUserNestedInput
+    auditChangeSets?: AuditChangeSetUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutCrmFilesUploadedInput = {
@@ -54668,8 +63226,11 @@ export namespace Prisma {
     activitiesAssigned?: ActivityUncheckedUpdateManyWithoutUserNestedInput
     campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUncheckedUpdateManyWithoutUserNestedInput
     aiConversations?: AiConversationUncheckedUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
+    activityLogs?: ActivityLogUncheckedUpdateManyWithoutUserNestedInput
+    auditChangeSets?: AuditChangeSetUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type AuthorityCreateManyRoleInput = {
@@ -54722,8 +63283,11 @@ export namespace Prisma {
     campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUpdateManyWithoutUserNestedInput
     aiConversations?: AiConversationUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
+    activityLogs?: ActivityLogUpdateManyWithoutUserNestedInput
+    auditChangeSets?: AuditChangeSetUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutRoleInput = {
@@ -54744,8 +63308,11 @@ export namespace Prisma {
     campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
     crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
     crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUncheckedUpdateManyWithoutUserNestedInput
     aiConversations?: AiConversationUncheckedUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
+    activityLogs?: ActivityLogUncheckedUpdateManyWithoutUserNestedInput
+    auditChangeSets?: AuditChangeSetUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateManyWithoutRoleInput = {
@@ -54881,6 +63448,14 @@ export namespace Prisma {
     createdAt?: Date | string
   }
 
+  export type CrmUserMonthlySalesTargetCreateManyUserInput = {
+    id?: string
+    periodStart: Date | string
+    amount?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
   export type AiConversationCreateManyUserInput = {
     id?: string
     title?: string
@@ -54905,6 +63480,31 @@ export namespace Prisma {
     indexedAt?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+  }
+
+  export type ActivityLogCreateManyUserInput = {
+    id?: string
+    userName: string
+    action: string
+    module: string
+    entityType: string
+    entityId?: string | null
+    entityName?: string | null
+    description: string
+    status?: string
+    isCritical?: boolean
+    createdAt?: Date | string
+  }
+
+  export type AuditChangeSetCreateManyUserInput = {
+    id?: string
+    userName: string
+    action: string
+    module: string
+    entityType: string
+    entityId: string
+    entityName?: string | null
+    createdAt?: Date | string
   }
 
   export type AccountUpdateWithoutUserInput = {
@@ -55308,6 +63908,30 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type CrmUserMonthlySalesTargetUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    periodStart?: DateTimeFieldUpdateOperationsInput | Date | string
+    amount?: FloatFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CrmUserMonthlySalesTargetUncheckedUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    periodStart?: DateTimeFieldUpdateOperationsInput | Date | string
+    amount?: FloatFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CrmUserMonthlySalesTargetUncheckedUpdateManyWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    periodStart?: DateTimeFieldUpdateOperationsInput | Date | string
+    amount?: FloatFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type AiConversationUpdateWithoutUserInput = {
     id?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
@@ -55390,6 +64014,115 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type ActivityLogUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userName?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    module?: StringFieldUpdateOperationsInput | string
+    entityType?: StringFieldUpdateOperationsInput | string
+    entityId?: NullableStringFieldUpdateOperationsInput | string | null
+    entityName?: NullableStringFieldUpdateOperationsInput | string | null
+    description?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    isCritical?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ActivityLogUncheckedUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userName?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    module?: StringFieldUpdateOperationsInput | string
+    entityType?: StringFieldUpdateOperationsInput | string
+    entityId?: NullableStringFieldUpdateOperationsInput | string | null
+    entityName?: NullableStringFieldUpdateOperationsInput | string | null
+    description?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    isCritical?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ActivityLogUncheckedUpdateManyWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userName?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    module?: StringFieldUpdateOperationsInput | string
+    entityType?: StringFieldUpdateOperationsInput | string
+    entityId?: NullableStringFieldUpdateOperationsInput | string | null
+    entityName?: NullableStringFieldUpdateOperationsInput | string | null
+    description?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    isCritical?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type AuditChangeSetUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userName?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    module?: StringFieldUpdateOperationsInput | string
+    entityType?: StringFieldUpdateOperationsInput | string
+    entityId?: StringFieldUpdateOperationsInput | string
+    entityName?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    entries?: AuditChangeEntryUpdateManyWithoutChangeSetNestedInput
+  }
+
+  export type AuditChangeSetUncheckedUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userName?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    module?: StringFieldUpdateOperationsInput | string
+    entityType?: StringFieldUpdateOperationsInput | string
+    entityId?: StringFieldUpdateOperationsInput | string
+    entityName?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    entries?: AuditChangeEntryUncheckedUpdateManyWithoutChangeSetNestedInput
+  }
+
+  export type AuditChangeSetUncheckedUpdateManyWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userName?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    module?: StringFieldUpdateOperationsInput | string
+    entityType?: StringFieldUpdateOperationsInput | string
+    entityId?: StringFieldUpdateOperationsInput | string
+    entityName?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type AuditChangeEntryCreateManyChangeSetInput = {
+    id?: string
+    fieldKey: string
+    fieldLabel: string
+    oldValue: string
+    newValue: string
+  }
+
+  export type AuditChangeEntryUpdateWithoutChangeSetInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    fieldKey?: StringFieldUpdateOperationsInput | string
+    fieldLabel?: StringFieldUpdateOperationsInput | string
+    oldValue?: StringFieldUpdateOperationsInput | string
+    newValue?: StringFieldUpdateOperationsInput | string
+  }
+
+  export type AuditChangeEntryUncheckedUpdateWithoutChangeSetInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    fieldKey?: StringFieldUpdateOperationsInput | string
+    fieldLabel?: StringFieldUpdateOperationsInput | string
+    oldValue?: StringFieldUpdateOperationsInput | string
+    newValue?: StringFieldUpdateOperationsInput | string
+  }
+
+  export type AuditChangeEntryUncheckedUpdateManyWithoutChangeSetInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    fieldKey?: StringFieldUpdateOperationsInput | string
+    fieldLabel?: StringFieldUpdateOperationsInput | string
+    oldValue?: StringFieldUpdateOperationsInput | string
+    newValue?: StringFieldUpdateOperationsInput | string
+  }
+
   export type AiMessageCreateManyConversationInput = {
     id?: string
     role: string
@@ -55448,6 +64181,38 @@ export namespace Prisma {
     position?: IntFieldUpdateOperationsInput | number
     content?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CrmMonthlySalesTargetCreateManyOrganizationInput = {
+    id?: string
+    periodStart: Date | string
+    amount?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type CrmMonthlySalesTargetUpdateWithoutOrganizationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    periodStart?: DateTimeFieldUpdateOperationsInput | Date | string
+    amount?: FloatFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CrmMonthlySalesTargetUncheckedUpdateWithoutOrganizationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    periodStart?: DateTimeFieldUpdateOperationsInput | Date | string
+    amount?: FloatFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CrmMonthlySalesTargetUncheckedUpdateManyWithoutOrganizationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    periodStart?: DateTimeFieldUpdateOperationsInput | Date | string
+    amount?: FloatFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type CompanyContactCreateManyContactInput = {

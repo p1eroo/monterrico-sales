@@ -117,8 +117,9 @@ export class CrmConfigController {
     @Body()
     body: {
       globalWeekly: number;
-      globalMonthly: number;
       byUserId: Record<string, { weekly?: number; monthly?: number }>;
+      monthlyByYm?: Record<string, number>;
+      advisorMonthlyByYm?: Record<string, Record<string, number>>;
     },
   ) {
     return this.crmConfig.putSalesGoals(req.user.userId, body);

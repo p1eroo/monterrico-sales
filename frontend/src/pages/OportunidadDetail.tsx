@@ -5,10 +5,11 @@ import {
   Users, Edit, RefreshCw, UserPlus, Plus, FileArchive, Loader2,
 } from 'lucide-react';
 import { useCRMStore } from '@/store/crmStore';
-import { etapaLabels, companyRubroLabels, timelineEvents, activities } from '@/data/mock';
+import { etapaLabels, companyRubroLabels, activities } from '@/data/mock';
+import { fetchActivityLogs, activityLogToTimelineEvent } from '@/lib/activityLogsApi';
 import { useUsers } from '@/hooks/useUsers';
 import { getPrimaryCompany } from '@/lib/utils';
-import type { CompanyRubro, Etapa, OpportunityStatus } from '@/types';
+import type { CompanyRubro, Etapa, OpportunityStatus, TimelineEvent } from '@/types';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { DetailLayout } from '@/components/shared/DetailLayout';
 import { EntityInfoCard } from '@/components/shared/EntityInfoCard';
@@ -231,6 +232,39 @@ export default function OportunidadDetailPage() {
 
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+
+  const [oppTimelineEvents, setOppTimelineEvents] = useState<TimelineEvent[]>([]);
+  const [oppTimelineLoading, setOppTimelineLoading] = useState(false);
+
+  useEffect(() => {
+    if (!fromApi || !opp?.id) {
+      setOppTimelineEvents([]);
+      setOppTimelineLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setOppTimelineLoading(true);
+    fetchActivityLogs({
+      entityType: 'Oportunidad',
+      entityId: opp.id,
+      page: 1,
+      limit: 80,
+    })
+      .then((r) => {
+        if (!cancelled) {
+          setOppTimelineEvents(r.data.map(activityLogToTimelineEvent));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setOppTimelineEvents([]);
+      })
+      .finally(() => {
+        if (!cancelled) setOppTimelineLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [fromApi, opp?.id]);
 
   function handleOpenEditDialog() {
     if (!opp) return;
@@ -928,7 +962,23 @@ export default function OportunidadDetailPage() {
         </TabsList>
 
         <TabsContent value="historial" className="mt-4">
-          <TimelinePanel events={timelineEvents} />
+          {oppTimelineLoading ? (
+            <div className="flex justify-center py-10 text-muted-foreground">
+              <Loader2 className="size-6 animate-spin" />
+            </div>
+          ) : oppTimelineEvents.length === 0 ? (
+            <EmptyState
+              icon={CalendarDays}
+              title="Sin actividad registrada"
+              description={
+                fromApi
+                  ? 'Los cambios sobre esta oportunidad aparecerán aquí.'
+                  : 'El historial detallado está disponible en oportunidades cargadas desde el servidor (API).'
+              }
+            />
+          ) : (
+            <TimelinePanel events={oppTimelineEvents} />
+          )}
         </TabsContent>
 
         <TabsContent value="actividades" className="mt-4">

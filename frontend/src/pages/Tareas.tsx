@@ -435,11 +435,21 @@ export default function TareasPage() {
         {/* Task list */}
         <div className="min-w-0 flex-1">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList variant="line" className="w-full justify-start overflow-x-auto">
+            <TabsList
+              variant="line"
+              className="w-full flex-nowrap gap-1 p-0"
+            >
               {statusTabs.map((tab) => (
-                <TabsTrigger key={tab.value} value={tab.value}>
-                  {tab.label}
-                  <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-xs">
+                <TabsTrigger
+                  key={tab.value}
+                  value={tab.value}
+                  className="min-w-0 flex-1 basis-0 overflow-hidden px-1.5 sm:px-2"
+                >
+                  <span className="min-w-0 truncate">{tab.label}</span>
+                  <Badge
+                    variant="secondary"
+                    className="ml-1 shrink-0 px-1.5 py-0 text-xs max-sm:ml-0.5 max-sm:px-1"
+                  >
                     {statusCounts[tab.value] ?? 0}
                   </Badge>
                 </TabsTrigger>

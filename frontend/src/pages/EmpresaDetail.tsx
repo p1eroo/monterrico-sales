@@ -8,12 +8,13 @@ import {
 import { useCRMStore } from '@/store/crmStore';
 import { useCompaniesStore } from '@/store/companiesStore';
 import {
-  companyRubroLabels, companyTipoLabels, etapaLabels, contactSourceLabels, timelineEvents, activities,
+  companyRubroLabels, companyTipoLabels, etapaLabels, contactSourceLabels, activities,
 } from '@/data/mock';
+import { fetchActivityLogs, activityLogToTimelineEvent } from '@/lib/activityLogsApi';
 import { useUsers } from '@/hooks/useUsers';
 import { useActivities } from '@/hooks/useActivities';
 import { getPrimaryCompany } from '@/lib/utils';
-import type { Etapa, CompanyRubro, CompanyTipo, ContactSource } from '@/types';
+import type { Etapa, CompanyRubro, CompanyTipo, ContactSource, TimelineEvent } from '@/types';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { DetailLayout } from '@/components/shared/DetailLayout';
 import { EntityInfoCard } from '@/components/shared/EntityInfoCard';
@@ -340,6 +341,39 @@ export default function EmpresaDetailPage() {
 
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+
+  const [companyTimelineEvents, setCompanyTimelineEvents] = useState<TimelineEvent[]>([]);
+  const [companyTimelineLoading, setCompanyTimelineLoading] = useState(false);
+
+  useEffect(() => {
+    if (!fromApiById || !resolvedCompanyId) {
+      setCompanyTimelineEvents([]);
+      setCompanyTimelineLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setCompanyTimelineLoading(true);
+    fetchActivityLogs({
+      entityType: 'Empresa',
+      entityId: resolvedCompanyId,
+      page: 1,
+      limit: 80,
+    })
+      .then((r) => {
+        if (!cancelled) {
+          setCompanyTimelineEvents(r.data.map(activityLogToTimelineEvent));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setCompanyTimelineEvents([]);
+      })
+      .finally(() => {
+        if (!cancelled) setCompanyTimelineLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [fromApiById, resolvedCompanyId]);
 
   function handleOpenEditDialog() {
     const tel = (fromApiById && apiRecord?.telefono) ? (apiRecord.telefono ?? '') : '';
@@ -1008,7 +1042,23 @@ export default function EmpresaDetailPage() {
         </TabsList>
 
         <TabsContent value="historial" className="mt-4">
-          <TimelinePanel events={timelineEvents} />
+          {companyTimelineLoading ? (
+            <div className="flex justify-center py-10 text-muted-foreground">
+              <Loader2 className="size-6 animate-spin" />
+            </div>
+          ) : companyTimelineEvents.length === 0 ? (
+            <EmptyState
+              icon={Building2}
+              title="Sin actividad registrada"
+              description={
+                fromApiById
+                  ? 'Los cambios sobre esta empresa aparecerán aquí.'
+                  : 'El historial detallado está disponible en empresas cargadas desde el servidor (API).'
+              }
+            />
+          ) : (
+            <TimelinePanel events={companyTimelineEvents} />
+          )}
         </TabsContent>
 
         <TabsContent value="actividades" className="mt-4">

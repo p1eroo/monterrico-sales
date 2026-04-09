@@ -69,9 +69,69 @@ model User {
   activitiesAssigned   Activity[]
   campaignsCreated     Campaign[]
   crmFilesUploaded     CrmFile[]
-  crmSalesGoal         CrmUserSalesGoal?
+  crmSalesGoal              CrmUserSalesGoal?
+  crmUserMonthlySalesTargets CrmUserMonthlySalesTarget[]
   aiConversations      AiConversation[]
   aiKnowledgeBases     AiKnowledgeBase[]
+  activityLogs         ActivityLog[]
+  auditChangeSets      AuditChangeSet[]
+}
+
+// ─── Registro de actividad (auditoría general, no diff por campo) ───
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  /** Nombre del usuario en el momento del evento */
+  userName    String
+  action      String
+  module      String
+  entityType  String
+  entityId    String?
+  entityName  String?
+  description String   @db.Text
+  status      String   @default("exito")
+  isCritical  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([module, createdAt])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+// ─── Auditoría detallada (cambios campo a campo, agrupados por operación) ───
+
+model AuditChangeSet {
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userName    String
+  action      String
+  module      String
+  entityType  String
+  entityId    String
+  entityName  String?
+  createdAt   DateTime @default(now())
+  entries     AuditChangeEntry[]
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([module, createdAt])
+  @@index([createdAt])
+}
+
+model AuditChangeEntry {
+  id          String         @id @default(cuid())
+  changeSetId String
+  changeSet   AuditChangeSet @relation(fields: [changeSetId], references: [id], onDelete: Cascade)
+  fieldKey    String
+  fieldLabel  String
+  oldValue    String         @db.Text
+  newValue    String         @db.Text
+
+  @@index([changeSetId])
 }
 
 // ─── Asistente IA (varios hilos por usuario) ───
@@ -141,6 +201,8 @@ model AiKnowledgeChunk {
   knowledgeBase   AiKnowledgeBase @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
   position        Int
   content         String          @db.Text
+  /// Embeddings pgvector (dimensión = migración SQL + OPENAI_EMBEDDING_DIMENSION). Rellenado por EmbeddingsService.
+  embedding       Unsupported("vector(1536)")?
   createdAt       DateTime        @default(now())
 
   @@index([knowledgeBaseId, position])
@@ -158,15 +220,29 @@ model AiAssistantInstruction {
 // ─── Configuración CRM (singleton + catálogos + metas por usuario) ───
 
 model CrmOrganizationProfile {
-  id                String   @id @default("default")
-  name              String   @default("Taxi Monterrico")
-  description       String   @default("")
-  contactEmail      String   @default("")
-  contactPhone      String   @default("")
-  address           String   @default("")
-  globalWeeklyGoal  Float    @default(0)
-  globalMonthlyGoal Float    @default(0)
-  updatedAt         DateTime @updatedAt
+  id                  String                  @id @default("default")
+  name                String                  @default("Taxi Monterrico")
+  description         String                  @default("")
+  contactEmail        String                  @default("")
+  contactPhone        String                  @default("")
+  address             String                  @default("")
+  globalWeeklyGoal    Float                   @default(0)
+  updatedAt           DateTime                @updatedAt
+  monthlySalesTargets CrmMonthlySalesTarget[]
+}
+
+/** Meta de facturación del equipo por mes calendario (UTC). Sin fila → meta 0 en reportes / dashboard. */
+model CrmMonthlySalesTarget {
+  id             String                 @id @default(cuid())
+  organizationId String                 @default("default")
+  periodStart    DateTime               @db.Date
+  amount         Float                  @default(0)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  organization   CrmOrganizationProfile @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, periodStart])
+  @@index([organizationId, periodStart])
 }
 
 model CrmLeadSource {
@@ -215,6 +291,20 @@ model CrmUserSalesGoal {
   user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([userId])
+}
+
+/** Meta de ventas del asesor por mes calendario (UTC). Mes sin fila → meta 0 en reportes / tarjeta mensual. */
+model CrmUserMonthlySalesTarget {
+  id          String   @id @default(cuid())
+  userId      String
+  periodStart DateTime @db.Date
+  amount      Float    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, periodStart])
+  @@index([userId, periodStart])
 }
 
 model Contact {

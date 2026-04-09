@@ -12,6 +12,7 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { BCRYPT_ROUNDS } from './auth.constants';
 import { MediaUploadService } from '../media/media-upload.service';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 
 @Injectable()
 export class AuthService {
@@ -19,6 +20,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly mediaUpload: MediaUploadService,
+    private readonly activityLogs: ActivityLogsService,
   ) {}
 
   private normalizeUsername(username: string): string {
@@ -267,11 +269,48 @@ export class AuthService {
       include: { user: { include: { role: true } } },
     });
 
-    if (!account?.user || account.user.status !== 'activo') {
+    if (!account?.user) {
+      await this.activityLogs.record(null, {
+        action: 'login_fallido',
+        module: 'sistema',
+        entityType: 'Sistema',
+        description: `Intento de inicio de sesión con usuario inexistente (${username})`,
+        status: 'fallido',
+      });
+      throw new UnauthorizedException('Credenciales inválidas');
+    }
+
+    if (account.user.status !== 'activo') {
+      await this.activityLogs.record(
+        { userId: account.user.id, userName: account.user.name },
+        {
+          action: 'login_fallido',
+          module: 'sistema',
+          entityType: 'Usuario',
+          entityId: account.user.id,
+          entityName: account.user.name,
+          description: 'Intento de inicio de sesión con usuario inactivo',
+          status: 'fallido',
+          isCritical: true,
+        },
+      );
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
     if (!account.passwordHash) {
+      await this.activityLogs.record(
+        { userId: account.user.id, userName: account.user.name },
+        {
+          action: 'login_fallido',
+          module: 'sistema',
+          entityType: 'Usuario',
+          entityId: account.user.id,
+          entityName: account.user.name,
+          description:
+            'Intento de inicio de sesión sin contraseña configurada en la cuenta',
+          status: 'fallido',
+        },
+      );
       throw new UnauthorizedException(
         'Esta cuenta no tiene contraseña configurada. Usa registro o restablecimiento.',
       );
@@ -279,6 +318,19 @@ export class AuthService {
 
     const ok = await bcrypt.compare(password, account.passwordHash);
     if (!ok) {
+      await this.activityLogs.record(
+        { userId: account.user.id, userName: account.user.name },
+        {
+          action: 'login_fallido',
+          module: 'sistema',
+          entityType: 'Usuario',
+          entityId: account.user.id,
+          entityName: account.user.name,
+          description: `Contraseña incorrecta al iniciar sesión (${username})`,
+          status: 'fallido',
+          isCritical: true,
+        },
+      );
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
@@ -286,6 +338,19 @@ export class AuthService {
       where: { id: account.user.id },
       data: { lastActivity: new Date() },
     });
+
+    await this.activityLogs.record(
+      { userId: account.user.id, userName: account.user.name },
+      {
+        action: 'login',
+        module: 'sistema',
+        entityType: 'Usuario',
+        entityId: account.user.id,
+        entityName: account.user.name,
+        description: `Inicio de sesión correcto (${username})`,
+        status: 'exito',
+      },
+    );
 
     return await this.buildAuthResponse(account.user, account.providerId);
   }

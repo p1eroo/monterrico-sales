@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Eye, EyeOff, Loader2, Info } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useAppStore } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -198,23 +198,12 @@ export default function LoginPage() {
             />
           </div>
 
-          <h2 className="text-2xl font-bold tracking-tight text-foreground">
+          <h2 className="text-center text-2xl font-bold tracking-tight text-foreground">
             Iniciar sesión
           </h2>
-          <p className="mt-1 text-muted-foreground">
+          <p className="mt-1 text-center text-muted-foreground">
             Accede a tu CRM de Taxi Monterrico
           </p>
-
-          {/* Info banner */}
-          <div
-            className="mt-6 flex items-start gap-3 rounded-xl border border-[#13944C]/20 bg-[#13944C]/5 px-4 py-3"
-            role="alert"
-          >
-            <Info className="mt-0.5 size-4 shrink-0 text-[#13944C]" />
-            <p className="text-sm text-foreground/90">
-              Usa tu cuenta del sistema
-            </p>
-          </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-5">
             <div className="space-y-2">

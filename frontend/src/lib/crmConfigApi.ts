@@ -8,7 +8,6 @@ export type CrmOrganizationDto = {
   contactPhone: string;
   address: string;
   globalWeeklyGoal: number;
-  globalMonthlyGoal: number;
 };
 
 export type CrmCatalogDto = {
@@ -49,10 +48,13 @@ export type CrmCatalogDto = {
 
 export type CrmSalesGoalsDto = {
   globalWeekly: number;
-  globalMonthly: number;
   myWeekly: number;
   myMonthly: number;
   byUserId: Record<string, { weekly: number; monthly: number }>;
+  /** Meta del equipo por YYYY-MM (UTC). Mes ausente = 0 en reportes. */
+  monthlyByYm?: Record<string, number>;
+  /** userId → meta por YYYY-MM (UTC) para reportes por asesor. */
+  advisorMonthlyByYm?: Record<string, Record<string, number>>;
 };
 
 export type CrmConfigBundle = {
@@ -134,8 +136,9 @@ export async function putCrmActivityTypes(
 
 export async function putCrmSalesGoals(body: {
   globalWeekly: number;
-  globalMonthly: number;
   byUserId: Record<string, { weekly?: number; monthly?: number }>;
+  monthlyByYm?: Record<string, number>;
+  advisorMonthlyByYm?: Record<string, Record<string, number>>;
 }): Promise<CrmConfigBundle> {
   return api<CrmConfigBundle>('/crm-config/sales-goals', {
     method: 'PUT',

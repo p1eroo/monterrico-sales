@@ -7,12 +7,13 @@ import {
   Building2, Globe, DollarSign, CalendarDays, MapPin,
   FileArchive, Loader2, CheckSquare,
 } from 'lucide-react';
-import type { Contact, Etapa, CompanyRubro, CompanyTipo } from '@/types';
+import type { Contact, Etapa, CompanyRubro, CompanyTipo, TimelineEvent } from '@/types';
 import {
   contactSourceLabels, etapaLabels,
   companyRubroLabels,
-  timelineEvents, activities,
+  activities,
 } from '@/data/mock';
+import { fetchActivityLogs, activityLogToTimelineEvent } from '@/lib/activityLogsApi';
 import { useUsers } from '@/hooks/useUsers';
 import { useCRMStore } from '@/store/crmStore';
 import { getPrimaryCompany } from '@/lib/utils';
@@ -298,6 +299,39 @@ export default function ContactoDetailPage() {
   useEffect(() => {
     setContactActivities(initialActivities);
   }, [initialActivities]);
+
+  const [contactTimelineEvents, setContactTimelineEvents] = useState<TimelineEvent[]>([]);
+  const [contactTimelineLoading, setContactTimelineLoading] = useState(false);
+
+  useEffect(() => {
+    if (!fromApi || !contact?.id) {
+      setContactTimelineEvents([]);
+      setContactTimelineLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setContactTimelineLoading(true);
+    fetchActivityLogs({
+      entityType: 'Contacto',
+      entityId: contact.id,
+      page: 1,
+      limit: 80,
+    })
+      .then((r) => {
+        if (!cancelled) {
+          setContactTimelineEvents(r.data.map(activityLogToTimelineEvent));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setContactTimelineEvents([]);
+      })
+      .finally(() => {
+        if (!cancelled) setContactTimelineLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [fromApi, contact?.id]);
 
   // Los returns condicionales van después de todos los hooks
   if (fromApi && apiLoading) {
@@ -1072,7 +1106,23 @@ export default function ContactoDetailPage() {
 
           {/* Historial Tab */}
           <TabsContent value="historial" className="mt-4">
-            <TimelinePanel events={timelineEvents} />
+            {contactTimelineLoading ? (
+              <div className="flex justify-center py-10 text-muted-foreground">
+                <Loader2 className="size-6 animate-spin" />
+              </div>
+            ) : contactTimelineEvents.length === 0 ? (
+              <EmptyState
+                icon={CalendarDays}
+                title="Sin actividad registrada"
+                description={
+                  fromApi
+                    ? 'Los cambios y acciones sobre este contacto aparecerán aquí.'
+                    : 'El historial detallado está disponible cuando abres un contacto desde el servidor (vista API).'
+                }
+              />
+            ) : (
+              <TimelinePanel events={contactTimelineEvents} />
+            )}
           </TabsContent>
         </Tabs>
 

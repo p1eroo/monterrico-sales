@@ -17,14 +17,28 @@ import {
 
 const ORG_ID = 'default';
 
+function yearMonthToUtcFirstDay(ym: string): Date | null {
+  if (!/^\d{4}-\d{2}$/.test(ym)) return null;
+  const [y, m] = ym.split('-').map(Number);
+  if (!y || m < 1 || m > 12) return null;
+  return new Date(Date.UTC(y, m - 1, 1, 0, 0, 0, 0));
+}
+
+function periodStartToYearMonth(d: Date): string {
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  return `${y}-${m}`;
+}
+
 @Injectable()
 export class CrmConfigService implements OnModuleInit {
   private seedPromise: Promise<void> | null = null;
 
   constructor(private readonly prisma: PrismaService) {}
 
-  onModuleInit() {
+  async onModuleInit() {
     this.seedPromise = this.ensureSeedData();
+    await this.seedPromise;
   }
 
   private async ensureReady() {
@@ -45,7 +59,6 @@ export class CrmConfigService implements OnModuleInit {
         contactPhone: '+51 1 234 5678',
         address: 'Av. Javier Prado Este 4600, Santiago de Surco, Lima, Perú',
         globalWeeklyGoal: 60000,
-        globalMonthlyGoal: 240000,
       },
       update: {},
     });
@@ -196,19 +209,54 @@ export class CrmConfigService implements OnModuleInit {
           contactPhone: org.contactPhone,
           address: org.address,
           globalWeeklyGoal: org.globalWeeklyGoal,
-          globalMonthlyGoal: org.globalMonthlyGoal,
         }
       : null;
 
     let salesGoals:
       | {
           globalWeekly: number;
-          globalMonthly: number;
           myWeekly: number;
           myMonthly: number;
           byUserId: Record<string, { weekly: number; monthly: number }>;
+          monthlyByYm: Record<string, number>;
+          advisorMonthlyByYm: Record<string, Record<string, number>>;
         }
       | undefined;
+
+    const monthlyRows = org
+      ? await this.prisma.crmMonthlySalesTarget.findMany({
+          where: { organizationId: ORG_ID },
+          orderBy: { periodStart: 'asc' },
+          select: { periodStart: true, amount: true },
+        })
+      : [];
+    const monthlyByYm: Record<string, number> = {};
+    for (const r of monthlyRows) {
+      monthlyByYm[periodStartToYearMonth(r.periodStart)] = r.amount;
+    }
+
+    let advisorMonthRows: { userId: string; periodStart: Date; amount: number }[] =
+      [];
+    if (org) {
+      if (canSeeTeamGoals) {
+        advisorMonthRows = await this.prisma.crmUserMonthlySalesTarget.findMany({
+          orderBy: [{ userId: 'asc' }, { periodStart: 'asc' }],
+          select: { userId: true, periodStart: true, amount: true },
+        });
+      } else {
+        advisorMonthRows = await this.prisma.crmUserMonthlySalesTarget.findMany({
+          where: { userId },
+          orderBy: { periodStart: 'asc' },
+          select: { userId: true, periodStart: true, amount: true },
+        });
+      }
+    }
+    const advisorMonthlyByYm: Record<string, Record<string, number>> = {};
+    for (const r of advisorMonthRows) {
+      const ym = periodStartToYearMonth(r.periodStart);
+      if (!advisorMonthlyByYm[r.userId]) advisorMonthlyByYm[r.userId] = {};
+      advisorMonthlyByYm[r.userId][ym] = r.amount;
+    }
 
     if (org && canSeeTeamGoals) {
       const rows = await this.prisma.crmUserSalesGoal.findMany();
@@ -218,18 +266,20 @@ export class CrmConfigService implements OnModuleInit {
       }
       salesGoals = {
         globalWeekly: org.globalWeeklyGoal,
-        globalMonthly: org.globalMonthlyGoal,
         myWeekly: myGoal?.weeklyTarget ?? 0,
         myMonthly: myGoal?.monthlyTarget ?? 0,
         byUserId,
+        monthlyByYm,
+        advisorMonthlyByYm,
       };
     } else if (org) {
       salesGoals = {
         globalWeekly: org.globalWeeklyGoal,
-        globalMonthly: org.globalMonthlyGoal,
         myWeekly: myGoal?.weeklyTarget ?? 0,
         myMonthly: myGoal?.monthlyTarget ?? 0,
         byUserId: {},
+        monthlyByYm,
+        advisorMonthlyByYm,
       };
     }
 
@@ -309,7 +359,6 @@ export class CrmConfigService implements OnModuleInit {
       contactPhone: org.contactPhone,
       address: org.address,
       globalWeeklyGoal: org.globalWeeklyGoal,
-      globalMonthlyGoal: org.globalMonthlyGoal,
     };
   }
 
@@ -597,29 +646,34 @@ export class CrmConfigService implements OnModuleInit {
     userId: string,
     body: {
       globalWeekly: number;
-      globalMonthly: number;
       byUserId: Record<string, { weekly?: number; monthly?: number }>;
+      /** YYYY-MM → monto. Valor ≤0 elimina la fila (mes sin meta explícita). */
+      monthlyByYm?: Record<string, number>;
+      /** userId → (YYYY-MM → monto). Valor ≤0 elimina la fila de meta mensual del asesor. */
+      advisorMonthlyByYm?: Record<string, Record<string, number>>;
     },
   ) {
     await this.ensureReady();
     await this.assertCanEditSalesGoals(userId);
     const gw = Math.max(0, Number(body.globalWeekly) || 0);
-    const gm = Math.max(0, Number(body.globalMonthly) || 0);
 
     await this.prisma.$transaction(async (tx) => {
       await tx.crmOrganizationProfile.update({
         where: { id: ORG_ID },
         data: {
           globalWeeklyGoal: gw,
-          globalMonthlyGoal: gm,
         },
       });
 
       const ids = Object.keys(body.byUserId ?? {});
       for (const uid of ids) {
         const v = body.byUserId[uid];
-        const w = Math.max(0, Number(v?.weekly) || 0);
-        const m = Math.max(0, Number(v?.monthly) || 0);
+        if (!v) continue;
+        const hasWeekly = v.weekly !== undefined;
+        const hasMonthly = v.monthly !== undefined;
+        if (!hasWeekly && !hasMonthly) continue;
+        const w = hasWeekly ? Math.max(0, Number(v.weekly) || 0) : undefined;
+        const m = hasMonthly ? Math.max(0, Number(v.monthly) || 0) : undefined;
         const exists = await tx.user.findUnique({
           where: { id: uid },
           select: { id: true },
@@ -627,9 +681,82 @@ export class CrmConfigService implements OnModuleInit {
         if (!exists) continue;
         await tx.crmUserSalesGoal.upsert({
           where: { userId: uid },
-          create: { userId: uid, weeklyTarget: w, monthlyTarget: m },
-          update: { weeklyTarget: w, monthlyTarget: m },
+          create: {
+            userId: uid,
+            weeklyTarget: w ?? 0,
+            monthlyTarget: m ?? 0,
+          },
+          update: {
+            ...(w !== undefined ? { weeklyTarget: w } : {}),
+            ...(m !== undefined ? { monthlyTarget: m } : {}),
+          },
         });
+      }
+
+      if (
+        body.monthlyByYm != null &&
+        typeof body.monthlyByYm === 'object' &&
+        !Array.isArray(body.monthlyByYm)
+      ) {
+        for (const [ym, raw] of Object.entries(body.monthlyByYm)) {
+          const d = yearMonthToUtcFirstDay(ym);
+          if (!d) continue;
+          const amt = Math.max(0, Number(raw) || 0);
+          if (amt <= 0) {
+            await tx.crmMonthlySalesTarget.deleteMany({
+              where: { organizationId: ORG_ID, periodStart: d },
+            });
+          } else {
+            await tx.crmMonthlySalesTarget.upsert({
+              where: {
+                organizationId_periodStart: {
+                  organizationId: ORG_ID,
+                  periodStart: d,
+                },
+              },
+              create: { organizationId: ORG_ID, periodStart: d, amount: amt },
+              update: { amount: amt },
+            });
+          }
+        }
+      }
+
+      if (
+        body.advisorMonthlyByYm != null &&
+        typeof body.advisorMonthlyByYm === 'object' &&
+        !Array.isArray(body.advisorMonthlyByYm)
+      ) {
+        for (const [uid, inner] of Object.entries(body.advisorMonthlyByYm)) {
+          if (inner == null || typeof inner !== 'object' || Array.isArray(inner)) {
+            continue;
+          }
+          const existsUser = await tx.user.findUnique({
+            where: { id: uid },
+            select: { id: true },
+          });
+          if (!existsUser) continue;
+          for (const [ym, raw] of Object.entries(inner)) {
+            const d = yearMonthToUtcFirstDay(ym);
+            if (!d) continue;
+            const amt = Math.max(0, Number(raw) || 0);
+            if (amt <= 0) {
+              await tx.crmUserMonthlySalesTarget.deleteMany({
+                where: { userId: uid, periodStart: d },
+              });
+            } else {
+              await tx.crmUserMonthlySalesTarget.upsert({
+                where: {
+                  userId_periodStart: {
+                    userId: uid,
+                    periodStart: d,
+                  },
+                },
+                create: { userId: uid, periodStart: d, amount: amt },
+                update: { amount: amt },
+              });
+            }
+          }
+        }
       }
     });
     return this.getBundle(userId);

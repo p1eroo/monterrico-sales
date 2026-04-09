@@ -4,10 +4,17 @@ import { AiController } from './ai.controller';
 import { AiService } from './ai.service';
 import { AiToolsService } from './ai-tools.service';
 import { AssistantInstructionsService } from './assistant-instructions.service';
+import { EmbeddingsService } from './embeddings.service';
 
 @Module({
   imports: [AuthModule],
   controllers: [AiController],
-  providers: [AiService, AiToolsService, AssistantInstructionsService],
+  providers: [
+    AiService,
+    AiToolsService,
+    AssistantInstructionsService,
+    EmbeddingsService,
+  ],
+  exports: [EmbeddingsService],
 })
 export class AiModule {}

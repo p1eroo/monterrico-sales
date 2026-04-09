@@ -11,6 +11,11 @@ import { CreateCompanyDto } from '../companies/dto/create-company.dto';
 import { EntitySyncService } from '../sync/entity-sync.service';
 import { slugifyForUrl } from '../common/url-slug.util';
 import { CrmConfigService } from '../crm-config/crm-config.service';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
+import type { ActivityActor } from '../activity-logs/activity-logs.types';
+import { AuditDetailService } from '../audit-detail/audit-detail.service';
+import { buildChangeEntries } from '../common/audit-diff.util';
+import { CONTACT_FIELD_LABELS } from '../audit-detail/audit-field-labels';
 
 /** Orden de pestañas de etapa en listado contactos (alineado con Empresas). */
 const CONTACT_TAB_ETAPAS = [
@@ -101,6 +106,8 @@ export class ContactsService {
     private readonly prisma: PrismaService,
     private readonly entitySync: EntitySyncService,
     private readonly crmConfig: CrmConfigService,
+    private readonly activityLogs: ActivityLogsService,
+    private readonly auditDetail: AuditDetailService,
   ) {}
 
   private async assertUserExists(id: string): Promise<void> {
@@ -273,7 +280,7 @@ export class ContactsService {
     return { id: company.id, name: company.name };
   }
 
-  async create(dto: CreateContactDto) {
+  async create(dto: CreateContactDto, actor?: ActivityActor) {
     const name = dto.name?.trim();
     if (!name) {
       throw new BadRequestException('El nombre es obligatorio');
@@ -398,6 +405,15 @@ export class ContactsService {
       await this.entitySync.propagateFromContact(effectiveCompanyId, row.id);
     }
 
+    await this.activityLogs.record(actor ?? null, {
+      action: 'crear',
+      module: 'contactos',
+      entityType: 'Contacto',
+      entityId: row.id,
+      entityName: row.name,
+      description: `Contacto creado: ${row.name}`,
+    });
+
     return this.findOne(row.id);
   }
 
@@ -500,9 +516,32 @@ export class ContactsService {
     return row;
   }
 
-  async update(idOrSlug: string, dto: UpdateContactDto) {
+  async update(idOrSlug: string, dto: UpdateContactDto, actor: ActivityActor) {
     const id = await this.resolveContactId(idOrSlug);
-    await this.findOne(id);
+    const snapshot = await this.prisma.contact.findUnique({
+      where: { id },
+      select: {
+        name: true,
+        telefono: true,
+        correo: true,
+        fuente: true,
+        cargo: true,
+        etapa: true,
+        assignedTo: true,
+        estimatedValue: true,
+        docType: true,
+        docNumber: true,
+        departamento: true,
+        provincia: true,
+        distrito: true,
+        direccion: true,
+        clienteRecuperado: true,
+        etapaHistory: true,
+      },
+    });
+    if (!snapshot) {
+      throw new NotFoundException('Contacto no encontrado');
+    }
 
     const data: Record<string, unknown> = {};
 
@@ -604,18 +643,92 @@ export class ContactsService {
       await this.entitySync.propagateFromContact(companyId, id);
     }
 
+    const etapaChanged =
+      dto.etapa !== undefined && dto.etapa.trim() !== snapshot.etapa;
+    const action = etapaChanged ? 'cambiar_etapa' : 'actualizar';
+    const description = etapaChanged
+      ? `Etapa del contacto: ${snapshot.etapa} → ${dto.etapa!.trim()}`
+      : 'Datos del contacto actualizados.';
+
+    const auditPatch: Record<string, unknown> = { ...data };
+    delete auditPatch.urlSlug;
+    const before = { ...snapshot } as Record<string, unknown>;
+    const diffEntries = buildChangeEntries(
+      before,
+      auditPatch,
+      CONTACT_FIELD_LABELS,
+      ['urlSlug'],
+    );
+
+    const displayName =
+      typeof data.name === 'string' ? data.name : snapshot.name;
+
+    await this.auditDetail.record(actor, {
+      action,
+      module: 'contactos',
+      entityType: 'Contacto',
+      entityId: id,
+      entityName: displayName,
+      entries: diffEntries,
+    });
+
+    await this.activityLogs.record(actor, {
+      action,
+      module: 'contactos',
+      entityType: 'Contacto',
+      entityId: id,
+      entityName: displayName,
+      description,
+    });
+
     return this.findOne(id);
   }
 
-  async remove(idOrSlug: string) {
+  async remove(idOrSlug: string, actor: ActivityActor) {
     const id = await this.resolveContactId(idOrSlug);
-    await this.findOne(id);
-    return this.prisma.contact.delete({
+    const row = await this.prisma.contact.findUnique({
+      where: { id },
+      select: { name: true },
+    });
+    if (!row) {
+      throw new NotFoundException('Contacto no encontrado');
+    }
+    const deleted = await this.prisma.contact.delete({
       where: { id },
     });
+    await this.auditDetail.record(actor, {
+      action: 'eliminar',
+      module: 'contactos',
+      entityType: 'Contacto',
+      entityId: id,
+      entityName: row.name,
+      entries: [
+        {
+          fieldKey: '_registro',
+          fieldLabel: 'Registro',
+          oldValue: row.name,
+          newValue: '(eliminado)',
+        },
+      ],
+    });
+    await this.activityLogs.record(actor, {
+      action: 'eliminar',
+      module: 'contactos',
+      entityType: 'Contacto',
+      entityId: id,
+      entityName: row.name,
+      description: `Contacto eliminado: ${row.name}`,
+      isCritical: true,
+    });
+    return deleted;
   }
 
-  async addCompany(contactIdOrSlug: string, companyId: string, isPrimary = false) {
+  async addCompany(
+    contactIdOrSlug: string,
+    companyId: string,
+    isPrimary = false,
+    actor?: ActivityActor,
+  ) {
     const contactId = await this.resolveContactId(contactIdOrSlug);
     await this.findOne(contactId);
     const company = await this.prisma.company.findUnique({
@@ -636,10 +749,28 @@ export class ContactsService {
       data: { contactId, companyId, isPrimary },
     });
     await this.entitySync.propagateFromContact(companyId, contactId);
+    if (actor) {
+      const contactRow = await this.prisma.contact.findUnique({
+        where: { id: contactId },
+        select: { name: true },
+      });
+      await this.activityLogs.record(actor, {
+        action: 'actualizar',
+        module: 'contactos',
+        entityType: 'Contacto',
+        entityId: contactId,
+        entityName: contactRow?.name,
+        description: `Empresa vinculada al contacto: ${company.name}`,
+      });
+    }
     return this.findOne(contactId);
   }
 
-  async removeCompany(contactIdOrSlug: string, companyId: string) {
+  async removeCompany(
+    contactIdOrSlug: string,
+    companyId: string,
+    actor?: ActivityActor,
+  ) {
     const contactId = await this.resolveContactId(contactIdOrSlug);
     await this.findOne(contactId);
     const deleted = await this.prisma.companyContact.deleteMany({
@@ -648,10 +779,34 @@ export class ContactsService {
     if (deleted.count === 0) {
       throw new BadRequestException('El vínculo no existe');
     }
+    const company = await this.prisma.company.findUnique({
+      where: { id: companyId },
+      select: { name: true },
+    });
+    if (actor) {
+      const contactRow = await this.prisma.contact.findUnique({
+        where: { id: contactId },
+        select: { name: true },
+      });
+      await this.activityLogs.record(actor, {
+        action: 'actualizar',
+        module: 'contactos',
+        entityType: 'Contacto',
+        entityId: contactId,
+        entityName: contactRow?.name,
+        description: `Se quitó la vinculación con la empresa ${
+          company?.name ?? companyId
+        }`,
+      });
+    }
     return this.findOne(contactId);
   }
 
-  async addLinkedContact(contactIdOrSlug: string, linkedContactId: string) {
+  async addLinkedContact(
+    contactIdOrSlug: string,
+    linkedContactId: string,
+    actor?: ActivityActor,
+  ) {
     const contactId = await this.resolveContactId(contactIdOrSlug);
     if (contactId === linkedContactId) {
       throw new BadRequestException('Un contacto no puede vincularse consigo mismo');
@@ -674,10 +829,28 @@ export class ContactsService {
     await this.prisma.contactContact.create({
       data: { contactId, linkedId: linkedContactId },
     });
+    if (actor) {
+      const contactRow = await this.prisma.contact.findUnique({
+        where: { id: contactId },
+        select: { name: true },
+      });
+      await this.activityLogs.record(actor, {
+        action: 'actualizar',
+        module: 'contactos',
+        entityType: 'Contacto',
+        entityId: contactId,
+        entityName: contactRow?.name,
+        description: `Contacto vinculado: ${linked.name}`,
+      });
+    }
     return this.findOne(contactId);
   }
 
-  async removeLinkedContact(contactIdOrSlug: string, linkedId: string) {
+  async removeLinkedContact(
+    contactIdOrSlug: string,
+    linkedId: string,
+    actor?: ActivityActor,
+  ) {
     const contactId = await this.resolveContactId(contactIdOrSlug);
     await this.findOne(contactId);
     const deleted = await this.prisma.contactContact.deleteMany({
@@ -685,6 +858,26 @@ export class ContactsService {
     });
     if (deleted.count === 0) {
       throw new BadRequestException('El vínculo no existe');
+    }
+    const other = await this.prisma.contact.findUnique({
+      where: { id: linkedId },
+      select: { name: true },
+    });
+    if (actor) {
+      const contactRow = await this.prisma.contact.findUnique({
+        where: { id: contactId },
+        select: { name: true },
+      });
+      await this.activityLogs.record(actor, {
+        action: 'actualizar',
+        module: 'contactos',
+        entityType: 'Contacto',
+        entityId: contactId,
+        entityName: contactRow?.name,
+        description: `Se eliminó el vínculo con el contacto ${
+          other?.name ?? linkedId
+        }`,
+      });
     }
     return this.findOne(contactId);
   }

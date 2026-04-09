@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { ContactsService } from './contacts.service';
@@ -17,6 +18,8 @@ import { LinkContactDto } from './dto/link-contact.dto';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 
+type AuthedReq = { user: { userId: string; name: string } };
+
 @Controller('contacts')
 @UseGuards(PermissionsGuard)
 export class ContactsController {
@@ -24,8 +27,11 @@ export class ContactsController {
 
   @Post()
   @RequirePermissions('contactos.crear')
-  create(@Body() createContactDto: CreateContactDto) {
-    return this.contactsService.create(createContactDto);
+  create(@Body() createContactDto: CreateContactDto, @Req() req: AuthedReq) {
+    return this.contactsService.create(createContactDto, {
+      userId: req.user.userId,
+      userName: req.user.name,
+    });
   }
 
   @Get()
@@ -69,11 +75,13 @@ export class ContactsController {
   addCompany(
     @Param('id') id: string,
     @Body() dto: LinkCompanyDto,
+    @Req() req: AuthedReq,
   ) {
     return this.contactsService.addCompany(
       id,
       dto.companyId.trim(),
       dto.isPrimary ?? false,
+      { userId: req.user.userId, userName: req.user.name },
     );
   }
 
@@ -82,8 +90,12 @@ export class ContactsController {
   removeCompany(
     @Param('id') id: string,
     @Param('companyId') companyId: string,
+    @Req() req: AuthedReq,
   ) {
-    return this.contactsService.removeCompany(id, companyId);
+    return this.contactsService.removeCompany(id, companyId, {
+      userId: req.user.userId,
+      userName: req.user.name,
+    });
   }
 
   @Post(':id/links')
@@ -91,8 +103,13 @@ export class ContactsController {
   addLinkedContact(
     @Param('id') id: string,
     @Body() dto: LinkContactDto,
+    @Req() req: AuthedReq,
   ) {
-    return this.contactsService.addLinkedContact(id, dto.linkedContactId.trim());
+    return this.contactsService.addLinkedContact(
+      id,
+      dto.linkedContactId.trim(),
+      { userId: req.user.userId, userName: req.user.name },
+    );
   }
 
   @Delete(':id/links/:linkedId')
@@ -100,8 +117,12 @@ export class ContactsController {
   removeLinkedContact(
     @Param('id') id: string,
     @Param('linkedId') linkedId: string,
+    @Req() req: AuthedReq,
   ) {
-    return this.contactsService.removeLinkedContact(id, linkedId);
+    return this.contactsService.removeLinkedContact(id, linkedId, {
+      userId: req.user.userId,
+      userName: req.user.name,
+    });
   }
 
   @Get(':id')
@@ -112,13 +133,23 @@ export class ContactsController {
 
   @Patch(':id')
   @RequirePermissions('contactos.editar')
-  update(@Param('id') id: string, @Body() updateContactDto: UpdateContactDto) {
-    return this.contactsService.update(id, updateContactDto);
+  update(
+    @Param('id') id: string,
+    @Body() updateContactDto: UpdateContactDto,
+    @Req() req: AuthedReq,
+  ) {
+    return this.contactsService.update(id, updateContactDto, {
+      userId: req.user.userId,
+      userName: req.user.name,
+    });
   }
 
   @Delete(':id')
   @RequirePermissions('contactos.eliminar')
-  remove(@Param('id') id: string) {
-    return this.contactsService.remove(id);
+  remove(@Param('id') id: string, @Req() req: AuthedReq) {
+    return this.contactsService.remove(id, {
+      userId: req.user.userId,
+      userName: req.user.name,
+    });
   }
 }

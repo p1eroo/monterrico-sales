@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '../generated/prisma';
 import { PrismaService } from '../prisma/prisma.service';
+import { EmbeddingsService } from './embeddings.service';
 
 function clampIntArg(
   raw: unknown,
@@ -18,9 +19,20 @@ function clampIntArg(
   return Math.min(max, Math.max(min, n));
 }
 
+type KnowledgeSnippet = {
+  chunkId: string;
+  knowledgeBaseId: string;
+  knowledgeTitle: string;
+  chunkPosition: number;
+  excerpt: string;
+};
+
 @Injectable()
 export class AiToolsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly embeddingsService: EmbeddingsService,
+  ) {}
 
   async userHasPermission(
     userId: string,
@@ -358,7 +370,8 @@ export class AiToolsService {
   }
 
   /**
-   * Fragmentos de bases de conocimiento del usuario que contienen el texto (búsqueda simple, sin embeddings).
+   * RAG sobre bases de conocimiento: similitud vectorial (pgvector) si hay OPENAI_API_KEY y embeddings
+   * en BD; siempre complementa con búsqueda literal por texto.
    */
   async searchMyKnowledge(
     userId: string,
@@ -373,30 +386,75 @@ export class AiToolsService {
       };
     }
 
-    const rows = await this.prisma.aiKnowledgeChunk.findMany({
+    const excerpt = (content: string) =>
+      content.length > 1_800 ? `${content.slice(0, 1_800)}…` : content;
+
+    const textRows = await this.prisma.aiKnowledgeChunk.findMany({
       where: {
         knowledgeBase: { userId },
         content: { contains: q, mode: Prisma.QueryMode.insensitive },
       },
-      take: 10,
+      take: 12,
       orderBy: [{ knowledgeBaseId: 'asc' }, { position: 'asc' }],
       select: {
+        id: true,
         position: true,
         content: true,
         knowledgeBase: { select: { id: true, title: true } },
       },
     });
 
-    const snippets = rows.map((r) => ({
+    const textSnippets: KnowledgeSnippet[] = textRows.map((r) => ({
+      chunkId: r.id,
       knowledgeBaseId: r.knowledgeBase.id,
       knowledgeTitle: r.knowledgeBase.title,
       chunkPosition: r.position,
-      excerpt:
-        r.content.length > 1_800
-          ? `${r.content.slice(0, 1_800)}…`
-          : r.content,
+      excerpt: excerpt(r.content),
     }));
 
+    let vectorSnippets: KnowledgeSnippet[] = [];
+    if (this.embeddingsService.isEnabled()) {
+      try {
+        const queryVec = (await this.embeddingsService.embedTexts([q]))[0];
+        const literal = this.embeddingsService.toPgVectorLiteral(queryVec);
+        const raw = await this.prisma.$queryRawUnsafe<
+          Array<{
+            id: string;
+            position: number;
+            content: string;
+            knowledgeBaseId: string;
+            knowledgeTitle: string;
+          }>
+        >(
+          `SELECT c.id, c.position, c.content, kb.id AS "knowledgeBaseId", kb.title AS "knowledgeTitle"
+           FROM "AiKnowledgeChunk" c
+           INNER JOIN "AiKnowledgeBase" kb ON kb.id = c."knowledgeBaseId"
+           WHERE kb."userId" = $2 AND c.embedding IS NOT NULL
+           ORDER BY c.embedding <=> $1::vector
+           LIMIT 12`,
+          literal,
+          userId,
+        );
+        vectorSnippets = raw.map((r) => ({
+          chunkId: r.id,
+          knowledgeBaseId: r.knowledgeBaseId,
+          knowledgeTitle: r.knowledgeTitle,
+          chunkPosition: r.position,
+          excerpt: excerpt(r.content),
+        }));
+      } catch {
+        /* embedding o pgvector no disponible: solo texto */
+      }
+    }
+
+    const merged = new Map<string, KnowledgeSnippet>();
+    for (const s of vectorSnippets) merged.set(s.chunkId, s);
+    for (const s of textSnippets) {
+      if (!merged.has(s.chunkId)) merged.set(s.chunkId, s);
+    }
+    const snippets = Array.from(merged.values()).slice(0, 10);
+
+    const usedVector = vectorSnippets.length > 0;
     return {
       query: q,
       matchCount: snippets.length,
@@ -404,7 +462,9 @@ export class AiToolsService {
       note:
         snippets.length === 0
           ? 'No hay coincidencias en tus bases indexadas. Crea o reindexa conocimiento en Agentes IA → Conocimiento.'
-          : 'Usa estos extractos como contexto; no inventes datos fuera de ellos.',
+          : usedVector
+            ? 'Ranking principal por similitud semántica (embeddings); se añaden coincidencias literales si faltan. Usa estos extractos como contexto; no inventes datos fuera de ellos.'
+            : 'Búsqueda por coincidencia de texto; sin embeddings (no hay clave OpenAI o fragmentos sin vector). Usa estos extractos como contexto; no inventes datos fuera de ellos.',
     };
   }
 
