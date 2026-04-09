@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import type { DateRange } from 'react-day-picker';
 import { useUsers } from '@/hooks/useUsers';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -31,6 +31,11 @@ import {
   type AnalyticsSummary,
 } from '@/lib/analyticsApi';
 import {
+  downloadReport,
+  reportExportBaseFilename,
+  type ReportsExportInput,
+} from '@/lib/reportsExport';
+import {
   useCrmConfigStore,
   getSourceLabelFromCatalog,
   getStageLabelFromCatalog,
@@ -51,12 +56,6 @@ const sourceOptions = [
   { value: 'whatsapp', label: 'WhatsApp' },
   { value: 'email', label: 'Email' },
 ];
-
-function handleExport(format: string) {
-  toast.info(`Exportación en ${format}`, {
-    description: 'La descarga comenzará en breve...',
-  });
-}
 
 function changeTone(s: string): 'positive' | 'negative' | 'neutral' {
   const t = s.trim();
@@ -127,6 +126,56 @@ export default function Reports() {
   const followUpsData = summary?.followUpsByMonth ?? [];
   const salesByMonthData = summary?.salesByMonth ?? [];
   const performanceByAdvisor = summary?.performanceByAdvisor ?? [];
+
+  const handleExport = useCallback(
+    (format: 'PDF' | 'Excel' | 'CSV') => {
+      if (loading || !summary) {
+        toast.error('Espera a que carguen los datos o elige un periodo válido.');
+        return;
+      }
+      const advisorLabel =
+        advisorFilter === 'all'
+          ? 'Todos los asesores'
+          : activeUsers.find((u) => u.id === advisorFilter)?.name ?? advisorFilter;
+      const sourceLabel =
+        sourceOptions.find((o) => o.value === sourceFilter)?.label ?? sourceFilter;
+
+      const payload: ReportsExportInput = {
+        range: summary.range,
+        meta: { advisorLabel, sourceLabel },
+        kpis: summary.kpis,
+        contactsByPeriod: leadsByPeriodData,
+        contactsBySource: leadsBySourceData,
+        conversionByMonth: conversionData,
+        performanceByAdvisor,
+        salesByMonth: salesByMonthData,
+        opportunitiesByStage: opportunitiesByStageData,
+        activitiesByType: activitiesByTypeData,
+        followUpsByMonth: followUpsData,
+      };
+      try {
+        downloadReport(format, payload, reportExportBaseFilename());
+        toast.success(`Archivo ${format} generado`);
+      } catch {
+        toast.error('No se pudo generar el archivo. Intenta de nuevo.');
+      }
+    },
+    [
+      loading,
+      summary,
+      advisorFilter,
+      activeUsers,
+      sourceFilter,
+      leadsByPeriodData,
+      leadsBySourceData,
+      conversionData,
+      performanceByAdvisor,
+      salesByMonthData,
+      opportunitiesByStageData,
+      activitiesByTypeData,
+      followUpsData,
+    ],
+  );
 
   const chartH = 'h-[300px]';
 
@@ -254,15 +303,30 @@ export default function Reports() {
 
         {hasPermission('reportes.exportar') && (
           <div className="flex gap-2 md:ml-auto">
-            <Button variant="outline" size="sm" onClick={() => handleExport('PDF')}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={loading || !summary}
+              onClick={() => handleExport('PDF')}
+            >
               <FileText className="mr-1.5 size-4" />
               PDF
             </Button>
-            <Button variant="outline" size="sm" onClick={() => handleExport('Excel')}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={loading || !summary}
+              onClick={() => handleExport('Excel')}
+            >
               <FileSpreadsheet className="mr-1.5 size-4" />
               Excel
             </Button>
-            <Button variant="outline" size="sm" onClick={() => handleExport('CSV')}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={loading || !summary}
+              onClick={() => handleExport('CSV')}
+            >
               <FileDown className="mr-1.5 size-4" />
               CSV
             </Button>

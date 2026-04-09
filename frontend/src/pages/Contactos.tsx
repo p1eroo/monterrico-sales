@@ -131,6 +131,7 @@ export default function ContactosPage() {
   const [importCommitRowHint, setImportCommitRowHint] = useState<
     string | undefined
   >(undefined);
+  const [importPreviewInProgress, setImportPreviewInProgress] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
   const [importPreviewOpen, setImportPreviewOpen] = useState(false);
   const [importPreviewData, setImportPreviewData] =
@@ -659,6 +660,7 @@ export default function ContactosPage() {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
+    setImportPreviewInProgress(true);
     setImportBusy(true);
     try {
       const preview = await previewContactsImportCsv(file);
@@ -670,6 +672,7 @@ export default function ContactosPage() {
         err instanceof Error ? err.message : 'Error al generar vista previa',
       );
     } finally {
+      setImportPreviewInProgress(false);
       setImportBusy(false);
     }
   }
@@ -730,6 +733,12 @@ export default function ContactosPage() {
   return (
     <div className="space-y-6">
       <ImportInProgressDialog
+        open={importPreviewInProgress}
+        title="Generando vista previa"
+        description="El servidor está leyendo el CSV y validando filas contra la base de datos. Las consultas externas solo ocurren al confirmar la importación."
+        rowHint="Puede tardar unos segundos si el archivo tiene muchas filas."
+      />
+      <ImportInProgressDialog
         open={importCommitInProgress}
         title="Importando contactos"
         description="El servidor está validando filas, creando contactos y puede consultar RENIEC u otras fuentes según los datos del CSV."
@@ -765,10 +774,13 @@ export default function ContactosPage() {
               ) : null}
             </DialogDescription>
           </DialogHeader>
-          <div className="min-h-0 flex-1 overflow-auto px-6 py-3">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-6 py-3">
             {importPreviewData && importPreviewData.rows.length > 0 ? (
-              <div className="overflow-auto rounded-md border">
-                <Table className="w-full min-w-max table-fixed">
+              <div className="min-h-0 flex-1 overflow-auto rounded-md border">
+                <Table
+                  containerClassName="overflow-visible"
+                  className="w-full min-w-max table-fixed"
+                >
                   <TableHeader>
                     <TableRow>
                       <TableHead className="sticky left-0 z-10 w-11 bg-background px-2">

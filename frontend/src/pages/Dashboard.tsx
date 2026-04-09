@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import type { DateRange } from 'react-day-picker';
 import {
   Users,
@@ -15,7 +15,10 @@ import {
   FileText,
   MessageSquare,
   CalendarDays,
+  FileSpreadsheet,
+  FileDown,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   BarChart,
   Bar,
@@ -54,6 +57,11 @@ import {
   analyticsRangeFromPreset,
   type AnalyticsSummary,
 } from '@/lib/analyticsApi';
+import {
+  downloadReport,
+  dashboardExportBaseFilename,
+  type ReportsExportInput,
+} from '@/lib/reportsExport';
 import { useCrmConfigStore, getStageLabelFromCatalog, getSourceLabelFromCatalog } from '@/store/crmConfigStore';
 import { ChartCardBody } from '@/components/shared/ChartCardBody';
 import { chartHasAnyValue } from '@/lib/chartEmpty';
@@ -153,6 +161,19 @@ export default function Dashboard() {
     }));
   }, [summary, bundle]);
 
+  const opportunitiesByStageData = useMemo(() => {
+    if (!summary) return [];
+    return summary.opportunitiesByStageData.map((x) => ({
+      ...x,
+      name: getStageLabelFromCatalog(x.name, bundle),
+    }));
+  }, [summary, bundle]);
+
+  const leadsByPeriodData = summary?.contactsByPeriod ?? [];
+  const conversionData = summary?.conversionByMonth ?? [];
+  const activitiesByTypeData = summary?.activitiesByTypeData ?? [];
+  const followUpsData = summary?.followUpsByMonth ?? [];
+
   const performanceByAdvisor = summary?.performanceByAdvisor ?? [];
   const salesByMonthData = summary?.salesByMonth ?? [];
 
@@ -170,6 +191,50 @@ export default function Dashboard() {
   const advisorChartEmpty =
     !summaryLoading &&
     (!summary || !chartHasAnyValue(performanceByAdvisor, ['leads', 'ventas']));
+
+  const handleExport = useCallback(
+    (format: 'PDF' | 'Excel' | 'CSV') => {
+      if (summaryLoading || !summary) {
+        toast.error('Espera a que carguen las métricas o elige un periodo válido.');
+        return;
+      }
+      const payload: ReportsExportInput = {
+        documentTitle: 'Resumen dashboard',
+        range: summary.range,
+        meta: {
+          advisorLabel: 'Todos los asesores',
+          sourceLabel: 'Todas las fuentes',
+        },
+        kpis: summary.kpis,
+        contactsByPeriod: leadsByPeriodData,
+        contactsBySource: leadsBySourceData,
+        conversionByMonth: conversionData,
+        performanceByAdvisor,
+        salesByMonth: salesByMonthData,
+        opportunitiesByStage: opportunitiesByStageData,
+        activitiesByType: activitiesByTypeData,
+        followUpsByMonth: followUpsData,
+      };
+      try {
+        downloadReport(format, payload, dashboardExportBaseFilename());
+        toast.success(`Archivo ${format} generado`);
+      } catch {
+        toast.error('No se pudo generar el archivo. Intenta de nuevo.');
+      }
+    },
+    [
+      summaryLoading,
+      summary,
+      leadsByPeriodData,
+      leadsBySourceData,
+      conversionData,
+      performanceByAdvisor,
+      salesByMonthData,
+      opportunitiesByStageData,
+      activitiesByTypeData,
+      followUpsData,
+    ],
+  );
 
   return (
     <div className="space-y-6">
@@ -203,10 +268,35 @@ export default function Dashboard() {
           )}
         </div>
         {hasPermission('dashboard.exportar') && (
-          <Button size="sm" className="bg-[#13944C] text-white hover:bg-[#0f7a3d]">
-            <FileText className="size-4" />
-            Exportar
-          </Button>
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={summaryLoading || !summary}
+              onClick={() => handleExport('PDF')}
+            >
+              <FileText className="mr-1.5 size-4" />
+              PDF
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={summaryLoading || !summary}
+              onClick={() => handleExport('Excel')}
+            >
+              <FileSpreadsheet className="mr-1.5 size-4" />
+              Excel
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={summaryLoading || !summary}
+              onClick={() => handleExport('CSV')}
+            >
+              <FileDown className="mr-1.5 size-4" />
+              CSV
+            </Button>
+          </>
         )}
       </PageHeader>
 

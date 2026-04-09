@@ -276,6 +276,7 @@ export default function EmpresasPage() {
   const [importCommitRowHint, setImportCommitRowHint] = useState<
     string | undefined
   >(undefined);
+  const [importPreviewInProgress, setImportPreviewInProgress] = useState(false);
   const [importPreviewOpen, setImportPreviewOpen] = useState(false);
   const [importPreviewData, setImportPreviewData] =
     useState<CompanyImportPreviewResult | null>(null);
@@ -694,6 +695,7 @@ export default function EmpresasPage() {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
+    setImportPreviewInProgress(true);
     setImportBusy(true);
     try {
       const preview = await previewCompaniesImportCsv(file);
@@ -705,6 +707,7 @@ export default function EmpresasPage() {
         err instanceof Error ? err.message : 'Error al generar vista previa',
       );
     } finally {
+      setImportPreviewInProgress(false);
       setImportBusy(false);
     }
   }
@@ -759,6 +762,12 @@ export default function EmpresasPage() {
   return (
     <div className="space-y-6">
       <ImportInProgressDialog
+        open={importPreviewInProgress}
+        title="Generando vista previa"
+        description="El servidor está leyendo el CSV, validando filas y comprobando empresas en la base de datos. No llama a SUNAT ni a RENIEC en este paso."
+        rowHint="Puede tardar unos segundos si el archivo tiene muchas filas."
+      />
+      <ImportInProgressDialog
         open={importCommitInProgress}
         title="Importando empresas"
         description="El servidor está validando filas, creando registros y puede consultar SUNAT u otras fuentes según los datos del CSV."
@@ -794,10 +803,13 @@ export default function EmpresasPage() {
               ) : null}
             </DialogDescription>
           </DialogHeader>
-          <div className="min-h-0 flex-1 overflow-hidden px-6 py-3">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-6 py-3">
             {importPreviewData && importPreviewData.rows.length > 0 ? (
-              <div className="max-h-[min(58vh,560px)] overflow-auto rounded-md border">
-                <Table className="w-max min-w-full text-sm">
+              <div className="min-h-0 flex-1 overflow-auto rounded-md border">
+                <Table
+                  containerClassName="overflow-visible"
+                  className="w-max min-w-full text-sm"
+                >
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
                       <TableHead className="sticky left-0 z-20 w-12 min-w-12 whitespace-nowrap bg-background px-2 shadow-[2px_0_6px_-4px_rgba(0,0,0,0.25)]">

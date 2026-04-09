@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Post,
+  Req,
   Res,
   UploadedFile,
   UseGuards,
@@ -19,6 +20,8 @@ const importFileOpts = {
   storage: memoryStorage(),
   limits: { fileSize: 6 * 1024 * 1024 },
 };
+
+type AuthedReq = { user: { userId: string } };
 
 @Controller('import-export')
 @UseGuards(PermissionsGuard)
@@ -63,12 +66,15 @@ export class ImportExportController {
   @Post('contacts/import')
   @RequirePermissions('contactos.crear')
   @UseInterceptors(FileInterceptor('file', importFileOpts))
-  async contactsImport(@UploadedFile() file?: Express.Multer.File) {
+  async contactsImport(
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Req() req: AuthedReq,
+  ) {
     if (!file?.buffer?.length) {
       throw new BadRequestException('Adjunta un archivo CSV (.csv)');
     }
     const text = file.buffer.toString('utf-8');
-    return this.importExportService.importContacts(text);
+    return this.importExportService.importContacts(text, req.user.userId);
   }
 
   @Get('companies/template')
@@ -109,12 +115,15 @@ export class ImportExportController {
   @Post('companies/import')
   @RequirePermissions('empresas.crear')
   @UseInterceptors(FileInterceptor('file', importFileOpts))
-  async companiesImport(@UploadedFile() file?: Express.Multer.File) {
+  async companiesImport(
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Req() req: AuthedReq,
+  ) {
     if (!file?.buffer?.length) {
       throw new BadRequestException('Adjunta un archivo CSV (.csv)');
     }
     const text = file.buffer.toString('utf-8');
-    return this.importExportService.importCompanies(text);
+    return this.importExportService.importCompanies(text, req.user.userId);
   }
 
   @Get('opportunities/template')
@@ -144,11 +153,14 @@ export class ImportExportController {
   @Post('opportunities/import')
   @RequirePermissions('oportunidades.crear')
   @UseInterceptors(FileInterceptor('file', importFileOpts))
-  async opportunitiesImport(@UploadedFile() file?: Express.Multer.File) {
+  async opportunitiesImport(
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Req() req: AuthedReq,
+  ) {
     if (!file?.buffer?.length) {
       throw new BadRequestException('Adjunta un archivo CSV (.csv)');
     }
     const text = file.buffer.toString('utf-8');
-    return this.importExportService.importOpportunities(text);
+    return this.importExportService.importOpportunities(text, req.user.userId);
   }
 }

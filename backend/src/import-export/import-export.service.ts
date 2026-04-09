@@ -14,7 +14,7 @@ import {
   formatImportedPersonName,
 } from '../common/import-display-name.util';
 import { inferCompanyDomainFromContactEmail } from '../common/email-domain.util';
-import type { Prisma } from '../generated/prisma';
+import { Prisma } from '../generated/prisma';
 import type { CreateContactDto } from '../contacts/dto/create-contact.dto';
 import type { CreateCompanyDto } from '../companies/dto/create-company.dto';
 import type { CreateOpportunityDto } from '../opportunities/dto/create-opportunity.dto';
@@ -708,6 +708,36 @@ export class ImportExportService {
     return UTF8_BOM + lines.join('\n');
   }
 
+  /**
+   * Mapa RUC normalizado (solo dígitos) → empresa.
+   * Una sola consulta index-friendly vía regexp_replace en PostgreSQL.
+   */
+  private async companiesByNormalizedRucDigitsMap(
+    digitsList: string[],
+  ): Promise<Map<string, { id: string; name: string; ruc: string | null }>> {
+    const uniq = [...new Set(digitsList.filter((d) => d.length > 0))];
+    const out = new Map<
+      string,
+      { id: string; name: string; ruc: string | null }
+    >();
+    if (uniq.length === 0) return out;
+    const found = await this.prisma.$queryRaw<
+      { id: string; name: string; ruc: string | null }[]
+    >(Prisma.sql`
+      SELECT id, name, ruc
+      FROM "Company"
+      WHERE "ruc" IS NOT NULL
+        AND regexp_replace("ruc", '[^0-9]', '', 'g') IN (${Prisma.join(
+          uniq.map((d) => Prisma.sql`${d}`),
+        )})
+    `);
+    for (const row of found) {
+      const k = (row.ruc ?? '').replace(/\D/g, '');
+      if (k && !out.has(k)) out.set(k, row);
+    }
+    return out;
+  }
+
   /** Busca empresa por RUC tal cual o solo dígitos (coincide con registros existentes). */
   private async findCompanyByRucInput(rucRaw: string) {
     const trimmed = rucRaw.trim();
@@ -723,17 +753,8 @@ export class ImportExportService {
     });
     if (first) return first;
     if (!digits) return null;
-    const withRuc = await this.prisma.company.findMany({
-      where: { ruc: { not: null } },
-      select: { id: true, name: true, ruc: true },
-      take: 10_000,
-    });
-    for (const row of withRuc) {
-      if (row.ruc && row.ruc.replace(/\D/g, '') === digits) {
-        return row;
-      }
-    }
-    return null;
+    const m = await this.companiesByNormalizedRucDigitsMap([digits]);
+    return m.get(digits) ?? null;
   }
 
   /**
@@ -779,6 +800,126 @@ export class ImportExportService {
       },
       select: { id: true, name: true, ruc: true },
     });
+  }
+
+  private async companiesByFoldedNameMap(
+    names: string[],
+  ): Promise<Map<string, { id: string; name: string; ruc: string | null }>> {
+    const uniq = [...new Set(names.map((n) => n.trim()).filter(Boolean))];
+    const out = new Map<
+      string,
+      { id: string; name: string; ruc: string | null }
+    >();
+    const CHUNK = 40;
+    for (let i = 0; i < uniq.length; i += CHUNK) {
+      const chunk = uniq.slice(i, i + CHUNK);
+      const found = await this.prisma.company.findMany({
+        where: {
+          OR: chunk.flatMap((n) => [
+            { name: { equals: n, mode: 'insensitive' } },
+            { razonSocial: { equals: n, mode: 'insensitive' } },
+          ]),
+        },
+        select: { id: true, name: true, ruc: true, razonSocial: true },
+      });
+      for (const c of found) {
+        const k1 = this.foldContactImportKey(c.name);
+        if (!out.has(k1)) out.set(k1, c);
+        if (c.razonSocial) {
+          const k2 = this.foldContactImportKey(c.razonSocial);
+          if (!out.has(k2)) out.set(k2, c);
+        }
+      }
+    }
+    return out;
+  }
+
+  /**
+   * Misma semántica que `contactAlreadyExistsForImport`, pero precargada para la vista previa.
+   */
+  private async buildCompanyImportPreviewContactExistenceLookup(
+    checks: Array<{
+      companyId: string;
+      nameForExistCheck: string;
+      docProbe?: string;
+    }>,
+  ): Promise<
+    (companyId: string, nameForExistCheck: string, docProbe?: string) => boolean
+  > {
+    const companyIds = [...new Set(checks.map((c) => c.companyId))];
+    const doc8s = new Set<string>();
+    const namesToQuery = new Set<string>();
+    for (const c of checks) {
+      const d = (c.docProbe ?? '').replace(/\D/g, '');
+      if (d.length === 8) doc8s.add(d);
+      const t = c.nameForExistCheck.trim();
+      if (t) namesToQuery.add(t);
+    }
+    const docHits = new Set<string>();
+    const nameHits = new Set<string>();
+    if (companyIds.length > 0 && doc8s.size > 0) {
+      const rows = await this.prisma.contact.findMany({
+        where: {
+          docNumber: { in: [...doc8s] },
+          companies: {
+            some: { isPrimary: true, companyId: { in: companyIds } },
+          },
+        },
+        select: {
+          docNumber: true,
+          name: true,
+          companies: {
+            where: { isPrimary: true },
+            take: 1,
+            select: { companyId: true },
+          },
+        },
+      });
+      for (const r of rows) {
+        const cid = r.companies[0]?.companyId;
+        if (!cid || !r.docNumber) continue;
+        const rd = r.docNumber.replace(/\D/g, '');
+        if (rd.length === 8) docHits.add(`${cid}\t${rd}`);
+      }
+    }
+    if (companyIds.length > 0 && namesToQuery.size > 0) {
+      const nameArr = [...namesToQuery];
+      const CHUNK = 25;
+      for (let i = 0; i < nameArr.length; i += CHUNK) {
+        const chunk = nameArr.slice(i, i + CHUNK);
+        const rows = await this.prisma.contact.findMany({
+          where: {
+            companies: {
+              some: { isPrimary: true, companyId: { in: companyIds } },
+            },
+            OR: chunk.map((n) => ({
+              name: { equals: n, mode: 'insensitive' },
+            })),
+          },
+          select: {
+            name: true,
+            companies: {
+              where: { isPrimary: true },
+              take: 1,
+              select: { companyId: true },
+            },
+          },
+        });
+        for (const r of rows) {
+          const cid = r.companies[0]?.companyId;
+          if (!cid) continue;
+          nameHits.add(`${cid}\t${this.foldContactImportKey(r.name)}`);
+        }
+      }
+    }
+    return (companyId: string, nameForExistCheck: string, docProbe?: string) => {
+      const d = (docProbe ?? '').replace(/\D/g, '');
+      if (d.length === 8 && docHits.has(`${companyId}\t${d}`)) return true;
+      const t = nameForExistCheck.trim();
+      if (t && nameHits.has(`${companyId}\t${this.foldContactImportKey(t)}`))
+        return true;
+      return false;
+    };
   }
 
   /** Clave estable para deduplicar contacto+empresa en import (nombre de contacto usa fold aparte). */
@@ -854,6 +995,15 @@ export class ImportExportService {
       select: { id: true },
     });
     return !!hit;
+  }
+
+  /** Si la celda de asesor va vacía, asigna al usuario que ejecuta el import. */
+  private assigneeFromCsvOrImporter(
+    csvCell: string | undefined,
+    importingUserId: string,
+  ): string {
+    const t = csvCell?.trim();
+    return t || importingUserId;
   }
 
   /**
@@ -1317,7 +1467,10 @@ export class ImportExportService {
     };
   }
 
-  async importContacts(csvText: string): Promise<BulkImportResultDto> {
+  async importContacts(
+    csvText: string,
+    importingUserId: string,
+  ): Promise<BulkImportResultDto> {
     const rows = parseCsv(csvText);
     if (rows.length < 2) {
       throw new BadRequestException(
@@ -1430,6 +1583,10 @@ export class ImportExportService {
       const assignedRow =
         rowGet(row, headerIndex, ['asignado_a', 'assignedto', 'usuario_id']) ||
         undefined;
+      const assignedTo = this.assigneeFromCsvOrImporter(
+        assignedRow,
+        importingUserId,
+      );
 
       const merged = await this.enrichContactFromFactilizaByDocument({
         nameFromCsv: nombreCsv,
@@ -1464,7 +1621,7 @@ export class ImportExportService {
           contactFuente: fuente,
           contactEtapa: etapaRow,
           contactEstimatedValue: estimatedValue,
-          contactAssignedTo: assignedRow,
+          contactAssignedTo: assignedTo,
           contactClienteRecuperado: clienteRecNorm,
         });
         if (!resolved.ok) {
@@ -1530,7 +1687,7 @@ export class ImportExportService {
         cargo: rowGet(row, headerIndex, ['cargo']) || undefined,
         etapa: etapaRow,
         estimatedValue,
-        assignedTo: assignedRow,
+        assignedTo,
         docType: merged.docType,
         docNumber: merged.docNumber,
         departamento: merged.departamento,
@@ -1669,7 +1826,8 @@ export class ImportExportService {
         'El archivo CSV debe incluir encabezados y al menos una fila de datos',
       );
     }
-    const headerIndex = buildHeaderIndex(rows[0]!);
+    const headerRow = rows[0]!;
+    const headerIndex = buildHeaderIndex(headerRow);
     const dataRows = rows.length - 1;
     if (dataRows > MAX_COMPANY_IMPORT_ROWS) {
       throw new BadRequestException(
@@ -1677,9 +1835,28 @@ export class ImportExportService {
       );
     }
     const stagesCompanies = await this.crmConfig.listEnabledStagesForImport();
-    const out: CompanyImportPreviewRowDto[] = [];
-    const fileCompanyContactDup = new Map<string, number>();
     let skipped = 0;
+
+    type PreviewSeg =
+      | { kind: 'row'; row: CompanyImportPreviewRowDto }
+      | {
+          kind: 'work';
+          excelRow: number;
+          csvColumns: Record<string, string>;
+          effectiveCompanyName: string;
+          razonRowPreview: string;
+          rucRaw: string;
+          rucDigits: string;
+          facturacionEstimada: number;
+          etapaSlug: string;
+          puedeContacto: boolean;
+          contactoNombreCsv: string;
+          contactoDocTipo: string;
+          contactoDocNum: string;
+          contactoCorreoPreview: string;
+        };
+
+    const segments: PreviewSeg[] = [];
 
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i]!;
@@ -1689,7 +1866,7 @@ export class ImportExportService {
         continue;
       }
 
-      const csvColumns = this.buildCompanyImportPreviewCsvColumns(rows[0]!, row);
+      const csvColumns = this.buildCompanyImportPreviewCsvColumns(headerRow, row);
 
       const nombreEmpresa = rowGet(row, headerIndex, ['nombre', 'name']);
       const razonRowPreview = rowGet(
@@ -1708,6 +1885,7 @@ export class ImportExportService {
           ? facturacionParsed
           : 0;
       const rucRaw = rowGet(row, headerIndex, ['ruc']).trim();
+      const rucDigits = rucRaw.replace(/\D/g, '');
       const nombreEmpresaTrim = nombreEmpresa.trim();
       const effectiveCompanyName = this.companyImportEffectiveName(
         nombreEmpresaTrim,
@@ -1715,17 +1893,20 @@ export class ImportExportService {
       );
 
       const pushErr = (error: string) => {
-        out.push({
-          row: excelRow,
-          empresaNombre: effectiveCompanyName,
-          empresaRuc: rucRaw,
-          empresaResumen: '—',
-          contactoVista: '—',
-          etapa: rowGet(row, headerIndex, ['etapa', 'stage']) || 'lead',
-          facturacionEstimada,
-          ok: false,
-          error,
-          csvColumns,
+        segments.push({
+          kind: 'row',
+          row: {
+            row: excelRow,
+            empresaNombre: effectiveCompanyName,
+            empresaRuc: rucRaw,
+            empresaResumen: '—',
+            contactoVista: '—',
+            etapa: rowGet(row, headerIndex, ['etapa', 'stage']) || 'lead',
+            facturacionEstimada,
+            ok: false,
+            error,
+            csvColumns,
+          },
         });
       };
       if (!effectiveCompanyName && !rucRaw) {
@@ -1750,48 +1931,6 @@ export class ImportExportService {
         continue;
       }
       const etapaSlug = etapaResolved.slug;
-
-      const existingRuc = rucRaw
-        ? await this.findCompanyByRucInput(rucRaw)
-        : null;
-      const existingName =
-        existingRuc || !effectiveCompanyName
-          ? null
-          : await this.findCompanyByNameInsensitive(effectiveCompanyName);
-
-      let empresaResumen: string;
-      let companyId: string | null = null;
-      let companyKeyForDup: string;
-
-      if (existingRuc) {
-        companyId = existingRuc.id;
-        empresaResumen = `Existente (RUC): ${existingRuc.name}`;
-        companyKeyForDup = existingRuc.id;
-      } else if (existingName) {
-        companyId = existingName.id;
-        empresaResumen = `Existente (nombre): ${existingName.name}`;
-        companyKeyForDup = existingName.id;
-      } else {
-        const rd = rucRaw.replace(/\D/g, '');
-        const provisionalName =
-          effectiveCompanyName || `Empresa RUC ${rd || rucRaw}`;
-        companyKeyForDup = `__new__:${rd || 'sin-ruc'}:${this.foldContactImportKey(
-          effectiveCompanyName || provisionalName,
-        )}`;
-        const omitirSunatPreview = this.companyImportHasUsableIdentityFields(
-          effectiveCompanyName,
-          razonRowPreview || undefined,
-        );
-        /** Alta nueva: SUNAT solo si no hay nombre/razón útiles en el CSV. */
-        empresaResumen = rucRaw
-          ? omitirSunatPreview
-            ? (effectiveCompanyName &&
-                !this.isCompanyImportPlaceholderName(effectiveCompanyName)
-                ? effectiveCompanyName
-                : razonRowPreview) || provisionalName
-            : `${rd || rucRaw.trim()} (SUNAT)`
-          : provisionalName;
-      }
 
       const contactoNombreCsv = rowGet(row, headerIndex, [
         'contacto_nombre',
@@ -1820,87 +1959,196 @@ export class ImportExportService {
         hasDocForFactiliza ||
         puedeContactoDesdeCorreoSolo;
 
-      if (!puedeNombreDoc) {
+      segments.push({
+        kind: 'work',
+        excelRow,
+        csvColumns,
+        effectiveCompanyName,
+        razonRowPreview,
+        rucRaw,
+        rucDigits,
+        facturacionEstimada,
+        etapaSlug,
+        puedeContacto: puedeNombreDoc,
+        contactoNombreCsv,
+        contactoDocTipo,
+        contactoDocNum,
+        contactoCorreoPreview,
+      });
+    }
+
+    const workItems = segments.filter((s): s is Extract<PreviewSeg, { kind: 'work' }> => s.kind === 'work');
+    const uniqRucDigits = [
+      ...new Set(
+        workItems.map((w) => w.rucDigits).filter((d) => d.length > 0),
+      ),
+    ];
+    const uniqNames = [
+      ...new Set(
+        workItems
+          .map((w) => w.effectiveCompanyName.trim())
+          .filter((n) => n.length > 0),
+      ),
+    ];
+    const [byRucDigits, byNameFold] = await Promise.all([
+      this.companiesByNormalizedRucDigitsMap(uniqRucDigits),
+      this.companiesByFoldedNameMap(uniqNames),
+    ]);
+
+    const out: CompanyImportPreviewRowDto[] = [];
+    const fileCompanyContactDup = new Map<string, number>();
+    const existSuffixes: Array<{
+      at: number;
+      companyId: string;
+      nameForExistCheck: string;
+      docProbe?: string;
+    }> = [];
+
+    for (const seg of segments) {
+      if (seg.kind === 'row') {
+        out.push(seg.row);
+        continue;
+      }
+      const w = seg;
+      const existingRuc =
+        w.rucDigits.length > 0 ? (byRucDigits.get(w.rucDigits) ?? null) : null;
+      const existingName =
+        existingRuc || !w.effectiveCompanyName
+          ? null
+          : (byNameFold.get(this.foldContactImportKey(w.effectiveCompanyName)) ??
+            null);
+
+      let empresaResumen: string;
+      let companyId: string | null = null;
+      let companyKeyForDup: string;
+
+      if (existingRuc) {
+        companyId = existingRuc.id;
+        empresaResumen = `Existente (RUC): ${existingRuc.name}`;
+        companyKeyForDup = existingRuc.id;
+      } else if (existingName) {
+        companyId = existingName.id;
+        empresaResumen = `Existente (nombre): ${existingName.name}`;
+        companyKeyForDup = existingName.id;
+      } else {
+        const rd = w.rucDigits;
+        const provisionalName =
+          w.effectiveCompanyName || `Empresa RUC ${rd || w.rucRaw}`;
+        companyKeyForDup = `__new__:${rd || 'sin-ruc'}:${this.foldContactImportKey(
+          w.effectiveCompanyName || provisionalName,
+        )}`;
+        const omitirSunatPreview = this.companyImportHasUsableIdentityFields(
+          w.effectiveCompanyName,
+          w.razonRowPreview || undefined,
+        );
+        empresaResumen = w.rucRaw
+          ? omitirSunatPreview
+            ? (w.effectiveCompanyName &&
+                !this.isCompanyImportPlaceholderName(w.effectiveCompanyName)
+                ? w.effectiveCompanyName
+                : w.razonRowPreview) || provisionalName
+            : `${rd || w.rucRaw.trim()} (SUNAT)`
+          : provisionalName;
+      }
+
+      if (!w.puedeContacto) {
         out.push({
-          row: excelRow,
-          empresaNombre: effectiveCompanyName,
-          empresaRuc: rucRaw,
+          row: w.excelRow,
+          empresaNombre: w.effectiveCompanyName,
+          empresaRuc: w.rucRaw,
           empresaResumen,
           contactoVista: '—',
-          etapa: etapaSlug,
-          facturacionEstimada,
+          etapa: w.etapaSlug,
+          facturacionEstimada: w.facturacionEstimada,
           ok: true,
-          csvColumns,
+          csvColumns: w.csvColumns,
         });
         continue;
       }
 
       const surf = this.previewCompanyImportContactSurface({
-        contactoNombreCsv,
-        contactoDocTipo,
-        contactoDocNum,
-        contactoCorreo: contactoCorreoPreview,
+        contactoNombreCsv: w.contactoNombreCsv,
+        contactoDocTipo: w.contactoDocTipo,
+        contactoDocNum: w.contactoDocNum,
+        contactoCorreo: w.contactoCorreoPreview,
       });
       if (surf.error) {
         out.push({
-          row: excelRow,
-          empresaNombre: effectiveCompanyName,
-          empresaRuc: rucRaw,
+          row: w.excelRow,
+          empresaNombre: w.effectiveCompanyName,
+          empresaRuc: w.rucRaw,
           empresaResumen,
           contactoVista: surf.contactoVista || '—',
-          etapa: etapaSlug,
-          facturacionEstimada,
+          etapa: w.etapaSlug,
+          facturacionEstimada: w.facturacionEstimada,
           ok: false,
           error: surf.error,
-          csvColumns,
+          csvColumns: w.csvColumns,
         });
         continue;
       }
 
       const dupRowKey = `${companyKeyForDup}|${this.contactImportRowDedupeKey(
-        surf.nameForExistCheck || contactoNombreCsv,
-        contactoDocNum,
+        surf.nameForExistCheck || w.contactoNombreCsv,
+        w.contactoDocNum,
       )}`;
       const dupFile = fileCompanyContactDup.get(dupRowKey);
       if (dupFile !== undefined) {
         out.push({
-          row: excelRow,
-          empresaNombre: effectiveCompanyName,
-          empresaRuc: rucRaw,
+          row: w.excelRow,
+          empresaNombre: w.effectiveCompanyName,
+          empresaRuc: w.rucRaw,
           empresaResumen,
           contactoVista: surf.contactoVista,
-          etapa: etapaSlug,
-          facturacionEstimada,
+          etapa: w.etapaSlug,
+          facturacionEstimada: w.facturacionEstimada,
           ok: false,
           error: `Duplicado en el archivo respecto a la fila ${dupFile} (misma empresa y mismo contacto).`,
-          csvColumns,
+          csvColumns: w.csvColumns,
         });
         continue;
       }
-      fileCompanyContactDup.set(dupRowKey, excelRow);
-
-      if (companyId) {
-        const exists = await this.contactAlreadyExistsForImport(
-          surf.nameForExistCheck,
-          companyId,
-          surf.docDigits.length === 8 ? surf.docDigits : surf.docStored,
-        );
-        if (exists) {
-          empresaResumen += ' · contacto ya vinculado: se reforzará vínculo/oportunidad al importar';
-        }
-      }
+      fileCompanyContactDup.set(dupRowKey, w.excelRow);
 
       out.push({
-        row: excelRow,
-        empresaNombre: effectiveCompanyName,
-        empresaRuc: rucRaw,
+        row: w.excelRow,
+        empresaNombre: w.effectiveCompanyName,
+        empresaRuc: w.rucRaw,
         empresaResumen,
         contactoVista: surf.contactoVista,
-        etapa: etapaSlug,
-        facturacionEstimada,
+        etapa: w.etapaSlug,
+        facturacionEstimada: w.facturacionEstimada,
         ok: true,
-        csvColumns,
+        csvColumns: w.csvColumns,
       });
+      if (companyId) {
+        existSuffixes.push({
+          at: out.length - 1,
+          companyId,
+          nameForExistCheck: surf.nameForExistCheck,
+          docProbe:
+            surf.docDigits.length === 8 ? surf.docDigits : surf.docStored,
+        });
+      }
+    }
+
+    if (existSuffixes.length > 0) {
+      const lookup = await this.buildCompanyImportPreviewContactExistenceLookup(
+        existSuffixes.map((s) => ({
+          companyId: s.companyId,
+          nameForExistCheck: s.nameForExistCheck,
+          docProbe: s.docProbe,
+        })),
+      );
+      for (const s of existSuffixes) {
+        if (
+          lookup(s.companyId, s.nameForExistCheck, s.docProbe) &&
+          out[s.at]
+        ) {
+          out[s.at]!.empresaResumen +=
+            ' · contacto ya vinculado: se reforzará vínculo/oportunidad al importar';
+        }
+      }
     }
 
     const okCount = out.filter((r) => r.ok).length;
@@ -1992,7 +2240,10 @@ export class ImportExportService {
     };
   }
 
-  async importCompanies(csvText: string): Promise<BulkImportResultDto> {
+  async importCompanies(
+    csvText: string,
+    importingUserId: string,
+  ): Promise<BulkImportResultDto> {
     const rows = parseCsv(csvText);
     if (rows.length < 2) {
       throw new BadRequestException(
@@ -2078,7 +2329,15 @@ export class ImportExportService {
       );
 
       const assignedRow =
-        rowGet(row, headerIndex, ['asignado_a', 'assignedto']) || undefined;
+        rowGet(row, headerIndex, [
+          'asignado_a',
+          'assignedto',
+          'usuario_id',
+        ]) || undefined;
+      const assignedTo = this.assigneeFromCsvOrImporter(
+        assignedRow,
+        importingUserId,
+      );
 
       let companyId: string;
       try {
@@ -2122,7 +2381,7 @@ export class ImportExportService {
               ? { clienteRecuperado: clienteRecNorm }
               : {}),
             etapa: etapaSlug,
-            assignedTo: assignedRow || undefined,
+            assignedTo,
           };
           dto = await this.enrichCompanyDtoFromRuc(dto);
           const createdCo = await this.companiesService.create(dto);
@@ -2239,7 +2498,7 @@ export class ImportExportService {
               title: co?.name?.trim() || 'Oportunidad',
               amount: facturacionEstimada,
               etapa: etapaSlug,
-              assignedTo: assignedRow?.trim() || null,
+              assignedTo,
               expectedCloseDate: expectedClose,
             },
           );
@@ -2256,7 +2515,7 @@ export class ImportExportService {
             cargo: rowGet(row, headerIndex, ['contacto_cargo']) || undefined,
             etapa: etapaSlug,
             estimatedValue: facturacionEstimada,
-            assignedTo: assignedRow || undefined,
+            assignedTo,
             docType: mergedContact.docType,
             docNumber: mergedContact.docNumber,
             departamento: mergedContact.departamento,
@@ -2330,7 +2589,10 @@ export class ImportExportService {
     return UTF8_BOM + lines.join('\n');
   }
 
-  async importOpportunities(csvText: string): Promise<BulkImportResultDto> {
+  async importOpportunities(
+    csvText: string,
+    importingUserId: string,
+  ): Promise<BulkImportResultDto> {
     const rows = parseCsv(csvText);
     if (rows.length < 2) {
       throw new BadRequestException(
@@ -2425,6 +2687,12 @@ export class ImportExportService {
         const p = Number.parseInt(probRaw, 10);
         if (Number.isFinite(p)) probability = p;
       }
+      const assignedCsv =
+        rowGet(row, headerIndex, [
+          'asignado_a',
+          'assignedto',
+          'usuario_id',
+        ]) || undefined;
       const dto: CreateOpportunityDto = {
         title: titulo,
         amount,
@@ -2433,8 +2701,7 @@ export class ImportExportService {
           rowGet(row, headerIndex, ['prioridad', 'priority']) || undefined,
         probability,
         expectedCloseDate: fecha || undefined,
-        assignedTo:
-          rowGet(row, headerIndex, ['asignado_a', 'assignedto']) || undefined,
+        assignedTo: this.assigneeFromCsvOrImporter(assignedCsv, importingUserId),
         contactId,
         companyId: resolvedCompanyId,
       };
