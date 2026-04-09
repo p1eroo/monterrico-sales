@@ -1037,9 +1037,9 @@ export class ImportExportService {
     }
     const headerIndex = buildHeaderIndex(rows[0]!);
     const dataRows = rows.length - 1;
-    if (dataRows > MAX_COMPANY_IMPORT_ROWS) {
+    if (dataRows > MAX_IMPORT_ROWS) {
       throw new BadRequestException(
-        `Máximo ${MAX_COMPANY_IMPORT_ROWS} filas de datos por archivo`,
+        `Máximo ${MAX_IMPORT_ROWS} filas de datos por archivo`,
       );
     }
     const stages = await this.crmConfig.listEnabledStagesForImport();
@@ -1329,9 +1329,9 @@ export class ImportExportService {
     let created = 0;
     let skipped = 0;
     const dataRows = rows.length - 1;
-    if (dataRows > MAX_COMPANY_IMPORT_ROWS) {
+    if (dataRows > MAX_IMPORT_ROWS) {
       throw new BadRequestException(
-        `Máximo ${MAX_COMPANY_IMPORT_ROWS} filas de datos por archivo`,
+        `Máximo ${MAX_IMPORT_ROWS} filas de datos por archivo`,
       );
     }
 
@@ -1671,9 +1671,9 @@ export class ImportExportService {
     }
     const headerIndex = buildHeaderIndex(rows[0]!);
     const dataRows = rows.length - 1;
-    if (dataRows > MAX_IMPORT_ROWS) {
+    if (dataRows > MAX_COMPANY_IMPORT_ROWS) {
       throw new BadRequestException(
-        `Máximo ${MAX_IMPORT_ROWS} filas de datos por archivo`,
+        `Máximo ${MAX_COMPANY_IMPORT_ROWS} filas de datos por archivo`,
       );
     }
     const stagesCompanies = await this.crmConfig.listEnabledStagesForImport();
@@ -2017,9 +2017,9 @@ export class ImportExportService {
     let created = 0;
     let skipped = 0;
     const dataRows = rows.length - 1;
-    if (dataRows > MAX_IMPORT_ROWS) {
+    if (dataRows > MAX_COMPANY_IMPORT_ROWS) {
       throw new BadRequestException(
-        `Máximo ${MAX_IMPORT_ROWS} filas de datos por archivo`,
+        `Máximo ${MAX_COMPANY_IMPORT_ROWS} filas de datos por archivo`,
       );
     }
 
