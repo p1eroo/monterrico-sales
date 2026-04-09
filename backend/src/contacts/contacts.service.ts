@@ -288,17 +288,13 @@ export class ContactsService {
     const telefono = dto.telefono?.trim() || '-';
     const correo = dto.correo?.trim() ?? '';
     const fuente = dto.fuente?.trim() || 'base';
-
-    if (
-      dto.estimatedValue === undefined ||
-      dto.estimatedValue === null ||
-      Number.isNaN(dto.estimatedValue) ||
-      dto.estimatedValue <= 0
-    ) {
-      throw new BadRequestException(
-        'El valor estimado es obligatorio y debe ser mayor que 0',
-      );
-    }
+    const estimatedValue =
+      dto.estimatedValue !== undefined &&
+      dto.estimatedValue !== null &&
+      Number.isFinite(dto.estimatedValue) &&
+      dto.estimatedValue > 0
+        ? dto.estimatedValue
+        : 0;
 
     const assignedTo = dto.assignedTo?.trim() || null;
     if (assignedTo) {
@@ -358,7 +354,7 @@ export class ContactsService {
             cargo: dto.cargo?.trim() || null,
             etapa,
             assignedTo,
-            estimatedValue: dto.estimatedValue,
+            estimatedValue,
             docType: dto.docType?.trim() || null,
             docNumber: dto.docNumber?.trim() || null,
             departamento: dto.departamento?.trim() || null,

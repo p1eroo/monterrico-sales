@@ -1697,15 +1697,16 @@ export class ImportExportService {
         headerIndex,
         ['razon_social', 'razonsocial'],
       ).trim();
-      const fuente = rowGet(row, headerIndex, ['fuente', 'source']);
       const factRaw = rowGet(row, headerIndex, [
         'facturacion_estimada',
         'facturacion',
         'facturación_estimada',
       ]);
-      const facturacionEstimada = Number.parseFloat(
-        factRaw.replace(',', '.'),
-      );
+      const facturacionParsed = Number.parseFloat(factRaw.replace(',', '.'));
+      const facturacionEstimada =
+        Number.isFinite(facturacionParsed) && facturacionParsed > 0
+          ? facturacionParsed
+          : 0;
       const rucRaw = rowGet(row, headerIndex, ['ruc']).trim();
       const nombreEmpresaTrim = nombreEmpresa.trim();
       const effectiveCompanyName = this.companyImportEffectiveName(
@@ -1721,28 +1722,14 @@ export class ImportExportService {
           empresaResumen: '—',
           contactoVista: '—',
           etapa: rowGet(row, headerIndex, ['etapa', 'stage']) || 'lead',
-          facturacionEstimada: Number.isFinite(facturacionEstimada)
-            ? facturacionEstimada
-            : 0,
+          facturacionEstimada,
           ok: false,
           error,
           csvColumns,
         });
       };
-
-      if (!fuente?.trim()) {
-        pushErr('Falta fuente');
-        continue;
-      }
       if (!effectiveCompanyName && !rucRaw) {
         pushErr('Indica nombre, razón social o RUC');
-        continue;
-      }
-      if (
-        !Number.isFinite(facturacionEstimada) ||
-        facturacionEstimada <= 0
-      ) {
-        pushErr('facturacion_estimada debe ser un número mayor que 0');
         continue;
       }
 
@@ -2039,6 +2026,7 @@ export class ImportExportService {
         ['razon_social', 'razonsocial'],
       ).trim();
       const fuente = rowGet(row, headerIndex, ['fuente', 'source']);
+      const normalizedFuente = fuente.trim() || 'base';
       const rucRaw = rowGet(row, headerIndex, ['ruc']).trim();
       const nombreEmpresaTrim = nombreEmpresa.trim();
       const effectiveCompanyName = this.companyImportEffectiveName(
@@ -2050,30 +2038,15 @@ export class ImportExportService {
         'facturacion',
         'facturación_estimada',
       ]);
-      const facturacionEstimada = Number.parseFloat(
-        factRaw.replace(',', '.'),
-      );
-      if (!fuente?.trim()) {
-        errors.push({
-          row: excelRow,
-          message: 'Falta fuente',
-        });
-        continue;
-      }
+      const facturacionParsed = Number.parseFloat(factRaw.replace(',', '.'));
+      const facturacionEstimada =
+        Number.isFinite(facturacionParsed) && facturacionParsed > 0
+          ? facturacionParsed
+          : 0;
       if (!effectiveCompanyName && !rucRaw) {
         errors.push({
           row: excelRow,
           message: 'Indica nombre, razón social o RUC',
-        });
-        continue;
-      }
-      if (
-        !Number.isFinite(facturacionEstimada) ||
-        facturacionEstimada <= 0
-      ) {
-        errors.push({
-          row: excelRow,
-          message: 'facturacion_estimada debe ser un número mayor que 0',
         });
         continue;
       }
@@ -2144,7 +2117,7 @@ export class ImportExportService {
               rowGet(row, headerIndex, ['departamento']) || undefined,
             direccion: rowGet(row, headerIndex, ['direccion']) || undefined,
             facturacionEstimada,
-            fuente,
+            fuente: normalizedFuente,
             ...(clienteRecNorm
               ? { clienteRecuperado: clienteRecNorm }
               : {}),
@@ -2199,7 +2172,7 @@ export class ImportExportService {
 
       const contactoTel =
         this.readCompanyContactPhoneImportField(row, headerIndex) || '-';
-      const contactFuente = fuente.trim();
+      const contactFuente = normalizedFuente;
 
       const merged = await this.enrichContactFromFactilizaByDocument({
         nameFromCsv: contactoNombreCsv,

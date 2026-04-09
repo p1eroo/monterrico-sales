@@ -152,21 +152,15 @@ export class CompaniesService {
       throw new BadRequestException('El nombre de la empresa es obligatorio');
     }
 
-    if (
-      dto.facturacionEstimada === undefined ||
-      dto.facturacionEstimada === null ||
-      Number.isNaN(dto.facturacionEstimada) ||
-      dto.facturacionEstimada <= 0
-    ) {
-      throw new BadRequestException(
-        'La facturación estimada es obligatoria y debe ser mayor que 0',
-      );
-    }
+    const facturacionEstimada =
+      dto.facturacionEstimada !== undefined &&
+      dto.facturacionEstimada !== null &&
+      Number.isFinite(dto.facturacionEstimada) &&
+      dto.facturacionEstimada > 0
+        ? dto.facturacionEstimada
+        : 0;
 
-    const fuente = dto.fuente?.trim();
-    if (!fuente) {
-      throw new BadRequestException('La fuente es obligatoria');
-    }
+    const fuente = dto.fuente?.trim() || 'base';
 
     const etapa = dto.etapa?.trim() || 'lead';
     const assignedTo = dto.assignedTo?.trim() || null;
@@ -215,7 +209,7 @@ export class CompaniesService {
         provincia: dto.provincia?.trim() || null,
         departamento: dto.departamento?.trim() || null,
         direccion: dto.direccion?.trim() || null,
-        facturacionEstimada: dto.facturacionEstimada,
+        facturacionEstimada,
         fuente,
         clienteRecuperado: dto.clienteRecuperado?.trim() || null,
         etapa,
