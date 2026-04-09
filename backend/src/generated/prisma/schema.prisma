@@ -58,6 +58,7 @@ model User {
   roleId                     String
   role                       Role                        @relation(fields: [roleId], references: [id])
   accounts                   Account[]
+  sessionVersion             Int                         @default(1)
   phone                      String?
   avatar                     String?
   status                     String                      @default("activo")

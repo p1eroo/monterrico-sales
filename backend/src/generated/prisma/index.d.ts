@@ -7946,14 +7946,25 @@ export namespace Prisma {
 
   export type AggregateUser = {
     _count: UserCountAggregateOutputType | null
+    _avg: UserAvgAggregateOutputType | null
+    _sum: UserSumAggregateOutputType | null
     _min: UserMinAggregateOutputType | null
     _max: UserMaxAggregateOutputType | null
+  }
+
+  export type UserAvgAggregateOutputType = {
+    sessionVersion: number | null
+  }
+
+  export type UserSumAggregateOutputType = {
+    sessionVersion: number | null
   }
 
   export type UserMinAggregateOutputType = {
     id: string | null
     name: string | null
     roleId: string | null
+    sessionVersion: number | null
     phone: string | null
     avatar: string | null
     status: string | null
@@ -7967,6 +7978,7 @@ export namespace Prisma {
     id: string | null
     name: string | null
     roleId: string | null
+    sessionVersion: number | null
     phone: string | null
     avatar: string | null
     status: string | null
@@ -7980,6 +7992,7 @@ export namespace Prisma {
     id: number
     name: number
     roleId: number
+    sessionVersion: number
     phone: number
     avatar: number
     status: number
@@ -7991,10 +8004,19 @@ export namespace Prisma {
   }
 
 
+  export type UserAvgAggregateInputType = {
+    sessionVersion?: true
+  }
+
+  export type UserSumAggregateInputType = {
+    sessionVersion?: true
+  }
+
   export type UserMinAggregateInputType = {
     id?: true
     name?: true
     roleId?: true
+    sessionVersion?: true
     phone?: true
     avatar?: true
     status?: true
@@ -8008,6 +8030,7 @@ export namespace Prisma {
     id?: true
     name?: true
     roleId?: true
+    sessionVersion?: true
     phone?: true
     avatar?: true
     status?: true
@@ -8021,6 +8044,7 @@ export namespace Prisma {
     id?: true
     name?: true
     roleId?: true
+    sessionVersion?: true
     phone?: true
     avatar?: true
     status?: true
@@ -8069,6 +8093,18 @@ export namespace Prisma {
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
      * 
+     * Select which fields to average
+    **/
+    _avg?: UserAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: UserSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
      * Select which fields to find the minimum value
     **/
     _min?: UserMinAggregateInputType
@@ -8099,6 +8135,8 @@ export namespace Prisma {
     take?: number
     skip?: number
     _count?: UserCountAggregateInputType | true
+    _avg?: UserAvgAggregateInputType
+    _sum?: UserSumAggregateInputType
     _min?: UserMinAggregateInputType
     _max?: UserMaxAggregateInputType
   }
@@ -8107,6 +8145,7 @@ export namespace Prisma {
     id: string
     name: string
     roleId: string
+    sessionVersion: number
     phone: string | null
     avatar: string | null
     status: string
@@ -8115,6 +8154,8 @@ export namespace Prisma {
     createdAt: Date
     updatedAt: Date
     _count: UserCountAggregateOutputType | null
+    _avg: UserAvgAggregateOutputType | null
+    _sum: UserSumAggregateOutputType | null
     _min: UserMinAggregateOutputType | null
     _max: UserMaxAggregateOutputType | null
   }
@@ -8137,6 +8178,7 @@ export namespace Prisma {
     id?: boolean
     name?: boolean
     roleId?: boolean
+    sessionVersion?: boolean
     phone?: boolean
     avatar?: boolean
     status?: boolean
@@ -8165,6 +8207,7 @@ export namespace Prisma {
     id?: boolean
     name?: boolean
     roleId?: boolean
+    sessionVersion?: boolean
     phone?: boolean
     avatar?: boolean
     status?: boolean
@@ -8179,6 +8222,7 @@ export namespace Prisma {
     id?: boolean
     name?: boolean
     roleId?: boolean
+    sessionVersion?: boolean
     phone?: boolean
     avatar?: boolean
     status?: boolean
@@ -8193,6 +8237,7 @@ export namespace Prisma {
     id?: boolean
     name?: boolean
     roleId?: boolean
+    sessionVersion?: boolean
     phone?: boolean
     avatar?: boolean
     status?: boolean
@@ -8202,7 +8247,7 @@ export namespace Prisma {
     updatedAt?: boolean
   }
 
-  export type UserOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "roleId" | "phone" | "avatar" | "status" | "joinedAt" | "lastActivity" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
+  export type UserOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "roleId" | "sessionVersion" | "phone" | "avatar" | "status" | "joinedAt" | "lastActivity" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
   export type UserInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     role?: boolean | RoleDefaultArgs<ExtArgs>
     accounts?: boolean | User$accountsArgs<ExtArgs>
@@ -8249,6 +8294,7 @@ export namespace Prisma {
       id: string
       name: string
       roleId: string
+      sessionVersion: number
       phone: string | null
       avatar: string | null
       status: string
@@ -8696,6 +8742,7 @@ export namespace Prisma {
     readonly id: FieldRef<"User", 'String'>
     readonly name: FieldRef<"User", 'String'>
     readonly roleId: FieldRef<"User", 'String'>
+    readonly sessionVersion: FieldRef<"User", 'Int'>
     readonly phone: FieldRef<"User", 'String'>
     readonly avatar: FieldRef<"User", 'String'>
     readonly status: FieldRef<"User", 'String'>
@@ -46681,6 +46728,7 @@ export namespace Prisma {
     id: 'id',
     name: 'name',
     roleId: 'roleId',
+    sessionVersion: 'sessionVersion',
     phone: 'phone',
     avatar: 'avatar',
     status: 'status',
@@ -47223,20 +47271,6 @@ export namespace Prisma {
 
 
   /**
-   * Reference to a field of type 'Json'
-   */
-  export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Json'>
-    
-
-
-  /**
-   * Reference to a field of type 'QueryMode'
-   */
-  export type EnumQueryModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QueryMode'>
-    
-
-
-  /**
    * Reference to a field of type 'Int'
    */
   export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int'>
@@ -47247,6 +47281,20 @@ export namespace Prisma {
    * Reference to a field of type 'Int[]'
    */
   export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
+    
+
+
+  /**
+   * Reference to a field of type 'Json'
+   */
+  export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Json'>
+    
+
+
+  /**
+   * Reference to a field of type 'QueryMode'
+   */
+  export type EnumQueryModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QueryMode'>
     
 
 
@@ -47454,6 +47502,7 @@ export namespace Prisma {
     id?: StringFilter<"User"> | string
     name?: StringFilter<"User"> | string
     roleId?: StringFilter<"User"> | string
+    sessionVersion?: IntFilter<"User"> | number
     phone?: StringNullableFilter<"User"> | string | null
     avatar?: StringNullableFilter<"User"> | string | null
     status?: StringFilter<"User"> | string
@@ -47481,6 +47530,7 @@ export namespace Prisma {
     id?: SortOrder
     name?: SortOrder
     roleId?: SortOrder
+    sessionVersion?: SortOrder
     phone?: SortOrderInput | SortOrder
     avatar?: SortOrderInput | SortOrder
     status?: SortOrder
@@ -47511,6 +47561,7 @@ export namespace Prisma {
     NOT?: UserWhereInput | UserWhereInput[]
     name?: StringFilter<"User"> | string
     roleId?: StringFilter<"User"> | string
+    sessionVersion?: IntFilter<"User"> | number
     phone?: StringNullableFilter<"User"> | string | null
     avatar?: StringNullableFilter<"User"> | string | null
     status?: StringFilter<"User"> | string
@@ -47538,6 +47589,7 @@ export namespace Prisma {
     id?: SortOrder
     name?: SortOrder
     roleId?: SortOrder
+    sessionVersion?: SortOrder
     phone?: SortOrderInput | SortOrder
     avatar?: SortOrderInput | SortOrder
     status?: SortOrder
@@ -47546,8 +47598,10 @@ export namespace Prisma {
     createdAt?: SortOrder
     updatedAt?: SortOrder
     _count?: UserCountOrderByAggregateInput
+    _avg?: UserAvgOrderByAggregateInput
     _max?: UserMaxOrderByAggregateInput
     _min?: UserMinOrderByAggregateInput
+    _sum?: UserSumOrderByAggregateInput
   }
 
   export type UserScalarWhereWithAggregatesInput = {
@@ -47557,6 +47611,7 @@ export namespace Prisma {
     id?: StringWithAggregatesFilter<"User"> | string
     name?: StringWithAggregatesFilter<"User"> | string
     roleId?: StringWithAggregatesFilter<"User"> | string
+    sessionVersion?: IntWithAggregatesFilter<"User"> | number
     phone?: StringNullableWithAggregatesFilter<"User"> | string | null
     avatar?: StringNullableWithAggregatesFilter<"User"> | string | null
     status?: StringWithAggregatesFilter<"User"> | string
@@ -50113,6 +50168,7 @@ export namespace Prisma {
   export type UserCreateInput = {
     id?: string
     name: string
+    sessionVersion?: number
     phone?: string | null
     avatar?: string | null
     status?: string
@@ -50140,6 +50196,7 @@ export namespace Prisma {
     id?: string
     name: string
     roleId: string
+    sessionVersion?: number
     phone?: string | null
     avatar?: string | null
     status?: string
@@ -50165,6 +50222,7 @@ export namespace Prisma {
   export type UserUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    sessionVersion?: IntFieldUpdateOperationsInput | number
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
@@ -50192,6 +50250,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     roleId?: StringFieldUpdateOperationsInput | string
+    sessionVersion?: IntFieldUpdateOperationsInput | number
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
@@ -50218,6 +50277,7 @@ export namespace Prisma {
     id?: string
     name: string
     roleId: string
+    sessionVersion?: number
     phone?: string | null
     avatar?: string | null
     status?: string
@@ -50230,6 +50290,7 @@ export namespace Prisma {
   export type UserUpdateManyMutationInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    sessionVersion?: IntFieldUpdateOperationsInput | number
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
@@ -50243,6 +50304,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     roleId?: StringFieldUpdateOperationsInput | string
+    sessionVersion?: IntFieldUpdateOperationsInput | number
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
@@ -52979,6 +53041,17 @@ export namespace Prisma {
     updatedAt?: SortOrder
   }
 
+  export type IntFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel>
+    in?: number[] | ListIntFieldRefInput<$PrismaModel>
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntFilter<$PrismaModel> | number
+  }
+
   export type DateTimeNullableFilter<$PrismaModel = never> = {
     equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
     in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
@@ -53119,6 +53192,7 @@ export namespace Prisma {
     id?: SortOrder
     name?: SortOrder
     roleId?: SortOrder
+    sessionVersion?: SortOrder
     phone?: SortOrder
     avatar?: SortOrder
     status?: SortOrder
@@ -53128,10 +53202,15 @@ export namespace Prisma {
     updatedAt?: SortOrder
   }
 
+  export type UserAvgOrderByAggregateInput = {
+    sessionVersion?: SortOrder
+  }
+
   export type UserMaxOrderByAggregateInput = {
     id?: SortOrder
     name?: SortOrder
     roleId?: SortOrder
+    sessionVersion?: SortOrder
     phone?: SortOrder
     avatar?: SortOrder
     status?: SortOrder
@@ -53145,6 +53224,7 @@ export namespace Prisma {
     id?: SortOrder
     name?: SortOrder
     roleId?: SortOrder
+    sessionVersion?: SortOrder
     phone?: SortOrder
     avatar?: SortOrder
     status?: SortOrder
@@ -53152,6 +53232,26 @@ export namespace Prisma {
     lastActivity?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
+  }
+
+  export type UserSumOrderByAggregateInput = {
+    sessionVersion?: SortOrder
+  }
+
+  export type IntWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel>
+    in?: number[] | ListIntFieldRefInput<$PrismaModel>
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntWithAggregatesFilter<$PrismaModel> | number
+    _count?: NestedIntFilter<$PrismaModel>
+    _avg?: NestedFloatFilter<$PrismaModel>
+    _sum?: NestedIntFilter<$PrismaModel>
+    _min?: NestedIntFilter<$PrismaModel>
+    _max?: NestedIntFilter<$PrismaModel>
   }
 
   export type DateTimeNullableWithAggregatesFilter<$PrismaModel = never> = {
@@ -53409,17 +53509,6 @@ export namespace Prisma {
     _max?: NestedJsonNullableFilter<$PrismaModel>
   }
 
-  export type IntFilter<$PrismaModel = never> = {
-    equals?: number | IntFieldRefInput<$PrismaModel>
-    in?: number[] | ListIntFieldRefInput<$PrismaModel>
-    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
-    lt?: number | IntFieldRefInput<$PrismaModel>
-    lte?: number | IntFieldRefInput<$PrismaModel>
-    gt?: number | IntFieldRefInput<$PrismaModel>
-    gte?: number | IntFieldRefInput<$PrismaModel>
-    not?: NestedIntFilter<$PrismaModel> | number
-  }
-
   export type AiKnowledgeChunkListRelationFilter = {
     every?: AiKnowledgeChunkWhereInput
     some?: AiKnowledgeChunkWhereInput
@@ -53498,22 +53587,6 @@ export namespace Prisma {
     chunkSize?: SortOrder
     overlap?: SortOrder
     chunkCount?: SortOrder
-  }
-
-  export type IntWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: number | IntFieldRefInput<$PrismaModel>
-    in?: number[] | ListIntFieldRefInput<$PrismaModel>
-    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
-    lt?: number | IntFieldRefInput<$PrismaModel>
-    lte?: number | IntFieldRefInput<$PrismaModel>
-    gt?: number | IntFieldRefInput<$PrismaModel>
-    gte?: number | IntFieldRefInput<$PrismaModel>
-    not?: NestedIntWithAggregatesFilter<$PrismaModel> | number
-    _count?: NestedIntFilter<$PrismaModel>
-    _avg?: NestedFloatFilter<$PrismaModel>
-    _sum?: NestedIntFilter<$PrismaModel>
-    _min?: NestedIntFilter<$PrismaModel>
-    _max?: NestedIntFilter<$PrismaModel>
   }
 
   export type AiKnowledgeBaseScalarRelationFilter = {
@@ -55003,6 +55076,14 @@ export namespace Prisma {
     connect?: AuditChangeSetWhereUniqueInput | AuditChangeSetWhereUniqueInput[]
   }
 
+  export type IntFieldUpdateOperationsInput = {
+    set?: number
+    increment?: number
+    decrement?: number
+    multiply?: number
+    divide?: number
+  }
+
   export type NullableDateTimeFieldUpdateOperationsInput = {
     set?: Date | string | null
   }
@@ -55547,14 +55628,6 @@ export namespace Prisma {
     connectOrCreate?: AiKnowledgeChunkCreateOrConnectWithoutKnowledgeBaseInput | AiKnowledgeChunkCreateOrConnectWithoutKnowledgeBaseInput[]
     createMany?: AiKnowledgeChunkCreateManyKnowledgeBaseInputEnvelope
     connect?: AiKnowledgeChunkWhereUniqueInput | AiKnowledgeChunkWhereUniqueInput[]
-  }
-
-  export type IntFieldUpdateOperationsInput = {
-    set?: number
-    increment?: number
-    decrement?: number
-    multiply?: number
-    divide?: number
   }
 
   export type UserUpdateOneRequiredWithoutAiKnowledgeBasesNestedInput = {
@@ -56985,6 +57058,33 @@ export namespace Prisma {
     not?: NestedDateTimeNullableFilter<$PrismaModel> | Date | string | null
   }
 
+  export type NestedIntWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel>
+    in?: number[] | ListIntFieldRefInput<$PrismaModel>
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntWithAggregatesFilter<$PrismaModel> | number
+    _count?: NestedIntFilter<$PrismaModel>
+    _avg?: NestedFloatFilter<$PrismaModel>
+    _sum?: NestedIntFilter<$PrismaModel>
+    _min?: NestedIntFilter<$PrismaModel>
+    _max?: NestedIntFilter<$PrismaModel>
+  }
+
+  export type NestedFloatFilter<$PrismaModel = never> = {
+    equals?: number | FloatFieldRefInput<$PrismaModel>
+    in?: number[] | ListFloatFieldRefInput<$PrismaModel>
+    notIn?: number[] | ListFloatFieldRefInput<$PrismaModel>
+    lt?: number | FloatFieldRefInput<$PrismaModel>
+    lte?: number | FloatFieldRefInput<$PrismaModel>
+    gt?: number | FloatFieldRefInput<$PrismaModel>
+    gte?: number | FloatFieldRefInput<$PrismaModel>
+    not?: NestedFloatFilter<$PrismaModel> | number
+  }
+
   export type NestedDateTimeNullableWithAggregatesFilter<$PrismaModel = never> = {
     equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
     in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
@@ -57020,33 +57120,6 @@ export namespace Prisma {
     gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
-  }
-
-  export type NestedIntWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: number | IntFieldRefInput<$PrismaModel>
-    in?: number[] | ListIntFieldRefInput<$PrismaModel>
-    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
-    lt?: number | IntFieldRefInput<$PrismaModel>
-    lte?: number | IntFieldRefInput<$PrismaModel>
-    gt?: number | IntFieldRefInput<$PrismaModel>
-    gte?: number | IntFieldRefInput<$PrismaModel>
-    not?: NestedIntWithAggregatesFilter<$PrismaModel> | number
-    _count?: NestedIntFilter<$PrismaModel>
-    _avg?: NestedFloatFilter<$PrismaModel>
-    _sum?: NestedIntFilter<$PrismaModel>
-    _min?: NestedIntFilter<$PrismaModel>
-    _max?: NestedIntFilter<$PrismaModel>
-  }
-
-  export type NestedFloatFilter<$PrismaModel = never> = {
-    equals?: number | FloatFieldRefInput<$PrismaModel>
-    in?: number[] | ListFloatFieldRefInput<$PrismaModel>
-    notIn?: number[] | ListFloatFieldRefInput<$PrismaModel>
-    lt?: number | FloatFieldRefInput<$PrismaModel>
-    lte?: number | FloatFieldRefInput<$PrismaModel>
-    gt?: number | FloatFieldRefInput<$PrismaModel>
-    gte?: number | FloatFieldRefInput<$PrismaModel>
-    not?: NestedFloatFilter<$PrismaModel> | number
   }
 
   export type NestedFloatWithAggregatesFilter<$PrismaModel = never> = {
@@ -57088,6 +57161,7 @@ export namespace Prisma {
   export type UserCreateWithoutRoleInput = {
     id?: string
     name: string
+    sessionVersion?: number
     phone?: string | null
     avatar?: string | null
     status?: string
@@ -57113,6 +57187,7 @@ export namespace Prisma {
   export type UserUncheckedCreateWithoutRoleInput = {
     id?: string
     name: string
+    sessionVersion?: number
     phone?: string | null
     avatar?: string | null
     status?: string
@@ -57193,6 +57268,7 @@ export namespace Prisma {
     id?: StringFilter<"User"> | string
     name?: StringFilter<"User"> | string
     roleId?: StringFilter<"User"> | string
+    sessionVersion?: IntFilter<"User"> | number
     phone?: StringNullableFilter<"User"> | string | null
     avatar?: StringNullableFilter<"User"> | string | null
     status?: StringFilter<"User"> | string
@@ -57265,6 +57341,7 @@ export namespace Prisma {
   export type UserCreateWithoutAccountsInput = {
     id?: string
     name: string
+    sessionVersion?: number
     phone?: string | null
     avatar?: string | null
     status?: string
@@ -57291,6 +57368,7 @@ export namespace Prisma {
     id?: string
     name: string
     roleId: string
+    sessionVersion?: number
     phone?: string | null
     avatar?: string | null
     status?: string
@@ -57331,6 +57409,7 @@ export namespace Prisma {
   export type UserUpdateWithoutAccountsInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    sessionVersion?: IntFieldUpdateOperationsInput | number
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
@@ -57357,6 +57436,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     roleId?: StringFieldUpdateOperationsInput | string
+    sessionVersion?: IntFieldUpdateOperationsInput | number
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
@@ -58421,6 +58501,7 @@ export namespace Prisma {
   export type UserCreateWithoutActivityLogsInput = {
     id?: string
     name: string
+    sessionVersion?: number
     phone?: string | null
     avatar?: string | null
     status?: string
@@ -58447,6 +58528,7 @@ export namespace Prisma {
     id?: string
     name: string
     roleId: string
+    sessionVersion?: number
     phone?: string | null
     avatar?: string | null
     status?: string
@@ -58487,6 +58569,7 @@ export namespace Prisma {
   export type UserUpdateWithoutActivityLogsInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    sessionVersion?: IntFieldUpdateOperationsInput | number
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
@@ -58513,6 +58596,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     roleId?: StringFieldUpdateOperationsInput | string
+    sessionVersion?: IntFieldUpdateOperationsInput | number
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
@@ -58537,6 +58621,7 @@ export namespace Prisma {
   export type UserCreateWithoutAuditChangeSetsInput = {
     id?: string
     name: string
+    sessionVersion?: number
     phone?: string | null
     avatar?: string | null
     status?: string
@@ -58563,6 +58648,7 @@ export namespace Prisma {
     id?: string
     name: string
     roleId: string
+    sessionVersion?: number
     phone?: string | null
     avatar?: string | null
     status?: string
@@ -58629,6 +58715,7 @@ export namespace Prisma {
   export type UserUpdateWithoutAuditChangeSetsInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    sessionVersion?: IntFieldUpdateOperationsInput | number
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
@@ -58655,6 +58742,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     roleId?: StringFieldUpdateOperationsInput | string
+    sessionVersion?: IntFieldUpdateOperationsInput | number
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
@@ -58771,6 +58859,7 @@ export namespace Prisma {
   export type UserCreateWithoutAiConversationsInput = {
     id?: string
     name: string
+    sessionVersion?: number
     phone?: string | null
     avatar?: string | null
     status?: string
@@ -58797,6 +58886,7 @@ export namespace Prisma {
     id?: string
     name: string
     roleId: string
+    sessionVersion?: number
     phone?: string | null
     avatar?: string | null
     status?: string
@@ -58863,6 +58953,7 @@ export namespace Prisma {
   export type UserUpdateWithoutAiConversationsInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    sessionVersion?: IntFieldUpdateOperationsInput | number
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
@@ -58889,6 +58980,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     roleId?: StringFieldUpdateOperationsInput | string
+    sessionVersion?: IntFieldUpdateOperationsInput | number
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
@@ -58989,6 +59081,7 @@ export namespace Prisma {
   export type UserCreateWithoutAiKnowledgeBasesInput = {
     id?: string
     name: string
+    sessionVersion?: number
     phone?: string | null
     avatar?: string | null
     status?: string
@@ -59015,6 +59108,7 @@ export namespace Prisma {
     id?: string
     name: string
     roleId: string
+    sessionVersion?: number
     phone?: string | null
     avatar?: string | null
     status?: string
@@ -59079,6 +59173,7 @@ export namespace Prisma {
   export type UserUpdateWithoutAiKnowledgeBasesInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    sessionVersion?: IntFieldUpdateOperationsInput | number
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
@@ -59105,6 +59200,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     roleId?: StringFieldUpdateOperationsInput | string
+    sessionVersion?: IntFieldUpdateOperationsInput | number
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
@@ -59366,6 +59462,7 @@ export namespace Prisma {
   export type UserCreateWithoutCrmSalesGoalInput = {
     id?: string
     name: string
+    sessionVersion?: number
     phone?: string | null
     avatar?: string | null
     status?: string
@@ -59392,6 +59489,7 @@ export namespace Prisma {
     id?: string
     name: string
     roleId: string
+    sessionVersion?: number
     phone?: string | null
     avatar?: string | null
     status?: string
@@ -59432,6 +59530,7 @@ export namespace Prisma {
   export type UserUpdateWithoutCrmSalesGoalInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    sessionVersion?: IntFieldUpdateOperationsInput | number
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
@@ -59458,6 +59557,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     roleId?: StringFieldUpdateOperationsInput | string
+    sessionVersion?: IntFieldUpdateOperationsInput | number
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
@@ -59482,6 +59582,7 @@ export namespace Prisma {
   export type UserCreateWithoutCrmUserMonthlySalesTargetsInput = {
     id?: string
     name: string
+    sessionVersion?: number
     phone?: string | null
     avatar?: string | null
     status?: string
@@ -59508,6 +59609,7 @@ export namespace Prisma {
     id?: string
     name: string
     roleId: string
+    sessionVersion?: number
     phone?: string | null
     avatar?: string | null
     status?: string
@@ -59548,6 +59650,7 @@ export namespace Prisma {
   export type UserUpdateWithoutCrmUserMonthlySalesTargetsInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    sessionVersion?: IntFieldUpdateOperationsInput | number
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
@@ -59574,6 +59677,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     roleId?: StringFieldUpdateOperationsInput | string
+    sessionVersion?: IntFieldUpdateOperationsInput | number
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
@@ -59598,6 +59702,7 @@ export namespace Prisma {
   export type UserCreateWithoutContactsAssignedInput = {
     id?: string
     name: string
+    sessionVersion?: number
     phone?: string | null
     avatar?: string | null
     status?: string
@@ -59624,6 +59729,7 @@ export namespace Prisma {
     id?: string
     name: string
     roleId: string
+    sessionVersion?: number
     phone?: string | null
     avatar?: string | null
     status?: string
@@ -59766,6 +59872,7 @@ export namespace Prisma {
   export type UserUpdateWithoutContactsAssignedInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    sessionVersion?: IntFieldUpdateOperationsInput | number
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
@@ -59792,6 +59899,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     roleId?: StringFieldUpdateOperationsInput | string
+    sessionVersion?: IntFieldUpdateOperationsInput | number
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
@@ -59933,6 +60041,7 @@ export namespace Prisma {
   export type UserCreateWithoutCompaniesAssignedInput = {
     id?: string
     name: string
+    sessionVersion?: number
     phone?: string | null
     avatar?: string | null
     status?: string
@@ -59959,6 +60068,7 @@ export namespace Prisma {
     id?: string
     name: string
     roleId: string
+    sessionVersion?: number
     phone?: string | null
     avatar?: string | null
     status?: string
@@ -60122,6 +60232,7 @@ export namespace Prisma {
   export type UserUpdateWithoutCompaniesAssignedInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    sessionVersion?: IntFieldUpdateOperationsInput | number
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
@@ -60148,6 +60259,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     roleId?: StringFieldUpdateOperationsInput | string
+    sessionVersion?: IntFieldUpdateOperationsInput | number
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
@@ -60442,6 +60554,7 @@ export namespace Prisma {
   export type UserCreateWithoutOpportunitiesAssignedInput = {
     id?: string
     name: string
+    sessionVersion?: number
     phone?: string | null
     avatar?: string | null
     status?: string
@@ -60468,6 +60581,7 @@ export namespace Prisma {
     id?: string
     name: string
     roleId: string
+    sessionVersion?: number
     phone?: string | null
     avatar?: string | null
     status?: string
@@ -60608,6 +60722,7 @@ export namespace Prisma {
   export type UserUpdateWithoutOpportunitiesAssignedInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    sessionVersion?: IntFieldUpdateOperationsInput | number
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
@@ -60634,6 +60749,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     roleId?: StringFieldUpdateOperationsInput | string
+    sessionVersion?: IntFieldUpdateOperationsInput | number
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
@@ -60756,6 +60872,7 @@ export namespace Prisma {
   export type UserCreateWithoutActivitiesAssignedInput = {
     id?: string
     name: string
+    sessionVersion?: number
     phone?: string | null
     avatar?: string | null
     status?: string
@@ -60782,6 +60899,7 @@ export namespace Prisma {
     id?: string
     name: string
     roleId: string
+    sessionVersion?: number
     phone?: string | null
     avatar?: string | null
     status?: string
@@ -60882,6 +61000,7 @@ export namespace Prisma {
   export type UserUpdateWithoutActivitiesAssignedInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    sessionVersion?: IntFieldUpdateOperationsInput | number
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
@@ -60908,6 +61027,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     roleId?: StringFieldUpdateOperationsInput | string
+    sessionVersion?: IntFieldUpdateOperationsInput | number
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
@@ -63004,6 +63124,7 @@ export namespace Prisma {
   export type UserCreateWithoutCampaignsCreatedInput = {
     id?: string
     name: string
+    sessionVersion?: number
     phone?: string | null
     avatar?: string | null
     status?: string
@@ -63030,6 +63151,7 @@ export namespace Prisma {
     id?: string
     name: string
     roleId: string
+    sessionVersion?: number
     phone?: string | null
     avatar?: string | null
     status?: string
@@ -63070,6 +63192,7 @@ export namespace Prisma {
   export type UserUpdateWithoutCampaignsCreatedInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    sessionVersion?: IntFieldUpdateOperationsInput | number
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
@@ -63096,6 +63219,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     roleId?: StringFieldUpdateOperationsInput | string
+    sessionVersion?: IntFieldUpdateOperationsInput | number
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
@@ -63120,6 +63244,7 @@ export namespace Prisma {
   export type UserCreateWithoutCrmFilesUploadedInput = {
     id?: string
     name: string
+    sessionVersion?: number
     phone?: string | null
     avatar?: string | null
     status?: string
@@ -63146,6 +63271,7 @@ export namespace Prisma {
     id?: string
     name: string
     roleId: string
+    sessionVersion?: number
     phone?: string | null
     avatar?: string | null
     status?: string
@@ -63186,6 +63312,7 @@ export namespace Prisma {
   export type UserUpdateWithoutCrmFilesUploadedInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    sessionVersion?: IntFieldUpdateOperationsInput | number
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
@@ -63212,6 +63339,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     roleId?: StringFieldUpdateOperationsInput | string
+    sessionVersion?: IntFieldUpdateOperationsInput | number
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
@@ -63241,6 +63369,7 @@ export namespace Prisma {
   export type UserCreateManyRoleInput = {
     id?: string
     name: string
+    sessionVersion?: number
     phone?: string | null
     avatar?: string | null
     status?: string
@@ -63268,6 +63397,7 @@ export namespace Prisma {
   export type UserUpdateWithoutRoleInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    sessionVersion?: IntFieldUpdateOperationsInput | number
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
@@ -63293,6 +63423,7 @@ export namespace Prisma {
   export type UserUncheckedUpdateWithoutRoleInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    sessionVersion?: IntFieldUpdateOperationsInput | number
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
@@ -63318,6 +63449,7 @@ export namespace Prisma {
   export type UserUncheckedUpdateManyWithoutRoleInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    sessionVersion?: IntFieldUpdateOperationsInput | number
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string

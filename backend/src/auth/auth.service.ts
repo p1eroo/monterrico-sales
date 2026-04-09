@@ -252,6 +252,12 @@ export class AuthService {
       where: { id: credAccount.id },
       data: { passwordHash },
     });
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        sessionVersion: { increment: 1 },
+      },
+    });
 
     return { ok: true, message: 'Contraseña actualizada' };
   }
@@ -334,25 +340,29 @@ export class AuthService {
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
-    await this.prisma.user.update({
+    const user = await this.prisma.user.update({
       where: { id: account.user.id },
-      data: { lastActivity: new Date() },
+      data: {
+        lastActivity: new Date(),
+        sessionVersion: { increment: 1 },
+      },
+      include: { role: true },
     });
 
     await this.activityLogs.record(
-      { userId: account.user.id, userName: account.user.name },
+      { userId: user.id, userName: user.name },
       {
         action: 'login',
         module: 'sistema',
         entityType: 'Usuario',
-        entityId: account.user.id,
-        entityName: account.user.name,
+        entityId: user.id,
+        entityName: user.name,
         description: `Inicio de sesión correcto (${username})`,
         status: 'exito',
       },
     );
 
-    return await this.buildAuthResponse(account.user, account.providerId);
+    return await this.buildAuthResponse(user, account.providerId);
   }
 
   private async buildAuthResponse(
@@ -362,6 +372,7 @@ export class AuthService {
       phone: string | null;
       avatar: string | null;
       roleId: string;
+      sessionVersion: number;
       joinedAt: Date;
       lastActivity: Date | null;
       role: { slug: string; name: string };
@@ -376,6 +387,7 @@ export class AuthService {
       name: user.name,
       role: roleSlug,
       roleId: user.roleId,
+      sessionVersion: user.sessionVersion,
     };
     const accessToken = this.jwtService.sign(payload);
 

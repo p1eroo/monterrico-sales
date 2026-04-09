@@ -13,6 +13,7 @@ export { EmptyState } from './EmptyState';
 export { ErrorBoundary } from './ErrorBoundary';
 export { EntityInfoCard, type InfoField } from './EntityInfoCard';
 export { GoalCard, type GoalPeriod } from './GoalCard';
+export { ImportInProgressDialog, type ImportInProgressDialogProps } from './ImportInProgressDialog';
 export { LinkExistingDialog, type LinkExistingItem } from './LinkExistingDialog';
 export { LinkedCompaniesCard } from './LinkedCompaniesCard';
 export { LinkedContactsCard, type LinkedContact } from './LinkedContactsCard';

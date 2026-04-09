@@ -21,7 +21,11 @@ import {
   emptyNewCompanyForm,
   type NewCompanyData,
 } from '@/lib/newCompanyData';
-import { companyGetByRuc } from '@/lib/companyApi';
+import {
+  companyGetByRuc,
+  companyListPaginated,
+  type ApiCompanyRecord,
+} from '@/lib/companyApi';
 import {
   mapApiCompanyRecordToNewCompanyData,
 } from '@/lib/companyWizardMap';
@@ -52,6 +56,7 @@ const steps = [
   { label: 'Ubicación y Contacto' },
   { label: 'Oportunidad' },
 ];
+const COMPANY_NAME_LOOKUP_DEBOUNCE_MS = 700;
 
 function mergeCompanyForm(defaults?: Partial<NewCompanyData>): NewCompanyData {
   return { ...emptyForm, ...defaults };
@@ -69,6 +74,9 @@ export function NewCompanyWizard({
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<NewCompanyData>(() => mergeCompanyForm(defaultValues));
   const [rucLookupLoading, setRucLookupLoading] = useState(false);
+  const [companyNameLookupLoading, setCompanyNameLookupLoading] = useState(false);
+  const [companyNameSuggestions, setCompanyNameSuggestions] = useState<ApiCompanyRecord[]>([]);
+  const [companyNameLookupQuery, setCompanyNameLookupQuery] = useState('');
   const [existingCompanyId, setExistingCompanyId] = useState<string | null>(null);
   const [loadedRucDigits, setLoadedRucDigits] = useState<string | null>(null);
   const { activeUsers } = useUsers();
@@ -94,6 +102,76 @@ export function NewCompanyWizard({
     return Object.entries(contactSourceLabels).map(([value, label]) => ({ value, label }));
   }, [bundle]);
 
+  function resetCompanyNameLookup() {
+    setCompanyNameLookupLoading(false);
+    setCompanyNameSuggestions([]);
+    setCompanyNameLookupQuery('');
+  }
+
+  function applyCompanyRecord(record: ApiCompanyRecord, successMessage: string) {
+    const mapped = mapApiCompanyRecordToNewCompanyData(record);
+    const nextRuc = (record.ruc ?? '').replace(/\D/g, '').slice(0, 11);
+    setForm((s) => ({
+      ...s,
+      ...mapped,
+      ruc: mapped.ruc || nextRuc || s.ruc,
+    }));
+    setExistingCompanyId(record.id);
+    setLoadedRucDigits(nextRuc || null);
+    resetCompanyNameLookup();
+    toast.success(successMessage);
+  }
+
+  async function searchCompaniesByName(
+    queryRaw: string,
+    opts?: { loadFirstMatch?: boolean; silent?: boolean },
+  ) {
+    const query = queryRaw.trim();
+    if (query.length < 3) {
+      setCompanyNameSuggestions([]);
+      return null;
+    }
+
+    setCompanyNameLookupLoading(true);
+    try {
+      const res = await companyListPaginated({
+        page: 1,
+        limit: 5,
+        search: query,
+      });
+      setCompanyNameSuggestions(res.data);
+      if (opts?.loadFirstMatch) {
+        const first = res.data[0];
+        if (!first) {
+          if (!opts.silent) {
+            toast.error('No se encontraron empresas similares en el sistema');
+          }
+          return null;
+        }
+        applyCompanyRecord(
+          first,
+          'Empresa encontrada: datos cargados desde el sistema',
+        );
+        return first;
+      }
+      if (!opts?.silent && res.data.length === 0) {
+        toast.error('No se encontraron empresas similares en el sistema');
+      }
+      return null;
+    } catch (err) {
+      if (!opts?.silent) {
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : 'No se pudo buscar empresas por nombre o razón social',
+        );
+      }
+      return null;
+    } finally {
+      setCompanyNameLookupLoading(false);
+    }
+  }
+
   async function handleRucLookup(rucValue?: string) {
     const ruc = (rucValue ?? form.ruc).trim().replace(/\D/g, '');
     if (!ruc || ruc.length !== 11) {
@@ -105,16 +183,11 @@ export function NewCompanyWizard({
       let loadedFromCrm = false;
       try {
         const record = await companyGetByRuc(ruc);
-        const mapped = mapApiCompanyRecordToNewCompanyData(record);
-        setForm((s) => ({
-          ...s,
-          ...mapped,
-          ruc: mapped.ruc || ruc,
-        }));
-        setExistingCompanyId(record.id);
-        setLoadedRucDigits(ruc);
+        applyCompanyRecord(
+          record,
+          'Empresa encontrada: datos cargados desde el sistema',
+        );
         loadedFromCrm = true;
-        toast.success('Empresa encontrada: datos cargados desde el sistema');
       } catch (err) {
         const st = (err as Error & { status?: number }).status;
         if (st !== 404) {
@@ -128,6 +201,7 @@ export function NewCompanyWizard({
       if (!loadedFromCrm) {
         setExistingCompanyId(null);
         setLoadedRucDigits(null);
+        resetCompanyNameLookup();
         const data = await factilizaApi.consultarRuc(ruc);
         setForm((s) => ({
           ...s,
@@ -153,9 +227,48 @@ export function NewCompanyWizard({
     setStep(0);
     setExistingCompanyId(null);
     setLoadedRucDigits(null);
+    resetCompanyNameLookup();
     // defaultValues se fija al abrir desde el padre; no incluir en deps para evitar resets por referencia nueva
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  useEffect(() => {
+    if (!open || step !== 0) return;
+    const query = companyNameLookupQuery.trim();
+    if (query.length < 3) {
+      setCompanyNameSuggestions([]);
+      setCompanyNameLookupLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    const t = window.setTimeout(async () => {
+      setCompanyNameLookupLoading(true);
+      try {
+        const res = await companyListPaginated({
+          page: 1,
+          limit: 5,
+          search: query,
+        });
+        if (!cancelled) {
+          setCompanyNameSuggestions(res.data);
+        }
+      } catch {
+        if (!cancelled) {
+          setCompanyNameSuggestions([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setCompanyNameLookupLoading(false);
+        }
+      }
+    }, COMPANY_NAME_LOOKUP_DEBOUNCE_MS);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
+  }, [companyNameLookupQuery, open, step]);
 
   function handleOpenChange(value: boolean) {
     onOpenChange(value);
@@ -164,6 +277,7 @@ export function NewCompanyWizard({
       setForm({ ...emptyForm });
       setExistingCompanyId(null);
       setLoadedRucDigits(null);
+      resetCompanyNameLookup();
     }
   }
 
@@ -299,12 +413,94 @@ export function NewCompanyWizard({
               </div>
               <div className="space-y-2">
                 <Label>Razón social</Label>
-                <Input placeholder="Razón social" value={form.razonSocial} onChange={(e) => set('razonSocial', e.target.value)} />
+                <Input
+                  placeholder="Razón social - Enter para cargar coincidencia"
+                  value={form.razonSocial}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    set('razonSocial', value);
+                    setCompanyNameLookupQuery(value);
+                  }}
+                  onKeyDown={(e) => {
+                    const value = (e.currentTarget as HTMLInputElement).value;
+                    if (e.key === 'Enter' && value.trim().length >= 3) {
+                      e.preventDefault();
+                      void searchCompaniesByName(value, { loadFirstMatch: true });
+                    }
+                  }}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Nombre comercial <span className="text-destructive">*</span></Label>
-                <Input placeholder="Nombre comercial" value={form.nombreComercial} onChange={(e) => set('nombreComercial', e.target.value)} />
+                <Input
+                  placeholder="Nombre comercial - Enter para cargar coincidencia"
+                  value={form.nombreComercial}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    set('nombreComercial', value);
+                    setCompanyNameLookupQuery(value);
+                  }}
+                  onKeyDown={(e) => {
+                    const value = (e.currentTarget as HTMLInputElement).value;
+                    if (e.key === 'Enter' && value.trim().length >= 3) {
+                      e.preventDefault();
+                      void searchCompaniesByName(value, { loadFirstMatch: true });
+                    }
+                  }}
+                />
               </div>
+              {(companyNameLookupLoading ||
+                companyNameSuggestions.length > 0 ||
+                companyNameLookupQuery.trim().length >= 3) && (
+                <div className="col-span-2 rounded-md border bg-muted/20 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium">Coincidencias en el CRM</p>
+                      <p className="text-xs text-muted-foreground">
+                        Escribe al menos 3 caracteres. Pulsa Enter para cargar la primera coincidencia.
+                      </p>
+                    </div>
+                    {companyNameLookupLoading ? (
+                      <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                    ) : null}
+                  </div>
+                  {companyNameSuggestions.length > 0 ? (
+                    <div className="mt-3 space-y-2">
+                      {companyNameSuggestions.map((company) => (
+                        <button
+                          key={company.id}
+                          type="button"
+                          className="flex w-full items-start justify-between rounded-md border bg-background px-3 py-2 text-left transition-colors hover:bg-accent"
+                          onClick={() =>
+                            applyCompanyRecord(
+                              company,
+                              'Empresa encontrada: datos cargados desde el sistema',
+                            )
+                          }
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium">{company.name}</p>
+                            <p className="truncate text-xs text-muted-foreground">
+                              {company.razonSocial?.trim() || 'Sin razón social'}
+                            </p>
+                          </div>
+                          <div className="ml-4 shrink-0 text-right text-xs text-muted-foreground">
+                            <p>{company.ruc?.trim() || 'Sin RUC'}</p>
+                            <p>{company.domain?.trim() || 'Sin dominio'}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                  {!companyNameLookupLoading &&
+                  companyNameLookupQuery.trim().length >= 3 &&
+                  companyNameSuggestions.length === 0 ? (
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      No se encontraron coincidencias para esa búsqueda.
+                    </p>
+                  ) : null}
+                </div>
+              )}
               <div className="space-y-2">
                 <Label>Teléfono</Label>
                 <Input placeholder="+51 999 999 999" value={form.telefono} onChange={(e) => set('telefono', e.target.value)} />

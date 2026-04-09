@@ -14,6 +14,7 @@ import { useCompaniesStore } from '@/store/companiesStore';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { ImportInProgressDialog } from '@/components/shared/ImportInProgressDialog';
 import { CompanyEditDialog, type CompanyEditSavePayload } from '@/components/shared/CompanyEditDialog';
 import { CompanyPreviewSheet } from '@/components/shared/CompanyPreviewSheet';
 import {
@@ -271,6 +272,10 @@ export default function EmpresasPage() {
   const [newEmpresaOpen, setNewEmpresaOpen] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
   const [importBusy, setImportBusy] = useState(false);
+  const [importCommitInProgress, setImportCommitInProgress] = useState(false);
+  const [importCommitRowHint, setImportCommitRowHint] = useState<
+    string | undefined
+  >(undefined);
   const [importPreviewOpen, setImportPreviewOpen] = useState(false);
   const [importPreviewData, setImportPreviewData] =
     useState<CompanyImportPreviewResult | null>(null);
@@ -706,16 +711,21 @@ export default function EmpresasPage() {
 
   async function confirmCompanyImport() {
     const file = pendingImportFile;
+    const preview = importPreviewData;
     if (
       !file ||
-      !importPreviewData ||
-      importPreviewData.okCount === 0 ||
-      importPreviewData.errorCount > 0
+      !preview ||
+      preview.okCount === 0 ||
+      preview.errorCount > 0
     ) {
       closeImportPreview();
       return;
     }
     closeImportPreview();
+    setImportCommitRowHint(
+      `Se enviarán ${preview.okCount} fila(s) válida(s). Las consultas externas pueden alargar el proceso.`,
+    );
+    setImportCommitInProgress(true);
     setImportBusy(true);
     try {
       const r = await uploadImportCsv('companies', file);
@@ -740,12 +750,20 @@ export default function EmpresasPage() {
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error al importar');
     } finally {
+      setImportCommitInProgress(false);
+      setImportCommitRowHint(undefined);
       setImportBusy(false);
     }
   }
 
   return (
     <div className="space-y-6">
+      <ImportInProgressDialog
+        open={importCommitInProgress}
+        title="Importando empresas"
+        description="El servidor está validando filas, creando registros y puede consultar SUNAT u otras fuentes según los datos del CSV."
+        rowHint={importCommitRowHint}
+      />
       <Dialog
         open={importPreviewOpen}
         onOpenChange={(open) => {

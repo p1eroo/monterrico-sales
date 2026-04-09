@@ -25,6 +25,7 @@ export type ContactImportPreviewRow = {
   empresaResumen: string;
   ok: boolean;
   error?: string;
+  csvColumns: Record<string, string>;
 };
 
 export type ContactImportPreviewResult = {

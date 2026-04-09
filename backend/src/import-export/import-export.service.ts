@@ -23,6 +23,7 @@ import { CrmConfigService } from '../crm-config/crm-config.service';
 import { EntitySyncService } from '../sync/entity-sync.service';
 
 const MAX_IMPORT_ROWS = 1500;
+const MAX_COMPANY_IMPORT_ROWS = 5000;
 const UTF8_BOM = '\uFEFF';
 
 export type BulkImportRowError = { row: number; message: string };
@@ -47,6 +48,8 @@ export type ContactImportPreviewRowDto = {
   empresaResumen: string;
   ok: boolean;
   error?: string;
+  /** Encabezado original del CSV → valor de celda (vacío como string vacío). */
+  csvColumns: Record<string, string>;
 };
 
 export type ContactImportPreviewResultDto = {
@@ -82,7 +85,11 @@ export type CompanyImportPreviewResultDto = {
 /** Plantilla / export contactos: sin ids (los genera el sistema). Empresa por nombre + RUC. */
 const CONTACT_HEADERS = [
   'nombre',
-  'telefono',
+  'telefono_1',
+  'telefono_2',
+  'telefono_3',
+  'celular_1',
+  'celular_2',
   'correo',
   'fuente',
   'cargo',
@@ -105,7 +112,11 @@ const COMPANY_HEADERS = [
   'nombre',
   'razon_social',
   'ruc',
-  'telefono',
+  'telefono_1',
+  'telefono_2',
+  'telefono_3',
+  'celular_1',
+  'celular_2',
   'domain',
   'rubro',
   'tipo',
@@ -121,7 +132,11 @@ const COMPANY_HEADERS = [
   'etapa',
   'asignado_a',
   'contacto_nombre',
-  'contacto_telefono',
+  'contacto_telefono_1',
+  'contacto_telefono_2',
+  'contacto_telefono_3',
+  'contacto_celular_1',
+  'contacto_celular_2',
   'contacto_correo',
   'contacto_cargo',
   'contacto_doc_tipo',
@@ -252,6 +267,22 @@ export class ImportExportService {
   }
 
   /**
+   * En import de empresas, `razon_social` puede suplir a `nombre` si este viene vacío.
+   * Si ambos faltan, usa el fallback dado (p. ej. "Empresa RUC ...").
+   */
+  private companyImportEffectiveName(
+    name: string | undefined,
+    razonSocial?: string,
+    fallback?: string,
+  ): string {
+    const n = name?.trim();
+    if (n) return n;
+    const rz = razonSocial?.trim();
+    if (rz) return rz;
+    return fallback?.trim() ?? '';
+  }
+
+  /**
    * Desempate de duplicados en import: si hay DNI de 8 dígitos, la clave es el documento;
    * si no, el nombre normalizado.
    */
@@ -269,6 +300,94 @@ export class ImportExportService {
     if (c) return c;
     const a = api?.trim();
     return a || undefined;
+  }
+
+  private readCsvFields(
+    row: string[],
+    headerIndex: Map<string, number>,
+    headers: string[],
+  ): string[] {
+    return headers
+      .map((header) => rowGet(row, headerIndex, [header]).trim())
+      .filter(Boolean);
+  }
+
+  private joinImportPhoneParts(
+    fixedPhones: string[],
+    mobilePhones: string[],
+  ): string {
+    const uniqueValues = (values: string[]) => {
+      const seen = new Set<string>();
+      const out: string[] = [];
+      for (const value of values) {
+        const trimmed = value.trim();
+        if (!trimmed) continue;
+        const key = trimmed.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push(trimmed);
+      }
+      return out;
+    };
+
+    const fixed = uniqueValues(fixedPhones);
+    const mobile = uniqueValues(mobilePhones);
+
+    if (fixed.length && mobile.length) {
+      return `Tel: ${fixed.join(' / ')} | Cel: ${mobile.join(' / ')}`;
+    }
+    if (mobile.length) {
+      return `Cel: ${mobile.join(' / ')}`;
+    }
+    if (fixed.length) {
+      return fixed.join(' / ');
+    }
+    return '';
+  }
+
+  private readContactPhoneImportField(
+    row: string[],
+    headerIndex: Map<string, number>,
+  ): string {
+    return this.joinImportPhoneParts(
+      this.readCsvFields(row, headerIndex, [
+        'telefono_1',
+        'telefono_2',
+        'telefono_3',
+      ]),
+      this.readCsvFields(row, headerIndex, ['celular_1', 'celular_2']),
+    );
+  }
+
+  private readCompanyPhoneImportField(
+    row: string[],
+    headerIndex: Map<string, number>,
+  ): string {
+    return this.joinImportPhoneParts(
+      this.readCsvFields(row, headerIndex, [
+        'telefono_1',
+        'telefono_2',
+        'telefono_3',
+      ]),
+      this.readCsvFields(row, headerIndex, ['celular_1', 'celular_2']),
+    );
+  }
+
+  private readCompanyContactPhoneImportField(
+    row: string[],
+    headerIndex: Map<string, number>,
+  ): string {
+    return this.joinImportPhoneParts(
+      this.readCsvFields(row, headerIndex, [
+        'contacto_telefono_1',
+        'contacto_telefono_2',
+        'contacto_telefono_3',
+      ]),
+      this.readCsvFields(row, headerIndex, [
+        'contacto_celular_1',
+        'contacto_celular_2',
+      ]),
+    );
   }
 
   /**
@@ -480,7 +599,7 @@ export class ImportExportService {
       return dto;
     }
     if (this.companyImportHasUsableIdentity(dto)) {
-      const n = dto.name?.trim();
+      const n = this.companyImportEffectiveName(dto.name, dto.razonSocial);
       const rz = dto.razonSocial?.trim();
       return {
         ...dto,
@@ -564,6 +683,10 @@ export class ImportExportService {
         stringifyCsvRow([
           c.name,
           c.telefono,
+          '',
+          '',
+          '',
+          '',
           c.correo,
           c.fuente,
           c.cargo ?? '',
@@ -648,7 +771,12 @@ export class ImportExportService {
     const n = nombre.trim();
     if (!n) return null;
     return this.prisma.company.findFirst({
-      where: { name: { equals: n, mode: 'insensitive' } },
+      where: {
+        OR: [
+          { name: { equals: n, mode: 'insensitive' } },
+          { razonSocial: { equals: n, mode: 'insensitive' } },
+        ],
+      },
       select: { id: true, name: true, ruc: true },
     });
   }
@@ -909,9 +1037,9 @@ export class ImportExportService {
     }
     const headerIndex = buildHeaderIndex(rows[0]!);
     const dataRows = rows.length - 1;
-    if (dataRows > MAX_IMPORT_ROWS) {
+    if (dataRows > MAX_COMPANY_IMPORT_ROWS) {
       throw new BadRequestException(
-        `Máximo ${MAX_IMPORT_ROWS} filas de datos por archivo`,
+        `Máximo ${MAX_COMPANY_IMPORT_ROWS} filas de datos por archivo`,
       );
     }
     const stages = await this.crmConfig.listEnabledStagesForImport();
@@ -925,6 +1053,7 @@ export class ImportExportService {
         skipped += 1;
         continue;
       }
+      const csvColumns = this.buildCompanyImportPreviewCsvColumns(rows[0]!, row);
       const nombreRaw = rowGet(row, headerIndex, ['nombre', 'name']);
       const docTypePv = rowGet(row, headerIndex, ['doc_tipo', 'tipodoc']);
       const docNumberPv = rowGet(row, headerIndex, [
@@ -932,11 +1061,7 @@ export class ImportExportService {
         'numerodoc',
       ]);
       const docDigitsPv = docNumberPv.replace(/\D/g, '');
-      const telefonoRaw = rowGet(row, headerIndex, [
-        'telefono',
-        'phone',
-        'teléfono',
-      ]);
+      const telefonoRaw = this.readContactPhoneImportField(row, headerIndex);
       const correoRaw = rowGet(row, headerIndex, ['correo', 'email']);
       const fuenteRaw = rowGet(row, headerIndex, ['fuente', 'source']);
       const nombreCsv = nombreRaw.trim();
@@ -978,6 +1103,7 @@ export class ImportExportService {
           ok: false,
           error:
             'Falta nombre (o doc_numero con DNI de 8 dígitos para completar el nombre vía RENIEC al importar)',
+          csvColumns,
         });
         continue;
       }
@@ -1008,6 +1134,7 @@ export class ImportExportService {
           empresaResumen: empresaPreview,
           ok: false,
           error: 'valor_estimado debe ser un número mayor que 0',
+          csvColumns,
         });
         continue;
       }
@@ -1042,6 +1169,7 @@ export class ImportExportService {
           empresaResumen: empresaPreview,
           ok: false,
           error: etapaResolved.message,
+          csvColumns,
         });
         continue;
       }
@@ -1084,6 +1212,7 @@ export class ImportExportService {
             empresaResumen: empresaPreview,
             ok: false,
             error: resolved.message,
+            csvColumns,
           });
           continue;
         }
@@ -1108,6 +1237,7 @@ export class ImportExportService {
             empresaResumen: empresaPreview,
             ok: false,
             error: 'empresa_id no existe en el sistema',
+            csvColumns,
           });
           continue;
         }
@@ -1131,6 +1261,7 @@ export class ImportExportService {
           empresaResumen,
           ok: false,
           error: `Duplicado en el archivo respecto a la fila ${dupFileRow} (mismo nombre o DNI y misma empresa).`,
+          csvColumns,
         });
         continue;
       }
@@ -1155,6 +1286,7 @@ export class ImportExportService {
           ok: false,
           error:
             'Ya existe un contacto con el mismo nombre o DNI vinculado a esta empresa. Elimina la fila duplicada o corrige los datos.',
+          csvColumns,
         });
         continue;
       }
@@ -1171,6 +1303,7 @@ export class ImportExportService {
         empresaRuc: empresaRucT,
         empresaResumen,
         ok: true,
+        csvColumns,
       });
     }
     const okCount = out.filter((r) => r.ok).length;
@@ -1196,9 +1329,9 @@ export class ImportExportService {
     let created = 0;
     let skipped = 0;
     const dataRows = rows.length - 1;
-    if (dataRows > MAX_IMPORT_ROWS) {
+    if (dataRows > MAX_COMPANY_IMPORT_ROWS) {
       throw new BadRequestException(
-        `Máximo ${MAX_IMPORT_ROWS} filas de datos por archivo`,
+        `Máximo ${MAX_COMPANY_IMPORT_ROWS} filas de datos por archivo`,
       );
     }
 
@@ -1234,11 +1367,7 @@ export class ImportExportService {
         });
         continue;
       }
-      const telefonoRaw = rowGet(row, headerIndex, [
-        'telefono',
-        'phone',
-        'teléfono',
-      ]);
+      const telefonoRaw = this.readContactPhoneImportField(row, headerIndex);
       const correoRaw = rowGet(row, headerIndex, ['correo', 'email']);
       const fuenteRaw = rowGet(row, headerIndex, ['fuente', 'source']);
       const telefono = telefonoRaw.trim() || '-';
@@ -1491,6 +1620,10 @@ export class ImportExportService {
           c.razonSocial ?? '',
           c.ruc ?? '',
           c.telefono ?? '',
+          '',
+          '',
+          '',
+          '',
           c.domain ?? '',
           c.rubro ?? '',
           c.tipo ?? '',
@@ -1507,6 +1640,10 @@ export class ImportExportService {
           c.assignedTo ?? '',
           p?.name ?? '',
           p?.telefono ?? '',
+          '',
+          '',
+          '',
+          '',
           p?.correo ?? '',
           p?.cargo ?? '',
           p?.docType ?? '',
@@ -1571,11 +1708,15 @@ export class ImportExportService {
       );
       const rucRaw = rowGet(row, headerIndex, ['ruc']).trim();
       const nombreEmpresaTrim = nombreEmpresa.trim();
+      const effectiveCompanyName = this.companyImportEffectiveName(
+        nombreEmpresaTrim,
+        razonRowPreview,
+      );
 
       const pushErr = (error: string) => {
         out.push({
           row: excelRow,
-          empresaNombre: nombreEmpresaTrim,
+          empresaNombre: effectiveCompanyName,
           empresaRuc: rucRaw,
           empresaResumen: '—',
           contactoVista: '—',
@@ -1593,8 +1734,8 @@ export class ImportExportService {
         pushErr('Falta fuente');
         continue;
       }
-      if (!nombreEmpresaTrim && !rucRaw) {
-        pushErr('Indica nombre de empresa o RUC');
+      if (!effectiveCompanyName && !rucRaw) {
+        pushErr('Indica nombre, razón social o RUC');
         continue;
       }
       if (
@@ -1627,9 +1768,9 @@ export class ImportExportService {
         ? await this.findCompanyByRucInput(rucRaw)
         : null;
       const existingName =
-        existingRuc || !nombreEmpresaTrim
+        existingRuc || !effectiveCompanyName
           ? null
-          : await this.findCompanyByNameInsensitive(nombreEmpresaTrim);
+          : await this.findCompanyByNameInsensitive(effectiveCompanyName);
 
       let empresaResumen: string;
       let companyId: string | null = null;
@@ -1646,20 +1787,20 @@ export class ImportExportService {
       } else {
         const rd = rucRaw.replace(/\D/g, '');
         const provisionalName =
-          nombreEmpresaTrim || `Empresa RUC ${rd || rucRaw}`;
+          effectiveCompanyName || `Empresa RUC ${rd || rucRaw}`;
         companyKeyForDup = `__new__:${rd || 'sin-ruc'}:${this.foldContactImportKey(
-          nombreEmpresaTrim || provisionalName,
+          effectiveCompanyName || provisionalName,
         )}`;
         const omitirSunatPreview = this.companyImportHasUsableIdentityFields(
-          nombreEmpresaTrim,
+          effectiveCompanyName,
           razonRowPreview || undefined,
         );
         /** Alta nueva: SUNAT solo si no hay nombre/razón útiles en el CSV. */
         empresaResumen = rucRaw
           ? omitirSunatPreview
-            ? (nombreEmpresaTrim &&
-                !this.isCompanyImportPlaceholderName(nombreEmpresaTrim)
-                ? nombreEmpresaTrim
+            ? (effectiveCompanyName &&
+                !this.isCompanyImportPlaceholderName(effectiveCompanyName)
+                ? effectiveCompanyName
                 : razonRowPreview) || provisionalName
             : `${rd || rucRaw.trim()} (SUNAT)`
           : provisionalName;
@@ -1695,7 +1836,7 @@ export class ImportExportService {
       if (!puedeNombreDoc) {
         out.push({
           row: excelRow,
-          empresaNombre: nombreEmpresaTrim,
+          empresaNombre: effectiveCompanyName,
           empresaRuc: rucRaw,
           empresaResumen,
           contactoVista: '—',
@@ -1716,7 +1857,7 @@ export class ImportExportService {
       if (surf.error) {
         out.push({
           row: excelRow,
-          empresaNombre: nombreEmpresaTrim,
+          empresaNombre: effectiveCompanyName,
           empresaRuc: rucRaw,
           empresaResumen,
           contactoVista: surf.contactoVista || '—',
@@ -1737,7 +1878,7 @@ export class ImportExportService {
       if (dupFile !== undefined) {
         out.push({
           row: excelRow,
-          empresaNombre: nombreEmpresaTrim,
+          empresaNombre: effectiveCompanyName,
           empresaRuc: rucRaw,
           empresaResumen,
           contactoVista: surf.contactoVista,
@@ -1764,7 +1905,7 @@ export class ImportExportService {
 
       out.push({
         row: excelRow,
-        empresaNombre: nombreEmpresaTrim,
+        empresaNombre: effectiveCompanyName,
         empresaRuc: rucRaw,
         empresaResumen,
         contactoVista: surf.contactoVista,
@@ -1892,9 +2033,18 @@ export class ImportExportService {
       }
 
       const nombreEmpresa = rowGet(row, headerIndex, ['nombre', 'name']);
+      const razonRow = rowGet(
+        row,
+        headerIndex,
+        ['razon_social', 'razonsocial'],
+      ).trim();
       const fuente = rowGet(row, headerIndex, ['fuente', 'source']);
       const rucRaw = rowGet(row, headerIndex, ['ruc']).trim();
       const nombreEmpresaTrim = nombreEmpresa.trim();
+      const effectiveCompanyName = this.companyImportEffectiveName(
+        nombreEmpresaTrim,
+        razonRow,
+      );
       const factRaw = rowGet(row, headerIndex, [
         'facturacion_estimada',
         'facturacion',
@@ -1910,10 +2060,10 @@ export class ImportExportService {
         });
         continue;
       }
-      if (!nombreEmpresaTrim && !rucRaw) {
+      if (!effectiveCompanyName && !rucRaw) {
         errors.push({
           row: excelRow,
-          message: 'Indica nombre de empresa o RUC',
+          message: 'Indica nombre, razón social o RUC',
         });
         continue;
       }
@@ -1962,9 +2112,9 @@ export class ImportExportService {
         const existingRuc =
           rucRaw ? await this.findCompanyByRucInput(rucRaw) : null;
         const existingName =
-          existingRuc || !nombreEmpresaTrim
+          existingRuc || !effectiveCompanyName
             ? null
-            : await this.findCompanyByNameInsensitive(nombreEmpresaTrim);
+            : await this.findCompanyByNameInsensitive(effectiveCompanyName);
 
         if (existingRuc) {
           companyId = existingRuc.id;
@@ -1973,19 +2123,16 @@ export class ImportExportService {
         } else {
           const rucDigits = rucRaw.replace(/\D/g, '');
           const nameForCreate =
-            nombreEmpresaTrim || `Empresa RUC ${rucDigits || rucRaw}`;
-          const razonRow = rowGet(
-            row,
-            headerIndex,
-            ['razon_social', 'razonsocial'],
-          ).trim();
+            effectiveCompanyName || `Empresa RUC ${rucDigits || rucRaw}`;
+          const companyTelefono =
+            this.readCompanyPhoneImportField(row, headerIndex) || undefined;
           let dto: CreateCompanyDto = {
             name: formatImportedCompanyName(nameForCreate),
             razonSocial: razonRow
               ? formatImportedCompanyName(razonRow)
               : undefined,
             ruc: rucRaw || undefined,
-            telefono: rowGet(row, headerIndex, ['telefono']) || undefined,
+            telefono: companyTelefono,
             domain: rowGet(row, headerIndex, ['domain', 'dominio']) || undefined,
             rubro: rowGet(row, headerIndex, ['rubro']) || undefined,
             tipo: rowGet(row, headerIndex, ['tipo']) || undefined,
@@ -2051,7 +2198,7 @@ export class ImportExportService {
       }
 
       const contactoTel =
-        rowGet(row, headerIndex, ['contacto_telefono']).trim() || '-';
+        this.readCompanyContactPhoneImportField(row, headerIndex) || '-';
       const contactFuente = fuente.trim();
 
       const merged = await this.enrichContactFromFactilizaByDocument({

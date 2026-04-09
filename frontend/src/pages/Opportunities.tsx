@@ -22,6 +22,7 @@ import {
   type NewOpportunityFormValues,
 } from '@/components/shared/NewOpportunityFormDialog';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { ImportInProgressDialog } from '@/components/shared/ImportInProgressDialog';
 import { OpportunityEditDialog } from '@/components/shared/OpportunityEditDialog';
 import { OpportunityPreviewSheet } from '@/components/shared/OpportunityPreviewSheet';
 import { Button } from '@/components/ui/button';
@@ -174,6 +175,7 @@ export default function OpportunitiesPage() {
   const { hasPermission } = usePermissions();
   const importInputRef = useRef<HTMLInputElement>(null);
   const [importBusy, setImportBusy] = useState(false);
+  const [importCommitInProgress, setImportCommitInProgress] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
 
   const filteredOpportunities = useMemo(() => {
@@ -334,6 +336,7 @@ export default function OpportunitiesPage() {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
+    setImportCommitInProgress(true);
     setImportBusy(true);
     try {
       const r = await uploadImportCsv('opportunities', file);
@@ -358,12 +361,18 @@ export default function OpportunitiesPage() {
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error al importar');
     } finally {
+      setImportCommitInProgress(false);
       setImportBusy(false);
     }
   }
 
   return (
     <div className="space-y-6">
+      <ImportInProgressDialog
+        open={importCommitInProgress}
+        title="Importando oportunidades"
+        description="El servidor está procesando el CSV. En archivos grandes esto puede tardar un momento."
+      />
       <input
         ref={importInputRef}
         type="file"

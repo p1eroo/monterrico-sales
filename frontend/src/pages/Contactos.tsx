@@ -19,6 +19,7 @@ import { ContactPreviewSheet } from '@/components/shared/ContactPreviewSheet';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { ImportInProgressDialog } from '@/components/shared/ImportInProgressDialog';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,6 +37,7 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { formatCurrency } from '@/lib/formatters';
+import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
 import { contactDetailHref } from '@/lib/detailRoutes';
 import type { Contact, Etapa } from '@/types';
@@ -61,7 +63,6 @@ import {
   previewContactsImportCsv,
   uploadImportCsv,
   type ContactImportPreviewResult,
-  type ContactImportPreviewRow,
 } from '@/lib/importExportApi';
 import {
   Dialog,
@@ -74,16 +75,9 @@ import {
 
 const ITEMS_PER_PAGE = 25;
 
-/** Misma lógica que el backend: RUC si hay; si no, nombre del CSV; si no, resumen (p. ej. empresa por id legado). */
-function previewEmpresaCell(row: ContactImportPreviewRow): string {
-  const r = row.empresaRuc.trim();
-  const rucNorm = r ? r.replace(/\D/g, '') || r : '';
-  if (rucNorm) return rucNorm;
-  const n = row.empresaNombre.trim();
-  if (n) return n;
-  const s = row.empresaResumen.trim();
-  if (s) return s;
-  return '—';
+function importPreviewCell(v: string | undefined) {
+  const t = (v ?? '').trim();
+  return t || '—';
 }
 
 const etapaOrder: Etapa[] = [
@@ -133,6 +127,10 @@ export default function ContactosPage() {
   const [contactToDelete, setContactToDelete] = useState<string | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
   const [importBusy, setImportBusy] = useState(false);
+  const [importCommitInProgress, setImportCommitInProgress] = useState(false);
+  const [importCommitRowHint, setImportCommitRowHint] = useState<
+    string | undefined
+  >(undefined);
   const [exportBusy, setExportBusy] = useState(false);
   const [importPreviewOpen, setImportPreviewOpen] = useState(false);
   const [importPreviewData, setImportPreviewData] =
@@ -146,6 +144,13 @@ export default function ContactosPage() {
     string,
     number
   > | null>(null);
+
+  const contactImportPreviewCsvKeys = useMemo(() => {
+    const withCols = importPreviewData?.rows.find(
+      (r) => r.csvColumns && Object.keys(r.csvColumns).length > 0,
+    );
+    return withCols ? Object.keys(withCols.csvColumns) : [];
+  }, [importPreviewData]);
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search), 400);
@@ -677,16 +682,21 @@ export default function ContactosPage() {
 
   async function confirmContactImport() {
     const file = pendingImportFile;
+    const preview = importPreviewData;
     if (
       !file ||
-      !importPreviewData ||
-      importPreviewData.okCount === 0 ||
-      importPreviewData.errorCount > 0
+      !preview ||
+      preview.okCount === 0 ||
+      preview.errorCount > 0
     ) {
       closeImportPreview();
       return;
     }
     closeImportPreview();
+    setImportCommitRowHint(
+      `Se enviarán ${preview.okCount} fila(s) válida(s). Las consultas externas pueden alargar el proceso.`,
+    );
+    setImportCommitInProgress(true);
     setImportBusy(true);
     try {
       const r = await uploadImportCsv('contacts', file);
@@ -711,12 +721,20 @@ export default function ContactosPage() {
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error al importar');
     } finally {
+      setImportCommitInProgress(false);
+      setImportCommitRowHint(undefined);
       setImportBusy(false);
     }
   }
 
   return (
     <div className="space-y-6">
+      <ImportInProgressDialog
+        open={importCommitInProgress}
+        title="Importando contactos"
+        description="El servidor está validando filas, creando contactos y puede consultar RENIEC u otras fuentes según los datos del CSV."
+        rowHint={importCommitRowHint}
+      />
       <Dialog
         open={importPreviewOpen}
         onOpenChange={(open) => {
@@ -749,49 +767,78 @@ export default function ContactosPage() {
           </DialogHeader>
           <div className="min-h-0 flex-1 overflow-auto px-6 py-3">
             {importPreviewData && importPreviewData.rows.length > 0 ? (
-              <Table className="w-full table-fixed">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-11">Fila</TableHead>
-                    <TableHead className="w-20">Estado</TableHead>
-                    <TableHead className="w-[12%]">Nombre</TableHead>
-                    <TableHead className="w-[20%]">Empresa</TableHead>
-                    <TableHead className="min-w-[28%]">Motivo</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {importPreviewData.rows
-                    .slice()
-                    .sort((a, b) => a.row - b.row)
-                    .map((row) => (
-                      <TableRow key={row.row}>
-                        <TableCell className="tabular-nums text-muted-foreground">
-                          {row.row}
-                        </TableCell>
-                        <TableCell>
-                          {row.ok ? (
-                            <Badge variant="secondary" className="font-normal">
-                              OK
-                            </Badge>
-                          ) : (
-                            <Badge variant="destructive" className="font-normal">
-                              Error
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="break-words align-top">
-                          {row.nombre || '—'}
-                        </TableCell>
-                        <TableCell className="break-words text-sm align-top">
-                          {previewEmpresaCell(row)}
-                        </TableCell>
-                        <TableCell className="break-words text-sm align-top text-muted-foreground">
-                          {row.ok ? '—' : row.error ?? '—'}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                </TableBody>
-              </Table>
+              <div className="overflow-auto rounded-md border">
+                <Table className="w-full min-w-max table-fixed">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="sticky left-0 z-10 w-11 bg-background px-2">
+                        Fila
+                      </TableHead>
+                      <TableHead className="sticky left-12 z-10 w-20 bg-background px-2">
+                        Estado
+                      </TableHead>
+                      {contactImportPreviewCsvKeys.map((key) => (
+                        <TableHead
+                          key={key}
+                          className="min-w-[10rem] max-w-[16rem] align-bottom"
+                        >
+                          {key}
+                        </TableHead>
+                      ))}
+                      <TableHead className="min-w-[12rem] max-w-[24rem] align-bottom">
+                        Motivo / detalle
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {importPreviewData.rows
+                      .slice()
+                      .sort((a, b) => a.row - b.row)
+                      .map((row) => (
+                        <TableRow key={row.row}>
+                          <TableCell
+                            className={cn(
+                              'sticky left-0 z-10 bg-background px-2 align-top tabular-nums text-muted-foreground shadow-[2px_0_6px_-4px_rgba(0,0,0,0.2)]',
+                            )}
+                          >
+                            {row.row}
+                          </TableCell>
+                          <TableCell
+                            className={cn(
+                              'sticky left-12 z-10 bg-background px-2 align-top shadow-[2px_0_6px_-4px_rgba(0,0,0,0.2)]',
+                            )}
+                          >
+                            {row.ok ? (
+                              <Badge
+                                variant="outline"
+                                className="border-emerald-200 bg-emerald-50 font-normal text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
+                              >
+                                OK
+                              </Badge>
+                            ) : (
+                              <Badge variant="destructive" className="font-normal">
+                                Error
+                              </Badge>
+                            )}
+                          </TableCell>
+                          {contactImportPreviewCsvKeys.map((key) => (
+                            <TableCell
+                              key={`${row.row}-${key}`}
+                              className="max-w-[16rem] break-words align-top text-xs"
+                            >
+                              {importPreviewCell(row.csvColumns?.[key])}
+                            </TableCell>
+                          ))}
+                          <TableCell className="max-w-[24rem] break-words align-top text-muted-foreground">
+                            {row.ok
+                              ? importPreviewCell(undefined)
+                              : importPreviewCell(row.error)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              </div>
             ) : (
               importPreviewData && (
                 <p className="text-sm text-muted-foreground">

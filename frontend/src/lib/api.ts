@@ -1,3 +1,5 @@
+import { useAppStore } from '@/store';
+
 const API_BASE =
   import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
 
@@ -117,6 +119,9 @@ export async function api<T>(
       : typeof err.message === 'string'
         ? err.message
         : res.statusText || 'Error en la petición';
+    if (res.status === 401 && typeof window !== 'undefined') {
+      useAppStore.getState().logout();
+    }
     const error = new Error(msg);
     (error as Error & { status?: number }).status = res.status;
     throw error;
