@@ -33,9 +33,7 @@ import {
   SidebarMenuItem,
   SidebarSeparator,
 } from '@/components/ui/sidebar';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAppStore } from '@/store';
-import { initialsFromName } from '@/lib/utils';
 import logoMark from '@/assets/logo.png';
 import tmWordmark from '@/assets/TM.png';
 
@@ -87,11 +85,9 @@ function navItemVisible(
 
 export function AppSidebar() {
   const location = useLocation();
-  const { currentUser, logout } = useAppStore();
+  const { logout } = useAppStore();
   const { hasPermission } = usePermissions();
   const visibleNav = navItems.filter((item) => navItemVisible(item, hasPermission));
-
-  const initials = initialsFromName(currentUser.name);
 
   return (
     <Sidebar collapsible="icon">
@@ -154,27 +150,6 @@ export function AppSidebar() {
 
       <SidebarFooter className="p-3">
         <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              size="lg"
-              className="gap-3"
-              tooltip={currentUser.name}
-            >
-              <Avatar className="size-7 shrink-0">
-                <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground text-xs">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex min-w-0 flex-col group-data-[collapsible=icon]:hidden">
-                <span className="truncate text-xs font-medium text-sidebar-foreground">
-                  {currentUser.name}
-                </span>
-                <span className="truncate text-[11px] text-sidebar-foreground/60">
-                  {currentUser.role}
-                </span>
-              </div>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
               tooltip="Cerrar sesión"

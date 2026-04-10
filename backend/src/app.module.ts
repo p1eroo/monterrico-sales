@@ -24,6 +24,7 @@ import { AiModule } from './ai/ai.module';
 import { KnowledgeBasesModule } from './knowledge-bases/knowledge-bases.module';
 import { ActivityLogsModule } from './activity-logs/activity-logs.module';
 import { AuditDetailModule } from './audit-detail/audit-detail.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -61,6 +62,7 @@ import { AuditDetailModule } from './audit-detail/audit-detail.module';
     KnowledgeBasesModule,
     ActivityLogsModule,
     AuditDetailModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [

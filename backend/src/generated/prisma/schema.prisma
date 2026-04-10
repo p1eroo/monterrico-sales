@@ -78,6 +78,41 @@ model User {
   aiKnowledgeBases           AiKnowledgeBase[]
   activityLogs               ActivityLog[]
   auditChangeSets            AuditChangeSet[]
+  crmNotifications           CrmNotification[]
+}
+
+/**
+ * Alertas in-app por usuario (contacto nuevo, oportunidad ganada, tareas vencidas).
+ */
+model CrmNotification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /**
+   * contact_created | opportunity_won | task_overdue
+   */
+  kind      String
+  /**
+   * p. ej. overdue:activityId; evita duplicados por tarea vencida
+   */
+  dedupeKey String?
+  title     String
+  body      String    @db.Text
+  readAt    DateTime?
+  important Boolean   @default(false)
+  /**
+   * lead | exito | alerta | info — tipografía del listado
+   */
+  notifType String    @default("info")
+  /**
+   * alta | media | baja
+   */
+  priority  String    @default("media")
+  metadata  Json?
+  createdAt DateTime  @default(now())
+
+  @@unique([userId, dedupeKey])
+  @@index([userId, createdAt])
 }
 
 // ─── Registro de actividad (auditoría general, no diff por campo) ───

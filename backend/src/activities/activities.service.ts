@@ -9,6 +9,7 @@ import { CreateActivityDto } from './dto/create-activity.dto';
 import { UpdateActivityDto } from './dto/update-activity.dto';
 import type { CrmDataScope } from '../auth/crm-data-scope.service';
 import { mergeCompanyScope } from '../common/crm-data-scope-where.util';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const TASK_KINDS = new Set(['llamada', 'reunion', 'correo', 'whatsapp']);
 
@@ -46,7 +47,10 @@ const activitySelectListSlim = {
 
 @Injectable()
 export class ActivitiesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   private parseDate(s: string | null | undefined): Date | null {
     if (!s || typeof s !== 'string') return null;
@@ -347,11 +351,18 @@ export class ActivitiesService {
       });
     });
 
-    return this.findOne(id, scope);
+    const row = await this.findOne(id, scope);
+    const st = String(row.status ?? '').toLowerCase();
+    if (row.completedAt || st === 'completada' || st === 'completado') {
+      await this.notifications.removeOverdueNotificationsForActivity(id);
+    }
+
+    return row;
   }
 
   async remove(id: string, scope?: CrmDataScope) {
     await this.findOne(id, scope);
+    await this.notifications.removeOverdueNotificationsForActivity(id);
     return this.prisma.activity.delete({
       where: { id },
     });

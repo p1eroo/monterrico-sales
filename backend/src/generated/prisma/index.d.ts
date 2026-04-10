@@ -34,6 +34,11 @@ export type Account = $Result.DefaultSelection<Prisma.$AccountPayload>
  */
 export type User = $Result.DefaultSelection<Prisma.$UserPayload>
 /**
+ * Model CrmNotification
+ * * Alertas in-app por usuario (contacto nuevo, oportunidad ganada, tareas vencidas).
+ */
+export type CrmNotification = $Result.DefaultSelection<Prisma.$CrmNotificationPayload>
+/**
  * Model ActivityLog
  * 
  */
@@ -359,6 +364,16 @@ export class PrismaClient<
     * ```
     */
   get user(): Prisma.UserDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.crmNotification`: Exposes CRUD operations for the **CrmNotification** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more CrmNotifications
+    * const crmNotifications = await prisma.crmNotification.findMany()
+    * ```
+    */
+  get crmNotification(): Prisma.CrmNotificationDelegate<ExtArgs, ClientOptions>;
 
   /**
    * `prisma.activityLog`: Exposes CRUD operations for the **ActivityLog** model.
@@ -1127,6 +1142,7 @@ export namespace Prisma {
     Authority: 'Authority',
     Account: 'Account',
     User: 'User',
+    CrmNotification: 'CrmNotification',
     ActivityLog: 'ActivityLog',
     AuditChangeSet: 'AuditChangeSet',
     AuditChangeEntry: 'AuditChangeEntry',
@@ -1175,7 +1191,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "role" | "authority" | "account" | "user" | "activityLog" | "auditChangeSet" | "auditChangeEntry" | "aiConversation" | "aiMessage" | "aiKnowledgeBase" | "aiKnowledgeChunk" | "aiAssistantInstruction" | "crmOrganizationProfile" | "crmMonthlySalesTarget" | "crmLeadSource" | "crmStage" | "crmPriority" | "crmActivityType" | "crmUserSalesGoal" | "crmUserMonthlySalesTarget" | "contact" | "company" | "client" | "opportunity" | "activity" | "companyContact" | "contactContact" | "contactOpportunity" | "companyCompany" | "companyOpportunity" | "opportunityOpportunity" | "contactActivity" | "companyActivity" | "opportunityActivity" | "campaignEmailSendLog" | "campaign" | "crmFile"
+      modelProps: "role" | "authority" | "account" | "user" | "crmNotification" | "activityLog" | "auditChangeSet" | "auditChangeEntry" | "aiConversation" | "aiMessage" | "aiKnowledgeBase" | "aiKnowledgeChunk" | "aiAssistantInstruction" | "crmOrganizationProfile" | "crmMonthlySalesTarget" | "crmLeadSource" | "crmStage" | "crmPriority" | "crmActivityType" | "crmUserSalesGoal" | "crmUserMonthlySalesTarget" | "contact" | "company" | "client" | "opportunity" | "activity" | "companyContact" | "contactContact" | "contactOpportunity" | "companyCompany" | "companyOpportunity" | "opportunityOpportunity" | "contactActivity" | "companyActivity" | "opportunityActivity" | "campaignEmailSendLog" | "campaign" | "crmFile"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -1472,6 +1488,80 @@ export namespace Prisma {
           count: {
             args: Prisma.UserCountArgs<ExtArgs>
             result: $Utils.Optional<UserCountAggregateOutputType> | number
+          }
+        }
+      }
+      CrmNotification: {
+        payload: Prisma.$CrmNotificationPayload<ExtArgs>
+        fields: Prisma.CrmNotificationFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.CrmNotificationFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmNotificationPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.CrmNotificationFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmNotificationPayload>
+          }
+          findFirst: {
+            args: Prisma.CrmNotificationFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmNotificationPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.CrmNotificationFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmNotificationPayload>
+          }
+          findMany: {
+            args: Prisma.CrmNotificationFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmNotificationPayload>[]
+          }
+          create: {
+            args: Prisma.CrmNotificationCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmNotificationPayload>
+          }
+          createMany: {
+            args: Prisma.CrmNotificationCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.CrmNotificationCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmNotificationPayload>[]
+          }
+          delete: {
+            args: Prisma.CrmNotificationDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmNotificationPayload>
+          }
+          update: {
+            args: Prisma.CrmNotificationUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmNotificationPayload>
+          }
+          deleteMany: {
+            args: Prisma.CrmNotificationDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.CrmNotificationUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.CrmNotificationUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmNotificationPayload>[]
+          }
+          upsert: {
+            args: Prisma.CrmNotificationUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CrmNotificationPayload>
+          }
+          aggregate: {
+            args: Prisma.CrmNotificationAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateCrmNotification>
+          }
+          groupBy: {
+            args: Prisma.CrmNotificationGroupByArgs<ExtArgs>
+            result: $Utils.Optional<CrmNotificationGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.CrmNotificationCountArgs<ExtArgs>
+            result: $Utils.Optional<CrmNotificationCountAggregateOutputType> | number
           }
         }
       }
@@ -4029,6 +4119,7 @@ export namespace Prisma {
     authority?: AuthorityOmit
     account?: AccountOmit
     user?: UserOmit
+    crmNotification?: CrmNotificationOmit
     activityLog?: ActivityLogOmit
     auditChangeSet?: AuditChangeSetOmit
     auditChangeEntry?: AuditChangeEntryOmit
@@ -4194,6 +4285,7 @@ export namespace Prisma {
     aiKnowledgeBases: number
     activityLogs: number
     auditChangeSets: number
+    crmNotifications: number
   }
 
   export type UserCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -4209,6 +4301,7 @@ export namespace Prisma {
     aiKnowledgeBases?: boolean | UserCountOutputTypeCountAiKnowledgeBasesArgs
     activityLogs?: boolean | UserCountOutputTypeCountActivityLogsArgs
     auditChangeSets?: boolean | UserCountOutputTypeCountAuditChangeSetsArgs
+    crmNotifications?: boolean | UserCountOutputTypeCountCrmNotificationsArgs
   }
 
   // Custom InputTypes
@@ -4304,6 +4397,13 @@ export namespace Prisma {
    */
   export type UserCountOutputTypeCountAuditChangeSetsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: AuditChangeSetWhereInput
+  }
+
+  /**
+   * UserCountOutputType without action
+   */
+  export type UserCountOutputTypeCountCrmNotificationsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: CrmNotificationWhereInput
   }
 
 
@@ -8200,6 +8300,7 @@ export namespace Prisma {
     aiKnowledgeBases?: boolean | User$aiKnowledgeBasesArgs<ExtArgs>
     activityLogs?: boolean | User$activityLogsArgs<ExtArgs>
     auditChangeSets?: boolean | User$auditChangeSetsArgs<ExtArgs>
+    crmNotifications?: boolean | User$crmNotificationsArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["user"]>
 
@@ -8263,6 +8364,7 @@ export namespace Prisma {
     aiKnowledgeBases?: boolean | User$aiKnowledgeBasesArgs<ExtArgs>
     activityLogs?: boolean | User$activityLogsArgs<ExtArgs>
     auditChangeSets?: boolean | User$auditChangeSetsArgs<ExtArgs>
+    crmNotifications?: boolean | User$crmNotificationsArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type UserIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -8289,6 +8391,7 @@ export namespace Prisma {
       aiKnowledgeBases: Prisma.$AiKnowledgeBasePayload<ExtArgs>[]
       activityLogs: Prisma.$ActivityLogPayload<ExtArgs>[]
       auditChangeSets: Prisma.$AuditChangeSetPayload<ExtArgs>[]
+      crmNotifications: Prisma.$CrmNotificationPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -8710,6 +8813,7 @@ export namespace Prisma {
     aiKnowledgeBases<T extends User$aiKnowledgeBasesArgs<ExtArgs> = {}>(args?: Subset<T, User$aiKnowledgeBasesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AiKnowledgeBasePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     activityLogs<T extends User$activityLogsArgs<ExtArgs> = {}>(args?: Subset<T, User$activityLogsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ActivityLogPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     auditChangeSets<T extends User$auditChangeSetsArgs<ExtArgs> = {}>(args?: Subset<T, User$auditChangeSetsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AuditChangeSetPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    crmNotifications<T extends User$crmNotificationsArgs<ExtArgs> = {}>(args?: Subset<T, User$crmNotificationsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmNotificationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -9458,6 +9562,30 @@ export namespace Prisma {
   }
 
   /**
+   * User.crmNotifications
+   */
+  export type User$crmNotificationsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmNotification
+     */
+    select?: CrmNotificationSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmNotification
+     */
+    omit?: CrmNotificationOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmNotificationInclude<ExtArgs> | null
+    where?: CrmNotificationWhereInput
+    orderBy?: CrmNotificationOrderByWithRelationInput | CrmNotificationOrderByWithRelationInput[]
+    cursor?: CrmNotificationWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: CrmNotificationScalarFieldEnum | CrmNotificationScalarFieldEnum[]
+  }
+
+  /**
    * User without action
    */
   export type UserDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -9473,6 +9601,1168 @@ export namespace Prisma {
      * Choose, which related nodes to fetch as well
      */
     include?: UserInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model CrmNotification
+   */
+
+  export type AggregateCrmNotification = {
+    _count: CrmNotificationCountAggregateOutputType | null
+    _min: CrmNotificationMinAggregateOutputType | null
+    _max: CrmNotificationMaxAggregateOutputType | null
+  }
+
+  export type CrmNotificationMinAggregateOutputType = {
+    id: string | null
+    userId: string | null
+    kind: string | null
+    dedupeKey: string | null
+    title: string | null
+    body: string | null
+    readAt: Date | null
+    important: boolean | null
+    notifType: string | null
+    priority: string | null
+    createdAt: Date | null
+  }
+
+  export type CrmNotificationMaxAggregateOutputType = {
+    id: string | null
+    userId: string | null
+    kind: string | null
+    dedupeKey: string | null
+    title: string | null
+    body: string | null
+    readAt: Date | null
+    important: boolean | null
+    notifType: string | null
+    priority: string | null
+    createdAt: Date | null
+  }
+
+  export type CrmNotificationCountAggregateOutputType = {
+    id: number
+    userId: number
+    kind: number
+    dedupeKey: number
+    title: number
+    body: number
+    readAt: number
+    important: number
+    notifType: number
+    priority: number
+    metadata: number
+    createdAt: number
+    _all: number
+  }
+
+
+  export type CrmNotificationMinAggregateInputType = {
+    id?: true
+    userId?: true
+    kind?: true
+    dedupeKey?: true
+    title?: true
+    body?: true
+    readAt?: true
+    important?: true
+    notifType?: true
+    priority?: true
+    createdAt?: true
+  }
+
+  export type CrmNotificationMaxAggregateInputType = {
+    id?: true
+    userId?: true
+    kind?: true
+    dedupeKey?: true
+    title?: true
+    body?: true
+    readAt?: true
+    important?: true
+    notifType?: true
+    priority?: true
+    createdAt?: true
+  }
+
+  export type CrmNotificationCountAggregateInputType = {
+    id?: true
+    userId?: true
+    kind?: true
+    dedupeKey?: true
+    title?: true
+    body?: true
+    readAt?: true
+    important?: true
+    notifType?: true
+    priority?: true
+    metadata?: true
+    createdAt?: true
+    _all?: true
+  }
+
+  export type CrmNotificationAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which CrmNotification to aggregate.
+     */
+    where?: CrmNotificationWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmNotifications to fetch.
+     */
+    orderBy?: CrmNotificationOrderByWithRelationInput | CrmNotificationOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: CrmNotificationWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmNotifications from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmNotifications.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned CrmNotifications
+    **/
+    _count?: true | CrmNotificationCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: CrmNotificationMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: CrmNotificationMaxAggregateInputType
+  }
+
+  export type GetCrmNotificationAggregateType<T extends CrmNotificationAggregateArgs> = {
+        [P in keyof T & keyof AggregateCrmNotification]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateCrmNotification[P]>
+      : GetScalarType<T[P], AggregateCrmNotification[P]>
+  }
+
+
+
+
+  export type CrmNotificationGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: CrmNotificationWhereInput
+    orderBy?: CrmNotificationOrderByWithAggregationInput | CrmNotificationOrderByWithAggregationInput[]
+    by: CrmNotificationScalarFieldEnum[] | CrmNotificationScalarFieldEnum
+    having?: CrmNotificationScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: CrmNotificationCountAggregateInputType | true
+    _min?: CrmNotificationMinAggregateInputType
+    _max?: CrmNotificationMaxAggregateInputType
+  }
+
+  export type CrmNotificationGroupByOutputType = {
+    id: string
+    userId: string
+    kind: string
+    dedupeKey: string | null
+    title: string
+    body: string
+    readAt: Date | null
+    important: boolean
+    notifType: string
+    priority: string
+    metadata: JsonValue | null
+    createdAt: Date
+    _count: CrmNotificationCountAggregateOutputType | null
+    _min: CrmNotificationMinAggregateOutputType | null
+    _max: CrmNotificationMaxAggregateOutputType | null
+  }
+
+  type GetCrmNotificationGroupByPayload<T extends CrmNotificationGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<CrmNotificationGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof CrmNotificationGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], CrmNotificationGroupByOutputType[P]>
+            : GetScalarType<T[P], CrmNotificationGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type CrmNotificationSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    kind?: boolean
+    dedupeKey?: boolean
+    title?: boolean
+    body?: boolean
+    readAt?: boolean
+    important?: boolean
+    notifType?: boolean
+    priority?: boolean
+    metadata?: boolean
+    createdAt?: boolean
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["crmNotification"]>
+
+  export type CrmNotificationSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    kind?: boolean
+    dedupeKey?: boolean
+    title?: boolean
+    body?: boolean
+    readAt?: boolean
+    important?: boolean
+    notifType?: boolean
+    priority?: boolean
+    metadata?: boolean
+    createdAt?: boolean
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["crmNotification"]>
+
+  export type CrmNotificationSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    kind?: boolean
+    dedupeKey?: boolean
+    title?: boolean
+    body?: boolean
+    readAt?: boolean
+    important?: boolean
+    notifType?: boolean
+    priority?: boolean
+    metadata?: boolean
+    createdAt?: boolean
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["crmNotification"]>
+
+  export type CrmNotificationSelectScalar = {
+    id?: boolean
+    userId?: boolean
+    kind?: boolean
+    dedupeKey?: boolean
+    title?: boolean
+    body?: boolean
+    readAt?: boolean
+    important?: boolean
+    notifType?: boolean
+    priority?: boolean
+    metadata?: boolean
+    createdAt?: boolean
+  }
+
+  export type CrmNotificationOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "userId" | "kind" | "dedupeKey" | "title" | "body" | "readAt" | "important" | "notifType" | "priority" | "metadata" | "createdAt", ExtArgs["result"]["crmNotification"]>
+  export type CrmNotificationInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }
+  export type CrmNotificationIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }
+  export type CrmNotificationIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }
+
+  export type $CrmNotificationPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "CrmNotification"
+    objects: {
+      user: Prisma.$UserPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      userId: string
+      /**
+       * * contact_created | opportunity_won | task_overdue
+       */
+      kind: string
+      /**
+       * * p. ej. overdue:activityId; evita duplicados por tarea vencida
+       */
+      dedupeKey: string | null
+      title: string
+      body: string
+      readAt: Date | null
+      important: boolean
+      /**
+       * * lead | exito | alerta | info — tipografía del listado
+       */
+      notifType: string
+      /**
+       * * alta | media | baja
+       */
+      priority: string
+      metadata: Prisma.JsonValue | null
+      createdAt: Date
+    }, ExtArgs["result"]["crmNotification"]>
+    composites: {}
+  }
+
+  type CrmNotificationGetPayload<S extends boolean | null | undefined | CrmNotificationDefaultArgs> = $Result.GetResult<Prisma.$CrmNotificationPayload, S>
+
+  type CrmNotificationCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<CrmNotificationFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: CrmNotificationCountAggregateInputType | true
+    }
+
+  export interface CrmNotificationDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['CrmNotification'], meta: { name: 'CrmNotification' } }
+    /**
+     * Find zero or one CrmNotification that matches the filter.
+     * @param {CrmNotificationFindUniqueArgs} args - Arguments to find a CrmNotification
+     * @example
+     * // Get one CrmNotification
+     * const crmNotification = await prisma.crmNotification.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends CrmNotificationFindUniqueArgs>(args: SelectSubset<T, CrmNotificationFindUniqueArgs<ExtArgs>>): Prisma__CrmNotificationClient<$Result.GetResult<Prisma.$CrmNotificationPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one CrmNotification that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {CrmNotificationFindUniqueOrThrowArgs} args - Arguments to find a CrmNotification
+     * @example
+     * // Get one CrmNotification
+     * const crmNotification = await prisma.crmNotification.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends CrmNotificationFindUniqueOrThrowArgs>(args: SelectSubset<T, CrmNotificationFindUniqueOrThrowArgs<ExtArgs>>): Prisma__CrmNotificationClient<$Result.GetResult<Prisma.$CrmNotificationPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first CrmNotification that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmNotificationFindFirstArgs} args - Arguments to find a CrmNotification
+     * @example
+     * // Get one CrmNotification
+     * const crmNotification = await prisma.crmNotification.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends CrmNotificationFindFirstArgs>(args?: SelectSubset<T, CrmNotificationFindFirstArgs<ExtArgs>>): Prisma__CrmNotificationClient<$Result.GetResult<Prisma.$CrmNotificationPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first CrmNotification that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmNotificationFindFirstOrThrowArgs} args - Arguments to find a CrmNotification
+     * @example
+     * // Get one CrmNotification
+     * const crmNotification = await prisma.crmNotification.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends CrmNotificationFindFirstOrThrowArgs>(args?: SelectSubset<T, CrmNotificationFindFirstOrThrowArgs<ExtArgs>>): Prisma__CrmNotificationClient<$Result.GetResult<Prisma.$CrmNotificationPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more CrmNotifications that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmNotificationFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all CrmNotifications
+     * const crmNotifications = await prisma.crmNotification.findMany()
+     * 
+     * // Get first 10 CrmNotifications
+     * const crmNotifications = await prisma.crmNotification.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const crmNotificationWithIdOnly = await prisma.crmNotification.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends CrmNotificationFindManyArgs>(args?: SelectSubset<T, CrmNotificationFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmNotificationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a CrmNotification.
+     * @param {CrmNotificationCreateArgs} args - Arguments to create a CrmNotification.
+     * @example
+     * // Create one CrmNotification
+     * const CrmNotification = await prisma.crmNotification.create({
+     *   data: {
+     *     // ... data to create a CrmNotification
+     *   }
+     * })
+     * 
+     */
+    create<T extends CrmNotificationCreateArgs>(args: SelectSubset<T, CrmNotificationCreateArgs<ExtArgs>>): Prisma__CrmNotificationClient<$Result.GetResult<Prisma.$CrmNotificationPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many CrmNotifications.
+     * @param {CrmNotificationCreateManyArgs} args - Arguments to create many CrmNotifications.
+     * @example
+     * // Create many CrmNotifications
+     * const crmNotification = await prisma.crmNotification.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends CrmNotificationCreateManyArgs>(args?: SelectSubset<T, CrmNotificationCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many CrmNotifications and returns the data saved in the database.
+     * @param {CrmNotificationCreateManyAndReturnArgs} args - Arguments to create many CrmNotifications.
+     * @example
+     * // Create many CrmNotifications
+     * const crmNotification = await prisma.crmNotification.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many CrmNotifications and only return the `id`
+     * const crmNotificationWithIdOnly = await prisma.crmNotification.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends CrmNotificationCreateManyAndReturnArgs>(args?: SelectSubset<T, CrmNotificationCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmNotificationPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a CrmNotification.
+     * @param {CrmNotificationDeleteArgs} args - Arguments to delete one CrmNotification.
+     * @example
+     * // Delete one CrmNotification
+     * const CrmNotification = await prisma.crmNotification.delete({
+     *   where: {
+     *     // ... filter to delete one CrmNotification
+     *   }
+     * })
+     * 
+     */
+    delete<T extends CrmNotificationDeleteArgs>(args: SelectSubset<T, CrmNotificationDeleteArgs<ExtArgs>>): Prisma__CrmNotificationClient<$Result.GetResult<Prisma.$CrmNotificationPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one CrmNotification.
+     * @param {CrmNotificationUpdateArgs} args - Arguments to update one CrmNotification.
+     * @example
+     * // Update one CrmNotification
+     * const crmNotification = await prisma.crmNotification.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends CrmNotificationUpdateArgs>(args: SelectSubset<T, CrmNotificationUpdateArgs<ExtArgs>>): Prisma__CrmNotificationClient<$Result.GetResult<Prisma.$CrmNotificationPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more CrmNotifications.
+     * @param {CrmNotificationDeleteManyArgs} args - Arguments to filter CrmNotifications to delete.
+     * @example
+     * // Delete a few CrmNotifications
+     * const { count } = await prisma.crmNotification.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends CrmNotificationDeleteManyArgs>(args?: SelectSubset<T, CrmNotificationDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more CrmNotifications.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmNotificationUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many CrmNotifications
+     * const crmNotification = await prisma.crmNotification.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends CrmNotificationUpdateManyArgs>(args: SelectSubset<T, CrmNotificationUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more CrmNotifications and returns the data updated in the database.
+     * @param {CrmNotificationUpdateManyAndReturnArgs} args - Arguments to update many CrmNotifications.
+     * @example
+     * // Update many CrmNotifications
+     * const crmNotification = await prisma.crmNotification.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more CrmNotifications and only return the `id`
+     * const crmNotificationWithIdOnly = await prisma.crmNotification.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends CrmNotificationUpdateManyAndReturnArgs>(args: SelectSubset<T, CrmNotificationUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmNotificationPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one CrmNotification.
+     * @param {CrmNotificationUpsertArgs} args - Arguments to update or create a CrmNotification.
+     * @example
+     * // Update or create a CrmNotification
+     * const crmNotification = await prisma.crmNotification.upsert({
+     *   create: {
+     *     // ... data to create a CrmNotification
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the CrmNotification we want to update
+     *   }
+     * })
+     */
+    upsert<T extends CrmNotificationUpsertArgs>(args: SelectSubset<T, CrmNotificationUpsertArgs<ExtArgs>>): Prisma__CrmNotificationClient<$Result.GetResult<Prisma.$CrmNotificationPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of CrmNotifications.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmNotificationCountArgs} args - Arguments to filter CrmNotifications to count.
+     * @example
+     * // Count the number of CrmNotifications
+     * const count = await prisma.crmNotification.count({
+     *   where: {
+     *     // ... the filter for the CrmNotifications we want to count
+     *   }
+     * })
+    **/
+    count<T extends CrmNotificationCountArgs>(
+      args?: Subset<T, CrmNotificationCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], CrmNotificationCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a CrmNotification.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmNotificationAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends CrmNotificationAggregateArgs>(args: Subset<T, CrmNotificationAggregateArgs>): Prisma.PrismaPromise<GetCrmNotificationAggregateType<T>>
+
+    /**
+     * Group by CrmNotification.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CrmNotificationGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends CrmNotificationGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: CrmNotificationGroupByArgs['orderBy'] }
+        : { orderBy?: CrmNotificationGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, CrmNotificationGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetCrmNotificationGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the CrmNotification model
+   */
+  readonly fields: CrmNotificationFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for CrmNotification.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__CrmNotificationClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    user<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the CrmNotification model
+   */
+  interface CrmNotificationFieldRefs {
+    readonly id: FieldRef<"CrmNotification", 'String'>
+    readonly userId: FieldRef<"CrmNotification", 'String'>
+    readonly kind: FieldRef<"CrmNotification", 'String'>
+    readonly dedupeKey: FieldRef<"CrmNotification", 'String'>
+    readonly title: FieldRef<"CrmNotification", 'String'>
+    readonly body: FieldRef<"CrmNotification", 'String'>
+    readonly readAt: FieldRef<"CrmNotification", 'DateTime'>
+    readonly important: FieldRef<"CrmNotification", 'Boolean'>
+    readonly notifType: FieldRef<"CrmNotification", 'String'>
+    readonly priority: FieldRef<"CrmNotification", 'String'>
+    readonly metadata: FieldRef<"CrmNotification", 'Json'>
+    readonly createdAt: FieldRef<"CrmNotification", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * CrmNotification findUnique
+   */
+  export type CrmNotificationFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmNotification
+     */
+    select?: CrmNotificationSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmNotification
+     */
+    omit?: CrmNotificationOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmNotificationInclude<ExtArgs> | null
+    /**
+     * Filter, which CrmNotification to fetch.
+     */
+    where: CrmNotificationWhereUniqueInput
+  }
+
+  /**
+   * CrmNotification findUniqueOrThrow
+   */
+  export type CrmNotificationFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmNotification
+     */
+    select?: CrmNotificationSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmNotification
+     */
+    omit?: CrmNotificationOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmNotificationInclude<ExtArgs> | null
+    /**
+     * Filter, which CrmNotification to fetch.
+     */
+    where: CrmNotificationWhereUniqueInput
+  }
+
+  /**
+   * CrmNotification findFirst
+   */
+  export type CrmNotificationFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmNotification
+     */
+    select?: CrmNotificationSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmNotification
+     */
+    omit?: CrmNotificationOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmNotificationInclude<ExtArgs> | null
+    /**
+     * Filter, which CrmNotification to fetch.
+     */
+    where?: CrmNotificationWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmNotifications to fetch.
+     */
+    orderBy?: CrmNotificationOrderByWithRelationInput | CrmNotificationOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for CrmNotifications.
+     */
+    cursor?: CrmNotificationWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmNotifications from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmNotifications.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CrmNotifications.
+     */
+    distinct?: CrmNotificationScalarFieldEnum | CrmNotificationScalarFieldEnum[]
+  }
+
+  /**
+   * CrmNotification findFirstOrThrow
+   */
+  export type CrmNotificationFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmNotification
+     */
+    select?: CrmNotificationSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmNotification
+     */
+    omit?: CrmNotificationOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmNotificationInclude<ExtArgs> | null
+    /**
+     * Filter, which CrmNotification to fetch.
+     */
+    where?: CrmNotificationWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmNotifications to fetch.
+     */
+    orderBy?: CrmNotificationOrderByWithRelationInput | CrmNotificationOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for CrmNotifications.
+     */
+    cursor?: CrmNotificationWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmNotifications from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmNotifications.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CrmNotifications.
+     */
+    distinct?: CrmNotificationScalarFieldEnum | CrmNotificationScalarFieldEnum[]
+  }
+
+  /**
+   * CrmNotification findMany
+   */
+  export type CrmNotificationFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmNotification
+     */
+    select?: CrmNotificationSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmNotification
+     */
+    omit?: CrmNotificationOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmNotificationInclude<ExtArgs> | null
+    /**
+     * Filter, which CrmNotifications to fetch.
+     */
+    where?: CrmNotificationWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CrmNotifications to fetch.
+     */
+    orderBy?: CrmNotificationOrderByWithRelationInput | CrmNotificationOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing CrmNotifications.
+     */
+    cursor?: CrmNotificationWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CrmNotifications from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CrmNotifications.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CrmNotifications.
+     */
+    distinct?: CrmNotificationScalarFieldEnum | CrmNotificationScalarFieldEnum[]
+  }
+
+  /**
+   * CrmNotification create
+   */
+  export type CrmNotificationCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmNotification
+     */
+    select?: CrmNotificationSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmNotification
+     */
+    omit?: CrmNotificationOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmNotificationInclude<ExtArgs> | null
+    /**
+     * The data needed to create a CrmNotification.
+     */
+    data: XOR<CrmNotificationCreateInput, CrmNotificationUncheckedCreateInput>
+  }
+
+  /**
+   * CrmNotification createMany
+   */
+  export type CrmNotificationCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many CrmNotifications.
+     */
+    data: CrmNotificationCreateManyInput | CrmNotificationCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * CrmNotification createManyAndReturn
+   */
+  export type CrmNotificationCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmNotification
+     */
+    select?: CrmNotificationSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmNotification
+     */
+    omit?: CrmNotificationOmit<ExtArgs> | null
+    /**
+     * The data used to create many CrmNotifications.
+     */
+    data: CrmNotificationCreateManyInput | CrmNotificationCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmNotificationIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * CrmNotification update
+   */
+  export type CrmNotificationUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmNotification
+     */
+    select?: CrmNotificationSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmNotification
+     */
+    omit?: CrmNotificationOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmNotificationInclude<ExtArgs> | null
+    /**
+     * The data needed to update a CrmNotification.
+     */
+    data: XOR<CrmNotificationUpdateInput, CrmNotificationUncheckedUpdateInput>
+    /**
+     * Choose, which CrmNotification to update.
+     */
+    where: CrmNotificationWhereUniqueInput
+  }
+
+  /**
+   * CrmNotification updateMany
+   */
+  export type CrmNotificationUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update CrmNotifications.
+     */
+    data: XOR<CrmNotificationUpdateManyMutationInput, CrmNotificationUncheckedUpdateManyInput>
+    /**
+     * Filter which CrmNotifications to update
+     */
+    where?: CrmNotificationWhereInput
+    /**
+     * Limit how many CrmNotifications to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * CrmNotification updateManyAndReturn
+   */
+  export type CrmNotificationUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmNotification
+     */
+    select?: CrmNotificationSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmNotification
+     */
+    omit?: CrmNotificationOmit<ExtArgs> | null
+    /**
+     * The data used to update CrmNotifications.
+     */
+    data: XOR<CrmNotificationUpdateManyMutationInput, CrmNotificationUncheckedUpdateManyInput>
+    /**
+     * Filter which CrmNotifications to update
+     */
+    where?: CrmNotificationWhereInput
+    /**
+     * Limit how many CrmNotifications to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmNotificationIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * CrmNotification upsert
+   */
+  export type CrmNotificationUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmNotification
+     */
+    select?: CrmNotificationSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmNotification
+     */
+    omit?: CrmNotificationOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmNotificationInclude<ExtArgs> | null
+    /**
+     * The filter to search for the CrmNotification to update in case it exists.
+     */
+    where: CrmNotificationWhereUniqueInput
+    /**
+     * In case the CrmNotification found by the `where` argument doesn't exist, create a new CrmNotification with this data.
+     */
+    create: XOR<CrmNotificationCreateInput, CrmNotificationUncheckedCreateInput>
+    /**
+     * In case the CrmNotification was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<CrmNotificationUpdateInput, CrmNotificationUncheckedUpdateInput>
+  }
+
+  /**
+   * CrmNotification delete
+   */
+  export type CrmNotificationDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmNotification
+     */
+    select?: CrmNotificationSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmNotification
+     */
+    omit?: CrmNotificationOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmNotificationInclude<ExtArgs> | null
+    /**
+     * Filter which CrmNotification to delete.
+     */
+    where: CrmNotificationWhereUniqueInput
+  }
+
+  /**
+   * CrmNotification deleteMany
+   */
+  export type CrmNotificationDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which CrmNotifications to delete
+     */
+    where?: CrmNotificationWhereInput
+    /**
+     * Limit how many CrmNotifications to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * CrmNotification without action
+   */
+  export type CrmNotificationDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmNotification
+     */
+    select?: CrmNotificationSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmNotification
+     */
+    omit?: CrmNotificationOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmNotificationInclude<ExtArgs> | null
   }
 
 
@@ -46741,6 +48031,24 @@ export namespace Prisma {
   export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
 
 
+  export const CrmNotificationScalarFieldEnum: {
+    id: 'id',
+    userId: 'userId',
+    kind: 'kind',
+    dedupeKey: 'dedupeKey',
+    title: 'title',
+    body: 'body',
+    readAt: 'readAt',
+    important: 'important',
+    notifType: 'notifType',
+    priority: 'priority',
+    metadata: 'metadata',
+    createdAt: 'createdAt'
+  };
+
+  export type CrmNotificationScalarFieldEnum = (typeof CrmNotificationScalarFieldEnum)[keyof typeof CrmNotificationScalarFieldEnum]
+
+
   export const ActivityLogScalarFieldEnum: {
     id: 'id',
     userId: 'userId',
@@ -47524,6 +48832,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseListRelationFilter
     activityLogs?: ActivityLogListRelationFilter
     auditChangeSets?: AuditChangeSetListRelationFilter
+    crmNotifications?: CrmNotificationListRelationFilter
   }
 
   export type UserOrderByWithRelationInput = {
@@ -47552,6 +48861,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseOrderByRelationAggregateInput
     activityLogs?: ActivityLogOrderByRelationAggregateInput
     auditChangeSets?: AuditChangeSetOrderByRelationAggregateInput
+    crmNotifications?: CrmNotificationOrderByRelationAggregateInput
   }
 
   export type UserWhereUniqueInput = Prisma.AtLeast<{
@@ -47583,6 +48893,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseListRelationFilter
     activityLogs?: ActivityLogListRelationFilter
     auditChangeSets?: AuditChangeSetListRelationFilter
+    crmNotifications?: CrmNotificationListRelationFilter
   }, "id">
 
   export type UserOrderByWithAggregationInput = {
@@ -47619,6 +48930,97 @@ export namespace Prisma {
     lastActivity?: DateTimeNullableWithAggregatesFilter<"User"> | Date | string | null
     createdAt?: DateTimeWithAggregatesFilter<"User"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"User"> | Date | string
+  }
+
+  export type CrmNotificationWhereInput = {
+    AND?: CrmNotificationWhereInput | CrmNotificationWhereInput[]
+    OR?: CrmNotificationWhereInput[]
+    NOT?: CrmNotificationWhereInput | CrmNotificationWhereInput[]
+    id?: StringFilter<"CrmNotification"> | string
+    userId?: StringFilter<"CrmNotification"> | string
+    kind?: StringFilter<"CrmNotification"> | string
+    dedupeKey?: StringNullableFilter<"CrmNotification"> | string | null
+    title?: StringFilter<"CrmNotification"> | string
+    body?: StringFilter<"CrmNotification"> | string
+    readAt?: DateTimeNullableFilter<"CrmNotification"> | Date | string | null
+    important?: BoolFilter<"CrmNotification"> | boolean
+    notifType?: StringFilter<"CrmNotification"> | string
+    priority?: StringFilter<"CrmNotification"> | string
+    metadata?: JsonNullableFilter<"CrmNotification">
+    createdAt?: DateTimeFilter<"CrmNotification"> | Date | string
+    user?: XOR<UserScalarRelationFilter, UserWhereInput>
+  }
+
+  export type CrmNotificationOrderByWithRelationInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    kind?: SortOrder
+    dedupeKey?: SortOrderInput | SortOrder
+    title?: SortOrder
+    body?: SortOrder
+    readAt?: SortOrderInput | SortOrder
+    important?: SortOrder
+    notifType?: SortOrder
+    priority?: SortOrder
+    metadata?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    user?: UserOrderByWithRelationInput
+  }
+
+  export type CrmNotificationWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    userId_dedupeKey?: CrmNotificationUserIdDedupeKeyCompoundUniqueInput
+    AND?: CrmNotificationWhereInput | CrmNotificationWhereInput[]
+    OR?: CrmNotificationWhereInput[]
+    NOT?: CrmNotificationWhereInput | CrmNotificationWhereInput[]
+    userId?: StringFilter<"CrmNotification"> | string
+    kind?: StringFilter<"CrmNotification"> | string
+    dedupeKey?: StringNullableFilter<"CrmNotification"> | string | null
+    title?: StringFilter<"CrmNotification"> | string
+    body?: StringFilter<"CrmNotification"> | string
+    readAt?: DateTimeNullableFilter<"CrmNotification"> | Date | string | null
+    important?: BoolFilter<"CrmNotification"> | boolean
+    notifType?: StringFilter<"CrmNotification"> | string
+    priority?: StringFilter<"CrmNotification"> | string
+    metadata?: JsonNullableFilter<"CrmNotification">
+    createdAt?: DateTimeFilter<"CrmNotification"> | Date | string
+    user?: XOR<UserScalarRelationFilter, UserWhereInput>
+  }, "id" | "userId_dedupeKey">
+
+  export type CrmNotificationOrderByWithAggregationInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    kind?: SortOrder
+    dedupeKey?: SortOrderInput | SortOrder
+    title?: SortOrder
+    body?: SortOrder
+    readAt?: SortOrderInput | SortOrder
+    important?: SortOrder
+    notifType?: SortOrder
+    priority?: SortOrder
+    metadata?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    _count?: CrmNotificationCountOrderByAggregateInput
+    _max?: CrmNotificationMaxOrderByAggregateInput
+    _min?: CrmNotificationMinOrderByAggregateInput
+  }
+
+  export type CrmNotificationScalarWhereWithAggregatesInput = {
+    AND?: CrmNotificationScalarWhereWithAggregatesInput | CrmNotificationScalarWhereWithAggregatesInput[]
+    OR?: CrmNotificationScalarWhereWithAggregatesInput[]
+    NOT?: CrmNotificationScalarWhereWithAggregatesInput | CrmNotificationScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"CrmNotification"> | string
+    userId?: StringWithAggregatesFilter<"CrmNotification"> | string
+    kind?: StringWithAggregatesFilter<"CrmNotification"> | string
+    dedupeKey?: StringNullableWithAggregatesFilter<"CrmNotification"> | string | null
+    title?: StringWithAggregatesFilter<"CrmNotification"> | string
+    body?: StringWithAggregatesFilter<"CrmNotification"> | string
+    readAt?: DateTimeNullableWithAggregatesFilter<"CrmNotification"> | Date | string | null
+    important?: BoolWithAggregatesFilter<"CrmNotification"> | boolean
+    notifType?: StringWithAggregatesFilter<"CrmNotification"> | string
+    priority?: StringWithAggregatesFilter<"CrmNotification"> | string
+    metadata?: JsonNullableWithAggregatesFilter<"CrmNotification">
+    createdAt?: DateTimeWithAggregatesFilter<"CrmNotification"> | Date | string
   }
 
   export type ActivityLogWhereInput = {
@@ -50190,6 +51592,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
     activityLogs?: ActivityLogCreateNestedManyWithoutUserInput
     auditChangeSets?: AuditChangeSetCreateNestedManyWithoutUserInput
+    crmNotifications?: CrmNotificationCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateInput = {
@@ -50217,6 +51620,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
     activityLogs?: ActivityLogUncheckedCreateNestedManyWithoutUserInput
     auditChangeSets?: AuditChangeSetUncheckedCreateNestedManyWithoutUserInput
+    crmNotifications?: CrmNotificationUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserUpdateInput = {
@@ -50244,6 +51648,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
     activityLogs?: ActivityLogUpdateManyWithoutUserNestedInput
     auditChangeSets?: AuditChangeSetUpdateManyWithoutUserNestedInput
+    crmNotifications?: CrmNotificationUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateInput = {
@@ -50271,6 +51676,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
     activityLogs?: ActivityLogUncheckedUpdateManyWithoutUserNestedInput
     auditChangeSets?: AuditChangeSetUncheckedUpdateManyWithoutUserNestedInput
+    crmNotifications?: CrmNotificationUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type UserCreateManyInput = {
@@ -50312,6 +51718,110 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CrmNotificationCreateInput = {
+    id?: string
+    kind: string
+    dedupeKey?: string | null
+    title: string
+    body: string
+    readAt?: Date | string | null
+    important?: boolean
+    notifType?: string
+    priority?: string
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    user: UserCreateNestedOneWithoutCrmNotificationsInput
+  }
+
+  export type CrmNotificationUncheckedCreateInput = {
+    id?: string
+    userId: string
+    kind: string
+    dedupeKey?: string | null
+    title: string
+    body: string
+    readAt?: Date | string | null
+    important?: boolean
+    notifType?: string
+    priority?: string
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+  }
+
+  export type CrmNotificationUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    kind?: StringFieldUpdateOperationsInput | string
+    dedupeKey?: NullableStringFieldUpdateOperationsInput | string | null
+    title?: StringFieldUpdateOperationsInput | string
+    body?: StringFieldUpdateOperationsInput | string
+    readAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    important?: BoolFieldUpdateOperationsInput | boolean
+    notifType?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    user?: UserUpdateOneRequiredWithoutCrmNotificationsNestedInput
+  }
+
+  export type CrmNotificationUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    kind?: StringFieldUpdateOperationsInput | string
+    dedupeKey?: NullableStringFieldUpdateOperationsInput | string | null
+    title?: StringFieldUpdateOperationsInput | string
+    body?: StringFieldUpdateOperationsInput | string
+    readAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    important?: BoolFieldUpdateOperationsInput | boolean
+    notifType?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CrmNotificationCreateManyInput = {
+    id?: string
+    userId: string
+    kind: string
+    dedupeKey?: string | null
+    title: string
+    body: string
+    readAt?: Date | string | null
+    important?: boolean
+    notifType?: string
+    priority?: string
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+  }
+
+  export type CrmNotificationUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    kind?: StringFieldUpdateOperationsInput | string
+    dedupeKey?: NullableStringFieldUpdateOperationsInput | string | null
+    title?: StringFieldUpdateOperationsInput | string
+    body?: StringFieldUpdateOperationsInput | string
+    readAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    important?: BoolFieldUpdateOperationsInput | boolean
+    notifType?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CrmNotificationUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    kind?: StringFieldUpdateOperationsInput | string
+    dedupeKey?: NullableStringFieldUpdateOperationsInput | string | null
+    title?: StringFieldUpdateOperationsInput | string
+    body?: StringFieldUpdateOperationsInput | string
+    readAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    important?: BoolFieldUpdateOperationsInput | boolean
+    notifType?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type ActivityLogCreateInput = {
@@ -53140,6 +54650,12 @@ export namespace Prisma {
     none?: AuditChangeSetWhereInput
   }
 
+  export type CrmNotificationListRelationFilter = {
+    every?: CrmNotificationWhereInput
+    some?: CrmNotificationWhereInput
+    none?: CrmNotificationWhereInput
+  }
+
   export type AccountOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
@@ -53185,6 +54701,10 @@ export namespace Prisma {
   }
 
   export type AuditChangeSetOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type CrmNotificationOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -53266,6 +54786,103 @@ export namespace Prisma {
     _count?: NestedIntNullableFilter<$PrismaModel>
     _min?: NestedDateTimeNullableFilter<$PrismaModel>
     _max?: NestedDateTimeNullableFilter<$PrismaModel>
+  }
+  export type JsonNullableFilter<$PrismaModel = never> =
+    | PatchUndefined<
+        Either<Required<JsonNullableFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonNullableFilterBase<$PrismaModel>>, 'path'>>,
+        Required<JsonNullableFilterBase<$PrismaModel>>
+      >
+    | OptionalFlat<Omit<Required<JsonNullableFilterBase<$PrismaModel>>, 'path'>>
+
+  export type JsonNullableFilterBase<$PrismaModel = never> = {
+    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    path?: string[]
+    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
+    string_contains?: string | StringFieldRefInput<$PrismaModel>
+    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
+    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+  }
+
+  export type CrmNotificationUserIdDedupeKeyCompoundUniqueInput = {
+    userId: string
+    dedupeKey: string
+  }
+
+  export type CrmNotificationCountOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    kind?: SortOrder
+    dedupeKey?: SortOrder
+    title?: SortOrder
+    body?: SortOrder
+    readAt?: SortOrder
+    important?: SortOrder
+    notifType?: SortOrder
+    priority?: SortOrder
+    metadata?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type CrmNotificationMaxOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    kind?: SortOrder
+    dedupeKey?: SortOrder
+    title?: SortOrder
+    body?: SortOrder
+    readAt?: SortOrder
+    important?: SortOrder
+    notifType?: SortOrder
+    priority?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type CrmNotificationMinOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    kind?: SortOrder
+    dedupeKey?: SortOrder
+    title?: SortOrder
+    body?: SortOrder
+    readAt?: SortOrder
+    important?: SortOrder
+    notifType?: SortOrder
+    priority?: SortOrder
+    createdAt?: SortOrder
+  }
+  export type JsonNullableWithAggregatesFilter<$PrismaModel = never> =
+    | PatchUndefined<
+        Either<Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, 'path'>>,
+        Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>
+      >
+    | OptionalFlat<Omit<Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, 'path'>>
+
+  export type JsonNullableWithAggregatesFilterBase<$PrismaModel = never> = {
+    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    path?: string[]
+    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
+    string_contains?: string | StringFieldRefInput<$PrismaModel>
+    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
+    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedJsonNullableFilter<$PrismaModel>
+    _max?: NestedJsonNullableFilter<$PrismaModel>
   }
 
   export type UserNullableScalarRelationFilter = {
@@ -53429,29 +55046,6 @@ export namespace Prisma {
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
-  export type JsonNullableFilter<$PrismaModel = never> =
-    | PatchUndefined<
-        Either<Required<JsonNullableFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonNullableFilterBase<$PrismaModel>>, 'path'>>,
-        Required<JsonNullableFilterBase<$PrismaModel>>
-      >
-    | OptionalFlat<Omit<Required<JsonNullableFilterBase<$PrismaModel>>, 'path'>>
-
-  export type JsonNullableFilterBase<$PrismaModel = never> = {
-    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
-    path?: string[]
-    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
-    string_contains?: string | StringFieldRefInput<$PrismaModel>
-    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
-    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
-    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
-  }
 
   export type AiConversationScalarRelationFilter = {
     is?: AiConversationWhereInput
@@ -53481,32 +55075,6 @@ export namespace Prisma {
     role?: SortOrder
     content?: SortOrder
     createdAt?: SortOrder
-  }
-  export type JsonNullableWithAggregatesFilter<$PrismaModel = never> =
-    | PatchUndefined<
-        Either<Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, 'path'>>,
-        Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>
-      >
-    | OptionalFlat<Omit<Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, 'path'>>
-
-  export type JsonNullableWithAggregatesFilterBase<$PrismaModel = never> = {
-    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
-    path?: string[]
-    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
-    string_contains?: string | StringFieldRefInput<$PrismaModel>
-    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
-    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
-    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
-    _count?: NestedIntNullableFilter<$PrismaModel>
-    _min?: NestedJsonNullableFilter<$PrismaModel>
-    _max?: NestedJsonNullableFilter<$PrismaModel>
   }
 
   export type AiKnowledgeChunkListRelationFilter = {
@@ -54986,6 +56554,13 @@ export namespace Prisma {
     connect?: AuditChangeSetWhereUniqueInput | AuditChangeSetWhereUniqueInput[]
   }
 
+  export type CrmNotificationCreateNestedManyWithoutUserInput = {
+    create?: XOR<CrmNotificationCreateWithoutUserInput, CrmNotificationUncheckedCreateWithoutUserInput> | CrmNotificationCreateWithoutUserInput[] | CrmNotificationUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: CrmNotificationCreateOrConnectWithoutUserInput | CrmNotificationCreateOrConnectWithoutUserInput[]
+    createMany?: CrmNotificationCreateManyUserInputEnvelope
+    connect?: CrmNotificationWhereUniqueInput | CrmNotificationWhereUniqueInput[]
+  }
+
   export type AccountUncheckedCreateNestedManyWithoutUserInput = {
     create?: XOR<AccountCreateWithoutUserInput, AccountUncheckedCreateWithoutUserInput> | AccountCreateWithoutUserInput[] | AccountUncheckedCreateWithoutUserInput[]
     connectOrCreate?: AccountCreateOrConnectWithoutUserInput | AccountCreateOrConnectWithoutUserInput[]
@@ -55074,6 +56649,13 @@ export namespace Prisma {
     connectOrCreate?: AuditChangeSetCreateOrConnectWithoutUserInput | AuditChangeSetCreateOrConnectWithoutUserInput[]
     createMany?: AuditChangeSetCreateManyUserInputEnvelope
     connect?: AuditChangeSetWhereUniqueInput | AuditChangeSetWhereUniqueInput[]
+  }
+
+  export type CrmNotificationUncheckedCreateNestedManyWithoutUserInput = {
+    create?: XOR<CrmNotificationCreateWithoutUserInput, CrmNotificationUncheckedCreateWithoutUserInput> | CrmNotificationCreateWithoutUserInput[] | CrmNotificationUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: CrmNotificationCreateOrConnectWithoutUserInput | CrmNotificationCreateOrConnectWithoutUserInput[]
+    createMany?: CrmNotificationCreateManyUserInputEnvelope
+    connect?: CrmNotificationWhereUniqueInput | CrmNotificationWhereUniqueInput[]
   }
 
   export type IntFieldUpdateOperationsInput = {
@@ -55274,6 +56856,20 @@ export namespace Prisma {
     deleteMany?: AuditChangeSetScalarWhereInput | AuditChangeSetScalarWhereInput[]
   }
 
+  export type CrmNotificationUpdateManyWithoutUserNestedInput = {
+    create?: XOR<CrmNotificationCreateWithoutUserInput, CrmNotificationUncheckedCreateWithoutUserInput> | CrmNotificationCreateWithoutUserInput[] | CrmNotificationUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: CrmNotificationCreateOrConnectWithoutUserInput | CrmNotificationCreateOrConnectWithoutUserInput[]
+    upsert?: CrmNotificationUpsertWithWhereUniqueWithoutUserInput | CrmNotificationUpsertWithWhereUniqueWithoutUserInput[]
+    createMany?: CrmNotificationCreateManyUserInputEnvelope
+    set?: CrmNotificationWhereUniqueInput | CrmNotificationWhereUniqueInput[]
+    disconnect?: CrmNotificationWhereUniqueInput | CrmNotificationWhereUniqueInput[]
+    delete?: CrmNotificationWhereUniqueInput | CrmNotificationWhereUniqueInput[]
+    connect?: CrmNotificationWhereUniqueInput | CrmNotificationWhereUniqueInput[]
+    update?: CrmNotificationUpdateWithWhereUniqueWithoutUserInput | CrmNotificationUpdateWithWhereUniqueWithoutUserInput[]
+    updateMany?: CrmNotificationUpdateManyWithWhereWithoutUserInput | CrmNotificationUpdateManyWithWhereWithoutUserInput[]
+    deleteMany?: CrmNotificationScalarWhereInput | CrmNotificationScalarWhereInput[]
+  }
+
   export type AccountUncheckedUpdateManyWithoutUserNestedInput = {
     create?: XOR<AccountCreateWithoutUserInput, AccountUncheckedCreateWithoutUserInput> | AccountCreateWithoutUserInput[] | AccountUncheckedCreateWithoutUserInput[]
     connectOrCreate?: AccountCreateOrConnectWithoutUserInput | AccountCreateOrConnectWithoutUserInput[]
@@ -55450,6 +57046,34 @@ export namespace Prisma {
     update?: AuditChangeSetUpdateWithWhereUniqueWithoutUserInput | AuditChangeSetUpdateWithWhereUniqueWithoutUserInput[]
     updateMany?: AuditChangeSetUpdateManyWithWhereWithoutUserInput | AuditChangeSetUpdateManyWithWhereWithoutUserInput[]
     deleteMany?: AuditChangeSetScalarWhereInput | AuditChangeSetScalarWhereInput[]
+  }
+
+  export type CrmNotificationUncheckedUpdateManyWithoutUserNestedInput = {
+    create?: XOR<CrmNotificationCreateWithoutUserInput, CrmNotificationUncheckedCreateWithoutUserInput> | CrmNotificationCreateWithoutUserInput[] | CrmNotificationUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: CrmNotificationCreateOrConnectWithoutUserInput | CrmNotificationCreateOrConnectWithoutUserInput[]
+    upsert?: CrmNotificationUpsertWithWhereUniqueWithoutUserInput | CrmNotificationUpsertWithWhereUniqueWithoutUserInput[]
+    createMany?: CrmNotificationCreateManyUserInputEnvelope
+    set?: CrmNotificationWhereUniqueInput | CrmNotificationWhereUniqueInput[]
+    disconnect?: CrmNotificationWhereUniqueInput | CrmNotificationWhereUniqueInput[]
+    delete?: CrmNotificationWhereUniqueInput | CrmNotificationWhereUniqueInput[]
+    connect?: CrmNotificationWhereUniqueInput | CrmNotificationWhereUniqueInput[]
+    update?: CrmNotificationUpdateWithWhereUniqueWithoutUserInput | CrmNotificationUpdateWithWhereUniqueWithoutUserInput[]
+    updateMany?: CrmNotificationUpdateManyWithWhereWithoutUserInput | CrmNotificationUpdateManyWithWhereWithoutUserInput[]
+    deleteMany?: CrmNotificationScalarWhereInput | CrmNotificationScalarWhereInput[]
+  }
+
+  export type UserCreateNestedOneWithoutCrmNotificationsInput = {
+    create?: XOR<UserCreateWithoutCrmNotificationsInput, UserUncheckedCreateWithoutCrmNotificationsInput>
+    connectOrCreate?: UserCreateOrConnectWithoutCrmNotificationsInput
+    connect?: UserWhereUniqueInput
+  }
+
+  export type UserUpdateOneRequiredWithoutCrmNotificationsNestedInput = {
+    create?: XOR<UserCreateWithoutCrmNotificationsInput, UserUncheckedCreateWithoutCrmNotificationsInput>
+    connectOrCreate?: UserCreateOrConnectWithoutCrmNotificationsInput
+    upsert?: UserUpsertWithoutCrmNotificationsInput
+    connect?: UserWhereUniqueInput
+    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutCrmNotificationsInput, UserUpdateWithoutCrmNotificationsInput>, UserUncheckedUpdateWithoutCrmNotificationsInput>
   }
 
   export type UserCreateNestedOneWithoutActivityLogsInput = {
@@ -57182,6 +58806,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
     activityLogs?: ActivityLogCreateNestedManyWithoutUserInput
     auditChangeSets?: AuditChangeSetCreateNestedManyWithoutUserInput
+    crmNotifications?: CrmNotificationCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutRoleInput = {
@@ -57208,6 +58833,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
     activityLogs?: ActivityLogUncheckedCreateNestedManyWithoutUserInput
     auditChangeSets?: AuditChangeSetUncheckedCreateNestedManyWithoutUserInput
+    crmNotifications?: CrmNotificationUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutRoleInput = {
@@ -57362,6 +58988,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
     activityLogs?: ActivityLogCreateNestedManyWithoutUserInput
     auditChangeSets?: AuditChangeSetCreateNestedManyWithoutUserInput
+    crmNotifications?: CrmNotificationCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutAccountsInput = {
@@ -57388,6 +59015,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
     activityLogs?: ActivityLogUncheckedCreateNestedManyWithoutUserInput
     auditChangeSets?: AuditChangeSetUncheckedCreateNestedManyWithoutUserInput
+    crmNotifications?: CrmNotificationUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutAccountsInput = {
@@ -57430,6 +59058,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
     activityLogs?: ActivityLogUpdateManyWithoutUserNestedInput
     auditChangeSets?: AuditChangeSetUpdateManyWithoutUserNestedInput
+    crmNotifications?: CrmNotificationUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutAccountsInput = {
@@ -57456,6 +59085,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
     activityLogs?: ActivityLogUncheckedUpdateManyWithoutUserNestedInput
     auditChangeSets?: AuditChangeSetUncheckedUpdateManyWithoutUserNestedInput
+    crmNotifications?: CrmNotificationUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type RoleCreateWithoutUsersInput = {
@@ -58024,6 +59654,44 @@ export namespace Prisma {
     skipDuplicates?: boolean
   }
 
+  export type CrmNotificationCreateWithoutUserInput = {
+    id?: string
+    kind: string
+    dedupeKey?: string | null
+    title: string
+    body: string
+    readAt?: Date | string | null
+    important?: boolean
+    notifType?: string
+    priority?: string
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+  }
+
+  export type CrmNotificationUncheckedCreateWithoutUserInput = {
+    id?: string
+    kind: string
+    dedupeKey?: string | null
+    title: string
+    body: string
+    readAt?: Date | string | null
+    important?: boolean
+    notifType?: string
+    priority?: string
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+  }
+
+  export type CrmNotificationCreateOrConnectWithoutUserInput = {
+    where: CrmNotificationWhereUniqueInput
+    create: XOR<CrmNotificationCreateWithoutUserInput, CrmNotificationUncheckedCreateWithoutUserInput>
+  }
+
+  export type CrmNotificationCreateManyUserInputEnvelope = {
+    data: CrmNotificationCreateManyUserInput | CrmNotificationCreateManyUserInput[]
+    skipDuplicates?: boolean
+  }
+
   export type RoleUpsertWithoutUsersInput = {
     update: XOR<RoleUpdateWithoutUsersInput, RoleUncheckedUpdateWithoutUsersInput>
     create: XOR<RoleCreateWithoutUsersInput, RoleUncheckedCreateWithoutUsersInput>
@@ -58498,6 +60166,164 @@ export namespace Prisma {
     createdAt?: DateTimeFilter<"AuditChangeSet"> | Date | string
   }
 
+  export type CrmNotificationUpsertWithWhereUniqueWithoutUserInput = {
+    where: CrmNotificationWhereUniqueInput
+    update: XOR<CrmNotificationUpdateWithoutUserInput, CrmNotificationUncheckedUpdateWithoutUserInput>
+    create: XOR<CrmNotificationCreateWithoutUserInput, CrmNotificationUncheckedCreateWithoutUserInput>
+  }
+
+  export type CrmNotificationUpdateWithWhereUniqueWithoutUserInput = {
+    where: CrmNotificationWhereUniqueInput
+    data: XOR<CrmNotificationUpdateWithoutUserInput, CrmNotificationUncheckedUpdateWithoutUserInput>
+  }
+
+  export type CrmNotificationUpdateManyWithWhereWithoutUserInput = {
+    where: CrmNotificationScalarWhereInput
+    data: XOR<CrmNotificationUpdateManyMutationInput, CrmNotificationUncheckedUpdateManyWithoutUserInput>
+  }
+
+  export type CrmNotificationScalarWhereInput = {
+    AND?: CrmNotificationScalarWhereInput | CrmNotificationScalarWhereInput[]
+    OR?: CrmNotificationScalarWhereInput[]
+    NOT?: CrmNotificationScalarWhereInput | CrmNotificationScalarWhereInput[]
+    id?: StringFilter<"CrmNotification"> | string
+    userId?: StringFilter<"CrmNotification"> | string
+    kind?: StringFilter<"CrmNotification"> | string
+    dedupeKey?: StringNullableFilter<"CrmNotification"> | string | null
+    title?: StringFilter<"CrmNotification"> | string
+    body?: StringFilter<"CrmNotification"> | string
+    readAt?: DateTimeNullableFilter<"CrmNotification"> | Date | string | null
+    important?: BoolFilter<"CrmNotification"> | boolean
+    notifType?: StringFilter<"CrmNotification"> | string
+    priority?: StringFilter<"CrmNotification"> | string
+    metadata?: JsonNullableFilter<"CrmNotification">
+    createdAt?: DateTimeFilter<"CrmNotification"> | Date | string
+  }
+
+  export type UserCreateWithoutCrmNotificationsInput = {
+    id?: string
+    name: string
+    sessionVersion?: number
+    phone?: string | null
+    avatar?: string | null
+    status?: string
+    joinedAt?: Date | string
+    lastActivity?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    role: RoleCreateNestedOneWithoutUsersInput
+    accounts?: AccountCreateNestedManyWithoutUserInput
+    contactsAssigned?: ContactCreateNestedManyWithoutUserInput
+    opportunitiesAssigned?: OpportunityCreateNestedManyWithoutUserInput
+    companiesAssigned?: CompanyCreateNestedManyWithoutUserInput
+    activitiesAssigned?: ActivityCreateNestedManyWithoutUserInput
+    campaignsCreated?: CampaignCreateNestedManyWithoutCreatedByInput
+    crmFilesUploaded?: CrmFileCreateNestedManyWithoutUserInput
+    crmSalesGoal?: CrmUserSalesGoalCreateNestedOneWithoutUserInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetCreateNestedManyWithoutUserInput
+    aiConversations?: AiConversationCreateNestedManyWithoutUserInput
+    aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
+    activityLogs?: ActivityLogCreateNestedManyWithoutUserInput
+    auditChangeSets?: AuditChangeSetCreateNestedManyWithoutUserInput
+  }
+
+  export type UserUncheckedCreateWithoutCrmNotificationsInput = {
+    id?: string
+    name: string
+    roleId: string
+    sessionVersion?: number
+    phone?: string | null
+    avatar?: string | null
+    status?: string
+    joinedAt?: Date | string
+    lastActivity?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
+    contactsAssigned?: ContactUncheckedCreateNestedManyWithoutUserInput
+    opportunitiesAssigned?: OpportunityUncheckedCreateNestedManyWithoutUserInput
+    companiesAssigned?: CompanyUncheckedCreateNestedManyWithoutUserInput
+    activitiesAssigned?: ActivityUncheckedCreateNestedManyWithoutUserInput
+    campaignsCreated?: CampaignUncheckedCreateNestedManyWithoutCreatedByInput
+    crmFilesUploaded?: CrmFileUncheckedCreateNestedManyWithoutUserInput
+    crmSalesGoal?: CrmUserSalesGoalUncheckedCreateNestedOneWithoutUserInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUncheckedCreateNestedManyWithoutUserInput
+    aiConversations?: AiConversationUncheckedCreateNestedManyWithoutUserInput
+    aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
+    activityLogs?: ActivityLogUncheckedCreateNestedManyWithoutUserInput
+    auditChangeSets?: AuditChangeSetUncheckedCreateNestedManyWithoutUserInput
+  }
+
+  export type UserCreateOrConnectWithoutCrmNotificationsInput = {
+    where: UserWhereUniqueInput
+    create: XOR<UserCreateWithoutCrmNotificationsInput, UserUncheckedCreateWithoutCrmNotificationsInput>
+  }
+
+  export type UserUpsertWithoutCrmNotificationsInput = {
+    update: XOR<UserUpdateWithoutCrmNotificationsInput, UserUncheckedUpdateWithoutCrmNotificationsInput>
+    create: XOR<UserCreateWithoutCrmNotificationsInput, UserUncheckedCreateWithoutCrmNotificationsInput>
+    where?: UserWhereInput
+  }
+
+  export type UserUpdateToOneWithWhereWithoutCrmNotificationsInput = {
+    where?: UserWhereInput
+    data: XOR<UserUpdateWithoutCrmNotificationsInput, UserUncheckedUpdateWithoutCrmNotificationsInput>
+  }
+
+  export type UserUpdateWithoutCrmNotificationsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    sessionVersion?: IntFieldUpdateOperationsInput | number
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
+    avatar?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: StringFieldUpdateOperationsInput | string
+    joinedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    role?: RoleUpdateOneRequiredWithoutUsersNestedInput
+    accounts?: AccountUpdateManyWithoutUserNestedInput
+    contactsAssigned?: ContactUpdateManyWithoutUserNestedInput
+    opportunitiesAssigned?: OpportunityUpdateManyWithoutUserNestedInput
+    companiesAssigned?: CompanyUpdateManyWithoutUserNestedInput
+    activitiesAssigned?: ActivityUpdateManyWithoutUserNestedInput
+    campaignsCreated?: CampaignUpdateManyWithoutCreatedByNestedInput
+    crmFilesUploaded?: CrmFileUpdateManyWithoutUserNestedInput
+    crmSalesGoal?: CrmUserSalesGoalUpdateOneWithoutUserNestedInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUpdateManyWithoutUserNestedInput
+    aiConversations?: AiConversationUpdateManyWithoutUserNestedInput
+    aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
+    activityLogs?: ActivityLogUpdateManyWithoutUserNestedInput
+    auditChangeSets?: AuditChangeSetUpdateManyWithoutUserNestedInput
+  }
+
+  export type UserUncheckedUpdateWithoutCrmNotificationsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    roleId?: StringFieldUpdateOperationsInput | string
+    sessionVersion?: IntFieldUpdateOperationsInput | number
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
+    avatar?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: StringFieldUpdateOperationsInput | string
+    joinedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
+    contactsAssigned?: ContactUncheckedUpdateManyWithoutUserNestedInput
+    opportunitiesAssigned?: OpportunityUncheckedUpdateManyWithoutUserNestedInput
+    companiesAssigned?: CompanyUncheckedUpdateManyWithoutUserNestedInput
+    activitiesAssigned?: ActivityUncheckedUpdateManyWithoutUserNestedInput
+    campaignsCreated?: CampaignUncheckedUpdateManyWithoutCreatedByNestedInput
+    crmFilesUploaded?: CrmFileUncheckedUpdateManyWithoutUserNestedInput
+    crmSalesGoal?: CrmUserSalesGoalUncheckedUpdateOneWithoutUserNestedInput
+    crmUserMonthlySalesTargets?: CrmUserMonthlySalesTargetUncheckedUpdateManyWithoutUserNestedInput
+    aiConversations?: AiConversationUncheckedUpdateManyWithoutUserNestedInput
+    aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
+    activityLogs?: ActivityLogUncheckedUpdateManyWithoutUserNestedInput
+    auditChangeSets?: AuditChangeSetUncheckedUpdateManyWithoutUserNestedInput
+  }
+
   export type UserCreateWithoutActivityLogsInput = {
     id?: string
     name: string
@@ -58522,6 +60348,7 @@ export namespace Prisma {
     aiConversations?: AiConversationCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
     auditChangeSets?: AuditChangeSetCreateNestedManyWithoutUserInput
+    crmNotifications?: CrmNotificationCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutActivityLogsInput = {
@@ -58548,6 +60375,7 @@ export namespace Prisma {
     aiConversations?: AiConversationUncheckedCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
     auditChangeSets?: AuditChangeSetUncheckedCreateNestedManyWithoutUserInput
+    crmNotifications?: CrmNotificationUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutActivityLogsInput = {
@@ -58590,6 +60418,7 @@ export namespace Prisma {
     aiConversations?: AiConversationUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
     auditChangeSets?: AuditChangeSetUpdateManyWithoutUserNestedInput
+    crmNotifications?: CrmNotificationUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutActivityLogsInput = {
@@ -58616,6 +60445,7 @@ export namespace Prisma {
     aiConversations?: AiConversationUncheckedUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
     auditChangeSets?: AuditChangeSetUncheckedUpdateManyWithoutUserNestedInput
+    crmNotifications?: CrmNotificationUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type UserCreateWithoutAuditChangeSetsInput = {
@@ -58642,6 +60472,7 @@ export namespace Prisma {
     aiConversations?: AiConversationCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
     activityLogs?: ActivityLogCreateNestedManyWithoutUserInput
+    crmNotifications?: CrmNotificationCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutAuditChangeSetsInput = {
@@ -58668,6 +60499,7 @@ export namespace Prisma {
     aiConversations?: AiConversationUncheckedCreateNestedManyWithoutUserInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
     activityLogs?: ActivityLogUncheckedCreateNestedManyWithoutUserInput
+    crmNotifications?: CrmNotificationUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutAuditChangeSetsInput = {
@@ -58736,6 +60568,7 @@ export namespace Prisma {
     aiConversations?: AiConversationUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
     activityLogs?: ActivityLogUpdateManyWithoutUserNestedInput
+    crmNotifications?: CrmNotificationUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutAuditChangeSetsInput = {
@@ -58762,6 +60595,7 @@ export namespace Prisma {
     aiConversations?: AiConversationUncheckedUpdateManyWithoutUserNestedInput
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
     activityLogs?: ActivityLogUncheckedUpdateManyWithoutUserNestedInput
+    crmNotifications?: CrmNotificationUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type AuditChangeEntryUpsertWithWhereUniqueWithoutChangeSetInput = {
@@ -58880,6 +60714,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
     activityLogs?: ActivityLogCreateNestedManyWithoutUserInput
     auditChangeSets?: AuditChangeSetCreateNestedManyWithoutUserInput
+    crmNotifications?: CrmNotificationCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutAiConversationsInput = {
@@ -58906,6 +60741,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
     activityLogs?: ActivityLogUncheckedCreateNestedManyWithoutUserInput
     auditChangeSets?: AuditChangeSetUncheckedCreateNestedManyWithoutUserInput
+    crmNotifications?: CrmNotificationUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutAiConversationsInput = {
@@ -58974,6 +60810,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
     activityLogs?: ActivityLogUpdateManyWithoutUserNestedInput
     auditChangeSets?: AuditChangeSetUpdateManyWithoutUserNestedInput
+    crmNotifications?: CrmNotificationUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutAiConversationsInput = {
@@ -59000,6 +60837,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
     activityLogs?: ActivityLogUncheckedUpdateManyWithoutUserNestedInput
     auditChangeSets?: AuditChangeSetUncheckedUpdateManyWithoutUserNestedInput
+    crmNotifications?: CrmNotificationUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type AiMessageUpsertWithWhereUniqueWithoutConversationInput = {
@@ -59102,6 +60940,7 @@ export namespace Prisma {
     aiConversations?: AiConversationCreateNestedManyWithoutUserInput
     activityLogs?: ActivityLogCreateNestedManyWithoutUserInput
     auditChangeSets?: AuditChangeSetCreateNestedManyWithoutUserInput
+    crmNotifications?: CrmNotificationCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutAiKnowledgeBasesInput = {
@@ -59128,6 +60967,7 @@ export namespace Prisma {
     aiConversations?: AiConversationUncheckedCreateNestedManyWithoutUserInput
     activityLogs?: ActivityLogUncheckedCreateNestedManyWithoutUserInput
     auditChangeSets?: AuditChangeSetUncheckedCreateNestedManyWithoutUserInput
+    crmNotifications?: CrmNotificationUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutAiKnowledgeBasesInput = {
@@ -59194,6 +61034,7 @@ export namespace Prisma {
     aiConversations?: AiConversationUpdateManyWithoutUserNestedInput
     activityLogs?: ActivityLogUpdateManyWithoutUserNestedInput
     auditChangeSets?: AuditChangeSetUpdateManyWithoutUserNestedInput
+    crmNotifications?: CrmNotificationUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutAiKnowledgeBasesInput = {
@@ -59220,6 +61061,7 @@ export namespace Prisma {
     aiConversations?: AiConversationUncheckedUpdateManyWithoutUserNestedInput
     activityLogs?: ActivityLogUncheckedUpdateManyWithoutUserNestedInput
     auditChangeSets?: AuditChangeSetUncheckedUpdateManyWithoutUserNestedInput
+    crmNotifications?: CrmNotificationUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type AiKnowledgeChunkUpsertWithWhereUniqueWithoutKnowledgeBaseInput = {
@@ -59483,6 +61325,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
     activityLogs?: ActivityLogCreateNestedManyWithoutUserInput
     auditChangeSets?: AuditChangeSetCreateNestedManyWithoutUserInput
+    crmNotifications?: CrmNotificationCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutCrmSalesGoalInput = {
@@ -59509,6 +61352,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
     activityLogs?: ActivityLogUncheckedCreateNestedManyWithoutUserInput
     auditChangeSets?: AuditChangeSetUncheckedCreateNestedManyWithoutUserInput
+    crmNotifications?: CrmNotificationUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutCrmSalesGoalInput = {
@@ -59551,6 +61395,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
     activityLogs?: ActivityLogUpdateManyWithoutUserNestedInput
     auditChangeSets?: AuditChangeSetUpdateManyWithoutUserNestedInput
+    crmNotifications?: CrmNotificationUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutCrmSalesGoalInput = {
@@ -59577,6 +61422,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
     activityLogs?: ActivityLogUncheckedUpdateManyWithoutUserNestedInput
     auditChangeSets?: AuditChangeSetUncheckedUpdateManyWithoutUserNestedInput
+    crmNotifications?: CrmNotificationUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type UserCreateWithoutCrmUserMonthlySalesTargetsInput = {
@@ -59603,6 +61449,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
     activityLogs?: ActivityLogCreateNestedManyWithoutUserInput
     auditChangeSets?: AuditChangeSetCreateNestedManyWithoutUserInput
+    crmNotifications?: CrmNotificationCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutCrmUserMonthlySalesTargetsInput = {
@@ -59629,6 +61476,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
     activityLogs?: ActivityLogUncheckedCreateNestedManyWithoutUserInput
     auditChangeSets?: AuditChangeSetUncheckedCreateNestedManyWithoutUserInput
+    crmNotifications?: CrmNotificationUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutCrmUserMonthlySalesTargetsInput = {
@@ -59671,6 +61519,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
     activityLogs?: ActivityLogUpdateManyWithoutUserNestedInput
     auditChangeSets?: AuditChangeSetUpdateManyWithoutUserNestedInput
+    crmNotifications?: CrmNotificationUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutCrmUserMonthlySalesTargetsInput = {
@@ -59697,6 +61546,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
     activityLogs?: ActivityLogUncheckedUpdateManyWithoutUserNestedInput
     auditChangeSets?: AuditChangeSetUncheckedUpdateManyWithoutUserNestedInput
+    crmNotifications?: CrmNotificationUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type UserCreateWithoutContactsAssignedInput = {
@@ -59723,6 +61573,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
     activityLogs?: ActivityLogCreateNestedManyWithoutUserInput
     auditChangeSets?: AuditChangeSetCreateNestedManyWithoutUserInput
+    crmNotifications?: CrmNotificationCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutContactsAssignedInput = {
@@ -59749,6 +61600,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
     activityLogs?: ActivityLogUncheckedCreateNestedManyWithoutUserInput
     auditChangeSets?: AuditChangeSetUncheckedCreateNestedManyWithoutUserInput
+    crmNotifications?: CrmNotificationUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutContactsAssignedInput = {
@@ -59893,6 +61745,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
     activityLogs?: ActivityLogUpdateManyWithoutUserNestedInput
     auditChangeSets?: AuditChangeSetUpdateManyWithoutUserNestedInput
+    crmNotifications?: CrmNotificationUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutContactsAssignedInput = {
@@ -59919,6 +61772,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
     activityLogs?: ActivityLogUncheckedUpdateManyWithoutUserNestedInput
     auditChangeSets?: AuditChangeSetUncheckedUpdateManyWithoutUserNestedInput
+    crmNotifications?: CrmNotificationUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type CompanyContactUpsertWithWhereUniqueWithoutContactInput = {
@@ -60062,6 +61916,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
     activityLogs?: ActivityLogCreateNestedManyWithoutUserInput
     auditChangeSets?: AuditChangeSetCreateNestedManyWithoutUserInput
+    crmNotifications?: CrmNotificationCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutCompaniesAssignedInput = {
@@ -60088,6 +61943,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
     activityLogs?: ActivityLogUncheckedCreateNestedManyWithoutUserInput
     auditChangeSets?: AuditChangeSetUncheckedCreateNestedManyWithoutUserInput
+    crmNotifications?: CrmNotificationUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutCompaniesAssignedInput = {
@@ -60253,6 +62109,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
     activityLogs?: ActivityLogUpdateManyWithoutUserNestedInput
     auditChangeSets?: AuditChangeSetUpdateManyWithoutUserNestedInput
+    crmNotifications?: CrmNotificationUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutCompaniesAssignedInput = {
@@ -60279,6 +62136,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
     activityLogs?: ActivityLogUncheckedUpdateManyWithoutUserNestedInput
     auditChangeSets?: AuditChangeSetUncheckedUpdateManyWithoutUserNestedInput
+    crmNotifications?: CrmNotificationUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type CompanyContactUpsertWithWhereUniqueWithoutCompanyInput = {
@@ -60575,6 +62433,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
     activityLogs?: ActivityLogCreateNestedManyWithoutUserInput
     auditChangeSets?: AuditChangeSetCreateNestedManyWithoutUserInput
+    crmNotifications?: CrmNotificationCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutOpportunitiesAssignedInput = {
@@ -60601,6 +62460,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
     activityLogs?: ActivityLogUncheckedCreateNestedManyWithoutUserInput
     auditChangeSets?: AuditChangeSetUncheckedCreateNestedManyWithoutUserInput
+    crmNotifications?: CrmNotificationUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutOpportunitiesAssignedInput = {
@@ -60743,6 +62603,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
     activityLogs?: ActivityLogUpdateManyWithoutUserNestedInput
     auditChangeSets?: AuditChangeSetUpdateManyWithoutUserNestedInput
+    crmNotifications?: CrmNotificationUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutOpportunitiesAssignedInput = {
@@ -60769,6 +62630,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
     activityLogs?: ActivityLogUncheckedUpdateManyWithoutUserNestedInput
     auditChangeSets?: AuditChangeSetUncheckedUpdateManyWithoutUserNestedInput
+    crmNotifications?: CrmNotificationUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type ContactOpportunityUpsertWithWhereUniqueWithoutOpportunityInput = {
@@ -60893,6 +62755,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
     activityLogs?: ActivityLogCreateNestedManyWithoutUserInput
     auditChangeSets?: AuditChangeSetCreateNestedManyWithoutUserInput
+    crmNotifications?: CrmNotificationCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutActivitiesAssignedInput = {
@@ -60919,6 +62782,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
     activityLogs?: ActivityLogUncheckedCreateNestedManyWithoutUserInput
     auditChangeSets?: AuditChangeSetUncheckedCreateNestedManyWithoutUserInput
+    crmNotifications?: CrmNotificationUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutActivitiesAssignedInput = {
@@ -61021,6 +62885,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
     activityLogs?: ActivityLogUpdateManyWithoutUserNestedInput
     auditChangeSets?: AuditChangeSetUpdateManyWithoutUserNestedInput
+    crmNotifications?: CrmNotificationUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutActivitiesAssignedInput = {
@@ -61047,6 +62912,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
     activityLogs?: ActivityLogUncheckedUpdateManyWithoutUserNestedInput
     auditChangeSets?: AuditChangeSetUncheckedUpdateManyWithoutUserNestedInput
+    crmNotifications?: CrmNotificationUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type ContactActivityUpsertWithWhereUniqueWithoutActivityInput = {
@@ -63145,6 +65011,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
     activityLogs?: ActivityLogCreateNestedManyWithoutUserInput
     auditChangeSets?: AuditChangeSetCreateNestedManyWithoutUserInput
+    crmNotifications?: CrmNotificationCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutCampaignsCreatedInput = {
@@ -63171,6 +65038,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
     activityLogs?: ActivityLogUncheckedCreateNestedManyWithoutUserInput
     auditChangeSets?: AuditChangeSetUncheckedCreateNestedManyWithoutUserInput
+    crmNotifications?: CrmNotificationUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutCampaignsCreatedInput = {
@@ -63213,6 +65081,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
     activityLogs?: ActivityLogUpdateManyWithoutUserNestedInput
     auditChangeSets?: AuditChangeSetUpdateManyWithoutUserNestedInput
+    crmNotifications?: CrmNotificationUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutCampaignsCreatedInput = {
@@ -63239,6 +65108,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
     activityLogs?: ActivityLogUncheckedUpdateManyWithoutUserNestedInput
     auditChangeSets?: AuditChangeSetUncheckedUpdateManyWithoutUserNestedInput
+    crmNotifications?: CrmNotificationUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type UserCreateWithoutCrmFilesUploadedInput = {
@@ -63265,6 +65135,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseCreateNestedManyWithoutUserInput
     activityLogs?: ActivityLogCreateNestedManyWithoutUserInput
     auditChangeSets?: AuditChangeSetCreateNestedManyWithoutUserInput
+    crmNotifications?: CrmNotificationCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutCrmFilesUploadedInput = {
@@ -63291,6 +65162,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedCreateNestedManyWithoutUserInput
     activityLogs?: ActivityLogUncheckedCreateNestedManyWithoutUserInput
     auditChangeSets?: AuditChangeSetUncheckedCreateNestedManyWithoutUserInput
+    crmNotifications?: CrmNotificationUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutCrmFilesUploadedInput = {
@@ -63333,6 +65205,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
     activityLogs?: ActivityLogUpdateManyWithoutUserNestedInput
     auditChangeSets?: AuditChangeSetUpdateManyWithoutUserNestedInput
+    crmNotifications?: CrmNotificationUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutCrmFilesUploadedInput = {
@@ -63359,6 +65232,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
     activityLogs?: ActivityLogUncheckedUpdateManyWithoutUserNestedInput
     auditChangeSets?: AuditChangeSetUncheckedUpdateManyWithoutUserNestedInput
+    crmNotifications?: CrmNotificationUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type AuthorityCreateManyRoleInput = {
@@ -63418,6 +65292,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUpdateManyWithoutUserNestedInput
     activityLogs?: ActivityLogUpdateManyWithoutUserNestedInput
     auditChangeSets?: AuditChangeSetUpdateManyWithoutUserNestedInput
+    crmNotifications?: CrmNotificationUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutRoleInput = {
@@ -63444,6 +65319,7 @@ export namespace Prisma {
     aiKnowledgeBases?: AiKnowledgeBaseUncheckedUpdateManyWithoutUserNestedInput
     activityLogs?: ActivityLogUncheckedUpdateManyWithoutUserNestedInput
     auditChangeSets?: AuditChangeSetUncheckedUpdateManyWithoutUserNestedInput
+    crmNotifications?: CrmNotificationUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateManyWithoutRoleInput = {
@@ -63636,6 +65512,20 @@ export namespace Prisma {
     entityType: string
     entityId: string
     entityName?: string | null
+    createdAt?: Date | string
+  }
+
+  export type CrmNotificationCreateManyUserInput = {
+    id?: string
+    kind: string
+    dedupeKey?: string | null
+    title: string
+    body: string
+    readAt?: Date | string | null
+    important?: boolean
+    notifType?: string
+    priority?: string
+    metadata?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
   }
 
@@ -64220,6 +66110,48 @@ export namespace Prisma {
     entityType?: StringFieldUpdateOperationsInput | string
     entityId?: StringFieldUpdateOperationsInput | string
     entityName?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CrmNotificationUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    kind?: StringFieldUpdateOperationsInput | string
+    dedupeKey?: NullableStringFieldUpdateOperationsInput | string | null
+    title?: StringFieldUpdateOperationsInput | string
+    body?: StringFieldUpdateOperationsInput | string
+    readAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    important?: BoolFieldUpdateOperationsInput | boolean
+    notifType?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CrmNotificationUncheckedUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    kind?: StringFieldUpdateOperationsInput | string
+    dedupeKey?: NullableStringFieldUpdateOperationsInput | string | null
+    title?: StringFieldUpdateOperationsInput | string
+    body?: StringFieldUpdateOperationsInput | string
+    readAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    important?: BoolFieldUpdateOperationsInput | boolean
+    notifType?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CrmNotificationUncheckedUpdateManyWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    kind?: StringFieldUpdateOperationsInput | string
+    dedupeKey?: NullableStringFieldUpdateOperationsInput | string | null
+    title?: StringFieldUpdateOperationsInput | string
+    body?: StringFieldUpdateOperationsInput | string
+    readAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    important?: BoolFieldUpdateOperationsInput | boolean
+    notifType?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
+    metadata?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 

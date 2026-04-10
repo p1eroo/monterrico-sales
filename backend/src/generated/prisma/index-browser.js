@@ -160,6 +160,21 @@ exports.Prisma.UserScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.CrmNotificationScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  kind: 'kind',
+  dedupeKey: 'dedupeKey',
+  title: 'title',
+  body: 'body',
+  readAt: 'readAt',
+  important: 'important',
+  notifType: 'notifType',
+  priority: 'priority',
+  metadata: 'metadata',
+  createdAt: 'createdAt'
+};
+
 exports.Prisma.ActivityLogScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
@@ -541,6 +556,7 @@ exports.Prisma.ModelName = {
   Authority: 'Authority',
   Account: 'Account',
   User: 'User',
+  CrmNotification: 'CrmNotification',
   ActivityLog: 'ActivityLog',
   AuditChangeSet: 'AuditChangeSet',
   AuditChangeEntry: 'AuditChangeEntry',

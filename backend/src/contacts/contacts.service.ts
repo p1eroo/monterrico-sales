@@ -18,6 +18,7 @@ import { buildChangeEntries } from '../common/audit-diff.util';
 import { CONTACT_FIELD_LABELS } from '../audit-detail/audit-field-labels';
 import type { CrmDataScope } from '../auth/crm-data-scope.service';
 import { mergeCompanyScope } from '../common/crm-data-scope-where.util';
+import { NotificationsService } from '../notifications/notifications.service';
 
 /** Orden de pestañas de etapa en listado contactos (alineado con Empresas). */
 const CONTACT_TAB_ETAPAS = [
@@ -110,6 +111,7 @@ export class ContactsService {
     private readonly crmConfig: CrmConfigService,
     private readonly activityLogs: ActivityLogsService,
     private readonly auditDetail: AuditDetailService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   private async assertUserExists(id: string): Promise<void> {
@@ -423,6 +425,23 @@ export class ContactsService {
       entityName: row.name,
       description: `Contacto creado: ${row.name}`,
     });
+
+    if (assignedTo) {
+      let companyName: string | null = null;
+      if (effectiveCompanyId) {
+        const co = await this.prisma.company.findUnique({
+          where: { id: effectiveCompanyId },
+          select: { name: true },
+        });
+        companyName = co?.name ?? null;
+      }
+      await this.notifications.notifyNewContact({
+        userId: assignedTo,
+        contactId: row.id,
+        contactName: row.name,
+        companyName,
+      });
+    }
 
     return this.findOne(row.id, scope);
   }

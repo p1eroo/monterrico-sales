@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { NotificationDropdown } from './NotificationDropdown';
@@ -8,9 +8,23 @@ import { useNotificationStore } from '@/store/notificationStore';
 export function NotificationCenter() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerView, setDrawerView] = useState<DrawerView>('notifications');
+  const refreshNotifications = useNotificationStore((s) => s.refreshNotifications);
   const unreadCount = useNotificationStore((s) =>
     s.notifications.filter((n) => !n.read).length,
   );
+
+  useEffect(() => {
+    void refreshNotifications();
+    const t = setInterval(() => void refreshNotifications(), 120_000);
+    const onVis = () => {
+      if (document.visibilityState === 'visible') void refreshNotifications();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, [refreshNotifications]);
 
   const openDrawer = (view: DrawerView = 'notifications') => {
     setDrawerView(view);

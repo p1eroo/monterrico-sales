@@ -1,7 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Search,
-  Plus,
   User,
   Settings,
   LogOut,
@@ -95,10 +94,6 @@ export function Topbar() {
             className="h-8 w-56 bg-muted/50 pl-8 text-sm"
           />
         </div>
-
-        <Button variant="ghost" size="icon-sm" className="text-muted-foreground">
-          <Plus className="size-4" />
-        </Button>
 
         <NotificationCenter />
 

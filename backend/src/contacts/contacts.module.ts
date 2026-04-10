@@ -6,6 +6,7 @@ import { AuthModule } from '../auth/auth.module';
 import { CrmConfigModule } from '../crm-config/crm-config.module';
 import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
 import { AuditDetailModule } from '../audit-detail/audit-detail.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { AuditDetailModule } from '../audit-detail/audit-detail.module';
     CrmConfigModule,
     ActivityLogsModule,
     AuditDetailModule,
+    NotificationsModule,
   ],
   controllers: [ContactsController],
   providers: [ContactsService],

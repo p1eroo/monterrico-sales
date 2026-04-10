@@ -22,7 +22,8 @@ export function NotificationDropdown({
   onOpenInactiveCompanies,
   trigger,
 }: NotificationDropdownProps) {
-  const { notifications, markAllAsRead } = useNotificationStore();
+  const { notifications, markAllAsRead, refreshNotifications } =
+    useNotificationStore();
   const [contacts, setContacts] = useState<Contact[]>([]);
   useEffect(() => {
     let c = true;
@@ -64,7 +65,13 @@ export function NotificationDropdown({
   const showEmpresasInactivas = activeTab === 'todas' || activeTab === 'importantes';
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next) void refreshNotifications();
+      }}
+    >
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
       <PopoverContent
         align="end"
@@ -88,7 +95,7 @@ export function NotificationDropdown({
                 variant="ghost"
                 size="sm"
                 className="text-muted-foreground hover:text-foreground"
-                onClick={markAllAsRead}
+                onClick={() => void markAllAsRead()}
               >
                 <CheckCheck className="size-3.5" />
                 Marcar todas

@@ -17,6 +17,7 @@ import { buildChangeEntries } from '../common/audit-diff.util';
 import { OPPORTUNITY_FIELD_LABELS } from '../audit-detail/audit-field-labels';
 import type { CrmDataScope } from '../auth/crm-data-scope.service';
 import { mergeCompanyScope } from '../common/crm-data-scope-where.util';
+import { NotificationsService } from '../notifications/notifications.service';
 
 /** Estados de pipeline derivados de la etapa (no se usa `suspendida`). */
 type PipelineOpportunityStatus = 'abierta' | 'ganada' | 'perdida';
@@ -55,6 +56,7 @@ export class OpportunitiesService {
     private readonly crmConfig: CrmConfigService,
     private readonly activityLogs: ActivityLogsService,
     private readonly auditDetail: AuditDetailService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   private async probabilityForEtapa(
@@ -294,6 +296,15 @@ export class OpportunitiesService {
       entityName: created.title,
       description: `Oportunidad creada: ${created.title}`,
     });
+
+    if (status === 'ganada' && assignedTo) {
+      await this.notifications.notifyOpportunityWon({
+        userId: assignedTo,
+        opportunityId: created.id,
+        title: created.title,
+        amount: created.amount,
+      });
+    }
 
     return created;
   }
@@ -608,6 +619,34 @@ export class OpportunitiesService {
       entityName: displayTitle,
       description,
     });
+
+    let nextStatus: PipelineOpportunityStatus =
+      snapshot.status as PipelineOpportunityStatus;
+    if (dto.etapa !== undefined) {
+      nextStatus = this.statusFromEtapa(dto.etapa.trim());
+    } else if (dto.status !== undefined) {
+      nextStatus = this.normalizeManualStatus(dto.status);
+    }
+    const prevWon = snapshot.status === 'ganada';
+    const nextWon = nextStatus === 'ganada';
+    const assigneeForNotify =
+      dto.assignedTo !== undefined
+        ? dto.assignedTo?.trim() || null
+        : snapshot.assignedTo;
+    if (!prevWon && nextWon && assigneeForNotify) {
+      const fresh = await this.prisma.opportunity.findUnique({
+        where: { id },
+        select: { title: true, amount: true },
+      });
+      if (fresh) {
+        await this.notifications.notifyOpportunityWon({
+          userId: assigneeForNotify,
+          opportunityId: id,
+          title: fresh.title,
+          amount: fresh.amount,
+        });
+      }
+    }
 
     return this.findOne(id, scope);
   }

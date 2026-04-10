@@ -74,7 +74,7 @@ export function NotificationDrawer({
   onOpenChange,
   initialView = 'notifications',
 }: NotificationDrawerProps) {
-  const { notifications } = useNotificationStore();
+  const { notifications, refreshNotifications } = useNotificationStore();
   const [contacts, setContacts] = useState<Contact[]>([]);
   useEffect(() => {
     let c = true;
@@ -98,6 +98,10 @@ export function NotificationDrawer({
   useEffect(() => {
     if (open) setCurrentView(initialView);
   }, [open, initialView]);
+
+  useEffect(() => {
+    if (open) void refreshNotifications();
+  }, [open, refreshNotifications]);
 
   const inactiveCompaniesCount = getInactiveCompanies(contacts).length;
   const showEmpresasInactivas = activeTab === 'todas' || activeTab === 'importantes';

@@ -101,26 +101,26 @@ export function NotificationCard({
     ? PRIORITY_CONFIG[notification.priority]
     : null;
 
-  const handleMarkRead = () => markAsRead(notification.id);
+  const handleMarkRead = () => void markAsRead(notification.id);
   const handleViewContact = () => {
     if (notification.contactId) {
-      markAsRead(notification.id);
+      void markAsRead(notification.id);
       navigate(contactDetailHref({ id: notification.contactId }));
     }
   };
   const handleViewOpportunity = () => {
     if (notification.opportunityId) {
-      markAsRead(notification.id);
+      void markAsRead(notification.id);
       navigate(opportunityDetailHref({ id: notification.opportunityId }));
     }
   };
   const handleReschedule = () => {
     if (notification.activityId) {
-      markAsRead(notification.id);
+      void markAsRead(notification.id);
       navigate('/calendario');
     }
   };
-  const handleDelete = () => remove(notification.id);
+  const handleDelete = () => void remove(notification.id);
 
   const actionsVisible = showActions && (variant === 'full' ? isHovered : true);
 
