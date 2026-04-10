@@ -98,6 +98,7 @@ export function WhatsappContactDrawer({
   const [sending, setSending] = useState(false);
   const [draft, setDraft] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -190,6 +191,7 @@ export function WhatsappContactDrawer({
   }, [open, items, loading]);
 
   async function onSend() {
+    if (sending) return;
     const text = draft.trim();
     if (!text) return;
     setSending(true);
@@ -203,6 +205,7 @@ export function WhatsappContactDrawer({
       toast.error(msg);
     } finally {
       setSending(false);
+      queueMicrotask(() => composerRef.current?.focus());
     }
   }
 
@@ -268,7 +271,7 @@ export function WhatsappContactDrawer({
         {/* Fondo conversación */}
         <div
           ref={scrollRef}
-          className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-[#0b141a] px-3 py-4 dark:bg-[#0b141a]"
+          className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-[#0b141a] px-3 py-4 outline-none focus:outline-none dark:bg-[#0b141a]"
           style={{
             backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
           }}
@@ -337,15 +340,17 @@ export function WhatsappContactDrawer({
           {canSend ? (
             <div className="flex items-end gap-2">
               <Textarea
+                ref={composerRef}
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 placeholder="Escribe un mensaje"
                 rows={1}
+                readOnly={sending}
                 className={cn(
                   'max-h-32 min-h-[44px] flex-1 resize-none rounded-2xl border-zinc-600/80 bg-[#2a3942] px-3 py-2.5 text-[13px] text-[#e9edef] placeholder:text-white/35',
                   'focus-visible:border-emerald-600/50 focus-visible:ring-emerald-600/20',
+                  sending && 'cursor-wait opacity-80',
                 )}
-                disabled={sending}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
