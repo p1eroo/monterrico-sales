@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '../generated/prisma';
 import { PrismaService } from '../prisma/prisma.service';
+import type { CrmDataScope } from '../auth/crm-data-scope.service';
 
 const MAX_RANGE_DAYS = 366;
 
@@ -143,9 +144,12 @@ export class AnalyticsService {
     to?: string;
     advisorId?: string;
     source?: string;
+    crmScope: CrmDataScope;
   }) {
     const { from, to } = this.resolveRange(opts.from, opts.to);
-    const advisorId = opts.advisorId?.trim() || undefined;
+    const advisorId = opts.crmScope.unrestricted
+      ? opts.advisorId?.trim() || undefined
+      : opts.crmScope.viewerUserId;
     const source = opts.source?.trim() || undefined;
 
     const prevLen = to.getTime() - from.getTime();
@@ -221,11 +225,18 @@ export class AnalyticsService {
         where: advisorId ? { assignedTo: advisorId } : {},
         _count: { id: true },
       }),
-      this.prisma.user.findMany({
-        select: { id: true, name: true },
-        orderBy: { name: 'asc' },
-        take: 200,
-      }),
+      opts.crmScope.unrestricted
+        ? this.prisma.user.findMany({
+            select: { id: true, name: true },
+            orderBy: { name: 'asc' },
+            take: 200,
+          })
+        : this.prisma.user.findMany({
+            where: { id: opts.crmScope.viewerUserId },
+            select: { id: true, name: true },
+            orderBy: { name: 'asc' },
+            take: 1,
+          }),
     ]);
 
     const closedSalesAmount = closedAgg._sum.amount ?? 0;
@@ -543,20 +554,28 @@ export class AnalyticsService {
   }
 
   /** Montos cerrados (ganadas) para metas: semana ISO actual y mes calendario UTC. */
-  async getGoalProgress(userId: string, advisorFilter?: string) {
+  async getGoalProgress(
+    userId: string,
+    advisorFilter: string | undefined,
+    crmScope: CrmDataScope,
+  ) {
     const now = new Date();
     const weekStart = startOfUtcWeekMonday(now);
     const weekEnd = endOfUtcWeekSunday(now);
     const monthStart = startOfUtcMonth(now);
     const monthEnd = endOfUtcMonth(now);
 
-    const targetUserId = advisorFilter?.trim() || userId;
+    const restrictTeam = !crmScope.unrestricted;
+    const targetUserId = restrictTeam
+      ? userId
+      : advisorFilter?.trim() || userId;
 
     const [teamWeek, teamMonth, myWeek, myMonth] = await Promise.all([
       this.prisma.opportunity.aggregate({
         where: {
           status: 'ganada',
           updatedAt: { gte: weekStart, lte: weekEnd },
+          ...(restrictTeam ? { assignedTo: userId } : {}),
         },
         _sum: { amount: true },
       }),
@@ -564,6 +583,7 @@ export class AnalyticsService {
         where: {
           status: 'ganada',
           updatedAt: { gte: monthStart, lte: monthEnd },
+          ...(restrictTeam ? { assignedTo: userId } : {}),
         },
         _sum: { amount: true },
       }),

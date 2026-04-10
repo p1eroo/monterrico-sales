@@ -107,7 +107,9 @@ export type PermissionAction =
   | 'editar'
   | 'eliminar'
   | 'asignar'
-  | 'exportar';
+  | 'exportar'
+  /** Ver datos de todo el equipo en CRM (listados, reportes, exportaciones acotadas en backend si falta). */
+  | 'datos_completos';
 
 /** RBAC: Permiso = módulo + acción (ej: contactos.ver) */
 export type PermissionKey = `${PermissionModule}.${PermissionAction}`;

@@ -1,6 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
-  Car,
   LayoutDashboard,
   UserPlus,
   Briefcase,
@@ -37,6 +36,8 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAppStore } from '@/store';
 import { initialsFromName } from '@/lib/utils';
+import logoMark from '@/assets/logo.png';
+import tmWordmark from '@/assets/TM.png';
 
 type NavDef = {
   to: string;
@@ -95,15 +96,25 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="p-4 group-data-[collapsible=icon]:p-2">
-        <NavLink to="/dashboard" className="flex items-center justify-center gap-3 group-data-[collapsible=icon]:justify-center">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-            <Car className="size-4" />
-          </div>
-          <div className="flex flex-col group-data-[collapsible=icon]:hidden">
-            <span className="text-sm font-bold tracking-tight text-sidebar-foreground">
-              Taxi Monterrico
-            </span>
-            <span className="text-[11px] text-sidebar-foreground/60">
+        <NavLink
+          to="/dashboard"
+          aria-label="CRM Qatuna, ir al inicio"
+          className="flex items-center justify-center gap-3 group-data-[collapsible=icon]:justify-center"
+        >
+          <img
+            src={logoMark}
+            alt=""
+            role="presentation"
+            className="size-10 shrink-0 rounded-lg object-contain"
+          />
+          <div className="flex min-w-0 flex-col gap-1 group-data-[collapsible=icon]:hidden">
+            <img
+              src={tmWordmark}
+              alt=""
+              role="presentation"
+              className="h-4 w-auto max-w-[7rem] object-contain object-left"
+            />
+            <span className="text-[12px] text-sidebar-foreground/70" aria-hidden>
               CRM Qatuna
             </span>
           </div>

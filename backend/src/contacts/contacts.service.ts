@@ -16,6 +16,8 @@ import type { ActivityActor } from '../activity-logs/activity-logs.types';
 import { AuditDetailService } from '../audit-detail/audit-detail.service';
 import { buildChangeEntries } from '../common/audit-diff.util';
 import { CONTACT_FIELD_LABELS } from '../audit-detail/audit-field-labels';
+import type { CrmDataScope } from '../auth/crm-data-scope.service';
+import { mergeCompanyScope } from '../common/crm-data-scope-where.util';
 
 /** Orden de pestañas de etapa en listado contactos (alineado con Empresas). */
 const CONTACT_TAB_ETAPAS = [
@@ -280,7 +282,11 @@ export class ContactsService {
     return { id: company.id, name: company.name };
   }
 
-  async create(dto: CreateContactDto, actor?: ActivityActor) {
+  async create(
+    dto: CreateContactDto,
+    actor?: ActivityActor,
+    scope?: CrmDataScope,
+  ) {
     const name = dto.name?.trim();
     if (!name) {
       throw new BadRequestException('El nombre es obligatorio');
@@ -296,8 +302,10 @@ export class ContactsService {
         ? dto.estimatedValue
         : 0;
 
-    const assignedTo = dto.assignedTo?.trim() || null;
-    if (assignedTo) {
+    let assignedTo = dto.assignedTo?.trim() || null;
+    if (scope && !scope.unrestricted) {
+      assignedTo = scope.viewerUserId;
+    } else if (assignedTo) {
       await this.assertUserExists(assignedTo);
     }
 
@@ -309,15 +317,21 @@ export class ContactsService {
     }
 
     if (requestedCompanyId) {
-      const comp = await this.prisma.company.findUnique({
-        where: { id: requestedCompanyId },
+      const comp = await this.prisma.company.findFirst({
+        where: mergeCompanyScope({ id: requestedCompanyId }, scope),
       });
       if (!comp) {
         throw new BadRequestException('La empresa indicada no existe');
       }
     }
 
-    if (dto.newCompany) {
+    let newCompanyPayload = dto.newCompany;
+    if (dto.newCompany && scope && !scope.unrestricted) {
+      newCompanyPayload = {
+        ...dto.newCompany,
+        assignedTo: scope.viewerUserId,
+      };
+    } else if (dto.newCompany) {
       const ncAssigned = dto.newCompany.assignedTo?.trim();
       if (ncAssigned) {
         await this.assertUserExists(ncAssigned);
@@ -338,8 +352,8 @@ export class ContactsService {
     const { contact: row, effectiveCompanyId } = await this.prisma.$transaction(
       async (tx) => {
         let effectiveCompanyId: string | null = requestedCompanyId || null;
-        if (dto.newCompany) {
-          const comp = await this.createCompanyInTx(tx, dto.newCompany);
+        if (newCompanyPayload) {
+          const comp = await this.createCompanyInTx(tx, newCompanyPayload);
           effectiveCompanyId = comp.id;
         }
 
@@ -410,15 +424,18 @@ export class ContactsService {
       description: `Contacto creado: ${row.name}`,
     });
 
-    return this.findOne(row.id);
+    return this.findOne(row.id, scope);
   }
 
-  private contactListWhere(opts?: {
-    search?: string;
-    etapa?: string;
-    fuente?: string;
-    assignedTo?: string;
-  }): Prisma.ContactWhereInput {
+  private contactListWhere(
+    opts?: {
+      search?: string;
+      etapa?: string;
+      fuente?: string;
+      assignedTo?: string;
+    },
+    scope?: CrmDataScope,
+  ): Prisma.ContactWhereInput {
     const where: Prisma.ContactWhereInput = {};
     if (opts?.search?.trim()) {
       const q = opts.search.trim();
@@ -440,22 +457,29 @@ export class ContactsService {
     }
     if (opts?.etapa?.trim()) where.etapa = opts.etapa.trim();
     if (opts?.fuente?.trim()) where.fuente = opts.fuente.trim();
-    if (opts?.assignedTo?.trim()) where.assignedTo = opts.assignedTo.trim();
+    if (scope && !scope.unrestricted) {
+      where.assignedTo = scope.viewerUserId;
+    } else if (opts?.assignedTo?.trim()) {
+      where.assignedTo = opts.assignedTo.trim();
+    }
     return where;
   }
 
   /**
    * Conteos por etapa para pestañas (mismos filtros que GET /contacts salvo etapa).
    */
-  async etapaTabCounts(opts?: {
-    search?: string;
-    fuente?: string;
-    assignedTo?: string;
-  }): Promise<{ counts: Record<string, number> }> {
+  async etapaTabCounts(
+    opts?: {
+      search?: string;
+      fuente?: string;
+      assignedTo?: string;
+    },
+    scope?: CrmDataScope,
+  ): Promise<{ counts: Record<string, number> }> {
     const results = await Promise.all(
       CONTACT_TAB_ETAPAS.map((slug) =>
         this.prisma.contact.count({
-          where: this.contactListWhere({ ...opts, etapa: slug }),
+          where: this.contactListWhere({ ...opts, etapa: slug }, scope),
         }),
       ),
     );
@@ -466,19 +490,22 @@ export class ContactsService {
     return { counts };
   }
 
-  async findAll(opts?: {
-    page?: number;
-    limit?: number;
-    search?: string;
-    etapa?: string;
-    fuente?: string;
-    assignedTo?: string;
-  }) {
+  async findAll(
+    opts?: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      etapa?: string;
+      fuente?: string;
+      assignedTo?: string;
+    },
+    scope?: CrmDataScope,
+  ) {
     const page = Math.max(1, opts?.page ?? 1);
     const limit = Math.min(5000, Math.max(1, opts?.limit ?? 25));
     const skip = (page - 1) * limit;
 
-    const where = this.contactListWhere(opts);
+    const where = this.contactListWhere(opts, scope);
 
     const [rows, total] = await Promise.all([
       this.prisma.contact.findMany({
@@ -500,7 +527,7 @@ export class ContactsService {
     };
   }
 
-  async findOne(idOrSlug: string) {
+  async findOne(idOrSlug: string, scope?: CrmDataScope) {
     const id = await this.resolveContactId(idOrSlug);
     const row = await this.prisma.contact.findUnique({
       where: { id },
@@ -509,10 +536,22 @@ export class ContactsService {
     if (!row) {
       throw new NotFoundException('Contacto no encontrado');
     }
+    if (
+      scope &&
+      !scope.unrestricted &&
+      row.assignedTo !== scope.viewerUserId
+    ) {
+      throw new NotFoundException('Contacto no encontrado');
+    }
     return row;
   }
 
-  async update(idOrSlug: string, dto: UpdateContactDto, actor: ActivityActor) {
+  async update(
+    idOrSlug: string,
+    dto: UpdateContactDto,
+    actor: ActivityActor,
+    scope?: CrmDataScope,
+  ) {
     const id = await this.resolveContactId(idOrSlug);
     const snapshot = await this.prisma.contact.findUnique({
       where: { id },
@@ -537,6 +576,21 @@ export class ContactsService {
     });
     if (!snapshot) {
       throw new NotFoundException('Contacto no encontrado');
+    }
+    if (
+      scope &&
+      !scope.unrestricted &&
+      snapshot.assignedTo !== scope.viewerUserId
+    ) {
+      throw new NotFoundException('Contacto no encontrado');
+    }
+    if (scope && !scope.unrestricted && dto.assignedTo !== undefined) {
+      const next = dto.assignedTo?.trim() || null;
+      if (next !== scope.viewerUserId) {
+        throw new BadRequestException(
+          'No tienes permiso para reasignar este contacto',
+        );
+      }
     }
 
     const data: Record<string, unknown> = {};
@@ -677,16 +731,27 @@ export class ContactsService {
       description,
     });
 
-    return this.findOne(id);
+    return this.findOne(id, scope);
   }
 
-  async remove(idOrSlug: string, actor: ActivityActor) {
+  async remove(
+    idOrSlug: string,
+    actor: ActivityActor,
+    scope?: CrmDataScope,
+  ) {
     const id = await this.resolveContactId(idOrSlug);
     const row = await this.prisma.contact.findUnique({
       where: { id },
-      select: { name: true },
+      select: { name: true, assignedTo: true },
     });
     if (!row) {
+      throw new NotFoundException('Contacto no encontrado');
+    }
+    if (
+      scope &&
+      !scope.unrestricted &&
+      row.assignedTo !== scope.viewerUserId
+    ) {
       throw new NotFoundException('Contacto no encontrado');
     }
     const deleted = await this.prisma.contact.delete({
@@ -724,11 +789,12 @@ export class ContactsService {
     companyId: string,
     isPrimary = false,
     actor?: ActivityActor,
+    scope?: CrmDataScope,
   ) {
     const contactId = await this.resolveContactId(contactIdOrSlug);
-    await this.findOne(contactId);
-    const company = await this.prisma.company.findUnique({
-      where: { id: companyId },
+    await this.findOne(contactId, scope);
+    const company = await this.prisma.company.findFirst({
+      where: mergeCompanyScope({ id: companyId }, scope),
     });
     if (!company) {
       throw new BadRequestException('La empresa no existe');
@@ -759,16 +825,17 @@ export class ContactsService {
         description: `Empresa vinculada al contacto: ${company.name}`,
       });
     }
-    return this.findOne(contactId);
+    return this.findOne(contactId, scope);
   }
 
   async removeCompany(
     contactIdOrSlug: string,
     companyId: string,
     actor?: ActivityActor,
+    scope?: CrmDataScope,
   ) {
     const contactId = await this.resolveContactId(contactIdOrSlug);
-    await this.findOne(contactId);
+    await this.findOne(contactId, scope);
     const deleted = await this.prisma.companyContact.deleteMany({
       where: { contactId, companyId },
     });
@@ -795,23 +862,31 @@ export class ContactsService {
         }`,
       });
     }
-    return this.findOne(contactId);
+    return this.findOne(contactId, scope);
   }
 
   async addLinkedContact(
     contactIdOrSlug: string,
     linkedContactId: string,
     actor?: ActivityActor,
+    scope?: CrmDataScope,
   ) {
     const contactId = await this.resolveContactId(contactIdOrSlug);
     if (contactId === linkedContactId) {
       throw new BadRequestException('Un contacto no puede vincularse consigo mismo');
     }
-    await this.findOne(contactId);
+    await this.findOne(contactId, scope);
     const linked = await this.prisma.contact.findUnique({
       where: { id: linkedContactId },
     });
     if (!linked) {
+      throw new BadRequestException('El contacto a vincular no existe');
+    }
+    if (
+      scope &&
+      !scope.unrestricted &&
+      linked.assignedTo !== scope.viewerUserId
+    ) {
       throw new BadRequestException('El contacto a vincular no existe');
     }
     const existing = await this.prisma.contactContact.findUnique({
@@ -839,16 +914,17 @@ export class ContactsService {
         description: `Contacto vinculado: ${linked.name}`,
       });
     }
-    return this.findOne(contactId);
+    return this.findOne(contactId, scope);
   }
 
   async removeLinkedContact(
     contactIdOrSlug: string,
     linkedId: string,
     actor?: ActivityActor,
+    scope?: CrmDataScope,
   ) {
     const contactId = await this.resolveContactId(contactIdOrSlug);
-    await this.findOne(contactId);
+    await this.findOne(contactId, scope);
     const deleted = await this.prisma.contactContact.deleteMany({
       where: { contactId, linkedId },
     });
@@ -875,6 +951,6 @@ export class ContactsService {
         }`,
       });
     }
-    return this.findOne(contactId);
+    return this.findOne(contactId, scope);
   }
 }

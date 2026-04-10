@@ -24,6 +24,7 @@ import { toast } from 'sonner';
 import { useChartTheme } from '@/hooks/useChartTheme';
 import { formatCurrency } from '@/lib/formatters';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useCrmTeamAdvisorFilter } from '@/hooks/useCrmTeamAdvisorFilter';
 import { contactSourceLabels } from '@/data/mock';
 import {
   fetchAnalyticsSummary,
@@ -67,12 +68,17 @@ function changeTone(s: string): 'positive' | 'negative' | 'neutral' {
 type DateRangePreset = '7d' | '1m' | '3m' | '1y' | 'custom';
 
 export default function Reports() {
-  const { activeUsers } = useUsers();
+  const { users, activeAdvisors } = useUsers();
   const { hasPermission } = usePermissions();
   const bundle = useCrmConfigStore((s) => s.bundle);
   const [dateRange, setDateRange] = useState<DateRangePreset>('3m');
   const [customRange, setCustomRange] = useState<DateRange | undefined>();
   const [advisorFilter, setAdvisorFilter] = useState('all');
+  const { canSeeAllAdvisors, currentUserId } = useCrmTeamAdvisorFilter(
+    advisorFilter,
+    setAdvisorFilter,
+    'all',
+  );
   const [sourceFilter, setSourceFilter] = useState('all');
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [loading, setLoading] = useState(false);
@@ -133,10 +139,11 @@ export default function Reports() {
         toast.error('Espera a que carguen los datos o elige un periodo válido.');
         return;
       }
-      const advisorLabel =
-        advisorFilter === 'all'
+      const advisorLabel = !canSeeAllAdvisors
+        ? users.find((u) => u.id === currentUserId)?.name ?? 'Mi cartera'
+        : advisorFilter === 'all'
           ? 'Todos los asesores'
-          : activeUsers.find((u) => u.id === advisorFilter)?.name ?? advisorFilter;
+          : activeAdvisors.find((u) => u.id === advisorFilter)?.name ?? advisorFilter;
       const sourceLabel =
         sourceOptions.find((o) => o.value === sourceFilter)?.label ?? sourceFilter;
 
@@ -164,7 +171,10 @@ export default function Reports() {
       loading,
       summary,
       advisorFilter,
-      activeUsers,
+      users,
+      activeAdvisors,
+      canSeeAllAdvisors,
+      currentUserId,
       sourceFilter,
       leadsByPeriodData,
       leadsBySourceData,
@@ -278,13 +288,17 @@ export default function Reports() {
           )}
         </div>
 
-        <Select value={advisorFilter} onValueChange={setAdvisorFilter}>
+        <Select
+          value={advisorFilter}
+          onValueChange={setAdvisorFilter}
+          disabled={!canSeeAllAdvisors}
+        >
           <SelectTrigger className="w-full md:w-[200px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos los asesores</SelectItem>
-            {activeUsers.map((u) => (
+            {activeAdvisors.map((u) => (
               <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
             ))}
           </SelectContent>

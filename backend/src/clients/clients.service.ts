@@ -6,6 +6,8 @@ import {
 import { Prisma } from '../generated/prisma';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateClientDto } from './dto/update-client.dto';
+import type { CrmDataScope } from '../auth/crm-data-scope.service';
+import { mergeCompanyScope } from '../common/crm-data-scope-where.util';
 
 const CLIENT_WIN_ETAPA = 'cierre_ganado';
 
@@ -40,8 +42,11 @@ export class ClientsService {
     });
   }
 
-  async findAll() {
+  async findAll(scope?: CrmDataScope) {
     const rows = await this.prisma.client.findMany({
+      where: {
+        company: mergeCompanyScope({}, scope),
+      },
       include: {
         company: {
           include: {
@@ -54,7 +59,21 @@ export class ClientsService {
     return Promise.all(rows.map((r) => this.mapToApi(r)));
   }
 
-  async update(clientId: string, dto: UpdateClientDto) {
+  async update(
+    clientId: string,
+    dto: UpdateClientDto,
+    scope?: CrmDataScope,
+  ) {
+    const gate = await this.prisma.client.findFirst({
+      where: {
+        id: clientId,
+        company: mergeCompanyScope({}, scope),
+      },
+      select: { id: true },
+    });
+    if (!gate) {
+      throw new NotFoundException('Cliente no encontrado');
+    }
     const data: Prisma.ClientUpdateInput = {};
     if (dto.status !== undefined) {
       const s = dto.status?.trim();

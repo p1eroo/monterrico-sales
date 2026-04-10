@@ -21,6 +21,8 @@ import type { CreateOpportunityDto } from '../opportunities/dto/create-opportuni
 import { FactilizaService } from '../factiliza/factiliza.service';
 import { CrmConfigService } from '../crm-config/crm-config.service';
 import { EntitySyncService } from '../sync/entity-sync.service';
+import type { CrmDataScope } from '../auth/crm-data-scope.service';
+import { mergeCompanyScope } from '../common/crm-data-scope-where.util';
 
 const MAX_IMPORT_ROWS = 1500;
 const MAX_COMPANY_IMPORT_ROWS = 5000;
@@ -649,8 +651,13 @@ export class ImportExportService {
     return UTF8_BOM + stringifyCsvRow([...CONTACT_HEADERS]);
   }
 
-  async contactsExportCsv(): Promise<string> {
+  async contactsExportCsv(scope?: CrmDataScope): Promise<string> {
+    const scopedWhere =
+      scope && !scope.unrestricted
+        ? { assignedTo: scope.viewerUserId }
+        : {};
     const rows = await this.prisma.contact.findMany({
+      where: scopedWhere,
       take: 10_000,
       orderBy: { updatedAt: 'desc' },
       select: {
@@ -1470,6 +1477,7 @@ export class ImportExportService {
   async importContacts(
     csvText: string,
     importingUserId: string,
+    scope?: CrmDataScope,
   ): Promise<BulkImportResultDto> {
     const rows = parseCsv(csvText);
     if (rows.length < 2) {
@@ -1583,10 +1591,10 @@ export class ImportExportService {
       const assignedRow =
         rowGet(row, headerIndex, ['asignado_a', 'assignedto', 'usuario_id']) ||
         undefined;
-      const assignedTo = this.assigneeFromCsvOrImporter(
-        assignedRow,
-        importingUserId,
-      );
+      const assignedTo =
+        scope && !scope.unrestricted
+          ? importingUserId
+          : this.assigneeFromCsvOrImporter(assignedRow, importingUserId);
 
       const merged = await this.enrichContactFromFactilizaByDocument({
         nameFromCsv: nombreCsv,
@@ -1632,8 +1640,8 @@ export class ImportExportService {
         newCompany = resolved.newCompany;
         dedupeCompanyKey = resolved.dedupeCompanyKey;
       } else if (legacyEmpresaId.trim()) {
-        const comp = await this.prisma.company.findUnique({
-          where: { id: legacyEmpresaId.trim() },
+        const comp = await this.prisma.company.findFirst({
+          where: mergeCompanyScope({ id: legacyEmpresaId.trim() }, scope),
           select: { id: true },
         });
         if (!comp) {
@@ -1701,7 +1709,7 @@ export class ImportExportService {
         newCompany,
       };
       try {
-        await this.contactsService.create(dto);
+        await this.contactsService.create(dto, undefined, scope);
         created += 1;
       } catch (e: unknown) {
         const msg =
@@ -1722,8 +1730,9 @@ export class ImportExportService {
     return UTF8_BOM + stringifyCsvRow([...COMPANY_HEADERS]);
   }
 
-  async companiesExportCsv(): Promise<string> {
+  async companiesExportCsv(scope?: CrmDataScope): Promise<string> {
     const list = await this.prisma.company.findMany({
+      where: mergeCompanyScope({}, scope),
       take: 10_000,
       orderBy: { updatedAt: 'desc' },
       select: {
@@ -2243,6 +2252,7 @@ export class ImportExportService {
   async importCompanies(
     csvText: string,
     importingUserId: string,
+    scope?: CrmDataScope,
   ): Promise<BulkImportResultDto> {
     const rows = parseCsv(csvText);
     if (rows.length < 2) {
@@ -2334,10 +2344,10 @@ export class ImportExportService {
           'assignedto',
           'usuario_id',
         ]) || undefined;
-      const assignedTo = this.assigneeFromCsvOrImporter(
-        assignedRow,
-        importingUserId,
-      );
+      const assignedTo =
+        scope && !scope.unrestricted
+          ? importingUserId
+          : this.assigneeFromCsvOrImporter(assignedRow, importingUserId);
 
       let companyId: string;
       try {
@@ -2384,7 +2394,11 @@ export class ImportExportService {
             assignedTo,
           };
           dto = await this.enrichCompanyDtoFromRuc(dto);
-          const createdCo = await this.companiesService.create(dto);
+          const createdCo = await this.companiesService.create(
+            dto,
+            undefined,
+            scope,
+          );
           companyId = createdCo.id;
         }
       } catch (e: unknown) {
@@ -2394,6 +2408,20 @@ export class ImportExportService {
             e instanceof Error ? e.message : 'Error al crear o resolver empresa',
         });
         continue;
+      }
+
+      if (scope && !scope.unrestricted) {
+        const inScope = await this.prisma.company.findFirst({
+          where: mergeCompanyScope({ id: companyId }, scope),
+          select: { id: true },
+        });
+        if (!inScope) {
+          errors.push({
+            row: excelRow,
+            message: 'La empresa no está disponible para tu usuario',
+          });
+          continue;
+        }
       }
 
       const contactoNombreCsv = rowGet(row, headerIndex, [
@@ -2507,26 +2535,30 @@ export class ImportExportService {
             existingContactId,
           );
         } else {
-          await this.contactsService.create({
-            name: mergedContact.name.trim(),
-            telefono: mergedContact.telefono,
-            correo: mergedContact.correo,
-            fuente: contactFuente,
-            cargo: rowGet(row, headerIndex, ['contacto_cargo']) || undefined,
-            etapa: etapaSlug,
-            estimatedValue: facturacionEstimada,
-            assignedTo,
-            docType: mergedContact.docType,
-            docNumber: mergedContact.docNumber,
-            departamento: mergedContact.departamento,
-            provincia: mergedContact.provincia,
-            distrito: mergedContact.distrito,
-            direccion: mergedContact.direccion,
-            ...(contactoClienteRec
-              ? { clienteRecuperado: contactoClienteRec }
-              : {}),
-            companyId,
-          });
+          await this.contactsService.create(
+            {
+              name: mergedContact.name.trim(),
+              telefono: mergedContact.telefono,
+              correo: mergedContact.correo,
+              fuente: contactFuente,
+              cargo: rowGet(row, headerIndex, ['contacto_cargo']) || undefined,
+              etapa: etapaSlug,
+              estimatedValue: facturacionEstimada,
+              assignedTo,
+              docType: mergedContact.docType,
+              docNumber: mergedContact.docNumber,
+              departamento: mergedContact.departamento,
+              provincia: mergedContact.provincia,
+              distrito: mergedContact.distrito,
+              direccion: mergedContact.direccion,
+              ...(contactoClienteRec
+                ? { clienteRecuperado: contactoClienteRec }
+                : {}),
+              companyId,
+            },
+            undefined,
+            scope,
+          );
         }
         created += 1;
       } catch (e: unknown) {
@@ -2547,8 +2579,13 @@ export class ImportExportService {
     return UTF8_BOM + stringifyCsvRow([...OPPORTUNITY_HEADERS]);
   }
 
-  async opportunitiesExportCsv(): Promise<string> {
+  async opportunitiesExportCsv(scope?: CrmDataScope): Promise<string> {
+    const scopedWhere =
+      scope && !scope.unrestricted
+        ? { assignedTo: scope.viewerUserId }
+        : {};
     const list = await this.prisma.opportunity.findMany({
+      where: scopedWhere,
       take: 10_000,
       orderBy: { updatedAt: 'desc' },
       include: {
@@ -2592,6 +2629,7 @@ export class ImportExportService {
   async importOpportunities(
     csvText: string,
     importingUserId: string,
+    scope?: CrmDataScope,
   ): Promise<BulkImportResultDto> {
     const rows = parseCsv(csvText);
     if (rows.length < 2) {
@@ -2706,7 +2744,7 @@ export class ImportExportService {
         companyId: resolvedCompanyId,
       };
       try {
-        await this.opportunitiesService.create(dto);
+        await this.opportunitiesService.create(dto, undefined, scope);
         created += 1;
       } catch (e: unknown) {
         const msg =

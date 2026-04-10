@@ -160,7 +160,7 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
   companyId,
   opportunityId,
 }, ref) {
-  const { users, activeUsers } = useUsers();
+  const { users, activeAdvisors } = useUsers();
   const { activities, createActivity, updateActivity, deleteActivity } = useActivities();
 
   const tasks = useMemo(() => {
@@ -179,7 +179,7 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
       const contactAssoc = task.associations?.find((a) => a.type === 'contacto');
       const empresaAssoc = task.associations?.find((a) => a.type === 'empresa');
       const negocioAssoc = task.associations?.find((a) => a.type === 'negocio');
-      const userId = users.find((u) => u.name === task.assignee)?.id ?? defaultAssigneeId ?? activeUsers[0]?.id;
+      const userId = users.find((u) => u.name === task.assignee)?.id ?? defaultAssigneeId ?? activeAdvisors[0]?.id;
       if (!userId) return;
       const contactIdToUse = contactAssoc?.id ?? contactId;
       const companyIdToUse = empresaAssoc?.id && /^c[a-z0-9]+$/i.test(empresaAssoc.id) ? empresaAssoc.id : companyId;
@@ -449,7 +449,7 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
                     <SelectValue placeholder="Seleccionar asesor" />
                   </SelectTrigger>
                   <SelectContent>
-                    {activeUsers.map((u) => (
+                    {activeAdvisors.map((u) => (
                       <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -528,7 +528,7 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
                       : 'llamada',
                   title: linkedTaskTitle.trim(),
                   description: '',
-                  assignedTo: linkedTaskAssignee || defaultAssigneeId || activeUsers[0]?.id || '',
+                  assignedTo: linkedTaskAssignee || defaultAssigneeId || activeAdvisors[0]?.id || '',
                   dueDate,
                   startDate: linkedTaskStartDate || undefined,
                   startTime: linkedTaskTime || undefined,

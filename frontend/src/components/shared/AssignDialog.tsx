@@ -16,8 +16,8 @@ export function AssignDialog({
   currentAssigneeId,
   onAssignChange,
 }: AssignDialogProps) {
-  const { activeUsers } = useUsers();
-  const options = activeUsers.map((u) => ({ value: u.id, label: u.name }));
+  const { activeAdvisors } = useUsers();
+  const options = activeAdvisors.map((u) => ({ value: u.id, label: u.name }));
 
   return (
     <SelectDialog

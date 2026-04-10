@@ -44,6 +44,7 @@ import { formatCurrency } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useCrmTeamAdvisorFilter } from '@/hooks/useCrmTeamAdvisorFilter';
 import {
   downloadImportExportCsv,
   previewCompaniesImportCsv,
@@ -267,6 +268,11 @@ export default function EmpresasPage() {
   const [rubroFilter, setRubroFilter] = useState<string>('todos');
   const [tipoFilter, setTipoFilter] = useState<string>('todos');
   const [advisorFilter, setAdvisorFilter] = useState<string>('todos');
+  const { canSeeAllAdvisors, currentUserId } = useCrmTeamAdvisorFilter(
+    advisorFilter,
+    setAdvisorFilter,
+    'todos',
+  );
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [page, setPage] = useState(1);
   const [newEmpresaOpen, setNewEmpresaOpen] = useState(false);
@@ -284,7 +290,7 @@ export default function EmpresasPage() {
     null,
   );
   const [exportBusy, setExportBusy] = useState(false);
-  const { users, activeUsers } = useUsers();
+  const { activeAdvisors } = useUsers();
   const { hasPermission } = usePermissions();
   const [previewEmpresa, setPreviewEmpresa] = useState<EmpresaSummaryRow | null>(null);
   const [editEmpresa, setEditEmpresa] = useState<EmpresaSummaryRow | null>(null);
@@ -368,7 +374,9 @@ export default function EmpresasPage() {
     etapaFilter === 'todos' &&
     rubroFilter === 'todos' &&
     tipoFilter === 'todos' &&
-    advisorFilter === 'todos';
+    (canSeeAllAdvisors
+      ? advisorFilter === 'todos'
+      : advisorFilter === currentUserId);
 
   const companyImportPreviewCsvKeys = useMemo(() => {
     const withCols = importPreviewData?.rows.find(
@@ -465,7 +473,7 @@ export default function EmpresasPage() {
       return;
     }
 
-    const assignedTo = data.propietario?.trim() || activeUsers[0]?.id || '';
+    const assignedTo = data.propietario?.trim() || activeAdvisors[0]?.id || '';
 
     let created: ApiCompanyRecord;
     try {
@@ -1038,13 +1046,17 @@ export default function EmpresasPage() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={advisorFilter} onValueChange={(v) => { setAdvisorFilter(v); setPage(1); }}>
+          <Select
+            value={advisorFilter}
+            onValueChange={(v) => { setAdvisorFilter(v); setPage(1); }}
+            disabled={!canSeeAllAdvisors}
+          >
             <SelectTrigger className="w-[150px]">
               <SelectValue placeholder="Asesor" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todos los asesores</SelectItem>
-              {users.map((u) => (
+              {activeAdvisors.map((u) => (
                 <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
               ))}
             </SelectContent>

@@ -8,6 +8,7 @@ import { PermissionsGuard } from './guards/permissions.guard';
 import { JWT_SECRET } from './auth.constants';
 import { MediaModule } from '../media/media.module';
 import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
+import { CrmDataScopeService } from './crm-data-scope.service';
 
 @Module({
   imports: [
@@ -19,8 +20,8 @@ import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
     MediaModule,
     ActivityLogsModule,
   ],
-  providers: [AuthService, JwtStrategy, PermissionsGuard],
+  providers: [AuthService, JwtStrategy, PermissionsGuard, CrmDataScopeService],
   controllers: [AuthController],
-  exports: [AuthService, JwtModule, PermissionsGuard],
+  exports: [AuthService, JwtModule, PermissionsGuard, CrmDataScopeService],
 })
 export class AuthModule {}

@@ -67,9 +67,9 @@ export function EventFormModal({
     },
   });
 
-  const { activeUsers } = useUsers();
-  /** Primitivo estable: evita re-ejecutar el efecto en cada render (activeUsers era un array nuevo cada vez). */
-  const defaultAssigneeId = activeUsers[0]?.id ?? '';
+  const { activeAdvisors } = useUsers();
+  /** Primitivo estable: evita re-ejecutar el efecto en cada render (activeAdvisors era un array nuevo cada vez). */
+  const defaultAssigneeId = activeAdvisors[0]?.id ?? '';
 
   useEffect(() => {
     if (!open) return;
@@ -196,7 +196,7 @@ export function EventFormModal({
                     <SelectValue placeholder="Seleccionar" />
                   </SelectTrigger>
                   <SelectContent>
-                    {activeUsers.map((u) => (
+                    {activeAdvisors.map((u) => (
                       <SelectItem key={u.id} value={u.id}>
                         {u.name}
                       </SelectItem>

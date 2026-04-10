@@ -58,6 +58,7 @@ import {
   useOptimisticCrmStore,
 } from '@/store/optimisticCrmStore';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useCrmTeamAdvisorFilter } from '@/hooks/useCrmTeamAdvisorFilter';
 import {
   downloadImportExportCsv,
   previewContactsImportCsv,
@@ -103,7 +104,7 @@ const etapaTabs: { value: string; label: string }[] = [
 
 export default function ContactosPage() {
   const navigate = useNavigate();
-  const { users } = useUsers();
+  const { activeAdvisors } = useUsers();
   const { hasPermission } = usePermissions();
   const pendingContacts = useOptimisticCrmStore((s) => s.pendingContacts);
   const addPendingContact = useOptimisticCrmStore((s) => s.addPendingContact);
@@ -119,6 +120,11 @@ export default function ContactosPage() {
   const [etapaFilter, setEtapaFilter] = useState<string>('todos');
   const [sourceFilter, setSourceFilter] = useState<string>('todos');
   const [advisorFilter, setAdvisorFilter] = useState<string>('todos');
+  const { canSeeAllAdvisors, currentUserId } = useCrmTeamAdvisorFilter(
+    advisorFilter,
+    setAdvisorFilter,
+    'todos',
+  );
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [page, setPage] = useState(1);
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
@@ -287,13 +293,20 @@ export default function ContactosPage() {
   const startIndex = totalContacts === 0 ? 0 : (page - 1) * ITEMS_PER_PAGE + 1;
   const endIndex = Math.min(page * ITEMS_PER_PAGE, totalContacts);
 
-  const hasActiveFilters = etapaFilter !== 'todos' || sourceFilter !== 'todos' || advisorFilter !== 'todos' || search !== '';
+  const advisorFilterIsActive = canSeeAllAdvisors
+    ? advisorFilter !== 'todos'
+    : false;
+  const hasActiveFilters =
+    etapaFilter !== 'todos' ||
+    sourceFilter !== 'todos' ||
+    advisorFilterIsActive ||
+    search !== '';
 
   function clearFilters() {
     setSearch('');
     setEtapaFilter('todos');
     setSourceFilter('todos');
-    setAdvisorFilter('todos');
+    setAdvisorFilter(canSeeAllAdvisors ? 'todos' : currentUserId);
     setPage(1);
   }
 
@@ -994,13 +1007,17 @@ export default function ContactosPage() {
             </SelectContent>
           </Select>
 
-          <Select value={advisorFilter} onValueChange={(v) => { setAdvisorFilter(v); setPage(1); }}>
+          <Select
+            value={advisorFilter}
+            onValueChange={(v) => { setAdvisorFilter(v); setPage(1); }}
+            disabled={!canSeeAllAdvisors}
+          >
             <SelectTrigger className="w-[150px]">
               <SelectValue placeholder="Asesor" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todos los asesores</SelectItem>
-              {users.map((u) => (
+              {activeAdvisors.map((u) => (
                 <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
               ))}
             </SelectContent>
@@ -1199,14 +1216,18 @@ function ContactsTable({
                 onCheckedChange={onToggleSelectAll}
               />
             </TableHead>
-            <TableHead>
+            <TableHead className="min-w-0 max-w-[20rem]">
               <button className="flex items-center gap-1 font-medium">
-                Nombre <ArrowUpDown className="size-3" />
+                Nombre <ArrowUpDown className="size-3 shrink-0" />
               </button>
             </TableHead>
-            <TableHead className="hidden md:table-cell">Empresa</TableHead>
+            <TableHead className="hidden min-w-0 max-w-[16rem] md:table-cell">
+              Empresa
+            </TableHead>
             <TableHead className="hidden lg:table-cell">Teléfono</TableHead>
-            <TableHead className="hidden xl:table-cell">Email</TableHead>
+            <TableHead className="hidden min-w-0 max-w-[14rem] xl:table-cell">
+              Email
+            </TableHead>
             <TableHead className="hidden lg:table-cell">Fuente</TableHead>
             <TableHead className="hidden lg:table-cell">Cliente Recuperado</TableHead>
             <TableHead>Etapa</TableHead>
@@ -1222,6 +1243,7 @@ function ContactsTable({
         <TableBody>
           {data.map((contact) => {
             const pending = isPendingContactId(contact.id);
+            const companyName = getPrimaryCompany(contact)?.name ?? '—';
             return (
             <TableRow
               key={contact.id}
@@ -1234,23 +1256,51 @@ function ContactsTable({
                   onCheckedChange={() => onToggleSelect(contact.id)}
                 />
               </TableCell>
-              <TableCell>
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-medium">{contact.name}</p>
+              <TableCell className="min-w-0 max-w-[20rem] whitespace-normal align-top">
+                <div className="min-w-0">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <p
+                      className="min-w-0 flex-1 truncate font-medium"
+                      title={contact.name}
+                    >
+                      {contact.name}
+                    </p>
                     {pending && (
-                      <Badge variant="secondary" className="gap-1 font-normal">
+                      <Badge
+                        variant="secondary"
+                        className="shrink-0 gap-1 font-normal"
+                      >
                         <Loader2 className="size-3 animate-spin" />
                         Guardando…
                       </Badge>
                     )}
                   </div>
-                  {contact.cargo && <p className="text-xs text-muted-foreground">{contact.cargo}</p>}
+                  {contact.cargo && (
+                    <p
+                      className="truncate text-xs text-muted-foreground"
+                      title={contact.cargo}
+                    >
+                      {contact.cargo}
+                    </p>
+                  )}
                 </div>
               </TableCell>
-              <TableCell className="hidden md:table-cell text-muted-foreground">{getPrimaryCompany(contact)?.name ?? '—'}</TableCell>
-              <TableCell className="hidden lg:table-cell text-muted-foreground">{contact.telefono}</TableCell>
-              <TableCell className="hidden xl:table-cell text-muted-foreground">{contact.correo}</TableCell>
+              <TableCell className="hidden min-w-0 max-w-[16rem] whitespace-normal md:table-cell align-top text-muted-foreground">
+                <span
+                  className="block truncate"
+                  title={companyName !== '—' ? companyName : undefined}
+                >
+                  {companyName}
+                </span>
+              </TableCell>
+              <TableCell className="hidden lg:table-cell text-muted-foreground">
+                {contact.telefono}
+              </TableCell>
+              <TableCell className="hidden min-w-0 max-w-[14rem] whitespace-normal xl:table-cell align-top text-muted-foreground">
+                <span className="block truncate" title={contact.correo}>
+                  {contact.correo}
+                </span>
+              </TableCell>
               <TableCell className="hidden lg:table-cell">
                 <Badge variant="outline" className="text-xs">{contactSourceLabels[contact.fuente]}</Badge>
               </TableCell>

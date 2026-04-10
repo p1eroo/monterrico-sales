@@ -28,6 +28,7 @@ import { formatCurrency, formatDate } from '@/lib/formatters';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useCrmTeamAdvisorFilter } from '@/hooks/useCrmTeamAdvisorFilter';
 import { fetchClients, updateClientApi } from '@/lib/clientApi';
 import {
   Building2, Users, UserX, DollarSign, Search, Eye,
@@ -96,7 +97,7 @@ function exportClientsToCSV(clients: Client[]) {
 
 export default function Clients() {
   const navigate = useNavigate();
-  const { users, activeUsers } = useUsers();
+  const { users, activeAdvisors } = useUsers();
   const { hasPermission } = usePermissions();
   const [clientList, setClientList] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -104,6 +105,11 @@ export default function Clients() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [assigneeFilter, setAssigneeFilter] = useState<string>('all');
+  const { canSeeAllAdvisors } = useCrmTeamAdvisorFilter(
+    assigneeFilter,
+    setAssigneeFilter,
+    'all',
+  );
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isChangeStatusOpen, setIsChangeStatusOpen] = useState(false);
 
@@ -144,7 +150,8 @@ export default function Clients() {
         client.phone.includes(searchTerm);
 
       const matchesStatus = statusFilter === 'all' || client.status === statusFilter;
-      const matchesAssignee = assigneeFilter === 'all' || client.assignedTo === assigneeFilter;
+      const matchesAssignee =
+        assigneeFilter === 'all' || client.assignedTo === assigneeFilter;
 
       return matchesSearch && matchesStatus && matchesAssignee;
     });
@@ -248,13 +255,17 @@ export default function Clients() {
               <SelectItem value="potencial">Potencial</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
+          <Select
+            value={assigneeFilter}
+            onValueChange={setAssigneeFilter}
+            disabled={!canSeeAllAdvisors}
+          >
             <SelectTrigger className="w-full sm:w-[200px]">
               <SelectValue placeholder="Asesor" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos los asesores</SelectItem>
-              {activeUsers.map((u) => (
+              {activeAdvisors.map((u) => (
                 <SelectItem key={u.id} value={u.id}>
                   {u.name}
                 </SelectItem>

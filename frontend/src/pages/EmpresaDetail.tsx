@@ -94,7 +94,7 @@ export default function EmpresaDetailPage() {
   const [apiContactRows, setApiContactRows] = useState<ApiContactListRow[]>([]);
   const [apiOpportunityRows, setApiOpportunityRows] = useState<ApiOpportunityListRow[]>([]);
   const [apiLoading, setApiLoading] = useState(fromApiById);
-  const { users, activeUsers } = useUsers();
+  const { users, activeAdvisors } = useUsers();
   const [apiError, setApiError] = useState<string | null>(null);
 
   const loadApiContacts = useCallback(async () => {
@@ -579,7 +579,7 @@ export default function EmpresaDetailPage() {
   }
 
   async function handleCreateNewContact(data: NewContactData) {
-    const defaultAssignedTo = firstContact?.assignedTo ?? activeUsers[0]?.id ?? '';
+    const defaultAssignedTo = firstContact?.assignedTo ?? activeAdvisors[0]?.id ?? '';
     if (resolvedCompanyId) {
       try {
         const body: Record<string, unknown> = {

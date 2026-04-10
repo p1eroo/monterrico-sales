@@ -57,6 +57,7 @@ import {
   useOptimisticCrmStore,
 } from '@/store/optimisticCrmStore';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useCrmTeamAdvisorFilter } from '@/hooks/useCrmTeamAdvisorFilter';
 import {
   downloadImportExportCsv,
   uploadImportCsv,
@@ -120,7 +121,7 @@ function OpportunityStatusBadge({ status }: { status: OpportunityStatus }) {
 }
 
 export default function OpportunitiesPage() {
-  const { users } = useUsers();
+  const { activeAdvisors } = useUsers();
   const pendingOpportunities = useOptimisticCrmStore((s) => s.pendingOpportunities);
   const addPendingOpportunity = useOptimisticCrmStore((s) => s.addPendingOpportunity);
   const removePendingOpportunity = useOptimisticCrmStore((s) => s.removePendingOpportunity);
@@ -165,6 +166,11 @@ export default function OpportunitiesPage() {
   const [etapaFilter, setEtapaFilter] = useState('todas');
   const [statusFilter, setStatusFilter] = useState('todas');
   const [assigneeFilter, setAssigneeFilter] = useState('todos');
+  const { canSeeAllAdvisors, currentUserId } = useCrmTeamAdvisorFilter(
+    assigneeFilter,
+    setAssigneeFilter,
+    'todos',
+  );
   const [activeTab, setActiveTab] = useState('todas');
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [newDialogOpen, setNewDialogOpen] = useState(false);
@@ -220,13 +226,20 @@ export default function OpportunitiesPage() {
     return counts;
   }, [allOpportunities]);
 
-  const hasActiveFilters = etapaFilter !== 'todas' || statusFilter !== 'todas' || assigneeFilter !== 'todos' || search !== '';
+  const assigneeFilterIsActive = canSeeAllAdvisors
+    ? assigneeFilter !== 'todos'
+    : false;
+  const hasActiveFilters =
+    etapaFilter !== 'todas' ||
+    statusFilter !== 'todas' ||
+    assigneeFilterIsActive ||
+    search !== '';
 
   function clearFilters() {
     setSearch('');
     setEtapaFilter('todas');
     setStatusFilter('todas');
-    setAssigneeFilter('todos');
+    setAssigneeFilter(canSeeAllAdvisors ? 'todos' : currentUserId);
   }
 
   async function handleCreateOpportunity(data: NewOpportunityFormValues) {
@@ -493,13 +506,17 @@ export default function OpportunitiesPage() {
             </SelectContent>
           </Select>
 
-          <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
+          <Select
+            value={assigneeFilter}
+            onValueChange={setAssigneeFilter}
+            disabled={!canSeeAllAdvisors}
+          >
             <SelectTrigger className="w-[150px]">
               <SelectValue placeholder="Asesor" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todos</SelectItem>
-              {users.map((u) => (
+              {activeAdvisors.map((u) => (
                 <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
               ))}
             </SelectContent>
@@ -685,14 +702,18 @@ function OpportunitiesTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Nombre</TableHead>
-            <TableHead className="hidden md:table-cell">Contacto / Cliente</TableHead>
+            <TableHead className="min-w-0 max-w-[20rem]">Nombre</TableHead>
+            <TableHead className="hidden min-w-0 max-w-[16rem] md:table-cell">
+              Contacto / Cliente
+            </TableHead>
             <TableHead className="hidden lg:table-cell">Prioridad</TableHead>
             <TableHead>Monto</TableHead>
             <TableHead className="hidden sm:table-cell">Probabilidad</TableHead>
             <TableHead className="hidden lg:table-cell">Etapa</TableHead>
             <TableHead className="hidden xl:table-cell">Fecha cierre</TableHead>
-            <TableHead className="hidden xl:table-cell">Asesor</TableHead>
+            <TableHead className="hidden min-w-0 max-w-[10rem] xl:table-cell">
+              Asesor
+            </TableHead>
             <TableHead className="hidden sm:table-cell">Estado</TableHead>
             <TableHead className="w-10" />
           </TableRow>
@@ -700,30 +721,48 @@ function OpportunitiesTable({
         <TableBody>
           {data.map((opp) => {
             const pending = isPendingOpportunityId(opp.id);
+            const contactClientLabel =
+              opp.contactName ?? opp.clientName ?? '—';
             return (
             <TableRow
               key={opp.id}
               className={pending ? 'group bg-muted/40' : 'group cursor-pointer hover:bg-muted/50'}
               onClick={() => onOpenDetail(opp)}
             >
-              <TableCell>
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-medium">{opp.title}</p>
+              <TableCell className="min-w-0 max-w-[20rem] whitespace-normal align-top">
+                <div className="min-w-0">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <p
+                      className="min-w-0 flex-1 truncate font-medium"
+                      title={opp.title}
+                    >
+                      {opp.title}
+                    </p>
                     {pending && (
-                      <Badge variant="secondary" className="gap-1 font-normal">
+                      <Badge
+                        variant="secondary"
+                        className="shrink-0 gap-1 font-normal"
+                      >
                         <Loader2 className="size-3 animate-spin" />
                         Guardando…
                       </Badge>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground md:hidden">
-                    {opp.contactName ?? opp.clientName ?? '—'}
+                  <p
+                    className="truncate text-xs text-muted-foreground md:hidden"
+                    title={contactClientLabel !== '—' ? contactClientLabel : undefined}
+                  >
+                    {contactClientLabel}
                   </p>
                 </div>
               </TableCell>
-              <TableCell className="hidden md:table-cell text-muted-foreground">
-                {opp.contactName ?? opp.clientName ?? '—'}
+              <TableCell className="hidden min-w-0 max-w-[16rem] whitespace-normal md:table-cell align-top text-muted-foreground">
+                <span
+                  className="block truncate"
+                  title={contactClientLabel !== '—' ? contactClientLabel : undefined}
+                >
+                  {contactClientLabel}
+                </span>
               </TableCell>
               <TableCell className="hidden lg:table-cell">
                 <PriorityBadge priority={opp.priority ?? 'media'} />
@@ -740,8 +779,10 @@ function OpportunitiesTable({
               <TableCell className="hidden xl:table-cell text-muted-foreground">
                 {formatDate(opp.expectedCloseDate)}
               </TableCell>
-              <TableCell className="hidden xl:table-cell text-muted-foreground">
-                {opp.assignedToName}
+              <TableCell className="hidden min-w-0 max-w-[10rem] whitespace-normal xl:table-cell align-top text-muted-foreground">
+                <span className="block truncate" title={opp.assignedToName}>
+                  {opp.assignedToName}
+                </span>
               </TableCell>
               <TableCell className="hidden sm:table-cell">
                 <OpportunityStatusBadge status={opp.status} />
@@ -821,8 +862,13 @@ function OpportunitiesGrid({
           <CardContent className="p-4">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="font-semibold leading-tight truncate">{opp.title}</h3>
+                <div className="flex min-w-0 items-center gap-2">
+                  <h3
+                    className="min-w-0 flex-1 truncate font-semibold leading-tight"
+                    title={opp.title}
+                  >
+                    {opp.title}
+                  </h3>
                   {pending && (
                     <Badge variant="secondary" className="shrink-0 gap-1 text-[10px] font-normal">
                       <Loader2 className="size-3 animate-spin" />
@@ -830,7 +876,12 @@ function OpportunitiesGrid({
                     </Badge>
                   )}
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground truncate">
+                <p
+                  className="mt-1 truncate text-xs text-muted-foreground"
+                  title={
+                    opp.contactName ?? opp.clientName ?? 'Sin contacto asignado'
+                  }
+                >
                   {opp.contactName ?? opp.clientName ?? 'Sin contacto asignado'}
                 </p>
               </div>
@@ -877,8 +928,12 @@ function OpportunitiesGrid({
             </div>
 
             <div className="mt-3 space-y-1 border-t pt-3 text-xs text-muted-foreground">
-              <p className="flex items-center gap-1.5 truncate">
-                <User className="size-3 shrink-0" /> {opp.assignedToName}
+              <p
+                className="flex min-w-0 items-center gap-1.5 truncate"
+                title={opp.assignedToName}
+              >
+                <User className="size-3 shrink-0" />{' '}
+                <span className="min-w-0 truncate">{opp.assignedToName}</span>
               </p>
               <p className="flex items-center gap-1.5">
                 <Calendar className="size-3 shrink-0" /> {formatDate(opp.expectedCloseDate)}

@@ -63,7 +63,7 @@ export function QuickActionsWithDialogs({
   onActivityCreated,
   contactId,
 }: QuickActionsWithDialogsProps) {
-  const { activeUsers } = useUsers();
+  const { activeAdvisors } = useUsers();
   const [activeDialog, setActiveDialog] = useState<string | null>(null);
 
   const [activityDialogType, setActivityDialogType] = useState<'llamada' | 'reunion' | 'correo' | null>(null);
@@ -103,7 +103,7 @@ export function QuickActionsWithDialogs({
     const dueDate = activityDialogType === 'reunion' && data.dateTime
       ? data.dateTime.slice(0, 10)
       : data.date || new Date().toISOString().slice(0, 10);
-    const defaultAssignee = activeUsers[0];
+    const defaultAssignee = activeAdvisors[0];
     onActivityCreated?.({
       id: `act-${Date.now()}`,
       type: activityDialogType,

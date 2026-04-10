@@ -20,12 +20,27 @@ export function roleIdToUserRole(roleId: string): User['role'] {
   return 'asesor';
 }
 
+const SUPERVISOR_LIKE_SLUGS = new Set([
+  'supervisor',
+  'gerente',
+  'jefe_comercial',
+  'jefe_comercial_ventas',
+  'director_comercial',
+]);
+
 /** Normaliza el string `role` devuelto por la API al tipo User del front. */
 export function mapApiRoleStringToUserRole(r: string): User['role'] {
   const x = r.trim().toLowerCase();
   if (x === 'admin') return 'admin';
-  if (x === 'supervisor' || x === 'gerente') return 'supervisor';
   if (x === 'solo_lectura' || x === 'solo lectura') return 'solo_lectura';
+  if (
+    SUPERVISOR_LIKE_SLUGS.has(x) ||
+    x.startsWith('jefe_') ||
+    x.endsWith('_supervisor') ||
+    x.includes('jefe_comercial')
+  ) {
+    return 'supervisor';
+  }
   return 'asesor';
 }
 
@@ -35,10 +50,10 @@ export function inferRoleIdFromApiUser(
   roleId: string | null | undefined,
 ): string {
   if (roleId?.trim()) return roleId;
-  const x = role.trim().toLowerCase();
-  if (x === 'admin') return 'r1';
-  if (x === 'supervisor' || x === 'gerente') return 'r2';
-  if (x === 'solo_lectura') return 'r4';
+  const m = mapApiRoleStringToUserRole(role);
+  if (m === 'admin') return 'r1';
+  if (m === 'supervisor') return 'r2';
+  if (m === 'solo_lectura') return 'r4';
   return 'r3';
 }
 

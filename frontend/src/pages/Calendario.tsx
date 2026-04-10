@@ -125,8 +125,8 @@ function activityPayloadFromForm(
 }
 
 export default function CalendarioPage() {
-  const { activeUsers } = useUsers();
-  const defaultAssigneeId = activeUsers[0]?.id ?? '';
+  const { activeAdvisors } = useUsers();
+  const defaultAssigneeId = activeAdvisors[0]?.id ?? '';
   const { activities, loading: activitiesLoading, createActivity, updateActivity, deleteActivity, error: activitiesError } = useActivities();
 
   const events = useMemo(
@@ -519,7 +519,7 @@ export default function CalendarioPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos los usuarios</SelectItem>
-              {activeUsers.map((u) => (
+              {activeAdvisors.map((u) => (
                 <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
               ))}
             </SelectContent>

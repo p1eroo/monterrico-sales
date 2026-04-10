@@ -4,6 +4,7 @@ import { Progress } from '@/components/ui/progress';
 import { useGoalsStore } from '@/store/goalsStore';
 import { useAnalyticsGoalStore } from '@/store/analyticsGoalStore';
 import { useAppStore } from '@/store';
+import { usePermissions } from '@/hooks/usePermissions';
 import { formatCurrencyShort } from '@/lib/formatters';
 import { utcYearMonthKey } from '@/lib/monthlySales';
 import { cn } from '@/lib/utils';
@@ -19,15 +20,6 @@ interface GoalCardProps {
   periodLabelCapitalize?: boolean;
 }
 
-function roleShowsTeamAggregate(role?: string, roleName?: string): boolean {
-  const r = `${role ?? ''} ${roleName ?? ''}`.toLowerCase();
-  return (
-    r.includes('admin') ||
-    r.includes('supervisor') ||
-    r.includes('gerente')
-  );
-}
-
 export function GoalCard({
   period,
   icon: Icon,
@@ -37,6 +29,7 @@ export function GoalCard({
   periodLabelCapitalize = false,
 }: GoalCardProps) {
   const { currentUser } = useAppStore();
+  const { hasPermission } = usePermissions();
   const { getGlobalWeeklyGoal, getUserWeeklyGoal } = useGoalsStore();
   const ymUtc = utcYearMonthKey();
   const teamMonthlyOrgGoal = useGoalsStore((s) => s.monthlyOrgByYm[ymUtc] ?? 0);
@@ -49,10 +42,7 @@ export function GoalCard({
   const teamMonthly = useAnalyticsGoalStore((s) => s.teamMonthlyClosed);
   const myMonthly = useAnalyticsGoalStore((s) => s.myMonthlyClosed);
 
-  const showGlobal = roleShowsTeamAggregate(
-    currentUser.role,
-    currentUser.roleName,
-  );
+  const showGlobal = hasPermission('equipo.datos_completos');
 
   const goal =
     period === 'weekly'

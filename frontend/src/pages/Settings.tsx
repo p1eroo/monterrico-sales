@@ -188,9 +188,7 @@ function GoalsSettingsCard() {
     return [...set].sort((a, b) => a - b);
   }, [teamGoalYear]);
 
-  const roleUsers = users.filter((u) =>
-    ['asesor', 'admin', 'supervisor'].includes(u.role),
-  );
+  const roleUsers = users.filter((u) => u.role === 'asesor');
 
   useEffect(() => {
     if (roleUsers.length === 0) return;

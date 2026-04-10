@@ -94,6 +94,9 @@
     /* Builder de flujos IA: puntos de cuadrícula y máscara del minimap */
     --workflow-grid-dot: rgba(15, 23, 42, 0.08);
     --workflow-minimap-mask: rgba(241, 245, 249, 0.55);
+    /* Pipeline Kanban (LeadCard + cabecera de columna; ver Pipeline.tsx) */
+    --pipeline-kanban-surface: #ffffff;
+    --pipeline-kanban-column-header: rgba(255, 255, 255, 0.92);
 }
 
 /* Dark mode - Notion/Linear/Slack/HubSpot inspired */
@@ -137,6 +140,8 @@
     --info-foreground: #ffffff;
     --workflow-grid-dot: rgba(148, 163, 184, 0.09);
     --workflow-minimap-mask: rgba(15, 23, 42, 0.45);
+    --pipeline-kanban-surface: #2d3a4d;
+    --pipeline-kanban-column-header: color-mix(in srgb, #2d3a4d 90%, transparent);
 }
 
 @layer base {

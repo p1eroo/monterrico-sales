@@ -19,11 +19,19 @@ export function useUsers() {
     [users],
   );
 
+  /** Usuarios activos con rol asesor (filtros y asignaciones comerciales). */
+  const activeAdvisors = useMemo(
+    () => activeUsers.filter((u) => u.role === 'asesor'),
+    [activeUsers],
+  );
+
   return {
     users,
     loading,
     error,
-    /** Solo usuarios activos (para selects de asignación) */
+    /** Solo usuarios activos (cualquier rol) */
     activeUsers,
+    /** Asesores activos: listas “por asesor”, pipeline, asignación a cartera */
+    activeAdvisors,
   };
 }

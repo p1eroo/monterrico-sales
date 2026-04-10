@@ -79,7 +79,7 @@ export function NewCompanyWizard({
   const [companyNameLookupQuery, setCompanyNameLookupQuery] = useState('');
   const [existingCompanyId, setExistingCompanyId] = useState<string | null>(null);
   const [loadedRucDigits, setLoadedRucDigits] = useState<string | null>(null);
-  const { activeUsers } = useUsers();
+  const { activeAdvisors } = useUsers();
   const bundle = useCrmConfigStore((s) => s.bundle);
 
   const stageOptions = useMemo(() => {
@@ -576,7 +576,7 @@ export function NewCompanyWizard({
                 <Select value={form.propietario} onValueChange={(v) => set('propietario', v)}>
                   <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar asesor" /></SelectTrigger>
                   <SelectContent>
-                    {activeUsers.map((u) => (
+                    {activeAdvisors.map((u) => (
                       <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
                     ))}
                   </SelectContent>

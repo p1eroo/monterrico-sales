@@ -7,6 +7,8 @@ import { Prisma } from '../generated/prisma';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateActivityDto } from './dto/create-activity.dto';
 import { UpdateActivityDto } from './dto/update-activity.dto';
+import type { CrmDataScope } from '../auth/crm-data-scope.service';
+import { mergeCompanyScope } from '../common/crm-data-scope-where.util';
 
 const TASK_KINDS = new Set(['llamada', 'reunion', 'correo', 'whatsapp']);
 
@@ -89,7 +91,7 @@ export class ActivitiesService {
     return { type, taskKind: null };
   }
 
-  async create(dto: CreateActivityDto) {
+  async create(dto: CreateActivityDto, scope?: CrmDataScope) {
     const { type, taskKind } = this.resolveTypeAndTaskKind(dto);
     if (!type) {
       throw new BadRequestException('El tipo es obligatorio');
@@ -98,7 +100,10 @@ export class ActivitiesService {
     if (!title) {
       throw new BadRequestException('El título es obligatorio');
     }
-    const assignedTo = dto.assignedTo?.trim();
+    let assignedTo = dto.assignedTo?.trim();
+    if (scope && !scope.unrestricted) {
+      assignedTo = scope.viewerUserId;
+    }
     if (!assignedTo) {
       throw new BadRequestException('El asignado es obligatorio');
     }
@@ -128,10 +133,17 @@ export class ActivitiesService {
       if (!c) {
         throw new BadRequestException('El contacto indicado no existe');
       }
+      if (
+        scope &&
+        !scope.unrestricted &&
+        c.assignedTo !== scope.viewerUserId
+      ) {
+        throw new BadRequestException('El contacto indicado no existe');
+      }
     }
     if (companyId) {
-      const c = await this.prisma.company.findUnique({
-        where: { id: companyId },
+      const c = await this.prisma.company.findFirst({
+        where: mergeCompanyScope({ id: companyId }, scope),
       });
       if (!c) {
         throw new BadRequestException('La empresa indicada no existe');
@@ -142,6 +154,13 @@ export class ActivitiesService {
         where: { id: opportunityId },
       });
       if (!o) {
+        throw new BadRequestException('La oportunidad indicada no existe');
+      }
+      if (
+        scope &&
+        !scope.unrestricted &&
+        o.assignedTo !== scope.viewerUserId
+      ) {
         throw new BadRequestException('La oportunidad indicada no existe');
       }
     }
@@ -182,13 +201,16 @@ export class ActivitiesService {
     });
   }
 
-  async findAll(opts?: {
-    page?: number;
-    limit?: number;
-    type?: string;
-    status?: string;
-    assignedTo?: string;
-  }) {
+  async findAll(
+    opts?: {
+      page?: number;
+      limit?: number;
+      type?: string;
+      status?: string;
+      assignedTo?: string;
+    },
+    scope?: CrmDataScope,
+  ) {
     const page = Math.max(1, opts?.page ?? 1);
     const limit = Math.min(5000, Math.max(1, opts?.limit ?? 25));
     const skip = (page - 1) * limit;
@@ -196,7 +218,11 @@ export class ActivitiesService {
     const where: Prisma.ActivityWhereInput = {};
     if (opts?.type?.trim()) where.type = opts.type.trim();
     if (opts?.status?.trim()) where.status = opts.status.trim();
-    if (opts?.assignedTo?.trim()) where.assignedTo = opts.assignedTo.trim();
+    if (scope && !scope.unrestricted) {
+      where.assignedTo = scope.viewerUserId;
+    } else if (opts?.assignedTo?.trim()) {
+      where.assignedTo = opts.assignedTo.trim();
+    }
 
     const [rows, total] = await Promise.all([
       this.prisma.activity.findMany({
@@ -218,7 +244,7 @@ export class ActivitiesService {
     };
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, scope?: CrmDataScope) {
     const row = await this.prisma.activity.findUnique({
       where: { id },
       include: activityInclude,
@@ -226,11 +252,18 @@ export class ActivitiesService {
     if (!row) {
       throw new NotFoundException('Actividad no encontrada');
     }
+    if (
+      scope &&
+      !scope.unrestricted &&
+      row.assignedTo !== scope.viewerUserId
+    ) {
+      throw new NotFoundException('Actividad no encontrada');
+    }
     return row;
   }
 
-  async update(id: string, dto: UpdateActivityDto) {
-    await this.findOne(id);
+  async update(id: string, dto: UpdateActivityDto, scope?: CrmDataScope) {
+    await this.findOne(id, scope);
     const existingRow = await this.prisma.activity.findUnique({
       where: { id },
     });
@@ -274,6 +307,11 @@ export class ActivitiesService {
       data.description = dto.description?.trim() ?? '';
     }
     if (dto.assignedTo !== undefined) {
+      if (scope && !scope.unrestricted) {
+        throw new BadRequestException(
+          'No tienes permiso para reasignar esta actividad',
+        );
+      }
       const a = dto.assignedTo?.trim();
       if (a) {
         const u = await this.prisma.user.findUnique({ where: { id: a } });
@@ -309,11 +347,11 @@ export class ActivitiesService {
       });
     });
 
-    return this.findOne(id);
+    return this.findOne(id, scope);
   }
 
-  async remove(id: string) {
-    await this.findOne(id);
+  async remove(id: string, scope?: CrmDataScope) {
+    await this.findOne(id, scope);
     return this.prisma.activity.delete({
       where: { id },
     });

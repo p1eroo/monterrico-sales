@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useCrmTeamAdvisorFilter } from '@/hooks/useCrmTeamAdvisorFilter';
 import { toast } from 'sonner';
 import {
   Plus, Search, X, MoreHorizontal, Phone, Users,
@@ -112,7 +113,7 @@ function isTaskRow(a: Activity): boolean {
 }
 
 export default function TareasPage() {
-  const { users } = useUsers();
+  const { activeAdvisors } = useUsers();
   const {
     activities,
     loading: activitiesLoading,
@@ -131,6 +132,11 @@ export default function TareasPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('todos');
   const [advisorFilter, setAdvisorFilter] = useState('todos');
+  const { canSeeAllAdvisors, currentUserId } = useCrmTeamAdvisorFilter(
+    advisorFilter,
+    setAdvisorFilter,
+    'todos',
+  );
   const [activeTab, setActiveTab] = useState('todas');
   const [newTaskOpen, setNewTaskOpen] = useState(false);
   const [calendarDate, setCalendarDate] = useState<Date | undefined>(new Date());
@@ -194,12 +200,16 @@ export default function TareasPage() {
     });
   }, [allTasks]);
 
-  const hasActiveFilters = statusFilter !== 'todos' || advisorFilter !== 'todos' || search !== '';
+  const advisorFilterIsActive = canSeeAllAdvisors
+    ? advisorFilter !== 'todos'
+    : false;
+  const hasActiveFilters =
+    statusFilter !== 'todos' || advisorFilterIsActive || search !== '';
 
   function clearFilters() {
     setSearch('');
     setStatusFilter('todos');
-    setAdvisorFilter('todos');
+    setAdvisorFilter(canSeeAllAdvisors ? 'todos' : currentUserId);
   }
 
   function isOverdue(dueDate: string, status: ActivityStatus) {
@@ -337,11 +347,41 @@ export default function TareasPage() {
   }
 
   const statsCards = [
-    { label: 'Total', value: stats.total, icon: CalendarDays, className: 'bg-slate-50 border-slate-200 text-slate-700' },
-    { label: 'Pendientes', value: stats.pendientes, icon: Clock, className: 'bg-amber-50 border-amber-200 text-amber-700' },
-    { label: 'Completadas', value: stats.completadas, icon: CalendarCheck, className: 'bg-emerald-50 border-emerald-200 text-emerald-700' },
-    { label: 'En progreso', value: stats.enProgreso, icon: RefreshCw, className: 'bg-blue-50 border-blue-200 text-blue-700' },
-    { label: 'Vencidas', value: stats.vencidas, icon: AlertTriangle, className: 'bg-red-50 border-red-200 text-red-700' },
+    {
+      label: 'Total',
+      value: stats.total,
+      icon: CalendarDays,
+      className:
+        'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-600/50 dark:bg-slate-800/60 dark:text-slate-100',
+    },
+    {
+      label: 'Pendientes',
+      value: stats.pendientes,
+      icon: Clock,
+      className:
+        'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800/45 dark:bg-amber-950/45 dark:text-amber-100',
+    },
+    {
+      label: 'Completadas',
+      value: stats.completadas,
+      icon: CalendarCheck,
+      className:
+        'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800/45 dark:bg-emerald-950/45 dark:text-emerald-100',
+    },
+    {
+      label: 'En progreso',
+      value: stats.enProgreso,
+      icon: RefreshCw,
+      className:
+        'border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-800/45 dark:bg-blue-950/45 dark:text-blue-100',
+    },
+    {
+      label: 'Vencidas',
+      value: stats.vencidas,
+      icon: AlertTriangle,
+      className:
+        'border-red-200 bg-red-50 text-red-800 dark:border-red-800/45 dark:bg-red-950/45 dark:text-red-100',
+    },
   ];
 
   return (
@@ -373,12 +413,14 @@ export default function TareasPage() {
           return (
             <Card key={stat.label} className={cn('border py-0', stat.className)}>
               <CardContent className="flex items-center gap-3 px-4 py-3">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white/80">
+                <div
+                  className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white/90 shadow-sm ring-1 ring-black/[0.06] dark:bg-black/35 dark:ring-white/10"
+                >
                   <StatIcon className="size-5" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{stat.value}</p>
-                  <p className="text-xs font-medium opacity-80">{stat.label}</p>
+                  <p className="text-xs font-medium opacity-90">{stat.label}</p>
                 </div>
               </CardContent>
             </Card>
@@ -410,13 +452,17 @@ export default function TareasPage() {
             </SelectContent>
           </Select>
 
-          <Select value={advisorFilter} onValueChange={setAdvisorFilter}>
+          <Select
+            value={advisorFilter}
+            onValueChange={setAdvisorFilter}
+            disabled={!canSeeAllAdvisors}
+          >
             <SelectTrigger className="w-[150px]">
               <SelectValue placeholder="Asesor" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todos los asesores</SelectItem>
-              {users.map((u) => (
+              {activeAdvisors.map((u) => (
                 <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
               ))}
             </SelectContent>

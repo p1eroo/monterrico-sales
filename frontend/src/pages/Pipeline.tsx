@@ -1,4 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { usePermissions } from '@/hooks/usePermissions';
+import { useAppStore } from '@/store';
 import {
   DndContext,
   closestCorners,
@@ -246,8 +248,9 @@ function LeadCard({ lead, isDragging, overlay, onCardClick, pipelineOpportunity 
   return (
     <div
       className={cn(
-        'group relative rounded-lg border bg-white p-3.5 shadow-sm transition-all',
-        'hover:shadow-md hover:border-primary/30',
+        'group relative rounded-lg border border-border bg-[var(--pipeline-kanban-surface)] p-3.5 text-card-foreground shadow-sm transition-all',
+        'dark:shadow-md dark:shadow-black/35',
+        'hover:shadow-md hover:border-primary/30 dark:hover:shadow-lg dark:hover:shadow-black/40',
         isDragging && 'opacity-40',
         overlay && 'rotate-2 shadow-xl border-primary/40',
       )}
@@ -395,7 +398,7 @@ function CardDetailDialog({
                         )}
                         style={isCurrent ? { backgroundColor: col.accentColor } : undefined}
                       >
-                        {isPast ? <Check className="size-3" /> : isCurrent ? <span className="size-2 rounded-full bg-white" /> : <span className="size-1.5 rounded-full bg-current opacity-50" />}
+                        {isPast ? <Check className="size-3" /> : isCurrent ? <span className="size-2 rounded-full bg-background" /> : <span className="size-1.5 rounded-full bg-current opacity-50" />}
                       </div>
                       {isCurrent && <ChevronRight className="size-3.5 shrink-0" />}
                       <span className={cn(isCurrent && 'font-semibold')}>{col.title}</span>
@@ -525,7 +528,7 @@ function KanbanColumn({ column, accentColor, onCardClick, pipelineOpportunityFor
     <div className="flex h-full min-w-[280px] max-w-[320px] shrink-0 flex-col">
       <div className="h-1 rounded-t-lg" style={{ backgroundColor: accentColor }} />
 
-      <div className="flex items-center justify-between rounded-t-none border-x border-t bg-white/80 px-3.5 py-3 backdrop-blur-sm">
+      <div className="flex items-center justify-between rounded-t-none border-x border-t border-border bg-[var(--pipeline-kanban-column-header)] px-3.5 py-3 backdrop-blur-sm">
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-semibold text-foreground">{column.title}</h3>
           <Badge variant="secondary" className="size-5 justify-center rounded-full p-0 text-[10px] font-bold">
@@ -589,7 +592,10 @@ function buildOpportunityByContactId(rows: ApiOpportunityListRow[]): Map<string,
 }
 
 export default function Pipeline() {
-  const { activeUsers } = useUsers();
+  const { hasPermission } = usePermissions();
+  const currentUserId = useAppStore((s) => s.currentUser.id);
+  const canSeeAllAdvisors = hasPermission('equipo.datos_completos');
+  const { activeAdvisors } = useUsers();
   const bundle = useCrmConfigStore((s) => s.bundle);
   const setBundle = useCrmConfigStore((s) => s.setBundle);
 
@@ -668,6 +674,13 @@ export default function Pipeline() {
     }
   }
   const [filters, setFilters] = useState<PipelineFilters>(emptyFilters);
+
+  useEffect(() => {
+    if (!canSeeAllAdvisors && filters.assignedTo === '') {
+      setFilters((f) => ({ ...f, assignedTo: currentUserId }));
+    }
+  }, [canSeeAllAdvisors, currentUserId, filters.assignedTo]);
+
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [changeEtapaOpen, setChangeEtapaOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
@@ -698,7 +711,13 @@ export default function Pipeline() {
     }
   }
 
-  const activeFilterCount = [filters.assignedTo, filters.rubro].filter(Boolean).length + (filters.etapas.length > 0 ? 1 : 0);
+  const advisorFilterIsActive = canSeeAllAdvisors
+    ? Boolean(filters.assignedTo)
+    : false;
+  const activeFilterCount =
+    (advisorFilterIsActive ? 1 : 0) +
+    (filters.rubro ? 1 : 0) +
+    (filters.etapas.length > 0 ? 1 : 0);
 
   const filteredContacts = useMemo(() => {
     return allContacts.filter((c) => {
@@ -799,7 +818,18 @@ export default function Pipeline() {
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-semibold">Filtros</h4>
                   {activeFilterCount > 0 && (
-                    <Button variant="ghost" size="sm" className="h-auto px-2 py-1 text-xs" onClick={() => setFilters(emptyFilters)}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto px-2 py-1 text-xs"
+                      onClick={() =>
+                        setFilters(
+                          canSeeAllAdvisors
+                            ? emptyFilters
+                            : { ...emptyFilters, assignedTo: currentUserId },
+                        )
+                      }
+                    >
                       <X className="mr-1 size-3" />
                       Limpiar
                     </Button>
@@ -808,13 +838,22 @@ export default function Pipeline() {
 
                 <div className="space-y-2">
                   <Label className="text-xs">Asesor</Label>
-                  <Select value={filters.assignedTo} onValueChange={(v) => setFilters((f) => ({ ...f, assignedTo: v === '_all' ? '' : v }))}>
+                  <Select
+                    value={filters.assignedTo}
+                    onValueChange={(v) =>
+                      setFilters((f) => ({
+                        ...f,
+                        assignedTo: v === '_all' ? '' : v,
+                      }))
+                    }
+                    disabled={!canSeeAllAdvisors}
+                  >
                     <SelectTrigger className="h-8 text-xs">
                       <SelectValue placeholder="Todos" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="_all">Todos</SelectItem>
-                      {activeUsers.map((u) => (
+                      {activeAdvisors.map((u) => (
                         <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
                       ))}
                     </SelectContent>

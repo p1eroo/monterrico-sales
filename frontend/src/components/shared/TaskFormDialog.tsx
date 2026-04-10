@@ -78,7 +78,7 @@ export function TaskFormDialog({
   defaultTitle = '',
   onSave,
 }: TaskFormDialogProps) {
-  const { users, activeUsers } = useUsers();
+  const { users, activeAdvisors } = useUsers();
   const today = new Date().toISOString().slice(0, 10);
   const [formTitle, setFormTitle] = useState(defaultTitle);
 
@@ -327,7 +327,7 @@ export function TaskFormDialog({
               <Select value={formAssignee} onValueChange={setFormAssignee}>
                 <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar asesor" /></SelectTrigger>
                 <SelectContent>
-                  {activeUsers.map((u) => (
+                  {activeAdvisors.map((u) => (
                     <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
                   ))}
                 </SelectContent>

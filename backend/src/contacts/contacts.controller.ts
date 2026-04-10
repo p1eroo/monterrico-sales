@@ -17,26 +17,44 @@ import { LinkCompanyDto } from './dto/link-company.dto';
 import { LinkContactDto } from './dto/link-contact.dto';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
+import { CrmDataScopeService } from '../auth/crm-data-scope.service';
 
-type AuthedReq = { user: { userId: string; name: string } };
+type AuthedReq = {
+  user: { userId: string; name: string; roleId?: string };
+};
 
 @Controller('contacts')
 @UseGuards(PermissionsGuard)
 export class ContactsController {
-  constructor(private readonly contactsService: ContactsService) {}
+  constructor(
+    private readonly contactsService: ContactsService,
+    private readonly crmDataScope: CrmDataScopeService,
+  ) {}
 
   @Post()
   @RequirePermissions('contactos.crear')
-  create(@Body() createContactDto: CreateContactDto, @Req() req: AuthedReq) {
-    return this.contactsService.create(createContactDto, {
-      userId: req.user.userId,
-      userName: req.user.name,
-    });
+  async create(
+    @Body() createContactDto: CreateContactDto,
+    @Req() req: AuthedReq,
+  ) {
+    const scope = await this.crmDataScope.buildScope(
+      req.user.userId,
+      req.user.roleId,
+    );
+    return this.contactsService.create(
+      createContactDto,
+      {
+        userId: req.user.userId,
+        userName: req.user.name,
+      },
+      scope,
+    );
   }
 
   @Get()
   @RequirePermissions('contactos.ver')
-  findAll(
+  async findAll(
+    @Req() req: AuthedReq,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('search') search?: string,
@@ -44,30 +62,45 @@ export class ContactsController {
     @Query('fuente') fuente?: string,
     @Query('assignedTo') assignedTo?: string,
   ) {
+    const scope = await this.crmDataScope.buildScope(
+      req.user.userId,
+      req.user.roleId,
+    );
     const pageNum = page ? (Number.parseInt(page, 10) || 1) : 1;
     const limitNum = limit ? Math.min(5000, Math.max(1, Number.parseInt(limit, 10) || 25)) : 25;
-    return this.contactsService.findAll({
-      page: pageNum,
-      limit: limitNum,
-      search: search?.trim() || undefined,
-      etapa: etapa?.trim() || undefined,
-      fuente: fuente?.trim() || undefined,
-      assignedTo: assignedTo?.trim() || undefined,
-    });
+    return this.contactsService.findAll(
+      {
+        page: pageNum,
+        limit: limitNum,
+        search: search?.trim() || undefined,
+        etapa: etapa?.trim() || undefined,
+        fuente: fuente?.trim() || undefined,
+        assignedTo: assignedTo?.trim() || undefined,
+      },
+      scope,
+    );
   }
 
   @Get('etapa-counts')
   @RequirePermissions('contactos.ver')
-  etapaTabCounts(
+  async etapaTabCounts(
+    @Req() req: AuthedReq,
     @Query('search') search?: string,
     @Query('fuente') fuente?: string,
     @Query('assignedTo') assignedTo?: string,
   ) {
-    return this.contactsService.etapaTabCounts({
-      search: search?.trim() || undefined,
-      fuente: fuente?.trim() || undefined,
-      assignedTo: assignedTo?.trim() || undefined,
-    });
+    const scope = await this.crmDataScope.buildScope(
+      req.user.userId,
+      req.user.roleId,
+    );
+    return this.contactsService.etapaTabCounts(
+      {
+        search: search?.trim() || undefined,
+        fuente: fuente?.trim() || undefined,
+        assignedTo: assignedTo?.trim() || undefined,
+      },
+      scope,
+    );
   }
 
   @Post(':id/companies')
@@ -77,12 +110,17 @@ export class ContactsController {
     @Body() dto: LinkCompanyDto,
     @Req() req: AuthedReq,
   ) {
-    return this.contactsService.addCompany(
-      id,
-      dto.companyId.trim(),
-      dto.isPrimary ?? false,
-      { userId: req.user.userId, userName: req.user.name },
-    );
+    return this.crmDataScope
+      .buildScope(req.user.userId, req.user.roleId)
+      .then((scope) =>
+        this.contactsService.addCompany(
+          id,
+          dto.companyId.trim(),
+          dto.isPrimary ?? false,
+          { userId: req.user.userId, userName: req.user.name },
+          scope,
+        ),
+      );
   }
 
   @Delete(':id/companies/:companyId')
@@ -92,10 +130,14 @@ export class ContactsController {
     @Param('companyId') companyId: string,
     @Req() req: AuthedReq,
   ) {
-    return this.contactsService.removeCompany(id, companyId, {
-      userId: req.user.userId,
-      userName: req.user.name,
-    });
+    return this.crmDataScope
+      .buildScope(req.user.userId, req.user.roleId)
+      .then((scope) =>
+        this.contactsService.removeCompany(id, companyId, {
+          userId: req.user.userId,
+          userName: req.user.name,
+        }, scope),
+      );
   }
 
   @Post(':id/links')
@@ -105,11 +147,16 @@ export class ContactsController {
     @Body() dto: LinkContactDto,
     @Req() req: AuthedReq,
   ) {
-    return this.contactsService.addLinkedContact(
-      id,
-      dto.linkedContactId.trim(),
-      { userId: req.user.userId, userName: req.user.name },
-    );
+    return this.crmDataScope
+      .buildScope(req.user.userId, req.user.roleId)
+      .then((scope) =>
+        this.contactsService.addLinkedContact(
+          id,
+          dto.linkedContactId.trim(),
+          { userId: req.user.userId, userName: req.user.name },
+          scope,
+        ),
+      );
   }
 
   @Delete(':id/links/:linkedId')
@@ -119,16 +166,22 @@ export class ContactsController {
     @Param('linkedId') linkedId: string,
     @Req() req: AuthedReq,
   ) {
-    return this.contactsService.removeLinkedContact(id, linkedId, {
-      userId: req.user.userId,
-      userName: req.user.name,
-    });
+    return this.crmDataScope
+      .buildScope(req.user.userId, req.user.roleId)
+      .then((scope) =>
+        this.contactsService.removeLinkedContact(id, linkedId, {
+          userId: req.user.userId,
+          userName: req.user.name,
+        }, scope),
+      );
   }
 
   @Get(':id')
   @RequirePermissions('contactos.ver')
-  findOne(@Param('id') id: string) {
-    return this.contactsService.findOne(id);
+  findOne(@Param('id') id: string, @Req() req: AuthedReq) {
+    return this.crmDataScope
+      .buildScope(req.user.userId, req.user.roleId)
+      .then((scope) => this.contactsService.findOne(id, scope));
   }
 
   @Patch(':id')
@@ -138,18 +191,26 @@ export class ContactsController {
     @Body() updateContactDto: UpdateContactDto,
     @Req() req: AuthedReq,
   ) {
-    return this.contactsService.update(id, updateContactDto, {
-      userId: req.user.userId,
-      userName: req.user.name,
-    });
+    return this.crmDataScope
+      .buildScope(req.user.userId, req.user.roleId)
+      .then((scope) =>
+        this.contactsService.update(id, updateContactDto, {
+          userId: req.user.userId,
+          userName: req.user.name,
+        }, scope),
+      );
   }
 
   @Delete(':id')
   @RequirePermissions('contactos.eliminar')
   remove(@Param('id') id: string, @Req() req: AuthedReq) {
-    return this.contactsService.remove(id, {
-      userId: req.user.userId,
-      userName: req.user.name,
-    });
+    return this.crmDataScope
+      .buildScope(req.user.userId, req.user.roleId)
+      .then((scope) =>
+        this.contactsService.remove(id, {
+          userId: req.user.userId,
+          userName: req.user.name,
+        }, scope),
+      );
   }
 }

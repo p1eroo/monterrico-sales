@@ -15,6 +15,8 @@ import type { ActivityActor } from '../activity-logs/activity-logs.types';
 import { AuditDetailService } from '../audit-detail/audit-detail.service';
 import { buildChangeEntries } from '../common/audit-diff.util';
 import { OPPORTUNITY_FIELD_LABELS } from '../audit-detail/audit-field-labels';
+import type { CrmDataScope } from '../auth/crm-data-scope.service';
+import { mergeCompanyScope } from '../common/crm-data-scope-where.util';
 
 /** Estados de pipeline derivados de la etapa (no se usa `suspendida`). */
 type PipelineOpportunityStatus = 'abierta' | 'ganada' | 'perdida';
@@ -165,7 +167,11 @@ export class OpportunitiesService {
     throw new NotFoundException('Oportunidad no encontrada');
   }
 
-  async create(dto: CreateOpportunityDto, actor?: ActivityActor) {
+  async create(
+    dto: CreateOpportunityDto,
+    actor?: ActivityActor,
+    scope?: CrmDataScope,
+  ) {
     const title = dto.title?.trim();
     if (!title) {
       throw new BadRequestException('El título es obligatorio');
@@ -184,8 +190,10 @@ export class OpportunitiesService {
     }
     await this.crmConfig.assertEtapaAssignable(etapa);
 
-    const assignedTo = dto.assignedTo?.trim() || null;
-    if (assignedTo) {
+    let assignedTo = dto.assignedTo?.trim() || null;
+    if (scope && !scope.unrestricted) {
+      assignedTo = scope.viewerUserId;
+    } else if (assignedTo) {
       await this.assertUserExists(assignedTo);
     }
 
@@ -196,11 +204,19 @@ export class OpportunitiesService {
       if (!c) {
         throw new BadRequestException('El contacto indicado no existe');
       }
+      if (
+        scope &&
+        !scope.unrestricted &&
+        c.assignedTo !== scope.viewerUserId
+      ) {
+        throw new BadRequestException('El contacto indicado no existe');
+      }
     }
 
     if (dto.companyId?.trim()) {
-      const comp = await this.prisma.company.findUnique({
-        where: { id: dto.companyId.trim() },
+      const cid = dto.companyId.trim();
+      const comp = await this.prisma.company.findFirst({
+        where: mergeCompanyScope({ id: cid }, scope),
       });
       if (!comp) {
         throw new BadRequestException('La empresa indicada no existe');
@@ -231,7 +247,7 @@ export class OpportunitiesService {
         },
       });
       if (existing) {
-        return this.findOne(existing.id);
+        return this.findOne(existing.id, scope);
       }
     }
 
@@ -282,14 +298,17 @@ export class OpportunitiesService {
     return created;
   }
 
-  async findAll(opts?: {
-    page?: number;
-    limit?: number;
-    search?: string;
-    etapa?: string;
-    status?: string;
-    assignedTo?: string;
-  }) {
+  async findAll(
+    opts?: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      etapa?: string;
+      status?: string;
+      assignedTo?: string;
+    },
+    scope?: CrmDataScope,
+  ) {
     const page = Math.max(1, opts?.page ?? 1);
     const limit = Math.min(5000, Math.max(1, opts?.limit ?? 25));
     const skip = (page - 1) * limit;
@@ -301,7 +320,11 @@ export class OpportunitiesService {
     }
     if (opts?.etapa?.trim()) where.etapa = opts.etapa.trim();
     if (opts?.status?.trim()) where.status = opts.status.trim();
-    if (opts?.assignedTo?.trim()) where.assignedTo = opts.assignedTo.trim();
+    if (scope && !scope.unrestricted) {
+      where.assignedTo = scope.viewerUserId;
+    } else if (opts?.assignedTo?.trim()) {
+      where.assignedTo = opts.assignedTo.trim();
+    }
 
     const [rows, total] = await Promise.all([
       this.prisma.opportunity.findMany({
@@ -323,7 +346,7 @@ export class OpportunitiesService {
     };
   }
 
-  async findOne(idOrSlug: string) {
+  async findOne(idOrSlug: string, scope?: CrmDataScope) {
     const id = await this.resolveOpportunityId(idOrSlug);
     const opp = await this.prisma.opportunity.findUnique({
       where: { id },
@@ -332,10 +355,22 @@ export class OpportunitiesService {
     if (!opp) {
       throw new NotFoundException('Oportunidad no encontrada');
     }
+    if (
+      scope &&
+      !scope.unrestricted &&
+      opp.assignedTo !== scope.viewerUserId
+    ) {
+      throw new NotFoundException('Oportunidad no encontrada');
+    }
     return opp;
   }
 
-  async update(idOrSlug: string, dto: UpdateOpportunityDto, actor: ActivityActor) {
+  async update(
+    idOrSlug: string,
+    dto: UpdateOpportunityDto,
+    actor: ActivityActor,
+    scope?: CrmDataScope,
+  ) {
     const id = await this.resolveOpportunityId(idOrSlug);
     const primaryLink = await this.prisma.contactOpportunity.findFirst({
       where: { opportunityId: id },
@@ -356,6 +391,21 @@ export class OpportunitiesService {
     });
     if (!snapshot) {
       throw new NotFoundException('Oportunidad no encontrada');
+    }
+    if (
+      scope &&
+      !scope.unrestricted &&
+      snapshot.assignedTo !== scope.viewerUserId
+    ) {
+      throw new NotFoundException('Oportunidad no encontrada');
+    }
+    if (scope && !scope.unrestricted && dto.assignedTo !== undefined) {
+      const next = dto.assignedTo?.trim() || null;
+      if (next !== scope.viewerUserId) {
+        throw new BadRequestException(
+          'No tienes permiso para reasignar esta oportunidad',
+        );
+      }
     }
 
     const before: Record<string, unknown> = {
@@ -448,6 +498,13 @@ export class OpportunitiesService {
         const cid = raw.trim();
         const c = await this.prisma.contact.findUnique({ where: { id: cid } });
         if (!c) {
+          throw new BadRequestException('El contacto no existe');
+        }
+        if (
+          scope &&
+          !scope.unrestricted &&
+          c.assignedTo !== scope.viewerUserId
+        ) {
           throw new BadRequestException('El contacto no existe');
         }
         await this.prisma.$transaction(async (tx) => {
@@ -552,16 +609,27 @@ export class OpportunitiesService {
       description,
     });
 
-    return this.findOne(id);
+    return this.findOne(id, scope);
   }
 
-  async remove(idOrSlug: string, actor: ActivityActor) {
+  async remove(
+    idOrSlug: string,
+    actor: ActivityActor,
+    scope?: CrmDataScope,
+  ) {
     const id = await this.resolveOpportunityId(idOrSlug);
     const row = await this.prisma.opportunity.findUnique({
       where: { id },
-      select: { title: true },
+      select: { title: true, assignedTo: true },
     });
     if (!row) {
+      throw new NotFoundException('Oportunidad no encontrada');
+    }
+    if (
+      scope &&
+      !scope.unrestricted &&
+      row.assignedTo !== scope.viewerUserId
+    ) {
       throw new NotFoundException('Oportunidad no encontrada');
     }
     const deleted = await this.prisma.opportunity.delete({

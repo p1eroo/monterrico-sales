@@ -45,7 +45,7 @@ export const MODULE_ALLOWED_ACTIONS: Record<
   correo: ['ver', 'crear', 'editar', 'eliminar'],
   campanas: ['ver', 'crear', 'editar', 'eliminar', 'exportar'],
   archivos: ['ver', 'crear', 'editar', 'eliminar'],
-  equipo: ['ver'],
+  equipo: ['ver', 'datos_completos'],
   usuarios: ['ver', 'crear', 'editar', 'eliminar', 'asignar'],
   roles: ['ver', 'crear', 'editar', 'eliminar'],
   auditoria: ['ver'],
@@ -81,6 +81,12 @@ export const PERMISSION_ACTIONS = [
     id: 'exportar',
     label: 'Exportar',
     tooltip: 'Descargar plantillas, exportar datos o informes',
+  },
+  {
+    id: 'datos_completos',
+    label: 'Datos completos del equipo',
+    tooltip:
+      'Ver y filtrar registros de todos los asesores. Sin esto solo ves tu cartera.',
   },
 ] as const;
 
@@ -182,9 +188,10 @@ const ASESOR_PERMISSIONS = [
   'agentes_ia.ver',
   'agentes_ia.editar',
 ];
-const SOLO_LECTURA_PERMISSIONS = allValidPermissionKeys().filter((k) =>
-  k.endsWith('.ver'),
-);
+const SOLO_LECTURA_PERMISSIONS = [
+  ...allValidPermissionKeys().filter((k) => k.endsWith('.ver')),
+  'equipo.datos_completos',
+];
 
 export const INITIAL_ROLES: RBACRole[] = [
   {

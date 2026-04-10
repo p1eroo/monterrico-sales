@@ -126,7 +126,7 @@ export function NewContactWizard({
   const [distrito, setDistrito] = useState(defaultValues?.distrito ?? '');
   const [direccion, setDireccion] = useState(defaultValues?.direccion ?? '');
   const [docLookupLoading, setDocLookupLoading] = useState(false);
-  const { activeUsers } = useUsers();
+  const { activeAdvisors } = useUsers();
   const bundle = useCrmConfigStore((s) => s.bundle);
 
   const stageOptions = useMemo(() => {
@@ -578,7 +578,7 @@ export function NewContactWizard({
                 <Select value={assignedTo} onValueChange={setAssignedTo}>
                   <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar asesor" /></SelectTrigger>
                   <SelectContent>
-                    {activeUsers.map((u) => (
+                    {activeAdvisors.map((u) => (
                       <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
                     ))}
                   </SelectContent>

@@ -16,6 +16,8 @@ import type { ActivityActor } from '../activity-logs/activity-logs.types';
 import { AuditDetailService } from '../audit-detail/audit-detail.service';
 import { buildChangeEntries } from '../common/audit-diff.util';
 import { COMPANY_FIELD_LABELS } from '../audit-detail/audit-field-labels';
+import type { CrmDataScope } from '../auth/crm-data-scope.service';
+import { mergeCompanyScope } from '../common/crm-data-scope-where.util';
 
 /** Select slim para listado: excluye linkedin, correo, direcciones */
 const companySelectListSlim = {
@@ -146,7 +148,11 @@ export class CompaniesService {
     throw new NotFoundException('Empresa no encontrada');
   }
 
-  async create(dto: CreateCompanyDto, actor?: ActivityActor) {
+  async create(
+    dto: CreateCompanyDto,
+    actor?: ActivityActor,
+    scope?: CrmDataScope,
+  ) {
     const name = dto.name?.trim();
     if (!name) {
       throw new BadRequestException('El nombre de la empresa es obligatorio');
@@ -163,8 +169,10 @@ export class CompaniesService {
     const fuente = dto.fuente?.trim() || 'base';
 
     const etapa = dto.etapa?.trim() || 'lead';
-    const assignedTo = dto.assignedTo?.trim() || null;
-    if (assignedTo) {
+    let assignedTo = dto.assignedTo?.trim() || null;
+    if (scope && !scope.unrestricted) {
+      assignedTo = scope.viewerUserId;
+    } else if (assignedTo) {
       await this.assertUserExists(assignedTo);
     }
     await this.crmConfig.assertEtapaAssignable(etapa);
@@ -229,32 +237,37 @@ export class CompaniesService {
       description: `Empresa creada: ${company.name}`,
     });
 
-    return this.findOne(company.id);
+    return this.findOne(company.id, scope);
   }
 
-  async findAll(opts?: {
-    page?: number;
-    limit?: number;
-    search?: string;
-    rubro?: string;
-    tipo?: string;
-  }) {
+  async findAll(
+    opts?: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      rubro?: string;
+      tipo?: string;
+    },
+    scope?: CrmDataScope,
+  ) {
     const page = Math.max(1, opts?.page ?? 1);
     const limit = Math.min(5000, Math.max(1, opts?.limit ?? 25));
     const skip = (page - 1) * limit;
 
-    const where: Prisma.CompanyWhereInput = {};
+    const base: Prisma.CompanyWhereInput = {};
     if (opts?.search?.trim()) {
       const q = opts.search.trim();
-      where.OR = [
+      base.OR = [
         { name: { contains: q, mode: 'insensitive' } },
         { razonSocial: { contains: q, mode: 'insensitive' } },
         { ruc: { contains: q } },
         { domain: { contains: q, mode: 'insensitive' } },
       ];
     }
-    if (opts?.rubro?.trim()) where.rubro = opts.rubro.trim();
-    if (opts?.tipo?.trim()) where.tipo = opts.tipo.trim();
+    if (opts?.rubro?.trim()) base.rubro = opts.rubro.trim();
+    if (opts?.tipo?.trim()) base.tipo = opts.tipo.trim();
+
+    const where = mergeCompanyScope(base, scope);
 
     const [rows, total] = await Promise.all([
       this.prisma.company.findMany({
@@ -279,13 +292,16 @@ export class CompaniesService {
   /**
    * Filtros del listado summary sin la condición de etapa (búsqueda, rubro, tipo, fuente, asesor).
    */
-  private buildCompanySummaryAndParts(opts?: {
-    search?: string;
-    rubro?: string;
-    tipo?: string;
-    fuente?: string;
-    assignedTo?: string;
-  }): Prisma.CompanyWhereInput[] {
+  private buildCompanySummaryAndParts(
+    opts?: {
+      search?: string;
+      rubro?: string;
+      tipo?: string;
+      fuente?: string;
+      assignedTo?: string;
+    },
+    scope?: CrmDataScope,
+  ): Prisma.CompanyWhereInput[] {
     const andParts: Prisma.CompanyWhereInput[] = [];
 
     if (opts?.search?.trim()) {
@@ -326,7 +342,10 @@ export class CompaniesService {
         ],
       });
     }
-    const advQ = opts?.assignedTo?.trim();
+    const advQ =
+      scope && !scope.unrestricted
+        ? undefined
+        : opts?.assignedTo?.trim();
     if (advQ) {
       andParts.push({
         OR: [
@@ -345,31 +364,37 @@ export class CompaniesService {
   /**
    * Conteos por etapa para pestañas dinámicas (misma lógica OR empresa / contacto que `findAllSummary`).
    */
-  async summaryEtapaCounts(opts?: {
-    search?: string;
-    rubro?: string;
-    tipo?: string;
-    fuente?: string;
-    assignedTo?: string;
-  }): Promise<{ counts: Record<string, number> }> {
-    const andParts = this.buildCompanySummaryAndParts(opts);
+  async summaryEtapaCounts(
+    opts?: {
+      search?: string;
+      rubro?: string;
+      tipo?: string;
+      fuente?: string;
+      assignedTo?: string;
+    },
+    scope?: CrmDataScope,
+  ): Promise<{ counts: Record<string, number> }> {
+    const andParts = this.buildCompanySummaryAndParts(opts, scope);
     const countForEtapa = (etapaQ: string) =>
       this.prisma.company.count({
-        where: {
-          AND: [
-            ...andParts,
-            {
-              OR: [
-                { etapa: etapaQ },
-                {
-                  contacts: {
-                    some: { contact: { etapa: etapaQ } },
+        where: mergeCompanyScope(
+          {
+            AND: [
+              ...andParts,
+              {
+                OR: [
+                  { etapa: etapaQ },
+                  {
+                    contacts: {
+                      some: { contact: { etapa: etapaQ } },
+                    },
                   },
-                },
-              ],
-            },
-          ],
-        },
+                ],
+              },
+            ],
+          },
+          scope,
+        ),
       });
     const results = await Promise.all(
       COMPANY_SUMMARY_TAB_ETAPAS.map((slug) => countForEtapa(slug)),
@@ -385,21 +410,24 @@ export class CompaniesService {
    * Listado paginado con agregados por empresa (sin cargar todos los contactos en el cliente).
    * Filtro por etapa: empresas con al menos un contacto en esa etapa (no coincide siempre con la etapa “display” por peso).
    */
-  async findAllSummary(opts?: {
-    page?: number;
-    limit?: number;
-    search?: string;
-    rubro?: string;
-    tipo?: string;
-    etapa?: string;
-    fuente?: string;
-    assignedTo?: string;
-  }) {
+  async findAllSummary(
+    opts?: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      rubro?: string;
+      tipo?: string;
+      etapa?: string;
+      fuente?: string;
+      assignedTo?: string;
+    },
+    scope?: CrmDataScope,
+  ) {
     const page = Math.max(1, opts?.page ?? 1);
     const limit = Math.min(5000, Math.max(1, opts?.limit ?? 25));
     const skip = (page - 1) * limit;
 
-    const andParts = this.buildCompanySummaryAndParts(opts);
+    const andParts = this.buildCompanySummaryAndParts(opts, scope);
     const etapaQ = opts?.etapa?.trim();
     if (etapaQ) {
       andParts.push({
@@ -414,8 +442,9 @@ export class CompaniesService {
       });
     }
 
-    const where: Prisma.CompanyWhereInput =
+    const inner: Prisma.CompanyWhereInput =
       andParts.length > 0 ? { AND: andParts } : {};
+    const where = mergeCompanyScope(inner, scope);
 
     const [rows, total] = await Promise.all([
       this.prisma.company.findMany({
@@ -491,7 +520,7 @@ export class CompaniesService {
   /**
    * Busca empresa por RUC (11 dígitos), tolerando distintos formatos guardados en BD.
    */
-  async findOneByRucParam(rucParam: string) {
+  async findOneByRucParam(rucParam: string, scope?: CrmDataScope) {
     const raw = rucParam?.trim() ?? '';
     const digits = raw.replace(/\D/g, '');
     if (digits.length !== 11) {
@@ -523,13 +552,13 @@ export class CompaniesService {
       throw new NotFoundException('No hay empresa con ese RUC');
     }
 
-    return this.findOne(row.id);
+    return this.findOne(row.id, scope);
   }
 
-  async findOne(idOrSlug: string) {
+  async findOne(idOrSlug: string, scope?: CrmDataScope) {
     const id = await this.resolveCompanyId(idOrSlug);
-    const company = await this.prisma.company.findUnique({
-      where: { id },
+    const company = await this.prisma.company.findFirst({
+      where: mergeCompanyScope({ id }, scope),
       include: {
         user: { select: { id: true, name: true } },
       },
@@ -540,10 +569,15 @@ export class CompaniesService {
     return company;
   }
 
-  async update(idOrSlug: string, dto: UpdateCompanyDto, actor: ActivityActor) {
+  async update(
+    idOrSlug: string,
+    dto: UpdateCompanyDto,
+    actor: ActivityActor,
+    scope?: CrmDataScope,
+  ) {
     const id = await this.resolveCompanyId(idOrSlug);
-    const snapshot = await this.prisma.company.findUnique({
-      where: { id },
+    const snapshot = await this.prisma.company.findFirst({
+      where: mergeCompanyScope({ id }, scope),
       select: {
         name: true,
         razonSocial: true,
@@ -567,6 +601,14 @@ export class CompaniesService {
     });
     if (!snapshot) {
       throw new NotFoundException('Empresa no encontrada');
+    }
+    if (scope && !scope.unrestricted && dto.assignedTo !== undefined) {
+      const next = dto.assignedTo?.trim() || null;
+      if (next !== scope.viewerUserId) {
+        throw new BadRequestException(
+          'No tienes permiso para reasignar esta empresa',
+        );
+      }
     }
 
     const data: Record<string, string | number | null | undefined> = {};
@@ -692,13 +734,17 @@ export class CompaniesService {
       description,
     });
 
-    return this.findOne(id);
+    return this.findOne(id, scope);
   }
 
-  async remove(idOrSlug: string, actor: ActivityActor) {
+  async remove(
+    idOrSlug: string,
+    actor: ActivityActor,
+    scope?: CrmDataScope,
+  ) {
     const id = await this.resolveCompanyId(idOrSlug);
-    const row = await this.prisma.company.findUnique({
-      where: { id },
+    const row = await this.prisma.company.findFirst({
+      where: mergeCompanyScope({ id }, scope),
       select: { name: true },
     });
     if (!row) {

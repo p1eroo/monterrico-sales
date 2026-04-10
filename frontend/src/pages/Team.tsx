@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import {
-  Search, UserPlus, Phone, Users, Shield, UserCheck,
+  Search, UserPlus, Phone, Users, UserCheck,
   Grid3X3, List, Eye, Pencil,
 } from 'lucide-react';
 import {
@@ -81,7 +81,9 @@ export default function TeamPage() {
   const [newUserOpen, setNewUserOpen] = useState(false);
 
   const teamUsers = [...users, ...newUsersCreated];
-  const filteredUsers = teamUsers.filter(
+  /** Vista Equipo comercial: solo asesores (admin/supervisión se gestiona en Usuarios). */
+  const salesTeamUsers = teamUsers.filter((u) => u.role === 'asesor');
+  const filteredUsers = salesTeamUsers.filter(
     (u) =>
       !search ||
       u.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -90,12 +92,9 @@ export default function TeamPage() {
       (u.phone?.includes(search) ?? false),
   );
 
-  const totalMembers = teamUsers.length;
-  const activeMembers = teamUsers.filter((u) => u.status === 'activo').length;
-  const adminSupervisores = teamUsers.filter(
-    (u) => u.role === 'admin' || u.role === 'supervisor',
-  ).length;
-  const asesores = teamUsers.filter((u) => u.role === 'asesor').length;
+  const totalAsesores = salesTeamUsers.length;
+  const asesoresActivos = salesTeamUsers.filter((u) => u.status === 'activo').length;
+  const asesoresInactivos = salesTeamUsers.filter((u) => u.status === 'inactivo').length;
 
   async function handleTeamUserSubmit(data: UserFormData) {
     try {
@@ -145,7 +144,7 @@ export default function TeamPage() {
     <div className="space-y-6">
       <PageHeader
         title="Equipo Comercial"
-        description="Gestiona los miembros de tu equipo comercial"
+        description="Asesores comercialmente asignados (administradores y supervisores se gestionan en Usuarios)"
       >
         <Button className="bg-[#13944C] hover:bg-[#0f7a3d]" onClick={() => setNewUserOpen(true)}>
           <UserPlus className="size-4" /> Nuevo Usuario
@@ -153,14 +152,14 @@ export default function TeamPage() {
       </PageHeader>
 
       {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 items-start">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 items-start">
         <Card className="p-4">
           <CardContent className="p-0">
             <div className="flex items-center gap-2">
               <Users className="size-5 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Total miembros</span>
+              <span className="text-sm text-muted-foreground">Total asesores</span>
             </div>
-            <p className="mt-1 text-2xl font-bold">{totalMembers}</p>
+            <p className="mt-1 text-2xl font-bold">{totalAsesores}</p>
           </CardContent>
         </Card>
         <Card className="p-4">
@@ -169,25 +168,16 @@ export default function TeamPage() {
               <UserCheck className="size-5 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Activos</span>
             </div>
-            <p className="mt-1 text-2xl font-bold">{activeMembers}</p>
-          </CardContent>
-        </Card>
-        <Card className="p-4">
-          <CardContent className="p-0">
-            <div className="flex items-center gap-2">
-              <Shield className="size-5 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Admin + Supervisores</span>
-            </div>
-            <p className="mt-1 text-2xl font-bold">{adminSupervisores}</p>
+            <p className="mt-1 text-2xl font-bold">{asesoresActivos}</p>
           </CardContent>
         </Card>
         <Card className="p-4">
           <CardContent className="p-0">
             <div className="flex items-center gap-2">
               <Users className="size-5 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Asesores</span>
+              <span className="text-sm text-muted-foreground">Inactivos</span>
             </div>
-            <p className="mt-1 text-2xl font-bold">{asesores}</p>
+            <p className="mt-1 text-2xl font-bold">{asesoresInactivos}</p>
           </CardContent>
         </Card>
       </div>
@@ -462,6 +452,7 @@ export default function TeamPage() {
         onOpenChange={setNewUserOpen}
         user={null}
         onSubmit={handleTeamUserSubmit}
+        excludeRoleSlugs={['admin']}
       />
     </div>
   );

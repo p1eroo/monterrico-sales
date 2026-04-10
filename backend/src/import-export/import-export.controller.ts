@@ -15,18 +15,22 @@ import { memoryStorage } from 'multer';
 import { ImportExportService } from './import-export.service';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
+import { CrmDataScopeService } from '../auth/crm-data-scope.service';
 
 const importFileOpts = {
   storage: memoryStorage(),
   limits: { fileSize: 6 * 1024 * 1024 },
 };
 
-type AuthedReq = { user: { userId: string } };
+type AuthedReq = { user: { userId: string; roleId?: string } };
 
 @Controller('import-export')
 @UseGuards(PermissionsGuard)
 export class ImportExportController {
-  constructor(private readonly importExportService: ImportExportService) {}
+  constructor(
+    private readonly importExportService: ImportExportService,
+    private readonly crmDataScope: CrmDataScopeService,
+  ) {}
 
   @Get('contacts/template')
   @RequirePermissions('contactos.exportar')
@@ -42,8 +46,15 @@ export class ImportExportController {
 
   @Get('contacts/export')
   @RequirePermissions('contactos.exportar')
-  async contactsExport(@Res({ passthrough: false }) res: Response) {
-    const body = await this.importExportService.contactsExportCsv();
+  async contactsExport(
+    @Res({ passthrough: false }) res: Response,
+    @Req() req: AuthedReq,
+  ) {
+    const scope = await this.crmDataScope.buildScope(
+      req.user.userId,
+      req.user.roleId,
+    );
+    const body = await this.importExportService.contactsExportCsv(scope);
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader(
       'Content-Disposition',
@@ -74,7 +85,15 @@ export class ImportExportController {
       throw new BadRequestException('Adjunta un archivo CSV (.csv)');
     }
     const text = file.buffer.toString('utf-8');
-    return this.importExportService.importContacts(text, req.user.userId);
+    const scope = await this.crmDataScope.buildScope(
+      req.user.userId,
+      req.user.roleId,
+    );
+    return this.importExportService.importContacts(
+      text,
+      req.user.userId,
+      scope,
+    );
   }
 
   @Get('companies/template')
@@ -91,8 +110,15 @@ export class ImportExportController {
 
   @Get('companies/export')
   @RequirePermissions('empresas.exportar')
-  async companiesExport(@Res({ passthrough: false }) res: Response) {
-    const body = await this.importExportService.companiesExportCsv();
+  async companiesExport(
+    @Res({ passthrough: false }) res: Response,
+    @Req() req: AuthedReq,
+  ) {
+    const scope = await this.crmDataScope.buildScope(
+      req.user.userId,
+      req.user.roleId,
+    );
+    const body = await this.importExportService.companiesExportCsv(scope);
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader(
       'Content-Disposition',
@@ -123,7 +149,15 @@ export class ImportExportController {
       throw new BadRequestException('Adjunta un archivo CSV (.csv)');
     }
     const text = file.buffer.toString('utf-8');
-    return this.importExportService.importCompanies(text, req.user.userId);
+    const scope = await this.crmDataScope.buildScope(
+      req.user.userId,
+      req.user.roleId,
+    );
+    return this.importExportService.importCompanies(
+      text,
+      req.user.userId,
+      scope,
+    );
   }
 
   @Get('opportunities/template')
@@ -140,8 +174,15 @@ export class ImportExportController {
 
   @Get('opportunities/export')
   @RequirePermissions('oportunidades.exportar')
-  async opportunitiesExport(@Res({ passthrough: false }) res: Response) {
-    const body = await this.importExportService.opportunitiesExportCsv();
+  async opportunitiesExport(
+    @Res({ passthrough: false }) res: Response,
+    @Req() req: AuthedReq,
+  ) {
+    const scope = await this.crmDataScope.buildScope(
+      req.user.userId,
+      req.user.roleId,
+    );
+    const body = await this.importExportService.opportunitiesExportCsv(scope);
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader(
       'Content-Disposition',
@@ -161,6 +202,14 @@ export class ImportExportController {
       throw new BadRequestException('Adjunta un archivo CSV (.csv)');
     }
     const text = file.buffer.toString('utf-8');
-    return this.importExportService.importOpportunities(text, req.user.userId);
+    const scope = await this.crmDataScope.buildScope(
+      req.user.userId,
+      req.user.roleId,
+    );
+    return this.importExportService.importOpportunities(
+      text,
+      req.user.userId,
+      scope,
+    );
   }
 }

@@ -61,6 +61,8 @@ interface UserFormModalProps {
   onOpenChange: (open: boolean) => void;
   user?: User | null;
   onSubmit: (data: UserFormData) => void | Promise<void>;
+  /** Slugs de rol a ocultar en el selector (p. ej. `admin` desde Equipo comercial). */
+  excludeRoleSlugs?: readonly string[];
 }
 
 export function UserFormModal({
@@ -68,11 +70,31 @@ export function UserFormModal({
   onOpenChange,
   user,
   onSubmit,
+  excludeRoleSlugs = [],
 }: UserFormModalProps) {
   const isEdit = !!user;
   const { roles, asesorRoleId } = useRoles();
   const schema = useMemo(() => buildUserFormSchema(isEdit), [isEdit]);
-  const defaultRoleId = asesorRoleId ?? roles[0]?.id ?? '';
+
+  const excluded = useMemo(
+    () => new Set(excludeRoleSlugs.map((s) => s.trim().toLowerCase()).filter(Boolean)),
+    [excludeRoleSlugs],
+  );
+
+  const selectableRoles = useMemo(() => {
+    if (isEdit) return roles;
+    return roles.filter((r) => !excluded.has(r.slug.trim().toLowerCase()));
+  }, [roles, excluded, isEdit]);
+
+  const defaultRoleId = useMemo(() => {
+    const pool = isEdit ? roles : selectableRoles;
+    const pick =
+      (asesorRoleId && pool.some((r) => r.id === asesorRoleId) ? asesorRoleId : undefined) ??
+      pool.find((r) => r.slug === 'asesor')?.id ??
+      pool[0]?.id ??
+      '';
+    return pick;
+  }, [selectableRoles, asesorRoleId, isEdit, roles]);
 
   const form = useForm<UserFormData>({
     resolver: zodResolver(schema),
@@ -92,7 +114,7 @@ export function UserFormModal({
   useEffect(() => {
     if (!open) return;
 
-    const fallbackRole = (defaultRoleId || roles[0]?.id || '').trim();
+    const fallbackRole = (defaultRoleId || selectableRoles[0]?.id || '').trim();
 
     if (user) {
       form.reset({
@@ -121,11 +143,11 @@ export function UserFormModal({
   /** Crear usuario: si los roles llegan después de abrir el modal, asignar rol por defecto sin resetear el resto. */
   useEffect(() => {
     if (!open || user) return;
-    const r = (defaultRoleId || roles[0]?.id || '').trim();
+    const r = (defaultRoleId || selectableRoles[0]?.id || '').trim();
     if (!r) return;
     const cur = form.getValues('roleId');
     if (!cur) form.setValue('roleId', r);
-  }, [open, user, defaultRoleId, roles[0]?.id, form]);
+  }, [open, user, defaultRoleId, selectableRoles[0]?.id, form]);
 
   function handleOpenChange(next: boolean) {
     if (!next) {
@@ -133,7 +155,7 @@ export function UserFormModal({
         name: '',
         username: '',
         password: '',
-        roleId: defaultRoleId || roles[0]?.id || '',
+        roleId: defaultRoleId || selectableRoles[0]?.id || '',
         status: true,
       });
     }
@@ -216,7 +238,7 @@ export function UserFormModal({
                 <SelectValue placeholder="Selecciona un rol" />
               </SelectTrigger>
               <SelectContent>
-                {roles.map((r) => (
+                {selectableRoles.map((r) => (
                   <SelectItem key={r.id} value={r.id}>
                     {r.name}
                   </SelectItem>

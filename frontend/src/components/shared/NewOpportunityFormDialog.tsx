@@ -85,7 +85,7 @@ export function NewOpportunityFormDialog({
   lockCompanySelection = false,
 }: NewOpportunityFormDialogProps) {
   const { contacts } = useCRMStore();
-  const { activeUsers } = useUsers();
+  const { activeAdvisors } = useUsers();
   const bundle = useCrmConfigStore((s) => s.bundle);
   const stageOptions = useMemo(() => {
     const st = bundle?.catalog.stages
@@ -438,7 +438,7 @@ export function NewOpportunityFormDialog({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Sin asignar en servidor</SelectItem>
-                    {activeUsers.map((u) => (
+                    {activeAdvisors.map((u) => (
                       <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
                     ))}
                   </SelectContent>
