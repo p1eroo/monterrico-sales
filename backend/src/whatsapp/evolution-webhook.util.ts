@@ -41,17 +41,16 @@ export function extractMessageCaption(msg: JsonRecord): string {
   return '';
 }
 
-export function readMessageEventPayload(body: unknown): {
+/** Cuerpo webhook Evolution / whatsmeow (event + data sin exigir forma de `data`). */
+export function readEvolutionWebhookEvent(body: unknown): {
   event: string;
   instanceId: string;
   instanceName: string | null;
   instanceToken: string | null;
-  data: JsonRecord;
+  data: unknown;
 } | null {
   const root = asRecord(body);
   if (!root || typeof root['event'] !== 'string') return null;
-  const data = asRecord(root['data']);
-  if (!data) return null;
   return {
     event: root['event'],
     instanceId:
@@ -60,8 +59,85 @@ export function readMessageEventPayload(body: unknown): {
       typeof root['instanceName'] === 'string' ? root['instanceName'] : null,
     instanceToken:
       typeof root['instanceToken'] === 'string' ? root['instanceToken'] : null,
+    data: root['data'],
+  };
+}
+
+export function readMessageEventPayload(body: unknown): {
+  event: string;
+  instanceId: string;
+  instanceName: string | null;
+  instanceToken: string | null;
+  data: JsonRecord;
+} | null {
+  const base = readEvolutionWebhookEvent(body);
+  if (!base) return null;
+  const data = asRecord(base.data);
+  if (!data) return null;
+  return {
+    event: base.event,
+    instanceId: base.instanceId,
+    instanceName: base.instanceName,
+    instanceToken: base.instanceToken,
     data,
   };
+}
+
+/** Evento whatsmeow `Receipt`: MessageIDs + Type (Delivered, Read, …). */
+export function parseReceiptEventData(data: JsonRecord): {
+  messageIds: string[];
+  outboundStatus: 'delivered' | 'read' | null;
+} {
+  const messageIds: string[] = [];
+  const rawIds = data['MessageIDs'] ?? data['messageIDs'];
+  if (Array.isArray(rawIds)) {
+    for (const x of rawIds) {
+      if (typeof x === 'string' && x.length > 0) messageIds.push(x);
+    }
+  }
+  const idSingle = data['ID'] ?? data['id'];
+  if (typeof idSingle === 'string' && idSingle.length > 0) {
+    messageIds.push(idSingle);
+  }
+
+  const typeRaw = data['Type'] ?? data['type'] ?? '';
+  const t = String(typeRaw).toLowerCase();
+  let outboundStatus: 'delivered' | 'read' | null = null;
+  if (t.includes('deliver')) outboundStatus = 'delivered';
+  else if (t.includes('read')) outboundStatus = 'read';
+
+  return { messageIds, outboundStatus };
+}
+
+/**
+ * Evolution API v2 estilo Baileys: `MESSAGES_UPDATE` / `messages.update`
+ * con `key.id`, `key.fromMe`, `update.status` o `status`.
+ */
+export function parseMessagesUpdateEventData(data: JsonRecord): {
+  waMessageId: string | null;
+  fromMe: boolean;
+  outboundStatus: 'delivered' | 'read' | null;
+} {
+  const key = asRecord(data['key']);
+  const waMessageId =
+    key && typeof key['id'] === 'string' && key['id'].length > 0
+      ? key['id']
+      : null;
+  const fromMe = Boolean(key?.['fromMe']);
+
+  const upd = asRecord(data['update']) ?? {};
+  const statusRaw = upd['status'] ?? data['status'];
+  let outboundStatus: 'delivered' | 'read' | null = null;
+  if (typeof statusRaw === 'number') {
+    if (statusRaw === 3) outboundStatus = 'delivered';
+    else if (statusRaw === 4 || statusRaw === 5) outboundStatus = 'read';
+  } else if (typeof statusRaw === 'string') {
+    const s = statusRaw.toLowerCase();
+    if (s.includes('deliver') || s === 'delivery_ack') outboundStatus = 'delivered';
+    else if (s === 'read' || s.includes('read')) outboundStatus = 'read';
+  }
+
+  return { waMessageId, fromMe, outboundStatus };
 }
 
 /** Campos útiles del evento `Message` de whatsmeow serializado a JSON. */

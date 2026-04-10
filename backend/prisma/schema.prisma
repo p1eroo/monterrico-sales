@@ -387,6 +387,8 @@ model CrmWhatsappMessage {
   createdByUserId   String?
   createdBy         User?    @relation("CrmWhatsappMessageAuthor", fields: [createdByUserId], references: [id], onDelete: SetNull)
   createdAt         DateTime @default(now())
+  /** Solo outbound: sent | delivered | read (recibos Evolution `Receipt`). */
+  waOutboundStatus  String?
 
   @@index([contactId, createdAt])
   @@index([evoInstanceId, waMessageId])

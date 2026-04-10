@@ -371,7 +371,8 @@ exports.Prisma.CrmWhatsappMessageScalarFieldEnum = {
   payloadJson: 'payloadJson',
   contactId: 'contactId',
   createdByUserId: 'createdByUserId',
-  createdAt: 'createdAt'
+  createdAt: 'createdAt',
+  waOutboundStatus: 'waOutboundStatus'
 };
 
 exports.Prisma.CompanyScalarFieldEnum = {

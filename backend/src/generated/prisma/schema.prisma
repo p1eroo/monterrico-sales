@@ -415,26 +415,30 @@ model Contact {
  * Mensajes entrantes/salientes vía Evolution GO (WhatsApp), para historial en CRM y notificaciones.
  */
 model CrmWhatsappMessage {
-  id              String   @id @default(cuid())
+  id               String   @id @default(cuid())
   /**
    * inbound | outbound
    */
-  direction       String
+  direction        String
   /**
    * ID interno de instancia en Evolution (webhook instanceId).
    */
-  evoInstanceId   String
-  evoInstanceName String?
-  waMessageId     String?
-  fromWaId        String
-  toWaId          String
-  body            String   @db.Text
-  payloadJson     Json?
-  contactId       String?
-  contact         Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  createdByUserId String?
-  createdBy       User?    @relation("CrmWhatsappMessageAuthor", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  createdAt       DateTime @default(now())
+  evoInstanceId    String
+  evoInstanceName  String?
+  waMessageId      String?
+  fromWaId         String
+  toWaId           String
+  body             String   @db.Text
+  payloadJson      Json?
+  contactId        String?
+  contact          Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  createdByUserId  String?
+  createdBy        User?    @relation("CrmWhatsappMessageAuthor", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdAt        DateTime @default(now())
+  /**
+   * Solo outbound: sent | delivered | read (recibos Evolution `Receipt`).
+   */
+  waOutboundStatus String?
 
   @@index([contactId, createdAt])
   @@index([evoInstanceId, waMessageId])

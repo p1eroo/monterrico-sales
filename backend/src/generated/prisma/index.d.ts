@@ -30045,6 +30045,7 @@ export namespace Prisma {
     contactId: string | null
     createdByUserId: string | null
     createdAt: Date | null
+    waOutboundStatus: string | null
   }
 
   export type CrmWhatsappMessageMaxAggregateOutputType = {
@@ -30059,6 +30060,7 @@ export namespace Prisma {
     contactId: string | null
     createdByUserId: string | null
     createdAt: Date | null
+    waOutboundStatus: string | null
   }
 
   export type CrmWhatsappMessageCountAggregateOutputType = {
@@ -30074,6 +30076,7 @@ export namespace Prisma {
     contactId: number
     createdByUserId: number
     createdAt: number
+    waOutboundStatus: number
     _all: number
   }
 
@@ -30090,6 +30093,7 @@ export namespace Prisma {
     contactId?: true
     createdByUserId?: true
     createdAt?: true
+    waOutboundStatus?: true
   }
 
   export type CrmWhatsappMessageMaxAggregateInputType = {
@@ -30104,6 +30108,7 @@ export namespace Prisma {
     contactId?: true
     createdByUserId?: true
     createdAt?: true
+    waOutboundStatus?: true
   }
 
   export type CrmWhatsappMessageCountAggregateInputType = {
@@ -30119,6 +30124,7 @@ export namespace Prisma {
     contactId?: true
     createdByUserId?: true
     createdAt?: true
+    waOutboundStatus?: true
     _all?: true
   }
 
@@ -30207,6 +30213,7 @@ export namespace Prisma {
     contactId: string | null
     createdByUserId: string | null
     createdAt: Date
+    waOutboundStatus: string | null
     _count: CrmWhatsappMessageCountAggregateOutputType | null
     _min: CrmWhatsappMessageMinAggregateOutputType | null
     _max: CrmWhatsappMessageMaxAggregateOutputType | null
@@ -30239,6 +30246,7 @@ export namespace Prisma {
     contactId?: boolean
     createdByUserId?: boolean
     createdAt?: boolean
+    waOutboundStatus?: boolean
     contact?: boolean | CrmWhatsappMessage$contactArgs<ExtArgs>
     createdBy?: boolean | CrmWhatsappMessage$createdByArgs<ExtArgs>
   }, ExtArgs["result"]["crmWhatsappMessage"]>
@@ -30256,6 +30264,7 @@ export namespace Prisma {
     contactId?: boolean
     createdByUserId?: boolean
     createdAt?: boolean
+    waOutboundStatus?: boolean
     contact?: boolean | CrmWhatsappMessage$contactArgs<ExtArgs>
     createdBy?: boolean | CrmWhatsappMessage$createdByArgs<ExtArgs>
   }, ExtArgs["result"]["crmWhatsappMessage"]>
@@ -30273,6 +30282,7 @@ export namespace Prisma {
     contactId?: boolean
     createdByUserId?: boolean
     createdAt?: boolean
+    waOutboundStatus?: boolean
     contact?: boolean | CrmWhatsappMessage$contactArgs<ExtArgs>
     createdBy?: boolean | CrmWhatsappMessage$createdByArgs<ExtArgs>
   }, ExtArgs["result"]["crmWhatsappMessage"]>
@@ -30290,9 +30300,10 @@ export namespace Prisma {
     contactId?: boolean
     createdByUserId?: boolean
     createdAt?: boolean
+    waOutboundStatus?: boolean
   }
 
-  export type CrmWhatsappMessageOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "direction" | "evoInstanceId" | "evoInstanceName" | "waMessageId" | "fromWaId" | "toWaId" | "body" | "payloadJson" | "contactId" | "createdByUserId" | "createdAt", ExtArgs["result"]["crmWhatsappMessage"]>
+  export type CrmWhatsappMessageOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "direction" | "evoInstanceId" | "evoInstanceName" | "waMessageId" | "fromWaId" | "toWaId" | "body" | "payloadJson" | "contactId" | "createdByUserId" | "createdAt" | "waOutboundStatus", ExtArgs["result"]["crmWhatsappMessage"]>
   export type CrmWhatsappMessageInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     contact?: boolean | CrmWhatsappMessage$contactArgs<ExtArgs>
     createdBy?: boolean | CrmWhatsappMessage$createdByArgs<ExtArgs>
@@ -30331,6 +30342,10 @@ export namespace Prisma {
       contactId: string | null
       createdByUserId: string | null
       createdAt: Date
+      /**
+       * * Solo outbound: sent | delivered | read (recibos Evolution `Receipt`).
+       */
+      waOutboundStatus: string | null
     }, ExtArgs["result"]["crmWhatsappMessage"]>
     composites: {}
   }
@@ -30768,6 +30783,7 @@ export namespace Prisma {
     readonly contactId: FieldRef<"CrmWhatsappMessage", 'String'>
     readonly createdByUserId: FieldRef<"CrmWhatsappMessage", 'String'>
     readonly createdAt: FieldRef<"CrmWhatsappMessage", 'DateTime'>
+    readonly waOutboundStatus: FieldRef<"CrmWhatsappMessage", 'String'>
   }
     
 
@@ -49663,7 +49679,8 @@ export namespace Prisma {
     payloadJson: 'payloadJson',
     contactId: 'contactId',
     createdByUserId: 'createdByUserId',
-    createdAt: 'createdAt'
+    createdAt: 'createdAt',
+    waOutboundStatus: 'waOutboundStatus'
   };
 
   export type CrmWhatsappMessageScalarFieldEnum = (typeof CrmWhatsappMessageScalarFieldEnum)[keyof typeof CrmWhatsappMessageScalarFieldEnum]
@@ -51638,6 +51655,7 @@ export namespace Prisma {
     contactId?: StringNullableFilter<"CrmWhatsappMessage"> | string | null
     createdByUserId?: StringNullableFilter<"CrmWhatsappMessage"> | string | null
     createdAt?: DateTimeFilter<"CrmWhatsappMessage"> | Date | string
+    waOutboundStatus?: StringNullableFilter<"CrmWhatsappMessage"> | string | null
     contact?: XOR<ContactNullableScalarRelationFilter, ContactWhereInput> | null
     createdBy?: XOR<UserNullableScalarRelationFilter, UserWhereInput> | null
   }
@@ -51655,6 +51673,7 @@ export namespace Prisma {
     contactId?: SortOrderInput | SortOrder
     createdByUserId?: SortOrderInput | SortOrder
     createdAt?: SortOrder
+    waOutboundStatus?: SortOrderInput | SortOrder
     contact?: ContactOrderByWithRelationInput
     createdBy?: UserOrderByWithRelationInput
   }
@@ -51675,6 +51694,7 @@ export namespace Prisma {
     contactId?: StringNullableFilter<"CrmWhatsappMessage"> | string | null
     createdByUserId?: StringNullableFilter<"CrmWhatsappMessage"> | string | null
     createdAt?: DateTimeFilter<"CrmWhatsappMessage"> | Date | string
+    waOutboundStatus?: StringNullableFilter<"CrmWhatsappMessage"> | string | null
     contact?: XOR<ContactNullableScalarRelationFilter, ContactWhereInput> | null
     createdBy?: XOR<UserNullableScalarRelationFilter, UserWhereInput> | null
   }, "id">
@@ -51692,6 +51712,7 @@ export namespace Prisma {
     contactId?: SortOrderInput | SortOrder
     createdByUserId?: SortOrderInput | SortOrder
     createdAt?: SortOrder
+    waOutboundStatus?: SortOrderInput | SortOrder
     _count?: CrmWhatsappMessageCountOrderByAggregateInput
     _max?: CrmWhatsappMessageMaxOrderByAggregateInput
     _min?: CrmWhatsappMessageMinOrderByAggregateInput
@@ -51713,6 +51734,7 @@ export namespace Prisma {
     contactId?: StringNullableWithAggregatesFilter<"CrmWhatsappMessage"> | string | null
     createdByUserId?: StringNullableWithAggregatesFilter<"CrmWhatsappMessage"> | string | null
     createdAt?: DateTimeWithAggregatesFilter<"CrmWhatsappMessage"> | Date | string
+    waOutboundStatus?: StringNullableWithAggregatesFilter<"CrmWhatsappMessage"> | string | null
   }
 
   export type CompanyWhereInput = {
@@ -54640,6 +54662,7 @@ export namespace Prisma {
     body: string
     payloadJson?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
+    waOutboundStatus?: string | null
     contact?: ContactCreateNestedOneWithoutWhatsappMessagesInput
     createdBy?: UserCreateNestedOneWithoutWhatsappMessagesSentInput
   }
@@ -54657,6 +54680,7 @@ export namespace Prisma {
     contactId?: string | null
     createdByUserId?: string | null
     createdAt?: Date | string
+    waOutboundStatus?: string | null
   }
 
   export type CrmWhatsappMessageUpdateInput = {
@@ -54670,6 +54694,7 @@ export namespace Prisma {
     body?: StringFieldUpdateOperationsInput | string
     payloadJson?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    waOutboundStatus?: NullableStringFieldUpdateOperationsInput | string | null
     contact?: ContactUpdateOneWithoutWhatsappMessagesNestedInput
     createdBy?: UserUpdateOneWithoutWhatsappMessagesSentNestedInput
   }
@@ -54687,6 +54712,7 @@ export namespace Prisma {
     contactId?: NullableStringFieldUpdateOperationsInput | string | null
     createdByUserId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    waOutboundStatus?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
   export type CrmWhatsappMessageCreateManyInput = {
@@ -54702,6 +54728,7 @@ export namespace Prisma {
     contactId?: string | null
     createdByUserId?: string | null
     createdAt?: Date | string
+    waOutboundStatus?: string | null
   }
 
   export type CrmWhatsappMessageUpdateManyMutationInput = {
@@ -54715,6 +54742,7 @@ export namespace Prisma {
     body?: StringFieldUpdateOperationsInput | string
     payloadJson?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    waOutboundStatus?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
   export type CrmWhatsappMessageUncheckedUpdateManyInput = {
@@ -54730,6 +54758,7 @@ export namespace Prisma {
     contactId?: NullableStringFieldUpdateOperationsInput | string | null
     createdByUserId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    waOutboundStatus?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
   export type CompanyCreateInput = {
@@ -57292,6 +57321,7 @@ export namespace Prisma {
     contactId?: SortOrder
     createdByUserId?: SortOrder
     createdAt?: SortOrder
+    waOutboundStatus?: SortOrder
   }
 
   export type CrmWhatsappMessageMaxOrderByAggregateInput = {
@@ -57306,6 +57336,7 @@ export namespace Prisma {
     contactId?: SortOrder
     createdByUserId?: SortOrder
     createdAt?: SortOrder
+    waOutboundStatus?: SortOrder
   }
 
   export type CrmWhatsappMessageMinOrderByAggregateInput = {
@@ -57320,6 +57351,7 @@ export namespace Prisma {
     contactId?: SortOrder
     createdByUserId?: SortOrder
     createdAt?: SortOrder
+    waOutboundStatus?: SortOrder
   }
 
   export type CompanyCompanyListRelationFilter = {
@@ -61480,6 +61512,7 @@ export namespace Prisma {
     body: string
     payloadJson?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
+    waOutboundStatus?: string | null
     contact?: ContactCreateNestedOneWithoutWhatsappMessagesInput
   }
 
@@ -61495,6 +61528,7 @@ export namespace Prisma {
     payloadJson?: NullableJsonNullValueInput | InputJsonValue
     contactId?: string | null
     createdAt?: Date | string
+    waOutboundStatus?: string | null
   }
 
   export type CrmWhatsappMessageCreateOrConnectWithoutCreatedByInput = {
@@ -62047,6 +62081,7 @@ export namespace Prisma {
     contactId?: StringNullableFilter<"CrmWhatsappMessage"> | string | null
     createdByUserId?: StringNullableFilter<"CrmWhatsappMessage"> | string | null
     createdAt?: DateTimeFilter<"CrmWhatsappMessage"> | Date | string
+    waOutboundStatus?: StringNullableFilter<"CrmWhatsappMessage"> | string | null
   }
 
   export type UserCreateWithoutCrmNotificationsInput = {
@@ -63600,6 +63635,7 @@ export namespace Prisma {
     body: string
     payloadJson?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
+    waOutboundStatus?: string | null
     createdBy?: UserCreateNestedOneWithoutWhatsappMessagesSentInput
   }
 
@@ -63615,6 +63651,7 @@ export namespace Prisma {
     payloadJson?: NullableJsonNullValueInput | InputJsonValue
     createdByUserId?: string | null
     createdAt?: Date | string
+    waOutboundStatus?: string | null
   }
 
   export type CrmWhatsappMessageCreateOrConnectWithoutContactInput = {
@@ -67774,6 +67811,7 @@ export namespace Prisma {
     payloadJson?: NullableJsonNullValueInput | InputJsonValue
     contactId?: string | null
     createdAt?: Date | string
+    waOutboundStatus?: string | null
   }
 
   export type AccountUpdateWithoutUserInput = {
@@ -68415,6 +68453,7 @@ export namespace Prisma {
     body?: StringFieldUpdateOperationsInput | string
     payloadJson?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    waOutboundStatus?: NullableStringFieldUpdateOperationsInput | string | null
     contact?: ContactUpdateOneWithoutWhatsappMessagesNestedInput
   }
 
@@ -68430,6 +68469,7 @@ export namespace Prisma {
     payloadJson?: NullableJsonNullValueInput | InputJsonValue
     contactId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    waOutboundStatus?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
   export type CrmWhatsappMessageUncheckedUpdateManyWithoutCreatedByInput = {
@@ -68444,6 +68484,7 @@ export namespace Prisma {
     payloadJson?: NullableJsonNullValueInput | InputJsonValue
     contactId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    waOutboundStatus?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
   export type AuditChangeEntryCreateManyChangeSetInput = {
@@ -68608,6 +68649,7 @@ export namespace Prisma {
     payloadJson?: NullableJsonNullValueInput | InputJsonValue
     createdByUserId?: string | null
     createdAt?: Date | string
+    waOutboundStatus?: string | null
   }
 
   export type CompanyContactUpdateWithoutContactInput = {
@@ -68699,6 +68741,7 @@ export namespace Prisma {
     body?: StringFieldUpdateOperationsInput | string
     payloadJson?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    waOutboundStatus?: NullableStringFieldUpdateOperationsInput | string | null
     createdBy?: UserUpdateOneWithoutWhatsappMessagesSentNestedInput
   }
 
@@ -68714,6 +68757,7 @@ export namespace Prisma {
     payloadJson?: NullableJsonNullValueInput | InputJsonValue
     createdByUserId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    waOutboundStatus?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
   export type CrmWhatsappMessageUncheckedUpdateManyWithoutContactInput = {
@@ -68728,6 +68772,7 @@ export namespace Prisma {
     payloadJson?: NullableJsonNullValueInput | InputJsonValue
     createdByUserId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    waOutboundStatus?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
   export type CompanyContactCreateManyCompanyInput = {

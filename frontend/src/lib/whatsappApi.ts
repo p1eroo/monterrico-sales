@@ -9,7 +9,18 @@ export type WhatsappMessageItem = {
   createdAt: string;
   waMessageId: string | null;
   evoInstanceName: string | null;
+  /** Solo salientes: sent | delivered | read (webhook Receipt / MESSAGES_UPDATE). */
+  waOutboundStatus?: string | null;
 };
+
+export type WhatsappSocketPayload =
+  | { type: 'message'; contactId: string; item: WhatsappMessageItem }
+  | {
+      type: 'status';
+      contactId: string;
+      id: string;
+      waOutboundStatus: string;
+    };
 
 export async function fetchWhatsappMessages(
   contactId: string,
@@ -25,7 +36,13 @@ export async function fetchWhatsappMessages(
 export async function sendWhatsappMessage(
   contactId: string,
   text: string,
-): Promise<{ id: string; direction: string; toWaId: string; waMessageId: string | null }> {
+): Promise<{
+  id: string;
+  direction: string;
+  toWaId: string;
+  waMessageId: string | null;
+  waOutboundStatus?: string | null;
+}> {
   return api(`/api/whatsapp/send`, {
     method: 'POST',
     body: JSON.stringify({ contactId, text }),

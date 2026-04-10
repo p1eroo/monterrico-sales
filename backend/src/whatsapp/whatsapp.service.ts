@@ -15,9 +15,33 @@ import { SendWhatsappDto } from './dto/send-whatsapp.dto';
 import { normalizePeWaNumber } from './wa-number.util';
 import {
   parseMessageEventData,
+  parseMessagesUpdateEventData,
+  parseReceiptEventData,
+  readEvolutionWebhookEvent,
   readMessageEventPayload,
   stripHeavyPayload,
 } from './evolution-webhook.util';
+import { WhatsappGateway } from './whatsapp.gateway';
+
+type JsonRecord = Record<string, unknown>;
+
+function asRecord(v: unknown): JsonRecord | null {
+  return v !== null && typeof v === 'object' && !Array.isArray(v)
+    ? (v as JsonRecord)
+    : null;
+}
+
+const WHATSAPP_LIST_SELECT = {
+  id: true,
+  direction: true,
+  body: true,
+  fromWaId: true,
+  toWaId: true,
+  createdAt: true,
+  waMessageId: true,
+  evoInstanceName: true,
+  waOutboundStatus: true,
+} as const;
 
 @Injectable()
 export class WhatsappService {
@@ -29,6 +53,7 @@ export class WhatsappService {
     private readonly evogo: EvogoClient,
     private readonly contactsService: ContactsService,
     private readonly notifications: NotificationsService,
+    private readonly gateway: WhatsappGateway,
   ) {}
 
   private defaultInstanceKey(): string {
@@ -45,6 +70,71 @@ export class WhatsappService {
     return (
       this.config.get<string>('EVOGO_DISPLAY_LINE_ID')?.trim() || 'evolution-go'
     );
+  }
+
+  private rankOutboundStatus(s: string | null | undefined): number {
+    const rank: Record<string, number> = { sent: 0, delivered: 1, read: 2 };
+    return typeof s === 'string' && s in rank ? rank[s]! : -1;
+  }
+
+  private shouldUpgradeOutboundStatus(
+    current: string | null | undefined,
+    next: 'delivered' | 'read',
+  ): boolean {
+    return this.rankOutboundStatus(next) > this.rankOutboundStatus(current);
+  }
+
+  private async applyOutboundReceipts(
+    evoInstanceId: string,
+    messageIds: string[],
+    next: 'delivered' | 'read',
+  ): Promise<void> {
+    const unique = [...new Set(messageIds.filter(Boolean))];
+    if (unique.length === 0) return;
+
+    for (const waMessageId of unique) {
+      const rows = await this.prisma.crmWhatsappMessage.findMany({
+        where: {
+          evoInstanceId,
+          waMessageId,
+          direction: 'outbound',
+        },
+        select: {
+          id: true,
+          contactId: true,
+          waOutboundStatus: true,
+        },
+      });
+      for (const row of rows) {
+        if (!row.contactId) continue;
+        if (!this.shouldUpgradeOutboundStatus(row.waOutboundStatus, next)) {
+          continue;
+        }
+        await this.prisma.crmWhatsappMessage.update({
+          where: { id: row.id },
+          data: { waOutboundStatus: next },
+        });
+        this.gateway.emitToContact(row.contactId, {
+          type: 'status',
+          contactId: row.contactId,
+          id: row.id,
+          waOutboundStatus: next,
+        });
+      }
+    }
+  }
+
+  private async emitListItemById(contactId: string, messageId: string) {
+    const row = await this.prisma.crmWhatsappMessage.findUnique({
+      where: { id: messageId },
+      select: WHATSAPP_LIST_SELECT,
+    });
+    if (!row) return;
+    this.gateway.emitToContact(contactId, {
+      type: 'message',
+      contactId,
+      item: row as unknown as Record<string, unknown>,
+    });
   }
 
   async sendFromCrm(dto: SendWhatsappDto, scope: CrmDataScope, userId: string) {
@@ -92,14 +182,18 @@ export class WhatsappService {
         payloadJson: stripHeavyPayload(sent.raw) as Prisma.InputJsonValue,
         contactId: contact.id,
         createdByUserId: userId,
+        waOutboundStatus: 'sent',
       },
     });
+
+    await this.emitListItemById(contact.id, row.id);
 
     return {
       id: row.id,
       direction: row.direction,
       toWaId: row.toWaId,
       waMessageId: row.waMessageId,
+      waOutboundStatus: row.waOutboundStatus,
     };
   }
 
@@ -110,16 +204,7 @@ export class WhatsappService {
       where: { contactId },
       orderBy: { createdAt: 'desc' },
       take,
-      select: {
-        id: true,
-        direction: true,
-        body: true,
-        fromWaId: true,
-        toWaId: true,
-        createdAt: true,
-        waMessageId: true,
-        evoInstanceName: true,
-      },
+      select: WHATSAPP_LIST_SELECT,
     });
     return { items: rows.reverse() };
   }
@@ -137,15 +222,73 @@ export class WhatsappService {
       throw new UnauthorizedException('Token de webhook inválido');
     }
 
-    const parsed = readMessageEventPayload(body);
-    if (!parsed) {
+    const base = readEvolutionWebhookEvent(body);
+    if (!base) {
       return { ok: true, ignored: 'not_json_event' };
     }
 
-    if (parsed.event !== 'Message') {
-      return { ok: true, ignored: `event:${parsed.event}` };
+    if (base.event === 'Message') {
+      const parsed = readMessageEventPayload(body);
+      if (!parsed) {
+        return { ok: true, ignored: 'not_json_event' };
+      }
+      return this.handleMessageWebhook(parsed);
     }
 
+    if (base.event === 'Receipt') {
+      const data = asRecord(base.data);
+      if (!data) {
+        return { ok: true, ignored: 'receipt_no_data' };
+      }
+      const { messageIds, outboundStatus } = parseReceiptEventData(data);
+      if (!outboundStatus || messageIds.length === 0) {
+        return { ok: true, ignored: 'receipt_empty' };
+      }
+      await this.applyOutboundReceipts(
+        base.instanceId || 'unknown',
+        messageIds,
+        outboundStatus,
+      );
+      return { ok: true };
+    }
+
+    const evLower = base.event.toLowerCase();
+    if (
+      evLower === 'messages_update' ||
+      evLower === 'messages.update' ||
+      base.event === 'MESSAGES_UPDATE'
+    ) {
+      const raw = base.data;
+      const chunks: JsonRecord[] = [];
+      if (Array.isArray(raw)) {
+        for (const item of raw) {
+          const rec = asRecord(item);
+          if (rec) chunks.push(rec);
+        }
+      } else {
+        const rec = asRecord(raw);
+        if (rec) chunks.push(rec);
+      }
+      for (const data of chunks) {
+        const u = parseMessagesUpdateEventData(data);
+        if (!u.fromMe || !u.waMessageId || !u.outboundStatus) {
+          continue;
+        }
+        await this.applyOutboundReceipts(
+          base.instanceId || 'unknown',
+          [u.waMessageId],
+          u.outboundStatus,
+        );
+      }
+      return { ok: true };
+    }
+
+    return { ok: true, ignored: `event:${base.event}` };
+  }
+
+  private async handleMessageWebhook(
+    parsed: NonNullable<ReturnType<typeof readMessageEventPayload>>,
+  ): Promise<{ ok: boolean; ignored?: string }> {
     const msg = parseMessageEventData(parsed.data);
 
     if (msg.isGroup) {
@@ -179,7 +322,7 @@ export class WhatsappService {
 
     const textBody = msg.text.trim() || '[Sin texto]';
 
-    await this.prisma.crmWhatsappMessage.create({
+    const created = await this.prisma.crmWhatsappMessage.create({
       data: {
         direction: 'inbound',
         evoInstanceId: parsed.instanceId || 'unknown',
@@ -192,6 +335,10 @@ export class WhatsappService {
         contactId: contact?.id ?? null,
       },
     });
+
+    if (contact?.id) {
+      await this.emitListItemById(contact.id, created.id);
+    }
 
     if (contact?.assignedTo) {
       try {

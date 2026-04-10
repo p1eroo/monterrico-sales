@@ -5,14 +5,17 @@ import {
   useRef,
   useState,
 } from 'react';
+import { io } from 'socket.io-client';
 import { Loader2, MessageCircle, RefreshCw, Send, X } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Contact } from '@/types';
 import { usePermissions } from '@/hooks/usePermissions';
+import { API_BASE } from '@/lib/api';
 import {
   fetchWhatsappMessages,
   sendWhatsappMessage,
   type WhatsappMessageItem,
+  type WhatsappSocketPayload,
 } from '@/lib/whatsappApi';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -24,6 +27,42 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
+
+function mergeChatItem(
+  prev: WhatsappMessageItem[],
+  item: WhatsappMessageItem,
+): WhatsappMessageItem[] {
+  const rest = prev.filter((x) => x.id !== item.id);
+  const next = [...rest, item];
+  next.sort(
+    (a, b) =>
+      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+  );
+  return next;
+}
+
+function OutboundDeliveryTicks({ status }: { status?: string | null }) {
+  const s = status ?? 'sent';
+  if (s === 'read') {
+    return (
+      <span className="text-sky-300/95" title="Leído" aria-label="Leído">
+        ✓✓
+      </span>
+    );
+  }
+  if (s === 'delivered') {
+    return (
+      <span className="text-emerald-200/65" title="Entregado" aria-label="Entregado">
+        ✓✓
+      </span>
+    );
+  }
+  return (
+    <span className="text-emerald-200/55" title="Enviado" aria-label="Enviado">
+      ✓
+    </span>
+  );
+}
 
 function formatMsgTime(iso: string): string {
   try {
@@ -79,6 +118,70 @@ export function WhatsappContactDrawer({
     if (!open) return;
     void load();
   }, [open, load]);
+
+  /** Polling ligero con drawer abierto y pestaña visible (~5,5 s). */
+  useEffect(() => {
+    if (!open) return;
+    const id = window.setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      void load();
+    }, 5500);
+    return () => window.clearInterval(id);
+  }, [open, load]);
+
+  /** Refetch al volver a la pestaña o al foco de la ventana. */
+  useEffect(() => {
+    if (!open) return;
+    const onVis = () => {
+      if (document.visibilityState === 'visible') void load();
+    };
+    const onFocus = () => void load();
+    document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      document.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [open, load]);
+
+  /** Socket.IO: mensajes nuevos y actualización de estado de entrega. */
+  useEffect(() => {
+    if (!open) return;
+    const token =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('accessToken')
+        : null;
+    if (!token) return;
+
+    const socket = io(`${API_BASE}/whatsapp`, {
+      auth: { token },
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+    });
+
+    socket.emit('join', { contactId: contact.id });
+
+    const onPayload = (payload: WhatsappSocketPayload) => {
+      if (payload.contactId !== contact.id) return;
+      if (payload.type === 'message') {
+        setItems((prev) => mergeChatItem(prev, payload.item));
+      } else if (payload.type === 'status') {
+        setItems((prev) =>
+          prev.map((m) =>
+            m.id === payload.id
+              ? { ...m, waOutboundStatus: payload.waOutboundStatus }
+              : m,
+          ),
+        );
+      }
+    };
+
+    socket.on('whatsapp', onPayload);
+    return () => {
+      socket.off('whatsapp', onPayload);
+      socket.disconnect();
+    };
+  }, [open, contact.id]);
 
   useLayoutEffect(() => {
     if (!open || !scrollRef.current) return;
@@ -212,11 +315,14 @@ export function WhatsappContactDrawer({
                       </p>
                       <p
                         className={cn(
-                          'mt-1 text-right text-[10px] tabular-nums',
+                          'mt-1 flex items-center justify-end gap-1 text-right text-[10px] tabular-nums',
                           outbound ? 'text-emerald-200/70' : 'text-white/45',
                         )}
                       >
-                        {formatMsgTime(m.createdAt)}
+                        <span>{formatMsgTime(m.createdAt)}</span>
+                        {outbound ? (
+                          <OutboundDeliveryTicks status={m.waOutboundStatus} />
+                        ) : null}
                       </p>
                     </div>
                   </li>
