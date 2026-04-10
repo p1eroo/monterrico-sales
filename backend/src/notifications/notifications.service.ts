@@ -181,6 +181,58 @@ export class NotificationsService {
     });
   }
 
+  async notifyWhatsappInbound(params: {
+    userId: string;
+    contactId: string;
+    contactName: string;
+    preview: string;
+    evoInstanceName?: string | null;
+    waMessageId?: string | null;
+    evoInstanceId: string;
+  }): Promise<void> {
+    const {
+      userId,
+      contactId,
+      contactName,
+      preview,
+      evoInstanceName,
+      waMessageId,
+      evoInstanceId,
+    } = params;
+    const dedupe =
+      waMessageId && waMessageId.length > 0
+        ? `wa:${evoInstanceId}:${waMessageId}`
+        : undefined;
+    const instanceBit = evoInstanceName?.trim()
+      ? ` · ${evoInstanceName.trim()}`
+      : '';
+    const body = `${preview.trim() || '(mensaje sin texto)'}${instanceBit}`;
+    const title = `WhatsApp: ${contactName.trim()}`;
+    const baseData = {
+      userId,
+      kind: 'whatsapp_inbound',
+      title,
+      body,
+      notifType: 'info',
+      priority: 'media',
+      important: false,
+      metadata: { contactId } as Prisma.InputJsonValue,
+    };
+    if (dedupe) {
+      await this.prisma.crmNotification.upsert({
+        where: {
+          userId_dedupeKey: { userId, dedupeKey: dedupe },
+        },
+        create: { ...baseData, dedupeKey: dedupe },
+        update: { title, body, metadata: baseData.metadata },
+      });
+    } else {
+      await this.prisma.crmNotification.create({
+        data: baseData,
+      });
+    }
+  }
+
   async notifyOpportunityWon(params: {
     userId: string;
     opportunityId: string;

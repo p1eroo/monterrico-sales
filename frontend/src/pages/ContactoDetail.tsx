@@ -5,7 +5,7 @@ import {
   ArrowLeft, Edit, RefreshCw, UserPlus,
   Phone, Mail, Users,
   Building2, Globe, DollarSign, CalendarDays, MapPin,
-  FileArchive, Loader2, CheckSquare,
+  FileArchive, Loader2, CheckSquare, MessageCircle,
 } from 'lucide-react';
 import type { Contact, Etapa, CompanyRubro, CompanyTipo, TimelineEvent } from '@/types';
 import {
@@ -41,6 +41,7 @@ import {
   buildOpportunityCreateBody,
   type NewOpportunityFormValues,
 } from '@/components/shared/NewOpportunityFormDialog';
+import { WhatsappContactDrawer } from '@/components/shared/WhatsappContactDrawer';
 import { TasksTab, type TasksTabHandle } from '@/components/shared/TasksTab';
 import { ContactEditDialog, type ContactEditSavePayload } from '@/components/shared/ContactEditDialog';
 import { ChangeEtapaDialog } from '@/components/shared/ChangeEtapaDialog';
@@ -282,6 +283,7 @@ export default function ContactoDetailPage() {
   const [contactActivities, setContactActivities] = useState(initialActivities);
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [whatsappDrawerOpen, setWhatsappDrawerOpen] = useState(false);
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
   const [addCompanyOpen, setAddCompanyOpen] = useState(false);
   const [addLinkContactOpen, setAddLinkContactOpen] = useState(false);
@@ -980,6 +982,16 @@ export default function ContactoDetailPage() {
           <Button variant="outline" size="sm" onClick={handleOpenEditDialog}>
             <Edit /> Editar
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 text-emerald-600 border-emerald-600/40 hover:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/35"
+            onClick={() => setWhatsappDrawerOpen(true)}
+            title="WhatsApp · Evolution GO"
+          >
+            <MessageCircle className="size-4" />
+            WhatsApp
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setStatusDialogOpen(true)}>
             <RefreshCw /> Cambiar Etapa
           </Button>
@@ -1246,6 +1258,12 @@ export default function ContactoDetailPage() {
         entityName={contact.name}
         currentAssigneeId={contact.assignedTo}
         onAssignChange={handleAssignChange}
+      />
+
+      <WhatsappContactDrawer
+        contact={contact}
+        open={whatsappDrawerOpen}
+        onOpenChange={setWhatsappDrawerOpen}
       />
     </>
   );

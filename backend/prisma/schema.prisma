@@ -77,6 +77,7 @@ model User {
   activityLogs         ActivityLog[]
   auditChangeSets      AuditChangeSet[]
   crmNotifications     CrmNotification[]
+  whatsappMessagesSent CrmWhatsappMessage[] @relation("CrmWhatsappMessageAuthor")
 }
 
 /** Alertas in-app por usuario (contacto nuevo, oportunidad ganada, tareas vencidas). */
@@ -361,10 +362,34 @@ model Contact {
   linkedBy           ContactContact[]  @relation("LinkedContacts")
   opportunities      ContactOpportunity[]
   activities         ContactActivity[]
+  whatsappMessages   CrmWhatsappMessage[]
 
   @@index([assignedTo])
   @@index([etapa])
   @@index([assignedTo, etapa])
+}
+
+/** Mensajes entrantes/salientes vía Evolution GO (WhatsApp), para historial en CRM y notificaciones. */
+model CrmWhatsappMessage {
+  id                String   @id @default(cuid())
+  /** inbound | outbound */
+  direction         String
+  /** ID interno de instancia en Evolution (webhook instanceId). */
+  evoInstanceId     String
+  evoInstanceName   String?
+  waMessageId       String?
+  fromWaId          String
+  toWaId            String
+  body              String   @db.Text
+  payloadJson       Json?
+  contactId         String?
+  contact           Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  createdByUserId   String?
+  createdBy         User?    @relation("CrmWhatsappMessageAuthor", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdAt         DateTime @default(now())
+
+  @@index([contactId, createdAt])
+  @@index([evoInstanceId, waMessageId])
 }
 
 model Company {

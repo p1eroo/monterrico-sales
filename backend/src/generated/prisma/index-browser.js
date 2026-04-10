@@ -359,6 +359,21 @@ exports.Prisma.ContactScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.CrmWhatsappMessageScalarFieldEnum = {
+  id: 'id',
+  direction: 'direction',
+  evoInstanceId: 'evoInstanceId',
+  evoInstanceName: 'evoInstanceName',
+  waMessageId: 'waMessageId',
+  fromWaId: 'fromWaId',
+  toWaId: 'toWaId',
+  body: 'body',
+  payloadJson: 'payloadJson',
+  contactId: 'contactId',
+  createdByUserId: 'createdByUserId',
+  createdAt: 'createdAt'
+};
+
 exports.Prisma.CompanyScalarFieldEnum = {
   id: 'id',
   urlSlug: 'urlSlug',
@@ -574,6 +589,7 @@ exports.Prisma.ModelName = {
   CrmUserSalesGoal: 'CrmUserSalesGoal',
   CrmUserMonthlySalesTarget: 'CrmUserMonthlySalesTarget',
   Contact: 'Contact',
+  CrmWhatsappMessage: 'CrmWhatsappMessage',
   Company: 'Company',
   Client: 'Client',
   Opportunity: 'Opportunity',

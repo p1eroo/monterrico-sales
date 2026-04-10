@@ -25,6 +25,7 @@ import { KnowledgeBasesModule } from './knowledge-bases/knowledge-bases.module';
 import { ActivityLogsModule } from './activity-logs/activity-logs.module';
 import { AuditDetailModule } from './audit-detail/audit-detail.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { WhatsappModule } from './whatsapp/whatsapp.module';
 
 @Module({
   imports: [
@@ -63,6 +64,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     ActivityLogsModule,
     AuditDetailModule,
     NotificationsModule,
+    WhatsappModule,
   ],
   controllers: [AppController],
   providers: [
