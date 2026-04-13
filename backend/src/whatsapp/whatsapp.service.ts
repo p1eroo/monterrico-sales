@@ -21,6 +21,7 @@ import {
   parseReceiptEventData,
   readEvolutionWebhookEvent,
   readMessageEventPayload,
+  resolveEvolutionMediaUrl,
   stripHeavyPayload,
 } from './evolution-webhook.util';
 import { WhatsappGateway } from './whatsapp.gateway';
@@ -716,6 +717,43 @@ export class WhatsappService {
     return `whatsapp-${mediaType}-${messageId.slice(0, 8)}.${ext}`;
   }
 
+  private evolutionBaseUrl(): string | null {
+    const raw = this.config.get<string>('EVOGO_BASE_URL')?.trim();
+    return raw ? raw.replace(/\/$/, '') : null;
+  }
+
+  private decodeWhatsappMediaBase64(base64: string | null | undefined): Buffer | null {
+    if (!base64?.trim()) return null;
+    const trimmed = base64.trim();
+    const raw = trimmed.startsWith('data:')
+      ? trimmed.slice(trimmed.indexOf(',') + 1)
+      : trimmed;
+    if (!raw) return null;
+    try {
+      const buffer = Buffer.from(raw, 'base64');
+      return buffer.length > 0 ? buffer : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private async downloadWhatsappMedia(url: string): Promise<Buffer> {
+    const res = await fetch(url, {
+      headers: {
+        Accept: '*/*',
+        'User-Agent': 'Mozilla/5.0 (compatible; monterrico-sales/1.0)',
+      },
+    });
+    if (!res.ok) {
+      throw new Error(`download HTTP ${res.status}`);
+    }
+    const bytes = Buffer.from(await res.arrayBuffer());
+    if (bytes.length === 0) {
+      throw new Error('download vacio');
+    }
+    return bytes;
+  }
+
   private async buildMessageItems(
     rows: WhatsappListItemRow[],
   ): Promise<WhatsappListItemDto[]> {
@@ -798,18 +836,27 @@ export class WhatsappService {
       this.logger.warn(`Adjunto WhatsApp ${messageId} omitido: no hay usuario dueño para CrmFile`);
       return;
     }
-    if (!media.url) {
-      this.logger.warn(`Adjunto WhatsApp ${messageId} omitido: Evolution no devolvio URL de descarga`);
-      return;
-    }
     try {
-      const res = await fetch(media.url);
-      if (!res.ok) {
-        throw new Error(`download HTTP ${res.status}`);
+      const resolvedUrl = resolveEvolutionMediaUrl(
+        media.url,
+        this.evolutionBaseUrl(),
+      );
+      let bytes = this.decodeWhatsappMediaBase64(media.base64);
+      if (!bytes && resolvedUrl) {
+        try {
+          bytes = await this.downloadWhatsappMedia(resolvedUrl);
+        } catch (urlError) {
+          this.logger.warn(
+            `Adjunto WhatsApp ${messageId}: fallo descarga por URL ${resolvedUrl}: ${String(urlError)}`,
+          );
+          bytes = this.decodeWhatsappMediaBase64(media.base64);
+        }
       }
-      const bytes = Buffer.from(await res.arrayBuffer());
-      if (bytes.length === 0) {
-        throw new Error('download vacio');
+      if (!bytes) {
+        this.logger.warn(
+          `Adjunto WhatsApp ${messageId} omitido: Evolution no devolvio URL/base64 util para descarga`,
+        );
+        return;
       }
       const originalName =
         media.fileName?.trim() ||
@@ -1033,12 +1080,58 @@ export class WhatsappService {
       return { ok: true };
     }
 
-    if (base.event === 'Message') {
-      const parsed = readMessageEventPayload(body);
-      if (!parsed) {
-        return { ok: true, ignored: 'not_json_event' };
+    if (
+      base.event === 'Message' ||
+      evLower === 'messages_upsert' ||
+      evLower === 'messages.upsert' ||
+      base.event === 'MESSAGES_UPSERT' ||
+      evLower === 'messages_set' ||
+      evLower === 'messages.set' ||
+      base.event === 'MESSAGES_SET'
+    ) {
+      const chunks: JsonRecord[] = [];
+      if (Array.isArray(base.data)) {
+        for (const item of base.data) {
+          const rec = asRecord(item);
+          if (rec) chunks.push(rec);
+        }
+      } else {
+        const rec = asRecord(base.data);
+        if (rec) {
+          const nestedMessages = Array.isArray(rec['messages']) ? rec['messages'] : null;
+          if (nestedMessages) {
+            for (const item of nestedMessages) {
+              const msg = asRecord(item);
+              if (msg) chunks.push(msg);
+            }
+          } else {
+            chunks.push(rec);
+          }
+        }
       }
-      return this.handleMessageWebhook(parsed);
+      if (chunks.length === 0) {
+        return { ok: true, ignored: 'messages_empty' };
+      }
+      for (const data of chunks) {
+        const parsed = {
+          event: base.event,
+          instanceId:
+            base.instanceId ||
+            (typeof data['instanceId'] === 'string' ? data['instanceId'] : '') ||
+            'unknown',
+          instanceName:
+            base.instanceName ||
+            (typeof data['instanceName'] === 'string'
+              ? data['instanceName']
+              : typeof data['instance'] === 'string'
+                ? data['instance']
+                : null),
+          instanceToken: base.instanceToken,
+          data,
+        };
+        await this.handleMessageWebhook(parsed);
+      }
+      return { ok: true };
     }
 
     if (base.event === 'Receipt') {

@@ -2,6 +2,7 @@ type JsonRecord = Record<string, unknown>;
 export type WhatsappParsedMedia = {
   mediaType: 'image' | 'video' | 'audio' | 'document';
   url: string | null;
+  base64: string | null;
   mimeType: string | null;
   fileName: string | null;
   size: number | null;
@@ -12,6 +13,84 @@ function asRecord(v: unknown): JsonRecord | null {
   return v !== null && typeof v === 'object' && !Array.isArray(v)
     ? (v as JsonRecord)
     : null;
+}
+
+function unwrapMessageContainer(node: JsonRecord): JsonRecord {
+  let current = node;
+  for (let depth = 0; depth < 8; depth++) {
+    const nested =
+      asRecord(current['ephemeralMessage'])?.['message'] ??
+      asRecord(current['viewOnceMessage'])?.['message'] ??
+      asRecord(current['viewOnceMessageV2'])?.['message'] ??
+      asRecord(current['viewOnceMessageV2Extension'])?.['message'] ??
+      asRecord(current['documentWithCaptionMessage'])?.['message'] ??
+      asRecord(current['editedMessage'])?.['message'] ??
+      asRecord(current['deviceSentMessage'])?.['message'];
+    const next = asRecord(nested);
+    if (!next) return current;
+    current = next;
+  }
+  return current;
+}
+
+function rootMessageNode(data: JsonRecord): JsonRecord {
+  return unwrapMessageContainer(
+    asRecord(data['Message']) ?? asRecord(data['message']) ?? {},
+  );
+}
+
+function readStringField(
+  node: JsonRecord | null,
+  keys: string[],
+): string | null {
+  if (!node) return null;
+  for (const key of keys) {
+    const value = node[key];
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+  return null;
+}
+
+function pickMediaNode(
+  msg: JsonRecord,
+  lowerKey: 'imageMessage' | 'videoMessage' | 'audioMessage' | 'documentMessage',
+): JsonRecord | null {
+  const upperKey = `${lowerKey[0]!.toUpperCase()}${lowerKey.slice(1)}`;
+  return asRecord(msg[lowerKey]) ?? asRecord(msg[upperKey]);
+}
+
+function pickEnvelopeBase64(data: JsonRecord, msg: JsonRecord): string | null {
+  const topLevel = readStringField(data, ['base64', 'Base64']);
+  if (topLevel) return topLevel;
+  const nestedMessages = Array.isArray(data['messages'])
+    ? data['messages']
+    : Array.isArray(data['Messages'])
+      ? data['Messages']
+      : null;
+  const firstMessage = nestedMessages?.[0] ? asRecord(nestedMessages[0]) : null;
+  const wrapped = readStringField(firstMessage, ['base64', 'Base64']);
+  if (wrapped) return wrapped;
+  return readStringField(msg, ['base64', 'Base64']);
+}
+
+export function resolveEvolutionMediaUrl(
+  raw: string | null | undefined,
+  baseUrl: string | null | undefined,
+): string | null {
+  if (typeof raw !== 'string' || !raw.trim()) return null;
+  const value = raw.trim();
+  const base = (baseUrl || '').trim().replace(/\/$/, '');
+  if (/^https?:\/\//i.test(value)) {
+    if (!base) return value;
+    return value.replace(/^https?:\/\/(localhost|127\.0\.0\.1):8080\b/i, base);
+  }
+  if (value.startsWith('//')) return `https:${value}`;
+  if (value.startsWith('/')) {
+    return base ? `${base}${value}` : value;
+  }
+  return value;
 }
 
 export function jidUserDigits(raw: unknown): string {
@@ -28,24 +107,26 @@ export function jidUserDigits(raw: unknown): string {
 
 /** Extrae texto legible del objeto `Message` serializado por Evolution GO. */
 export function extractMessageCaption(msg: JsonRecord): string {
-  if (typeof msg['conversation'] === 'string') {
-    return msg['conversation'];
+  const resolved = unwrapMessageContainer(msg);
+  if (typeof resolved['conversation'] === 'string') {
+    return resolved['conversation'];
   }
-  const ext = asRecord(msg['extendedTextMessage']);
+  const ext = asRecord(resolved['extendedTextMessage']);
   if (ext && typeof ext['text'] === 'string') {
     return ext['text'];
   }
   for (const key of ['imageMessage', 'videoMessage', 'documentMessage'] as const) {
-    const inner = asRecord(msg[key]);
-    if (inner && typeof inner['caption'] === 'string' && inner['caption'].trim()) {
-      return inner['caption'];
+    const inner = pickMediaNode(resolved, key);
+    const caption = readStringField(inner, ['caption', 'Caption']);
+    if (caption) {
+      return caption;
     }
   }
-  if (asRecord(msg['imageMessage'])) return '[Imagen]';
-  if (asRecord(msg['videoMessage'])) return '[Video]';
-  if (asRecord(msg['audioMessage'])) return '[Audio]';
-  if (asRecord(msg['documentMessage'])) return '[Documento]';
-  if (asRecord(msg['stickerMessage'])) return '[Sticker]';
+  if (pickMediaNode(resolved, 'imageMessage')) return '[Imagen]';
+  if (pickMediaNode(resolved, 'videoMessage')) return '[Video]';
+  if (pickMediaNode(resolved, 'audioMessage')) return '[Audio]';
+  if (pickMediaNode(resolved, 'documentMessage')) return '[Documento]';
+  if (asRecord(resolved['stickerMessage']) || asRecord(resolved['StickerMessage'])) return '[Sticker]';
   return '';
 }
 
@@ -61,6 +142,7 @@ export function readEvolutionWebhookEvent(body: unknown): {
   if (!root) return null;
   const nestedInstance = asRecord(root['instance']);
   const nestedInstanceUpper = asRecord(root['Instance']);
+  const rootData = asRecord(root['data']) ?? asRecord(root['Data']);
   const event =
     typeof root['event'] === 'string'
       ? root['event']
@@ -85,6 +167,8 @@ export function readEvolutionWebhookEvent(body: unknown): {
         ? root['instanceName']
         : typeof root['InstanceName'] === 'string'
           ? root['InstanceName']
+          : typeof root['instance'] === 'string'
+            ? root['instance']
           : typeof nestedInstance?.['instanceName'] === 'string'
             ? nestedInstance['instanceName']
             : typeof nestedInstance?.['name'] === 'string'
@@ -93,6 +177,10 @@ export function readEvolutionWebhookEvent(body: unknown): {
                 ? nestedInstanceUpper['instanceName']
                 : typeof nestedInstanceUpper?.['name'] === 'string'
                   ? nestedInstanceUpper['name']
+                  : typeof rootData?.['instanceName'] === 'string'
+                    ? rootData['instanceName']
+                    : typeof rootData?.['instance'] === 'string'
+                      ? rootData['instance']
                   : null,
     instanceToken:
       typeof root['instanceToken'] === 'string'
@@ -119,8 +207,17 @@ export function readMessageEventPayload(body: unknown): {
   if (!data) return null;
   return {
     event: base.event,
-    instanceId: base.instanceId,
-    instanceName: base.instanceName,
+    instanceId:
+      base.instanceId ||
+      (typeof data['instanceId'] === 'string' ? data['instanceId'] : '') ||
+      (typeof data['InstanceId'] === 'string' ? data['InstanceId'] : ''),
+    instanceName:
+      base.instanceName ||
+      (typeof data['instanceName'] === 'string'
+        ? data['instanceName']
+        : typeof data['instance'] === 'string'
+          ? data['instance']
+          : null),
     instanceToken: base.instanceToken,
     data,
   };
@@ -193,20 +290,25 @@ export function parseMessageEventData(data: JsonRecord): {
   text: string;
 } {
   const info = asRecord(data['Info']) ?? asRecord(data['info']) ?? {};
-  const isFromMe = Boolean(info['IsFromMe'] ?? info['isFromMe']);
-  const idRaw = info['ID'] ?? info['id'] ?? info['Id'];
+  const key = asRecord(data['key']);
+  const isFromMe = Boolean(info['IsFromMe'] ?? info['isFromMe'] ?? key?.['fromMe']);
+  const idRaw = key?.['id'] ?? info['ID'] ?? info['id'] ?? info['Id'];
   const waMessageId =
     typeof idRaw === 'string' && idRaw.length > 0 ? idRaw : null;
 
-  const chatRaw = info['Chat'] ?? info['chat'];
-  const senderRaw = info['Sender'] ?? info['sender'];
+  const chatRaw = key?.['remoteJid'] ?? info['Chat'] ?? info['chat'];
+  const senderRaw =
+    key?.['participant'] ??
+    data['sender'] ??
+    data['Sender'] ??
+    info['Sender'] ??
+    info['sender'];
   const chatJid = jidUserDigits(chatRaw);
   const senderJid = jidUserDigits(senderRaw);
   const chatStr = typeof chatRaw === 'string' ? chatRaw : '';
   const isGroup = chatStr.includes('@g.us');
 
-  const msg =
-    asRecord(data['Message']) ?? asRecord(data['message']) ?? {};
+  const msg = rootMessageNode(data);
   const text = extractMessageCaption(msg);
 
   return {
@@ -220,42 +322,50 @@ export function parseMessageEventData(data: JsonRecord): {
 }
 
 export function parseMessageMedia(data: JsonRecord): WhatsappParsedMedia | null {
-  const msg =
-    asRecord(data['Message']) ?? asRecord(data['message']) ?? {};
-  const mappings = [
+  const msg = rootMessageNode(data);
+  const mappings: Array<{
+    key: 'imageMessage' | 'videoMessage' | 'audioMessage' | 'documentMessage';
+    mediaType: WhatsappParsedMedia['mediaType'];
+  }> = [
     { key: 'imageMessage', mediaType: 'image' as const },
     { key: 'videoMessage', mediaType: 'video' as const },
     { key: 'audioMessage', mediaType: 'audio' as const },
     { key: 'documentMessage', mediaType: 'document' as const },
   ];
   for (const mapping of mappings) {
-    const node = asRecord(msg[mapping.key]);
+    const node = pickMediaNode(msg, mapping.key);
     if (!node) continue;
     const caption =
-      typeof node['caption'] === 'string' && node['caption'].trim()
-        ? node['caption'].trim()
-        : null;
+      readStringField(node, ['caption', 'Caption']);
     const sizeRaw = node['fileLength'] ?? node['filelength'] ?? node['size'];
     return {
       mediaType: mapping.mediaType,
-      url:
-        typeof node['URL'] === 'string'
-          ? node['URL']
-          : typeof node['url'] === 'string'
-            ? node['url']
-            : null,
-      mimeType:
-        typeof node['mimetype'] === 'string'
-          ? node['mimetype']
-          : typeof node['mimeType'] === 'string'
-            ? node['mimeType']
-            : null,
-      fileName:
-        typeof node['fileName'] === 'string'
-          ? node['fileName']
-          : typeof node['filename'] === 'string'
-            ? node['filename']
-            : null,
+      url: readStringField(node, [
+        'URL',
+        'url',
+        'Url',
+        'directPath',
+        'DirectPath',
+        'mediaUrl',
+        'MediaUrl',
+      ]),
+      base64:
+        readStringField(node, ['base64', 'Base64']) ||
+        pickEnvelopeBase64(data, msg),
+      mimeType: readStringField(node, [
+        'mimetype',
+        'mimeType',
+        'MimeType',
+        'Mimetype',
+      ]),
+      fileName: readStringField(node, [
+        'fileName',
+        'filename',
+        'FileName',
+        'Filename',
+        'title',
+        'Title',
+      ]),
       size:
         typeof sizeRaw === 'number'
           ? sizeRaw

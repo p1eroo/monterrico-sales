@@ -43,6 +43,15 @@ export type EvogoConnectResult = {
 @Injectable()
 export class EvogoClient {
   private readonly logger = new Logger(EvogoClient.name);
+  private readonly defaultWebhookEvents = [
+    'MESSAGE',
+    'MESSAGES_UPSERT',
+    'MESSAGES_SET',
+    'RECEIPT',
+    'MESSAGES_UPDATE',
+    'QRCODE_UPDATED',
+    'CONNECTION_UPDATE',
+  ];
 
   constructor(private readonly config: ConfigService) {}
 
@@ -106,13 +115,7 @@ export class EvogoClient {
         token: instanceToken,
         webhook: params.webhook.url,
         webhookUrl: params.webhook.url,
-        webhookEvents: params.webhook.events ?? [
-          'MESSAGE',
-          'RECEIPT',
-          'MESSAGES_UPDATE',
-          'QRCODE_UPDATED',
-          'CONNECTION_UPDATE',
-        ],
+        webhookEvents: params.webhook.events ?? this.defaultWebhookEvents,
         qrcode: true,
         integration: 'WHATSAPP-BAILEYS',
         rejectCall: true,
@@ -148,6 +151,12 @@ export class EvogoClient {
       throw new Error('Evolution no devolvió el token de la instancia creada');
     }
 
+    await this.configureWebhook({
+      instanceName,
+      instanceApiKey,
+      webhook: params.webhook,
+    });
+
     const connected =
       typeof data?.connected === 'boolean' ? data.connected : null;
     return {
@@ -171,6 +180,16 @@ export class EvogoClient {
     instanceApiKey?: string;
     webhookUrl?: string;
   }): Promise<EvogoConnectResult> {
+    if (params.webhookUrl) {
+      await this.configureWebhook({
+        instanceName: params.instanceName,
+        instanceApiKey: params.instanceApiKey,
+        webhook: {
+          url: params.webhookUrl,
+        },
+      });
+    }
+
     const parseQr = (raw: unknown): EvogoConnectResult => {
       const root = this.asRecord(raw);
       const data = this.asRecord(root?.data);
@@ -198,13 +217,7 @@ export class EvogoClient {
       apiKey: params.instanceApiKey,
       body: JSON.stringify({
         webhookUrl: params.webhookUrl,
-        subscribe: [
-          'MESSAGE',
-          'RECEIPT',
-          'MESSAGES_UPDATE',
-          'QRCODE_UPDATED',
-          'CONNECTION_UPDATE',
-        ],
+        subscribe: this.defaultWebhookEvents,
       }),
     });
     let res = connectRes;
@@ -257,18 +270,18 @@ export class EvogoClient {
     instanceName: string;
     instanceApiKey?: string;
   }): Promise<EvogoConnectionStateResult> {
-    let res = await this.requestJson(
-      `/instance/connectionState/${encodeURIComponent(params.instanceName)}`,
-      {
-        method: 'GET',
-        apiKey: params.instanceApiKey,
-      },
-    );
+    let res = await this.requestJson('/instance/status', {
+      method: 'GET',
+      apiKey: params.instanceApiKey,
+    });
     if (!res.ok) {
-      res = await this.requestJson('/instance/status', {
-        method: 'GET',
-        apiKey: params.instanceApiKey,
-      });
+      res = await this.requestJson(
+        `/instance/connectionState/${encodeURIComponent(params.instanceName)}`,
+        {
+          method: 'GET',
+          apiKey: params.instanceApiKey,
+        },
+      );
     }
     if (!res.ok) {
       throw new Error(
@@ -439,6 +452,64 @@ export class EvogoClient {
 
   private asString(value: unknown): string | null {
     return typeof value === 'string' && value.trim().length > 0 ? value : null;
+  }
+
+  private webhookPayload(webhook: EvogoWebhookConfig) {
+    return {
+      enabled: true,
+      url: webhook.url,
+      webhookByEvents: webhook.byEvents ?? false,
+      webhookBase64: webhook.base64 ?? false,
+      events: webhook.events ?? this.defaultWebhookEvents,
+    };
+  }
+
+  async configureWebhook(params: {
+    instanceName: string;
+    instanceApiKey?: string;
+    webhook: EvogoWebhookConfig;
+  }): Promise<void> {
+    const path = `/webhook/set/${encodeURIComponent(params.instanceName)}`;
+    const attempts = [
+      {
+        body: this.webhookPayload(params.webhook),
+      },
+      {
+        body: {
+          webhook: {
+            enabled: true,
+            url: params.webhook.url,
+            byEvents: params.webhook.byEvents ?? false,
+            base64: params.webhook.base64 ?? false,
+            events: params.webhook.events ?? this.defaultWebhookEvents,
+          },
+        },
+      },
+      {
+        body: {
+          webhook: this.webhookPayload(params.webhook),
+        },
+      },
+    ];
+    let last: { status: number; ok: boolean; raw: unknown } | null = null;
+    for (const attempt of attempts) {
+      const res = await this.requestJson(path, {
+        method: 'POST',
+        apiKey: params.instanceApiKey,
+        body: JSON.stringify(attempt.body),
+      });
+      last = res;
+      if (res.ok) return;
+    }
+    if (last?.status === 404) {
+      this.logger.warn(
+        `Evogo ${path} no esta soportado en este servidor; se continua sin reconfigurar webhook por API`,
+      );
+      return;
+    }
+    throw new Error(
+      this.readErrorMessage(last?.raw, 'No se pudo configurar el webhook de Evolution'),
+    );
   }
 
   private pickQrBase64(qrcode: Record<string, unknown> | null): string | null {
