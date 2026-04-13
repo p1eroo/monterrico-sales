@@ -151,10 +151,32 @@ export class WhatsappService {
     return normalized || 'usuario';
   }
 
-  private buildInstanceName(userId: string, userName: string): string {
-    const slug = this.normalizeSlug(userName).slice(0, 24);
+  private async preferredInstanceSlug(
+    userId: string,
+    userName: string,
+  ): Promise<string> {
+    const credentials = await this.prisma.account.findFirst({
+      where: {
+        userId,
+        provider: 'credentials',
+      },
+      select: {
+        providerId: true,
+      },
+    });
+    const usernameSlug = this.normalizeSlug(credentials?.providerId || '').slice(0, 24);
+    if (usernameSlug && usernameSlug !== 'usuario') {
+      return usernameSlug;
+    }
+    return this.normalizeSlug(userName).slice(0, 24);
+  }
+
+  private buildInstanceName(slug: string, userId: string): string {
+    if (slug && slug !== 'usuario') {
+      return `crm-${slug}`;
+    }
     const suffix = userId.replace(/[^a-zA-Z0-9]/g, '').slice(-8).toLowerCase();
-    return `crm-${slug}-${suffix || 'user'}`;
+    return `crm-${suffix || 'user'}`;
   }
 
   private qrExpiryDate(base = new Date()): Date {
@@ -174,16 +196,26 @@ export class WhatsappService {
   private extractDisplayLineId(data: JsonRecord | null): string | null {
     if (!data) return null;
     const nestedUser = asRecord(data['user']);
+    const nestedUserUpper = asRecord(data['User']);
     const nestedOwner = asRecord(data['owner']);
+    const nestedOwnerUpper = asRecord(data['Owner']);
     const candidates = [
       data['number'],
+      data['Number'],
       data['phone'],
+      data['Phone'],
       data['wid'],
+      data['Wid'],
       data['pn'],
+      data['Pn'],
       nestedUser?.['id'],
       nestedUser?.['wid'],
+      nestedUserUpper?.['id'],
+      nestedUserUpper?.['wid'],
       nestedOwner?.['id'],
       nestedOwner?.['wid'],
+      nestedOwnerUpper?.['id'],
+      nestedOwnerUpper?.['wid'],
     ];
     for (const candidate of candidates) {
       if (typeof candidate !== 'string') continue;
@@ -200,13 +232,22 @@ export class WhatsappService {
   private readConnectionStateFromPayload(data: JsonRecord | null): string | null {
     if (!data) return null;
     const nestedInstance = asRecord(data['instance']);
+    const nestedInstanceUpper = asRecord(data['Instance']);
     const candidates = [
       data['state'],
+      data['State'],
       data['status'],
+      data['Status'],
       data['connection'],
+      data['Connection'],
       data['connectionStatus'],
+      data['ConnectionStatus'],
       nestedInstance?.['state'],
       nestedInstance?.['status'],
+      nestedInstance?.['connectionStatus'],
+      nestedInstanceUpper?.['state'],
+      nestedInstanceUpper?.['status'],
+      nestedInstanceUpper?.['connectionStatus'],
     ];
     for (const candidate of candidates) {
       if (typeof candidate === 'string' && candidate.trim()) {
@@ -278,6 +319,48 @@ export class WhatsappService {
     }) as Promise<WhatsappInstanceRow>;
   }
 
+  private shouldRecreateInstance(message: string | null | undefined): boolean {
+    const normalized = (message || '').trim().toLowerCase();
+    if (!normalized) return false;
+    return (
+      normalized.includes('not authorized') ||
+      normalized.includes('unauthorized') ||
+      normalized.includes('forbidden') ||
+      normalized.includes('token') ||
+      normalized.includes('apikey')
+    );
+  }
+
+  private async recreateUserInstance(
+    instance: WhatsappInstanceRow,
+    userName: string,
+  ): Promise<WhatsappInstanceRow> {
+    const slug = await this.preferredInstanceSlug(instance.userId, userName);
+    const created = await this.evogo.createInstance({
+      instanceName: this.buildInstanceName(slug, instance.userId),
+      webhook: {
+        url: this.webhookUrl(),
+      },
+    });
+    const now = new Date();
+    const hasQr = Boolean(created.qrCode || created.qrText || created.pairingCode);
+    return this.updateInstance(instance.id, {
+      instanceName: created.instanceName,
+      instanceApiKey: created.instanceApiKey,
+      evoInstanceId: created.instanceId,
+      displayLineId: null,
+      status: hasQr ? 'qr_ready' : this.normalizeConnectionState(created.status),
+      qrCode: created.qrCode,
+      qrText: created.qrText,
+      pairingCode: created.pairingCode,
+      qrGeneratedAt: hasQr ? now : null,
+      qrExpiresAt: hasQr ? this.qrExpiryDate(now) : null,
+      lastConnectedAt: null,
+      lastDisconnectedAt: null,
+      lastError: null,
+    });
+  }
+
   private async syncConnectionState(
     instance: WhatsappInstanceRow,
     swallowErrors = false,
@@ -320,8 +403,9 @@ export class WhatsappService {
   ): Promise<WhatsappInstanceRow> {
     const existing = await this.findUserInstance(userId);
     if (existing) return existing;
+    const slug = await this.preferredInstanceSlug(userId, userName);
     const created = await this.evogo.createInstance({
-      instanceName: this.buildInstanceName(userId, userName),
+      instanceName: this.buildInstanceName(slug, userId),
       webhook: {
         url: this.webhookUrl(),
       },
@@ -370,17 +454,41 @@ export class WhatsappService {
     }
     let instance = existing || (await this.ensureUserInstance(userId, userName));
     instance = await this.syncConnectionState(instance, true);
+    if (this.shouldRecreateInstance(instance.lastError) && this.personalConnectionsEnabled()) {
+      this.logger.warn(
+        `Recreando instancia personal de WhatsApp para userId=${userId} por credenciales invalidas en Evolution GO`,
+      );
+      instance = await this.recreateUserInstance(instance, userName);
+    }
     if (instance.status === 'open') {
       return {
         canManage: true,
         instance: this.serializeInstance(instance),
       };
     }
-    const qr = await this.evogo.connectInstance({
-      instanceName: instance.instanceName,
-      instanceApiKey: instance.instanceApiKey,
-      webhookUrl: this.webhookUrl(),
-    });
+    let qr;
+    try {
+      qr = await this.evogo.connectInstance({
+        instanceName: instance.instanceName,
+        instanceApiKey: instance.instanceApiKey,
+        webhookUrl: this.webhookUrl(),
+      });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'No se pudo generar el QR';
+      if (this.shouldRecreateInstance(message) && this.personalConnectionsEnabled()) {
+        this.logger.warn(
+          `Reintentando con una nueva instancia de WhatsApp para userId=${userId} tras error de autorizacion`,
+        );
+        instance = await this.recreateUserInstance(instance, userName);
+        qr = await this.evogo.connectInstance({
+          instanceName: instance.instanceName,
+          instanceApiKey: instance.instanceApiKey,
+          webhookUrl: this.webhookUrl(),
+        });
+      } else {
+        throw e;
+      }
+    }
     const now = new Date();
     const hasQr = Boolean(qr.qrCode || qr.qrText);
     instance = await this.updateInstance(instance.id, {
@@ -647,14 +755,25 @@ export class WhatsappService {
         return { ok: true, ignored: 'qr_unknown_instance' };
       }
       const data = asRecord(base.data);
-      const qrcode = asRecord(data?.['qrcode']) ?? data;
+      const qrcode =
+        asRecord(data?.['qrcode']) ?? asRecord(data?.['Qrcode']) ?? data;
       const qrCode =
-        typeof qrcode?.['base64'] === 'string' ? qrcode['base64'] : null;
+        typeof qrcode?.['base64'] === 'string'
+          ? qrcode['base64']
+          : typeof qrcode?.['Base64'] === 'string'
+            ? qrcode['Base64']
+            : null;
       const qrText =
-        typeof qrcode?.['code'] === 'string' ? qrcode['code'] : null;
+        typeof qrcode?.['code'] === 'string'
+          ? qrcode['code']
+          : typeof qrcode?.['Code'] === 'string'
+            ? qrcode['Code']
+            : null;
       const pairingCode =
         typeof qrcode?.['pairingCode'] === 'string'
           ? qrcode['pairingCode']
+          : typeof qrcode?.['PairingCode'] === 'string'
+            ? qrcode['PairingCode']
           : null;
       const now = new Date();
       await this.updateInstance(instance.id, {

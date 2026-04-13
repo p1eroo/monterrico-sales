@@ -50,16 +50,51 @@ export function readEvolutionWebhookEvent(body: unknown): {
   data: unknown;
 } | null {
   const root = asRecord(body);
-  if (!root || typeof root['event'] !== 'string') return null;
+  if (!root) return null;
+  const nestedInstance = asRecord(root['instance']);
+  const nestedInstanceUpper = asRecord(root['Instance']);
+  const event =
+    typeof root['event'] === 'string'
+      ? root['event']
+      : typeof root['Event'] === 'string'
+        ? root['Event']
+        : null;
+  if (!event) return null;
   return {
-    event: root['event'],
+    event,
     instanceId:
-      typeof root['instanceId'] === 'string' ? root['instanceId'] : '',
+      typeof root['instanceId'] === 'string'
+        ? root['instanceId']
+        : typeof root['InstanceId'] === 'string'
+          ? root['InstanceId']
+          : typeof nestedInstance?.['instanceId'] === 'string'
+            ? nestedInstance['instanceId']
+            : typeof nestedInstanceUpper?.['instanceId'] === 'string'
+              ? nestedInstanceUpper['instanceId']
+              : '',
     instanceName:
-      typeof root['instanceName'] === 'string' ? root['instanceName'] : null,
+      typeof root['instanceName'] === 'string'
+        ? root['instanceName']
+        : typeof root['InstanceName'] === 'string'
+          ? root['InstanceName']
+          : typeof nestedInstance?.['instanceName'] === 'string'
+            ? nestedInstance['instanceName']
+            : typeof nestedInstance?.['name'] === 'string'
+              ? nestedInstance['name']
+              : typeof nestedInstanceUpper?.['instanceName'] === 'string'
+                ? nestedInstanceUpper['instanceName']
+                : typeof nestedInstanceUpper?.['name'] === 'string'
+                  ? nestedInstanceUpper['name']
+                  : null,
     instanceToken:
-      typeof root['instanceToken'] === 'string' ? root['instanceToken'] : null,
-    data: root['data'],
+      typeof root['instanceToken'] === 'string'
+        ? root['instanceToken']
+        : typeof root['InstanceToken'] === 'string'
+          ? root['InstanceToken']
+          : typeof root['apikey'] === 'string'
+            ? root['apikey']
+            : null,
+    data: root['data'] ?? root['Data'],
   };
 }
 

@@ -257,37 +257,105 @@ export class EvogoClient {
     instanceName: string;
     instanceApiKey?: string;
   }): Promise<EvogoConnectionStateResult> {
-    let res = await this.requestJson('/instance/status', {
-      method: 'GET',
-      apiKey: params.instanceApiKey,
-    });
-    if (!res.ok) {
-      res = await this.requestJson(
+    let res = await this.requestJson(
       `/instance/connectionState/${encodeURIComponent(params.instanceName)}`,
       {
         method: 'GET',
         apiKey: params.instanceApiKey,
       },
-      );
+    );
+    if (!res.ok) {
+      res = await this.requestJson('/instance/status', {
+        method: 'GET',
+        apiKey: params.instanceApiKey,
+      });
     }
     if (!res.ok) {
       throw new Error(
         this.readErrorMessage(res.raw, 'No se pudo consultar el estado de conexión'),
       );
     }
-    const root = this.asRecord(res.raw);
-    const instance = this.asRecord(root?.instance);
-    const data = this.asRecord(root?.data);
-    const connected =
-      typeof data?.connected === 'boolean' ? data.connected : null;
-    return {
-      instanceName:
+    const readNode = (node: unknown) => {
+      const root = this.asRecord(node);
+      const instance = this.asRecord(root?.instance);
+      const instanceUpper = this.asRecord(root?.Instance);
+      const data = this.asRecord(root?.data);
+      const dataUpper = this.asRecord(root?.Data);
+      const dataInstance = this.asRecord(data?.instance);
+      const dataInstanceUpper = this.asRecord(dataUpper?.Instance);
+      const connected =
+        typeof data?.connected === 'boolean'
+          ? data.connected
+          : typeof dataUpper?.connected === 'boolean'
+            ? dataUpper.connected
+            : typeof dataInstance?.connected === 'boolean'
+              ? dataInstance.connected
+              : typeof dataInstanceUpper?.connected === 'boolean'
+                ? dataInstanceUpper.connected
+                : typeof root?.connected === 'boolean'
+                  ? root.connected
+                  : null;
+      const instanceName =
         this.asString(instance?.instanceName) ||
+        this.asString(instance?.name) ||
+        this.asString(instanceUpper?.instanceName) ||
+        this.asString(instanceUpper?.name) ||
+        this.asString(dataInstance?.instanceName) ||
+        this.asString(dataInstance?.name) ||
+        this.asString(dataInstanceUpper?.instanceName) ||
+        this.asString(dataInstanceUpper?.name) ||
         this.asString(data?.name) ||
-        params.instanceName,
-      state:
+        this.asString(dataUpper?.name) ||
+        this.asString(root?.instanceName) ||
+        this.asString(root?.name) ||
+        null;
+      const state =
         this.asString(instance?.state) ||
-        (connected === null ? null : connected ? 'open' : 'close'),
+        this.asString(instance?.status) ||
+        this.asString(instance?.connectionStatus) ||
+        this.asString(instanceUpper?.state) ||
+        this.asString(instanceUpper?.status) ||
+        this.asString(instanceUpper?.connectionStatus) ||
+        this.asString(dataInstance?.state) ||
+        this.asString(dataInstance?.status) ||
+        this.asString(dataInstance?.connectionStatus) ||
+        this.asString(dataInstanceUpper?.state) ||
+        this.asString(dataInstanceUpper?.status) ||
+        this.asString(dataInstanceUpper?.connectionStatus) ||
+        this.asString(data?.state) ||
+        this.asString(data?.status) ||
+        this.asString(data?.connectionStatus) ||
+        this.asString(dataUpper?.state) ||
+        this.asString(dataUpper?.status) ||
+        this.asString(dataUpper?.connectionStatus) ||
+        this.asString(root?.state) ||
+        this.asString(root?.status) ||
+        this.asString(root?.connectionStatus) ||
+        (connected === null ? null : connected ? 'open' : 'close');
+      return { instanceName, state };
+    };
+
+    let parsed = readNode(res.raw);
+    if (Array.isArray(res.raw)) {
+      const match = res.raw.find((item) => {
+        const candidate = readNode(item);
+        return candidate.instanceName === params.instanceName;
+      });
+      if (match) parsed = readNode(match);
+    } else {
+      const root = this.asRecord(res.raw);
+      const dataArray = Array.isArray(root?.data) ? root.data : Array.isArray(root?.Data) ? root.Data : null;
+      if (dataArray) {
+        const match = dataArray.find((item) => {
+          const candidate = readNode(item);
+          return candidate.instanceName === params.instanceName;
+        });
+        if (match) parsed = readNode(match);
+      }
+    }
+    return {
+      instanceName: parsed.instanceName || params.instanceName,
+      state: parsed.state,
     };
   }
 
@@ -376,9 +444,13 @@ export class EvogoClient {
   private pickQrBase64(qrcode: Record<string, unknown> | null): string | null {
     const candidates = [
       this.asString(qrcode?.base64),
+      this.asString(qrcode?.Base64),
       this.asString(qrcode?.code),
+      this.asString(qrcode?.Code),
       this.asString(qrcode?.qr),
+      this.asString(qrcode?.Qr),
       this.asString(qrcode?.qrcode),
+      this.asString(qrcode?.Qrcode),
     ];
     for (const candidate of candidates) {
       if (!candidate) continue;
@@ -393,13 +465,29 @@ export class EvogoClient {
   }
 
   private pickQrText(qrcode: Record<string, unknown> | null): string | null {
+    const codeText = this.asString(qrcode?.code);
+    if (codeText && !codeText.startsWith('data:image/')) {
+      return codeText;
+    }
+    const codeTextUpper = this.asString(qrcode?.Code);
+    if (codeTextUpper && !codeTextUpper.startsWith('data:image/')) {
+      return codeTextUpper;
+    }
     const qrcodeText = this.asString(qrcode?.qrcode);
     if (qrcodeText && !qrcodeText.startsWith('data:image/')) {
       return qrcodeText;
     }
+    const qrcodeTextUpper = this.asString(qrcode?.Qrcode);
+    if (qrcodeTextUpper && !qrcodeTextUpper.startsWith('data:image/')) {
+      return qrcodeTextUpper;
+    }
     const qrText = this.asString(qrcode?.qr);
     if (qrText && !qrText.startsWith('data:image/')) {
       return qrText;
+    }
+    const qrTextUpper = this.asString(qrcode?.Qr);
+    if (qrTextUpper && !qrTextUpper.startsWith('data:image/')) {
+      return qrTextUpper;
     }
     return null;
   }
