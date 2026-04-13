@@ -13,7 +13,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { FilesService } from '../files/files.service';
 import { EvogoClient } from './evogo.client';
 import { SendWhatsappDto } from './dto/send-whatsapp.dto';
-import { normalizePeWaNumber } from './wa-number.util';
+import { digitsOnly, normalizePeWaNumber } from './wa-number.util';
 import {
   parseMessageEventData,
   parseMessageMedia,
@@ -48,6 +48,12 @@ type WhatsappListItemRow = {
 type WhatsappListItemDto = Omit<WhatsappListItemRow, 'createdAt'> & {
   createdAt: string;
   attachments: WhatsappMessageAttachmentDto[];
+};
+type LooseContactMatchRow = {
+  id: string;
+  name: string;
+  telefono: string | null;
+  assignedTo: string | null;
 };
 type WhatsappInstanceRow = {
   id: string;
@@ -759,6 +765,19 @@ export class WhatsappService {
     }));
   }
 
+  private waNumberCandidates(rawPhone: string): string[] {
+    const digits = digitsOnly(rawPhone);
+    if (!digits) return [];
+    const suffix9 = digits.slice(-9);
+    const with51 =
+      digits.startsWith('51') && digits.length >= 11
+        ? digits
+        : suffix9.length === 9
+          ? `51${suffix9}`
+          : digits;
+    return [...new Set([digits, suffix9, with51].filter((value) => value.length >= 8))];
+  }
+
   private async persistInboundMediaAttachment(args: {
     messageId: string;
     contact:
@@ -885,10 +904,29 @@ export class WhatsappService {
   }
 
   async listForContact(contactId: string, scope: CrmDataScope, limit = 50) {
-    await this.contactsService.findOne(contactId, scope);
+    const contact = await this.contactsService.findOne(contactId, scope);
     const take = Math.min(200, Math.max(1, limit));
+    const phoneCandidates = this.waNumberCandidates(contact.telefono || '');
+    const where: Prisma.CrmWhatsappMessageWhereInput =
+      phoneCandidates.length > 0
+        ? {
+            OR: [
+              { contactId },
+              {
+                contactId: null,
+                direction: 'inbound',
+                fromWaId: { in: phoneCandidates },
+              },
+              {
+                contactId: null,
+                direction: 'outbound',
+                toWaId: { in: phoneCandidates },
+              },
+            ],
+          }
+        : { contactId };
     const rows = await this.prisma.crmWhatsappMessage.findMany({
-      where: { contactId },
+      where,
       orderBy: { createdAt: 'desc' },
       take,
       select: WHATSAPP_LIST_SELECT,
@@ -1140,24 +1178,25 @@ export class WhatsappService {
   }
 
   private async findContactByLoosePhone(peerDigits: string) {
-    const suffix9 = peerDigits.slice(-9);
-    const with51 = peerDigits.startsWith('51')
-      ? peerDigits
-      : `51${suffix9}`;
-    return this.prisma.contact.findFirst({
-      where: {
-        OR: [
-          { telefono: { contains: peerDigits } },
-          { telefono: { contains: suffix9 } },
-          { telefono: { contains: with51 } },
-        ],
-      },
-      select: {
-        id: true,
-        name: true,
-        telefono: true,
-        assignedTo: true,
-      },
-    });
+    const candidates = this.waNumberCandidates(peerDigits);
+    if (candidates.length === 0) return null;
+    const rows = await this.prisma.$queryRaw<LooseContactMatchRow[]>`
+      SELECT
+        id,
+        name,
+        telefono,
+        "assignedTo"
+      FROM "Contact"
+      WHERE telefono IS NOT NULL
+        AND regexp_replace(telefono, '\D', '', 'g') = ANY(${candidates}::text[])
+      ORDER BY
+        CASE
+          WHEN regexp_replace(telefono, '\D', '', 'g') = ${candidates[0]} THEN 0
+          ELSE 1
+        END,
+        "updatedAt" DESC
+      LIMIT 1
+    `;
+    return rows[0] ?? null;
   }
 }
