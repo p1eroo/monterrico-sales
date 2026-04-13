@@ -34,6 +34,7 @@ type WhatsappMessageAttachmentDto = {
   size: number;
   mediaType: 'image' | 'video' | 'audio' | 'document' | 'file';
   url: string | null;
+  downloadUrl: string | null;
 };
 type WhatsappListItemRow = {
   id: string;
@@ -780,10 +781,18 @@ export class WhatsappService {
     await Promise.all(
       files.map(async (file) => {
         let url: string | null = null;
+        let downloadUrl: string | null = null;
         try {
           url = (await this.files.presignGet(file.id, 'inline')).url;
         } catch (e) {
           this.logger.warn(`No se pudo resolver URL de adjunto WhatsApp ${file.id}: ${String(e)}`);
+        }
+        try {
+          downloadUrl = (await this.files.presignGet(file.id, 'attachment')).url;
+        } catch (e) {
+          this.logger.warn(
+            `No se pudo resolver URL de descarga de adjunto WhatsApp ${file.id}: ${String(e)}`,
+          );
         }
         const attachment: WhatsappMessageAttachmentDto = {
           id: file.id,
@@ -792,6 +801,7 @@ export class WhatsappService {
           size: file.size,
           mediaType: this.mediaTypeFromMime(file.mimeType),
           url,
+          downloadUrl,
         };
         const list = attachmentsByMessage.get(file.relatedEntityId || '') ?? [];
         list.push(attachment);
@@ -830,6 +840,7 @@ export class WhatsappService {
                 size: fallbackMedia.size ?? 0,
                 mediaType: fallbackMedia.mediaType,
                 url: fallbackUrl,
+                downloadUrl: fallbackUrl,
               },
             ]
           : [];

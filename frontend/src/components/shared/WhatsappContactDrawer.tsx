@@ -7,6 +7,7 @@ import {
 } from 'react';
 import { io } from 'socket.io-client';
 import {
+  Download,
   ExternalLink,
   FileText,
   Loader2,
@@ -155,11 +156,12 @@ function MessageAttachment({
   }
 
   const Icon = attachment.mediaType === 'document' ? FileText : Video;
+  const fileHref = attachment.downloadUrl || attachment.url;
   return (
     <a
-      href={attachment.url}
-      target="_blank"
+      href={fileHref}
       rel="noreferrer"
+      download={attachment.name}
       className="flex items-center gap-3 rounded-md border border-white/10 bg-black/10 px-3 py-2 text-white/85 transition hover:bg-black/20"
     >
       <div className="flex size-10 items-center justify-center rounded-full bg-white/10">
@@ -172,7 +174,11 @@ function MessageAttachment({
           {attachment.size > 0 ? ` · ${formatBytes(attachment.size)}` : ''}
         </p>
       </div>
-      <ExternalLink className="size-4 shrink-0 text-white/65" />
+      {attachment.downloadUrl ? (
+        <Download className="size-4 shrink-0 text-white/65" />
+      ) : (
+        <ExternalLink className="size-4 shrink-0 text-white/65" />
+      )}
     </a>
   );
 }

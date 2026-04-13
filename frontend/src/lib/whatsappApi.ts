@@ -42,6 +42,7 @@ export type WhatsappMessageItem = {
     size: number;
     mediaType: 'image' | 'video' | 'audio' | 'document' | 'file';
     url: string | null;
+    downloadUrl?: string | null;
   }[];
 };
 
