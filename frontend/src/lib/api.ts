@@ -130,4 +130,45 @@ export async function api<T>(
   return body as T;
 }
 
+export async function apiBlob(
+  path: string,
+  init: RequestInit = {},
+): Promise<Blob> {
+  const token = getAccessToken();
+  const headers = new Headers(init.headers);
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  const res = await fetch(`${API_BASE}${path.startsWith('/') ? path : `/${path}`}`, {
+    ...init,
+    headers,
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    let message = res.statusText || 'Error en la descarga';
+    if (text) {
+      try {
+        const body = JSON.parse(text) as ApiErrorBody;
+        message = Array.isArray(body.message)
+          ? body.message.join(', ')
+          : typeof body.message === 'string'
+            ? body.message
+            : message;
+      } catch {
+        message = text;
+      }
+    }
+    if (res.status === 401 && typeof window !== 'undefined') {
+      useAppStore.getState().logout();
+    }
+    const error = new Error(message);
+    (error as Error & { status?: number }).status = res.status;
+    throw error;
+  }
+
+  return res.blob();
+}
+
 export { API_BASE };

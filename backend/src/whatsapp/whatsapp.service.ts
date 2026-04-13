@@ -1000,29 +1000,10 @@ export class WhatsappService {
   }
 
   async listForContact(contactId: string, scope: CrmDataScope, limit = 50) {
-    const contact = await this.contactsService.findOne(contactId, scope);
+    await this.contactsService.findOne(contactId, scope);
     const take = Math.min(200, Math.max(1, limit));
-    const phoneCandidates = this.waNumberCandidates(contact.telefono || '');
-    const where: Prisma.CrmWhatsappMessageWhereInput =
-      phoneCandidates.length > 0
-        ? {
-            OR: [
-              { contactId },
-              {
-                contactId: null,
-                direction: 'inbound',
-                fromWaId: { in: phoneCandidates },
-              },
-              {
-                contactId: null,
-                direction: 'outbound',
-                toWaId: { in: phoneCandidates },
-              },
-            ],
-          }
-        : { contactId };
     const rows = await this.prisma.crmWhatsappMessage.findMany({
-      where,
+      where: { contactId },
       orderBy: { createdAt: 'desc' },
       take,
       select: WHATSAPP_LIST_SELECT,
@@ -1274,6 +1255,9 @@ export class WhatsappService {
     }
 
     const contact = await this.findContactByLoosePhone(peerDigits);
+    if (!contact?.id) {
+      return { ok: true, ignored: 'contact_not_found' };
+    }
     const instance = await this.findInstanceByEvent(parsed);
     const ourLine =
       instance?.displayLineId || parsed.instanceName || this.displaySenderId();
@@ -1290,7 +1274,7 @@ export class WhatsappService {
         toWaId: ourLine,
         body: textBody,
         payloadJson: stripHeavyPayload(parsed.data) as Prisma.InputJsonValue,
-        contactId: contact?.id ?? null,
+        contactId: contact.id,
         whatsappInstanceId: instance?.id ?? null,
       },
     });
@@ -1304,11 +1288,9 @@ export class WhatsappService {
       });
     }
 
-    if (contact?.id) {
-      await this.emitListItemById(contact.id, created.id);
-    }
+    await this.emitListItemById(contact.id, created.id);
 
-    if (contact?.assignedTo) {
+    if (contact.assignedTo) {
       try {
         await this.notifications.notifyWhatsappInbound({
           userId: contact.assignedTo,

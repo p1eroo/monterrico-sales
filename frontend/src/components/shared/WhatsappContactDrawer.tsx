@@ -4,6 +4,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type MouseEvent,
 } from 'react';
 import { io } from 'socket.io-client';
 import {
@@ -24,6 +25,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { API_BASE } from '@/lib/api';
 import {
   fetchWhatsappMessages,
+  downloadWhatsappAttachment,
   sendWhatsappMessage,
   type WhatsappMessageItem,
   type WhatsappSocketPayload,
@@ -112,6 +114,8 @@ function MessageAttachment({
 }: {
   attachment: NonNullable<WhatsappMessageItem['attachments']>[number];
 }) {
+  const [downloading, setDownloading] = useState(false);
+
   if (!attachment.url) {
     return (
       <div className="rounded-md border border-white/10 bg-black/10 px-3 py-2 text-xs text-white/60">
@@ -157,11 +161,30 @@ function MessageAttachment({
 
   const Icon = attachment.mediaType === 'document' ? FileText : Video;
   const fileHref = attachment.downloadUrl || attachment.url;
+  async function onDownloadClick(e: MouseEvent<HTMLAnchorElement>) {
+    e.preventDefault();
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      await downloadWhatsappAttachment({
+        id: attachment.id,
+        name: attachment.name,
+        url: fileHref,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'No se pudo descargar el archivo';
+      toast.error(message);
+    } finally {
+      setDownloading(false);
+    }
+  }
   return (
     <a
       href={fileHref}
       rel="noreferrer"
       download={attachment.name}
+      onClick={(e) => void onDownloadClick(e)}
       className="flex items-center gap-3 rounded-md border border-white/10 bg-black/10 px-3 py-2 text-white/85 transition hover:bg-black/20"
     >
       <div className="flex size-10 items-center justify-center rounded-full bg-white/10">
@@ -174,7 +197,9 @@ function MessageAttachment({
           {attachment.size > 0 ? ` · ${formatBytes(attachment.size)}` : ''}
         </p>
       </div>
-      {attachment.downloadUrl ? (
+      {downloading ? (
+        <Loader2 className="size-4 shrink-0 animate-spin text-white/65" />
+      ) : attachment.downloadUrl ? (
         <Download className="size-4 shrink-0 text-white/65" />
       ) : (
         <ExternalLink className="size-4 shrink-0 text-white/65" />

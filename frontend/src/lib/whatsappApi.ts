@@ -1,4 +1,4 @@
-import { api } from '@/lib/api';
+import { api, apiBlob } from '@/lib/api';
 
 export type WhatsappConnectionInstance = {
   id: string;
@@ -105,4 +105,34 @@ export async function disconnectMyWhatsapp(): Promise<WhatsappConnectionResponse
     method: 'POST',
     body: JSON.stringify({}),
   });
+}
+
+export async function downloadWhatsappAttachment(params: {
+  id: string;
+  name: string;
+  url?: string | null;
+}): Promise<void> {
+  let blob: Blob;
+  if (params.id && !params.id.startsWith('payload:')) {
+    blob = await apiBlob(
+      `/files/${encodeURIComponent(params.id)}/content?disposition=attachment`,
+    );
+  } else if (params.url) {
+    const res = await fetch(params.url);
+    if (!res.ok) {
+      throw new Error(`No se pudo descargar el archivo (${res.status})`);
+    }
+    blob = await res.blob();
+  } else {
+    throw new Error('Archivo no disponible para descarga');
+  }
+
+  const objectUrl = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = objectUrl;
+  link.download = params.name || 'archivo';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => window.URL.revokeObjectURL(objectUrl), 1000);
 }
