@@ -1,4 +1,12 @@
 type JsonRecord = Record<string, unknown>;
+export type WhatsappParsedMedia = {
+  mediaType: 'image' | 'video' | 'audio' | 'document';
+  url: string | null;
+  mimeType: string | null;
+  fileName: string | null;
+  size: number | null;
+  caption: string | null;
+};
 
 function asRecord(v: unknown): JsonRecord | null {
   return v !== null && typeof v === 'object' && !Array.isArray(v)
@@ -209,6 +217,55 @@ export function parseMessageEventData(data: JsonRecord): {
     isGroup,
     text,
   };
+}
+
+export function parseMessageMedia(data: JsonRecord): WhatsappParsedMedia | null {
+  const msg =
+    asRecord(data['Message']) ?? asRecord(data['message']) ?? {};
+  const mappings = [
+    { key: 'imageMessage', mediaType: 'image' as const },
+    { key: 'videoMessage', mediaType: 'video' as const },
+    { key: 'audioMessage', mediaType: 'audio' as const },
+    { key: 'documentMessage', mediaType: 'document' as const },
+  ];
+  for (const mapping of mappings) {
+    const node = asRecord(msg[mapping.key]);
+    if (!node) continue;
+    const caption =
+      typeof node['caption'] === 'string' && node['caption'].trim()
+        ? node['caption'].trim()
+        : null;
+    const sizeRaw = node['fileLength'] ?? node['filelength'] ?? node['size'];
+    return {
+      mediaType: mapping.mediaType,
+      url:
+        typeof node['URL'] === 'string'
+          ? node['URL']
+          : typeof node['url'] === 'string'
+            ? node['url']
+            : null,
+      mimeType:
+        typeof node['mimetype'] === 'string'
+          ? node['mimetype']
+          : typeof node['mimeType'] === 'string'
+            ? node['mimeType']
+            : null,
+      fileName:
+        typeof node['fileName'] === 'string'
+          ? node['fileName']
+          : typeof node['filename'] === 'string'
+            ? node['filename']
+            : null,
+      size:
+        typeof sizeRaw === 'number'
+          ? sizeRaw
+          : typeof sizeRaw === 'string' && /^\d+$/.test(sizeRaw)
+            ? Number.parseInt(sizeRaw, 10)
+            : null,
+      caption,
+    };
+  }
+  return null;
 }
 
 /** Elimina campos pesados (p. ej. base64) antes de guardar JSON en BD. */

@@ -35,6 +35,14 @@ export type WhatsappMessageItem = {
   evoInstanceName: string | null;
   /** Solo salientes: sent | delivered | read (webhook Receipt / MESSAGES_UPDATE). */
   waOutboundStatus?: string | null;
+  attachments?: {
+    id: string;
+    name: string;
+    mimeType: string;
+    size: number;
+    mediaType: 'image' | 'video' | 'audio' | 'document' | 'file';
+    url: string | null;
+  }[];
 };
 
 export type WhatsappSocketPayload =

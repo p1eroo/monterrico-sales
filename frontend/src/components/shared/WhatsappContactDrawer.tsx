@@ -6,7 +6,17 @@ import {
   useState,
 } from 'react';
 import { io } from 'socket.io-client';
-import { Loader2, MessageCircle, RefreshCw, Send, X } from 'lucide-react';
+import {
+  ExternalLink,
+  FileText,
+  Loader2,
+  MessageCircle,
+  Music2,
+  RefreshCw,
+  Send,
+  Video,
+  X,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import type { Contact } from '@/types';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -76,6 +86,95 @@ function formatMsgTime(iso: string): string {
   } catch {
     return iso;
   }
+}
+
+function formatBytes(size: number): string {
+  if (!Number.isFinite(size) || size <= 0) return '';
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function messageTextToDisplay(item: WhatsappMessageItem): string {
+  const body = item.body?.trim() || '';
+  if (
+    item.attachments?.length &&
+    ['[Imagen]', '[Documento]', '[Video]', '[Audio]'].includes(body)
+  ) {
+    return '';
+  }
+  return body;
+}
+
+function MessageAttachment({
+  attachment,
+}: {
+  attachment: NonNullable<WhatsappMessageItem['attachments']>[number];
+}) {
+  if (!attachment.url) {
+    return (
+      <div className="rounded-md border border-white/10 bg-black/10 px-3 py-2 text-xs text-white/60">
+        Archivo no disponible temporalmente
+      </div>
+    );
+  }
+
+  if (attachment.mediaType === 'image') {
+    return (
+      <a href={attachment.url} target="_blank" rel="noreferrer" className="block">
+        <img
+          src={attachment.url}
+          alt={attachment.name}
+          className="max-h-72 w-full rounded-md object-cover"
+        />
+      </a>
+    );
+  }
+
+  if (attachment.mediaType === 'video') {
+    return (
+      <video
+        controls
+        preload="metadata"
+        className="max-h-72 w-full rounded-md bg-black"
+        src={attachment.url}
+      />
+    );
+  }
+
+  if (attachment.mediaType === 'audio') {
+    return (
+      <div className="rounded-md border border-white/10 bg-black/10 px-3 py-2">
+        <div className="mb-2 flex items-center gap-2 text-xs text-white/70">
+          <Music2 className="size-4" />
+          <span className="truncate">{attachment.name}</span>
+        </div>
+        <audio controls preload="metadata" className="w-full" src={attachment.url} />
+      </div>
+    );
+  }
+
+  const Icon = attachment.mediaType === 'document' ? FileText : Video;
+  return (
+    <a
+      href={attachment.url}
+      target="_blank"
+      rel="noreferrer"
+      className="flex items-center gap-3 rounded-md border border-white/10 bg-black/10 px-3 py-2 text-white/85 transition hover:bg-black/20"
+    >
+      <div className="flex size-10 items-center justify-center rounded-full bg-white/10">
+        <Icon className="size-5" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium">{attachment.name}</p>
+        <p className="text-xs text-white/55">
+          {attachment.mimeType}
+          {attachment.size > 0 ? ` · ${formatBytes(attachment.size)}` : ''}
+        </p>
+      </div>
+      <ExternalLink className="size-4 shrink-0 text-white/65" />
+    </a>
+  );
 }
 
 type WhatsappContactDrawerProps = {
@@ -297,6 +396,7 @@ export function WhatsappContactDrawer({
             <ul className="flex flex-col gap-2">
               {items.map((m) => {
                 const outbound = m.direction === 'outbound';
+                const textBody = messageTextToDisplay(m);
                 return (
                   <li
                     key={m.id}
@@ -313,9 +413,18 @@ export function WhatsappContactDrawer({
                           : 'rounded-bl-none bg-[#202c33] text-[13px] text-[#e9edef]',
                       )}
                     >
-                      <p className="whitespace-pre-wrap break-words leading-snug">
-                        {m.body}
-                      </p>
+                      {textBody ? (
+                        <p className="whitespace-pre-wrap break-words leading-snug">
+                          {textBody}
+                        </p>
+                      ) : null}
+                      {m.attachments?.length ? (
+                        <div className={cn('flex flex-col gap-2', textBody ? 'mt-2' : '')}>
+                          {m.attachments.map((attachment) => (
+                            <MessageAttachment key={attachment.id} attachment={attachment} />
+                          ))}
+                        </div>
+                      ) : null}
                       <p
                         className={cn(
                           'mt-1 flex items-center justify-end gap-1 text-right text-[10px] tabular-nums',

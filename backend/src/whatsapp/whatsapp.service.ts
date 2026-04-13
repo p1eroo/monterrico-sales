@@ -10,11 +10,13 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ContactsService } from '../contacts/contacts.service';
 import type { CrmDataScope } from '../auth/crm-data-scope.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { FilesService } from '../files/files.service';
 import { EvogoClient } from './evogo.client';
 import { SendWhatsappDto } from './dto/send-whatsapp.dto';
 import { normalizePeWaNumber } from './wa-number.util';
 import {
   parseMessageEventData,
+  parseMessageMedia,
   parseMessagesUpdateEventData,
   parseReceiptEventData,
   readEvolutionWebhookEvent,
@@ -24,6 +26,29 @@ import {
 import { WhatsappGateway } from './whatsapp.gateway';
 
 type JsonRecord = Record<string, unknown>;
+type WhatsappMessageAttachmentDto = {
+  id: string;
+  name: string;
+  mimeType: string;
+  size: number;
+  mediaType: 'image' | 'video' | 'audio' | 'document' | 'file';
+  url: string | null;
+};
+type WhatsappListItemRow = {
+  id: string;
+  direction: string;
+  body: string;
+  fromWaId: string;
+  toWaId: string;
+  createdAt: Date;
+  waMessageId: string | null;
+  evoInstanceName: string | null;
+  waOutboundStatus: string | null;
+};
+type WhatsappListItemDto = Omit<WhatsappListItemRow, 'createdAt'> & {
+  createdAt: string;
+  attachments: WhatsappMessageAttachmentDto[];
+};
 type WhatsappInstanceRow = {
   id: string;
   userId: string;
@@ -92,6 +117,7 @@ export class WhatsappService {
     private readonly evogo: EvogoClient,
     private readonly contactsService: ContactsService,
     private readonly notifications: NotificationsService,
+    private readonly files: FilesService,
     private readonly gateway: WhatsappGateway,
   ) {}
 
@@ -645,16 +671,160 @@ export class WhatsappService {
     }
   }
 
+  private mediaTypeFromMime(mimeType: string): WhatsappMessageAttachmentDto['mediaType'] {
+    const mime = mimeType.trim().toLowerCase();
+    if (mime.startsWith('image/')) return 'image';
+    if (mime.startsWith('video/')) return 'video';
+    if (mime.startsWith('audio/')) return 'audio';
+    if (mime.includes('pdf') || mime.includes('document') || mime.startsWith('application/')) {
+      return 'document';
+    }
+    return 'file';
+  }
+
+  private extensionFromMime(mimeType: string | null | undefined): string {
+    const mime = (mimeType || '').trim().toLowerCase();
+    const known: Record<string, string> = {
+      'image/jpeg': 'jpg',
+      'image/png': 'png',
+      'image/webp': 'webp',
+      'image/gif': 'gif',
+      'video/mp4': 'mp4',
+      'video/webm': 'webm',
+      'audio/ogg': 'ogg',
+      'audio/mpeg': 'mp3',
+      'audio/mp4': 'm4a',
+      'application/pdf': 'pdf',
+    };
+    if (mime in known) return known[mime]!;
+    if (mime.includes('/')) return mime.split('/')[1]!.replace(/[^a-z0-9]+/g, '') || 'bin';
+    return 'bin';
+  }
+
+  private fallbackMediaFilename(
+    mediaType: 'image' | 'video' | 'audio' | 'document',
+    mimeType: string | null,
+    messageId: string,
+  ): string {
+    const ext = this.extensionFromMime(mimeType);
+    return `whatsapp-${mediaType}-${messageId.slice(0, 8)}.${ext}`;
+  }
+
+  private async buildMessageItems(
+    rows: WhatsappListItemRow[],
+  ): Promise<WhatsappListItemDto[]> {
+    if (rows.length === 0) return [];
+    const messageIds = rows.map((row) => row.id);
+    const files = await this.prisma.crmFile.findMany({
+      where: {
+        relatedEntityType: 'whatsapp-message',
+        relatedEntityId: { in: messageIds },
+      },
+      select: {
+        id: true,
+        originalName: true,
+        mimeType: true,
+        size: true,
+        relatedEntityId: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+    const attachmentsByMessage = new Map<string, WhatsappMessageAttachmentDto[]>();
+    await Promise.all(
+      files.map(async (file) => {
+        let url: string | null = null;
+        try {
+          url = (await this.files.presignGet(file.id, 'inline')).url;
+        } catch (e) {
+          this.logger.warn(`No se pudo resolver URL de adjunto WhatsApp ${file.id}: ${String(e)}`);
+        }
+        const attachment: WhatsappMessageAttachmentDto = {
+          id: file.id,
+          name: file.originalName,
+          mimeType: file.mimeType,
+          size: file.size,
+          mediaType: this.mediaTypeFromMime(file.mimeType),
+          url,
+        };
+        const list = attachmentsByMessage.get(file.relatedEntityId || '') ?? [];
+        list.push(attachment);
+        attachmentsByMessage.set(file.relatedEntityId || '', list);
+      }),
+    );
+    return rows.map((row) => ({
+      ...row,
+      createdAt: row.createdAt.toISOString(),
+      attachments: attachmentsByMessage.get(row.id) ?? [],
+    }));
+  }
+
+  private async persistInboundMediaAttachment(args: {
+    messageId: string;
+    contact:
+      | {
+          id: string;
+          name: string;
+          telefono: string | null;
+          assignedTo: string | null;
+        }
+      | null;
+    instance: WhatsappInstanceRow | null;
+    media: NonNullable<ReturnType<typeof parseMessageMedia>>;
+  }): Promise<void> {
+    const { messageId, contact, instance, media } = args;
+    if (!contact?.id) return;
+    const uploadedById = contact.assignedTo || instance?.userId;
+    if (!uploadedById) {
+      this.logger.warn(`Adjunto WhatsApp ${messageId} omitido: no hay usuario dueño para CrmFile`);
+      return;
+    }
+    if (!media.url) {
+      this.logger.warn(`Adjunto WhatsApp ${messageId} omitido: Evolution no devolvio URL de descarga`);
+      return;
+    }
+    try {
+      const res = await fetch(media.url);
+      if (!res.ok) {
+        throw new Error(`download HTTP ${res.status}`);
+      }
+      const bytes = Buffer.from(await res.arrayBuffer());
+      if (bytes.length === 0) {
+        throw new Error('download vacio');
+      }
+      const originalName =
+        media.fileName?.trim() ||
+        this.fallbackMediaFilename(media.mediaType, media.mimeType, messageId);
+      await this.files.create(uploadedById, {
+        buffer: bytes,
+        originalName,
+        mimeType: media.mimeType || 'application/octet-stream',
+        entityType: 'contact',
+        entityId: contact.id,
+        entityName: contact.name,
+        relatedEntityType: 'whatsapp-message',
+        relatedEntityId: messageId,
+        relatedEntityName: `whatsapp-${media.mediaType}`,
+      });
+    } catch (e) {
+      this.logger.warn(
+        `No se pudo almacenar adjunto WhatsApp ${messageId} en crm-adjuntos: ${String(e)}`,
+      );
+    }
+  }
+
   private async emitListItemById(contactId: string, messageId: string) {
     const row = await this.prisma.crmWhatsappMessage.findUnique({
       where: { id: messageId },
       select: WHATSAPP_LIST_SELECT,
     });
     if (!row) return;
+    const [item] = await this.buildMessageItems([row as WhatsappListItemRow]);
+    if (!item) return;
     this.gateway.emitToContact(contactId, {
       type: 'message',
       contactId,
-      item: row as unknown as Record<string, unknown>,
+      item: item as unknown as Record<string, unknown>,
     });
   }
 
@@ -723,7 +893,9 @@ export class WhatsappService {
       take,
       select: WHATSAPP_LIST_SELECT,
     });
-    return { items: rows.reverse() };
+    return {
+      items: await this.buildMessageItems(rows.reverse() as WhatsappListItemRow[]),
+    };
   }
 
   /**
@@ -885,6 +1057,7 @@ export class WhatsappService {
     parsed: NonNullable<ReturnType<typeof readMessageEventPayload>>,
   ): Promise<{ ok: boolean; ignored?: string }> {
     const msg = parseMessageEventData(parsed.data);
+    const media = parseMessageMedia(parsed.data);
 
     if (msg.isGroup) {
       return { ok: true, ignored: 'group' };
@@ -933,6 +1106,15 @@ export class WhatsappService {
         whatsappInstanceId: instance?.id ?? null,
       },
     });
+
+    if (media) {
+      await this.persistInboundMediaAttachment({
+        messageId: created.id,
+        contact,
+        instance,
+        media,
+      });
+    }
 
     if (contact?.id) {
       await this.emitListItemById(contact.id, created.id);
