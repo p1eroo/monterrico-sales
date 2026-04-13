@@ -45,8 +45,9 @@ type WhatsappListItemRow = {
   waMessageId: string | null;
   evoInstanceName: string | null;
   waOutboundStatus: string | null;
+  payloadJson: Prisma.JsonValue | null;
 };
-type WhatsappListItemDto = Omit<WhatsappListItemRow, 'createdAt'> & {
+type WhatsappListItemDto = Omit<WhatsappListItemRow, 'createdAt' | 'payloadJson'> & {
   createdAt: string;
   attachments: WhatsappMessageAttachmentDto[];
 };
@@ -92,6 +93,7 @@ const WHATSAPP_LIST_SELECT = {
   waMessageId: true,
   evoInstanceName: true,
   waOutboundStatus: true,
+  payloadJson: true,
 } as const;
 
 const WHATSAPP_INSTANCE_SELECT = {
@@ -796,11 +798,47 @@ export class WhatsappService {
         attachmentsByMessage.set(file.relatedEntityId || '', list);
       }),
     );
-    return rows.map((row) => ({
-      ...row,
-      createdAt: row.createdAt.toISOString(),
-      attachments: attachmentsByMessage.get(row.id) ?? [],
-    }));
+    return rows.map((row) => {
+      const stored = attachmentsByMessage.get(row.id) ?? [];
+      if (stored.length > 0) {
+        return {
+          ...row,
+          createdAt: row.createdAt.toISOString(),
+          attachments: stored,
+        };
+      }
+      const payload = asRecord(row.payloadJson);
+      const fallbackMedia = payload ? parseMessageMedia(payload) : null;
+      const fallbackUrl = resolveEvolutionMediaUrl(
+        fallbackMedia?.url,
+        this.evolutionBaseUrl(),
+      );
+      const fallbackAttachments: WhatsappMessageAttachmentDto[] =
+        fallbackMedia && fallbackUrl
+          ? [
+              {
+                id: `payload:${row.id}`,
+                name:
+                  fallbackMedia.fileName?.trim() ||
+                  this.fallbackMediaFilename(
+                    fallbackMedia.mediaType,
+                    fallbackMedia.mimeType,
+                    row.id,
+                  ),
+                mimeType:
+                  fallbackMedia.mimeType || 'application/octet-stream',
+                size: fallbackMedia.size ?? 0,
+                mediaType: fallbackMedia.mediaType,
+                url: fallbackUrl,
+              },
+            ]
+          : [];
+      return {
+        ...row,
+        createdAt: row.createdAt.toISOString(),
+        attachments: fallbackAttachments,
+      };
+    });
   }
 
   private waNumberCandidates(rawPhone: string): string[] {
@@ -1189,6 +1227,14 @@ export class WhatsappService {
   ): Promise<{ ok: boolean; ignored?: string }> {
     const msg = parseMessageEventData(parsed.data);
     const media = parseMessageMedia(parsed.data);
+
+    if (msg.isProtocolMessage) {
+      return { ok: true, ignored: 'protocol_message' };
+    }
+
+    if (msg.isStatusBroadcast) {
+      return { ok: true, ignored: 'status_broadcast' };
+    }
 
     if (msg.isGroup) {
       return { ok: true, ignored: 'group' };

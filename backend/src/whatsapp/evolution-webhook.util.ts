@@ -287,28 +287,55 @@ export function parseMessageEventData(data: JsonRecord): {
   chatDigits: string;
   senderDigits: string;
   isGroup: boolean;
+  isStatusBroadcast: boolean;
+  isProtocolMessage: boolean;
   text: string;
 } {
   const info = asRecord(data['Info']) ?? asRecord(data['info']) ?? {};
   const key = asRecord(data['key']);
-  const isFromMe = Boolean(info['IsFromMe'] ?? info['isFromMe'] ?? key?.['fromMe']);
+  const source = asRecord(info['MessageSource']) ?? info;
+  const isFromMe = Boolean(
+    source['IsFromMe'] ?? info['IsFromMe'] ?? info['isFromMe'] ?? key?.['fromMe'],
+  );
   const idRaw = key?.['id'] ?? info['ID'] ?? info['id'] ?? info['Id'];
   const waMessageId =
     typeof idRaw === 'string' && idRaw.length > 0 ? idRaw : null;
 
-  const chatRaw = key?.['remoteJid'] ?? info['Chat'] ?? info['chat'];
+  const chatRaw =
+    key?.['remoteJid'] ??
+    key?.['RemoteJid'] ??
+    source['Chat'] ??
+    info['Chat'] ??
+    info['chat'] ??
+    info['RemoteJid'] ??
+    info['remoteJid'];
   const senderRaw =
     key?.['participant'] ??
+    source['Sender'] ??
     data['sender'] ??
     data['Sender'] ??
     info['Sender'] ??
     info['sender'];
-  const chatJid = jidUserDigits(chatRaw);
-  const senderJid = jidUserDigits(senderRaw);
+  const senderAltRaw = info['SenderAlt'] ?? info['senderAlt'];
+  const recipientAltRaw = info['RecipientAlt'] ?? info['recipientAlt'];
   const chatStr = typeof chatRaw === 'string' ? chatRaw : '';
-  const isGroup = chatStr.includes('@g.us');
+  const isStatusBroadcast = chatStr === 'status@broadcast';
+  const isGroup = Boolean(
+    source['IsGroup'] ?? info['IsGroup'] ?? info['isGroup'] ?? chatStr.includes('@g.us'),
+  );
+  const isLidChat = !isGroup && chatStr.includes('@lid');
+  const senderAltStr = typeof senderAltRaw === 'string' ? senderAltRaw : '';
+  const recipientAltStr = typeof recipientAltRaw === 'string' ? recipientAltRaw : '';
+  const altJid = isFromMe
+    ? (recipientAltStr.includes('@s.whatsapp.net') ? recipientAltStr : senderAltStr)
+    : (senderAltStr.includes('@s.whatsapp.net') ? senderAltStr : recipientAltStr);
+  const chatJid = isLidChat ? jidUserDigits(altJid || chatRaw) : jidUserDigits(chatRaw);
+  const senderJid = isLidChat ? jidUserDigits(altJid || senderRaw || chatRaw) : jidUserDigits(senderRaw);
 
   const msg = rootMessageNode(data);
+  const isProtocolMessage = Boolean(
+    asRecord(msg['protocolMessage']) ?? asRecord(msg['ProtocolMessage']),
+  );
   const text = extractMessageCaption(msg);
 
   return {
@@ -317,6 +344,8 @@ export function parseMessageEventData(data: JsonRecord): {
     chatDigits: chatJid,
     senderDigits: senderJid || chatJid,
     isGroup,
+    isStatusBroadcast,
+    isProtocolMessage,
     text,
   };
 }
