@@ -1,5 +1,29 @@
 import { api } from '@/lib/api';
 
+export type WhatsappConnectionInstance = {
+  id: string;
+  instanceName: string;
+  evoInstanceId: string | null;
+  displayLineId: string | null;
+  status: string;
+  isConnected: boolean;
+  qrCode: string | null;
+  qrText: string | null;
+  pairingCode: string | null;
+  qrGeneratedAt: string | null;
+  qrExpiresAt: string | null;
+  lastConnectedAt: string | null;
+  lastDisconnectedAt: string | null;
+  lastError: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type WhatsappConnectionResponse = {
+  canManage: boolean;
+  instance: WhatsappConnectionInstance | null;
+};
+
 export type WhatsappMessageItem = {
   id: string;
   direction: string;
@@ -46,5 +70,30 @@ export async function sendWhatsappMessage(
   return api(`/api/whatsapp/send`, {
     method: 'POST',
     body: JSON.stringify({ contactId, text }),
+  });
+}
+
+export async function fetchMyWhatsappConnection(): Promise<WhatsappConnectionResponse> {
+  return api('/api/whatsapp/connection/me');
+}
+
+export async function connectMyWhatsapp(): Promise<WhatsappConnectionResponse> {
+  return api('/api/whatsapp/connection/me/connect', {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
+export async function refreshMyWhatsappConnection(): Promise<WhatsappConnectionResponse> {
+  return api('/api/whatsapp/connection/me/refresh', {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
+export async function disconnectMyWhatsapp(): Promise<WhatsappConnectionResponse> {
+  return api('/api/whatsapp/connection/me/disconnect', {
+    method: 'POST',
+    body: JSON.stringify({}),
   });
 }

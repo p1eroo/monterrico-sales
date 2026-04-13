@@ -77,7 +77,33 @@ model User {
   activityLogs         ActivityLog[]
   auditChangeSets      AuditChangeSet[]
   crmNotifications     CrmNotification[]
+  whatsappInstance     WhatsappInstance?
   whatsappMessagesSent CrmWhatsappMessage[] @relation("CrmWhatsappMessageAuthor")
+}
+
+/** Instancia/línea personal de WhatsApp conectada por cada asesor. */
+model WhatsappInstance {
+  id                 String               @id @default(cuid())
+  userId             String               @unique
+  user               User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  instanceName       String               @unique
+  instanceApiKey     String
+  evoInstanceId      String?              @unique
+  displayLineId      String?
+  status             String               @default("pending")
+  qrCode             String?              @db.Text
+  qrText             String?              @db.Text
+  pairingCode        String?
+  qrGeneratedAt      DateTime?
+  qrExpiresAt        DateTime?
+  lastConnectedAt    DateTime?
+  lastDisconnectedAt DateTime?
+  lastError          String?              @db.Text
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  messages           CrmWhatsappMessage[]
+
+  @@index([status])
 }
 
 /** Alertas in-app por usuario (contacto nuevo, oportunidad ganada, tareas vencidas). */
@@ -384,6 +410,8 @@ model CrmWhatsappMessage {
   payloadJson       Json?
   contactId         String?
   contact           Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  whatsappInstanceId String?
+  whatsappInstance  WhatsappInstance? @relation(fields: [whatsappInstanceId], references: [id], onDelete: SetNull)
   createdByUserId   String?
   createdBy         User?    @relation("CrmWhatsappMessageAuthor", fields: [createdByUserId], references: [id], onDelete: SetNull)
   createdAt         DateTime @default(now())
@@ -392,6 +420,7 @@ model CrmWhatsappMessage {
 
   @@index([contactId, createdAt])
   @@index([evoInstanceId, waMessageId])
+  @@index([whatsappInstanceId, createdAt])
 }
 
 model Company {

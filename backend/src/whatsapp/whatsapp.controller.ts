@@ -27,6 +27,26 @@ export class WhatsappController {
     private readonly crmDataScope: CrmDataScopeService,
   ) {}
 
+  @Get('connection/me')
+  async myConnection(@Req() req: AuthedReq) {
+    return this.whatsapp.getMyConnection(req.user.userId);
+  }
+
+  @Post('connection/me/connect')
+  async connectMyWhatsapp(@Req() req: AuthedReq) {
+    return this.whatsapp.connectMyWhatsapp(req.user.userId, req.user.name);
+  }
+
+  @Post('connection/me/refresh')
+  async refreshMyWhatsapp(@Req() req: AuthedReq) {
+    return this.whatsapp.refreshMyConnection(req.user.userId);
+  }
+
+  @Post('connection/me/disconnect')
+  async disconnectMyWhatsapp(@Req() req: AuthedReq) {
+    return this.whatsapp.disconnectMyWhatsapp(req.user.userId);
+  }
+
   @Get('messages')
   @RequirePermissions('contactos.ver')
   async list(

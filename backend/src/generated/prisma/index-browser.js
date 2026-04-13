@@ -160,6 +160,26 @@ exports.Prisma.UserScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.WhatsappInstanceScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  instanceName: 'instanceName',
+  instanceApiKey: 'instanceApiKey',
+  evoInstanceId: 'evoInstanceId',
+  displayLineId: 'displayLineId',
+  status: 'status',
+  qrCode: 'qrCode',
+  qrText: 'qrText',
+  pairingCode: 'pairingCode',
+  qrGeneratedAt: 'qrGeneratedAt',
+  qrExpiresAt: 'qrExpiresAt',
+  lastConnectedAt: 'lastConnectedAt',
+  lastDisconnectedAt: 'lastDisconnectedAt',
+  lastError: 'lastError',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.CrmNotificationScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
@@ -370,6 +390,7 @@ exports.Prisma.CrmWhatsappMessageScalarFieldEnum = {
   body: 'body',
   payloadJson: 'payloadJson',
   contactId: 'contactId',
+  whatsappInstanceId: 'whatsappInstanceId',
   createdByUserId: 'createdByUserId',
   createdAt: 'createdAt',
   waOutboundStatus: 'waOutboundStatus'
@@ -572,6 +593,7 @@ exports.Prisma.ModelName = {
   Authority: 'Authority',
   Account: 'Account',
   User: 'User',
+  WhatsappInstance: 'WhatsappInstance',
   CrmNotification: 'CrmNotification',
   ActivityLog: 'ActivityLog',
   AuditChangeSet: 'AuditChangeSet',

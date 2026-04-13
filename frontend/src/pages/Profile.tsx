@@ -46,6 +46,7 @@ import { useCrmConfigStore } from '@/store/crmConfigStore';
 import { hydrateGoalsFromBundle } from '@/store/goalsStore';
 import { WeeklyGoalCard } from '@/components/shared/WeeklyGoalCard';
 import { MonthlyGoalCard } from '@/components/shared/MonthlyGoalCard';
+import { WhatsappIntegrationCard } from '@/components/profile/WhatsappIntegrationCard';
 
 const profileSchema = z.object({
   name: z.string().min(2, 'Mínimo 2 caracteres'),
@@ -780,11 +781,15 @@ export default function ProfilePage() {
                 <div className="space-y-6">
                   <div>
                     <CardTitle className="text-base mb-4">Integraciones activas</CardTitle>
-                    <p className="text-sm text-amber-800 dark:text-amber-200 bg-amber-500/10 border border-amber-500/20 rounded-md px-3 py-2 mb-4">
-                      Vista de demostración: la conexión real con servicios externos se implementará más adelante.
-                    </p>
                     <p className="text-sm text-muted-foreground mb-4">
-                      Conecta tus cuentas para sincronizar datos con el CRM. Cada usuario conecta su propia cuenta.
+                      Conecta tus cuentas personales para sincronizarlas con el CRM. Cada asesor puede vincular su propio número de WhatsApp y su propia cuenta de correo.
+                    </p>
+                    <WhatsappIntegrationCard />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base mb-4">Gmail</CardTitle>
+                    <p className="text-sm text-amber-800 dark:text-amber-200 bg-amber-500/10 border border-amber-500/20 rounded-md px-3 py-2 mb-4">
+                      Gmail sigue en modo demostración. La conexión real de esta integración se implementará más adelante.
                     </p>
                     <div className="flex items-center justify-between rounded-lg border p-4">
                       <div className="flex items-center gap-4">
