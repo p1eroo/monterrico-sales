@@ -362,6 +362,11 @@ export class WhatsappService {
       normalized.includes('not authorized') ||
       normalized.includes('unauthorized') ||
       normalized.includes('forbidden') ||
+      normalized.includes('not found') ||
+      normalized.includes('404') ||
+      normalized.includes('does not exist') ||
+      normalized.includes('page not found') ||
+      normalized.includes('instance not found') ||
       normalized.includes('token') ||
       normalized.includes('apikey')
     );

@@ -74,6 +74,36 @@ export class EvogoClient {
     return key;
   }
 
+  private managerApiKeyOrNull(): string | null {
+    return (
+      this.config.get<string>('EVOGO_MANAGER_API_KEY')?.trim() ||
+      this.config.get<string>('EVOGO_GLOBAL_API_KEY')?.trim() ||
+      null
+    );
+  }
+
+  private async requestJsonWithManagerFallback(
+    path: string,
+    init: RequestInit & {
+      apiKey?: string;
+    },
+  ): Promise<{ status: number; ok: boolean; raw: unknown }> {
+    const preferredApiKey = init.apiKey?.trim() || null;
+    const res = await this.requestJson(path, init);
+    if (res.status !== 401) return res;
+
+    const managerApiKey = this.managerApiKeyOrNull();
+    if (!managerApiKey || managerApiKey === preferredApiKey) return res;
+
+    this.logger.warn(
+      `Evogo ${init.method ?? 'GET'} ${path} devolvio 401 con token de instancia; reintentando con token manager`,
+    );
+    return this.requestJson(path, {
+      ...init,
+      apiKey: managerApiKey,
+    });
+  }
+
   private async requestJson(
     path: string,
     init: RequestInit & {
@@ -196,10 +226,13 @@ export class EvogoClient {
       };
     };
 
-    const connectRes = await this.requestJson('/instance/connect', {
+    const connectRes = await this.requestJsonWithManagerFallback('/instance/connect', {
       method: 'POST',
       apiKey: params.instanceApiKey,
       body: JSON.stringify({
+        instanceName: params.instanceName,
+        name: params.instanceName,
+        instance: params.instanceName,
         webhookUrl: params.webhookUrl,
         subscribe: this.defaultWebhookEvents,
       }),
@@ -209,7 +242,7 @@ export class EvogoClient {
     const connectLooksLikeQr = Boolean(parsed.qrCode || parsed.qrText);
     if (connectRes.ok && !connectLooksLikeQr) {
       for (let attempt = 0; attempt < 6; attempt++) {
-        res = await this.requestJson('/instance/qr', {
+        res = await this.requestJsonWithManagerFallback('/instance/qr', {
           method: 'GET',
           apiKey: params.instanceApiKey,
         });
@@ -220,7 +253,7 @@ export class EvogoClient {
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     } else if (!res.ok) {
-      res = await this.requestJson(
+      res = await this.requestJsonWithManagerFallback(
         `/instance/connect/${encodeURIComponent(params.instanceName)}`,
         {
           method: 'GET',
@@ -229,13 +262,13 @@ export class EvogoClient {
       );
     }
     if (!res.ok) {
-      res = await this.requestJson('/instance/qr', {
+      res = await this.requestJsonWithManagerFallback('/instance/qr', {
         method: 'GET',
         apiKey: params.instanceApiKey,
       });
     }
     if (!res.ok) {
-      res = await this.requestJson(
+      res = await this.requestJsonWithManagerFallback(
         `/instance/${encodeURIComponent(params.instanceName)}/qrcode`,
         {
           method: 'GET',
@@ -254,12 +287,12 @@ export class EvogoClient {
     instanceName: string;
     instanceApiKey?: string;
   }): Promise<EvogoConnectionStateResult> {
-    let res = await this.requestJson('/instance/status', {
+    let res = await this.requestJsonWithManagerFallback('/instance/status', {
       method: 'GET',
       apiKey: params.instanceApiKey,
     });
     if (!res.ok) {
-      res = await this.requestJson(
+      res = await this.requestJsonWithManagerFallback(
         `/instance/connectionState/${encodeURIComponent(params.instanceName)}`,
         {
           method: 'GET',
@@ -267,61 +300,71 @@ export class EvogoClient {
         },
       );
     }
-    if (!res.ok) {
-      throw new Error(
-        this.readErrorMessage(res.raw, 'No se pudo consultar el estado de conexión'),
-      );
-    }
+    const listInstances = async () => {
+      const attempts = ['/instance/all', '/instance/fetchInstances'];
+      for (const path of attempts) {
+        try {
+          const listRes = await this.requestJson(path, {
+            method: 'GET',
+          });
+          if (!listRes.ok) continue;
+          const candidates = Array.isArray(listRes.raw)
+            ? listRes.raw
+            : Array.isArray(this.asRecord(listRes.raw)?.data)
+              ? (this.asRecord(listRes.raw)?.data as unknown[])
+              : Array.isArray(this.asRecord(listRes.raw)?.Data)
+                ? (this.asRecord(listRes.raw)?.Data as unknown[])
+                : [];
+          const match = candidates.find((item) => {
+            const candidate = this.readConnectionNode(item);
+            return candidate.instanceName === params.instanceName;
+          });
+          if (match) return this.readConnectionNode(match);
+          return null;
+        } catch {
+          // Intentamos la siguiente variante.
+        }
+      }
+      return undefined;
+    };
 
-    let parsed = this.readConnectionNode(res.raw);
-    if (Array.isArray(res.raw)) {
-      const match = res.raw.find(
-        (item) => this.readConnectionNode(item).instanceName === params.instanceName,
-      );
-      if (match) parsed = this.readConnectionNode(match);
-    } else {
-      const root = this.asRecord(res.raw);
-      const dataArray = Array.isArray(root?.data)
-        ? root.data
-        : Array.isArray(root?.Data)
-          ? root.Data
-          : null;
-      if (dataArray) {
-        const match = dataArray.find(
+    let parsed = res.ok ? this.readConnectionNode(res.raw) : null;
+    if (res.ok) {
+      if (Array.isArray(res.raw)) {
+        const match = res.raw.find(
           (item) => this.readConnectionNode(item).instanceName === params.instanceName,
         );
         if (match) parsed = this.readConnectionNode(match);
+      } else {
+        const root = this.asRecord(res.raw);
+        const dataArray = Array.isArray(root?.data)
+          ? root.data
+          : Array.isArray(root?.Data)
+            ? root.Data
+            : null;
+        if (dataArray) {
+          const match = dataArray.find(
+            (item) => this.readConnectionNode(item).instanceName === params.instanceName,
+          );
+          if (match) parsed = this.readConnectionNode(match);
+        }
       }
     }
 
-    // En algunos servidores Evolution, `/instance/status` no refleja bien `connected`,
-    // pero el listado global `/instance/all` si lo hace. Si encontramos un match ahi,
-    // priorizamos ese booleano por encima del estado textual.
-    try {
-      const allRes = await this.requestJson('/instance/all', {
-        method: 'GET',
-      });
-      if (allRes.ok) {
-        const allCandidates = Array.isArray(allRes.raw)
-          ? allRes.raw
-          : Array.isArray(this.asRecord(allRes.raw)?.data)
-            ? (this.asRecord(allRes.raw)?.data as unknown[])
-            : Array.isArray(this.asRecord(allRes.raw)?.Data)
-              ? (this.asRecord(allRes.raw)?.Data as unknown[])
-              : [];
-        const match = allCandidates.find((item) => {
-          const candidate = this.readConnectionNode(item);
-          return candidate.instanceName === params.instanceName;
-        });
-        if (match) {
-          const candidate = this.readConnectionNode(match);
-          if (candidate.connected !== null) {
-            parsed = candidate;
-          }
-        }
-      }
-    } catch {
-      // Si `/instance/all` no esta disponible, mantenemos el resultado anterior.
+    const listed = await listInstances();
+    if (listed === null) {
+      throw new Error(`Instance not found: ${params.instanceName}`);
+    }
+    if (!parsed && listed !== undefined) {
+      parsed = listed;
+    }
+    if (listed && listed.connected !== null) {
+      parsed = listed;
+    }
+    if (!parsed) {
+      throw new Error(
+        this.readErrorMessage(res.raw, 'No se pudo consultar el estado de conexión'),
+      );
     }
 
     return {
