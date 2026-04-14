@@ -15,13 +15,13 @@ const timelineIconMap: Record<TimelineEvent['type'], typeof Phone> = {
 };
 
 const timelineColorMap: Record<TimelineEvent['type'], string> = {
-  llamada: 'bg-blue-100 text-blue-600',
-  correo: 'bg-purple-100 text-purple-600',
-  reunion: 'bg-emerald-100 text-emerald-600',
-  nota: 'bg-amber-100 text-amber-600',
-  cambio_estado: 'bg-orange-100 text-orange-600',
-  tarea: 'bg-cyan-100 text-cyan-600',
-  archivo: 'bg-gray-100 text-gray-600',
+  llamada: 'bg-activity-call/15 text-activity-call',
+  correo: 'bg-activity-message/15 text-activity-message',
+  reunion: 'bg-stage-client/15 text-stage-client',
+  nota: 'bg-activity-note/15 text-activity-note',
+  cambio_estado: 'bg-activity-system/15 text-activity-system',
+  tarea: 'bg-activity-task/15 text-activity-task',
+  archivo: 'bg-muted text-text-secondary',
 };
 
 interface TimelinePanelProps {
@@ -30,10 +30,10 @@ interface TimelinePanelProps {
 
 export function TimelinePanel({ events }: TimelinePanelProps) {
   return (
-    <Card className="border-0 bg-transparent shadow-none pt-0">
+    <Card className="border-0 bg-transparent pt-0 shadow-none">
       <CardContent className="pt-6">
         <div className="relative">
-          <div className="absolute left-[19px] top-0 bottom-0 w-px bg-border" />
+          <div className="absolute bottom-0 left-[19px] top-0 w-px bg-border/80" />
           <div className="space-y-6">
             {events.map((event) => {
               const Icon = timelineIconMap[event.type];
@@ -45,11 +45,11 @@ export function TimelinePanel({ events }: TimelinePanelProps) {
                   </div>
                   <div className="flex-1 min-w-0 pb-2">
                     <div className="flex items-start justify-between gap-2">
-                      <p className="font-medium">{event.title}</p>
-                      <span className="shrink-0 text-xs text-muted-foreground">{event.date}</span>
+                      <p className="font-medium text-text-primary">{event.title}</p>
+                      <span className="shrink-0 text-xs text-text-tertiary">{event.date}</span>
                     </div>
-                    <p className="mt-1 text-sm text-muted-foreground">{event.description}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">por {event.user}</p>
+                    <p className="mt-1 text-sm text-text-secondary">{event.description}</p>
+                    <p className="mt-1 text-xs text-text-tertiary">por {event.user}</p>
                   </div>
                 </div>
               );

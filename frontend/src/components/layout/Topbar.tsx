@@ -70,28 +70,28 @@ export function Topbar() {
   };
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-3 border-b bg-background px-4">
-      <SidebarTrigger className="-ml-1" />
-      <Separator orientation="vertical" className="h-5" />
+    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b border-border/80 bg-background/80 px-4 backdrop-blur-xl md:px-6">
+      <SidebarTrigger className="-ml-1 text-text-secondary hover:bg-surface-hover hover:text-foreground" />
+      <Separator orientation="vertical" className="h-5 bg-border/80" />
 
       <Breadcrumb className="hidden sm:flex">
         <BreadcrumbList>
           <BreadcrumbItem>
-            <BreadcrumbPage>Taxi Monterrico</BreadcrumbPage>
+            <BreadcrumbPage className="text-text-secondary">Taxi Monterrico</BreadcrumbPage>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbPage>{pageTitle}</BreadcrumbPage>
+            <BreadcrumbPage className="text-foreground">{pageTitle}</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
 
       <div className="ml-auto flex items-center gap-2">
         <div className="relative hidden md:block">
-          <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-text-tertiary" />
           <Input
             placeholder="Buscar..."
-            className="h-8 w-56 bg-muted/50 pl-8 text-sm"
+            className="h-8 w-56 border-border/80 bg-card pl-8 text-sm"
           />
         </div>
 
@@ -101,13 +101,13 @@ export function Topbar() {
 
         <ThemeToggle />
 
-        <Separator orientation="vertical" className="mx-1 h-5" />
+        <Separator orientation="vertical" className="mx-1 h-5 bg-border/80" />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="h-8 gap-2 px-2 text-sm font-normal"
+              className="h-8 gap-2 px-2 text-sm font-normal text-text-secondary hover:bg-surface-hover hover:text-foreground"
             >
               <Avatar className="size-6">
                 <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">

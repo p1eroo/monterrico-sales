@@ -60,11 +60,11 @@ export function LinkedContactsCard({
         return (
           <>
             <div className="flex items-start justify-between gap-2 mb-1">
-              <p className="text-[14px] font-semibold leading-tight truncate">{contact.name}</p>
+              <p className="truncate text-[14px] font-semibold leading-tight text-text-primary">{contact.name}</p>
               {variant === 'full' ? (
                 <Badge
                   variant="outline"
-                  className={`text-[11px] font-medium shrink-0 border-0 ${etapaColors[contact.etapa] ?? 'bg-gray-100 text-gray-700'}`}
+                  className={`shrink-0 border-0 text-[11px] font-medium ${etapaColors[contact.etapa] ?? 'bg-muted text-text-secondary'}`}
                 >
                   {etapaLabels[contact.etapa as keyof typeof etapaLabels] ?? contact.etapa}
                 </Badge>
@@ -73,14 +73,14 @@ export function LinkedContactsCard({
               )}
             </div>
             {contact.cargo && (
-              <p className="text-[13px] text-muted-foreground mb-1">{contact.cargo}</p>
+              <p className="mb-1 text-[13px] text-text-secondary">{contact.cargo}</p>
             )}
             {variant === 'full' ? (
-              <div className="flex items-center justify-between gap-2 text-[12px] text-muted-foreground">
+              <div className="flex items-center justify-between gap-2 text-[12px] text-text-secondary">
                 <div className="flex items-center gap-4 min-w-0">
                   {contact.correo && (
                     <span className="flex items-center gap-1 truncate">
-                      <Mail className="size-3 shrink-0" />
+                      <Mail className="size-3 shrink-0 text-text-tertiary" />
                       {contact.correo}
                     </span>
                   )}
@@ -89,7 +89,7 @@ export function LinkedContactsCard({
               </div>
             ) : (
               <div className="flex items-center justify-between gap-2">
-                <p className="text-[12px] text-muted-foreground">{formatCurrency(contact.estimatedValue)}</p>
+                <p className="text-[12px] text-text-secondary">{formatCurrency(contact.estimatedValue)}</p>
                 {unlinkButton}
               </div>
             )}

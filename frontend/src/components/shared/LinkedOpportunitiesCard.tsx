@@ -42,21 +42,21 @@ export function LinkedOpportunitiesCard({
       renderItem={(opp, unlinkButton) => (
         <>
           <div className="flex items-start justify-between gap-2 mb-1">
-            <p className="text-[14px] font-semibold leading-tight">{opp.title}</p>
+            <p className="text-[14px] font-semibold leading-tight text-text-primary">{opp.title}</p>
             <Badge
               variant="outline"
-              className={`text-[11px] font-medium shrink-0 border-0 ${etapaColors[opp.etapa] ?? 'bg-gray-100 text-gray-700'}`}
+              className={`shrink-0 border-0 text-[11px] font-medium ${etapaColors[opp.etapa] ?? 'bg-muted text-text-secondary'}`}
             >
               {etapaLabels[opp.etapa]}
             </Badge>
           </div>
           <div className="flex items-baseline gap-2 mb-1">
-            <span className="text-[15px] font-bold text-emerald-600">{formatCurrency(opp.amount)}</span>
+            <span className="text-[15px] font-bold text-primary">{formatCurrency(opp.amount)}</span>
           </div>
-          <div className="flex items-center justify-between gap-2 text-[12px] text-muted-foreground">
+          <div className="flex items-center justify-between gap-2 text-[12px] text-text-secondary">
             <div className="flex items-center gap-4 min-w-0">
               <span className="flex items-center gap-1">
-                <CalendarDays className="size-3" />
+                <CalendarDays className="size-3 text-text-tertiary" />
                 Cierre: {formatDate(opp.expectedCloseDate)}
               </span>
             </div>

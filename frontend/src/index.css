@@ -43,6 +43,22 @@
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
+    --color-surface-elevated: var(--surface-elevated);
+    --color-surface-hover: var(--surface-hover);
+    --color-text-primary: var(--text-primary);
+    --color-text-secondary: var(--text-secondary);
+    --color-text-tertiary: var(--text-tertiary);
+    --color-stage-lead: var(--stage-lead);
+    --color-stage-prospect: var(--stage-prospect);
+    --color-stage-client: var(--stage-client);
+    --color-stage-lost: var(--stage-lost);
+    --color-whatsapp: var(--whatsapp);
+    --color-whatsapp-foreground: var(--whatsapp-foreground);
+    --color-activity-message: var(--activity-message);
+    --color-activity-note: var(--activity-note);
+    --color-activity-call: var(--activity-call);
+    --color-activity-task: var(--activity-task);
+    --color-activity-system: var(--activity-system);
     --color-success: var(--success);
     --color-success-foreground: var(--success-foreground);
     --color-warning: var(--warning);
@@ -53,7 +69,7 @@
 }
 
 :root {
-    --radius: 0.625rem;
+    --radius: 0.5rem;
     --background: #f8faf9;
     --foreground: #0f172a;
     --card: #ffffff;
@@ -77,6 +93,22 @@
     --chart-3: #f59e0b;
     --chart-4: #8b5cf6;
     --chart-5: #ec4899;
+    --surface-elevated: #ffffff;
+    --surface-hover: #f5f8f7;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-tertiary: #64748b;
+    --stage-lead: #f59e0b;
+    --stage-prospect: #3b82f6;
+    --stage-client: #16a34a;
+    --stage-lost: #ef4444;
+    --whatsapp: #22c55e;
+    --whatsapp-foreground: #ffffff;
+    --activity-message: #3b82f6;
+    --activity-note: #f59e0b;
+    --activity-call: #16a34a;
+    --activity-task: #8b5cf6;
+    --activity-system: #94a3b8;
     --sidebar: #0f2e1d;
     --sidebar-foreground: #e2e8f0;
     --sidebar-primary: #13944C;
@@ -101,47 +133,63 @@
 
 /* Dark mode - Notion/Linear/Slack/HubSpot inspired */
 .dark {
-    --background: #0f172a;
-    --foreground: #f1f5f9;
-    --card: #1e293b;
-    --card-foreground: #f1f5f9;
-    --popover: #1e293b;
-    --popover-foreground: #f1f5f9;
+    --background: hsl(220 19% 7.4%);
+    --foreground: hsl(210 20% 92%);
+    --card: hsl(220 16% 11%);
+    --card-foreground: hsl(210 20% 92%);
+    --popover: hsl(220 16% 11%);
+    --popover-foreground: hsl(210 20% 92%);
     --primary: #13944C;
     --primary-foreground: #ffffff;
-    --secondary: #1e293b;
-    --secondary-foreground: #f1f5f9;
-    --muted: #334155;
-    --muted-foreground: #94a3b8;
-    --accent: #1e3a2f;
-    --accent-foreground: #4ade80;
-    --destructive: #f87171;
-    --border: #334155;
-    --input: #334155;
+    --secondary: hsl(220 16% 16%);
+    --secondary-foreground: hsl(210 20% 80%);
+    --muted: hsl(220 14% 13%);
+    --muted-foreground: hsl(215 12% 50%);
+    --accent: hsl(220 15% 16%);
+    --accent-foreground: hsl(210 20% 88%);
+    --destructive: hsl(0 72% 51%);
+    --border: hsl(220 14% 17.5%);
+    --input: hsl(220 14% 18.5%);
     --ring: #13944C;
     --chart-1: #13944C;
     --chart-2: #60a5fa;
     --chart-3: #fbbf24;
     --chart-4: #a78bfa;
     --chart-5: #f472b6;
-    --sidebar: #1c2535;
-    --sidebar-foreground: #e2e8f0;
+    --surface-elevated: hsl(220 16% 11.8%);
+    --surface-hover: hsl(220 15% 13.8%);
+    --text-primary: hsl(210 20% 92%);
+    --text-secondary: hsl(215 12% 58%);
+    --text-tertiary: hsl(215 10% 40%);
+    --stage-lead: hsl(38 92% 50%);
+    --stage-prospect: hsl(210 100% 56%);
+    --stage-client: hsl(142 71% 45%);
+    --stage-lost: hsl(0 72% 51%);
+    --whatsapp: hsl(142 70% 49%);
+    --whatsapp-foreground: #ffffff;
+    --activity-message: hsl(210 100% 56%);
+    --activity-note: hsl(38 92% 50%);
+    --activity-call: hsl(142 71% 45%);
+    --activity-task: hsl(280 67% 60%);
+    --activity-system: hsl(215 10% 40%);
+    --sidebar: hsl(220 18% 8.5%);
+    --sidebar-foreground: hsl(210 20% 92%);
     --sidebar-primary: #13944C;
     --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: #253044;
-    --sidebar-accent-foreground: #e2e8f0;
-    --sidebar-border: #2d3a4f;
+    --sidebar-accent: hsl(220 16% 12.5%);
+    --sidebar-accent-foreground: hsl(210 20% 88%);
+    --sidebar-border: hsl(220 14% 16.2%);
     --sidebar-ring: #13944C;
-    --success: #22c55e;
+    --success: hsl(142 71% 45%);
     --success-foreground: #ffffff;
-    --warning: #fbbf24;
+    --warning: hsl(38 92% 50%);
     --warning-foreground: #1e293b;
-    --info: #60a5fa;
+    --info: hsl(210 100% 56%);
     --info-foreground: #ffffff;
     --workflow-grid-dot: rgba(148, 163, 184, 0.09);
-    --workflow-minimap-mask: rgba(15, 23, 42, 0.45);
-    --pipeline-kanban-surface: #2d3a4d;
-    --pipeline-kanban-column-header: color-mix(in srgb, #2d3a4d 90%, transparent);
+    --workflow-minimap-mask: rgba(11, 15, 23, 0.45);
+    --pipeline-kanban-surface: hsl(220 18% 10%);
+    --pipeline-kanban-column-header: color-mix(in srgb, hsl(220 18% 10%) 90%, transparent);
 }
 
 @layer base {
@@ -167,6 +215,7 @@
     }
     body {
         @apply bg-background text-foreground font-sans antialiased transition-colors duration-300;
+        font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     }
 }
 

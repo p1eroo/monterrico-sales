@@ -64,17 +64,21 @@ export function LinkedEntitiesCard<T>({
   }
 
   return (
-    <Card className="gap-2">
-      <CardHeader className="flex flex-row items-center justify-between gap-2 pb-0 -mt-1">
-        <CardTitle className="flex items-center gap-1.5 text-[14px]">
-          <Icon className="size-4.5 text-muted-foreground" />
+    <Card className="gap-2 border-border/70 bg-surface-elevated shadow-none">
+      <CardHeader className="-mt-1 flex flex-row items-center justify-between gap-2 pb-0">
+        <CardTitle className="flex items-center gap-1.5 text-[14px] text-text-primary">
+          <Icon className="size-4 text-text-tertiary" />
           {title}
-          <span className="text-muted-foreground font-normal">({items.length})</span>
+          <span className="font-normal text-text-tertiary">({items.length})</span>
         </CardTitle>
         {hasActions && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="ghost" className="h-6 w-6 shrink-0 p-0">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 w-7 shrink-0 rounded-md border border-border/70 bg-background/40 p-0 text-text-secondary hover:bg-surface-hover hover:text-text-primary"
+              >
                 <Plus className="size-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -87,8 +91,8 @@ export function LinkedEntitiesCard<T>({
       </CardHeader>
       <CardContent className="pt-0">
         {items.length === 0 ? (
-          <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-            <p className="text-center text-xs text-muted-foreground">{emptyMessage}</p>
+          <div className="rounded-lg border border-dashed border-border/70 bg-background/30 px-3 py-2">
+            <p className="text-center text-xs text-text-secondary">{emptyMessage}</p>
           </div>
         ) : (
           <div className="space-y-2.5">
@@ -102,7 +106,7 @@ export function LinkedEntitiesCard<T>({
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="h-7 w-7 shrink-0 p-0 text-muted-foreground hover:text-destructive"
+                    className="h-7 w-7 shrink-0 p-0 text-text-tertiary hover:bg-stage-lost/10 hover:text-stage-lost"
                     onClick={() => handleUnlinkClick(item)}
                   >
                     <Link2Off className="size-4" />
@@ -112,7 +116,7 @@ export function LinkedEntitiesCard<T>({
               return (
                 <div
                   key={getItemKey(item, idx)}
-                  className="rounded-xl border bg-card p-3.5 hover:shadow-sm transition-shadow cursor-pointer"
+                  className="cursor-pointer rounded-xl border border-border/70 bg-background/50 p-3.5 transition-colors hover:border-border hover:bg-surface-hover"
                   onClick={() => onItemClick(item)}
                 >
                   {renderItem(item, unlinkBtn)}
@@ -120,7 +124,7 @@ export function LinkedEntitiesCard<T>({
               );
             })}
             {items.length > maxItems && (
-              <p className="text-[11px] text-muted-foreground text-center pt-1">
+              <p className="pt-1 text-center text-[11px] text-text-tertiary">
                 +{items.length - maxItems} más
               </p>
             )}

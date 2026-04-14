@@ -31,11 +31,11 @@ const activityTypeLabelMap: Record<ActivityType, string> = {
 };
 
 const activityTypeColorMap: Record<ActivityType, string> = {
-  llamada: 'bg-blue-100 text-blue-700',
-  reunion: 'bg-emerald-100 text-emerald-700',
-  tarea: 'bg-violet-100 text-violet-700',
-  correo: 'bg-purple-100 text-purple-700',
-  whatsapp: 'bg-green-100 text-green-700',
+  llamada: 'bg-activity-call/15 text-activity-call',
+  reunion: 'bg-stage-client/15 text-stage-client',
+  tarea: 'bg-activity-task/15 text-activity-task',
+  correo: 'bg-activity-message/15 text-activity-message',
+  whatsapp: 'bg-whatsapp/15 text-whatsapp',
 };
 
 const activityStatusLabelMap: Record<string, string> = {
@@ -46,10 +46,10 @@ const activityStatusLabelMap: Record<string, string> = {
 };
 
 const statusColors: Record<string, string> = {
-  pendiente: 'bg-amber-100 text-amber-700 border-amber-200',
-  completada: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-  vencida: 'bg-red-100 text-red-700 border-red-200',
-  en_progreso: 'bg-blue-100 text-blue-700 border-blue-200',
+  pendiente: 'border-warning/30 bg-warning/15 text-warning',
+  completada: 'border-stage-client/30 bg-stage-client/15 text-stage-client',
+  vencida: 'border-stage-lost/30 bg-stage-lost/15 text-stage-lost',
+  en_progreso: 'border-stage-prospect/30 bg-stage-prospect/15 text-stage-prospect',
 };
 
 /** Formato de fecha para strings sin hora (ej: "2026-03-05") - evita desfase UTC */
@@ -72,7 +72,7 @@ export function ActivityPanel({ activities, onRegisterActivity }: ActivityPanelP
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
 
   return (
-    <Card className="pt-2">
+    <Card className="border-border/70 bg-surface-elevated pt-2 shadow-none">
       <CardContent>
         {activities.length === 0 ? (
           <EmptyState
@@ -86,11 +86,11 @@ export function ActivityPanel({ activities, onRegisterActivity }: ActivityPanelP
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-10">Tipo</TableHead>
-                <TableHead>Título</TableHead>
-                <TableHead>Descripción</TableHead>
-                <TableHead>Asignado</TableHead>
-                <TableHead>Vence</TableHead>
+                <TableHead className="w-10 text-text-tertiary">Tipo</TableHead>
+                <TableHead className="text-text-tertiary">Título</TableHead>
+                <TableHead className="text-text-tertiary">Descripción</TableHead>
+                <TableHead className="text-text-tertiary">Asignado</TableHead>
+                <TableHead className="text-text-tertiary">Vence</TableHead>
                 <TableHead className="text-right">Estado</TableHead>
               </TableRow>
             </TableHeader>
@@ -100,20 +100,20 @@ export function ActivityPanel({ activities, onRegisterActivity }: ActivityPanelP
                 return (
                   <TableRow
                     key={activity.id}
-                    className="cursor-pointer hover:bg-muted/50"
+                    className="cursor-pointer border-border/60 hover:bg-surface-hover"
                     onClick={() => setSelectedActivity(activity)}
                   >
                     <TableCell>
-                      <div className="flex size-8 items-center justify-center rounded-full bg-muted">
-                        <Icon className="size-4 text-muted-foreground" />
+                      <div className={`flex size-8 items-center justify-center rounded-full ${activityTypeColorMap[activity.type]}`}>
+                        <Icon className="size-4" />
                       </div>
                     </TableCell>
-                    <TableCell className="font-medium">{activity.title}</TableCell>
-                    <TableCell className="max-w-[220px] whitespace-normal text-muted-foreground">
+                    <TableCell className="font-medium text-text-primary">{activity.title}</TableCell>
+                    <TableCell className="max-w-[220px] whitespace-normal text-text-secondary">
                       <span className="line-clamp-2">{activity.description}</span>
                     </TableCell>
-                    <TableCell>{activity.assignedToName}</TableCell>
-                    <TableCell>{formatDateLocal(activity.dueDate)}</TableCell>
+                    <TableCell className="text-text-secondary">{activity.assignedToName}</TableCell>
+                    <TableCell className="text-text-secondary">{formatDateLocal(activity.dueDate)}</TableCell>
                     <TableCell className="text-right">
                       <Badge variant="outline" className={statusColors[activity.status] ?? ''}>
                         {activityStatusLabelMap[activity.status] ?? activity.status}
@@ -128,7 +128,7 @@ export function ActivityPanel({ activities, onRegisterActivity }: ActivityPanelP
       </CardContent>
 
       <Dialog open={!!selectedActivity} onOpenChange={(open) => { if (!open) setSelectedActivity(null); }}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg border-border bg-card text-text-primary">
           {selectedActivity && (() => {
             const Icon = activityTypeIconMap[selectedActivity.type];
             return (
@@ -139,7 +139,7 @@ export function ActivityPanel({ activities, onRegisterActivity }: ActivityPanelP
                       <Icon className="size-5" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <DialogTitle className="text-lg">{selectedActivity.title}</DialogTitle>
+                      <DialogTitle className="text-lg text-text-primary">{selectedActivity.title}</DialogTitle>
                       <div className="flex items-center gap-2 mt-1">
                         <Badge variant="outline" className={`text-xs ${activityTypeColorMap[selectedActivity.type]}`}>
                           {activityTypeLabelMap[selectedActivity.type]}
@@ -155,52 +155,52 @@ export function ActivityPanel({ activities, onRegisterActivity }: ActivityPanelP
                 <div className="space-y-4 pt-2">
                   {selectedActivity.description && (
                     <div className="space-y-1.5">
-                      <span className="text-sm font-medium text-muted-foreground">Descripción</span>
-                      <p className="text-sm leading-relaxed rounded-lg bg-muted/40 p-3">
+                      <span className="text-sm font-medium text-text-secondary">Descripción</span>
+                      <p className="rounded-lg border border-border/60 bg-background/40 p-3 text-sm leading-relaxed text-text-primary">
                         {selectedActivity.description}
                       </p>
                     </div>
                   )}
 
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="flex items-center gap-2.5 rounded-lg border p-3">
-                      <User className="size-4 text-muted-foreground shrink-0" />
+                    <div className="flex items-center gap-2.5 rounded-lg border border-border/70 bg-background/30 p-3">
+                      <User className="size-4 shrink-0 text-text-tertiary" />
                       <div className="min-w-0">
-                        <p className="text-xs text-muted-foreground">Asignado a</p>
-                        <p className="text-sm font-medium truncate">{selectedActivity.assignedToName}</p>
+                        <p className="text-xs text-text-secondary">Asignado a</p>
+                        <p className="truncate text-sm font-medium text-text-primary">{selectedActivity.assignedToName}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2.5 rounded-lg border p-3">
-                      <Calendar className="size-4 text-muted-foreground shrink-0" />
+                    <div className="flex items-center gap-2.5 rounded-lg border border-border/70 bg-background/30 p-3">
+                      <Calendar className="size-4 shrink-0 text-text-tertiary" />
                       <div className="min-w-0">
-                        <p className="text-xs text-muted-foreground">Fecha de vencimiento</p>
-                        <p className="text-sm font-medium truncate capitalize">{formatFullDate(selectedActivity.dueDate)}</p>
+                        <p className="text-xs text-text-secondary">Fecha de vencimiento</p>
+                        <p className="truncate text-sm font-medium capitalize text-text-primary">{formatFullDate(selectedActivity.dueDate)}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2.5 rounded-lg border p-3">
-                      <Clock className="size-4 text-muted-foreground shrink-0" />
+                    <div className="flex items-center gap-2.5 rounded-lg border border-border/70 bg-background/30 p-3">
+                      <Clock className="size-4 shrink-0 text-text-tertiary" />
                       <div className="min-w-0">
-                        <p className="text-xs text-muted-foreground">Fecha de creación</p>
-                        <p className="text-sm font-medium truncate capitalize">{formatFullDate(selectedActivity.createdAt)}</p>
+                        <p className="text-xs text-text-secondary">Fecha de creación</p>
+                        <p className="truncate text-sm font-medium capitalize text-text-primary">{formatFullDate(selectedActivity.createdAt)}</p>
                       </div>
                     </div>
                     {selectedActivity.completedAt && (
-                      <div className="flex items-center gap-2.5 rounded-lg border p-3">
-                        <CheckSquare className="size-4 text-emerald-600 shrink-0" />
+                      <div className="flex items-center gap-2.5 rounded-lg border border-border/70 bg-background/30 p-3">
+                        <CheckSquare className="size-4 shrink-0 text-stage-client" />
                         <div className="min-w-0">
-                          <p className="text-xs text-muted-foreground">Completada el</p>
-                          <p className="text-sm font-medium truncate capitalize">{formatFullDate(selectedActivity.completedAt)}</p>
+                          <p className="text-xs text-text-secondary">Completada el</p>
+                          <p className="truncate text-sm font-medium capitalize text-text-primary">{formatFullDate(selectedActivity.completedAt)}</p>
                         </div>
                       </div>
                     )}
                   </div>
 
                   {selectedActivity.contactName && (
-                    <div className="flex items-center gap-2.5 rounded-lg border p-3">
-                      <User className="size-4 text-muted-foreground shrink-0" />
+                    <div className="flex items-center gap-2.5 rounded-lg border border-border/70 bg-background/30 p-3">
+                      <User className="size-4 shrink-0 text-text-tertiary" />
                       <div className="min-w-0">
-                        <p className="text-xs text-muted-foreground">Contacto asociado</p>
-                        <p className="text-sm font-medium">{selectedActivity.contactName}</p>
+                        <p className="text-xs text-text-secondary">Contacto asociado</p>
+                        <p className="text-sm font-medium text-text-primary">{selectedActivity.contactName}</p>
                       </div>
                     </div>
                   )}

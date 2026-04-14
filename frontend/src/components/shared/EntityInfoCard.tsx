@@ -21,18 +21,19 @@ interface EntityInfoCardProps {
 
 export function EntityInfoCard({ title, fields, extraContent }: EntityInfoCardProps) {
   return (
-    <Card className="min-w-0 gap-2">
+    <Card className="min-w-0 gap-2 border-border/70 bg-surface-elevated shadow-none">
       <CardHeader className="-mb-1 -mt-1">
-        <CardTitle className="text-[14px]">{title}</CardTitle>
+        <CardTitle className="text-[14px] text-text-primary">{title}</CardTitle>
       </CardHeader>
-      <CardContent className="min-w-0 space-y-2.5 pt-0 text-sm">
+      <CardContent className="min-w-0 space-y-2.5 pt-0 text-sm text-text-secondary">
         {fields.map((field, i) => {
           const hint = field.title ?? (field.truncate ? field.value : undefined);
           const valueClasses = cn(
-            field.href && 'text-primary hover:underline',
+            field.href && 'text-primary hover:text-primary/90 hover:underline',
             (field.icon || field.label || field.href || field.truncate) &&
               'min-w-0 flex-1',
             (field.truncate || field.href) && 'truncate',
+            !field.href && 'text-text-primary',
           );
           return (
             <div
@@ -43,10 +44,10 @@ export function EntityInfoCard({ title, fields, extraContent }: EntityInfoCardPr
               )}
             >
               {field.icon ? (
-                <field.icon className="size-4 shrink-0 text-muted-foreground" />
+                <field.icon className="size-4 shrink-0 text-text-tertiary" />
               ) : null}
               {field.label && !field.icon ? (
-                <span className="shrink-0 text-muted-foreground">{field.label}</span>
+                <span className="shrink-0 text-text-secondary">{field.label}</span>
               ) : null}
               {field.href ? (
                 <a href={field.href} title={hint} className={valueClasses}>

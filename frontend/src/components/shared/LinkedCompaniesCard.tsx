@@ -48,23 +48,23 @@ export function LinkedCompaniesCard({
         <>
           <div className="flex items-start justify-between gap-2 mb-1">
             <div className="flex items-center gap-1.5 min-w-0">
-              {comp.isPrimary && <Star className="size-3.5 shrink-0 fill-amber-400 text-amber-500" />}
-              <p className="text-[14px] font-semibold leading-tight truncate">{comp.name}</p>
+              {comp.isPrimary && <Star className="size-3.5 shrink-0 fill-stage-lead text-stage-lead" />}
+              <p className="truncate text-[14px] font-semibold leading-tight text-text-primary">{comp.name}</p>
             </div>
             {etapa && (
               <Badge
                 variant="outline"
-                className={`text-[11px] font-medium shrink-0 border-0 ${etapaColors[etapa as keyof typeof etapaColors] ?? 'bg-gray-100 text-gray-700'}`}
+                className={`shrink-0 border-0 text-[11px] font-medium ${etapaColors[etapa as keyof typeof etapaColors] ?? 'bg-muted text-text-secondary'}`}
               >
                 {etapaLabels[etapa as keyof typeof etapaLabels] ?? etapa}
               </Badge>
             )}
           </div>
-          <div className="flex items-center justify-between gap-2 text-[12px] text-muted-foreground">
+          <div className="flex items-center justify-between gap-2 text-[12px] text-text-secondary">
             <div className="flex items-center gap-4 min-w-0">
               {comp.domain && (
                 <span className="flex items-center gap-1">
-                  <Globe className="size-3" />
+                  <Globe className="size-3 text-text-tertiary" />
                   {comp.domain}
                 </span>
               )}

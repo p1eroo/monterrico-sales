@@ -76,9 +76,9 @@ export default function MainLayout() {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset className="overflow-hidden">
+      <SidebarInset className="overflow-hidden bg-background">
         <Topbar />
-        <div className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6">
+        <div className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 md:px-6 md:pb-6 md:pt-0">
           <ModuleGate />
         </div>
       </SidebarInset>

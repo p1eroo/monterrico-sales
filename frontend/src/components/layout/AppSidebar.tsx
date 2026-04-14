@@ -90,7 +90,7 @@ export function AppSidebar() {
   const visibleNav = navItems.filter((item) => navItemVisible(item, hasPermission));
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="icon" variant="inset" className="border-sidebar-border/80">
       <SidebarHeader className="p-4 group-data-[collapsible=icon]:p-2">
         <NavLink
           to="/dashboard"
@@ -154,7 +154,7 @@ export function AppSidebar() {
             <SidebarMenuButton
               tooltip="Cerrar sesión"
               onClick={logout}
-              className="text-sidebar-foreground/60 hover:text-red-400"
+              className="text-sidebar-foreground/60 hover:bg-destructive/10 hover:text-destructive"
             >
               <LogOut />
               <span>Cerrar sesión</span>

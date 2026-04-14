@@ -2,10 +2,10 @@ import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
-  ArrowLeft, Edit, RefreshCw, UserPlus,
+  ArrowLeft, RefreshCw,
   Phone, Mail, Users,
   Building2, Globe, DollarSign, CalendarDays, MapPin,
-  FileArchive, Loader2, CheckSquare, MessageCircle,
+  FileArchive, Loader2, CheckSquare,
 } from 'lucide-react';
 import type { Contact, Etapa, CompanyRubro, CompanyTipo, TimelineEvent } from '@/types';
 import {
@@ -47,6 +47,7 @@ import { ContactEditDialog, type ContactEditSavePayload } from '@/components/sha
 import { ChangeEtapaDialog } from '@/components/shared/ChangeEtapaDialog';
 import { AssignDialog } from '@/components/shared/AssignDialog';
 import { EntityFilesTab } from '@/components/files';
+import { ContactHeader } from '@/components/contact-detail/ContactHeader';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -77,6 +78,7 @@ import {
   opportunityListAll,
 } from '@/lib/opportunityApi';
 import { type ApiCompanyRecord, companyListAll } from '@/lib/companyApi';
+import { etapaColorsWithBorder } from '@/lib/etapaConfig';
 
 function ContactoSidebar({ contact, contactOpportunities, linkedContacts, onOpenConvertDialog, onAddExistingOpportunity, onRemoveOpportunity, onAddCompany, onAddExistingCompany, onRemoveCompany, onNewContact, onAddLinkContact, onRemoveContact }: {
   contact: Contact;
@@ -977,29 +979,20 @@ export default function ContactoDetailPage() {
       backPath="/contactos"
       title={contact.name}
       subtitle={contact.cargo}
-      headerActions={
-        <>
-          <Button variant="outline" size="sm" onClick={handleOpenEditDialog}>
-            <Edit /> Editar
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5 text-emerald-600 border-emerald-600/40 hover:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/35"
-            onClick={() => setWhatsappDrawerOpen(true)}
-            title="WhatsApp · Evolution GO"
-          >
-            <MessageCircle className="size-4" />
-            WhatsApp
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setStatusDialogOpen(true)}>
-            <RefreshCw /> Cambiar Etapa
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setAssignDialogOpen(true)}>
-            <UserPlus /> Asignar
-          </Button>
-        </>
-      }
+      header={(
+        <ContactHeader
+          backPath="/contactos"
+          name={contact.name}
+          subtitle={contact.cargo}
+          stageLabel={etapaLabels[contact.etapa] ?? contact.etapa}
+          stageClassName={etapaColorsWithBorder[contact.etapa] ?? 'border-border bg-muted text-text-secondary'}
+          estimatedValueLabel={formatCurrency(contact.estimatedValue)}
+          onEdit={handleOpenEditDialog}
+          onOpenWhatsapp={() => setWhatsappDrawerOpen(true)}
+          onChangeStage={() => setStatusDialogOpen(true)}
+          onAssign={() => setAssignDialogOpen(true)}
+        />
+      )}
       quickActions={
         <QuickActionsWithDialogs
           entityName={contact.name}
@@ -1013,61 +1006,61 @@ export default function ContactoDetailPage() {
       }
       summaryCards={
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Card className="py-0">
+            <Card className="border-border bg-surface-elevated py-0 shadow-none">
               <CardContent className="px-4 py-3">
                 <div className="flex items-center gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-whatsapp/12 text-whatsapp">
                     <DollarSign className="size-5" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm text-muted-foreground">Valor estimado</p>
-                    <p className="text-l font-semibold">{formatCurrency(contact.estimatedValue)}</p>
+                    <p className="text-sm text-text-secondary">Valor estimado</p>
+                    <p className="text-l font-semibold text-text-primary">{formatCurrency(contact.estimatedValue)}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
-            <Card className="py-0">
+            <Card className="border-border bg-surface-elevated py-0 shadow-none">
               <CardContent className="px-4 py-3">
                 <div className="flex items-center gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-stage-prospect/12 text-stage-prospect">
                     <RefreshCw className="size-5" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm text-muted-foreground">Etapa actual</p>
-                    <p className="text-l font-semibold">{etapaLabels[contact.etapa]}</p>
+                    <p className="text-sm text-text-secondary">Etapa actual</p>
+                    <p className="text-l font-semibold text-text-primary">{etapaLabels[contact.etapa]}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
-            <Card className="py-0">
+            <Card className="border-border bg-surface-elevated py-0 shadow-none">
               <CardContent className="px-4 py-3">
                 <div className="flex items-center gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-600">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-activity-task/12 text-activity-task">
                     <Users className="size-5" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm text-muted-foreground">Asesor asignado</p>
-                    <p className="text-l font-semibold truncate">{contact.assignedToName}</p>
+                    <p className="text-sm text-text-secondary">Asesor asignado</p>
+                    <p className="text-l font-semibold text-text-primary truncate">{contact.assignedToName}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
-            <Card className="py-0">
+            <Card className="border-border bg-surface-elevated py-0 shadow-none">
               <CardContent className="px-4 py-3">
                 <div className="flex items-center gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-activity-note/12 text-activity-note">
                     <CheckSquare className="size-5" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm text-muted-foreground">Próxima acción</p>
+                    <p className="text-sm text-text-secondary">Próxima acción</p>
                     <p
-                      className="text-l font-semibold truncate"
+                      className="text-l font-semibold text-text-primary truncate"
                       title={nextPendingSummary?.title ?? undefined}
                     >
                       {nextPendingSummary?.title ?? '—'}
                     </p>
                     {nextPendingSummary ? (
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-text-tertiary">
                         Vence {formatDate(nextPendingSummary.dueDate)}
                       </p>
                     ) : null}
