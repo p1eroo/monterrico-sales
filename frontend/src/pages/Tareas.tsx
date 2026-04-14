@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, type ComponentProps } from 'react';
 import { useCrmTeamAdvisorFilter } from '@/hooks/useCrmTeamAdvisorFilter';
 import { toast } from 'sonner';
 import {
@@ -14,7 +14,7 @@ import { contacts } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
 import { useActivities } from '@/hooks/useActivities';
 import {
-  format, isBefore, startOfDay, addDays, isWithinInterval,
+  format, isBefore, startOfDay, addDays, isWithinInterval, isSameDay,
 } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Calendar } from '@/components/ui/calendar';
+import { Calendar, CalendarDayButton } from '@/components/ui/calendar';
 import {
   Dialog, DialogContent, DialogDescription,
   DialogFooter, DialogHeader, DialogTitle,
@@ -45,6 +45,12 @@ import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { ActivityFormDialog } from '@/components/shared/ActivityFormDialog';
 import {
@@ -112,6 +118,10 @@ function isTaskRow(a: Activity): boolean {
   );
 }
 
+function taskDueDay(dueDate: string): Date {
+  return startOfDay(new Date(`${dueDate}T00:00:00`));
+}
+
 export default function TareasPage() {
   const { activeAdvisors } = useUsers();
   const {
@@ -139,7 +149,7 @@ export default function TareasPage() {
   );
   const [activeTab, setActiveTab] = useState('todas');
   const [newTaskOpen, setNewTaskOpen] = useState(false);
-  const [calendarDate, setCalendarDate] = useState<Date | undefined>(new Date());
+  const [calendarDate, setCalendarDate] = useState<Date | undefined>();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [completedTask, setCompletedTask] = useState<Activity | null>(null);
   const [activityFromTaskOpen, setActivityFromTaskOpen] = useState(false);
@@ -169,10 +179,11 @@ export default function TareasPage() {
       const matchesTab = activeTab === 'todas' || task.status === activeTab;
       const matchesStatus = statusFilter === 'todos' || task.status === statusFilter;
       const matchesAdvisor = advisorFilter === 'todos' || task.assignedTo === advisorFilter;
+      const matchesCalendarDate = !calendarDate || isSameDay(taskDueDay(task.dueDate), calendarDate);
 
-      return matchesSearch && matchesTab && matchesStatus && matchesAdvisor;
+      return matchesSearch && matchesTab && matchesStatus && matchesAdvisor && matchesCalendarDate;
     });
-  }, [allTasks, search, activeTab, statusFilter, advisorFilter]);
+  }, [allTasks, search, activeTab, statusFilter, advisorFilter, calendarDate]);
 
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = { todas: allTasks.length };
@@ -182,13 +193,91 @@ export default function TareasPage() {
     return counts;
   }, [allTasks]);
 
-  const todayTasks = useMemo(() => {
-    const today = startOfDay(new Date());
-    return allTasks.filter((a) => {
-      const due = startOfDay(new Date(a.dueDate));
-      return due.getTime() === today.getTime();
-    });
-  }, [allTasks]);
+  const selectedDateTasks = useMemo(() => {
+    const targetDate = startOfDay(calendarDate ?? new Date());
+    return allTasks.filter((a) => isSameDay(taskDueDay(a.dueDate), targetDate));
+  }, [allTasks, calendarDate]);
+
+  const taskDateCounts = useMemo(
+    () =>
+      allTasks.reduce((map, task) => {
+        const key = format(taskDueDay(task.dueDate), 'yyyy-MM-dd');
+        map.set(key, (map.get(key) ?? 0) + 1);
+        return map;
+      }, new Map<string, number>()),
+    [allTasks],
+  );
+
+  const taskDateKeys = useMemo(
+    () => new Set(taskDateCounts.keys()),
+    [taskDateCounts],
+  );
+
+  const TaskCalendarDayButton = useMemo(
+    () =>
+      function TaskCalendarDayButton({
+        className,
+        modifiers,
+        children,
+        day,
+        ...props
+      }: ComponentProps<typeof CalendarDayButton>) {
+        const taskCount = taskDateCounts.get(format(day.date, 'yyyy-MM-dd')) ?? 0;
+        const showDot = modifiers.hasTasks && !modifiers.outside;
+        const showCounter = taskCount > 1 && !modifiers.outside;
+        const dayButton = (
+          <div className="relative">
+            <CalendarDayButton className={className} modifiers={modifiers} day={day} {...props}>
+              {children}
+            </CalendarDayButton>
+            {showDot ? (
+              <span
+                className={cn(
+                  'pointer-events-none absolute bottom-1 left-1/2 size-1.5 -translate-x-1/2 rounded-full bg-[#13944C]',
+                  modifiers.selected && 'bg-white/90',
+                )}
+              />
+            ) : null}
+            {showCounter ? (
+              <span
+                className={cn(
+                  'pointer-events-none absolute right-0.5 top-0.5 flex min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-semibold leading-none',
+                  modifiers.selected
+                    ? 'bg-white/90 text-[#13944C]'
+                    : 'bg-[#13944C] text-white',
+                )}
+              >
+                {taskCount}
+              </span>
+            ) : null}
+          </div>
+        );
+
+        if (!showCounter) return dayButton;
+
+        return (
+          <Tooltip>
+            <TooltipTrigger asChild>{dayButton}</TooltipTrigger>
+            <TooltipContent side="top" sideOffset={6}>
+              {taskCount} tareas
+            </TooltipContent>
+          </Tooltip>
+        );
+      },
+    [taskDateCounts],
+  );
+
+  const calendarTaskProps = useMemo(
+    () => ({
+      modifiers: {
+        hasTasks: (date: Date) => taskDateKeys.has(format(date, 'yyyy-MM-dd')),
+      },
+      components: {
+        DayButton: TaskCalendarDayButton,
+      },
+    }),
+    [taskDateKeys],
+  );
 
   const upcomingTasks = useMemo(() => {
     const today = startOfDay(new Date());
@@ -204,18 +293,25 @@ export default function TareasPage() {
     ? advisorFilter !== 'todos'
     : false;
   const hasActiveFilters =
-    statusFilter !== 'todos' || advisorFilterIsActive || search !== '';
+    statusFilter !== 'todos' || advisorFilterIsActive || search !== '' || Boolean(calendarDate);
 
   function clearFilters() {
     setSearch('');
     setStatusFilter('todos');
     setAdvisorFilter(canSeeAllAdvisors ? 'todos' : currentUserId);
+    setCalendarDate(undefined);
   }
 
   function isOverdue(dueDate: string, status: ActivityStatus) {
     if (status === 'completada') return false;
     return isBefore(new Date(dueDate), startOfDay(new Date()));
   }
+
+  const selectedDateLabel = format(
+    calendarDate ?? new Date(),
+    "d 'de' MMMM yyyy",
+    { locale: es },
+  );
 
   function formatDueDate(dueDate: string, startTime?: string) {
     const date = new Date(dueDate + 'T00:00:00');
@@ -385,7 +481,8 @@ export default function TareasPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <TooltipProvider>
+      <div className="space-y-6">
       <PageHeader title="Tareas" description="Gestiona tus tareas pendientes">
         <div className="flex items-center gap-2">
           {activitiesLoading && (
@@ -475,6 +572,18 @@ export default function TareasPage() {
           )}
         </div>
       </div>
+
+      {calendarDate && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <CalendarDays className="size-4 text-[#13944C]" />
+          <span>
+            Mostrando tareas para <span className="font-medium text-foreground">{selectedDateLabel}</span>
+          </span>
+          <Button variant="link" size="sm" className="h-auto p-0" onClick={() => setCalendarDate(undefined)}>
+            Ver todas
+          </Button>
+        </div>
+      )}
 
       {/* Main content: list + sidebar */}
       <div className="flex gap-6">
@@ -647,13 +756,13 @@ export default function TareasPage() {
               <CardContent className="p-4">
                 <div className="mb-3 text-center">
                   <p className="text-sm font-medium text-muted-foreground">
-                    {format(new Date(), "EEEE", { locale: es })}
+                    {format(calendarDate ?? new Date(), "EEEE", { locale: es })}
                   </p>
                   <p className="text-3xl font-bold text-[#13944C]">
-                    {format(new Date(), 'd')}
+                    {format(calendarDate ?? new Date(), 'd')}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {format(new Date(), "MMMM yyyy", { locale: es })}
+                    {format(calendarDate ?? new Date(), "MMMM yyyy", { locale: es })}
                   </p>
                 </div>
                 <Calendar
@@ -661,6 +770,7 @@ export default function TareasPage() {
                   selected={calendarDate}
                   onSelect={setCalendarDate}
                   className="mx-auto"
+                  {...calendarTaskProps}
                 />
               </CardContent>
             </Card>
@@ -669,15 +779,15 @@ export default function TareasPage() {
               <CardContent className="p-4">
                 <h3 className="flex items-center gap-2 font-semibold">
                   <CalendarDays className="size-4 text-[#13944C]" />
-                  Hoy
+                  {calendarDate ? 'Día seleccionado' : 'Hoy'}
                 </h3>
-                {todayTasks.length === 0 ? (
+                {selectedDateTasks.length === 0 ? (
                   <p className="mt-2 text-sm text-muted-foreground">
-                    No hay tareas para hoy.
+                    {calendarDate ? 'No hay tareas para esa fecha.' : 'No hay tareas para hoy.'}
                   </p>
                 ) : (
                   <div className="mt-3 space-y-2">
-                    {todayTasks.map((t) => {
+                    {selectedDateTasks.map((t) => {
                       const Icon = activityIcons[t.taskKind ?? 'llamada'];
                       return (
                         <div key={t.id} className="flex items-center gap-2 rounded-md border p-2 text-sm">
@@ -745,6 +855,7 @@ export default function TareasPage() {
                   mode="single"
                   selected={calendarDate}
                   onSelect={setCalendarDate}
+                  {...calendarTaskProps}
                 />
               </CardContent>
             </Card>
@@ -753,13 +864,15 @@ export default function TareasPage() {
               <CardContent className="p-4">
                 <h3 className="flex items-center gap-2 font-semibold">
                   <CalendarDays className="size-4 text-[#13944C]" />
-                  Tareas de hoy
+                  {calendarDate ? 'Tareas del día seleccionado' : 'Tareas de hoy'}
                 </h3>
-                {todayTasks.length === 0 ? (
-                  <p className="mt-2 text-sm text-muted-foreground">No hay tareas para hoy.</p>
+                {selectedDateTasks.length === 0 ? (
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {calendarDate ? 'No hay tareas para esa fecha.' : 'No hay tareas para hoy.'}
+                  </p>
                 ) : (
                   <div className="mt-3 space-y-2">
-                    {todayTasks.map((t) => {
+                    {selectedDateTasks.map((t) => {
                       const Icon = activityIcons[t.taskKind ?? 'llamada'];
                       return (
                         <div key={t.id} className="flex items-center gap-2 rounded-md border p-2 text-sm">
@@ -932,6 +1045,7 @@ export default function TareasPage() {
         defaultTitle={newTaskDefaultTitle}
         onSave={handleTaskFormSave}
       />
-    </div>
+      </div>
+    </TooltipProvider>
   );
 }

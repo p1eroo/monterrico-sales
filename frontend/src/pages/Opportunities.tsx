@@ -796,7 +796,7 @@ function OpportunitiesTable({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => onOpenPreview(opp)}>
-                      <Eye /> Ver
+                      <Eye /> Vista previa
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => onOpenEdit(opp)}
@@ -893,7 +893,7 @@ function OpportunitiesGrid({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onOpenPreview(opp); }}>
-                    <Eye /> Ver
+                    <Eye /> Vista previa
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     disabled={!canEdit || pending}

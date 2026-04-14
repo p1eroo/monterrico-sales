@@ -151,12 +151,6 @@ export class EvogoClient {
       throw new Error('Evolution no devolvió el token de la instancia creada');
     }
 
-    await this.configureWebhook({
-      instanceName,
-      instanceApiKey,
-      webhook: params.webhook,
-    });
-
     const connected =
       typeof data?.connected === 'boolean' ? data.connected : null;
     return {
@@ -180,16 +174,6 @@ export class EvogoClient {
     instanceApiKey?: string;
     webhookUrl?: string;
   }): Promise<EvogoConnectResult> {
-    if (params.webhookUrl) {
-      await this.configureWebhook({
-        instanceName: params.instanceName,
-        instanceApiKey: params.instanceApiKey,
-        webhook: {
-          url: params.webhookUrl,
-        },
-      });
-    }
-
     const parseQr = (raw: unknown): EvogoConnectResult => {
       const root = this.asRecord(raw);
       const data = this.asRecord(root?.data);
@@ -288,84 +272,58 @@ export class EvogoClient {
         this.readErrorMessage(res.raw, 'No se pudo consultar el estado de conexión'),
       );
     }
-    const readNode = (node: unknown) => {
-      const root = this.asRecord(node);
-      const instance = this.asRecord(root?.instance);
-      const instanceUpper = this.asRecord(root?.Instance);
-      const data = this.asRecord(root?.data);
-      const dataUpper = this.asRecord(root?.Data);
-      const dataInstance = this.asRecord(data?.instance);
-      const dataInstanceUpper = this.asRecord(dataUpper?.Instance);
-      const connected =
-        typeof data?.connected === 'boolean'
-          ? data.connected
-          : typeof dataUpper?.connected === 'boolean'
-            ? dataUpper.connected
-            : typeof dataInstance?.connected === 'boolean'
-              ? dataInstance.connected
-              : typeof dataInstanceUpper?.connected === 'boolean'
-                ? dataInstanceUpper.connected
-                : typeof root?.connected === 'boolean'
-                  ? root.connected
-                  : null;
-      const instanceName =
-        this.asString(instance?.instanceName) ||
-        this.asString(instance?.name) ||
-        this.asString(instanceUpper?.instanceName) ||
-        this.asString(instanceUpper?.name) ||
-        this.asString(dataInstance?.instanceName) ||
-        this.asString(dataInstance?.name) ||
-        this.asString(dataInstanceUpper?.instanceName) ||
-        this.asString(dataInstanceUpper?.name) ||
-        this.asString(data?.name) ||
-        this.asString(dataUpper?.name) ||
-        this.asString(root?.instanceName) ||
-        this.asString(root?.name) ||
-        null;
-      const state =
-        this.asString(instance?.state) ||
-        this.asString(instance?.status) ||
-        this.asString(instance?.connectionStatus) ||
-        this.asString(instanceUpper?.state) ||
-        this.asString(instanceUpper?.status) ||
-        this.asString(instanceUpper?.connectionStatus) ||
-        this.asString(dataInstance?.state) ||
-        this.asString(dataInstance?.status) ||
-        this.asString(dataInstance?.connectionStatus) ||
-        this.asString(dataInstanceUpper?.state) ||
-        this.asString(dataInstanceUpper?.status) ||
-        this.asString(dataInstanceUpper?.connectionStatus) ||
-        this.asString(data?.state) ||
-        this.asString(data?.status) ||
-        this.asString(data?.connectionStatus) ||
-        this.asString(dataUpper?.state) ||
-        this.asString(dataUpper?.status) ||
-        this.asString(dataUpper?.connectionStatus) ||
-        this.asString(root?.state) ||
-        this.asString(root?.status) ||
-        this.asString(root?.connectionStatus) ||
-        (connected === null ? null : connected ? 'open' : 'close');
-      return { instanceName, state };
-    };
 
-    let parsed = readNode(res.raw);
+    let parsed = this.readConnectionNode(res.raw);
     if (Array.isArray(res.raw)) {
-      const match = res.raw.find((item) => {
-        const candidate = readNode(item);
-        return candidate.instanceName === params.instanceName;
-      });
-      if (match) parsed = readNode(match);
+      const match = res.raw.find(
+        (item) => this.readConnectionNode(item).instanceName === params.instanceName,
+      );
+      if (match) parsed = this.readConnectionNode(match);
     } else {
       const root = this.asRecord(res.raw);
-      const dataArray = Array.isArray(root?.data) ? root.data : Array.isArray(root?.Data) ? root.Data : null;
+      const dataArray = Array.isArray(root?.data)
+        ? root.data
+        : Array.isArray(root?.Data)
+          ? root.Data
+          : null;
       if (dataArray) {
-        const match = dataArray.find((item) => {
-          const candidate = readNode(item);
-          return candidate.instanceName === params.instanceName;
-        });
-        if (match) parsed = readNode(match);
+        const match = dataArray.find(
+          (item) => this.readConnectionNode(item).instanceName === params.instanceName,
+        );
+        if (match) parsed = this.readConnectionNode(match);
       }
     }
+
+    // En algunos servidores Evolution, `/instance/status` no refleja bien `connected`,
+    // pero el listado global `/instance/all` si lo hace. Si encontramos un match ahi,
+    // priorizamos ese booleano por encima del estado textual.
+    try {
+      const allRes = await this.requestJson('/instance/all', {
+        method: 'GET',
+      });
+      if (allRes.ok) {
+        const allCandidates = Array.isArray(allRes.raw)
+          ? allRes.raw
+          : Array.isArray(this.asRecord(allRes.raw)?.data)
+            ? (this.asRecord(allRes.raw)?.data as unknown[])
+            : Array.isArray(this.asRecord(allRes.raw)?.Data)
+              ? (this.asRecord(allRes.raw)?.Data as unknown[])
+              : [];
+        const match = allCandidates.find((item) => {
+          const candidate = this.readConnectionNode(item);
+          return candidate.instanceName === params.instanceName;
+        });
+        if (match) {
+          const candidate = this.readConnectionNode(match);
+          if (candidate.connected !== null) {
+            parsed = candidate;
+          }
+        }
+      }
+    } catch {
+      // Si `/instance/all` no esta disponible, mantenemos el resultado anterior.
+    }
+
     return {
       instanceName: parsed.instanceName || params.instanceName,
       state: parsed.state,
@@ -376,18 +334,68 @@ export class EvogoClient {
     instanceName: string;
     instanceApiKey?: string;
   }): Promise<void> {
-    const res = await this.requestJson(
-      `/instance/logout/${encodeURIComponent(params.instanceName)}`,
+    const bodyWithName = JSON.stringify({
+      instanceName: params.instanceName,
+      name: params.instanceName,
+      instance: params.instanceName,
+    });
+    const attempts: Array<{
+      path: string;
+      method: 'DELETE' | 'POST';
+      apiKey?: string;
+      body?: string;
+      label: string;
+    }> = [
       {
+        path: '/instance/logout',
         method: 'DELETE',
         apiKey: params.instanceApiKey,
+        label: 'DELETE /instance/logout con token de instancia',
       },
-    );
-    if (!res.ok) {
-      throw new Error(
-        this.readErrorMessage(res.raw, 'No se pudo desconectar la instancia'),
+      {
+        path: '/instance/logout',
+        method: 'POST',
+        apiKey: params.instanceApiKey,
+        body: bodyWithName,
+        label: 'POST /instance/logout con body y token de instancia',
+      },
+      {
+        path: '/instance/logout',
+        method: 'POST',
+        body: bodyWithName,
+        label: 'POST /instance/logout con body y token manager',
+      },
+    ];
+
+    let lastError = 'No se pudo desconectar la instancia';
+    for (const attempt of attempts) {
+      const res = await this.requestJson(attempt.path, {
+        method: attempt.method,
+        apiKey: attempt.apiKey,
+        body: attempt.body,
+      });
+      if (res.ok) {
+        return;
+      }
+      lastError = this.readErrorMessage(res.raw, lastError);
+      this.logger.warn(
+        `Logout fallback fallido (${attempt.label}) para ${params.instanceName}: HTTP ${res.status}`,
       );
     }
+
+    try {
+      const state = await this.connectionState({
+        instanceName: params.instanceName,
+        instanceApiKey: params.instanceApiKey,
+      });
+      if (this.isDisconnectedState(state.state)) {
+        return;
+      }
+    } catch {
+      // Si no podemos verificar estado, devolvemos el ultimo error conocido.
+    }
+
+    throw new Error(lastError);
   }
 
   /**
@@ -454,62 +462,90 @@ export class EvogoClient {
     return typeof value === 'string' && value.trim().length > 0 ? value : null;
   }
 
-  private webhookPayload(webhook: EvogoWebhookConfig) {
-    return {
-      enabled: true,
-      url: webhook.url,
-      webhookByEvents: webhook.byEvents ?? false,
-      webhookBase64: webhook.base64 ?? false,
-      events: webhook.events ?? this.defaultWebhookEvents,
-    };
+  private isDisconnectedState(state: string | null | undefined): boolean {
+    const normalized = (state || '').trim().toLowerCase();
+    return [
+      'close',
+      'closed',
+      'disconnected',
+      'disconnect',
+      'logged_out',
+      'logout',
+      'offline',
+    ].includes(normalized);
   }
 
-  async configureWebhook(params: {
-    instanceName: string;
-    instanceApiKey?: string;
-    webhook: EvogoWebhookConfig;
-  }): Promise<void> {
-    const path = `/webhook/set/${encodeURIComponent(params.instanceName)}`;
-    const attempts = [
-      {
-        body: this.webhookPayload(params.webhook),
-      },
-      {
-        body: {
-          webhook: {
-            enabled: true,
-            url: params.webhook.url,
-            byEvents: params.webhook.byEvents ?? false,
-            base64: params.webhook.base64 ?? false,
-            events: params.webhook.events ?? this.defaultWebhookEvents,
-          },
-        },
-      },
-      {
-        body: {
-          webhook: this.webhookPayload(params.webhook),
-        },
-      },
+  private readConnectionNode(node: unknown): {
+    instanceName: string | null;
+    state: string | null;
+    connected: boolean | null;
+  } {
+    const root = this.asRecord(node);
+    const instance = this.asRecord(root?.instance);
+    const instanceUpper = this.asRecord(root?.Instance);
+    const data = this.asRecord(root?.data);
+    const dataUpper = this.asRecord(root?.Data);
+    const dataInstance = this.asRecord(data?.instance);
+    const dataInstanceUpper = this.asRecord(dataUpper?.Instance);
+
+    const instanceName =
+      this.asString(instance?.instanceName) ||
+      this.asString(instance?.name) ||
+      this.asString(instanceUpper?.instanceName) ||
+      this.asString(instanceUpper?.name) ||
+      this.asString(dataInstance?.instanceName) ||
+      this.asString(dataInstance?.name) ||
+      this.asString(dataInstanceUpper?.instanceName) ||
+      this.asString(dataInstanceUpper?.name) ||
+      this.asString(data?.name) ||
+      this.asString(dataUpper?.name) ||
+      this.asString(root?.instanceName) ||
+      this.asString(root?.name) ||
+      null;
+
+    const connectedCandidates = [
+      data?.connected,
+      dataUpper?.connected,
+      dataInstance?.connected,
+      dataInstanceUpper?.connected,
+      instance?.connected,
+      instanceUpper?.connected,
+      root?.connected,
     ];
-    let last: { status: number; ok: boolean; raw: unknown } | null = null;
-    for (const attempt of attempts) {
-      const res = await this.requestJson(path, {
-        method: 'POST',
-        apiKey: params.instanceApiKey,
-        body: JSON.stringify(attempt.body),
-      });
-      last = res;
-      if (res.ok) return;
-    }
-    if (last?.status === 404) {
-      this.logger.warn(
-        `Evogo ${path} no esta soportado en este servidor; se continua sin reconfigurar webhook por API`,
-      );
-      return;
-    }
-    throw new Error(
-      this.readErrorMessage(last?.raw, 'No se pudo configurar el webhook de Evolution'),
-    );
+    const connected =
+      connectedCandidates.find(
+        (candidate): candidate is boolean => typeof candidate === 'boolean',
+      ) ?? null;
+
+    const state =
+      connected === true
+        ? 'open'
+        : connected === false
+          ? 'close'
+          : this.asString(instance?.state) ||
+            this.asString(instance?.status) ||
+            this.asString(instance?.connectionStatus) ||
+            this.asString(instanceUpper?.state) ||
+            this.asString(instanceUpper?.status) ||
+            this.asString(instanceUpper?.connectionStatus) ||
+            this.asString(dataInstance?.state) ||
+            this.asString(dataInstance?.status) ||
+            this.asString(dataInstance?.connectionStatus) ||
+            this.asString(dataInstanceUpper?.state) ||
+            this.asString(dataInstanceUpper?.status) ||
+            this.asString(dataInstanceUpper?.connectionStatus) ||
+            this.asString(data?.state) ||
+            this.asString(data?.status) ||
+            this.asString(data?.connectionStatus) ||
+            this.asString(dataUpper?.state) ||
+            this.asString(dataUpper?.status) ||
+            this.asString(dataUpper?.connectionStatus) ||
+            this.asString(root?.state) ||
+            this.asString(root?.status) ||
+            this.asString(root?.connectionStatus) ||
+            null;
+
+    return { instanceName, state, connected };
   }
 
   private pickQrBase64(qrcode: Record<string, unknown> | null): string | null {

@@ -406,7 +406,11 @@ export class WhatsappService {
         instanceName: instance.instanceName,
         instanceApiKey: instance.instanceApiKey,
       });
-      const normalized = this.normalizeConnectionState(remote.state);
+      let normalized = this.normalizeConnectionState(remote.state);
+      const hasQr = Boolean(instance.qrCode || instance.qrText || instance.pairingCode);
+      if (normalized === 'close' && hasQr) {
+        normalized = 'qr_ready';
+      }
       const now = new Date();
       return this.updateInstance(instance.id, {
         status: normalized,
@@ -549,21 +553,6 @@ export class WhatsappService {
     };
   }
 
-  async refreshMyConnection(userId: string) {
-    const instance = await this.findUserInstance(userId);
-    if (!instance) {
-      return {
-        canManage: this.personalConnectionsEnabled(),
-        instance: null,
-      };
-    }
-    const synced = await this.syncConnectionState(instance, true);
-    return {
-      canManage: this.personalConnectionsEnabled(),
-      instance: this.serializeInstance(synced),
-    };
-  }
-
   async disconnectMyWhatsapp(userId: string) {
     const instance = await this.findUserInstance(userId);
     if (!instance) {
@@ -596,6 +585,61 @@ export class WhatsappService {
     return {
       canManage: this.personalConnectionsEnabled(),
       instance: this.serializeInstance(updated),
+    };
+  }
+
+  async sendMyTestMessage(
+    userId: string,
+    dto: { number: string; text: string },
+  ): Promise<{ ok: true; to: string; waMessageId: string | null }> {
+    const current = await this.findUserInstance(userId);
+    if (!current) {
+      throw new ServiceUnavailableException(
+        'Primero conecta tu WhatsApp personal para enviar un mensaje de prueba',
+      );
+    }
+
+    const instance = await this.syncConnectionState(current, true);
+    if (instance.status !== 'open') {
+      throw new ServiceUnavailableException(
+        'Tu WhatsApp personal aún no está conectado. Escanea el QR antes de enviar una prueba.',
+      );
+    }
+
+    const to = normalizePeWaNumber(dto.number);
+    if (to.length < 8) {
+      throw new ServiceUnavailableException(
+        'Ingresa un número de WhatsApp válido con código de país, sin signos ni espacios',
+      );
+    }
+
+    const text = dto.text.trim();
+    if (!text) {
+      throw new ServiceUnavailableException('El mensaje de prueba no puede estar vacío');
+    }
+
+    const sent = await this.evogo.sendText({
+      instanceApiKey: instance.instanceApiKey,
+      number: to,
+      text,
+    });
+
+    if (!sent.ok) {
+      const msg =
+        typeof sent.raw === 'object' &&
+        sent.raw !== null &&
+        'error' in sent.raw
+          ? String((sent.raw as { error?: unknown }).error)
+          : `Evolution GO respondió ${sent.status}`;
+      throw new ServiceUnavailableException(
+        `No se pudo enviar el mensaje de prueba: ${msg}`,
+      );
+    }
+
+    return {
+      ok: true,
+      to,
+      waMessageId: sent.waMessageId ?? null,
     };
   }
 

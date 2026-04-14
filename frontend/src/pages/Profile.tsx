@@ -11,6 +11,7 @@ import {
   Camera,
   Eye,
   EyeOff,
+  Bell,
   CheckCircle2,
   Loader2,
   Link2,
@@ -25,14 +26,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { formatDateTime } from '@/lib/formatters';
@@ -106,7 +99,6 @@ export default function ProfilePage() {
     setGmailConnected,
   } = useAppStore();
   const setCrmBundle = useCrmConfigStore((s) => s.setBundle);
-  const { setTheme } = useTheme();
 
   useEffect(() => {
     if (!currentUser.id) return;
@@ -306,7 +298,7 @@ export default function ProfilePage() {
         <Card>
           <Tabs defaultValue={defaultTab} className="w-full">
             <CardHeader className="pb-2">
-              <TabsList className="w-full justify-start overflow-x-auto lg:w-auto">
+              <TabsList className="h-auto w-full flex-wrap justify-start">
                 <TabsTrigger value="profile" className="gap-2">
                   <User className="size-4" />
                   Perfil
@@ -564,89 +556,19 @@ export default function ProfilePage() {
 
               <TabsContent value="preferences" className="mt-0">
                 <div className="space-y-6">
-                  <div>
-                    <CardTitle className="text-base mb-4">Configuración regional</CardTitle>
-                    <div className="grid gap-4 sm:grid-cols-2 max-w-2xl">
-                      <div>
-                        <Label>Idioma</Label>
-                        <Select
-                          value={preferences.language}
-                          onValueChange={(v) => updatePreferences({ language: v })}
-                        >
-                          <SelectTrigger className="mt-1">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="es">Español</SelectItem>
-                            <SelectItem value="en">English</SelectItem>
-                          </SelectContent>
-                        </Select>
+                  <div className="w-full rounded-xl border bg-card p-5 shadow-sm">
+                    <div className="mb-4 flex items-start gap-3">
+                      <div className="flex size-10 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-300">
+                        <Bell className="size-5" />
                       </div>
                       <div>
-                        <Label>Zona horaria</Label>
-                        <Select
-                          value={preferences.timezone}
-                          onValueChange={(v) => updatePreferences({ timezone: v })}
-                        >
-                          <SelectTrigger className="mt-1">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="America/Lima">Lima (GMT-5)</SelectItem>
-                            <SelectItem value="America/New_York">Nueva York (GMT-5)</SelectItem>
-                            <SelectItem value="Europe/Madrid">Madrid (GMT+1)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label>Formato de fecha</Label>
-                        <Select
-                          value={preferences.dateFormat}
-                          onValueChange={(v) => updatePreferences({ dateFormat: v })}
-                        >
-                          <SelectTrigger className="mt-1">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="DD/MM/YYYY">DD/MM/YYYY</SelectItem>
-                            <SelectItem value="MM/DD/YYYY">MM/DD/YYYY</SelectItem>
-                            <SelectItem value="YYYY-MM-DD">YYYY-MM-DD</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </div>
-                  <div>
-                    <CardTitle className="text-base mb-4">Apariencia</CardTitle>
-                    <div className="flex items-center justify-between rounded-lg border p-4 max-w-2xl">
-                      <div>
-                        <p className="font-medium">Tema</p>
+                        <CardTitle className="text-base">Notificaciones</CardTitle>
                         <p className="text-sm text-muted-foreground">
-                          Claro, oscuro o según el sistema
+                          Decide qué alertas quieres recibir dentro del CRM y por correo.
                         </p>
                       </div>
-                      <Select
-                        value={preferences.theme}
-                        onValueChange={(v) => {
-                          const theme = v as 'light' | 'dark' | 'system';
-                          updatePreferences({ theme });
-                          setTheme(theme);
-                        }}
-                      >
-                        <SelectTrigger className="w-32">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="light">Claro</SelectItem>
-                          <SelectItem value="dark">Oscuro</SelectItem>
-                          <SelectItem value="system">Sistema</SelectItem>
-                        </SelectContent>
-                      </Select>
                     </div>
-                  </div>
-                  <div>
-                    <CardTitle className="text-base mb-4">Notificaciones</CardTitle>
-                    <div className="space-y-4 max-w-2xl">
+                    <div className="grid auto-rows-fr gap-3 md:grid-cols-2">
                       {[
                         {
                           key: 'emailNotifications' as const,
@@ -671,9 +593,9 @@ export default function ProfilePage() {
                       ].map(({ key, label, desc }) => (
                         <div
                           key={key}
-                          className="flex items-center justify-between rounded-lg border p-4"
+                          className="flex items-center justify-between rounded-lg border bg-muted/20 px-4 py-3 transition-colors hover:bg-muted/30"
                         >
-                          <div>
+                          <div className="pr-4">
                             <p className="font-medium">{label}</p>
                             <p className="text-sm text-muted-foreground">{desc}</p>
                           </div>
@@ -780,63 +702,89 @@ export default function ProfilePage() {
               <TabsContent value="integraciones" className="mt-0">
                 <div className="space-y-6">
                   <div>
-                    <CardTitle className="text-base mb-4">Integraciones activas</CardTitle>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Conecta tus cuentas personales para sincronizarlas con el CRM. Cada asesor puede vincular su propio número de WhatsApp y su propia cuenta de correo.
-                    </p>
-                    <WhatsappIntegrationCard />
-                  </div>
-                  <div>
-                    <CardTitle className="text-base mb-4">Gmail</CardTitle>
-                    <p className="text-sm text-amber-800 dark:text-amber-200 bg-amber-500/10 border border-amber-500/20 rounded-md px-3 py-2 mb-4">
-                      Gmail sigue en modo demostración. La conexión real de esta integración se implementará más adelante.
-                    </p>
-                    <div className="flex items-center justify-between rounded-lg border p-4">
-                      <div className="flex items-center gap-4">
-                        <div className="flex size-12 items-center justify-center rounded-lg bg-[#ea4335]/10">
-                          <svg className="size-7" viewBox="0 0 24 24">
-                            <path
-                              fill="#EA4335"
-                              d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L12 9.883l8.073-6.39C21.69 2.28 24 3.434 24 5.457z"
-                            />
-                          </svg>
+                    <div className="grid gap-4 xl:grid-cols-2">
+                      <WhatsappIntegrationCard />
+
+                      <div className="flex h-full flex-col rounded-xl border bg-card p-5 shadow-sm">
+                        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                          <div className="flex items-start gap-4">
+                            <div className="flex size-12 items-center justify-center rounded-lg bg-[#ea4335]/10">
+                              <svg className="size-7" viewBox="0 0 24 24">
+                                <path
+                                  fill="#EA4335"
+                                  d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L12 9.883l8.073-6.39C21.69 2.28 24 3.434 24 5.457z"
+                                />
+                              </svg>
+                            </div>
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="font-medium">Gmail</p>
+                                <Badge
+                                  variant="outline"
+                                  className={
+                                    gmailConnected
+                                      ? 'border-[#13944C]/30 bg-[#13944C]/10 text-[#13944C]'
+                                      : 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300'
+                                  }
+                                >
+                                  {gmailConnected ? 'Conectado' : 'Demo'}
+                                </Badge>
+                              </div>
+                              <p className="mt-1 text-sm text-muted-foreground">
+                                Ver y enviar correos
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {gmailConnected ? (
+                              <Button
+                                variant="outline"
+                                onClick={() => setGmailConnected(false)}
+                              >
+                                <CheckCircle2 className="size-4 text-[#13944C]" />
+                                Desconectar
+                              </Button>
+                            ) : (
+                              <Button
+                                className="bg-[#13944C] hover:bg-[#0f7a3d]"
+                                onClick={() => setGmailConnected(true)}
+                              >
+                                <Link2 className="size-4" />
+                                Conectar Gmail
+                              </Button>
+                            )}
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium">Gmail</p>
-                          <p className="text-sm text-muted-foreground">
-                            Ver y enviar correos desde el módulo de Correo del CRM
-                          </p>
+
+                        <div className="mt-4 flex flex-1 flex-col gap-4 rounded-xl border bg-muted/20 p-4">
+                          <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
+                            Gmail sigue en modo demostración. La conexión real de esta integración se implementará más adelante.
+                          </div>
+
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="rounded-lg bg-background/40 p-3">
+                              <p className="text-xs text-muted-foreground">Estado</p>
+                              <p className="mt-1 text-sm font-medium">
+                                {gmailConnected ? 'Conectado' : 'Pendiente de conexión'}
+                              </p>
+                            </div>
+                            <div className="rounded-lg bg-background/40 p-3">
+                              <p className="text-xs text-muted-foreground">Disponibilidad</p>
+                              <p className="mt-1 text-sm font-medium">Módulo de correo CRM</p>
+                            </div>
+                          </div>
+
+                          <div className="rounded-lg bg-background/40 p-4">
+                            <p className="text-sm font-medium">Qué incluye</p>
+                            <ul className="mt-2 space-y-2 text-sm text-muted-foreground">
+                              <li>Ver correos relacionados desde el CRM.</li>
+                              <li>Enviar mensajes usando tu cuenta conectada.</li>
+                              <li>Sincronización segura tras autorización de Google.</li>
+                            </ul>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        {gmailConnected ? (
-                          <>
-                            <span className="flex items-center gap-1.5 text-sm text-[#13944C] font-medium">
-                              <CheckCircle2 className="size-4" />
-                              Conectado
-                            </span>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setGmailConnected(false)}
-                            >
-                              Desconectar
-                            </Button>
-                          </>
-                        ) : (
-                          <Button
-                            className="bg-[#13944C] hover:bg-[#0f7a3d]"
-                            onClick={() => setGmailConnected(true)}
-                          >
-                            <Link2 className="size-4" />
-                            Conectar Gmail
-                          </Button>
-                        )}
                       </div>
                     </div>
-                    <p className="mt-3 text-xs text-muted-foreground">
-                      Al conectar Gmail, se solicitará autorización para leer y enviar correos. Los datos se sincronizan de forma segura con tu cuenta.
-                    </p>
                   </div>
                 </div>
               </TabsContent>

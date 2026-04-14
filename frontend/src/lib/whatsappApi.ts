@@ -93,17 +93,20 @@ export async function connectMyWhatsapp(): Promise<WhatsappConnectionResponse> {
   });
 }
 
-export async function refreshMyWhatsappConnection(): Promise<WhatsappConnectionResponse> {
-  return api('/api/whatsapp/connection/me/refresh', {
+export async function disconnectMyWhatsapp(): Promise<WhatsappConnectionResponse> {
+  return api('/api/whatsapp/connection/me/disconnect', {
     method: 'POST',
     body: JSON.stringify({}),
   });
 }
 
-export async function disconnectMyWhatsapp(): Promise<WhatsappConnectionResponse> {
-  return api('/api/whatsapp/connection/me/disconnect', {
+export async function sendMyWhatsappTestMessage(params: {
+  number: string;
+  text: string;
+}): Promise<{ ok: true; to: string; waMessageId: string | null }> {
+  return api('/api/whatsapp/connection/me/test-message', {
     method: 'POST',
-    body: JSON.stringify({}),
+    body: JSON.stringify(params),
   });
 }
 

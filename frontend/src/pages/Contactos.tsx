@@ -1321,7 +1321,7 @@ function ContactsTable({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => onPreview(contact)}>
-                      <Eye /> Ver
+                      <Eye /> Vista previa
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onEdit(contact)}>
                       <Pencil /> Editar
@@ -1402,15 +1402,34 @@ function ContactsGrid({
                     <MoreHorizontal className="size-3.5" />
                   </Button>
                 </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => onPreview(contact)}>
-                    <Eye /> Ver
+                <DropdownMenuContent
+                  align="end"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onPreview(contact);
+                    }}
+                  >
+                    <Eye /> Vista previa
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onEdit(contact)}>
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEdit(contact);
+                    }}
+                  >
                     <Pencil /> Editar
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem variant="destructive" onClick={() => onDelete(contact.id)}>
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete(contact.id);
+                    }}
+                  >
                     <Trash2 /> Eliminar
                   </DropdownMenuItem>
                 </DropdownMenuContent>

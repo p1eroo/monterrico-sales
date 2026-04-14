@@ -1185,7 +1185,7 @@ export default function EmpresasPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => openCompanyPreview(emp)}>
-                            <Eye /> Ver
+                            <Eye /> Vista previa
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => openCompanyEdit(emp)}
@@ -1239,12 +1239,23 @@ export default function EmpresasPage() {
                           <MoreHorizontal className="size-3.5" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openCompanyPreview(emp)}>
-                          <Eye /> Ver
+                      <DropdownMenuContent
+                        align="end"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openCompanyPreview(emp);
+                          }}
+                        >
+                          <Eye /> Vista previa
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => openCompanyEdit(emp)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openCompanyEdit(emp);
+                          }}
                           disabled={!hasPermission('empresas.editar')}
                         >
                           <Pencil /> Editar
@@ -1252,7 +1263,10 @@ export default function EmpresasPage() {
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           variant="destructive"
-                          onClick={() => requestDeleteCompany(emp)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            requestDeleteCompany(emp);
+                          }}
                           disabled={!hasPermission('empresas.eliminar')}
                         >
                           <Trash2 /> Eliminar

@@ -98,6 +98,34 @@ function formatBytes(size: number): string {
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function attachmentTypeLabel(name: string, mimeType: string): string {
+  const mime = mimeType.trim().toLowerCase();
+  const ext = name.includes('.')
+    ? name.split('.').pop()?.trim().toUpperCase() || ''
+    : '';
+
+  if (mime.includes('pdf') || ext === 'PDF') return 'PDF';
+  if (mime.includes('wordprocessingml') || ext === 'DOCX') return 'DOCX';
+  if (mime === 'application/msword' || ext === 'DOC') return 'DOC';
+  if (mime.includes('spreadsheetml') || ext === 'XLSX') return 'XLSX';
+  if (mime.includes('excel') || ext === 'XLS') return 'XLS';
+  if (mime.includes('presentationml') || ext === 'PPTX') return 'PPTX';
+  if (mime.includes('powerpoint') || ext === 'PPT') return 'PPT';
+  if (mime.startsWith('text/plain') || ext === 'TXT') return 'TXT';
+  if (mime.includes('csv') || ext === 'CSV') return 'CSV';
+  if (mime.includes('zip') || ext === 'ZIP') return 'ZIP';
+  if (mime.includes('rar') || ext === 'RAR') return 'RAR';
+  if (ext) return ext;
+  return 'Documento';
+}
+
+function attachmentMetaLine(name: string, mimeType: string, size: number): string {
+  const parts = [attachmentTypeLabel(name, mimeType)];
+  const prettySize = formatBytes(size);
+  if (prettySize) parts.push(prettySize);
+  return parts.join(' · ');
+}
+
 function messageTextToDisplay(item: WhatsappMessageItem): string {
   const body = item.body?.trim() || '';
   if (
@@ -193,8 +221,7 @@ function MessageAttachment({
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{attachment.name}</p>
         <p className="text-xs text-white/55">
-          {attachment.mimeType}
-          {attachment.size > 0 ? ` · ${formatBytes(attachment.size)}` : ''}
+          {attachmentMetaLine(attachment.name, attachment.mimeType, attachment.size)}
         </p>
       </div>
       {downloading ? (

@@ -14,6 +14,7 @@ import { RequireAnyPermission } from '../auth/decorators/require-any-permission.
 import { CrmDataScopeService } from '../auth/crm-data-scope.service';
 import { WhatsappService } from './whatsapp.service';
 import { SendWhatsappDto } from './dto/send-whatsapp.dto';
+import { SendTestWhatsappDto } from './dto/send-test-whatsapp.dto';
 
 type AuthedReq = {
   user: { userId: string; name: string; roleId?: string };
@@ -37,14 +38,22 @@ export class WhatsappController {
     return this.whatsapp.connectMyWhatsapp(req.user.userId, req.user.name);
   }
 
-  @Post('connection/me/refresh')
-  async refreshMyWhatsapp(@Req() req: AuthedReq) {
-    return this.whatsapp.refreshMyConnection(req.user.userId);
-  }
-
   @Post('connection/me/disconnect')
   async disconnectMyWhatsapp(@Req() req: AuthedReq) {
     return this.whatsapp.disconnectMyWhatsapp(req.user.userId);
+  }
+
+  @Post('connection/me/test-message')
+  async sendMyTestWhatsapp(
+    @Req() req: AuthedReq,
+    @Body() body: SendTestWhatsappDto,
+  ) {
+    const number = body.number?.trim();
+    const text = body.text?.trim();
+    if (!number || !text) {
+      throw new BadRequestException('number y text son obligatorios');
+    }
+    return this.whatsapp.sendMyTestMessage(req.user.userId, { number, text });
   }
 
   @Get('messages')
