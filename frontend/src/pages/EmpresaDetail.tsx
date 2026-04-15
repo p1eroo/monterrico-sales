@@ -2,8 +2,8 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   Building2, Users, DollarSign, Globe, Briefcase,
-  Edit, Phone, RefreshCw, UserPlus, Plus, FileArchive, Loader2, CheckSquare,
-  MapPin, Mail, Linkedin,
+  Phone, Plus, FileArchive, Loader2,
+  MapPin, Mail, Linkedin, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { useCRMStore } from '@/store/crmStore';
 import { useCompaniesStore } from '@/store/companiesStore';
@@ -20,7 +20,7 @@ import { DetailLayout } from '@/components/shared/DetailLayout';
 import { EntityInfoCard } from '@/components/shared/EntityInfoCard';
 import { TimelinePanel } from '@/components/shared/TimelinePanel';
 import { ActivityPanel } from '@/components/shared/ActivityPanel';
-import { QuickActionsWithDialogs } from '@/components/shared/QuickActionsWithDialogs';
+import { QuickActionsWithDialogs, type QuickActivityDraft } from '@/components/shared/QuickActionsWithDialogs';
 import { LinkedOpportunitiesCard } from '@/components/shared/LinkedOpportunitiesCard';
 import { LinkedCompaniesCard } from '@/components/shared/LinkedCompaniesCard';
 import { LinkedContactsCard } from '@/components/shared/LinkedContactsCard';
@@ -37,6 +37,7 @@ import { TasksTab, type TasksTabHandle } from '@/components/shared/TasksTab';
 import { ChangeEtapaDialog } from '@/components/shared/ChangeEtapaDialog';
 import { AssignDialog } from '@/components/shared/AssignDialog';
 import { EntityFilesTab } from '@/components/files';
+import { CompanyHeader } from '@/components/company-detail/CompanyHeader';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -52,7 +53,6 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { formatCurrency, formatDate } from '@/lib/formatters';
-import { nextPendingTaskForCompanyScope } from '@/lib/nextPendingTask';
 import { api } from '@/lib/api';
 import { companyDetailHref, isEntityDetailApiParam } from '@/lib/detailRoutes';
 import { type ApiCompanyRecord } from '@/lib/companyApi';
@@ -70,6 +70,9 @@ import {
   mapApiOpportunityToOpportunity,
   opportunityListAll,
 } from '@/lib/opportunityApi';
+import { etapaColorsWithBorder } from '@/lib/etapaConfig';
+
+const TIMELINE_PAGE_SIZE = 6;
 
 function parseRubroField(s: string | null | undefined): CompanyRubro | undefined {
   if (!s) return undefined;
@@ -225,12 +228,10 @@ export default function EmpresaDetailPage() {
       : firstContact
         ? etapaLabels[firstContact.etapa]
         : '—';
-  const displayAdvisorName =
-    fromApiById && apiRecord
-      ? (apiRecord.user?.name ??
-        users.find((u) => u.id === apiRecord.assignedTo)?.name ??
-        '—')
-      : (firstContact?.assignedToName ?? '—');
+  const displayEtapaKey =
+    fromApiById && apiRecord?.etapa
+      ? apiRecord.etapa
+      : firstContact?.etapa;
   const displayFuenteLabel =
     fromApiById && apiRecord?.fuente
       ? (contactSourceLabels[apiRecord.fuente as ContactSource] ??
@@ -282,20 +283,19 @@ export default function EmpresaDetailPage() {
     return result;
   }, [companyContacts, companyName]);
 
-  const { activities: activitiesFromStore } = useActivities();
+  const {
+    activities: activitiesFromStore,
+    createActivity,
+  } = useActivities();
   const companyContactIds = useMemo(
     () => companyContacts.map((c) => c.id),
     [companyContacts],
   );
-  const nextPendingSummary = useMemo(
-    () =>
-      nextPendingTaskForCompanyScope(activitiesFromStore, {
-        companyId: resolvedCompanyId,
-        contactIds: companyContactIds,
-      }),
-    [activitiesFromStore, resolvedCompanyId, companyContactIds],
-  );
-
+  const persistedCompanyActivities = useMemo(() => activitiesFromStore.filter((activity) => {
+    if (activity.type === 'tarea') return false;
+    if (resolvedCompanyId && activity.companyId === resolvedCompanyId) return true;
+    return !!activity.contactId && companyContactIds.includes(activity.contactId);
+  }), [activitiesFromStore, resolvedCompanyId, companyContactIds]);
   const tasksTabRef = useRef<TasksTabHandle>(null);
   const [newOppOpen, setNewOppOpen] = useState(false);
 
@@ -315,26 +315,135 @@ export default function EmpresaDetailPage() {
   const [linkContactIds, setLinkContactIds] = useState<string[]>([]);
   const [linkContactSearch, setLinkContactSearch] = useState('');
 
-  const [notes, setNotes] = useState([
-    { id: 'n1', text: 'Se requiere actualizar los datos de facturación antes del próximo mes.', author: 'Ana Torres', date: '2026-03-02' },
-    { id: 'n2', text: 'Reunión con gerencia general programada para revisar propuesta de servicios.', author: 'Carlos Mendoza', date: '2026-03-04' },
-  ]);
   const [noteText, setNoteText] = useState('');
 
   const { addOpportunity, updateOpportunity, addContact, updateContact } = useCRMStore();
 
-  function handleAddNote() {
-    if (!noteText.trim()) return;
-    setNotes((prev) => [
-      { id: `n-${Date.now()}`, text: noteText.trim(), author: 'Tú', date: new Date().toISOString().slice(0, 10) },
-      ...prev,
-    ]);
-    setNoteText('');
-    toast.success('Nota agregada correctamente');
-  }
-
   // --- Edit / Etapa / Asignar dialogs ---
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+
+  useEffect(() => {
+    if (fromApiById) {
+      setCompanyActivities(persistedCompanyActivities);
+      return;
+    }
+    setCompanyActivities(initialCompanyActivities);
+  }, [fromApiById, initialCompanyActivities, persistedCompanyActivities]);
+
+  const noteActivities = useMemo(
+    () => companyActivities.filter((activity) => activity.type === 'nota'),
+    [companyActivities],
+  );
+
+  const handleQuickActivityCreated = useCallback((draft: QuickActivityDraft) => {
+    const assignedTo =
+      (fromApiById ? apiRecord?.assignedTo : undefined) ||
+      firstContact?.assignedTo ||
+      activeAdvisors[0]?.id;
+
+    if (!assignedTo) {
+      toast.error('No hay usuario interno para asignar la actividad');
+      throw new Error('missing_assignee');
+    }
+
+    const persistedContactId =
+      firstContact?.id && isLikelyContactCuid(firstContact.id) ? firstContact.id : undefined;
+    const persistedCompanyId =
+      resolvedCompanyId && /^c[a-z0-9]+$/i.test(resolvedCompanyId) ? resolvedCompanyId : undefined;
+
+    if (!persistedContactId && !persistedCompanyId) {
+      const fallbackAssigneeName =
+        users.find((user) => user.id === assignedTo)?.name ??
+        firstContact?.assignedToName ??
+        'Sin asignar';
+      setCompanyActivities((prev) => [
+        {
+          id: `act-${Date.now()}`,
+          type: draft.type,
+          title: draft.title,
+          description: draft.description,
+          assignedTo,
+          assignedToName: fallbackAssigneeName,
+          status: 'completada',
+          dueDate: draft.dueDate,
+          startDate: draft.startDate,
+          startTime: draft.startTime,
+          createdAt: new Date().toISOString().slice(0, 10),
+          contactId: firstContact?.id,
+        },
+        ...prev,
+      ]);
+      toast.info('Actividad guardada solo localmente porque esta empresa no existe en la API');
+      return;
+    }
+
+    const assignedToName =
+      users.find((user) => user.id === assignedTo)?.name ??
+      firstContact?.assignedToName ??
+      'Sin asignar';
+    const optimisticId = `temp-activity-${Date.now()}`;
+
+    setCompanyActivities((prev) => [
+      {
+        id: optimisticId,
+        type: draft.type,
+        title: draft.title,
+        description: draft.description,
+        assignedTo,
+        assignedToName,
+        status: 'completada',
+        dueDate: draft.dueDate,
+        startDate: draft.startDate,
+        startTime: draft.startTime,
+        completedAt: draft.dueDate,
+        createdAt: new Date().toISOString().slice(0, 10),
+        contactId: persistedContactId ?? firstContact?.id,
+        companyId: persistedCompanyId,
+      },
+      ...prev,
+    ]);
+
+    void createActivity({
+      type: draft.type,
+      title: draft.title,
+      description: draft.description,
+      assignedTo,
+      status: 'completada',
+      dueDate: draft.dueDate,
+      startDate: draft.startDate,
+      startTime: draft.startTime,
+      completedAt: draft.dueDate,
+      contactId: persistedContactId,
+      companyId: persistedCompanyId,
+    })
+      .then((saved) => {
+        setCompanyActivities((prev) => [
+          saved,
+          ...prev.filter((activity) => activity.id !== optimisticId && activity.id !== saved.id),
+        ]);
+      })
+      .catch((error) => {
+        setCompanyActivities((prev) => prev.filter((activity) => activity.id !== optimisticId));
+        toast.error(error instanceof Error ? error.message : 'No se pudo guardar la actividad');
+      });
+  }, [fromApiById, apiRecord?.assignedTo, firstContact, activeAdvisors, resolvedCompanyId, users, createActivity]);
+
+  function handleAddNote() {
+    const description = noteText.trim();
+    if (!description) return;
+    try {
+      handleQuickActivityCreated({
+        type: 'nota',
+        title: 'Nota',
+        description,
+        dueDate: new Date().toISOString().slice(0, 10),
+      });
+      setNoteText('');
+      toast.success('Nota agregada correctamente');
+    } catch {
+      /* handleQuickActivityCreated ya notifica el error */
+    }
+  }
   const [editForm, setEditForm] = useState({
     name: '', domain: '', telefono: '', rubro: '' as CompanyRubro | '', tipo: '' as CompanyTipo | '',
   });
@@ -344,6 +453,7 @@ export default function EmpresaDetailPage() {
 
   const [companyTimelineEvents, setCompanyTimelineEvents] = useState<TimelineEvent[]>([]);
   const [companyTimelineLoading, setCompanyTimelineLoading] = useState(false);
+  const [timelinePage, setTimelinePage] = useState(1);
 
   useEffect(() => {
     if (!fromApiById || !resolvedCompanyId) {
@@ -374,6 +484,26 @@ export default function EmpresaDetailPage() {
       cancelled = true;
     };
   }, [fromApiById, resolvedCompanyId]);
+
+  const totalTimelinePages = useMemo(
+    () => Math.max(1, Math.ceil(companyTimelineEvents.length / TIMELINE_PAGE_SIZE)),
+    [companyTimelineEvents.length],
+  );
+
+  const paginatedTimelineEvents = useMemo(() => {
+    const start = (timelinePage - 1) * TIMELINE_PAGE_SIZE;
+    return companyTimelineEvents.slice(start, start + TIMELINE_PAGE_SIZE);
+  }, [companyTimelineEvents, timelinePage]);
+
+  useEffect(() => {
+    setTimelinePage(1);
+  }, [resolvedCompanyId, companyTimelineEvents.length]);
+
+  useEffect(() => {
+    if (timelinePage > totalTimelinePages) {
+      setTimelinePage(totalTimelinePages);
+    }
+  }, [timelinePage, totalTimelinePages]);
 
   function handleOpenEditDialog() {
     const tel = (fromApiById && apiRecord?.telefono) ? (apiRecord.telefono ?? '') : '';
@@ -822,104 +952,36 @@ export default function EmpresaDetailPage() {
       backPath="/empresas"
       title={companyData?.name ?? companyName}
       subtitle={subtitle || undefined}
-      headerActions={
-        <>
-          <Button variant="outline" size="sm" onClick={handleOpenEditDialog}>
-            <Edit /> Editar
-          </Button>
-          {!isStandalone && (
-            <>
-              <Button variant="outline" size="sm" onClick={() => setStatusDialogOpen(true)}>
-                <RefreshCw /> Cambiar Etapa
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setAssignDialogOpen(true)}>
-                <UserPlus /> Asignar
-              </Button>
-            </>
+      header={(
+        <CompanyHeader
+          backPath="/empresas"
+          name={companyData?.name ?? companyName}
+          subtitle={subtitle || undefined}
+          stageLabel={displayEtapaLabel}
+          stageClassName={displayEtapaKey ? (etapaColorsWithBorder[displayEtapaKey] ?? 'border-border bg-muted text-text-secondary') : 'border-border bg-muted text-text-secondary'}
+          estimatedValueLabel={formatCurrency(displayFacturacion)}
+          quickActions={(
+            <QuickActionsWithDialogs
+              entityName={companyName}
+              contacts={companyContacts}
+              companies={linkedCompanies}
+              opportunities={companyOpportunities}
+              contactId={firstContact?.id}
+              onTaskCreated={(task) => tasksTabRef.current?.addTask(task as any)}
+              onActivityCreated={handleQuickActivityCreated}
+              inline
+            />
           )}
-        </>
-      }
-      quickActions={
-        <QuickActionsWithDialogs
-          entityName={companyName}
-          contacts={companyContacts}
-          companies={linkedCompanies}
-          opportunities={companyOpportunities}
-          contactId={firstContact?.id}
-          onTaskCreated={(task) => tasksTabRef.current?.addTask(task as any)}
-          onActivityCreated={(activity) => setCompanyActivities((prev) => [activity, ...prev])}
+          onEdit={handleOpenEditDialog}
+          onChangeStage={!isStandalone ? () => setStatusDialogOpen(true) : undefined}
+          onAssign={!isStandalone ? () => setAssignDialogOpen(true) : undefined}
         />
-      }
-      summaryCards={
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card className="py-0">
-            <CardContent className="px-4 py-3">
-              <div className="flex items-center gap-3">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
-                  <DollarSign className="size-5" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm text-muted-foreground">Facturación estimada</p>
-                  <p className="text-l font-semibold">{formatCurrency(displayFacturacion)}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="py-0">
-            <CardContent className="px-4 py-3">
-              <div className="flex items-center gap-3">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
-                  <RefreshCw className="size-5" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm text-muted-foreground">Etapa actual</p>
-                  <p className="text-l font-semibold">{displayEtapaLabel}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="py-0">
-            <CardContent className="px-4 py-3">
-              <div className="flex items-center gap-3">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-600">
-                  <Users className="size-5" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm text-muted-foreground">Asesor asignado</p>
-                  <p className="text-l font-semibold truncate">{displayAdvisorName}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="py-0">
-            <CardContent className="px-4 py-3">
-              <div className="flex items-center gap-3">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
-                  <CheckSquare className="size-5" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm text-muted-foreground">Próxima acción</p>
-                  <p
-                    className="text-l font-semibold truncate"
-                    title={nextPendingSummary?.title ?? undefined}
-                  >
-                    {nextPendingSummary?.title ?? '—'}
-                  </p>
-                  {nextPendingSummary ? (
-                    <p className="text-xs text-muted-foreground">
-                      Vence {formatDate(nextPendingSummary.dueDate)}
-                    </p>
-                  ) : null}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      }
+      )}
       sidebar={
         <>
           <EntityInfoCard
-            title="Información de Empresa"
+            title="Información"
+            collapsible
             fields={[
               { icon: Building2, value: companyData?.name ?? companyName },
               ...(fromApiById && apiRecord?.razonSocial?.trim()
@@ -1030,7 +1092,7 @@ export default function EmpresaDetailPage() {
       }
     >
       <Tabs defaultValue="historial">
-        <TabsList variant="line" className="w-full justify-start flex-wrap">
+        <TabsList variant="line" className="max-w-full justify-start">
           <TabsTrigger value="historial">Historial</TabsTrigger>
           <TabsTrigger value="actividades">Actividades</TabsTrigger>
           <TabsTrigger value="tareas">Tareas</TabsTrigger>
@@ -1042,23 +1104,58 @@ export default function EmpresaDetailPage() {
         </TabsList>
 
         <TabsContent value="historial" className="mt-4">
-          {companyTimelineLoading ? (
-            <div className="flex justify-center py-10 text-muted-foreground">
-              <Loader2 className="size-6 animate-spin" />
-            </div>
-          ) : companyTimelineEvents.length === 0 ? (
-            <EmptyState
-              icon={Building2}
-              title="Sin actividad registrada"
-              description={
-                fromApiById
-                  ? 'Los cambios sobre esta empresa aparecerán aquí.'
-                  : 'El historial detallado está disponible en empresas cargadas desde el servidor (API).'
-              }
-            />
-          ) : (
-            <TimelinePanel events={companyTimelineEvents} />
-          )}
+          <Card>
+            <CardContent className="p-4 sm:p-5">
+              {companyTimelineLoading ? (
+                <div className="flex justify-center py-10 text-muted-foreground">
+                  <Loader2 className="size-6 animate-spin" />
+                </div>
+              ) : companyTimelineEvents.length === 0 ? (
+                <EmptyState
+                  icon={Building2}
+                  title="Sin actividad registrada"
+                  description={
+                    fromApiById
+                      ? 'Los cambios sobre esta empresa aparecerán aquí.'
+                      : 'El historial detallado está disponible en empresas cargadas desde el servidor (API).'
+                  }
+                />
+              ) : (
+                <div className="space-y-4">
+                  <TimelinePanel events={paginatedTimelineEvents} />
+                  <div className="-mx-4 flex flex-col gap-3 border-t border-border/60 px-4 pt-4 sm:-mx-5 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                    <p className="text-xs text-muted-foreground">
+                      Mostrando {Math.min((timelinePage - 1) * TIMELINE_PAGE_SIZE + 1, companyTimelineEvents.length)}
+                      {' '}a {Math.min(timelinePage * TIMELINE_PAGE_SIZE, companyTimelineEvents.length)} de {companyTimelineEvents.length} eventos
+                    </p>
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setTimelinePage((page) => Math.max(1, page - 1))}
+                        disabled={timelinePage === 1}
+                      >
+                        <ChevronLeft className="size-4" />
+                        Anterior
+                      </Button>
+                      <span className="min-w-[72px] text-center text-xs text-muted-foreground">
+                        {timelinePage} / {totalTimelinePages}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setTimelinePage((page) => Math.min(totalTimelinePages, page + 1))}
+                        disabled={timelinePage === totalTimelinePages}
+                      >
+                        Siguiente
+                        <ChevronRight className="size-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="actividades" className="mt-4">
@@ -1091,13 +1188,13 @@ export default function EmpresaDetailPage() {
                 </Button>
               </div>
               <div className="space-y-3">
-                {notes.map((note) => (
+                {noteActivities.map((note) => (
                   <div key={note.id} className="rounded-lg border p-4">
-                    <p className="text-sm">{note.text}</p>
+                    <p className="text-sm">{note.description}</p>
                     <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                      <span className="font-medium">{note.author}</span>
+                      <span className="font-medium">{note.assignedToName}</span>
                       <span>·</span>
-                      <span>{formatDate(note.date)}</span>
+                      <span>{formatDate(note.createdAt || note.dueDate)}</span>
                     </div>
                   </div>
                 ))}

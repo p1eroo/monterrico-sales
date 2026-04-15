@@ -1,9 +1,7 @@
 import { useNavigate } from 'react-router-dom';
-import { Briefcase, CalendarDays } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { Briefcase, CalendarDays, DollarSign, Target, TrendingUp } from 'lucide-react';
 import { etapaLabels } from '@/data/mock';
 import { formatCurrency, formatDate } from '@/lib/formatters';
-import { etapaColors } from '@/lib/etapaConfig';
 import { LinkedEntitiesCard } from './LinkedEntitiesCard';
 import type { Opportunity } from '@/types';
 import { opportunityDetailHref } from '@/lib/detailRoutes';
@@ -39,30 +37,63 @@ export function LinkedOpportunitiesCard({
       getUnlinkLabel={(o) => o.title}
       getItemKey={(o) => o.id}
       onItemClick={(o) => navigate(opportunityDetailHref(o))}
+      collapsible
+      itemClassName="bg-background/35 p-4"
       renderItem={(opp, unlinkButton) => (
-        <>
-          <div className="flex items-start justify-between gap-2 mb-1">
-            <p className="text-[14px] font-semibold leading-tight text-text-primary">{opp.title}</p>
-            <Badge
-              variant="outline"
-              className={`shrink-0 border-0 text-[11px] font-medium ${etapaColors[opp.etapa] ?? 'bg-muted text-text-secondary'}`}
-            >
-              {etapaLabels[opp.etapa]}
-            </Badge>
-          </div>
-          <div className="flex items-baseline gap-2 mb-1">
-            <span className="text-[15px] font-bold text-primary">{formatCurrency(opp.amount)}</span>
-          </div>
-          <div className="flex items-center justify-between gap-2 text-[12px] text-text-secondary">
-            <div className="flex items-center gap-4 min-w-0">
-              <span className="flex items-center gap-1">
-                <CalendarDays className="size-3 text-text-tertiary" />
-                Cierre: {formatDate(opp.expectedCloseDate)}
-              </span>
-            </div>
+        <div className="space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <p className="min-w-0 flex-1 truncate text-[15px] font-semibold leading-tight text-text-primary">
+              {opp.title}
+            </p>
             {unlinkButton}
           </div>
-        </>
+
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-sm text-text-secondary">
+                <DollarSign className="h-3.5 w-3.5 text-text-tertiary" />
+                Monto
+              </div>
+              <span className="text-sm font-semibold text-text-primary">{formatCurrency(opp.amount)}</span>
+            </div>
+
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-sm text-text-secondary">
+                <Target className="h-3.5 w-3.5 text-text-tertiary" />
+                Etapa
+              </div>
+              <span className="text-right text-sm text-text-primary">
+                {etapaLabels[opp.etapa] ?? opp.etapa}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-sm text-text-secondary">
+                <CalendarDays className="h-3.5 w-3.5 text-text-tertiary" />
+                Cierre est.
+              </div>
+              <span className="text-sm text-text-primary">{formatDate(opp.expectedCloseDate)}</span>
+            </div>
+
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-sm text-text-secondary">
+                <TrendingUp className="h-3.5 w-3.5 text-text-tertiary" />
+                Probabilidad
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-stage-client"
+                    style={{ width: `${Math.max(0, Math.min(100, opp.probability))}%` }}
+                  />
+                </div>
+                <span className="text-xs font-medium text-text-primary">
+                  {Math.max(0, opp.probability)}%
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     />
   );

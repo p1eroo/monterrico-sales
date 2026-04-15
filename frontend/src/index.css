@@ -219,6 +219,60 @@
     }
 }
 
+@layer components {
+    .crm-collapsible-card {
+        @apply min-w-0 overflow-hidden border-border/70 bg-surface-elevated shadow-none;
+    }
+
+    .crm-collapsible-card__trigger {
+        @apply flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-muted/30;
+    }
+
+    .crm-collapsible-card__title {
+        @apply text-xs font-semibold uppercase tracking-[0.14em] text-text-tertiary;
+    }
+
+    .crm-collapsible-card__chevron {
+        @apply size-4 text-text-tertiary transition-transform;
+    }
+
+    .crm-collapsible-card__content {
+        @apply border-t border-border/70 p-4 pt-3;
+    }
+
+    .crm-info-list {
+        @apply min-w-0 space-y-3;
+    }
+
+    .crm-info-row {
+        @apply flex min-w-0 items-start gap-2.5 text-sm;
+    }
+
+    .crm-info-row--indented {
+        @apply pl-6;
+    }
+
+    .crm-info-icon {
+        @apply mt-0.5 h-3.5 w-3.5 shrink-0 text-text-tertiary;
+    }
+
+    .crm-info-label {
+        @apply shrink-0 text-sm text-text-secondary;
+    }
+
+    .crm-info-value {
+        @apply min-w-0 flex-1 text-sm text-text-secondary;
+    }
+
+    .crm-info-value--truncate {
+        @apply truncate;
+    }
+
+    .crm-info-link {
+        @apply text-text-secondary hover:text-primary hover:underline;
+    }
+}
+
 @layer utilities {
     .scrollbar-thin {
         scrollbar-width: thin;

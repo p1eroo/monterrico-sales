@@ -1,13 +1,15 @@
 export class CreateActivityDto {
   type!: string;
-  /** Obligatorio si type es `tarea`. También se acepta type = llamada|reunion|correo|whatsapp (legacy → se normaliza a tarea + taskKind). */
+  /** Obligatorio si type es `tarea`. */
   taskKind?: string;
   title!: string;
   description?: string;
   assignedTo!: string;
+  status?: string;
   dueDate!: string;
   startDate?: string;
   startTime?: string;
+  completedAt?: string;
   contactId?: string;
   companyId?: string;
   opportunityId?: string;

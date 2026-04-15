@@ -68,17 +68,13 @@ export class ActivitiesService {
       : null;
   }
 
-  /** Resuelve type + taskKind: legacy tipo=llamada|… → tarea + taskKind. */
+  /** Solo las tareas usan taskKind; llamada/reunion/correo/nota son actividades reales. */
   private resolveTypeAndTaskKind(dto: {
     type?: string;
     taskKind?: string;
   }): { type: string; taskKind: string | null } {
-    let type = dto.type?.trim() ?? '';
-    let taskKind = this.normalizeTaskKind(dto.taskKind);
-    if (TASK_KINDS.has(type)) {
-      taskKind = type as 'llamada' | 'reunion' | 'correo' | 'whatsapp';
-      type = 'tarea';
-    }
+    const type = dto.type?.trim() ?? '';
+    const taskKind = this.normalizeTaskKind(dto.taskKind);
     if (type === 'tarea') {
       if (!taskKind) {
         throw new BadRequestException(
@@ -89,7 +85,7 @@ export class ActivitiesService {
     }
     if (taskKind) {
       throw new BadRequestException(
-        'taskKind solo se usa cuando type es tarea (o al enviar tipo legacy llamada/reunion/correo/whatsapp)',
+        'taskKind solo se usa cuando type es tarea',
       );
     }
     return { type, taskKind: null };
@@ -122,6 +118,8 @@ export class ActivitiesService {
       throw new BadRequestException('La fecha de vencimiento es obligatoria');
     }
     const startDate = this.parseDate(dto.startDate);
+    const completedAt = this.parseDate(dto.completedAt);
+    const status = dto.status?.trim() || 'pendiente';
     const contactId = dto.contactId?.trim();
     const companyId = dto.companyId?.trim();
     const opportunityId = dto.opportunityId?.trim();
@@ -177,10 +175,11 @@ export class ActivitiesService {
           title,
           description: dto.description?.trim() ?? '',
           assignedTo,
-          status: 'pendiente',
+          status,
           dueDate,
           startDate,
           startTime: dto.startTime?.trim() || null,
+          completedAt,
         },
       });
       if (contactId) {
@@ -283,11 +282,6 @@ export class ActivitiesService {
         dto.taskKind !== undefined
           ? this.normalizeTaskKind(dto.taskKind)
           : this.normalizeTaskKind(existingRow.taskKind);
-
-      if (dto.type !== undefined && TASK_KINDS.has(nextType)) {
-        nextTk = nextType as 'llamada' | 'reunion' | 'correo' | 'whatsapp';
-        nextType = 'tarea';
-      }
 
       if (nextType === 'tarea') {
         if (!nextTk) {

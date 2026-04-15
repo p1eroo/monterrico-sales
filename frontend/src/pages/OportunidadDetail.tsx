@@ -1,12 +1,13 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   Briefcase, DollarSign, Target, CalendarDays, User, Building2,
-  Users, Edit, RefreshCw, UserPlus, Plus, FileArchive, Loader2,
+  Users, Plus, FileArchive, Loader2, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { useCRMStore } from '@/store/crmStore';
 import { etapaLabels, companyRubroLabels, activities } from '@/data/mock';
 import { fetchActivityLogs, activityLogToTimelineEvent } from '@/lib/activityLogsApi';
+import { useActivities } from '@/hooks/useActivities';
 import { useUsers } from '@/hooks/useUsers';
 import { getPrimaryCompany } from '@/lib/utils';
 import type { CompanyRubro, Etapa, OpportunityStatus, TimelineEvent } from '@/types';
@@ -15,7 +16,7 @@ import { DetailLayout } from '@/components/shared/DetailLayout';
 import { EntityInfoCard } from '@/components/shared/EntityInfoCard';
 import { TimelinePanel } from '@/components/shared/TimelinePanel';
 import { ActivityPanel } from '@/components/shared/ActivityPanel';
-import { QuickActionsWithDialogs } from '@/components/shared/QuickActionsWithDialogs';
+import { QuickActionsWithDialogs, type QuickActivityDraft } from '@/components/shared/QuickActionsWithDialogs';
 import { LinkedOpportunitiesCard } from '@/components/shared/LinkedOpportunitiesCard';
 import { LinkedContactsCard } from '@/components/shared/LinkedContactsCard';
 import { LinkedCompaniesCard } from '@/components/shared/LinkedCompaniesCard';
@@ -37,6 +38,7 @@ import { TasksTab, type TasksTabHandle } from '@/components/shared/TasksTab';
 import { ChangeEtapaDialog } from '@/components/shared/ChangeEtapaDialog';
 import { AssignDialog } from '@/components/shared/AssignDialog';
 import { EntityFilesTab } from '@/components/files';
+import { OpportunityHeader } from '@/components/opportunity-detail/OpportunityHeader';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -44,7 +46,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -73,6 +74,8 @@ import {
   isLikelyContactCuid,
   mapApiContactRowToContact,
 } from '@/lib/contactApi';
+
+const TIMELINE_PAGE_SIZE = 6;
 
 const statusLabels: Record<string, string> = {
   abierta: 'Abierta',
@@ -141,7 +144,8 @@ export default function OportunidadDetailPage() {
     };
   }, [fromApi, routeId]);
 
-  const { users } = useUsers();
+  const { users, activeAdvisors } = useUsers();
+  const { activities: activitiesFromStore, createActivity } = useActivities();
   const storeOpp = opportunities.find((o) => o.id === routeId);
 
   const opp = useMemo(() => {
@@ -192,6 +196,138 @@ export default function OportunidadDetailPage() {
     return activities.filter((a) => a.contactId === opp.contactId);
   }, [opp]);
   const [oppActivities, setOppActivities] = useState(initialOppActivities);
+  const persistedOppActivities = useMemo(() => activitiesFromStore.filter((activity) => {
+    if (activity.type === 'tarea') return false;
+    if (opp?.id && activity.opportunityId === opp.id) return true;
+    return !!opp?.contactId && activity.contactId === opp.contactId;
+  }), [activitiesFromStore, opp?.id, opp?.contactId]);
+  const noteActivities = useMemo(
+    () => oppActivities.filter((activity) => activity.type === 'nota'),
+    [oppActivities],
+  );
+
+  useEffect(() => {
+    if (fromApi) {
+      setOppActivities(persistedOppActivities);
+      return;
+    }
+    setOppActivities(initialOppActivities);
+  }, [fromApi, initialOppActivities, persistedOppActivities]);
+
+  const handleQuickActivityCreated = useCallback((draft: QuickActivityDraft) => {
+    if (!opp) return;
+
+    const assignedTo = opp.assignedTo || activeAdvisors[0]?.id;
+    if (!assignedTo) {
+      toast.error('No hay usuario interno para asignar la actividad');
+      throw new Error('missing_assignee');
+    }
+
+    const persistedContactId =
+      linkedContact?.id && isLikelyContactCuid(linkedContact.id) ? linkedContact.id : undefined;
+    const persistedOpportunityId =
+      isLikelyOpportunityCuid(opp.id) ? opp.id : undefined;
+    const persistedCompanyId =
+      primaryCompany?.id && /^c[a-z0-9]+$/i.test(primaryCompany.id) ? primaryCompany.id : undefined;
+
+    if (!persistedContactId && !persistedOpportunityId && !persistedCompanyId) {
+      const fallbackAssigneeName =
+        users.find((user) => user.id === assignedTo)?.name ??
+        opp.assignedToName ??
+        'Sin asignar';
+      setOppActivities((prev) => [
+        {
+          id: `act-${Date.now()}`,
+          type: draft.type,
+          title: draft.title,
+          description: draft.description,
+          assignedTo,
+          assignedToName: fallbackAssigneeName,
+          status: 'completada',
+          dueDate: draft.dueDate,
+          startDate: draft.startDate,
+          startTime: draft.startTime,
+          createdAt: new Date().toISOString().slice(0, 10),
+          contactId: linkedContact?.id ?? opp.contactId,
+          opportunityId: opp.id,
+          opportunityTitle: opp.title,
+        },
+        ...prev,
+      ]);
+      toast.info('Actividad guardada solo localmente porque esta oportunidad no existe en la API');
+      return;
+    }
+
+    const assignedToName =
+      users.find((user) => user.id === assignedTo)?.name ??
+      opp.assignedToName ??
+      'Sin asignar';
+    const optimisticId = `temp-activity-${Date.now()}`;
+
+    setOppActivities((prev) => [
+      {
+        id: optimisticId,
+        type: draft.type,
+        title: draft.title,
+        description: draft.description,
+        assignedTo,
+        assignedToName,
+        status: 'completada',
+        dueDate: draft.dueDate,
+        startDate: draft.startDate,
+        startTime: draft.startTime,
+        completedAt: draft.dueDate,
+        createdAt: new Date().toISOString().slice(0, 10),
+        contactId: persistedContactId ?? linkedContact?.id ?? opp.contactId,
+        companyId: persistedCompanyId,
+        opportunityId: persistedOpportunityId ?? opp.id,
+        opportunityTitle: opp.title,
+      },
+      ...prev,
+    ]);
+
+    void createActivity({
+      type: draft.type,
+      title: draft.title,
+      description: draft.description,
+      assignedTo,
+      status: 'completada',
+      dueDate: draft.dueDate,
+      startDate: draft.startDate,
+      startTime: draft.startTime,
+      completedAt: draft.dueDate,
+      contactId: persistedContactId,
+      companyId: persistedCompanyId,
+      opportunityId: persistedOpportunityId,
+    })
+      .then((saved) => {
+        setOppActivities((prev) => [
+          saved,
+          ...prev.filter((activity) => activity.id !== optimisticId && activity.id !== saved.id),
+        ]);
+      })
+      .catch((error) => {
+        setOppActivities((prev) => prev.filter((activity) => activity.id !== optimisticId));
+        toast.error(error instanceof Error ? error.message : 'No se pudo guardar la actividad');
+      });
+  }, [opp, linkedContact, primaryCompany, activeAdvisors, users, createActivity]);
+
+  function handleAddNote() {
+    const description = noteText.trim();
+    if (!description) return;
+    try {
+      handleQuickActivityCreated({
+        type: 'nota',
+        title: 'Nota',
+        description,
+        dueDate: new Date().toISOString().slice(0, 10),
+      });
+      setNoteText('');
+      toast.success('Nota agregada correctamente');
+    } catch {
+      /* handleQuickActivityCreated ya notifica el error */
+    }
+  }
 
   const tasksTabRef = useRef<TasksTabHandle>(null);
   const [newContactOpen, setNewContactOpen] = useState(false);
@@ -210,21 +346,7 @@ export default function OportunidadDetailPage() {
   const [linkCompanyNames, setLinkCompanyNames] = useState<string[]>([]);
   const [linkCompanySearch, setLinkCompanySearch] = useState('');
 
-  const [notes, setNotes] = useState([
-    { id: 'n1', text: 'Negociación en fase avanzada, el cliente solicita condiciones especiales de pago.', author: 'Ana Torres', date: '2026-03-02' },
-    { id: 'n2', text: 'Se envió propuesta final con descuento por volumen incluido.', author: 'Carlos Mendoza', date: '2026-03-04' },
-  ]);
   const [noteText, setNoteText] = useState('');
-
-  function handleAddNote() {
-    if (!noteText.trim()) return;
-    setNotes((prev) => [
-      { id: `n-${Date.now()}`, text: noteText.trim(), author: 'Tú', date: new Date().toISOString().slice(0, 10) },
-      ...prev,
-    ]);
-    setNoteText('');
-    toast.success('Nota agregada correctamente');
-  }
 
   // --- Edit / Etapa / Asignar dialogs ---
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -235,6 +357,7 @@ export default function OportunidadDetailPage() {
 
   const [oppTimelineEvents, setOppTimelineEvents] = useState<TimelineEvent[]>([]);
   const [oppTimelineLoading, setOppTimelineLoading] = useState(false);
+  const [timelinePage, setTimelinePage] = useState(1);
 
   useEffect(() => {
     if (!fromApi || !opp?.id) {
@@ -265,6 +388,26 @@ export default function OportunidadDetailPage() {
       cancelled = true;
     };
   }, [fromApi, opp?.id]);
+
+  const totalTimelinePages = useMemo(
+    () => Math.max(1, Math.ceil(oppTimelineEvents.length / TIMELINE_PAGE_SIZE)),
+    [oppTimelineEvents.length],
+  );
+
+  const paginatedTimelineEvents = useMemo(() => {
+    const start = (timelinePage - 1) * TIMELINE_PAGE_SIZE;
+    return oppTimelineEvents.slice(start, start + TIMELINE_PAGE_SIZE);
+  }, [oppTimelineEvents, timelinePage]);
+
+  useEffect(() => {
+    setTimelinePage(1);
+  }, [opp?.id, oppTimelineEvents.length]);
+
+  useEffect(() => {
+    if (timelinePage > totalTimelinePages) {
+      setTimelinePage(totalTimelinePages);
+    }
+  }, [timelinePage, totalTimelinePages]);
 
   function handleOpenEditDialog() {
     if (!opp) return;
@@ -823,98 +966,43 @@ export default function OportunidadDetailPage() {
     );
   }
 
+  const headerSubtitle = linkedContact?.name ?? '';
+
   return (
     <>
     <DetailLayout
       backPath="/opportunities"
       title={opp.title}
-      headerActions={
-        <>
-          <Badge variant="outline" className={`${statusColors[opp.status] ?? ''} border-0`}>
-            {statusLabels[opp.status] ?? opp.status}
-          </Badge>
-          <Button variant="outline" size="sm" onClick={handleOpenEditDialog}>
-            <Edit /> Editar
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setStatusDialogOpen(true)}>
-            <RefreshCw /> Cambiar Etapa
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setAssignDialogOpen(true)}>
-            <UserPlus /> Asignar
-          </Button>
-        </>
-      }
-      quickActions={
-        <QuickActionsWithDialogs
-          entityName={opp.title}
-          contacts={linkedContact ? [linkedContact] : []}
-          companies={linkedContact?.companies ?? []}
-          opportunities={[opp]}
-          contactId={opp?.contactId}
-          onTaskCreated={(task) => tasksTabRef.current?.addTask(task as any)}
-          onActivityCreated={(activity) => setOppActivities((prev) => [activity, ...prev])}
+      header={(
+        <OpportunityHeader
+          backPath="/opportunities"
+          title={opp.title}
+          subtitle={headerSubtitle || undefined}
+          statusLabel={statusLabels[opp.status] ?? opp.status}
+          statusClassName={statusColors[opp.status] ?? 'bg-muted text-text-secondary'}
+          amountLabel={formatCurrency(opp.amount)}
+          quickActions={(
+            <QuickActionsWithDialogs
+              entityName={opp.title}
+              contacts={linkedContact ? [linkedContact] : []}
+              companies={linkedContact?.companies ?? []}
+              opportunities={[opp]}
+              contactId={opp?.contactId}
+              onTaskCreated={(task) => tasksTabRef.current?.addTask(task as any)}
+              onActivityCreated={handleQuickActivityCreated}
+              inline
+            />
+          )}
+          onEdit={handleOpenEditDialog}
+          onChangeStage={() => setStatusDialogOpen(true)}
+          onAssign={() => setAssignDialogOpen(true)}
         />
-      }
-      summaryCards={
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card className="py-0">
-            <CardContent className="px-4 py-3">
-              <div className="flex items-center gap-3">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
-                  <DollarSign className="size-5" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm text-muted-foreground">Monto</p>
-                  <p className="text-l font-semibold text-emerald-600">{formatCurrency(opp.amount)}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="py-0">
-            <CardContent className="px-4 py-3">
-              <div className="flex items-center gap-3">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
-                  <Target className="size-5" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm text-muted-foreground">Probabilidad</p>
-                  <p className="text-l font-semibold">{opp.probability}%</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="py-0">
-            <CardContent className="px-4 py-3">
-              <div className="flex items-center gap-3">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
-                  <CalendarDays className="size-5" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm text-muted-foreground">Fecha de cierre</p>
-                  <p className="text-l font-semibold">{formatDate(opp.expectedCloseDate)}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="py-0">
-            <CardContent className="px-4 py-3">
-              <div className="flex items-center gap-3">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-600">
-                  <RefreshCw className="size-5" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm text-muted-foreground">Etapa</p>
-                  <p className="text-l font-semibold">{etapaLabels[opp.etapa]}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      }
+      )}
       sidebar={
         <>
           <EntityInfoCard
-            title="Información de la Oportunidad"
+            title="Información"
+            collapsible
             fields={[
               { icon: DollarSign, value: formatCurrency(opp.amount) },
               { icon: Target, value: `${opp.probability}% probabilidad` },
@@ -941,7 +1029,7 @@ export default function OportunidadDetailPage() {
 
           <LinkedContactsCard
             contacts={linkedContact ? [linkedContact] : []}
-            title="Contacto vinculado"
+            title="Contactos"
             onCreate={() => setNewContactOpen(true)}
             onAddExisting={() => setAddExistingContactOpen(true)}
             onRemove={linkedContact ? handleRemoveContact : undefined}
@@ -950,7 +1038,7 @@ export default function OportunidadDetailPage() {
       }
     >
       <Tabs defaultValue="historial">
-        <TabsList variant="line" className="w-full justify-start flex-wrap">
+        <TabsList variant="line" className="max-w-full justify-start">
           <TabsTrigger value="historial">Historial</TabsTrigger>
           <TabsTrigger value="actividades">Actividades</TabsTrigger>
           <TabsTrigger value="tareas">Tareas</TabsTrigger>
@@ -962,23 +1050,58 @@ export default function OportunidadDetailPage() {
         </TabsList>
 
         <TabsContent value="historial" className="mt-4">
-          {oppTimelineLoading ? (
-            <div className="flex justify-center py-10 text-muted-foreground">
-              <Loader2 className="size-6 animate-spin" />
-            </div>
-          ) : oppTimelineEvents.length === 0 ? (
-            <EmptyState
-              icon={CalendarDays}
-              title="Sin actividad registrada"
-              description={
-                fromApi
-                  ? 'Los cambios sobre esta oportunidad aparecerán aquí.'
-                  : 'El historial detallado está disponible en oportunidades cargadas desde el servidor (API).'
-              }
-            />
-          ) : (
-            <TimelinePanel events={oppTimelineEvents} />
-          )}
+          <Card>
+            <CardContent className="p-4 sm:p-5">
+              {oppTimelineLoading ? (
+                <div className="flex justify-center py-10 text-muted-foreground">
+                  <Loader2 className="size-6 animate-spin" />
+                </div>
+              ) : oppTimelineEvents.length === 0 ? (
+                <EmptyState
+                  icon={CalendarDays}
+                  title="Sin actividad registrada"
+                  description={
+                    fromApi
+                      ? 'Los cambios sobre esta oportunidad aparecerán aquí.'
+                      : 'El historial detallado está disponible en oportunidades cargadas desde el servidor (API).'
+                  }
+                />
+              ) : (
+                <div className="space-y-4">
+                  <TimelinePanel events={paginatedTimelineEvents} />
+                  <div className="-mx-4 flex flex-col gap-3 border-t border-border/60 px-4 pt-4 sm:-mx-5 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                    <p className="text-xs text-muted-foreground">
+                      Mostrando {Math.min((timelinePage - 1) * TIMELINE_PAGE_SIZE + 1, oppTimelineEvents.length)}
+                      {' '}a {Math.min(timelinePage * TIMELINE_PAGE_SIZE, oppTimelineEvents.length)} de {oppTimelineEvents.length} eventos
+                    </p>
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setTimelinePage((page) => Math.max(1, page - 1))}
+                        disabled={timelinePage === 1}
+                      >
+                        <ChevronLeft className="size-4" />
+                        Anterior
+                      </Button>
+                      <span className="min-w-[72px] text-center text-xs text-muted-foreground">
+                        {timelinePage} / {totalTimelinePages}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setTimelinePage((page) => Math.min(totalTimelinePages, page + 1))}
+                        disabled={timelinePage === totalTimelinePages}
+                      >
+                        Siguiente
+                        <ChevronRight className="size-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="actividades" className="mt-4">
@@ -1011,13 +1134,13 @@ export default function OportunidadDetailPage() {
                 </Button>
               </div>
               <div className="space-y-3">
-                {notes.map((note) => (
+                {noteActivities.map((note) => (
                   <div key={note.id} className="rounded-lg border p-4">
-                    <p className="text-sm">{note.text}</p>
+                    <p className="text-sm">{note.description}</p>
                     <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                      <span className="font-medium">{note.author}</span>
+                      <span className="font-medium">{note.assignedToName}</span>
                       <span>·</span>
-                      <span>{formatDate(note.date)}</span>
+                      <span>{formatDate(note.createdAt || note.dueDate)}</span>
                     </div>
                   </div>
                 ))}

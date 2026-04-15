@@ -31,7 +31,7 @@ interface TimelinePanelProps {
 export function TimelinePanel({ events }: TimelinePanelProps) {
   return (
     <Card className="border-0 bg-transparent pt-0 shadow-none">
-      <CardContent className="pt-6">
+      <CardContent className="p-0">
         <div className="relative">
           <div className="absolute bottom-0 left-[19px] top-0 w-px bg-border/80" />
           <div className="space-y-6">

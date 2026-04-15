@@ -65,6 +65,7 @@ import {
   uploadImportCsv,
   type ContactImportPreviewResult,
 } from '@/lib/importExportApi';
+import { IMPORT_SPREADSHEET_ACCEPT } from '@/lib/importSpreadsheet';
 import {
   Dialog,
   DialogContent,
@@ -78,7 +79,12 @@ const ITEMS_PER_PAGE = 25;
 
 function importPreviewCell(v: string | undefined) {
   const t = (v ?? '').trim();
-  return t || '—';
+  if (!t) return '—';
+  return (
+    <span className="block truncate" title={t}>
+      {t}
+    </span>
+  );
 }
 
 const etapaOrder: Etapa[] = [
@@ -748,13 +754,13 @@ export default function ContactosPage() {
       <ImportInProgressDialog
         open={importPreviewInProgress}
         title="Generando vista previa"
-        description="El servidor está leyendo el CSV y validando filas contra la base de datos. Las consultas externas solo ocurren al confirmar la importación."
+        description="El sistema está leyendo el archivo, normalizando CSV/Excel y validando filas contra la base de datos. Las consultas externas solo ocurren al confirmar la importación."
         rowHint="Puede tardar unos segundos si el archivo tiene muchas filas."
       />
       <ImportInProgressDialog
         open={importCommitInProgress}
         title="Importando contactos"
-        description="El servidor está validando filas, creando contactos y puede consultar RENIEC u otras fuentes según los datos del CSV."
+        description="El servidor está validando filas, creando contactos y puede consultar RENIEC u otras fuentes según los datos del archivo importado."
         rowHint={importCommitRowHint}
       />
       <Dialog
@@ -779,7 +785,7 @@ export default function ContactosPage() {
                   </span>
                   {importPreviewData.errorCount > 0 ? (
                     <span className="mt-2 block text-destructive">
-                      Corrige o elimina las filas con error en el CSV y vuelve a elegir el archivo. No se importará nada
+                      Corrige o elimina las filas con error en el archivo y vuelve a elegirlo. No se importará nada
                       hasta que no queden errores en la vista previa.
                     </span>
                   ) : null}
@@ -805,12 +811,14 @@ export default function ContactosPage() {
                       {contactImportPreviewCsvKeys.map((key) => (
                         <TableHead
                           key={key}
-                          className="min-w-[10rem] max-w-[16rem] align-bottom"
+                          className="w-[8.5rem] min-w-[8.5rem] max-w-[8.5rem] align-bottom"
                         >
-                          {key}
+                          <span className="block truncate" title={key}>
+                            {key}
+                          </span>
                         </TableHead>
                       ))}
-                      <TableHead className="min-w-[12rem] max-w-[24rem] align-bottom">
+                      <TableHead className="w-[14rem] min-w-[14rem] max-w-[14rem] align-bottom">
                         Motivo / detalle
                       </TableHead>
                     </TableRow>
@@ -849,15 +857,20 @@ export default function ContactosPage() {
                           {contactImportPreviewCsvKeys.map((key) => (
                             <TableCell
                               key={`${row.row}-${key}`}
-                              className="max-w-[16rem] break-words align-top text-xs"
+                              className="w-[8.5rem] min-w-[8.5rem] max-w-[8.5rem] align-top text-xs"
                             >
                               {importPreviewCell(row.csvColumns?.[key])}
                             </TableCell>
                           ))}
-                          <TableCell className="max-w-[24rem] break-words align-top text-muted-foreground">
-                            {row.ok
-                              ? importPreviewCell(undefined)
-                              : importPreviewCell(row.error)}
+                          <TableCell className="w-[14rem] min-w-[14rem] max-w-[14rem] align-top text-muted-foreground">
+                            <span
+                              className="block truncate"
+                              title={row.ok ? undefined : row.error}
+                            >
+                              {row.ok
+                                ? importPreviewCell(undefined)
+                                : (row.error ?? '—')}
+                            </span>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -893,7 +906,7 @@ export default function ContactosPage() {
       <input
         ref={importInputRef}
         type="file"
-        accept=".csv,text/csv"
+        accept={IMPORT_SPREADSHEET_ACCEPT}
         className="hidden"
         onChange={onContactImportChange}
       />

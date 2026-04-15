@@ -31,6 +31,7 @@ export type ApiActivity = {
 };
 
 const VALID_TYPES: ActivityType[] = [
+  'nota',
   'llamada',
   'reunion',
   'tarea',
@@ -45,7 +46,7 @@ const VALID_STATUSES: ActivityStatus[] = [
 ];
 
 function parseType(raw: string): ActivityType {
-  return VALID_TYPES.includes(raw as ActivityType) ? (raw as ActivityType) : 'tarea';
+  return VALID_TYPES.includes(raw as ActivityType) ? (raw as ActivityType) : raw;
 }
 
 function parseStatus(raw: string): ActivityStatus {
@@ -99,9 +100,11 @@ export type CreateActivityPayload = {
   title: string;
   description?: string;
   assignedTo: string;
+  status?: string;
   dueDate: string;
   startDate?: string;
   startTime?: string;
+  completedAt?: string;
   contactId?: string;
   companyId?: string;
   opportunityId?: string;

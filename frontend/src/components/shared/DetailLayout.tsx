@@ -72,7 +72,7 @@ export function DetailLayout({
             {children}
           </div>
           {sidebar ? (
-            <aside className="w-full space-y-4 lg:w-[35%] lg:flex-shrink-0">
+            <aside className="w-full space-y-4 lg:w-[35%] lg:flex-shrink-0 lg:pt-14">
               {sidebar}
             </aside>
           ) : null}

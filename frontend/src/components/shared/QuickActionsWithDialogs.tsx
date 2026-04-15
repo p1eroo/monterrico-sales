@@ -3,7 +3,6 @@ import {
   MessageSquare, Phone, Calendar, Mail, Paperclip, ClipboardList,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useUsers } from '@/hooks/useUsers';
 import type { Contact, Opportunity, TaskAssociation } from '@/types';
 
 import { Button } from '@/components/ui/button';
@@ -35,6 +34,15 @@ export interface QuickTask {
   associations?: TaskAssociation[];
 }
 
+export interface QuickActivityDraft {
+  type: 'nota' | 'llamada' | 'reunion' | 'correo';
+  title: string;
+  description: string;
+  dueDate: string;
+  startDate?: string;
+  startTime?: string;
+}
+
 const actions = [
   { type: 'nota', icon: MessageSquare, label: 'Nota' },
   { type: 'llamada', icon: Phone, label: 'Llamada' },
@@ -50,7 +58,7 @@ interface QuickActionsWithDialogsProps {
   companies?: { name: string }[];
   opportunities?: Opportunity[];
   onTaskCreated?: (task: QuickTask) => void;
-  onActivityCreated?: (activity: { id: string; type: import('@/types').ActivityType; title: string; description: string; assignedTo: string; assignedToName: string; status: import('@/types').ActivityStatus; dueDate: string; createdAt: string; contactId?: string }) => void;
+  onActivityCreated?: (activity: QuickActivityDraft) => void | Promise<void>;
   contactId?: string;
   excludeActions?: string[];
   inline?: boolean;
@@ -63,18 +71,29 @@ export function QuickActionsWithDialogs({
   opportunities = [],
   onTaskCreated,
   onActivityCreated,
-  contactId,
   excludeActions = [],
   inline = false,
 }: QuickActionsWithDialogsProps) {
-  const { activeAdvisors } = useUsers();
   const [activeDialog, setActiveDialog] = useState<string | null>(null);
+  const [noteContent, setNoteContent] = useState('');
 
   const [activityDialogType, setActivityDialogType] = useState<'llamada' | 'reunion' | 'correo' | null>(null);
   const [taskFormOpen, setTaskFormOpen] = useState(false);
   const visibleActions = actions.filter((action) => !excludeActions.includes(action.type));
 
-  function submitQuickAction() {
+  async function submitQuickAction() {
+    if (activeDialog === 'nota') {
+      const description = noteContent.trim();
+      await Promise.resolve(onActivityCreated?.({
+        type: 'nota',
+        title: 'Nota',
+        description,
+        dueDate: new Date().toISOString().slice(0, 10),
+      }));
+      setNoteContent('');
+      setActiveDialog(null);
+      return;
+    }
     const actionLabels: Record<string, string> = {
       nota: 'Nota agregada',
       archivo: 'Archivo adjuntado',
@@ -102,25 +121,31 @@ export function QuickActionsWithDialogs({
     setTaskFormOpen(false);
   }
 
-  function handleActivitySave(data: import('./ActivityFormDialog').ActivityFormData) {
+  async function handleActivitySave(data: import('./ActivityFormDialog').ActivityFormData) {
     if (!activityDialogType) return;
     const title = data.title || (activityDialogType === 'llamada' ? 'Llamada' : activityDialogType === 'reunion' ? 'Reunión' : 'Correo');
     const dueDate = activityDialogType === 'reunion' && data.dateTime
       ? data.dateTime.slice(0, 10)
       : data.date || new Date().toISOString().slice(0, 10);
-    const defaultAssignee = activeAdvisors[0];
-    onActivityCreated?.({
-      id: `act-${Date.now()}`,
+    const startTime = activityDialogType === 'reunion' && data.dateTime
+      ? (data.dateTime.slice(11, 16) || undefined)
+      : activityDialogType === 'llamada'
+        ? (data.time || undefined)
+        : undefined;
+    const startDate = activityDialogType === 'reunion' && data.dateTime
+      ? dueDate
+      : activityDialogType === 'llamada'
+        ? dueDate
+        : undefined;
+    await Promise.resolve(onActivityCreated?.({
       type: activityDialogType,
       title,
       description: data.description || '',
-      assignedTo: defaultAssignee?.id ?? '',
-      assignedToName: defaultAssignee?.name ?? '',
-      status: 'completada' as import('@/types').ActivityStatus,
       dueDate,
-      createdAt: new Date().toISOString().slice(0, 10),
-      contactId,
-    });
+      startDate,
+      startTime,
+    }));
+    setNoteContent('');
     setActivityDialogType(null);
     setActiveDialog(null);
   }
@@ -149,7 +174,12 @@ export function QuickActionsWithDialogs({
         ))}
       </div>
 
-      <Dialog open={!!activeDialog && activeDialog !== 'llamada' && activeDialog !== 'reunion' && activeDialog !== 'correo' && activeDialog !== 'tarea'} onOpenChange={(open) => { if (!open) setActiveDialog(null); }}>
+      <Dialog open={!!activeDialog && activeDialog !== 'llamada' && activeDialog !== 'reunion' && activeDialog !== 'correo' && activeDialog !== 'tarea'} onOpenChange={(open) => {
+        if (!open) {
+          setActiveDialog(null);
+          setNoteContent('');
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
@@ -165,7 +195,12 @@ export function QuickActionsWithDialogs({
             {activeDialog === 'nota' && (
               <div className="space-y-2">
                 <Label>Contenido de la nota</Label>
-                <Textarea placeholder="Escribe tu nota aquí..." rows={4} />
+                <Textarea
+                  placeholder="Escribe tu nota aquí..."
+                  rows={4}
+                  value={noteContent}
+                  onChange={(e) => setNoteContent(e.target.value)}
+                />
               </div>
             )}
             {activeDialog === 'archivo' && (
@@ -176,8 +211,8 @@ export function QuickActionsWithDialogs({
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setActiveDialog(null)}>Cancelar</Button>
-            <Button onClick={submitQuickAction}>Guardar</Button>
+            <Button variant="outline" onClick={() => { setActiveDialog(null); setNoteContent(''); }}>Cancelar</Button>
+            <Button onClick={() => void submitQuickAction()}>Guardar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

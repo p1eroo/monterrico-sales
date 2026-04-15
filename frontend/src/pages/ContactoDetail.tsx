@@ -5,7 +5,7 @@ import {
   ArrowLeft,
   Phone, Mail, Users,
   Building2, Globe, DollarSign, CalendarDays, MapPin,
-  FileArchive, Loader2,
+  FileArchive, Loader2, Plus, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import type { Contact, Etapa, CompanyRubro, CompanyTipo, TimelineEvent } from '@/types';
 import {
@@ -14,6 +14,7 @@ import {
   activities,
 } from '@/data/mock';
 import { fetchActivityLogs, activityLogToTimelineEvent } from '@/lib/activityLogsApi';
+import { useActivities } from '@/hooks/useActivities';
 import { useUsers } from '@/hooks/useUsers';
 import { useCRMStore } from '@/store/crmStore';
 import { getPrimaryCompany } from '@/lib/utils';
@@ -22,7 +23,7 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { LinkExistingDialog, type LinkExistingItem } from '@/components/shared/LinkExistingDialog';
 import { NewContactWizard } from '@/components/shared/NewContactWizard';
 import type { NewContactData } from '@/components/shared/NewContactWizard';
-import { QuickActionsWithDialogs } from '@/components/shared/QuickActionsWithDialogs';
+import { QuickActionsWithDialogs, type QuickActivityDraft } from '@/components/shared/QuickActionsWithDialogs';
 import { TimelinePanel } from '@/components/shared/TimelinePanel';
 import { EntityInfoCard } from '@/components/shared/EntityInfoCard';
 import { ActivityPanel } from '@/components/shared/ActivityPanel';
@@ -50,6 +51,8 @@ import { EntityFilesTab } from '@/components/files';
 import { ContactHeader } from '@/components/contact-detail/ContactHeader';
 
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { api } from '@/lib/api';
@@ -77,6 +80,8 @@ import {
 import { type ApiCompanyRecord, companyListAll } from '@/lib/companyApi';
 import { etapaColorsWithBorder } from '@/lib/etapaConfig';
 
+const TIMELINE_PAGE_SIZE = 6;
+
 function ContactoSidebar({ contact, contactOpportunities, linkedContacts, onOpenConvertDialog, onAddExistingOpportunity, onRemoveOpportunity, onAddCompany, onAddExistingCompany, onRemoveCompany, onNewContact, onAddLinkContact, onRemoveContact }: {
   contact: Contact;
   contactOpportunities: import('@/types').Opportunity[];
@@ -95,7 +100,8 @@ function ContactoSidebar({ contact, contactOpportunities, linkedContacts, onOpen
   return (
     <>
       <EntityInfoCard
-        title="Información de Contacto"
+        title="Información"
+        collapsible
         fields={[
           { icon: Phone, value: contact.telefono, href: `tel:${contact.telefono}` },
           { icon: Mail, value: contact.correo, href: `mailto:${contact.correo}` },
@@ -140,7 +146,8 @@ export default function ContactoDetailPage() {
   const routeId = id ? decodeURIComponent(id) : '';
   const fromApi = isEntityDetailApiParam(routeId);
   const { contacts, opportunities, getOpportunitiesByContactId, addOpportunity, updateOpportunity, updateContact, addContact } = useCRMStore();
-  const { users } = useUsers();
+  const { users, activeAdvisors } = useUsers();
+  const { activities: activitiesFromStore, createActivity } = useActivities();
 
   const [apiRecord, setApiRecord] = useState<ApiContactDetail | null>(null);
   const [apiLoading, setApiLoading] = useState(fromApi);
@@ -244,6 +251,13 @@ export default function ContactoDetailPage() {
     [routeId],
   );
 
+  const persistedContactActivities = useMemo(() => activitiesFromStore.filter((activity) => {
+    if (activity.type === 'tarea') return false;
+    if (contact?.id && activity.contactId === contact.id) return true;
+    const primaryCompanyId = contact ? getPrimaryCompany(contact)?.id : undefined;
+    return !!primaryCompanyId && activity.companyId === primaryCompanyId;
+  }), [activitiesFromStore, contact]);
+
   const contactOpportunities = useMemo(() => {
     if (fromApi && apiRecord?.opportunities?.length) {
       return opportunitiesFromApiContactDetail(apiRecord);
@@ -290,13 +304,134 @@ export default function ContactoDetailPage() {
   const [linkCompanySearch, setLinkCompanySearch] = useState('');
   const [newContactOpen, setNewContactOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [noteText, setNoteText] = useState('');
 
   useEffect(() => {
+    if (fromApi) {
+      setContactActivities(persistedContactActivities);
+      return;
+    }
     setContactActivities(initialActivities);
-  }, [initialActivities]);
+  }, [fromApi, initialActivities, persistedContactActivities]);
+
+  const handleQuickActivityCreated = useCallback((draft: QuickActivityDraft) => {
+    if (!contact) return;
+
+    const assignedTo = contact.assignedTo || activeAdvisors[0]?.id;
+    if (!assignedTo) {
+      toast.error('No hay usuario interno para asignar la actividad');
+      throw new Error('missing_assignee');
+    }
+
+    const companyId = getPrimaryCompany(contact)?.id;
+    const persistedContactId = isLikelyContactCuid(contact.id) ? contact.id : undefined;
+    const persistedCompanyId = companyId && /^c[a-z0-9]+$/i.test(companyId) ? companyId : undefined;
+
+    if (!persistedContactId && !persistedCompanyId) {
+      const fallbackAssigneeName = users.find((user) => user.id === assignedTo)?.name ?? contact.assignedToName ?? 'Sin asignar';
+      setContactActivities((prev) => [
+        {
+          id: `act-${Date.now()}`,
+          type: draft.type,
+          title: draft.title,
+          description: draft.description,
+          assignedTo,
+          assignedToName: fallbackAssigneeName,
+          status: 'completada',
+          dueDate: draft.dueDate,
+          startDate: draft.startDate,
+          startTime: draft.startTime,
+          createdAt: new Date().toISOString().slice(0, 10),
+          contactId: contact.id,
+        },
+        ...prev,
+      ]);
+      toast.info('Actividad guardada solo localmente porque este contacto no existe en la API');
+      return;
+    }
+
+    const assignedToName = users.find((user) => user.id === assignedTo)?.name ?? contact.assignedToName ?? 'Sin asignar';
+    const optimisticId = `temp-activity-${Date.now()}`;
+
+    setContactActivities((prev) => [
+      {
+        id: optimisticId,
+        type: draft.type,
+        title: draft.title,
+        description: draft.description,
+        assignedTo,
+        assignedToName,
+        status: 'completada',
+        dueDate: draft.dueDate,
+        startDate: draft.startDate,
+        startTime: draft.startTime,
+        completedAt: draft.dueDate,
+        createdAt: new Date().toISOString().slice(0, 10),
+        contactId: persistedContactId ?? contact.id,
+      },
+      ...prev,
+    ]);
+
+    void createActivity({
+      type: draft.type,
+      title: draft.title,
+      description: draft.description,
+      assignedTo,
+      status: 'completada',
+      dueDate: draft.dueDate,
+      startDate: draft.startDate,
+      startTime: draft.startTime,
+      completedAt: draft.dueDate,
+      contactId: persistedContactId,
+      companyId: persistedCompanyId,
+    })
+      .then((saved) => {
+        setContactActivities((prev) => [
+          saved,
+          ...prev.filter((activity) => activity.id !== optimisticId && activity.id !== saved.id),
+        ]);
+      })
+      .catch((error) => {
+        setContactActivities((prev) => prev.filter((activity) => activity.id !== optimisticId));
+        toast.error(error instanceof Error ? error.message : 'No se pudo guardar la actividad');
+      });
+  }, [contact, activeAdvisors, users, createActivity]);
+
+  const noteActivities = useMemo(
+    () => contactActivities.filter((activity) => activity.type === 'nota'),
+    [contactActivities],
+  );
+
+  function handleAddNote() {
+    const description = noteText.trim();
+    if (!description) return;
+    try {
+      handleQuickActivityCreated({
+        type: 'nota',
+        title: 'Nota',
+        description,
+        dueDate: new Date().toISOString().slice(0, 10),
+      });
+      setNoteText('');
+      toast.success('Nota agregada correctamente');
+    } catch {
+      /* handleQuickActivityCreated ya notifica el error */
+    }
+  }
 
   const [contactTimelineEvents, setContactTimelineEvents] = useState<TimelineEvent[]>([]);
   const [contactTimelineLoading, setContactTimelineLoading] = useState(false);
+  const [timelinePage, setTimelinePage] = useState(1);
+
+  const totalTimelinePages = useMemo(
+    () => Math.max(1, Math.ceil(contactTimelineEvents.length / TIMELINE_PAGE_SIZE)),
+    [contactTimelineEvents.length],
+  );
+
+  const paginatedTimelineEvents = useMemo(() => {
+    const start = (timelinePage - 1) * TIMELINE_PAGE_SIZE;
+    return contactTimelineEvents.slice(start, start + TIMELINE_PAGE_SIZE);
+  }, [contactTimelineEvents, timelinePage]);
 
   useEffect(() => {
     if (!fromApi || !contact?.id) {
@@ -327,6 +462,16 @@ export default function ContactoDetailPage() {
       cancelled = true;
     };
   }, [fromApi, contact?.id]);
+
+  useEffect(() => {
+    setTimelinePage(1);
+  }, [contact?.id, contactTimelineEvents.length]);
+
+  useEffect(() => {
+    if (timelinePage > totalTimelinePages) {
+      setTimelinePage(totalTimelinePages);
+    }
+  }, [timelinePage, totalTimelinePages]);
 
   // Los returns condicionales van después de todos los hooks
   if (fromApi && apiLoading) {
@@ -986,7 +1131,7 @@ export default function ContactoDetailPage() {
               opportunities={contactOpportunities}
               contactId={contact.id}
               onTaskCreated={(task) => tasksTabRef.current?.addTask(task as any)}
-              onActivityCreated={(activity) => setContactActivities((prev) => [activity, ...prev])}
+              onActivityCreated={handleQuickActivityCreated}
               excludeActions={['archivo']}
               inline
             />
@@ -1000,10 +1145,11 @@ export default function ContactoDetailPage() {
       sidebar={<ContactoSidebar contact={contact} contactOpportunities={contactOpportunities} linkedContacts={linkedContactsForSidebar} onOpenConvertDialog={() => setConvertDialogOpen(true)} onAddExistingOpportunity={() => setAddExistingOpportunityOpen(true)} onRemoveOpportunity={handleRemoveOpportunity} onAddCompany={() => setAddCompanyOpen(true)} onAddExistingCompany={() => setAddExistingCompanyOpen(true)} onRemoveCompany={handleRemoveCompany} onNewContact={() => setNewContactOpen(true)} onAddLinkContact={() => setAddLinkContactOpen(true)} onRemoveContact={handleRemoveContact} />}
     >
         <Tabs defaultValue="historial">
-          <TabsList variant="line" className="w-full justify-start flex-wrap">
+          <TabsList variant="line" className="max-w-full justify-start">
             <TabsTrigger value="historial">Historial</TabsTrigger>
             <TabsTrigger value="actividades">Actividades</TabsTrigger>
             <TabsTrigger value="tareas">Tareas</TabsTrigger>
+            <TabsTrigger value="notas">Notas</TabsTrigger>
             <TabsTrigger value="archivos" className="gap-1.5">
               <FileArchive className="size-3.5" />
               Archivos
@@ -1036,25 +1182,93 @@ export default function ContactoDetailPage() {
             />
           </TabsContent>
 
+          <TabsContent value="notas" className="mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Notas</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Textarea
+                    placeholder="Escribe una nota..."
+                    value={noteText}
+                    onChange={(e) => setNoteText(e.target.value)}
+                    rows={3}
+                  />
+                  <Button size="sm" onClick={handleAddNote} disabled={!noteText.trim()}>
+                    <Plus className="size-4" /> Agregar nota
+                  </Button>
+                </div>
+                <div className="space-y-3">
+                  {noteActivities.map((note) => (
+                    <div key={note.id} className="rounded-lg border p-4">
+                      <p className="text-sm">{note.description}</p>
+                      <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="font-medium">{note.assignedToName}</span>
+                        <span>•</span>
+                        <span>{formatDate(note.createdAt || note.dueDate)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* Historial Tab */}
           <TabsContent value="historial" className="mt-4">
-            {contactTimelineLoading ? (
-              <div className="flex justify-center py-10 text-muted-foreground">
-                <Loader2 className="size-6 animate-spin" />
-              </div>
-            ) : contactTimelineEvents.length === 0 ? (
-              <EmptyState
-                icon={CalendarDays}
-                title="Sin actividad registrada"
-                description={
-                  fromApi
-                    ? 'Los cambios y acciones sobre este contacto aparecerán aquí.'
-                    : 'El historial detallado está disponible cuando abres un contacto desde el servidor (vista API).'
-                }
-              />
-            ) : (
-              <TimelinePanel events={contactTimelineEvents} />
-            )}
+            <Card>
+              <CardContent className="p-4 sm:p-5">
+                {contactTimelineLoading ? (
+                  <div className="flex justify-center py-10 text-muted-foreground">
+                    <Loader2 className="size-6 animate-spin" />
+                  </div>
+                ) : contactTimelineEvents.length === 0 ? (
+                  <EmptyState
+                    icon={CalendarDays}
+                    title="Sin actividad registrada"
+                    description={
+                      fromApi
+                        ? 'Los cambios y acciones sobre este contacto aparecerán aquí.'
+                        : 'El historial detallado está disponible cuando abres un contacto desde el servidor (vista API).'
+                    }
+                  />
+                ) : (
+                  <div className="space-y-4">
+                    <TimelinePanel events={paginatedTimelineEvents} />
+                    <div className="-mx-4 flex flex-col gap-3 border-t border-border/60 px-4 pt-4 sm:-mx-5 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                      <p className="text-xs text-muted-foreground">
+                        Mostrando {Math.min((timelinePage - 1) * TIMELINE_PAGE_SIZE + 1, contactTimelineEvents.length)}
+                        {' '}a {Math.min(timelinePage * TIMELINE_PAGE_SIZE, contactTimelineEvents.length)} de {contactTimelineEvents.length} eventos
+                      </p>
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setTimelinePage((page) => Math.max(1, page - 1))}
+                          disabled={timelinePage === 1}
+                        >
+                          <ChevronLeft className="size-4" />
+                          Anterior
+                        </Button>
+                        <span className="min-w-[72px] text-center text-xs text-muted-foreground">
+                          {timelinePage} / {totalTimelinePages}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setTimelinePage((page) => Math.min(totalTimelinePages, page + 1))}
+                          disabled={timelinePage === totalTimelinePages}
+                        >
+                          Siguiente
+                          <ChevronRight className="size-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
 

@@ -275,19 +275,19 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
 
   return (
     <>
-      <Card className="pt-2 overflow-hidden">
+      <Card className="overflow-hidden pt-2">
         <CardContent>
-          <Table className="table-fixed">
+          <Table>
             <TableHeader>
               <TableRow>
                 <TableHead className="w-10"></TableHead>
                 <TableHead className="w-10"></TableHead>
-                <TableHead className="w-[180px]">Tarea</TableHead>
-                <TableHead className="hidden md:table-cell w-[120px]">Empresa</TableHead>
-                <TableHead className="hidden md:table-cell w-[120px]">Contacto</TableHead>
+                <TableHead className="min-w-[120px]">Tarea</TableHead>
+                <TableHead className="hidden min-w-[92px] md:table-cell">Empresa</TableHead>
+                <TableHead className="hidden min-w-[92px] md:table-cell">Contacto</TableHead>
                 <TableHead className="hidden lg:table-cell w-[90px]">Prioridad</TableHead>
-                <TableHead className="w-[110px]">Responsable</TableHead>
-                <TableHead className="hidden md:table-cell w-[130px]">Fecha</TableHead>
+                <TableHead className="min-w-[100px]">Responsable</TableHead>
+                <TableHead className="hidden min-w-[110px] md:table-cell">Fecha</TableHead>
                 <TableHead className="w-[100px] text-right">Estado</TableHead>
               </TableRow>
             </TableHeader>
@@ -314,27 +314,54 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
                       <TypeIcon className="size-4" />
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <span
-                      className={`block truncate text-sm font-medium ${task.status === 'completada' ? 'line-through text-muted-foreground' : ''}`}
-                      title={task.title}
-                    >
-                      {task.title}
+                  <TableCell className="w-[120px]">
+                    <div className="min-w-0 max-w-[120px]">
+                      <span
+                        className={`block truncate text-sm font-medium ${task.status === 'completada' ? 'line-through text-muted-foreground' : ''}`}
+                        title={task.title}
+                      >
+                        {task.title}
+                      </span>
+                      <span
+                        className="mt-0.5 block truncate text-xs text-muted-foreground md:hidden"
+                        title={task.company ?? task.associations?.find((a) => a.type === 'contacto')?.name ?? '—'}
+                      >
+                        {task.company ?? task.associations?.find((a) => a.type === 'contacto')?.name ?? '—'}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="hidden w-[104px] md:table-cell text-sm text-muted-foreground">
+                    <span className="block max-w-[104px] truncate" title={task.company ?? '—'}>
+                      {task.company ?? '—'}
                     </span>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell text-sm text-muted-foreground">{task.company ?? '—'}</TableCell>
-                  <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
-                    {task.associations?.find((a) => a.type === 'contacto')?.name ?? '—'}
+                  <TableCell className="hidden w-[104px] md:table-cell text-sm text-muted-foreground">
+                    <span
+                      className="block max-w-[104px] truncate"
+                      title={task.associations?.find((a) => a.type === 'contacto')?.name ?? '—'}
+                    >
+                      {task.associations?.find((a) => a.type === 'contacto')?.name ?? '—'}
+                    </span>
                   </TableCell>
                   <TableCell className="hidden lg:table-cell">
                     <Badge className={`text-xs border-0 ${taskPriorityColors[task.priority]}`}>
                       {priorityLabels[task.priority]}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{task.assignee}</TableCell>
-                  <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
-                    {formatDate(task.dueDate)}
-                    {task.startTime && <span className="ml-1 text-xs">({task.startTime})</span>}
+                  <TableCell className="w-[100px] text-sm text-muted-foreground">
+                    <span className="block max-w-[100px] truncate" title={task.assignee}>
+                      {task.assignee}
+                    </span>
+                  </TableCell>
+                  <TableCell className="hidden w-[110px] md:table-cell text-sm text-muted-foreground">
+                    <div className="leading-tight">
+                      <span className="block whitespace-nowrap">{formatDate(task.dueDate)}</span>
+                      {task.startTime && (
+                        <span className="mt-0.5 block whitespace-nowrap text-xs text-muted-foreground/80">
+                          {task.startTime}
+                        </span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-right">
                     <Badge className={`text-xs border-0 ${taskStatusColors[task.status]}`}>

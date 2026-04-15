@@ -304,6 +304,51 @@ export class ImportExportService {
     return a || undefined;
   }
 
+  private normalizeImportNumberSeparator(
+    value: string,
+    decimalSep: ',' | '.',
+  ): string {
+    const removeThousands = decimalSep === ',' ? /\./g : /,/g;
+    const working = value.replace(removeThousands, '');
+    const parts = working.split(decimalSep);
+    if (parts.length === 1) return working;
+    const decimal = parts.pop() ?? '';
+    if (decimal.length > 0 && decimal.length <= 2) {
+      return `${parts.join('')}.${decimal}`;
+    }
+    return [...parts, decimal].join('');
+  }
+
+  private parseImportNumericCell(raw: string | undefined): number | null {
+    const input = raw?.trim();
+    if (!input) return null;
+    const sign = input.startsWith('-') ? -1 : 1;
+    let cleaned = input
+      .replace(/\u00A0/g, ' ')
+      .replace(/\s+/g, '')
+      .replace(/^s\/?/i, '')
+      .replace(/^us\$?/i, '')
+      .replace(/^usd/i, '')
+      .replace(/^pen/i, '')
+      .replace(/[^0-9,.\-]/g, '')
+      .replace(/-/g, '');
+    if (!cleaned) return null;
+    const lastComma = cleaned.lastIndexOf(',');
+    const lastDot = cleaned.lastIndexOf('.');
+    if (lastComma >= 0 && lastDot >= 0) {
+      cleaned = this.normalizeImportNumberSeparator(
+        cleaned,
+        lastComma > lastDot ? ',' : '.',
+      );
+    } else if (lastComma >= 0) {
+      cleaned = this.normalizeImportNumberSeparator(cleaned, ',');
+    } else if (lastDot >= 0) {
+      cleaned = this.normalizeImportNumberSeparator(cleaned, '.');
+    }
+    const parsed = Number.parseFloat(`${sign < 0 ? '-' : ''}${cleaned}`);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
   private readCsvFields(
     row: string[],
     headerIndex: Map<string, number>,
@@ -1276,8 +1321,12 @@ export class ImportExportService {
         'valor',
         'monto_estimado',
       ]);
-      const estimatedValue = Number.parseFloat(valorRaw.replace(',', '.'));
-      if (!Number.isFinite(estimatedValue) || estimatedValue <= 0) {
+      const estimatedValueRaw = this.parseImportNumericCell(valorRaw);
+      if (
+        estimatedValueRaw == null ||
+        !Number.isFinite(estimatedValueRaw) ||
+        estimatedValueRaw <= 0
+      ) {
         out.push({
           row: excelRow,
           nombre,
@@ -1295,6 +1344,7 @@ export class ImportExportService {
         });
         continue;
       }
+      const estimatedValue = estimatedValueRaw;
       const legacyEmpresaId = rowGet(row, headerIndex, [
         'empresa_id',
         'companyid',
@@ -1540,14 +1590,19 @@ export class ImportExportService {
         'valor',
         'monto_estimado',
       ]);
-      const estimatedValue = Number.parseFloat(valorRaw.replace(',', '.'));
-      if (!Number.isFinite(estimatedValue) || estimatedValue <= 0) {
+      const estimatedValueRaw = this.parseImportNumericCell(valorRaw);
+      if (
+        estimatedValueRaw == null ||
+        !Number.isFinite(estimatedValueRaw) ||
+        estimatedValueRaw <= 0
+      ) {
         errors.push({
           row: excelRow,
           message: 'valor_estimado debe ser un número mayor que 0',
         });
         continue;
       }
+      const estimatedValue = estimatedValueRaw;
       const empresaNombre = rowGet(row, headerIndex, [
         'empresa_nombre',
         'nombre_empresa',
@@ -1888,9 +1943,11 @@ export class ImportExportService {
         'facturacion',
         'facturación_estimada',
       ]);
-      const facturacionParsed = Number.parseFloat(factRaw.replace(',', '.'));
+      const facturacionParsed = this.parseImportNumericCell(factRaw);
       const facturacionEstimada =
-        Number.isFinite(facturacionParsed) && facturacionParsed > 0
+        facturacionParsed != null &&
+        Number.isFinite(facturacionParsed) &&
+        facturacionParsed > 0
           ? facturacionParsed
           : 0;
       const rucRaw = rowGet(row, headerIndex, ['ruc']).trim();
@@ -2299,9 +2356,11 @@ export class ImportExportService {
         'facturacion',
         'facturación_estimada',
       ]);
-      const facturacionParsed = Number.parseFloat(factRaw.replace(',', '.'));
+      const facturacionParsed = this.parseImportNumericCell(factRaw);
       const facturacionEstimada =
-        Number.isFinite(facturacionParsed) && facturacionParsed > 0
+        facturacionParsed != null &&
+        Number.isFinite(facturacionParsed) &&
+        facturacionParsed > 0
           ? facturacionParsed
           : 0;
       if (!effectiveCompanyName && !rucRaw) {
@@ -2665,14 +2724,19 @@ export class ImportExportService {
         });
         continue;
       }
-      const amount = Number.parseFloat(montoRaw.replace(',', '.'));
-      if (!Number.isFinite(amount) || amount <= 0) {
+      const amountRaw = this.parseImportNumericCell(montoRaw);
+      if (
+        amountRaw == null ||
+        !Number.isFinite(amountRaw) ||
+        amountRaw <= 0
+      ) {
         errors.push({
           row: excelRow,
           message: 'monto debe ser un número mayor que 0',
         });
         continue;
       }
+      const amount = amountRaw;
       let contactId =
         rowGet(row, headerIndex, ['contacto_id', 'contactid']) || undefined;
       const companyId =

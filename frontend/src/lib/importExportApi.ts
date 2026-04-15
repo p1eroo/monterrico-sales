@@ -1,4 +1,9 @@
 import { API_BASE } from '@/lib/api';
+import {
+  buildTemplateWorkbookBuffer,
+  normalizeImportSpreadsheetFile,
+  parseSpreadsheetDelimitedText,
+} from '@/lib/importSpreadsheet';
 
 function getToken(): string | null {
   if (typeof window === 'undefined') return null;
@@ -57,6 +62,13 @@ export type CompanyImportPreviewResult = {
   errorCount: number;
 };
 
+async function buildImportFormData(file: File): Promise<FormData> {
+  const normalized = await normalizeImportSpreadsheetFile(file);
+  const fd = new FormData();
+  fd.append('file', normalized, normalized.name);
+  return fd;
+}
+
 function triggerBlobDownload(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -67,6 +79,26 @@ function triggerBlobDownload(blob: Blob, filename: string) {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+}
+
+function templateSheetName(
+  entity: 'contacts' | 'companies' | 'opportunities',
+): string {
+  if (entity === 'contacts') return 'Contactos';
+  if (entity === 'companies') return 'Empresas';
+  return 'Oportunidades';
+}
+
+function templateRequiredHeaders(
+  entity: 'contacts' | 'companies' | 'opportunities',
+): string[] {
+  if (entity === 'contacts') {
+    return ['nombre', 'doc_numero', 'valor_estimado'];
+  }
+  if (entity === 'companies') {
+    return ['nombre', 'razon_social', 'ruc'];
+  }
+  return ['titulo', 'monto', 'etapa'];
 }
 
 /** Descarga CSV (plantilla vacía o export con datos). */
@@ -94,11 +126,23 @@ export async function downloadImportExportCsv(
     }
     throw new Error(msg);
   }
+  if (kind === 'template') {
+    const text = await res.text();
+    const rows = parseSpreadsheetDelimitedText(text);
+    const bytes = await buildTemplateWorkbookBuffer({
+      rows,
+      sheetName: templateSheetName(entity),
+      requiredHeaders: templateRequiredHeaders(entity),
+    });
+    const blob = new Blob([bytes], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    const name = `plantilla-${entity === 'contacts' ? 'contactos' : entity === 'companies' ? 'empresas' : 'oportunidades'}.xlsx`;
+    triggerBlobDownload(blob, name);
+    return;
+  }
   const blob = await res.blob();
-  const name =
-    kind === 'template'
-      ? `plantilla-${entity === 'contacts' ? 'contactos' : entity === 'companies' ? 'empresas' : 'oportunidades'}.csv`
-      : `${entity === 'contacts' ? 'contactos' : entity === 'companies' ? 'empresas' : 'oportunidades'}-export.csv`;
+  const name = `${entity === 'contacts' ? 'contactos' : entity === 'companies' ? 'empresas' : 'oportunidades'}-export.csv`;
   triggerBlobDownload(blob, name);
 }
 
@@ -107,8 +151,7 @@ export async function previewContactsImportCsv(
   file: File,
 ): Promise<ContactImportPreviewResult> {
   const token = getToken();
-  const fd = new FormData();
-  fd.append('file', file);
+  const fd = await buildImportFormData(file);
   const res = await fetch(`${API_BASE}/import-export/contacts/preview`, {
     method: 'POST',
     headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -140,8 +183,7 @@ export async function previewCompaniesImportCsv(
   file: File,
 ): Promise<CompanyImportPreviewResult> {
   const token = getToken();
-  const fd = new FormData();
-  fd.append('file', file);
+  const fd = await buildImportFormData(file);
   const res = await fetch(`${API_BASE}/import-export/companies/preview`, {
     method: 'POST',
     headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -174,8 +216,7 @@ export async function uploadImportCsv(
   file: File,
 ): Promise<BulkImportResult> {
   const token = getToken();
-  const fd = new FormData();
-  fd.append('file', file);
+  const fd = await buildImportFormData(file);
   const res = await fetch(`${API_BASE}/import-export/${entity}/import`, {
     method: 'POST',
     headers: token ? { Authorization: `Bearer ${token}` } : {},

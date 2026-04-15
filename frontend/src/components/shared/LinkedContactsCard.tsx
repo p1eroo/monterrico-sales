@@ -1,10 +1,7 @@
 import { useNavigate } from 'react-router-dom';
-import { Users, Mail } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { Users, Mail, Phone, Briefcase, Target, DollarSign } from 'lucide-react';
 import { etapaLabels } from '@/data/mock';
-import { StatusBadge } from '@/components/shared/StatusBadge';
 import { formatCurrency } from '@/lib/formatters';
-import { etapaColors } from '@/lib/etapaConfig';
 import { LinkedEntitiesCard } from './LinkedEntitiesCard';
 import type { Contact } from '@/types';
 import { contactDetailHref } from '@/lib/detailRoutes';
@@ -33,7 +30,7 @@ interface LinkedContactsCardProps {
 
 export function LinkedContactsCard({
   contacts,
-  title = 'Contactos vinculados',
+  title = 'Contactos',
   onCreate,
   onAddExisting,
   onRemove,
@@ -56,44 +53,68 @@ export function LinkedContactsCard({
       getUnlinkLabel={(c) => c.name}
       getItemKey={(c) => c.id}
       onItemClick={(c) => navigate(contactDetailHref(c))}
+      collapsible
+      itemClassName="bg-background/35 p-4"
       renderItem={(contact, unlinkButton) => {
         return (
-          <>
-            <div className="flex items-start justify-between gap-2 mb-1">
-              <p className="truncate text-[14px] font-semibold leading-tight text-text-primary">{contact.name}</p>
-              {variant === 'full' ? (
-                <Badge
-                  variant="outline"
-                  className={`shrink-0 border-0 text-[11px] font-medium ${etapaColors[contact.etapa] ?? 'bg-muted text-text-secondary'}`}
-                >
-                  {etapaLabels[contact.etapa as keyof typeof etapaLabels] ?? contact.etapa}
-                </Badge>
-              ) : (
-                <StatusBadge status={contact.etapa} />
-              )}
+          <div className="space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <p className="min-w-0 flex-1 truncate text-[15px] font-semibold leading-tight text-text-primary">
+                {contact.name}
+              </p>
+              {unlinkButton}
             </div>
-            {contact.cargo && (
-              <p className="mb-1 text-[13px] text-text-secondary">{contact.cargo}</p>
-            )}
-            {variant === 'full' ? (
-              <div className="flex items-center justify-between gap-2 text-[12px] text-text-secondary">
-                <div className="flex items-center gap-4 min-w-0">
-                  {contact.correo && (
-                    <span className="flex items-center gap-1 truncate">
-                      <Mail className="size-3 shrink-0 text-text-tertiary" />
-                      {contact.correo}
-                    </span>
-                  )}
+
+            <div className="space-y-2.5">
+              {contact.cargo && (
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-sm text-text-secondary">
+                    <Briefcase className="h-3.5 w-3.5 text-text-tertiary" />
+                    Cargo
+                  </div>
+                  <span className="truncate text-right text-sm text-text-primary">{contact.cargo}</span>
                 </div>
-                {unlinkButton}
+              )}
+
+              {contact.correo && (
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-sm text-text-secondary">
+                    <Mail className="h-3.5 w-3.5 text-text-tertiary" />
+                    Correo
+                  </div>
+                  <span className="truncate text-right text-sm text-text-primary">{contact.correo}</span>
+                </div>
+              )}
+
+              {contact.telefono && variant === 'full' && (
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-sm text-text-secondary">
+                    <Phone className="h-3.5 w-3.5 text-text-tertiary" />
+                    Teléfono
+                  </div>
+                  <span className="text-sm text-text-primary">{contact.telefono}</span>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-sm text-text-secondary">
+                  <Target className="h-3.5 w-3.5 text-text-tertiary" />
+                  Etapa
+                </div>
+                <span className="text-right text-sm text-text-primary">
+                  {etapaLabels[contact.etapa as keyof typeof etapaLabels] ?? contact.etapa}
+                </span>
               </div>
-            ) : (
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-[12px] text-text-secondary">{formatCurrency(contact.estimatedValue)}</p>
-                {unlinkButton}
+
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-sm text-text-secondary">
+                  <DollarSign className="h-3.5 w-3.5 text-text-tertiary" />
+                  Valor est.
+                </div>
+                <span className="text-sm font-medium text-text-primary">{formatCurrency(contact.estimatedValue)}</span>
               </div>
-            )}
-          </>
+            </div>
+          </div>
         );
       }}
     />

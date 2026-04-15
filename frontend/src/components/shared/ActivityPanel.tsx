@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  Phone, Mail, Users, CheckSquare, MessageSquare, ClipboardList,
+  Phone, Mail, Users, CheckSquare, MessageSquare, ClipboardList, StickyNote,
   Calendar, User, Clock,
 } from 'lucide-react';
 import type { Activity, ActivityType } from '@/types';
@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/table';
 
 const activityTypeIconMap: Record<ActivityType, typeof Phone> = {
+  nota: StickyNote,
   llamada: Phone,
   reunion: Users,
   tarea: CheckSquare,
@@ -23,6 +24,7 @@ const activityTypeIconMap: Record<ActivityType, typeof Phone> = {
 };
 
 const activityTypeLabelMap: Record<ActivityType, string> = {
+  nota: 'Nota',
   llamada: 'Llamada',
   reunion: 'Reunión',
   tarea: 'Tarea',
@@ -31,6 +33,7 @@ const activityTypeLabelMap: Record<ActivityType, string> = {
 };
 
 const activityTypeColorMap: Record<ActivityType, string> = {
+  nota: 'bg-activity-note/15 text-activity-note',
   llamada: 'bg-activity-call/15 text-activity-call',
   reunion: 'bg-stage-client/15 text-stage-client',
   tarea: 'bg-activity-task/15 text-activity-task',
@@ -96,7 +99,8 @@ export function ActivityPanel({ activities, onRegisterActivity }: ActivityPanelP
             </TableHeader>
             <TableBody>
               {activities.map((activity) => {
-                const Icon = activityTypeIconMap[activity.type];
+                const Icon = activityTypeIconMap[activity.type] ?? ClipboardList;
+                const typeColor = activityTypeColorMap[activity.type] ?? 'bg-muted text-muted-foreground';
                 return (
                   <TableRow
                     key={activity.id}
@@ -104,7 +108,7 @@ export function ActivityPanel({ activities, onRegisterActivity }: ActivityPanelP
                     onClick={() => setSelectedActivity(activity)}
                   >
                     <TableCell>
-                      <div className={`flex size-8 items-center justify-center rounded-full ${activityTypeColorMap[activity.type]}`}>
+                      <div className={`flex size-8 items-center justify-center rounded-full ${typeColor}`}>
                         <Icon className="size-4" />
                       </div>
                     </TableCell>
@@ -130,19 +134,21 @@ export function ActivityPanel({ activities, onRegisterActivity }: ActivityPanelP
       <Dialog open={!!selectedActivity} onOpenChange={(open) => { if (!open) setSelectedActivity(null); }}>
         <DialogContent className="max-w-lg border-border bg-card text-text-primary">
           {selectedActivity && (() => {
-            const Icon = activityTypeIconMap[selectedActivity.type];
+            const Icon = activityTypeIconMap[selectedActivity.type] ?? ClipboardList;
+            const typeColor = activityTypeColorMap[selectedActivity.type] ?? 'bg-muted text-muted-foreground';
+            const typeLabel = activityTypeLabelMap[selectedActivity.type] ?? selectedActivity.type;
             return (
               <>
                 <DialogHeader>
                   <div className="flex items-center gap-3">
-                    <div className={`flex size-10 items-center justify-center rounded-full ${activityTypeColorMap[selectedActivity.type]}`}>
+                    <div className={`flex size-10 items-center justify-center rounded-full ${typeColor}`}>
                       <Icon className="size-5" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <DialogTitle className="text-lg text-text-primary">{selectedActivity.title}</DialogTitle>
                       <div className="flex items-center gap-2 mt-1">
-                        <Badge variant="outline" className={`text-xs ${activityTypeColorMap[selectedActivity.type]}`}>
-                          {activityTypeLabelMap[selectedActivity.type]}
+                        <Badge variant="outline" className={`text-xs ${typeColor}`}>
+                          {typeLabel}
                         </Badge>
                         <Badge variant="outline" className={statusColors[selectedActivity.status] ?? ''}>
                           {activityStatusLabelMap[selectedActivity.status] ?? selectedActivity.status}

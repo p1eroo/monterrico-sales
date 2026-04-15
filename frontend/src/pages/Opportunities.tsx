@@ -62,6 +62,7 @@ import {
   downloadImportExportCsv,
   uploadImportCsv,
 } from '@/lib/importExportApi';
+import { IMPORT_SPREADSHEET_ACCEPT } from '@/lib/importSpreadsheet';
 
 const statusLabels: Record<OpportunityStatus, string> = {
   abierta: 'Abierta',
@@ -384,12 +385,12 @@ export default function OpportunitiesPage() {
       <ImportInProgressDialog
         open={importCommitInProgress}
         title="Importando oportunidades"
-        description="El servidor está procesando el CSV. En archivos grandes esto puede tardar un momento."
+        description="El sistema está normalizando el archivo CSV/Excel y el servidor está procesando las filas importadas. En archivos grandes esto puede tardar un momento."
       />
       <input
         ref={importInputRef}
         type="file"
-        accept=".csv,text/csv"
+        accept={IMPORT_SPREADSHEET_ACCEPT}
         className="hidden"
         onChange={onOppImportChange}
       />

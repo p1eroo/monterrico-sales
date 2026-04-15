@@ -51,6 +51,7 @@ import {
   uploadImportCsv,
   type CompanyImportPreviewResult,
 } from '@/lib/importExportApi';
+import { IMPORT_SPREADSHEET_ACCEPT } from '@/lib/importSpreadsheet';
 import {
   type ApiCompanyRecord,
   type CompanySummaryRow,
@@ -247,7 +248,11 @@ function importPreviewCell(v: string | undefined) {
   if (t === '') {
     return <span className="text-muted-foreground">—</span>;
   }
-  return t;
+  return (
+    <span className="block truncate" title={t}>
+      {t}
+    </span>
+  );
 }
 
 const ITEMS_PER_PAGE = 25;
@@ -772,13 +777,13 @@ export default function EmpresasPage() {
       <ImportInProgressDialog
         open={importPreviewInProgress}
         title="Generando vista previa"
-        description="El servidor está leyendo el CSV, validando filas y comprobando empresas en la base de datos. No llama a SUNAT ni a RENIEC en este paso."
+        description="El sistema está leyendo el archivo, normalizando CSV/Excel, validando filas y comprobando empresas en la base de datos. No llama a SUNAT ni a RENIEC en este paso."
         rowHint="Puede tardar unos segundos si el archivo tiene muchas filas."
       />
       <ImportInProgressDialog
         open={importCommitInProgress}
         title="Importando empresas"
-        description="El servidor está validando filas, creando registros y puede consultar SUNAT u otras fuentes según los datos del CSV."
+        description="El servidor está validando filas, creando registros y puede consultar SUNAT u otras fuentes según los datos del archivo importado."
         rowHint={importCommitRowHint}
       />
       <Dialog
@@ -803,7 +808,7 @@ export default function EmpresasPage() {
                   </span>
                   {importPreviewData.errorCount > 0 ? (
                     <span className="mt-2 block text-destructive">
-                      Corrige el CSV y vuelve a elegir el archivo. No se importará nada mientras haya
+                      Corrige el archivo y vuelve a elegirlo. No se importará nada mientras haya
                       errores en la vista previa.
                     </span>
                   ) : null}
@@ -834,12 +839,14 @@ export default function EmpresasPage() {
                       {companyImportPreviewCsvKeys.map((key) => (
                         <TableHead
                           key={key}
-                          className="min-w-[8rem] max-w-[16rem] align-bottom font-normal text-muted-foreground"
+                          className="w-[8.5rem] min-w-[8.5rem] max-w-[8.5rem] align-bottom font-normal text-muted-foreground"
                         >
-                          {key}
+                          <span className="block truncate" title={key}>
+                            {key}
+                          </span>
                         </TableHead>
                       ))}
-                      <TableHead className="min-w-[12rem] max-w-[24rem] align-bottom">
+                      <TableHead className="w-[14rem] min-w-[14rem] max-w-[14rem] align-bottom">
                         Motivo / detalle
                       </TableHead>
                     </TableRow>
@@ -878,15 +885,20 @@ export default function EmpresasPage() {
                           {companyImportPreviewCsvKeys.map((key) => (
                             <TableCell
                               key={`${row.row}-${key}`}
-                              className="max-w-[16rem] break-words align-top text-xs"
+                              className="w-[8.5rem] min-w-[8.5rem] max-w-[8.5rem] align-top text-xs"
                             >
                               {importPreviewCell(row.csvColumns?.[key])}
                             </TableCell>
                           ))}
-                          <TableCell className="max-w-[24rem] break-words align-top text-muted-foreground">
-                            {row.ok
-                              ? importPreviewCell(undefined)
-                              : importPreviewCell(row.error)}
+                          <TableCell className="w-[14rem] min-w-[14rem] max-w-[14rem] align-top text-muted-foreground">
+                            <span
+                              className="block truncate"
+                              title={row.ok ? undefined : row.error}
+                            >
+                              {row.ok
+                                ? importPreviewCell(undefined)
+                                : (row.error ?? '—')}
+                            </span>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -918,7 +930,7 @@ export default function EmpresasPage() {
       <input
         ref={importInputRef}
         type="file"
-        accept=".csv,text/csv"
+        accept={IMPORT_SPREADSHEET_ACCEPT}
         className="hidden"
         onChange={onCompanyImportChange}
       />
