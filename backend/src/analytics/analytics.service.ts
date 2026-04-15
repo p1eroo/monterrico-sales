@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import type { CrmDataScope } from '../auth/crm-data-scope.service';
 
 const MAX_RANGE_DAYS = 366;
+const ADVISOR_ROLE_SLUG = 'asesor';
 
 function parseDayStart(isoDate: string): Date {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
@@ -78,6 +79,15 @@ const TASK_ACTIVITY_FILTER = { type: 'tarea' } as const;
 export class AnalyticsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * Las métricas comerciales del equipo deben reflejar únicamente cartera operativa
+   * de asesores. Admin/supervisor pueden crear o asignarse registros, pero no deben
+   * inflar los conteos agregados del dashboard/reportes.
+   */
+  private advisorUserRelationFilter() {
+    return { role: { slug: ADVISOR_ROLE_SLUG } } as const;
+  }
+
   private resolveRange(fromStr?: string, toStr?: string): { from: Date; to: Date } {
     const to = toStr ? parseDayEnd(toStr) : new Date();
     const from = fromStr
@@ -103,6 +113,7 @@ export class AnalyticsService {
   ): Prisma.ContactWhereInput {
     const w: Prisma.ContactWhereInput = {
       createdAt: { gte: from, lte: to },
+      user: this.advisorUserRelationFilter(),
     };
     if (advisorId?.trim()) {
       w.assignedTo = advisorId.trim();
@@ -116,7 +127,10 @@ export class AnalyticsService {
   private opportunityWhereOpen(
     advisorId?: string,
   ): Prisma.OpportunityWhereInput {
-    const w: Prisma.OpportunityWhereInput = { status: 'abierta' };
+    const w: Prisma.OpportunityWhereInput = {
+      status: 'abierta',
+      user: this.advisorUserRelationFilter(),
+    };
     if (advisorId?.trim()) {
       w.assignedTo = advisorId.trim();
     }
@@ -131,6 +145,7 @@ export class AnalyticsService {
     const w: Prisma.OpportunityWhereInput = {
       status: 'ganada',
       updatedAt: { gte: from, lte: to },
+      user: this.advisorUserRelationFilter(),
     };
     if (advisorId?.trim()) {
       w.assignedTo = advisorId.trim();
@@ -197,6 +212,7 @@ export class AnalyticsService {
         where: {
           ...TASK_ACTIVITY_FILTER,
           status: 'pendiente',
+          user: this.advisorUserRelationFilter(),
           ...(advisorId ? { assignedTo: advisorId } : {}),
         },
       }),
@@ -205,6 +221,7 @@ export class AnalyticsService {
           ...TASK_ACTIVITY_FILTER,
           status: 'pendiente',
           dueDate: { lt: new Date() },
+          user: this.advisorUserRelationFilter(),
           ...(advisorId ? { assignedTo: advisorId } : {}),
         },
       }),
@@ -212,6 +229,7 @@ export class AnalyticsService {
         where: {
           ...TASK_ACTIVITY_FILTER,
           completedAt: { gte: from, lte: to },
+          user: this.advisorUserRelationFilter(),
           ...(advisorId ? { assignedTo: advisorId } : {}),
         },
       }),
@@ -227,12 +245,16 @@ export class AnalyticsService {
       }),
       opts.crmScope.unrestricted
         ? this.prisma.user.findMany({
+            where: { role: { slug: ADVISOR_ROLE_SLUG } },
             select: { id: true, name: true },
             orderBy: { name: 'asc' },
             take: 200,
           })
         : this.prisma.user.findMany({
-            where: { id: opts.crmScope.viewerUserId },
+            where: {
+              id: opts.crmScope.viewerUserId,
+              role: { slug: ADVISOR_ROLE_SLUG },
+            },
             select: { id: true, name: true },
             orderBy: { name: 'asc' },
             take: 1,
@@ -372,6 +394,7 @@ export class AnalyticsService {
       where: {
         ...TASK_ACTIVITY_FILTER,
         status: 'pendiente',
+        user: this.advisorUserRelationFilter(),
         ...(advisorId ? { assignedTo: advisorId } : {}),
       },
       orderBy: { dueDate: 'asc' },
@@ -450,6 +473,7 @@ export class AnalyticsService {
     const actsDone = await this.prisma.activity.findMany({
       where: {
         completedAt: { gte: from, lte: to },
+        user: this.advisorUserRelationFilter(),
         ...(advisorId ? { assignedTo: advisorId } : {}),
       },
       select: { completedAt: true, type: true },
@@ -498,6 +522,7 @@ export class AnalyticsService {
             where: {
               ...TASK_ACTIVITY_FILTER,
               completedAt: { gte: cFrom, lte: cTo },
+              user: this.advisorUserRelationFilter(),
               ...adv,
             },
           }),
@@ -506,6 +531,7 @@ export class AnalyticsService {
               ...TASK_ACTIVITY_FILTER,
               status: 'pendiente',
               dueDate: { gte: cFrom, lte: cTo },
+              user: this.advisorUserRelationFilter(),
               ...adv,
             },
           }),
@@ -575,6 +601,7 @@ export class AnalyticsService {
         where: {
           status: 'ganada',
           updatedAt: { gte: weekStart, lte: weekEnd },
+          user: this.advisorUserRelationFilter(),
           ...(restrictTeam ? { assignedTo: userId } : {}),
         },
         _sum: { amount: true },
@@ -583,6 +610,7 @@ export class AnalyticsService {
         where: {
           status: 'ganada',
           updatedAt: { gte: monthStart, lte: monthEnd },
+          user: this.advisorUserRelationFilter(),
           ...(restrictTeam ? { assignedTo: userId } : {}),
         },
         _sum: { amount: true },
@@ -591,6 +619,7 @@ export class AnalyticsService {
         where: {
           status: 'ganada',
           updatedAt: { gte: weekStart, lte: weekEnd },
+          user: this.advisorUserRelationFilter(),
           assignedTo: targetUserId,
         },
         _sum: { amount: true },
@@ -599,6 +628,7 @@ export class AnalyticsService {
         where: {
           status: 'ganada',
           updatedAt: { gte: monthStart, lte: monthEnd },
+          user: this.advisorUserRelationFilter(),
           assignedTo: targetUserId,
         },
         _sum: { amount: true },

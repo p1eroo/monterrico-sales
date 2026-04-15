@@ -177,27 +177,36 @@ export class CompaniesService {
     }
     await this.crmConfig.assertEtapaAssignable(etapa);
 
+    const rucTrim = dto.ruc?.trim();
+    if (rucTrim) {
+      const sameIdentity = await this.prisma.company.findFirst({
+        where: {
+          ruc: rucTrim,
+          OR: [
+            { name: { equals: name, mode: 'insensitive' } },
+            { razonSocial: { equals: name, mode: 'insensitive' } },
+          ],
+        },
+      });
+      if (sameIdentity) {
+        throw new BadRequestException(
+          'Ya existe una empresa registrada con el mismo RUC y nombre.',
+        );
+      }
+    }
+
     const dupName = await this.prisma.company.findFirst({
       where: {
-        name: { equals: name, mode: 'insensitive' },
+        OR: [
+          { name: { equals: name, mode: 'insensitive' } },
+          { razonSocial: { equals: name, mode: 'insensitive' } },
+        ],
       },
     });
     if (dupName) {
       throw new BadRequestException(
         'Ya existe una empresa con el mismo nombre. Revisa o elige otro nombre.',
       );
-    }
-
-    const rucTrim = dto.ruc?.trim();
-    if (rucTrim) {
-      const dupRuc = await this.prisma.company.findFirst({
-        where: { ruc: rucTrim },
-      });
-      if (dupRuc) {
-        throw new BadRequestException(
-          'Ya existe una empresa registrada con el mismo RUC.',
-        );
-      }
     }
 
     const urlSlug = await this.allocateCompanyUrlSlug(name);
