@@ -33,7 +33,7 @@ export function DetailLayout({
   const navigate = useNavigate();
 
   return (
-    <div className={cn('space-y-6 text-text-primary', className)}>
+    <div className={cn('text-text-primary', className)}>
       {header ?? (
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-center gap-3">
@@ -59,17 +59,24 @@ export function DetailLayout({
         </div>
       )}
 
-      <div className={`grid gap-6 items-start ${sidebar ? 'lg:grid-cols-[1fr_520px]' : ''}`}>
-        <div className="min-w-0 space-y-6">
-          {quickActions}
-          {summaryCards}
-          {children}
-        </div>
-        {sidebar && (
-          <div className="space-y-4">
-            {sidebar}
+      <div className="mx-auto w-full max-w-7xl pt-2 md:pt-4">
+        <div
+          className={cn(
+            'flex flex-col items-start gap-6',
+            sidebar && 'lg:flex-row',
+          )}
+        >
+          <div className="min-w-0 flex-1 space-y-6 lg:max-w-[65%]">
+            {quickActions}
+            {summaryCards}
+            {children}
           </div>
-        )}
+          {sidebar ? (
+            <aside className="w-full space-y-4 lg:w-[35%] lg:flex-shrink-0">
+              {sidebar}
+            </aside>
+          ) : null}
+        </div>
       </div>
     </div>
   );

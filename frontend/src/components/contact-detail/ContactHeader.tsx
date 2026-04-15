@@ -14,6 +14,7 @@ interface ContactHeaderProps {
   stageLabel: string;
   stageClassName?: string;
   estimatedValueLabel: string;
+  quickActions?: React.ReactNode;
   onEdit: () => void;
   onOpenWhatsapp: () => void;
   onChangeStage: () => void;
@@ -27,6 +28,7 @@ export function ContactHeader({
   stageLabel,
   stageClassName,
   estimatedValueLabel,
+  quickActions,
   onEdit,
   onOpenWhatsapp,
   onChangeStage,
@@ -77,7 +79,8 @@ export function ContactHeader({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {quickActions}
           <Button variant="secondary" size="sm" className="h-9 gap-1.5 px-3" onClick={onEdit}>
             <Edit className="size-4" />
             Editar

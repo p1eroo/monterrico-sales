@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
+import { cn } from '@/lib/utils';
+import { isCrmEntityDetailPath } from '@/lib/detailRoutes';
 import { Toaster } from '@/components/ui/sonner';
 import { AppSidebar } from './AppSidebar';
 import { Topbar } from './Topbar';
@@ -17,6 +20,9 @@ import { useAnalyticsGoalStore } from '@/store/analyticsGoalStore';
 import { AiAssistantDrawer } from '@/components/assistant/AiAssistantDrawer';
 
 export default function MainLayout() {
+  const { pathname } = useLocation();
+  const compactMainTop = isCrmEntityDetailPath(pathname);
+
   useUsers(); // Precarga usuarios de la API para selects de asignación
   const [showBriefing, setShowBriefing] = useState(false);
   const [dontShowAgainToday, setDontShowAgainToday] = useState(false);
@@ -78,7 +84,14 @@ export default function MainLayout() {
       <AppSidebar />
       <SidebarInset className="overflow-hidden bg-background">
         <Topbar />
-        <div className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 md:px-6 md:pb-6 md:pt-0">
+        <div
+          className={cn(
+            'min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 md:px-6 md:pb-6',
+            compactMainTop
+              ? 'pt-0 md:pt-0.5'
+              : 'pt-5 md:pt-6',
+          )}
+        >
           <ModuleGate />
         </div>
       </SidebarInset>

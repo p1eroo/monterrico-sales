@@ -52,6 +52,8 @@ interface QuickActionsWithDialogsProps {
   onTaskCreated?: (task: QuickTask) => void;
   onActivityCreated?: (activity: { id: string; type: import('@/types').ActivityType; title: string; description: string; assignedTo: string; assignedToName: string; status: import('@/types').ActivityStatus; dueDate: string; createdAt: string; contactId?: string }) => void;
   contactId?: string;
+  excludeActions?: string[];
+  inline?: boolean;
 }
 
 export function QuickActionsWithDialogs({
@@ -62,12 +64,15 @@ export function QuickActionsWithDialogs({
   onTaskCreated,
   onActivityCreated,
   contactId,
+  excludeActions = [],
+  inline = false,
 }: QuickActionsWithDialogsProps) {
   const { activeAdvisors } = useUsers();
   const [activeDialog, setActiveDialog] = useState<string | null>(null);
 
   const [activityDialogType, setActivityDialogType] = useState<'llamada' | 'reunion' | 'correo' | null>(null);
   const [taskFormOpen, setTaskFormOpen] = useState(false);
+  const visibleActions = actions.filter((action) => !excludeActions.includes(action.type));
 
   function submitQuickAction() {
     const actionLabels: Record<string, string> = {
@@ -122,13 +127,13 @@ export function QuickActionsWithDialogs({
 
   return (
     <>
-      <div className="flex flex-wrap gap-1 rounded-lg bg-muted/40 p-1.5 border border-border/40">
-        {actions.map((a) => (
+      <div className={inline ? 'flex flex-wrap items-center gap-2' : 'flex flex-wrap gap-1 rounded-lg border border-border/40 bg-muted/40 p-1.5'}>
+        {visibleActions.map((a) => (
           <Button
             key={a.type}
-            variant="ghost"
+            variant={inline ? 'secondary' : 'ghost'}
             size="sm"
-            className="text-muted-foreground hover:text-foreground"
+            className={inline ? 'h-9 gap-1.5 px-3' : 'text-muted-foreground hover:text-foreground'}
             onClick={() => {
               if (a.type === 'llamada' || a.type === 'reunion' || a.type === 'correo') {
                 setActivityDialogType(a.type);

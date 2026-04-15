@@ -68,3 +68,8 @@ export function opportunityDetailHref(row: { urlSlug?: string; id: string }): st
     ? opportunityDetailPath({ urlSlug: row.urlSlug })
     : `/opportunities/${encodeDetailPathSegment(row.id)}`;
 }
+
+/** Rutas de ficha (detalle) donde conviene menos padding superior respecto al Topbar global. */
+export function isCrmEntityDetailPath(pathname: string): boolean {
+  return /^\/(contactos|empresas|opportunities|users)\/[^/]+$/.test(pathname);
+}

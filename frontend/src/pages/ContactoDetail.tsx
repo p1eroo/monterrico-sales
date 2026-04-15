@@ -2,10 +2,10 @@ import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
-  ArrowLeft, RefreshCw,
+  ArrowLeft,
   Phone, Mail, Users,
   Building2, Globe, DollarSign, CalendarDays, MapPin,
-  FileArchive, Loader2, CheckSquare,
+  FileArchive, Loader2,
 } from 'lucide-react';
 import type { Contact, Etapa, CompanyRubro, CompanyTipo, TimelineEvent } from '@/types';
 import {
@@ -50,11 +50,8 @@ import { EntityFilesTab } from '@/components/files';
 import { ContactHeader } from '@/components/contact-detail/ContactHeader';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { formatCurrency, formatDate } from '@/lib/formatters';
-import { nextPendingTaskForContact } from '@/lib/nextPendingTask';
-import { useActivities } from '@/hooks/useActivities';
 import { api } from '@/lib/api';
 import { isEntityDetailApiParam } from '@/lib/detailRoutes';
 import {
@@ -227,12 +224,6 @@ export default function ContactoDetailPage() {
     }
     return storeContact;
   }, [fromApi, apiRecord, storeContact]);
-
-  const { activities: activitiesFromStore } = useActivities();
-  const nextPendingSummary = useMemo(
-    () => nextPendingTaskForContact(activitiesFromStore, contact?.id),
-    [activitiesFromStore, contact?.id],
-  );
 
   const mergedContacts = useMemo(() => {
     if (fromApi) {
@@ -987,89 +978,25 @@ export default function ContactoDetailPage() {
           stageLabel={etapaLabels[contact.etapa] ?? contact.etapa}
           stageClassName={etapaColorsWithBorder[contact.etapa] ?? 'border-border bg-muted text-text-secondary'}
           estimatedValueLabel={formatCurrency(contact.estimatedValue)}
+          quickActions={(
+            <QuickActionsWithDialogs
+              entityName={contact.name}
+              contacts={mergedContacts.filter((l) => l.id !== contact.id)}
+              companies={contact.companies ?? []}
+              opportunities={contactOpportunities}
+              contactId={contact.id}
+              onTaskCreated={(task) => tasksTabRef.current?.addTask(task as any)}
+              onActivityCreated={(activity) => setContactActivities((prev) => [activity, ...prev])}
+              excludeActions={['archivo']}
+              inline
+            />
+          )}
           onEdit={handleOpenEditDialog}
           onOpenWhatsapp={() => setWhatsappDrawerOpen(true)}
           onChangeStage={() => setStatusDialogOpen(true)}
           onAssign={() => setAssignDialogOpen(true)}
         />
       )}
-      quickActions={
-        <QuickActionsWithDialogs
-          entityName={contact.name}
-          contacts={mergedContacts.filter((l) => l.id !== contact.id)}
-          companies={contact.companies ?? []}
-          opportunities={contactOpportunities}
-          contactId={contact.id}
-          onTaskCreated={(task) => tasksTabRef.current?.addTask(task as any)}
-          onActivityCreated={(activity) => setContactActivities((prev) => [activity, ...prev])}
-        />
-      }
-      summaryCards={
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Card className="border-border bg-surface-elevated py-0 shadow-none">
-              <CardContent className="px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-whatsapp/12 text-whatsapp">
-                    <DollarSign className="size-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm text-text-secondary">Valor estimado</p>
-                    <p className="text-l font-semibold text-text-primary">{formatCurrency(contact.estimatedValue)}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-border bg-surface-elevated py-0 shadow-none">
-              <CardContent className="px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-stage-prospect/12 text-stage-prospect">
-                    <RefreshCw className="size-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm text-text-secondary">Etapa actual</p>
-                    <p className="text-l font-semibold text-text-primary">{etapaLabels[contact.etapa]}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-border bg-surface-elevated py-0 shadow-none">
-              <CardContent className="px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-activity-task/12 text-activity-task">
-                    <Users className="size-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm text-text-secondary">Asesor asignado</p>
-                    <p className="text-l font-semibold text-text-primary truncate">{contact.assignedToName}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-border bg-surface-elevated py-0 shadow-none">
-              <CardContent className="px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-activity-note/12 text-activity-note">
-                    <CheckSquare className="size-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm text-text-secondary">Próxima acción</p>
-                    <p
-                      className="text-l font-semibold text-text-primary truncate"
-                      title={nextPendingSummary?.title ?? undefined}
-                    >
-                      {nextPendingSummary?.title ?? '—'}
-                    </p>
-                    {nextPendingSummary ? (
-                      <p className="text-xs text-text-tertiary">
-                        Vence {formatDate(nextPendingSummary.dueDate)}
-                      </p>
-                    ) : null}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-      }
       sidebar={<ContactoSidebar contact={contact} contactOpportunities={contactOpportunities} linkedContacts={linkedContactsForSidebar} onOpenConvertDialog={() => setConvertDialogOpen(true)} onAddExistingOpportunity={() => setAddExistingOpportunityOpen(true)} onRemoveOpportunity={handleRemoveOpportunity} onAddCompany={() => setAddCompanyOpen(true)} onAddExistingCompany={() => setAddExistingCompanyOpen(true)} onRemoveCompany={handleRemoveCompany} onNewContact={() => setNewContactOpen(true)} onAddLinkContact={() => setAddLinkContactOpen(true)} onRemoveContact={handleRemoveContact} />}
     >
         <Tabs defaultValue="historial">
