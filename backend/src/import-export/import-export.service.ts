@@ -37,6 +37,13 @@ export type BulkImportResultDto = {
   errors: BulkImportRowError[];
 };
 
+export type ImportProgressCallback = (progress: {
+  processedRows: number;
+  created: number;
+  skipped: number;
+  errorCount: number;
+}) => void | Promise<void>;
+
 export type ContactImportPreviewRowDto = {
   row: number;
   nombre: string;
@@ -177,6 +184,12 @@ export class ImportExportService {
     private readonly crmConfig: CrmConfigService,
     private readonly entitySync: EntitySyncService,
   ) {}
+
+  countImportDataRows(csvText: string): number {
+    const rows = parseCsv(csvText);
+    if (rows.length < 2) return 0;
+    return rows.length - 1;
+  }
 
   /** `cliente_recuperado` en CSV: sí/no y alias → `si` | `no`; valor desconocido → omitir. */
   private normalizeClienteRecuperadoCsv(
@@ -1155,6 +1168,23 @@ export class ImportExportService {
     return companies.find((c) => this.companyMatchesImportName(c, nameTrim)) ?? null;
   }
 
+  private pickCompanyForImportByRucAndNames(
+    companies: Array<{
+      id: string;
+      name: string;
+      razonSocial?: string | null;
+      ruc: string | null;
+    }>,
+    nombres: Array<string | undefined>,
+  ) {
+    if (companies.length === 0) return null;
+    for (const nombre of nombres) {
+      const match = this.pickCompanyForImportByRucAndName(companies, nombre);
+      if (match) return match;
+    }
+    return null;
+  }
+
   private async findCompaniesByRucInputAll(rucRaw: string) {
     const trimmed = rucRaw.trim();
     if (!trimmed) return [];
@@ -1880,6 +1910,7 @@ export class ImportExportService {
     csvText: string,
     importingUserId: string,
     scope?: CrmDataScope,
+    onProgress?: ImportProgressCallback,
   ): Promise<BulkImportResultDto> {
     const rows = parseCsv(csvText);
     if (rows.length < 2) {
@@ -1891,6 +1922,7 @@ export class ImportExportService {
     const errors: BulkImportRowError[] = [];
     let created = 0;
     let skipped = 0;
+    let processedRows = 0;
     const dataRows = rows.length - 1;
     if (dataRows > MAX_IMPORT_ROWS) {
       throw new BadRequestException(
@@ -1903,225 +1935,240 @@ export class ImportExportService {
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i]!;
       const excelRow = i + 1;
-      if (row.every((c) => !(c ?? '').trim())) {
-        skipped += 1;
-        continue;
-      }
-      const nombreRaw = this.rowGetImportText(row, headerIndex, ['nombre', 'name']);
-      const docTypeRow = this.rowGetImportText(row, headerIndex, ['doc_tipo', 'tipodoc']);
-      const docNumberRow = this.rowGetImportText(row, headerIndex, [
-        'doc_numero',
-        'numerodoc',
-      ]);
-      const departamentoRow = this.rowGetImportText(row, headerIndex, ['departamento']);
-      const provinciaRow = this.rowGetImportText(row, headerIndex, ['provincia']);
-      const distritoRow = this.rowGetImportText(row, headerIndex, ['distrito']);
-      const direccionRow = this.rowGetImportText(row, headerIndex, ['direccion']);
-      const nombreCsv = nombreRaw.trim();
-      const docDigitsEarly = docNumberRow.replace(/\D/g, '');
-      if (
-        !nombreCsv &&
-        !this.looksLikeDniForFactiliza(docTypeRow, docDigitsEarly)
-      ) {
-        errors.push({
-          row: excelRow,
-          message:
-            'Falta nombre (o doc_numero con DNI de 8 dígitos para consultar RENIEC)',
-        });
-        continue;
-      }
-      const telefonoRaw = this.readContactPhoneImportField(row, headerIndex);
-      const correoRaw = this.rowGetImportText(row, headerIndex, ['correo', 'email']);
-      const fuenteRaw = this.rowGetImportText(row, headerIndex, ['fuente', 'source']);
-      const telefono = telefonoRaw.trim() || '-';
-      const correo = correoRaw.trim();
-      const fuente = fuenteRaw.trim() || 'base';
-      const valorRaw = rowGet(row, headerIndex, [
-        'valor_estimado',
-        'estimatedvalue',
-        'valor',
-        'monto_estimado',
-      ]);
-      const estimatedValueRaw = this.parseImportNumericCell(valorRaw);
-      if (
-        estimatedValueRaw == null ||
-        !Number.isFinite(estimatedValueRaw) ||
-        estimatedValueRaw <= 0
-      ) {
-        errors.push({
-          row: excelRow,
-          message: 'valor_estimado debe ser un número mayor que 0',
-        });
-        continue;
-      }
-      const estimatedValue = estimatedValueRaw;
-      const empresaNombre = this.rowGetImportText(row, headerIndex, [
-        'empresa_nombre',
-        'nombre_empresa',
-        'company_name',
-        'empresa',
-      ]);
-      const empresaRuc = this.rowGetImportText(row, headerIndex, [
-        'empresa_ruc',
-        'ruc_empresa',
-        'company_ruc',
-      ]);
-      const legacyEmpresaId = this.rowGetImportText(row, headerIndex, [
-        'empresa_id',
-        'companyid',
-        'company_id',
-      ]);
-      const etapaRaw =
-        this.rowGetImportText(row, headerIndex, ['etapa', 'stage']) ||
-        this.rowGetImportText(row, headerIndex, [
-          'probabilidad',
-          'probability',
-          'porcentaje',
-          'porcentaje_etapa',
-        ]);
-      const etapaResolved = this.crmConfig.resolveEtapaSlugFromCsvCell(
-        stages,
-        etapaRaw,
-      );
-      if (!etapaResolved.ok) {
-        errors.push({ row: excelRow, message: etapaResolved.message });
-        continue;
-      }
-      const etapaRow = etapaResolved.slug;
-      const clienteRecNorm = this.normalizeClienteRecuperadoCsv(
-        rowGet(row, headerIndex, [
-          'cliente_recuperado',
-          'cliente recuperado',
-          'recuperado',
-        ]),
-      );
-      const assignedRow =
-        this.rowGetImportText(row, headerIndex, ['asignado_a', 'assignedto', 'usuario_id']) ||
-        undefined;
-      const assignedTo =
-        scope && !scope.unrestricted
-          ? importingUserId
-          : await this.assigneeFromCsvOrImporter(assignedRow, importingUserId);
-
-      const merged = await this.enrichContactFromFactilizaByDocument({
-        nameFromCsv: nombreCsv,
-        telefono,
-        correo,
-        docType: docTypeRow || undefined,
-        docNumber: docNumberRow || undefined,
-        departamento: departamentoRow || undefined,
-        provincia: provinciaRow || undefined,
-        distrito: distritoRow || undefined,
-        direccion: direccionRow || undefined,
-      });
-      if (!merged.name.trim()) {
-        errors.push({
-          row: excelRow,
-          message:
-            'No se pudo obtener el nombre (indícalo en el CSV o verifica el DNI y Factiliza/RENIEC)',
-        });
-        continue;
-      }
-      const nombre = merged.name.trim();
-      const docDigitsMerged = (merged.docNumber ?? '').replace(/\D/g, '');
-
-      let companyId: string | undefined;
-      let newCompany: CreateCompanyDto | undefined;
-      let dedupeCompanyKey: string | null = null;
-
-      if (empresaNombre.trim() || empresaRuc.trim()) {
-        const resolved = await this.resolveContactImportCompany({
-          empresaNombre,
-          empresaRuc,
-          contactFuente: fuente,
-          contactEtapa: etapaRow,
-          contactEstimatedValue: estimatedValue,
-          contactAssignedTo: assignedTo,
-          contactClienteRecuperado: clienteRecNorm,
-        });
-        if (!resolved.ok) {
-          errors.push({ row: excelRow, message: resolved.message });
+      try {
+        if (row.every((c) => !(c ?? '').trim())) {
+          skipped += 1;
           continue;
         }
-        companyId = resolved.companyId;
-        newCompany = resolved.newCompany;
-        dedupeCompanyKey = resolved.dedupeCompanyKey;
-      } else if (legacyEmpresaId.trim()) {
-        const comp = await this.prisma.company.findFirst({
-          where: mergeCompanyScope({ id: legacyEmpresaId.trim() }, scope),
-          select: { id: true },
-        });
-        if (!comp) {
+        const nombreRaw = this.rowGetImportText(row, headerIndex, ['nombre', 'name']);
+        const docTypeRow = this.rowGetImportText(row, headerIndex, ['doc_tipo', 'tipodoc']);
+        const docNumberRow = this.rowGetImportText(row, headerIndex, [
+          'doc_numero',
+          'numerodoc',
+        ]);
+        const departamentoRow = this.rowGetImportText(row, headerIndex, ['departamento']);
+        const provinciaRow = this.rowGetImportText(row, headerIndex, ['provincia']);
+        const distritoRow = this.rowGetImportText(row, headerIndex, ['distrito']);
+        const direccionRow = this.rowGetImportText(row, headerIndex, ['direccion']);
+        const nombreCsv = nombreRaw.trim();
+        const docDigitsEarly = docNumberRow.replace(/\D/g, '');
+        if (
+          !nombreCsv &&
+          !this.looksLikeDniForFactiliza(docTypeRow, docDigitsEarly)
+        ) {
           errors.push({
             row: excelRow,
-            message: 'empresa_id no existe en el sistema',
+            message:
+              'Falta nombre (o doc_numero con DNI de 8 dígitos para consultar RENIEC)',
           });
           continue;
         }
-        companyId = comp.id;
-        dedupeCompanyKey = comp.id;
-      }
-
-      const rowContactCompanyKey = `${this.contactImportRowDedupeKey(nombre, merged.docNumber ?? docNumberRow)}|${dedupeCompanyKey ?? '__none__'}`;
-      const dupFileRow = fileContactCompanyFirstRow.get(rowContactCompanyKey);
-      if (dupFileRow !== undefined) {
-        errors.push({
-          row: excelRow,
-          message: `Duplicado en el archivo respecto a la fila ${dupFileRow} (mismo nombre o DNI y misma empresa).`,
-        });
-        continue;
-      }
-      if (
-        await this.contactAlreadyExistsForImport(
-          nombreCsv,
-          dedupeCompanyKey,
-          docDigitsMerged,
-        )
-      ) {
-        errors.push({
-          row: excelRow,
-          message:
-            'Ya existe un contacto con el mismo nombre o DNI vinculado a esta empresa. Elimina la fila duplicada o corrige los datos.',
-        });
-        continue;
-      }
-      fileContactCompanyFirstRow.set(rowContactCompanyKey, excelRow);
-
-      if (newCompany) {
-        const inferredDomain = inferCompanyDomainFromContactEmail(merged.correo);
-        if (inferredDomain && !newCompany.domain?.trim()) {
-          newCompany = { ...newCompany, domain: inferredDomain };
+        const telefonoRaw = this.readContactPhoneImportField(row, headerIndex);
+        const correoRaw = this.rowGetImportText(row, headerIndex, ['correo', 'email']);
+        const fuenteRaw = this.rowGetImportText(row, headerIndex, ['fuente', 'source']);
+        const telefono = telefonoRaw.trim() || '-';
+        const correo = correoRaw.trim();
+        const fuente = fuenteRaw.trim() || 'base';
+        const valorRaw = rowGet(row, headerIndex, [
+          'valor_estimado',
+          'estimatedvalue',
+          'valor',
+          'monto_estimado',
+        ]);
+        const estimatedValueRaw = this.parseImportNumericCell(valorRaw);
+        if (
+          estimatedValueRaw == null ||
+          !Number.isFinite(estimatedValueRaw) ||
+          estimatedValueRaw <= 0
+        ) {
+          errors.push({
+            row: excelRow,
+            message: 'valor_estimado debe ser un número mayor que 0',
+          });
+          continue;
         }
-      }
+        const estimatedValue = estimatedValueRaw;
+        const empresaNombre = this.rowGetImportText(row, headerIndex, [
+          'empresa_nombre',
+          'nombre_empresa',
+          'company_name',
+          'empresa',
+        ]);
+        const empresaRuc = this.rowGetImportText(row, headerIndex, [
+          'empresa_ruc',
+          'ruc_empresa',
+          'company_ruc',
+        ]);
+        const legacyEmpresaId = this.rowGetImportText(row, headerIndex, [
+          'empresa_id',
+          'companyid',
+          'company_id',
+        ]);
+        const etapaRaw =
+          this.rowGetImportText(row, headerIndex, ['etapa', 'stage']) ||
+          this.rowGetImportText(row, headerIndex, [
+            'probabilidad',
+            'probability',
+            'porcentaje',
+            'porcentaje_etapa',
+          ]);
+        const etapaResolved = this.crmConfig.resolveEtapaSlugFromCsvCell(
+          stages,
+          etapaRaw,
+        );
+        if (!etapaResolved.ok) {
+          errors.push({ row: excelRow, message: etapaResolved.message });
+          continue;
+        }
+        const etapaRow = etapaResolved.slug;
+        const clienteRecNorm = this.normalizeClienteRecuperadoCsv(
+          rowGet(row, headerIndex, [
+            'cliente_recuperado',
+            'cliente recuperado',
+            'recuperado',
+          ]),
+        );
+        const assignedRow =
+          this.rowGetImportText(row, headerIndex, [
+            'asignado_a',
+            'assignedto',
+            'usuario_id',
+          ]) || undefined;
+        const assignedTo =
+          scope && !scope.unrestricted
+            ? importingUserId
+            : await this.assigneeFromCsvOrImporter(assignedRow, importingUserId);
 
-      const dto: CreateContactDto = {
-        name: nombre,
-        telefono: merged.telefono,
-        correo: merged.correo,
-        fuente,
-        cargo: this.rowGetImportText(row, headerIndex, ['cargo']) || undefined,
-        etapa: etapaRow,
-        estimatedValue,
-        assignedTo,
-        docType: merged.docType,
-        docNumber: merged.docNumber,
-        departamento: merged.departamento,
-        provincia: merged.provincia,
-        distrito: merged.distrito,
-        direccion: merged.direccion,
-        ...(clienteRecNorm
-          ? { clienteRecuperado: clienteRecNorm }
-          : {}),
-        companyId,
-        newCompany,
-      };
-      try {
-        await this.contactsService.create(dto, undefined, scope);
-        created += 1;
-      } catch (e: unknown) {
-        const msg =
-          e instanceof Error ? e.message : 'Error al crear el contacto';
-        errors.push({ row: excelRow, message: msg });
+        const merged = await this.enrichContactFromFactilizaByDocument({
+          nameFromCsv: nombreCsv,
+          telefono,
+          correo,
+          docType: docTypeRow || undefined,
+          docNumber: docNumberRow || undefined,
+          departamento: departamentoRow || undefined,
+          provincia: provinciaRow || undefined,
+          distrito: distritoRow || undefined,
+          direccion: direccionRow || undefined,
+        });
+        if (!merged.name.trim()) {
+          errors.push({
+            row: excelRow,
+            message:
+              'No se pudo obtener el nombre (indícalo en el CSV o verifica el DNI y Factiliza/RENIEC)',
+          });
+          continue;
+        }
+        const nombre = merged.name.trim();
+        const docDigitsMerged = (merged.docNumber ?? '').replace(/\D/g, '');
+
+        let companyId: string | undefined;
+        let newCompany: CreateCompanyDto | undefined;
+        let dedupeCompanyKey: string | null = null;
+
+        if (empresaNombre.trim() || empresaRuc.trim()) {
+          const resolved = await this.resolveContactImportCompany({
+            empresaNombre,
+            empresaRuc,
+            contactFuente: fuente,
+            contactEtapa: etapaRow,
+            contactEstimatedValue: estimatedValue,
+            contactAssignedTo: assignedTo,
+            contactClienteRecuperado: clienteRecNorm,
+          });
+          if (!resolved.ok) {
+            errors.push({ row: excelRow, message: resolved.message });
+            continue;
+          }
+          companyId = resolved.companyId;
+          newCompany = resolved.newCompany;
+          dedupeCompanyKey = resolved.dedupeCompanyKey;
+        } else if (legacyEmpresaId.trim()) {
+          const comp = await this.prisma.company.findFirst({
+            where: mergeCompanyScope({ id: legacyEmpresaId.trim() }, scope),
+            select: { id: true },
+          });
+          if (!comp) {
+            errors.push({
+              row: excelRow,
+              message: 'empresa_id no existe en el sistema',
+            });
+            continue;
+          }
+          companyId = comp.id;
+          dedupeCompanyKey = comp.id;
+        }
+
+        const rowContactCompanyKey = `${this.contactImportRowDedupeKey(nombre, merged.docNumber ?? docNumberRow)}|${dedupeCompanyKey ?? '__none__'}`;
+        const dupFileRow = fileContactCompanyFirstRow.get(rowContactCompanyKey);
+        if (dupFileRow !== undefined) {
+          errors.push({
+            row: excelRow,
+            message: `Duplicado en el archivo respecto a la fila ${dupFileRow} (mismo nombre o DNI y misma empresa).`,
+          });
+          continue;
+        }
+        if (
+          await this.contactAlreadyExistsForImport(
+            nombreCsv,
+            dedupeCompanyKey,
+            docDigitsMerged,
+          )
+        ) {
+          errors.push({
+            row: excelRow,
+            message:
+              'Ya existe un contacto con el mismo nombre o DNI vinculado a esta empresa. Elimina la fila duplicada o corrige los datos.',
+          });
+          continue;
+        }
+        fileContactCompanyFirstRow.set(rowContactCompanyKey, excelRow);
+
+        if (newCompany) {
+          const inferredDomain = inferCompanyDomainFromContactEmail(merged.correo);
+          if (inferredDomain && !newCompany.domain?.trim()) {
+            newCompany = { ...newCompany, domain: inferredDomain };
+          }
+        }
+
+        const dto: CreateContactDto = {
+          name: nombre,
+          telefono: merged.telefono,
+          correo: merged.correo,
+          fuente,
+          cargo: this.rowGetImportText(row, headerIndex, ['cargo']) || undefined,
+          etapa: etapaRow,
+          estimatedValue,
+          assignedTo,
+          docType: merged.docType,
+          docNumber: merged.docNumber,
+          departamento: merged.departamento,
+          provincia: merged.provincia,
+          distrito: merged.distrito,
+          direccion: merged.direccion,
+          ...(clienteRecNorm
+            ? { clienteRecuperado: clienteRecNorm }
+            : {}),
+          companyId,
+          newCompany,
+        };
+        try {
+          await this.contactsService.create(dto, undefined, scope);
+          created += 1;
+        } catch (e: unknown) {
+          const msg =
+            e instanceof Error ? e.message : 'Error al crear el contacto';
+          errors.push({ row: excelRow, message: msg });
+        }
+      } finally {
+        processedRows += 1;
+        if (onProgress) {
+          await onProgress({
+            processedRows,
+            created,
+            skipped,
+            errorCount: errors.length,
+          });
+        }
       }
     }
 
@@ -2440,9 +2487,18 @@ export class ImportExportService {
       const w = seg;
       const existingRucCandidates =
         w.rucDigits.length > 0 ? (byRucDigits.get(w.rucDigits) ?? []) : [];
-      const existingRuc = this.pickCompanyForImportByRucAndName(
+      const existingRuc = this.pickCompanyForImportByRucAndNames(
         existingRucCandidates,
-        w.effectiveCompanyName,
+        [
+          w.effectiveCompanyName,
+          w.razonRowPreview || undefined,
+          w.effectiveCompanyName
+            ? formatImportedCompanyName(w.effectiveCompanyName)
+            : undefined,
+          w.razonRowPreview
+            ? formatImportedCompanyName(w.razonRowPreview)
+            : undefined,
+        ],
       );
       const existingName =
         existingRuc || !w.effectiveCompanyName || existingRucCandidates.length > 0
@@ -2688,6 +2744,7 @@ export class ImportExportService {
     csvText: string,
     importingUserId: string,
     scope?: CrmDataScope,
+    onProgress?: ImportProgressCallback,
   ): Promise<BulkImportResultDto> {
     const rows = parseCsv(csvText);
     if (rows.length < 2) {
@@ -2699,6 +2756,7 @@ export class ImportExportService {
     const errors: BulkImportRowError[] = [];
     let created = 0;
     let skipped = 0;
+    let processedRows = 0;
     const dataRows = rows.length - 1;
     if (dataRows > MAX_COMPANY_IMPORT_ROWS) {
       throw new BadRequestException(
@@ -2710,6 +2768,7 @@ export class ImportExportService {
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i]!;
       const excelRow = i + 1;
+      try {
       if (row.every((c) => !(c ?? '').trim())) {
         skipped += 1;
         continue;
@@ -2818,9 +2877,16 @@ export class ImportExportService {
       try {
         const existingRucCandidates =
           rucRaw ? await this.findCompaniesByRucInputAll(rucRaw) : [];
-        const existingRuc = this.pickCompanyForImportByRucAndName(
+        const existingRuc = this.pickCompanyForImportByRucAndNames(
           existingRucCandidates,
-          effectiveCompanyName,
+          [
+            effectiveCompanyName,
+            razonRow || undefined,
+            effectiveCompanyName
+              ? formatImportedCompanyName(effectiveCompanyName)
+              : undefined,
+            razonRow ? formatImportedCompanyName(razonRow) : undefined,
+          ],
         );
         const existingName =
           existingRuc || !effectiveCompanyName || existingRucCandidates.length > 0
@@ -2873,12 +2939,32 @@ export class ImportExportService {
             assignedTo: companyImportUpdate.assignedTo,
           };
           dto = await this.enrichCompanyDtoFromRuc(dto);
-          const createdCo = await this.companiesService.create(
-            dto,
-            undefined,
-            scope,
+          const exactExistingAfterEnrich = this.pickCompanyForImportByRucAndNames(
+            existingRucCandidates,
+            [
+              dto.name,
+              dto.razonSocial,
+              dto.name ? formatImportedCompanyName(dto.name) : undefined,
+              dto.razonSocial
+                ? formatImportedCompanyName(dto.razonSocial)
+                : undefined,
+            ],
           );
-          companyId = createdCo.id;
+          if (exactExistingAfterEnrich) {
+            companyId = exactExistingAfterEnrich.id;
+            shouldRefreshExactCompanyFromImport = true;
+            await this.updateExistingCompanyFromImport(
+              companyId,
+              companyImportUpdate,
+            );
+          } else {
+            const createdCo = await this.companiesService.create(
+              dto,
+              undefined,
+              scope,
+            );
+            companyId = createdCo.id;
+          }
         }
       } catch (e: unknown) {
         errors.push({
@@ -3060,6 +3146,17 @@ export class ImportExportService {
               : 'Error al crear o vincular contacto',
         });
       }
+      } finally {
+        processedRows += 1;
+        if (onProgress) {
+          await onProgress({
+            processedRows,
+            created,
+            skipped,
+            errorCount: errors.length,
+          });
+        }
+      }
     }
 
     return { totalRows: dataRows, created, skipped, errors };
@@ -3120,6 +3217,7 @@ export class ImportExportService {
     csvText: string,
     importingUserId: string,
     scope?: CrmDataScope,
+    onProgress?: ImportProgressCallback,
   ): Promise<BulkImportResultDto> {
     const rows = parseCsv(csvText);
     if (rows.length < 2) {
@@ -3131,6 +3229,7 @@ export class ImportExportService {
     const errors: BulkImportRowError[] = [];
     let created = 0;
     let skipped = 0;
+    let processedRows = 0;
     const dataRows = rows.length - 1;
     if (dataRows > MAX_IMPORT_ROWS) {
       throw new BadRequestException(
@@ -3141,6 +3240,7 @@ export class ImportExportService {
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i]!;
       const excelRow = i + 1;
+      try {
       if (row.every((c) => !(c ?? '').trim())) {
         skipped += 1;
         continue;
@@ -3248,6 +3348,17 @@ export class ImportExportService {
         const msg =
           e instanceof Error ? e.message : 'Error al crear la oportunidad';
         errors.push({ row: excelRow, message: msg });
+      }
+      } finally {
+        processedRows += 1;
+        if (onProgress) {
+          await onProgress({
+            processedRows,
+            created,
+            skipped,
+            errorCount: errors.length,
+          });
+        }
       }
     }
 

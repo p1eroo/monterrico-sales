@@ -18,6 +18,7 @@ import { hydrateGoalsFromBundle } from '@/store/goalsStore';
 import { fetchAnalyticsGoalProgress } from '@/lib/analyticsApi';
 import { useAnalyticsGoalStore } from '@/store/analyticsGoalStore';
 import { AiAssistantDrawer } from '@/components/assistant/AiAssistantDrawer';
+import { ImportJobsPanel } from './ImportJobsPanel';
 
 export default function MainLayout() {
   const { pathname } = useLocation();
@@ -96,6 +97,7 @@ export default function MainLayout() {
         </div>
       </SidebarInset>
       <Toaster position="bottom-right" richColors />
+      <ImportJobsPanel />
       <DailyBriefingPanel
         open={showBriefing}
         onOpenChange={setShowBriefing}

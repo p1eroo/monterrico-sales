@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ImportExportController } from './import-export.controller';
+import { ImportExportJobsService } from './import-export-jobs.service';
 import { ImportExportService } from './import-export.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AuthModule } from '../auth/auth.module';
@@ -22,6 +23,6 @@ import { SyncModule } from '../sync/sync.module';
     SyncModule,
   ],
   controllers: [ImportExportController],
-  providers: [ImportExportService],
+  providers: [ImportExportService, ImportExportJobsService],
 })
 export class ImportExportModule {}

@@ -17,6 +17,26 @@ export type BulkImportResult = {
   errors: Array<{ row: number; message: string }>;
 };
 
+export type ImportJobStatus = 'queued' | 'running' | 'completed' | 'failed';
+
+export type ImportJob = {
+  id: string;
+  entity: 'contacts' | 'companies' | 'opportunities';
+  filename?: string;
+  status: ImportJobStatus;
+  totalRows: number;
+  processedRows: number;
+  created: number;
+  skipped: number;
+  errorCount: number;
+  percent: number;
+  startedAt: string;
+  updatedAt: string;
+  finishedAt?: string;
+  result?: BulkImportResult;
+  errorMessage?: string;
+};
+
 export type ContactImportPreviewRow = {
   row: number;
   nombre: string;
@@ -210,11 +230,11 @@ export async function previewCompaniesImportCsv(
   return body as CompanyImportPreviewResult;
 }
 
-/** Sube CSV y devuelve resumen de filas creadas / errores. */
-export async function uploadImportCsv(
+/** Inicia importación asíncrona y devuelve el job creado. */
+export async function startImportJob(
   entity: 'contacts' | 'companies' | 'opportunities',
   file: File,
-): Promise<BulkImportResult> {
+): Promise<ImportJob> {
   const token = getToken();
   const fd = await buildImportFormData(file);
   const res = await fetch(`${API_BASE}/import-export/${entity}/import`, {
@@ -240,5 +260,31 @@ export async function uploadImportCsv(
         : 'Error al importar';
     throw new Error(msg);
   }
-  return body as BulkImportResult;
+  return body as ImportJob;
+}
+
+export async function getImportJob(jobId: string): Promise<ImportJob> {
+  const token = getToken();
+  const res = await fetch(`${API_BASE}/import-export/jobs/${encodeURIComponent(jobId)}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  const text = await res.text();
+  let body: unknown = {};
+  if (text) {
+    try {
+      body = JSON.parse(text) as unknown;
+    } catch {
+      body = { message: text };
+    }
+  }
+  if (!res.ok) {
+    const err = body as { message?: string | string[] };
+    const msg = Array.isArray(err.message)
+      ? err.message.join(', ')
+      : typeof err.message === 'string'
+        ? err.message
+        : 'No se pudo consultar la importación';
+    throw new Error(msg);
+  }
+  return body as ImportJob;
 }

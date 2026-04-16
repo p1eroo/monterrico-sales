@@ -22,7 +22,6 @@ import {
   type NewOpportunityFormValues,
 } from '@/components/shared/NewOpportunityFormDialog';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
-import { ImportInProgressDialog } from '@/components/shared/ImportInProgressDialog';
 import { OpportunityEditDialog } from '@/components/shared/OpportunityEditDialog';
 import { OpportunityPreviewSheet } from '@/components/shared/OpportunityPreviewSheet';
 import { Button } from '@/components/ui/button';
@@ -60,9 +59,10 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useCrmTeamAdvisorFilter } from '@/hooks/useCrmTeamAdvisorFilter';
 import {
   downloadImportExportCsv,
-  uploadImportCsv,
+  startImportJob,
 } from '@/lib/importExportApi';
 import { IMPORT_SPREADSHEET_ACCEPT } from '@/lib/importSpreadsheet';
+import { useImportJobsStore } from '@/store/importJobsStore';
 
 const statusLabels: Record<OpportunityStatus, string> = {
   abierta: 'Abierta',
@@ -182,8 +182,16 @@ export default function OpportunitiesPage() {
   const { hasPermission } = usePermissions();
   const importInputRef = useRef<HTMLInputElement>(null);
   const [importBusy, setImportBusy] = useState(false);
-  const [importCommitInProgress, setImportCommitInProgress] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
+  const enqueueImportJob = useImportJobsStore((s) => s.enqueueJob);
+  const opportunityImportCompletionTick = useImportJobsStore(
+    (s) => s.completionTickByEntity.opportunities,
+  );
+
+  useEffect(() => {
+    if (!opportunityImportCompletionTick) return;
+    void loadApiOpportunities();
+  }, [loadApiOpportunities, opportunityImportCompletionTick]);
 
   const filteredOpportunities = useMemo(() => {
     return allOpportunities.filter((opp) => {
@@ -350,43 +358,19 @@ export default function OpportunitiesPage() {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    setImportCommitInProgress(true);
     setImportBusy(true);
     try {
-      const r = await uploadImportCsv('opportunities', file);
-      const errMsg =
-        r.errors.length > 0
-          ? r.errors
-              .slice(0, 5)
-              .map((x) => `Fila ${x.row}: ${x.message}`)
-              .join('\n') + (r.errors.length > 5 ? `\n…y ${r.errors.length - 5} más` : '')
-          : undefined;
-      if (r.created === 0 && r.errors.length > 0) {
-        toast.error('No se crearon oportunidades', { description: errMsg });
-      } else {
-        toast.success(
-          `Importación: ${r.created} oportunidad(es) creada(s)${
-            r.skipped ? ` · ${r.skipped} fila(s) vacía(s) omitidas` : ''
-          }`,
-          errMsg ? { description: errMsg } : undefined,
-        );
-      }
-      await loadApiOpportunities();
+      const job = await startImportJob('opportunities', file);
+      enqueueImportJob(job);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error al importar');
     } finally {
-      setImportCommitInProgress(false);
       setImportBusy(false);
     }
   }
 
   return (
     <div className="space-y-6">
-      <ImportInProgressDialog
-        open={importCommitInProgress}
-        title="Importando oportunidades"
-        description="El sistema está normalizando el archivo CSV/Excel y el servidor está procesando las filas importadas. En archivos grandes esto puede tardar un momento."
-      />
       <input
         ref={importInputRef}
         type="file"

@@ -62,7 +62,7 @@ import { useCrmTeamAdvisorFilter } from '@/hooks/useCrmTeamAdvisorFilter';
 import {
   downloadImportExportCsv,
   previewContactsImportCsv,
-  uploadImportCsv,
+  startImportJob,
   type ContactImportPreviewResult,
 } from '@/lib/importExportApi';
 import { IMPORT_SPREADSHEET_ACCEPT } from '@/lib/importSpreadsheet';
@@ -74,6 +74,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { useImportJobsStore } from '@/store/importJobsStore';
 
 const ITEMS_PER_PAGE = 25;
 
@@ -139,10 +140,6 @@ export default function ContactosPage() {
   const [contactToDelete, setContactToDelete] = useState<string | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
   const [importBusy, setImportBusy] = useState(false);
-  const [importCommitInProgress, setImportCommitInProgress] = useState(false);
-  const [importCommitRowHint, setImportCommitRowHint] = useState<
-    string | undefined
-  >(undefined);
   const [importPreviewInProgress, setImportPreviewInProgress] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
   const [importPreviewOpen, setImportPreviewOpen] = useState(false);
@@ -157,6 +154,10 @@ export default function ContactosPage() {
     string,
     number
   > | null>(null);
+  const enqueueImportJob = useImportJobsStore((s) => s.enqueueJob);
+  const contactImportCompletionTick = useImportJobsStore(
+    (s) => s.completionTickByEntity.contacts,
+  );
 
   const contactImportPreviewCsvKeys = useMemo(() => {
     const withCols = importPreviewData?.rows.find(
@@ -213,6 +214,12 @@ export default function ContactosPage() {
   useEffect(() => {
     void loadEtapaTabCounts();
   }, [loadEtapaTabCounts]);
+
+  useEffect(() => {
+    if (!contactImportCompletionTick) return;
+    void loadApiContacts();
+    void loadEtapaTabCounts();
+  }, [contactImportCompletionTick, loadApiContacts, loadEtapaTabCounts]);
 
   const paginatedContacts = useMemo(
     () => apiRows.map(mapApiContactRowToContact),
@@ -715,36 +722,13 @@ export default function ContactosPage() {
       return;
     }
     closeImportPreview();
-    setImportCommitRowHint(
-      `Se enviarán ${preview.okCount} fila(s) válida(s). Las consultas externas pueden alargar el proceso.`,
-    );
-    setImportCommitInProgress(true);
     setImportBusy(true);
     try {
-      const r = await uploadImportCsv('contacts', file);
-      const errMsg =
-        r.errors.length > 0
-          ? r.errors
-              .slice(0, 5)
-              .map((x) => `Fila ${x.row}: ${x.message}`)
-              .join('\n') + (r.errors.length > 5 ? `\n…y ${r.errors.length - 5} más` : '')
-          : undefined;
-      if (r.created === 0 && r.errors.length > 0) {
-        toast.error('No se crearon contactos', { description: errMsg });
-      } else {
-        toast.success(
-          `Importación: ${r.created} contacto(s) creado(s)${
-            r.skipped ? ` · ${r.skipped} fila(s) vacía(s) omitidas` : ''
-          }`,
-          errMsg ? { description: errMsg } : undefined,
-        );
-      }
-      await loadApiContacts();
+      const job = await startImportJob('contacts', file);
+      enqueueImportJob(job);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error al importar');
     } finally {
-      setImportCommitInProgress(false);
-      setImportCommitRowHint(undefined);
       setImportBusy(false);
     }
   }
@@ -756,12 +740,6 @@ export default function ContactosPage() {
         title="Generando vista previa"
         description="El sistema está leyendo el archivo, normalizando CSV/Excel y validando filas contra la base de datos. Las consultas externas solo ocurren al confirmar la importación."
         rowHint="Puede tardar unos segundos si el archivo tiene muchas filas."
-      />
-      <ImportInProgressDialog
-        open={importCommitInProgress}
-        title="Importando contactos"
-        description="El servidor está validando filas, creando contactos y puede consultar RENIEC u otras fuentes según los datos del archivo importado."
-        rowHint={importCommitRowHint}
       />
       <Dialog
         open={importPreviewOpen}

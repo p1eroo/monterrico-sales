@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Controller,
   Get,
+  Param,
   Post,
   Req,
   Res,
@@ -13,6 +14,7 @@ import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { ImportExportService } from './import-export.service';
+import { ImportExportJobsService } from './import-export-jobs.service';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { CrmDataScopeService } from '../auth/crm-data-scope.service';
@@ -29,8 +31,14 @@ type AuthedReq = { user: { userId: string; roleId?: string } };
 export class ImportExportController {
   constructor(
     private readonly importExportService: ImportExportService,
+    private readonly importExportJobs: ImportExportJobsService,
     private readonly crmDataScope: CrmDataScopeService,
   ) {}
+
+  @Get('jobs/:id')
+  async getImportJob(@Param('id') id: string, @Req() req: AuthedReq) {
+    return this.importExportJobs.getJob(id, req.user.userId);
+  }
 
   @Get('contacts/template')
   @RequirePermissions('contactos.exportar')
@@ -89,10 +97,21 @@ export class ImportExportController {
       req.user.userId,
       req.user.roleId,
     );
-    return this.importExportService.importContacts(
-      text,
-      req.user.userId,
-      scope,
+    const totalRows = this.importExportService.countImportDataRows(text);
+    return this.importExportJobs.startJob(
+      {
+        entity: 'contacts',
+        ownerUserId: req.user.userId,
+        totalRows,
+        filename: file.originalname,
+      },
+      (update) =>
+        this.importExportService.importContacts(
+          text,
+          req.user.userId,
+          scope,
+          update,
+        ),
     );
   }
 
@@ -153,10 +172,21 @@ export class ImportExportController {
       req.user.userId,
       req.user.roleId,
     );
-    return this.importExportService.importCompanies(
-      text,
-      req.user.userId,
-      scope,
+    const totalRows = this.importExportService.countImportDataRows(text);
+    return this.importExportJobs.startJob(
+      {
+        entity: 'companies',
+        ownerUserId: req.user.userId,
+        totalRows,
+        filename: file.originalname,
+      },
+      (update) =>
+        this.importExportService.importCompanies(
+          text,
+          req.user.userId,
+          scope,
+          update,
+        ),
     );
   }
 
@@ -206,10 +236,21 @@ export class ImportExportController {
       req.user.userId,
       req.user.roleId,
     );
-    return this.importExportService.importOpportunities(
-      text,
-      req.user.userId,
-      scope,
+    const totalRows = this.importExportService.countImportDataRows(text);
+    return this.importExportJobs.startJob(
+      {
+        entity: 'opportunities',
+        ownerUserId: req.user.userId,
+        totalRows,
+        filename: file.originalname,
+      },
+      (update) =>
+        this.importExportService.importOpportunities(
+          text,
+          req.user.userId,
+          scope,
+          update,
+        ),
     );
   }
 }

@@ -15,6 +15,7 @@ export type ImportInProgressDialogProps = {
   description: string;
   /** Texto opcional (p. ej. filas válidas en vista previa). */
   rowHint?: string;
+  footerNote?: string;
 };
 
 /**
@@ -26,6 +27,7 @@ export function ImportInProgressDialog({
   title,
   description,
   rowHint,
+  footerNote = 'Espera a que termine; no cierres ni recargues la pestaña.',
 }: ImportInProgressDialogProps) {
   return (
     <Dialog
@@ -70,15 +72,9 @@ export function ImportInProgressDialog({
               </div>
             </div>
           </DialogHeader>
-          <div
-            className="relative h-2 w-full overflow-hidden rounded-full bg-muted"
-            aria-hidden
-          >
-            <div className="h-full w-full origin-left animate-pulse bg-primary/35" />
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Espera a que termine; no cierres ni recargues la pestaña.
-          </p>
+          {footerNote ? (
+            <p className="text-xs text-muted-foreground">{footerNote}</p>
+          ) : null}
         </div>
       </DialogContent>
     </Dialog>

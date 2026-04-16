@@ -48,7 +48,7 @@ import { useCrmTeamAdvisorFilter } from '@/hooks/useCrmTeamAdvisorFilter';
 import {
   downloadImportExportCsv,
   previewCompaniesImportCsv,
-  uploadImportCsv,
+  startImportJob,
   type CompanyImportPreviewResult,
 } from '@/lib/importExportApi';
 import { IMPORT_SPREADSHEET_ACCEPT } from '@/lib/importSpreadsheet';
@@ -76,6 +76,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useImportJobsStore } from '@/store/importJobsStore';
 
 const etapaOrder: Etapa[] = ['lead', 'contacto', 'reunion_agendada', 'reunion_efectiva', 'propuesta_economica', 'negociacion', 'licitacion', 'licitacion_etapa_final', 'cierre_ganado', 'firma_contrato', 'activo', 'cierre_perdido', 'inactivo'];
 
@@ -283,10 +284,6 @@ export default function EmpresasPage() {
   const [newEmpresaOpen, setNewEmpresaOpen] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
   const [importBusy, setImportBusy] = useState(false);
-  const [importCommitInProgress, setImportCommitInProgress] = useState(false);
-  const [importCommitRowHint, setImportCommitRowHint] = useState<
-    string | undefined
-  >(undefined);
   const [importPreviewInProgress, setImportPreviewInProgress] = useState(false);
   const [importPreviewOpen, setImportPreviewOpen] = useState(false);
   const [importPreviewData, setImportPreviewData] =
@@ -305,6 +302,10 @@ export default function EmpresasPage() {
     string,
     number
   > | null>(null);
+  const enqueueImportJob = useImportJobsStore((s) => s.enqueueJob);
+  const companyImportCompletionTick = useImportJobsStore(
+    (s) => s.completionTickByEntity.companies,
+  );
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search), 400);
@@ -372,6 +373,12 @@ export default function EmpresasPage() {
   useEffect(() => {
     void loadEtapaTabCounts();
   }, [loadEtapaTabCounts]);
+
+  useEffect(() => {
+    if (!companyImportCompletionTick) return;
+    void loadSummary();
+    void loadEtapaTabCounts();
+  }, [companyImportCompletionTick, loadEtapaTabCounts, loadSummary]);
 
   const filtersDefault =
     !searchDebounced &&
@@ -738,36 +745,13 @@ export default function EmpresasPage() {
       return;
     }
     closeImportPreview();
-    setImportCommitRowHint(
-      `Se enviarán ${preview.okCount} fila(s) válida(s). Las consultas externas pueden alargar el proceso.`,
-    );
-    setImportCommitInProgress(true);
     setImportBusy(true);
     try {
-      const r = await uploadImportCsv('companies', file);
-      const errMsg =
-        r.errors.length > 0
-          ? r.errors
-              .slice(0, 5)
-              .map((x) => `Fila ${x.row}: ${x.message}`)
-              .join('\n') + (r.errors.length > 5 ? `\n…y ${r.errors.length - 5} más` : '')
-          : undefined;
-      if (r.created === 0 && r.errors.length > 0) {
-        toast.error('No se importó ninguna fila', { description: errMsg });
-      } else {
-        toast.success(
-          `Importación: ${r.created} fila(s) procesada(s) correctamente${
-            r.skipped ? ` · ${r.skipped} vacía(s) omitidas` : ''
-          }`,
-          errMsg ? { description: errMsg } : undefined,
-        );
-      }
-      await loadSummary();
+      const job = await startImportJob('companies', file);
+      enqueueImportJob(job);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error al importar');
     } finally {
-      setImportCommitInProgress(false);
-      setImportCommitRowHint(undefined);
       setImportBusy(false);
     }
   }
@@ -777,14 +761,8 @@ export default function EmpresasPage() {
       <ImportInProgressDialog
         open={importPreviewInProgress}
         title="Generando vista previa"
-        description="El sistema está leyendo el archivo, normalizando CSV/Excel, validando filas y comprobando empresas en la base de datos. No llama a SUNAT ni a RENIEC en este paso."
-        rowHint="Puede tardar unos segundos si el archivo tiene muchas filas."
-      />
-      <ImportInProgressDialog
-        open={importCommitInProgress}
-        title="Importando empresas"
-        description="El servidor está validando filas, creando registros y puede consultar SUNAT u otras fuentes según los datos del archivo importado."
-        rowHint={importCommitRowHint}
+        description="Puede tardar unos segundos si el archivo tiene muchas filas."
+        footerNote=""
       />
       <Dialog
         open={importPreviewOpen}
