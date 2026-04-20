@@ -525,7 +525,7 @@ function KanbanColumn({ column, accentColor, onCardClick, pipelineOpportunityFor
   const { setNodeRef } = useDroppable({ id: column.id });
 
   return (
-    <div className="flex h-full min-w-[280px] max-w-[320px] shrink-0 flex-col">
+    <div className="flex h-full min-h-0 min-w-[280px] max-w-[320px] shrink-0 flex-col">
       <div className="h-1 rounded-t-lg" style={{ backgroundColor: accentColor }} />
 
       <div className="flex items-center justify-between rounded-t-none border-x border-t border-border bg-[var(--pipeline-kanban-column-header)] px-3.5 py-3 backdrop-blur-sm">
@@ -542,7 +542,7 @@ function KanbanColumn({ column, accentColor, onCardClick, pipelineOpportunityFor
 
       <div
         ref={setNodeRef}
-        className="scrollbar-thin flex flex-1 flex-col gap-2 overflow-y-auto rounded-b-lg border-x border-b bg-muted/30 p-2"
+        className="scrollbar-thin flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto rounded-b-lg border-x border-b bg-muted/30 p-2"
       >
         <SortableContext
           items={column.contacts.map((l) => l.id)}
@@ -791,7 +791,7 @@ export default function Pipeline() {
   }
 
   return (
-    <div className="flex h-full min-w-0 flex-col gap-6">
+    <div className="flex h-full min-h-0 min-w-0 flex-col gap-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h1 className="text-2xl font-bold tracking-tight">Pipeline Comercial</h1>
@@ -923,7 +923,7 @@ export default function Pipeline() {
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        <div className="scrollbar-thin -mx-2 flex flex-1 gap-3 overflow-x-auto px-2 pb-4">
+        <div className="scrollbar-thin -mx-2 flex h-[calc(100dvh-13rem)] min-h-[32rem] min-w-0 gap-3 overflow-x-auto overflow-y-hidden px-2 pb-4">
           {pipeline.map((column) => {
             const colConfig = displayColumns.find((c) => c.id === column.id)!;
             return (

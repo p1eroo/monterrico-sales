@@ -6,7 +6,7 @@ import {
   Eye, Pencil, Trash2,
   DollarSign, Target, TrendingUp, Trophy,
   Calendar, X, User, Loader2,
-  FileSpreadsheet, Upload, Download,
+  FileSpreadsheet, Upload, Download, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import type { Etapa, OpportunityStatus, Opportunity } from '@/types';
 import { etapaLabels } from '@/data/mock';
@@ -91,6 +91,8 @@ const etapas: Etapa[] = [
   'activo', 'cierre_perdido', 'inactivo',
 ];
 
+const OPPORTUNITIES_PER_PAGE = 20;
+
 function ProbabilityBar({ value }: { value: number }) {
   const colorClass =
     value > 60 ? '[&_[data-slot=progress-indicator]]:bg-emerald-500' :
@@ -167,6 +169,7 @@ export default function OpportunitiesPage() {
   const [etapaFilter, setEtapaFilter] = useState('todas');
   const [statusFilter, setStatusFilter] = useState('todas');
   const [assigneeFilter, setAssigneeFilter] = useState('todos');
+  const [page, setPage] = useState(1);
   const { canSeeAllAdvisors, currentUserId } = useCrmTeamAdvisorFilter(
     assigneeFilter,
     setAssigneeFilter,
@@ -209,6 +212,29 @@ export default function OpportunitiesPage() {
       return matchesSearch && matchesTab && matchesEtapa && matchesStatus && matchesAssignee;
     });
   }, [allOpportunities, search, activeTab, etapaFilter, statusFilter, assigneeFilter]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, activeTab, etapaFilter, statusFilter, assigneeFilter, viewMode]);
+
+  const totalFiltered = filteredOpportunities.length;
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / OPPORTUNITIES_PER_PAGE));
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
+  const start = (page - 1) * OPPORTUNITIES_PER_PAGE;
+  const displayedOpportunities = useMemo(
+    () => filteredOpportunities.slice(start, start + OPPORTUNITIES_PER_PAGE),
+    [filteredOpportunities, start],
+  );
+  const startIndex = totalFiltered === 0 ? 0 : start + 1;
+  const endIndex = totalFiltered === 0
+    ? 0
+    : Math.min(start + displayedOpportunities.length, totalFiltered);
 
   const stats = useMemo(() => {
     const total = allOpportunities.length;
@@ -573,7 +599,7 @@ export default function OpportunitiesPage() {
             </Card>
           ) : viewMode === 'table' ? (
             <OpportunitiesTable
-              data={filteredOpportunities}
+              data={displayedOpportunities}
               isPendingOpportunityId={isPendingOpportunityId}
               onOpenDetail={openOpportunityDetail}
               onOpenPreview={openOpportunityPreview}
@@ -584,7 +610,7 @@ export default function OpportunitiesPage() {
             />
           ) : (
             <OpportunitiesGrid
-              data={filteredOpportunities}
+              data={displayedOpportunities}
               isPendingOpportunityId={isPendingOpportunityId}
               onOpenDetail={openOpportunityDetail}
               onOpenPreview={openOpportunityPreview}
@@ -606,6 +632,36 @@ export default function OpportunitiesPage() {
               {formatCurrency(filteredOpportunities.reduce((s, o) => s + o.amount, 0))}
             </span>
           </span>
+        </div>
+      )}
+
+      {filteredOpportunities.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm text-muted-foreground">
+            Mostrando {startIndex}-{endIndex} de {filteredOpportunities.length} oportunidad
+            {filteredOpportunities.length !== 1 ? 'es' : ''}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => p - 1)}
+            >
+              <ChevronLeft className="size-4" /> Anterior
+            </Button>
+            <span className="px-2 text-sm text-muted-foreground">
+              {page} / {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Siguiente <ChevronRight className="size-4" />
+            </Button>
+          </div>
         </div>
       )}
 
