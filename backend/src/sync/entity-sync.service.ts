@@ -305,13 +305,10 @@ export class EntitySyncService {
   }
 
   /**
-   * Si el contacto ya está en una oportunidad vinculada a esta empresa, no hace nada.
-   * Si la empresa ya tiene alguna oportunidad, solo vincula el contacto a la más antigua
-   * (no crea otra oportunidad por cada contacto nuevo).
-   * Si no hay oportunidad para la empresa, crea una con `defaults`.
+   * Si la empresa ya tiene una oportunidad vinculada, reutiliza la más antigua.
+   * Si no existe, crea una nueva vinculada solo a la empresa.
    */
-  async ensureOpportunityForContactCompany(
-    contactId: string,
+  async ensureOpportunityForCompany(
     companyId: string,
     defaults: {
       title: string;
@@ -320,41 +317,14 @@ export class EntitySyncService {
       assignedTo: string | null;
       expectedCloseDate: Date | null;
     },
-  ): Promise<string | null> {
-    const existingSamePair = await this.prisma.opportunity.findFirst({
-      where: {
-        AND: [
-          { contacts: { some: { contactId } } },
-          { companies: { some: { companyId } } },
-        ],
-      },
-      select: { id: true },
-    });
-    if (existingSamePair) return null;
-
+  ): Promise<string> {
     const oppForCompany = await this.prisma.opportunity.findFirst({
       where: { companies: { some: { companyId } } },
       orderBy: { createdAt: 'asc' },
       select: { id: true },
     });
 
-    if (oppForCompany) {
-      await this.prisma.$transaction(async (tx) => {
-        const already = await tx.contactOpportunity.findFirst({
-          where: {
-            contactId,
-            opportunityId: oppForCompany.id,
-          },
-          select: { id: true },
-        });
-        if (!already) {
-          await tx.contactOpportunity.create({
-            data: { contactId, opportunityId: oppForCompany.id },
-          });
-        }
-      });
-      return null;
-    }
+    if (oppForCompany) return oppForCompany.id;
 
     const probability = await this.crmConfig.resolveOpportunityProbability(
       defaults.etapa,
@@ -386,9 +356,6 @@ export class EntitySyncService {
           assignedTo: defaults.assignedTo,
         },
       });
-      await tx.contactOpportunity.create({
-        data: { contactId, opportunityId: o.id },
-      });
       await tx.companyOpportunity.create({
         data: { companyId, opportunityId: o.id },
       });
@@ -396,5 +363,56 @@ export class EntitySyncService {
     });
 
     return opp.id;
+  }
+
+  async ensureContactLinkedToOpportunity(
+    contactId: string,
+    opportunityId: string,
+  ): Promise<void> {
+    const already = await this.prisma.contactOpportunity.findFirst({
+      where: { contactId, opportunityId },
+      select: { id: true },
+    });
+    if (already) return;
+    await this.prisma.contactOpportunity.create({
+      data: { contactId, opportunityId },
+    });
+  }
+
+  /**
+   * Si el contacto ya está en una oportunidad vinculada a esta empresa, no hace nada.
+   * Si la empresa ya tiene alguna oportunidad, solo vincula el contacto a la más antigua
+   * (no crea otra oportunidad por cada contacto nuevo).
+   * Si no hay oportunidad para la empresa, crea una con `defaults`.
+   */
+  async ensureOpportunityForContactCompany(
+    contactId: string,
+    companyId: string,
+    defaults: {
+      title: string;
+      amount: number;
+      etapa: string;
+      assignedTo: string | null;
+      expectedCloseDate: Date | null;
+    },
+  ): Promise<string | null> {
+    const existingSamePair = await this.prisma.opportunity.findFirst({
+      where: {
+        AND: [
+          { contacts: { some: { contactId } } },
+          { companies: { some: { companyId } } },
+        ],
+      },
+      select: { id: true },
+    });
+    if (existingSamePair) return null;
+
+    const opportunityId = await this.ensureOpportunityForCompany(
+      companyId,
+      defaults,
+    );
+
+    await this.ensureContactLinkedToOpportunity(contactId, opportunityId);
+    return opportunityId;
   }
 }

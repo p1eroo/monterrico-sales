@@ -2989,6 +2989,24 @@ export class ImportExportService {
         }
       }
 
+      try {
+      const companyForOpportunity = await this.prisma.company.findUnique({
+        where: { id: companyId },
+        select: { name: true },
+      });
+      const expectedClose = new Date();
+      expectedClose.setDate(expectedClose.getDate() + 30);
+      const opportunityId = await this.entitySync.ensureOpportunityForCompany(
+        companyId,
+        {
+          title: companyForOpportunity?.name?.trim() || 'Oportunidad',
+          amount: facturacionEstimada,
+          etapa: etapaSlug,
+          assignedTo,
+          expectedCloseDate: expectedClose,
+        },
+      );
+
       const contactoNombreCsv = this.rowGetImportText(row, headerIndex, [
         'contacto_nombre',
         'nombre_contacto',
@@ -3026,6 +3044,9 @@ export class ImportExportService {
         puedeContactoDesdeCorreoSolo;
 
       if (!puedeNombreDoc) {
+        if (shouldRefreshExactCompanyFromImport) {
+          await this.updateExistingCompanyFromImport(companyId, companyImportUpdate);
+        }
         created += 1;
         continue;
       }
@@ -3086,22 +3107,9 @@ export class ImportExportService {
             existingContactId,
             companyId,
           );
-          const co = await this.prisma.company.findUnique({
-            where: { id: companyId },
-            select: { name: true },
-          });
-          const expectedClose = new Date();
-          expectedClose.setDate(expectedClose.getDate() + 30);
-          await this.entitySync.ensureOpportunityForContactCompany(
+          await this.entitySync.ensureContactLinkedToOpportunity(
             existingContactId,
-            companyId,
-            {
-              title: co?.name?.trim() || 'Oportunidad',
-              amount: facturacionEstimada,
-              etapa: etapaSlug,
-              assignedTo,
-              expectedCloseDate: expectedClose,
-            },
+            opportunityId,
           );
           await this.entitySync.propagateFromContact(
             companyId,
@@ -3144,6 +3152,15 @@ export class ImportExportService {
             e instanceof Error
               ? e.message
               : 'Error al crear o vincular contacto',
+        });
+      }
+      } catch (e: unknown) {
+        errors.push({
+          row: excelRow,
+          message:
+            e instanceof Error
+              ? e.message
+              : 'Error al asegurar oportunidad o procesar la fila',
         });
       }
       } finally {
