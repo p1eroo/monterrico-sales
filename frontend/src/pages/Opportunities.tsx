@@ -63,6 +63,26 @@ import {
 } from '@/lib/importExportApi';
 import { IMPORT_SPREADSHEET_ACCEPT } from '@/lib/importSpreadsheet';
 import { useImportJobsStore } from '@/store/importJobsStore';
+import {
+  CrmDataTableSkeleton,
+  CrmEntityCardGridSkeleton,
+  CrmFilterBarSkeleton,
+  CrmStatCardsSkeleton,
+  CrmTabsBarSkeleton,
+} from '@/components/shared/CrmListPageSkeleton';
+
+const OPPORTUNITIES_TABLE_SKELETON_COLUMNS = [
+  { label: 'Nombre', className: 'min-w-0 max-w-[20rem]' },
+  { label: 'Contacto / Cliente', className: 'hidden min-w-0 max-w-[16rem] md:table-cell' },
+  { label: 'Prioridad', className: 'hidden lg:table-cell' },
+  { label: 'Monto' },
+  { label: 'Probabilidad', className: 'hidden sm:table-cell' },
+  { label: 'Etapa', className: 'hidden lg:table-cell' },
+  { label: 'Fecha cierre', className: 'hidden xl:table-cell' },
+  { label: 'Asesor', className: 'hidden min-w-0 max-w-[10rem] xl:table-cell' },
+  { label: 'Estado', className: 'hidden sm:table-cell' },
+  { label: '', className: 'w-10' },
+];
 
 const statusLabels: Record<OpportunityStatus, string> = {
   abierta: 'Abierta',
@@ -130,6 +150,8 @@ export default function OpportunitiesPage() {
   const removePendingOpportunity = useOptimisticCrmStore((s) => s.removePendingOpportunity);
   const isPendingOpportunityId = useOptimisticCrmStore((s) => s.isPendingOpportunityId);
   const [apiRows, setApiRows] = useState<ApiOpportunityListRow[]>([]);
+  /** Solo primera carga: evita vacío confundido con “sin oportunidades” y no tapa el listado en refetch. */
+  const [initialOppLoad, setInitialOppLoad] = useState(true);
 
   const loadApiOpportunities = useCallback(async () => {
     try {
@@ -137,6 +159,8 @@ export default function OpportunitiesPage() {
       setApiRows(list);
     } catch {
       setApiRows([]);
+    } finally {
+      setInitialOppLoad(false);
     }
   }, []);
 
@@ -445,6 +469,33 @@ export default function OpportunitiesPage() {
         </div>
       </PageHeader>
 
+      {initialOppLoad ? (
+        <div
+          className="space-y-6"
+          aria-busy="true"
+          aria-live="polite"
+          aria-label="Cargando oportunidades"
+        >
+          <CrmStatCardsSkeleton count={4} />
+          <CrmFilterBarSkeleton />
+          <div className="space-y-3">
+            <CrmTabsBarSkeleton tabCount={4} />
+            <div>
+              {viewMode === 'table' ? (
+                <CrmDataTableSkeleton
+                  columns={[...OPPORTUNITIES_TABLE_SKELETON_COLUMNS]}
+                  rows={10}
+                  aria-label="Cargando lista de oportunidades"
+                  roundedClass="rounded-lg"
+                />
+              ) : (
+                <CrmEntityCardGridSkeleton count={8} aria-label="Cargando tarjetas de oportunidades" />
+              )}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
@@ -622,6 +673,8 @@ export default function OpportunitiesPage() {
           )}
         </TabsContent>
       </Tabs>
+        </>
+      )}
 
       {/* Info footer */}
       {filteredOpportunities.length > 0 && (

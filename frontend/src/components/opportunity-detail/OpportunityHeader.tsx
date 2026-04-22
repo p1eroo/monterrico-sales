@@ -1,33 +1,33 @@
-import { ArrowLeft, BriefcaseBusiness, Edit, RefreshCw, UserPlus } from 'lucide-react';
+import { ArrowLeft, BriefcaseBusiness, Edit } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { cn, initialsFromName } from '@/lib/utils';
+import { EtapaDropdownButton } from '@/components/shared/EtapaDropdownButton';
+import { initialsFromName } from '@/lib/utils';
 
 interface OpportunityHeaderProps {
   backPath: string;
   title: string;
   subtitle?: string;
-  statusLabel: string;
-  statusClassName?: string;
+  stageLabel: string;
+  stageClassName?: string;
+  currentEtapaSlug: string;
+  onEtapaChange?: (slug: string) => void;
   amountLabel: string;
   quickActions?: React.ReactNode;
   onEdit: () => void;
-  onChangeStage: () => void;
-  onAssign: () => void;
 }
 
 export function OpportunityHeader({
   backPath,
   title,
   subtitle,
-  statusLabel,
-  statusClassName,
+  stageLabel,
+  stageClassName,
+  currentEtapaSlug,
+  onEtapaChange,
   amountLabel,
   quickActions,
   onEdit,
-  onChangeStage,
-  onAssign,
 }: OpportunityHeaderProps) {
   const navigate = useNavigate();
 
@@ -55,12 +55,6 @@ export function OpportunityHeader({
                 <h1 className="max-w-[220px] truncate text-lg font-semibold tracking-tight text-foreground sm:max-w-[300px] lg:max-w-[380px]">
                   {title}
                 </h1>
-                <Badge
-                  variant="outline"
-                  className={cn('cursor-default border-0', statusClassName)}
-                >
-                  {statusLabel}
-                </Badge>
                 <span className="text-lg font-semibold text-foreground">{amountLabel}</span>
               </div>
 
@@ -75,18 +69,22 @@ export function OpportunityHeader({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <EtapaDropdownButton
+            stageLabel={stageLabel}
+            stageClassName={stageClassName}
+            currentEtapaSlug={currentEtapaSlug}
+            onEtapaChange={onEtapaChange}
+          />
           {quickActions}
-          <Button variant="secondary" size="sm" className="h-9 gap-1.5 px-3" onClick={onEdit}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 shrink-0 rounded-lg text-text-secondary hover:bg-accent hover:text-accent-foreground"
+            onClick={onEdit}
+            aria-label="Editar"
+            title="Editar"
+          >
             <Edit className="size-4" />
-            Editar
-          </Button>
-          <Button variant="secondary" size="sm" className="h-9 gap-1.5 px-3" onClick={onChangeStage}>
-            <RefreshCw className="size-4" />
-            Cambiar Etapa
-          </Button>
-          <Button variant="secondary" size="sm" className="h-9 gap-1.5 px-3" onClick={onAssign}>
-            <UserPlus className="size-4" />
-            Asignar
           </Button>
         </div>
       </div>

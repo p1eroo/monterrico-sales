@@ -34,6 +34,20 @@ import {
   Building2, Users, UserX, DollarSign, Search, Eye,
   Phone, Mail, Calendar, FileText, Clock, User, RefreshCw, Download, ExternalLink,
 } from 'lucide-react';
+import { CrmDataTableSkeleton, CrmStatCardsSkeleton } from '@/components/shared/CrmListPageSkeleton';
+
+const CLIENTS_TABLE_SKELETON_COLUMNS = [
+  { label: 'Empresa' },
+  { label: 'Rubro', className: 'hidden lg:table-cell' },
+  { label: 'Tipo', className: 'hidden lg:table-cell' },
+  { label: 'Teléfono', className: 'hidden md:table-cell' },
+  { label: 'Email', className: 'hidden lg:table-cell' },
+  { label: 'Estado' },
+  { label: 'Asesor', className: 'hidden md:table-cell' },
+  { label: 'Fecha alta', className: 'hidden xl:table-cell' },
+  { label: 'Ingresos', className: 'text-right' },
+  { label: '', className: 'text-right w-10' },
+];
 
 const clientStatusConfig: Record<ClientStatus, { label: string; className: string }> = {
   activo: { label: 'Activo', className: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
@@ -217,21 +231,25 @@ export default function Clients() {
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {statsCards.map((stat) => (
-          <Card key={stat.label} className="py-0">
-            <CardContent className="flex items-center gap-4 px-4 py-3">
-              <div className={cn('flex size-12 items-center justify-center rounded-lg', stat.bg)}>
-                <stat.icon className={cn('size-6', stat.color)} />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">{stat.label}</p>
-                <p className="text-2xl font-bold">{loading ? '—' : stat.value}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {loading ? (
+        <CrmStatCardsSkeleton count={4} />
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {statsCards.map((stat) => (
+            <Card key={stat.label} className="py-0">
+              <CardContent className="flex items-center gap-4 px-4 py-3">
+                <div className={cn('flex size-12 items-center justify-center rounded-lg', stat.bg)}>
+                  <stat.icon className={cn('size-6', stat.color)} />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">{stat.label}</p>
+                  <p className="text-2xl font-bold">{stat.value}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
         <div className="relative flex-1">
@@ -275,6 +293,14 @@ export default function Clients() {
         </div>
       </div>
 
+      {loading ? (
+        <CrmDataTableSkeleton
+          columns={CLIENTS_TABLE_SKELETON_COLUMNS}
+          rows={8}
+          aria-label="Cargando clientes"
+          roundedClass="rounded-lg"
+        />
+      ) : (
       <div className="overflow-x-auto rounded-lg border">
         <Table>
           <TableHeader>
@@ -292,13 +318,7 @@ export default function Clients() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={10} className="py-12 text-center text-muted-foreground">
-                  Cargando clientes…
-                </TableCell>
-              </TableRow>
-            ) : filteredClients.length === 0 ? (
+            {filteredClients.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={10} className="py-12 text-center text-muted-foreground">
                   {clientList.length === 0
@@ -382,6 +402,7 @@ export default function Clients() {
           </TableBody>
         </Table>
       </div>
+      )}
 
       <Sheet open={!!selectedClient} onOpenChange={(open) => !open && setSelectedClient(null)}>
         <SheetContent

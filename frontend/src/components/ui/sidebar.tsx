@@ -25,6 +25,28 @@ import {
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
+/** Sin cookie guardada: ancho menor que esto → sidebar en modo icono (pantallas chicas / medianas). */
+const SIDEBAR_COMPACT_DEFAULT_MAX_PX = 1024
+
+function readSidebarCookie(): boolean | undefined {
+  if (typeof document === "undefined") return undefined
+  const row = document.cookie
+    .split("; ")
+    .find((r) => r.startsWith(`${SIDEBAR_COOKIE_NAME}=`))
+  if (!row) return undefined
+  const value = row.slice(SIDEBAR_COOKIE_NAME.length + 1)
+  if (value === "true") return true
+  if (value === "false") return false
+  return undefined
+}
+
+function getInitialSidebarOpen(defaultOpen: boolean): boolean {
+  const stored = readSidebarCookie()
+  if (stored !== undefined) return stored
+  if (typeof window === "undefined") return defaultOpen
+  if (window.innerWidth < SIDEBAR_COMPACT_DEFAULT_MAX_PX) return false
+  return defaultOpen
+}
 const SIDEBAR_WIDTH = "16rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
@@ -67,9 +89,9 @@ function SidebarProvider({
   const isMobile = useIsMobile()
   const [openMobile, setOpenMobile] = React.useState(false)
 
-  // This is the internal state of the sidebar.
+  // Estado inicial: cookie (última elección) o regla por ancho si no hay cookie.
   // We use openProp and setOpenProp for control from outside the component.
-  const [_open, _setOpen] = React.useState(defaultOpen)
+  const [_open, _setOpen] = React.useState(() => getInitialSidebarOpen(defaultOpen))
   const open = openProp ?? _open
   const setOpen = React.useCallback(
     (value: boolean | ((value: boolean) => boolean)) => {

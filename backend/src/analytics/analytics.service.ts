@@ -80,9 +80,10 @@ export class AnalyticsService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Las métricas comerciales del equipo deben reflejar únicamente cartera operativa
-   * de asesores. Admin/supervisor pueden crear o asignarse registros, pero no deben
-   * inflar los conteos agregados del dashboard/reportes.
+   * Alcance “cartera de asesores”: solo aplica cuando el usuario NO tiene
+   * `equipo.datos_completos` (crmScope.unrestricted === false). Así un asesor
+   * ve solo lo asignado a usuarios con rol asesor (cartera típica); directivos
+   * con permiso de equipo ven totales sin este filtro.
    */
   private advisorUserRelationFilter() {
     return { role: { slug: ADVISOR_ROLE_SLUG } } as const;
@@ -108,13 +109,16 @@ export class AnalyticsService {
   private contactWhere(
     from: Date,
     to: Date,
-    advisorId?: string,
-    sourceSlug?: string,
+    advisorId: string | undefined,
+    sourceSlug: string | undefined,
+    unrestricted: boolean,
   ): Prisma.ContactWhereInput {
     const w: Prisma.ContactWhereInput = {
       createdAt: { gte: from, lte: to },
-      user: this.advisorUserRelationFilter(),
     };
+    if (!unrestricted) {
+      w.user = this.advisorUserRelationFilter();
+    }
     if (advisorId?.trim()) {
       w.assignedTo = advisorId.trim();
     }
@@ -125,12 +129,15 @@ export class AnalyticsService {
   }
 
   private opportunityWhereOpen(
-    advisorId?: string,
+    advisorId: string | undefined,
+    unrestricted: boolean,
   ): Prisma.OpportunityWhereInput {
     const w: Prisma.OpportunityWhereInput = {
       status: 'abierta',
-      user: this.advisorUserRelationFilter(),
     };
+    if (!unrestricted) {
+      w.user = this.advisorUserRelationFilter();
+    }
     if (advisorId?.trim()) {
       w.assignedTo = advisorId.trim();
     }
@@ -140,17 +147,32 @@ export class AnalyticsService {
   private opportunityWhereWonInRange(
     from: Date,
     to: Date,
-    advisorId?: string,
+    advisorId: string | undefined,
+    unrestricted: boolean,
   ): Prisma.OpportunityWhereInput {
     const w: Prisma.OpportunityWhereInput = {
       status: 'ganada',
       updatedAt: { gte: from, lte: to },
-      user: this.advisorUserRelationFilter(),
     };
+    if (!unrestricted) {
+      w.user = this.advisorUserRelationFilter();
+    }
     if (advisorId?.trim()) {
       w.assignedTo = advisorId.trim();
     }
     return w;
+  }
+
+  private activityWhereForAnalytics(
+    base: Prisma.ActivityWhereInput,
+    advisorId: string | undefined,
+    unrestricted: boolean,
+  ): Prisma.ActivityWhereInput {
+    const adv = advisorId?.trim() ? { assignedTo: advisorId.trim() } : {};
+    if (unrestricted) {
+      return { ...base, ...adv };
+    }
+    return { ...base, user: this.advisorUserRelationFilter(), ...adv };
   }
 
   /** Resumen principal: dashboard y reportes (misma fuente de datos). */
@@ -162,7 +184,8 @@ export class AnalyticsService {
     crmScope: CrmDataScope;
   }) {
     const { from, to } = this.resolveRange(opts.from, opts.to);
-    const advisorId = opts.crmScope.unrestricted
+    const unrestricted = opts.crmScope.unrestricted;
+    const advisorId = unrestricted
       ? opts.advisorId?.trim() || undefined
       : opts.crmScope.viewerUserId;
     const source = opts.source?.trim() || undefined;
@@ -171,8 +194,8 @@ export class AnalyticsService {
     const prevFrom = new Date(from.getTime() - prevLen);
     const prevTo = new Date(from.getTime() - 1);
 
-    const cw = this.contactWhere(from, to, advisorId, source);
-    const pw = this.contactWhere(prevFrom, prevTo, advisorId, source);
+    const cw = this.contactWhere(from, to, advisorId, source, unrestricted);
+    const pw = this.contactWhere(prevFrom, prevTo, advisorId, source, unrestricted);
 
     const [
       totalContacts,
@@ -193,45 +216,51 @@ export class AnalyticsService {
       this.prisma.contact.count({ where: pw }),
       this.prisma.contact.count({ where: cw }),
       this.prisma.opportunity.count({
-        where: this.opportunityWhereOpen(advisorId),
+        where: this.opportunityWhereOpen(advisorId, unrestricted),
       }),
       this.prisma.opportunity.aggregate({
-        where: this.opportunityWhereWonInRange(from, to, advisorId),
+        where: this.opportunityWhereWonInRange(from, to, advisorId, unrestricted),
         _sum: { amount: true },
         _count: true,
       }),
       this.prisma.opportunity.aggregate({
-        where: this.opportunityWhereWonInRange(prevFrom, prevTo, advisorId),
+        where: this.opportunityWhereWonInRange(prevFrom, prevTo, advisorId, unrestricted),
         _sum: { amount: true },
       }),
       this.prisma.opportunity.aggregate({
-        where: this.opportunityWhereOpen(advisorId),
+        where: this.opportunityWhereOpen(advisorId, unrestricted),
         _sum: { amount: true },
       }),
       this.prisma.activity.count({
-        where: {
-          ...TASK_ACTIVITY_FILTER,
-          status: 'pendiente',
-          user: this.advisorUserRelationFilter(),
-          ...(advisorId ? { assignedTo: advisorId } : {}),
-        },
+        where: this.activityWhereForAnalytics(
+          {
+            ...TASK_ACTIVITY_FILTER,
+            status: 'pendiente',
+          },
+          advisorId,
+          unrestricted,
+        ),
       }),
       this.prisma.activity.count({
-        where: {
-          ...TASK_ACTIVITY_FILTER,
-          status: 'pendiente',
-          dueDate: { lt: new Date() },
-          user: this.advisorUserRelationFilter(),
-          ...(advisorId ? { assignedTo: advisorId } : {}),
-        },
+        where: this.activityWhereForAnalytics(
+          {
+            ...TASK_ACTIVITY_FILTER,
+            status: 'pendiente',
+            dueDate: { lt: new Date() },
+          },
+          advisorId,
+          unrestricted,
+        ),
       }),
       this.prisma.activity.count({
-        where: {
-          ...TASK_ACTIVITY_FILTER,
-          completedAt: { gte: from, lte: to },
-          user: this.advisorUserRelationFilter(),
-          ...(advisorId ? { assignedTo: advisorId } : {}),
-        },
+        where: this.activityWhereForAnalytics(
+          {
+            ...TASK_ACTIVITY_FILTER,
+            completedAt: { gte: from, lte: to },
+          },
+          advisorId,
+          unrestricted,
+        ),
       }),
       this.prisma.contact.groupBy({
         by: ['fuente'],
@@ -240,7 +269,7 @@ export class AnalyticsService {
       }),
       this.prisma.contact.groupBy({
         by: ['etapa'],
-        where: advisorId ? { assignedTo: advisorId } : {},
+        where: cw,
         _count: { id: true },
       }),
       opts.crmScope.unrestricted
@@ -324,6 +353,7 @@ export class AnalyticsService {
             mStart > from ? mStart : from,
             mEnd < to ? mEnd : to,
             advisorId,
+            unrestricted,
           ),
           _sum: { amount: true },
         });
@@ -362,7 +392,7 @@ export class AnalyticsService {
     });
     const wonByAdvisor = await this.prisma.opportunity.groupBy({
       by: ['assignedTo'],
-      where: this.opportunityWhereWonInRange(from, to, advisorId),
+      where: this.opportunityWhereWonInRange(from, to, advisorId, unrestricted),
       _sum: { amount: true },
     });
     const contactMap = new Map(
@@ -391,12 +421,14 @@ export class AnalyticsService {
       .slice(0, 20);
 
     const pendingActivities = await this.prisma.activity.findMany({
-      where: {
-        ...TASK_ACTIVITY_FILTER,
-        status: 'pendiente',
-        user: this.advisorUserRelationFilter(),
-        ...(advisorId ? { assignedTo: advisorId } : {}),
-      },
+      where: this.activityWhereForAnalytics(
+        {
+          ...TASK_ACTIVITY_FILTER,
+          status: 'pendiente',
+        },
+        advisorId,
+        unrestricted,
+      ),
       orderBy: { dueDate: 'asc' },
       take: 15,
       include: {
@@ -451,10 +483,15 @@ export class AnalyticsService {
         const cTo = mEnd < to ? mEnd : to;
         const [cc, wo] = await Promise.all([
           this.prisma.contact.count({
-            where: this.contactWhere(cFrom, cTo, advisorId, source),
+            where: this.contactWhere(cFrom, cTo, advisorId, source, unrestricted),
           }),
           this.prisma.opportunity.count({
-            where: this.opportunityWhereWonInRange(cFrom, cTo, advisorId),
+            where: this.opportunityWhereWonInRange(
+              cFrom,
+              cTo,
+              advisorId,
+              unrestricted,
+            ),
           }),
         ]);
         const tasa = cc > 0 ? Math.round((wo / cc) * 1000) / 10 : 0;
@@ -471,11 +508,11 @@ export class AnalyticsService {
       activitiesByTypeMonth[ym] = { llamadas: 0, reuniones: 0, correos: 0 };
     }
     const actsDone = await this.prisma.activity.findMany({
-      where: {
-        completedAt: { gte: from, lte: to },
-        user: this.advisorUserRelationFilter(),
-        ...(advisorId ? { assignedTo: advisorId } : {}),
-      },
+      where: this.activityWhereForAnalytics(
+        { completedAt: { gte: from, lte: to } },
+        advisorId,
+        unrestricted,
+      ),
       select: { completedAt: true, type: true },
     });
     for (const a of actsDone) {
@@ -496,10 +533,7 @@ export class AnalyticsService {
     /** Oportunidades abiertas por etapa (conteo + suma de montos) */
     const oppsByStage = await this.prisma.opportunity.groupBy({
       by: ['etapa'],
-      where: {
-        status: 'abierta',
-        ...(advisorId ? { assignedTo: advisorId } : {}),
-      },
+      where: this.opportunityWhereOpen(advisorId, unrestricted),
       _count: { id: true },
       _sum: { amount: true },
     });
@@ -516,24 +550,27 @@ export class AnalyticsService {
         const mEnd = new Date(Date.UTC(y, m, 0, 23, 59, 59, 999));
         const cFrom = mStart > from ? mStart : from;
         const cTo = mEnd < to ? mEnd : to;
-        const adv = advisorId ? { assignedTo: advisorId } : {};
         const [completados, pendientes] = await Promise.all([
           this.prisma.activity.count({
-            where: {
-              ...TASK_ACTIVITY_FILTER,
-              completedAt: { gte: cFrom, lte: cTo },
-              user: this.advisorUserRelationFilter(),
-              ...adv,
-            },
+            where: this.activityWhereForAnalytics(
+              {
+                ...TASK_ACTIVITY_FILTER,
+                completedAt: { gte: cFrom, lte: cTo },
+              },
+              advisorId,
+              unrestricted,
+            ),
           }),
           this.prisma.activity.count({
-            where: {
-              ...TASK_ACTIVITY_FILTER,
-              status: 'pendiente',
-              dueDate: { gte: cFrom, lte: cTo },
-              user: this.advisorUserRelationFilter(),
-              ...adv,
-            },
+            where: this.activityWhereForAnalytics(
+              {
+                ...TASK_ACTIVITY_FILTER,
+                status: 'pendiente',
+                dueDate: { gte: cFrom, lte: cTo },
+              },
+              advisorId,
+              unrestricted,
+            ),
           }),
         ]);
         return {
@@ -596,13 +633,23 @@ export class AnalyticsService {
       ? userId
       : advisorFilter?.trim() || userId;
 
+    const portfolio = restrictTeam
+      ? ({
+          user: this.advisorUserRelationFilter(),
+          assignedTo: userId,
+        } as const)
+      : ({} as const);
+
+    const myPortfolio = restrictTeam
+      ? { user: this.advisorUserRelationFilter() }
+      : {};
+
     const [teamWeek, teamMonth, myWeek, myMonth] = await Promise.all([
       this.prisma.opportunity.aggregate({
         where: {
           status: 'ganada',
           updatedAt: { gte: weekStart, lte: weekEnd },
-          user: this.advisorUserRelationFilter(),
-          ...(restrictTeam ? { assignedTo: userId } : {}),
+          ...portfolio,
         },
         _sum: { amount: true },
       }),
@@ -610,8 +657,7 @@ export class AnalyticsService {
         where: {
           status: 'ganada',
           updatedAt: { gte: monthStart, lte: monthEnd },
-          user: this.advisorUserRelationFilter(),
-          ...(restrictTeam ? { assignedTo: userId } : {}),
+          ...portfolio,
         },
         _sum: { amount: true },
       }),
@@ -619,8 +665,8 @@ export class AnalyticsService {
         where: {
           status: 'ganada',
           updatedAt: { gte: weekStart, lte: weekEnd },
-          user: this.advisorUserRelationFilter(),
           assignedTo: targetUserId,
+          ...myPortfolio,
         },
         _sum: { amount: true },
       }),
@@ -628,8 +674,8 @@ export class AnalyticsService {
         where: {
           status: 'ganada',
           updatedAt: { gte: monthStart, lte: monthEnd },
-          user: this.advisorUserRelationFilter(),
           assignedTo: targetUserId,
+          ...myPortfolio,
         },
         _sum: { amount: true },
       }),

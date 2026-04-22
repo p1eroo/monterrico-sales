@@ -1,9 +1,8 @@
-import { ArrowLeft, BriefcaseBusiness, Edit, MessageCircle, RefreshCw, UserPlus } from 'lucide-react';
+import { ArrowLeft, BriefcaseBusiness, Edit, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { EtapaDropdownButton } from '@/components/shared/EtapaDropdownButton';
 import { initialsFromName } from '@/lib/utils';
-import { cn } from '@/lib/utils';
 
 interface ContactHeaderProps {
   backPath: string;
@@ -13,12 +12,12 @@ interface ContactHeaderProps {
   assignedToName?: string | null;
   stageLabel: string;
   stageClassName?: string;
+  currentEtapaSlug: string;
+  onEtapaChange?: (slug: string) => void;
   estimatedValueLabel: string;
   quickActions?: React.ReactNode;
   onEdit: () => void;
   onOpenWhatsapp: () => void;
-  onChangeStage: () => void;
-  onAssign: () => void;
 }
 
 export function ContactHeader({
@@ -27,12 +26,12 @@ export function ContactHeader({
   subtitle,
   stageLabel,
   stageClassName,
+  currentEtapaSlug,
+  onEtapaChange,
   estimatedValueLabel,
   quickActions,
   onEdit,
   onOpenWhatsapp,
-  onChangeStage,
-  onAssign,
 }: ContactHeaderProps) {
   const navigate = useNavigate();
 
@@ -60,12 +59,6 @@ export function ContactHeader({
                 <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">
                   {name}
                 </h1>
-                <Badge
-                  variant="outline"
-                  className={cn('cursor-default', stageClassName)}
-                >
-                  {stageLabel}
-                </Badge>
                 <span className="text-lg font-semibold text-foreground">{estimatedValueLabel}</span>
               </div>
 
@@ -80,27 +73,31 @@ export function ContactHeader({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <EtapaDropdownButton
+            stageLabel={stageLabel}
+            stageClassName={stageClassName}
+            currentEtapaSlug={currentEtapaSlug}
+            onEtapaChange={onEtapaChange}
+          />
           {quickActions}
-          <Button variant="secondary" size="sm" className="h-9 gap-1.5 px-3" onClick={onEdit}>
-            <Edit className="size-4" />
-            Editar
-          </Button>
           <Button
-            size="sm"
-            className="h-9 gap-1.5 bg-whatsapp px-3 text-whatsapp-foreground hover:bg-whatsapp/90"
+            size="default"
+            className="gap-1.5 bg-whatsapp px-3 text-whatsapp-foreground hover:bg-whatsapp/90"
             onClick={onOpenWhatsapp}
             title="WhatsApp · Evolution GO"
           >
             <MessageCircle className="size-4" />
             WhatsApp
           </Button>
-          <Button variant="secondary" size="sm" className="h-9 gap-1.5 px-3" onClick={onChangeStage}>
-            <RefreshCw className="size-4" />
-            Cambiar Etapa
-          </Button>
-          <Button variant="secondary" size="sm" className="h-9 gap-1.5 px-3" onClick={onAssign}>
-            <UserPlus className="size-4" />
-            Asignar
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 shrink-0 rounded-lg text-text-secondary hover:bg-accent hover:text-accent-foreground"
+            onClick={onEdit}
+            aria-label="Editar"
+            title="Editar"
+          >
+            <Edit className="size-4" />
           </Button>
         </div>
       </div>

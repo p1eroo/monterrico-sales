@@ -20,6 +20,7 @@ interface EntityInfoCardProps {
   fields: InfoField[];
   extraContent?: React.ReactNode;
   collapsible?: boolean;
+  /** Por defecto abierto en panel lateral de detalle; usar `false` para iniciar colapsado. */
   defaultOpen?: boolean;
 }
 
@@ -28,7 +29,7 @@ export function EntityInfoCard({
   fields,
   extraContent,
   collapsible = false,
-  defaultOpen = false,
+  defaultOpen = true,
 }: EntityInfoCardProps) {
   const [open, setOpen] = useState(defaultOpen);
 

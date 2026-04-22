@@ -77,6 +77,23 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useImportJobsStore } from '@/store/importJobsStore';
+import {
+  CrmDataTableSkeleton,
+  CrmEntityCardGridSkeleton,
+} from '@/components/shared/CrmListPageSkeleton';
+
+const EMPRESAS_TABLE_SKELETON_COLUMNS = [
+  { label: 'Empresa', className: '', cellClassName: '' },
+  { label: 'Etapa', className: 'hidden md:table-cell' },
+  { label: 'Fuente', className: 'hidden lg:table-cell' },
+  { label: 'Rubro', className: 'hidden md:table-cell' },
+  { label: 'Tipo', className: 'hidden md:table-cell' },
+  { label: 'Cliente Recuperado', className: 'hidden lg:table-cell' },
+  { label: 'Asesor', className: 'hidden xl:table-cell' },
+  { label: 'Contactos', className: 'text-center' },
+  { label: 'Valor total', className: 'text-right' },
+  { label: '', className: 'w-10' },
+] as const;
 
 const etapaOrder: Etapa[] = ['lead', 'contacto', 'reunion_agendada', 'reunion_efectiva', 'propuesta_economica', 'negociacion', 'licitacion', 'licitacion_etapa_final', 'cierre_ganado', 'firma_contrato', 'activo', 'cierre_perdido', 'inactivo'];
 
@@ -1076,9 +1093,15 @@ export default function EmpresasPage() {
       {/* Content */}
       <div className="mt-4">
         {loading ? (
-          <div className="flex items-center justify-center py-16 text-muted-foreground">
-            Cargando empresas...
-          </div>
+          viewMode === 'table' ? (
+            <CrmDataTableSkeleton
+              columns={[...EMPRESAS_TABLE_SKELETON_COLUMNS]}
+              rows={10}
+              aria-label="Cargando empresas"
+            />
+          ) : (
+            <CrmEntityCardGridSkeleton count={8} aria-label="Cargando empresas" />
+          )
         ) : displayRows.length === 0 ? (
           <EmptyState
             icon={Briefcase}

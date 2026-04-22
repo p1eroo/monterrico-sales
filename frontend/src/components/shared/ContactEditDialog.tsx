@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import type { Contact, ContactSource } from '@/types';
 import { contactSourceLabels } from '@/data/mock';
+import { useUsers } from '@/hooks/useUsers';
+import { AssignedAdvisorFormField } from '@/components/shared/AssignedAdvisorFormField';
 import {
   Dialog,
   DialogContent,
@@ -27,6 +29,8 @@ export type ContactEditSavePayload = {
   correo: string;
   fuente: ContactSource;
   estimatedValue: number;
+  /** Solo enviado cuando el usuario puede reasignar asesor. */
+  assignedTo?: string;
 };
 
 type ContactEditDialogProps = {
@@ -34,6 +38,7 @@ type ContactEditDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (payload: ContactEditSavePayload) => void | Promise<void>;
+  canEditAssignee: boolean;
 };
 
 export function ContactEditDialog({
@@ -41,7 +46,9 @@ export function ContactEditDialog({
   open,
   onOpenChange,
   onSave,
+  canEditAssignee,
 }: ContactEditDialogProps) {
+  const { activeAdvisors } = useUsers();
   const [editForm, setEditForm] = useState({
     name: '',
     cargo: '',
@@ -49,6 +56,7 @@ export function ContactEditDialog({
     correo: '',
     fuente: 'base' as ContactSource,
     estimatedValue: 0,
+    assignedTo: '',
   });
   const [saving, setSaving] = useState(false);
 
@@ -61,9 +69,10 @@ export function ContactEditDialog({
         correo: contact.correo,
         fuente: contact.fuente,
         estimatedValue: contact.estimatedValue,
+        assignedTo: contact.assignedTo || activeAdvisors[0]?.id || '',
       });
     }
-  }, [open, contact]);
+  }, [open, contact, activeAdvisors]);
 
   async function handleSave() {
     if (!contact || !editForm.name.trim()) return;
@@ -76,6 +85,7 @@ export function ContactEditDialog({
         correo: editForm.correo.trim(),
         fuente: editForm.fuente,
         estimatedValue: editForm.estimatedValue,
+        ...(canEditAssignee ? { assignedTo: editForm.assignedTo } : {}),
       });
       onOpenChange(false);
     } finally {
@@ -158,6 +168,13 @@ export function ContactEditDialog({
               }
             />
           </div>
+          <AssignedAdvisorFormField
+            htmlId="contact-edit-assigned-to"
+            value={editForm.assignedTo}
+            onChange={(assignedTo) => setEditForm((f) => ({ ...f, assignedTo }))}
+            disabled={!canEditAssignee}
+            fallbackName={contact?.assignedToName}
+          />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>

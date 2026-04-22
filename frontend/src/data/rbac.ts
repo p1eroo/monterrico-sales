@@ -230,10 +230,8 @@ export const INITIAL_ROLES: RBACRole[] = [
 
 /** Convierte el rol guardado en User (API/store) al templateId de RBAC. */
 export function roleStringToTemplateId(role: string): string {
-  const r = role.trim().toLowerCase();
+  const r = role.trim().toLowerCase().replace(/\s+/g, ' ');
   if (r === 'admin' || r === 'administrador') return 'admin';
-  if (r === 'supervisor' || r === 'gerente') return 'supervisor';
-  if (r === 'asesor') return 'asesor';
   if (
     r === 'solo_lectura' ||
     r === 'solo lectura' ||
@@ -242,7 +240,24 @@ export function roleStringToTemplateId(role: string): string {
   ) {
     return 'solo_lectura';
   }
+  if (r === 'asesor' || r.startsWith('asesor ')) return 'asesor';
+  if (
+    r === 'supervisor' ||
+    r === 'gerente' ||
+    r.includes('gerente') ||
+    r.includes('jefe comercial') ||
+    r.includes('jefe_comercial') ||
+    r.includes('jefe de comercial')
+  ) {
+    return 'supervisor';
+  }
   return 'asesor';
+}
+
+/** Admin, jefe comercial, gerente, supervisor: pueden reasignar asesor en CRM. */
+export function canReassignCommercialAdvisor(roleLabel: string): boolean {
+  const t = roleStringToTemplateId(roleLabel);
+  return t === 'admin' || t === 'supervisor';
 }
 
 export function getTemplatePermissions(templateId: string): Record<PermissionKey, boolean> {

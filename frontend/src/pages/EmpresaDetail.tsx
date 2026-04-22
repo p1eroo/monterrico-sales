@@ -6,6 +6,8 @@ import {
   MapPin, Mail, Linkedin, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { useCRMStore } from '@/store/crmStore';
+import { useAppStore } from '@/store';
+import { canReassignCommercialAdvisor } from '@/data/rbac';
 import { useCompaniesStore } from '@/store/companiesStore';
 import {
   companyRubroLabels, companyTipoLabels, etapaLabels, contactSourceLabels, activities,
@@ -16,6 +18,7 @@ import { useActivities } from '@/hooks/useActivities';
 import { getPrimaryCompany } from '@/lib/utils';
 import type { Etapa, CompanyRubro, CompanyTipo, ContactSource, TimelineEvent } from '@/types';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { EntityDetailPageSkeleton } from '@/components/shared/EntityDetailPageSkeleton';
 import { DetailLayout } from '@/components/shared/DetailLayout';
 import { EntityInfoCard } from '@/components/shared/EntityInfoCard';
 import { TimelinePanel } from '@/components/shared/TimelinePanel';
@@ -34,8 +37,7 @@ import { LinkExistingDialog, type LinkExistingItem } from '@/components/shared/L
 import { NewContactWizard } from '@/components/shared/NewContactWizard';
 import type { NewContactData } from '@/components/shared/NewContactWizard';
 import { TasksTab, type TasksTabHandle } from '@/components/shared/TasksTab';
-import { ChangeEtapaDialog } from '@/components/shared/ChangeEtapaDialog';
-import { AssignDialog } from '@/components/shared/AssignDialog';
+import { AssignedAdvisorFormField } from '@/components/shared/AssignedAdvisorFormField';
 import { EntityFilesTab } from '@/components/files';
 import { CompanyHeader } from '@/components/company-detail/CompanyHeader';
 import { toast } from 'sonner';
@@ -98,6 +100,8 @@ export default function EmpresaDetailPage() {
   const [apiOpportunityRows, setApiOpportunityRows] = useState<ApiOpportunityListRow[]>([]);
   const [apiLoading, setApiLoading] = useState(fromApiById);
   const { users, activeAdvisors } = useUsers();
+  const currentUserRole = useAppStore((s) => s.currentUser.role ?? '');
+  const canEditAssignee = canReassignCommercialAdvisor(currentUserRole);
   const [apiError, setApiError] = useState<string | null>(null);
 
   const loadApiContacts = useCallback(async () => {
@@ -193,6 +197,7 @@ export default function EmpresaDetailPage() {
   );
 
   const firstContact = companyContacts[0];
+  const showAdvisorInCompanyEdit = fromApiById || companyContacts.length > 0;
   const companyDataFromContact = firstContact?.companies?.find(
     (c) => c.name.trim().toLowerCase() === companyName.trim().toLowerCase(),
   );
@@ -445,11 +450,9 @@ export default function EmpresaDetailPage() {
     }
   }
   const [editForm, setEditForm] = useState({
-    name: '', domain: '', telefono: '', rubro: '' as CompanyRubro | '', tipo: '' as CompanyTipo | '',
+    name: '', domain: '', telefono: '', rubro: '' as CompanyRubro | '', tipo: '' as CompanyTipo | '', assignedTo: '',
   });
 
-  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
-  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
 
   const [companyTimelineEvents, setCompanyTimelineEvents] = useState<TimelineEvent[]>([]);
   const [companyTimelineLoading, setCompanyTimelineLoading] = useState(false);
@@ -507,12 +510,17 @@ export default function EmpresaDetailPage() {
 
   function handleOpenEditDialog() {
     const tel = (fromApiById && apiRecord?.telefono) ? (apiRecord.telefono ?? '') : '';
+    const assignedToInit =
+      (fromApiById ? (apiRecord?.assignedTo ?? '') : (firstContact?.assignedTo ?? '')) ||
+      activeAdvisors[0]?.id ||
+      '';
     setEditForm({
       name: companyData?.name ?? companyName,
       domain: companyData?.domain ?? '',
       telefono: tel,
       rubro: companyData?.rubro ?? '',
       tipo: companyData?.tipo ?? '',
+      assignedTo: assignedToInit,
     });
     setEditDialogOpen(true);
   }
@@ -521,15 +529,23 @@ export default function EmpresaDetailPage() {
     if (fromApiById && apiRecord) {
       void (async () => {
         try {
+          const body: Record<string, unknown> = {
+            name: editForm.name.trim(),
+            domain: editForm.domain?.trim() || undefined,
+            telefono: editForm.telefono?.trim() || undefined,
+            rubro: editForm.rubro || undefined,
+            tipo: editForm.tipo || undefined,
+          };
+          if (canEditAssignee && showAdvisorInCompanyEdit && editForm.assignedTo) {
+            if (!isLikelyContactCuid(editForm.assignedTo)) {
+              toast.error('El asesor debe ser un usuario del servidor (id válido en PostgreSQL).');
+              return;
+            }
+            body.assignedTo = editForm.assignedTo;
+          }
           await api<ApiCompanyRecord>(`/companies/${apiRecord.id}`, {
             method: 'PATCH',
-            body: JSON.stringify({
-              name: editForm.name.trim(),
-              domain: editForm.domain?.trim() || undefined,
-              telefono: editForm.telefono?.trim() || undefined,
-              rubro: editForm.rubro || undefined,
-              tipo: editForm.tipo || undefined,
-            }),
+            body: JSON.stringify(body),
           });
           const row = await api<ApiCompanyRecord>(`/companies/${apiRecord.id}`);
           setApiRecord(row);
@@ -560,7 +576,15 @@ export default function EmpresaDetailPage() {
           }
           return c;
         });
-        updateContact(contact.id, { companies: updatedCompanies });
+        const assignPatch =
+          canEditAssignee && showAdvisorInCompanyEdit && editForm.assignedTo
+            ? {
+                assignedTo: editForm.assignedTo,
+                assignedToName:
+                  users.find((u) => u.id === editForm.assignedTo)?.name ?? 'Sin asignar',
+              }
+            : {};
+        updateContact(contact.id, { companies: updatedCompanies, ...assignPatch });
       }
     }
     toast.success('Empresa actualizada correctamente');
@@ -586,41 +610,12 @@ export default function EmpresaDetailPage() {
           toast.error(e instanceof Error ? e.message : 'Error al actualizar etapa');
         }
       })();
-      setStatusDialogOpen(false);
       return;
     }
     for (const contact of companyContacts) {
       updateContact(contact.id, { etapa: newEtapa as Etapa });
     }
     toast.success('Etapa actualizada correctamente');
-    setStatusDialogOpen(false);
-  }
-
-  function handleAssignChange(newAssigneeId: string) {
-    if (fromApiById && apiRecord) {
-      void (async () => {
-        try {
-          await api(`/companies/${apiRecord.id}`, {
-            method: 'PATCH',
-            body: JSON.stringify({ assignedTo: newAssigneeId }),
-          });
-          const row = await api<ApiCompanyRecord>(`/companies/${apiRecord.id}`);
-          setApiRecord(row);
-          await loadApiContacts();
-          toast.success('Asesor asignado correctamente');
-        } catch (e) {
-          toast.error(e instanceof Error ? e.message : 'Error al asignar');
-        }
-      })();
-      setAssignDialogOpen(false);
-      return;
-    }
-    const user = users.find((u) => u.id === newAssigneeId);
-    for (const contact of companyContacts) {
-      updateContact(contact.id, { assignedTo: newAssigneeId, assignedToName: user?.name ?? 'Sin asignar' });
-    }
-    toast.success('Asesor asignado correctamente');
-    setAssignDialogOpen(false);
   }
 
   // --- Handlers ---
@@ -907,12 +902,7 @@ export default function EmpresaDetailPage() {
     (fromApiById && !!apiRecord);
 
   if (fromApiById && apiLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-4 py-16">
-        <Loader2 className="size-8 animate-spin text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">Cargando empresa…</p>
-      </div>
-    );
+    return <EntityDetailPageSkeleton ariaLabel="Cargando empresa" />;
   }
 
   if (
@@ -959,6 +949,10 @@ export default function EmpresaDetailPage() {
           subtitle={subtitle || undefined}
           stageLabel={displayEtapaLabel}
           stageClassName={displayEtapaKey ? (etapaColorsWithBorder[displayEtapaKey] ?? 'border-border bg-muted text-text-secondary') : 'border-border bg-muted text-text-secondary'}
+          currentEtapaSlug={
+            (fromApiById && apiRecord?.etapa) ? apiRecord.etapa : (firstContact?.etapa ?? '')
+          }
+          onEtapaChange={!isStandalone ? handleEtapaChange : undefined}
           estimatedValueLabel={formatCurrency(displayFacturacion)}
           quickActions={(
             <QuickActionsWithDialogs
@@ -973,8 +967,6 @@ export default function EmpresaDetailPage() {
             />
           )}
           onEdit={handleOpenEditDialog}
-          onChangeStage={!isStandalone ? () => setStatusDialogOpen(true) : undefined}
-          onAssign={!isStandalone ? () => setAssignDialogOpen(true) : undefined}
         />
       )}
       sidebar={
@@ -1342,6 +1334,19 @@ export default function EmpresaDetailPage() {
               </Select>
             </div>
           </div>
+          {showAdvisorInCompanyEdit ? (
+            <AssignedAdvisorFormField
+              htmlId="company-edit-assigned-to"
+              value={editForm.assignedTo}
+              onChange={(assignedTo) => setEditForm((f) => ({ ...f, assignedTo }))}
+              disabled={!canEditAssignee}
+              fallbackName={
+                users.find((u) => u.id === editForm.assignedTo)?.name ??
+                apiRecord?.user?.name ??
+                firstContact?.assignedToName
+              }
+            />
+          ) : null}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancelar</Button>
@@ -1350,27 +1355,6 @@ export default function EmpresaDetailPage() {
       </DialogContent>
     </Dialog>
 
-    <ChangeEtapaDialog
-      open={statusDialogOpen}
-      onOpenChange={setStatusDialogOpen}
-      entityName={companyName}
-      currentEtapa={
-        (fromApiById && apiRecord?.etapa) ? apiRecord.etapa : (firstContact?.etapa ?? '')
-      }
-      onEtapaChange={handleEtapaChange}
-    />
-
-    <AssignDialog
-      open={assignDialogOpen}
-      onOpenChange={setAssignDialogOpen}
-      entityName={companyName}
-      currentAssigneeId={
-        (fromApiById && apiRecord?.assignedTo != null)
-          ? (apiRecord.assignedTo ?? '')
-          : (firstContact?.assignedTo ?? '')
-      }
-      onAssignChange={handleAssignChange}
-    />
     </>
   );
 }

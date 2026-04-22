@@ -17,6 +17,8 @@ import { fetchActivityLogs, activityLogToTimelineEvent } from '@/lib/activityLog
 import { useActivities } from '@/hooks/useActivities';
 import { useUsers } from '@/hooks/useUsers';
 import { useCRMStore } from '@/store/crmStore';
+import { useAppStore } from '@/store';
+import { canReassignCommercialAdvisor } from '@/data/rbac';
 import { getPrimaryCompany } from '@/lib/utils';
 
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -28,6 +30,7 @@ import { TimelinePanel } from '@/components/shared/TimelinePanel';
 import { EntityInfoCard } from '@/components/shared/EntityInfoCard';
 import { ActivityPanel } from '@/components/shared/ActivityPanel';
 import { DetailLayout } from '@/components/shared/DetailLayout';
+import { EntityDetailPageSkeleton } from '@/components/shared/EntityDetailPageSkeleton';
 import { LinkedOpportunitiesCard } from '@/components/shared/LinkedOpportunitiesCard';
 import { LinkedCompaniesCard } from '@/components/shared/LinkedCompaniesCard';
 import { LinkedContactsCard } from '@/components/shared/LinkedContactsCard';
@@ -45,8 +48,6 @@ import {
 import { WhatsappContactDrawer } from '@/components/shared/WhatsappContactDrawer';
 import { TasksTab, type TasksTabHandle } from '@/components/shared/TasksTab';
 import { ContactEditDialog, type ContactEditSavePayload } from '@/components/shared/ContactEditDialog';
-import { ChangeEtapaDialog } from '@/components/shared/ChangeEtapaDialog';
-import { AssignDialog } from '@/components/shared/AssignDialog';
 import { EntityFilesTab } from '@/components/files';
 import { ContactHeader } from '@/components/contact-detail/ContactHeader';
 
@@ -288,8 +289,8 @@ export default function ContactoDetailPage() {
 
   const tasksTabRef = useRef<TasksTabHandle>(null);
   const [contactActivities, setContactActivities] = useState(initialActivities);
-  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
-  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const currentUserRole = useAppStore((s) => s.currentUser.role ?? '');
+  const canEditAssignee = canReassignCommercialAdvisor(currentUserRole);
   const [whatsappDrawerOpen, setWhatsappDrawerOpen] = useState(false);
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
   const [addCompanyOpen, setAddCompanyOpen] = useState(false);
@@ -475,12 +476,7 @@ export default function ContactoDetailPage() {
 
   // Los returns condicionales van después de todos los hooks
   if (fromApi && apiLoading) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground">
-        <Loader2 className="size-6 animate-spin" />
-        <span>Cargando contacto…</span>
-      </div>
-    );
+    return <EntityDetailPageSkeleton ariaLabel="Cargando contacto" />;
   }
 
   if (fromApi && (apiError || !apiRecord)) {
@@ -525,16 +521,24 @@ export default function ContactoDetailPage() {
     if (!contact) return;
     if (fromApi && routeId) {
       try {
+        const body: Record<string, unknown> = {
+          name: payload.name,
+          cargo: payload.cargo || null,
+          telefono: payload.telefono,
+          correo: payload.correo,
+          fuente: payload.fuente,
+          estimatedValue: payload.estimatedValue,
+        };
+        if (payload.assignedTo !== undefined && canEditAssignee) {
+          if (!isLikelyContactCuid(payload.assignedTo)) {
+            toast.error('El asesor debe ser un usuario del servidor (id válido en PostgreSQL).');
+            throw new Error('invalid_assignee');
+          }
+          body.assignedTo = payload.assignedTo;
+        }
         const updated = await api<ApiContactDetail>(`/contacts/${routeId}`, {
           method: 'PATCH',
-          body: JSON.stringify({
-            name: payload.name,
-            cargo: payload.cargo || null,
-            telefono: payload.telefono,
-            correo: payload.correo,
-            fuente: payload.fuente,
-            estimatedValue: payload.estimatedValue,
-          }),
+          body: JSON.stringify(body),
         });
         setApiRecord(updated);
         toast.success('Contacto actualizado correctamente');
@@ -544,14 +548,20 @@ export default function ContactoDetailPage() {
       }
       return;
     }
-    updateContact(contact.id, {
+    const patch: Partial<Contact> = {
       name: payload.name,
       cargo: payload.cargo || undefined,
       telefono: payload.telefono,
       correo: payload.correo,
       fuente: payload.fuente,
       estimatedValue: payload.estimatedValue,
-    });
+    };
+    if (payload.assignedTo !== undefined && canEditAssignee) {
+      const user = users.find((u) => u.id === payload.assignedTo);
+      patch.assignedTo = payload.assignedTo;
+      patch.assignedToName = user?.name ?? contact.assignedToName ?? 'Sin asignar';
+    }
+    updateContact(contact.id, patch);
     toast.success('Contacto actualizado correctamente');
   }
 
@@ -617,40 +627,10 @@ export default function ContactoDetailPage() {
           toast.error(e instanceof Error ? e.message : 'No se pudo actualizar la etapa');
         }
       })();
-      setStatusDialogOpen(false);
       return;
     }
     updateContact(contact.id, { etapa: newEtapa as Contact['etapa'] });
     toast.success('Etapa actualizada correctamente');
-    setStatusDialogOpen(false);
-  }
-
-  function handleAssignChange(newAssigneeId: string) {
-    if (!contact) return;
-    if (fromApi && routeId) {
-      if (!isLikelyContactCuid(newAssigneeId)) {
-        toast.error('El asesor debe ser un usuario del servidor (id válido en PostgreSQL).');
-        return;
-      }
-      void (async () => {
-        try {
-          const updated = await api<ApiContactDetail>(`/contacts/${routeId}`, {
-            method: 'PATCH',
-            body: JSON.stringify({ assignedTo: newAssigneeId }),
-          });
-          setApiRecord(updated);
-          toast.success('Asesor asignado correctamente');
-          setAssignDialogOpen(false);
-        } catch (e) {
-          toast.error(e instanceof Error ? e.message : 'No se pudo asignar');
-        }
-      })();
-      return;
-    }
-    const user = users.find((u) => u.id === newAssigneeId);
-    updateContact(contact.id, { assignedTo: newAssigneeId, assignedToName: user?.name ?? 'Sin asignar' });
-    toast.success('Asesor asignado correctamente');
-    setAssignDialogOpen(false);
   }
 
   async function handleAddCompany(
@@ -1122,6 +1102,8 @@ export default function ContactoDetailPage() {
           subtitle={contact.cargo}
           stageLabel={etapaLabels[contact.etapa] ?? contact.etapa}
           stageClassName={etapaColorsWithBorder[contact.etapa] ?? 'border-border bg-muted text-text-secondary'}
+          currentEtapaSlug={contact.etapa}
+          onEtapaChange={handleEtapaChange}
           estimatedValueLabel={formatCurrency(contact.estimatedValue)}
           quickActions={(
             <QuickActionsWithDialogs
@@ -1138,8 +1120,6 @@ export default function ContactoDetailPage() {
           )}
           onEdit={handleOpenEditDialog}
           onOpenWhatsapp={() => setWhatsappDrawerOpen(true)}
-          onChangeStage={() => setStatusDialogOpen(true)}
-          onAssign={() => setAssignDialogOpen(true)}
         />
       )}
       sidebar={<ContactoSidebar contact={contact} contactOpportunities={contactOpportunities} linkedContacts={linkedContactsForSidebar} onOpenConvertDialog={() => setConvertDialogOpen(true)} onAddExistingOpportunity={() => setAddExistingOpportunityOpen(true)} onRemoveOpportunity={handleRemoveOpportunity} onAddCompany={() => setAddCompanyOpen(true)} onAddExistingCompany={() => setAddExistingCompanyOpen(true)} onRemoveCompany={handleRemoveCompany} onNewContact={() => setNewContactOpen(true)} onAddLinkContact={() => setAddLinkContactOpen(true)} onRemoveContact={handleRemoveContact} />}
@@ -1281,6 +1261,7 @@ export default function ContactoDetailPage() {
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
         onSave={handlePersistContactEdit}
+        canEditAssignee={canEditAssignee}
       />
 
       <NewCompanyWizard
@@ -1376,22 +1357,6 @@ export default function ContactoDetailPage() {
         searchValue={linkContactSearch}
         onSearchChange={setLinkContactSearch}
         emptyMessage="No hay contactos disponibles para vincular."
-      />
-
-      <ChangeEtapaDialog
-        open={statusDialogOpen}
-        onOpenChange={setStatusDialogOpen}
-        entityName={contact.name}
-        currentEtapa={contact.etapa}
-        onEtapaChange={handleEtapaChange}
-      />
-
-      <AssignDialog
-        open={assignDialogOpen}
-        onOpenChange={setAssignDialogOpen}
-        entityName={contact.name}
-        currentAssigneeId={contact.assignedTo}
-        onAssignChange={handleAssignChange}
       />
 
       <WhatsappContactDrawer

@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import { contactSourceLabels, etapaLabels } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
+import { useAppStore } from '@/store';
+import { canReassignCommercialAdvisor } from '@/data/rbac';
 import { NewContactWizard, type NewContactData } from '@/components/shared/NewContactWizard';
 import { isLikelyOpportunityCuid } from '@/lib/opportunityApi';
 import { getPrimaryCompany } from '@/lib/utils';
@@ -75,8 +77,26 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useImportJobsStore } from '@/store/importJobsStore';
+import {
+  CrmDataTableSkeleton,
+  CrmEntityCardGridSkeleton,
+} from '@/components/shared/CrmListPageSkeleton';
 
 const ITEMS_PER_PAGE = 25;
+
+const CONTACTOS_TABLE_SKELETON_COLUMNS = [
+  { label: '', className: 'w-10', skeletonCell: 'checkbox' as const },
+  { label: 'Nombre', className: 'min-w-0 max-w-[20rem]' },
+  { label: 'Empresa', className: 'hidden min-w-0 max-w-[16rem] md:table-cell' },
+  { label: 'Teléfono', className: 'hidden lg:table-cell' },
+  { label: 'Email', className: 'hidden min-w-0 max-w-[14rem] xl:table-cell' },
+  { label: 'Fuente', className: 'hidden lg:table-cell' },
+  { label: 'Cliente Recuperado', className: 'hidden lg:table-cell' },
+  { label: 'Etapa' },
+  { label: 'Asesor', className: 'hidden xl:table-cell' },
+  { label: 'Fecha', className: 'hidden md:table-cell' },
+  { label: '', className: 'w-10' },
+];
 
 function importPreviewCell(v: string | undefined) {
   const t = (v ?? '').trim();
@@ -112,6 +132,8 @@ const etapaTabs: { value: string; label: string }[] = [
 export default function ContactosPage() {
   const navigate = useNavigate();
   const { activeAdvisors } = useUsers();
+  const currentUserRole = useAppStore((s) => s.currentUser.role ?? '');
+  const canEditAssignee = canReassignCommercialAdvisor(currentUserRole);
   const { hasPermission } = usePermissions();
   const pendingContacts = useOptimisticCrmStore((s) => s.pendingContacts);
   const addPendingContact = useOptimisticCrmStore((s) => s.addPendingContact);
@@ -285,16 +307,24 @@ export default function ContactosPage() {
   async function handleSaveContactFromList(payload: ContactEditSavePayload) {
     if (!editContact) return;
     try {
+      const body: Record<string, unknown> = {
+        name: payload.name,
+        cargo: payload.cargo || null,
+        telefono: payload.telefono,
+        correo: payload.correo,
+        fuente: payload.fuente,
+        estimatedValue: payload.estimatedValue,
+      };
+      if (payload.assignedTo !== undefined && canEditAssignee) {
+        if (!isLikelyContactCuid(payload.assignedTo)) {
+          toast.error('El asesor debe ser un usuario del servidor (id válido en PostgreSQL).');
+          throw new Error('invalid_assignee');
+        }
+        body.assignedTo = payload.assignedTo;
+      }
       await api<ApiContactDetail>(`/contacts/${editContact.id}`, {
         method: 'PATCH',
-        body: JSON.stringify({
-          name: payload.name,
-          cargo: payload.cargo || null,
-          telefono: payload.telefono,
-          correo: payload.correo,
-          fuente: payload.fuente,
-          estimatedValue: payload.estimatedValue,
-        }),
+        body: JSON.stringify(body),
       });
       await loadApiContacts();
       toast.success('Contacto actualizado correctamente');
@@ -1044,9 +1074,15 @@ export default function ContactosPage() {
       {/* Content */}
       <div className="mt-4">
         {loading ? (
-          <div className="flex items-center justify-center py-16 text-muted-foreground">
-            Cargando contactos...
-          </div>
+          viewMode === 'table' ? (
+            <CrmDataTableSkeleton
+              columns={CONTACTOS_TABLE_SKELETON_COLUMNS}
+              rows={10}
+              aria-label="Cargando contactos"
+            />
+          ) : (
+            <CrmEntityCardGridSkeleton count={8} aria-label="Cargando contactos" />
+          )
         ) : totalContacts === 0 && apiRows.length === 0 && pendingContacts.length === 0 ? (
           <EmptyState
             icon={Users}
@@ -1164,6 +1200,7 @@ export default function ContactosPage() {
           if (!open) setEditContact(null);
         }}
         onSave={handleSaveContactFromList}
+        canEditAssignee={canEditAssignee}
       />
     </div>
   );

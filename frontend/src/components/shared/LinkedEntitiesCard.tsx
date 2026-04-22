@@ -31,6 +31,7 @@ export interface LinkedEntitiesCardProps<T> {
   /** Segundo parámetro: botón desvincular para colocar en la última fila (cuando hay onRemove) */
   renderItem: (item: T, unlinkButton?: React.ReactNode) => React.ReactNode;
   collapsible?: boolean;
+  /** Por defecto abierto en panel lateral de detalle; usar `false` para iniciar colapsado. */
   defaultOpen?: boolean;
   itemClassName?: string;
 }
@@ -54,7 +55,7 @@ export function LinkedEntitiesCard<T>({
   onItemClick,
   renderItem,
   collapsible = false,
-  defaultOpen = false,
+  defaultOpen = true,
   itemClassName,
 }: LinkedEntitiesCardProps<T>) {
   const [pendingUnlink, setPendingUnlink] = useState<T | null>(null);

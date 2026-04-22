@@ -11,7 +11,6 @@ import {
   Users,
   Target,
   Activity,
-  Loader2,
 } from 'lucide-react';
 import type { User } from '@/types';
 import { useRoles } from '@/hooks/useRoles';
@@ -20,6 +19,7 @@ import { opportunities } from '@/data/mock';
 import { activities } from '@/data/mock';
 
 import { PageHeader } from '@/components/shared/PageHeader';
+import { EntityDetailPageSkeleton } from '@/components/shared/EntityDetailPageSkeleton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -80,12 +80,7 @@ export default function UserDetailPage() {
   }, [loadUser]);
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-4 py-16">
-        <Loader2 className="size-8 animate-spin text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">Cargando usuario…</p>
-      </div>
-    );
+    return <EntityDetailPageSkeleton ariaLabel="Cargando usuario" />;
   }
 
   if (!user || loadError) {

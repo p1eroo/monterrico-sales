@@ -5,6 +5,8 @@ import {
   Users, Plus, FileArchive, Loader2, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { useCRMStore } from '@/store/crmStore';
+import { useAppStore } from '@/store';
+import { canReassignCommercialAdvisor } from '@/data/rbac';
 import { etapaLabels, companyRubroLabels, activities } from '@/data/mock';
 import { fetchActivityLogs, activityLogToTimelineEvent } from '@/lib/activityLogsApi';
 import { useActivities } from '@/hooks/useActivities';
@@ -13,6 +15,7 @@ import { getPrimaryCompany } from '@/lib/utils';
 import type { CompanyRubro, Etapa, OpportunityStatus, TimelineEvent } from '@/types';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { DetailLayout } from '@/components/shared/DetailLayout';
+import { EntityDetailPageSkeleton } from '@/components/shared/EntityDetailPageSkeleton';
 import { EntityInfoCard } from '@/components/shared/EntityInfoCard';
 import { TimelinePanel } from '@/components/shared/TimelinePanel';
 import { ActivityPanel } from '@/components/shared/ActivityPanel';
@@ -35,8 +38,7 @@ import { LinkExistingDialog, type LinkExistingItem } from '@/components/shared/L
 import { NewContactWizard } from '@/components/shared/NewContactWizard';
 import type { NewContactData } from '@/components/shared/NewContactWizard';
 import { TasksTab, type TasksTabHandle } from '@/components/shared/TasksTab';
-import { ChangeEtapaDialog } from '@/components/shared/ChangeEtapaDialog';
-import { AssignDialog } from '@/components/shared/AssignDialog';
+import { AssignedAdvisorFormField } from '@/components/shared/AssignedAdvisorFormField';
 import { EntityFilesTab } from '@/components/files';
 import { OpportunityHeader } from '@/components/opportunity-detail/OpportunityHeader';
 import { toast } from 'sonner';
@@ -74,6 +76,7 @@ import {
   isLikelyContactCuid,
   mapApiContactRowToContact,
 } from '@/lib/contactApi';
+import { etapaColorsWithBorder } from '@/lib/etapaConfig';
 
 const TIMELINE_PAGE_SIZE = 6;
 
@@ -82,13 +85,6 @@ const statusLabels: Record<string, string> = {
   ganada: 'Ganada',
   perdida: 'Perdida',
   suspendida: 'Suspendida',
-};
-
-const statusColors: Record<string, string> = {
-  abierta: 'bg-blue-100 text-blue-700',
-  ganada: 'bg-emerald-100 text-emerald-700',
-  perdida: 'bg-red-100 text-red-700',
-  suspendida: 'bg-amber-100 text-amber-700',
 };
 
 export default function OportunidadDetailPage() {
@@ -145,6 +141,8 @@ export default function OportunidadDetailPage() {
   }, [fromApi, routeId]);
 
   const { users, activeAdvisors } = useUsers();
+  const currentUserRole = useAppStore((s) => s.currentUser.role ?? '');
+  const canEditAssignee = canReassignCommercialAdvisor(currentUserRole);
   const { activities: activitiesFromStore, createActivity } = useActivities();
   const storeOpp = opportunities.find((o) => o.id === routeId);
 
@@ -350,10 +348,14 @@ export default function OportunidadDetailPage() {
 
   // --- Edit / Etapa / Asignar dialogs ---
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editForm, setEditForm] = useState({ title: '', amount: 0, expectedCloseDate: '', status: '' as OpportunityStatus | '' });
+  const [editForm, setEditForm] = useState({
+    title: '',
+    amount: 0,
+    expectedCloseDate: '',
+    status: '' as OpportunityStatus | '',
+    assignedTo: '',
+  });
 
-  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
-  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
 
   const [oppTimelineEvents, setOppTimelineEvents] = useState<TimelineEvent[]>([]);
   const [oppTimelineLoading, setOppTimelineLoading] = useState(false);
@@ -416,6 +418,7 @@ export default function OportunidadDetailPage() {
       amount: opp.amount,
       expectedCloseDate: opp.expectedCloseDate,
       status: opp.status,
+      assignedTo: opp.assignedTo || activeAdvisors[0]?.id || '',
     });
     setEditDialogOpen(true);
   }
@@ -425,14 +428,22 @@ export default function OportunidadDetailPage() {
     if (fromApi && routeId) {
       void (async () => {
         try {
+          const body: Record<string, unknown> = {
+            title: editForm.title.trim(),
+            amount: editForm.amount,
+            expectedCloseDate: editForm.expectedCloseDate || null,
+            status: editForm.status || undefined,
+          };
+          if (canEditAssignee && editForm.assignedTo) {
+            if (!isLikelyContactCuid(editForm.assignedTo)) {
+              toast.error('El asesor debe ser un usuario del servidor (id válido en PostgreSQL).');
+              return;
+            }
+            body.assignedTo = editForm.assignedTo;
+          }
           const updated = await api<ApiOpportunityDetail>(`/opportunities/${routeId}`, {
             method: 'PATCH',
-            body: JSON.stringify({
-              title: editForm.title.trim(),
-              amount: editForm.amount,
-              expectedCloseDate: editForm.expectedCloseDate || null,
-              status: editForm.status || undefined,
-            }),
+            body: JSON.stringify(body),
           });
           setApiRecord(updated);
           toast.success('Oportunidad actualizada correctamente');
@@ -443,11 +454,20 @@ export default function OportunidadDetailPage() {
       })();
       return;
     }
+    const assignPatch =
+      canEditAssignee && editForm.assignedTo
+        ? {
+            assignedTo: editForm.assignedTo,
+            assignedToName:
+              users.find((u) => u.id === editForm.assignedTo)?.name ?? opp.assignedToName ?? 'Sin asignar',
+          }
+        : {};
     updateOpportunity(opp.id, {
       title: editForm.title,
       amount: editForm.amount,
       expectedCloseDate: editForm.expectedCloseDate,
       status: (editForm.status || undefined) as OpportunityStatus | undefined,
+      ...assignPatch,
     });
     toast.success('Oportunidad actualizada correctamente');
     setEditDialogOpen(false);
@@ -468,40 +488,10 @@ export default function OportunidadDetailPage() {
           toast.error(e instanceof Error ? e.message : 'No se pudo actualizar la etapa');
         }
       })();
-      setStatusDialogOpen(false);
       return;
     }
     updateOpportunity(opp.id, { etapa: newEtapa as Etapa });
     toast.success('Etapa actualizada correctamente');
-    setStatusDialogOpen(false);
-  }
-
-  function handleAssignChange(newAssigneeId: string) {
-    if (!opp) return;
-    if (fromApi && routeId) {
-      if (!isLikelyOpportunityCuid(newAssigneeId)) {
-        toast.error('El asesor debe ser un usuario del servidor (id válido en PostgreSQL).');
-        return;
-      }
-      void (async () => {
-        try {
-          const updated = await api<ApiOpportunityDetail>(`/opportunities/${routeId}`, {
-            method: 'PATCH',
-            body: JSON.stringify({ assignedTo: newAssigneeId }),
-          });
-          setApiRecord(updated);
-          toast.success('Asesor asignado correctamente');
-          setAssignDialogOpen(false);
-        } catch (e) {
-          toast.error(e instanceof Error ? e.message : 'No se pudo asignar');
-        }
-      })();
-      return;
-    }
-    const user = users.find((u) => u.id === newAssigneeId);
-    updateOpportunity(opp.id, { assignedTo: newAssigneeId, assignedToName: user?.name ?? 'Sin asignar' });
-    toast.success('Asesor asignado correctamente');
-    setAssignDialogOpen(false);
   }
 
   async function handleCreateNewContact(data: NewContactData) {
@@ -930,12 +920,7 @@ export default function OportunidadDetailPage() {
   }));
 
   if (fromApi && apiLoading) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground">
-        <Loader2 className="size-6 animate-spin" />
-        <span>Cargando oportunidad…</span>
-      </div>
-    );
+    return <EntityDetailPageSkeleton ariaLabel="Cargando oportunidad" />;
   }
 
   if (fromApi && (apiError || !apiRecord)) {
@@ -978,8 +963,10 @@ export default function OportunidadDetailPage() {
           backPath="/opportunities"
           title={opp.title}
           subtitle={headerSubtitle || undefined}
-          statusLabel={statusLabels[opp.status] ?? opp.status}
-          statusClassName={statusColors[opp.status] ?? 'bg-muted text-text-secondary'}
+          stageLabel={etapaLabels[opp.etapa] ?? opp.etapa}
+          stageClassName={etapaColorsWithBorder[opp.etapa] ?? 'border-border bg-muted text-text-secondary'}
+          currentEtapaSlug={opp.etapa}
+          onEtapaChange={handleEtapaChange}
           amountLabel={formatCurrency(opp.amount)}
           quickActions={(
             <QuickActionsWithDialogs
@@ -994,8 +981,6 @@ export default function OportunidadDetailPage() {
             />
           )}
           onEdit={handleOpenEditDialog}
-          onChangeStage={() => setStatusDialogOpen(true)}
-          onAssign={() => setAssignDialogOpen(true)}
         />
       )}
       sidebar={
@@ -1279,6 +1264,15 @@ export default function OportunidadDetailPage() {
               </SelectContent>
             </Select>
           </div>
+          <AssignedAdvisorFormField
+            htmlId="opp-edit-assigned-to"
+            value={editForm.assignedTo}
+            onChange={(assignedTo) => setEditForm((f) => ({ ...f, assignedTo }))}
+            disabled={!canEditAssignee}
+            fallbackName={
+              users.find((u) => u.id === editForm.assignedTo)?.name ?? opp.assignedToName
+            }
+          />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancelar</Button>
@@ -1287,21 +1281,6 @@ export default function OportunidadDetailPage() {
       </DialogContent>
     </Dialog>
 
-    <ChangeEtapaDialog
-      open={statusDialogOpen}
-      onOpenChange={setStatusDialogOpen}
-      entityName={opp.title}
-      currentEtapa={opp.etapa}
-      onEtapaChange={handleEtapaChange}
-    />
-
-    <AssignDialog
-      open={assignDialogOpen}
-      onOpenChange={setAssignDialogOpen}
-      entityName={opp.title}
-      currentAssigneeId={opp.assignedTo}
-      onAssignChange={handleAssignChange}
-    />
     </>
   );
 }
