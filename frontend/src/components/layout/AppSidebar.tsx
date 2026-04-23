@@ -54,7 +54,7 @@ const navItems: NavDef[] = [
   { to: '/tareas', label: 'Tareas', icon: CalendarCheck, permission: 'actividades.ver' },
   { to: '/calendario', label: 'Calendario', icon: Calendar, permission: 'actividades.ver' },
   { to: '/inbox', label: 'Correo', icon: Mail, permission: 'correo.ver' },
-  { to: '/campaigns', label: 'Campañas', icon: Send, permission: 'campanas.ver' },
+  { to: '/campaigns', label: 'Masivo', icon: Send, permission: 'campanas.ver' },
   { to: '/clients', label: 'Clientes', icon: Building2, permission: 'clientes.ver' },
   { to: '/reports', label: 'Reportes', icon: BarChart3, permission: 'reportes.ver' },
   { to: '/archivos', label: 'Archivos', icon: FileArchive, permission: 'archivos.ver' },

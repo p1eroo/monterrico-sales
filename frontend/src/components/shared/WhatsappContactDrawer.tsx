@@ -256,6 +256,8 @@ export function WhatsappContactDrawer({
   const [draft, setDraft] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
+  /** Tras el último layout con mensajes: cuántos había (para detectar primera hidratación). */
+  const prevMsgCountRef = useRef(0);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -341,10 +343,31 @@ export function WhatsappContactDrawer({
     };
   }, [open, contact.id]);
 
+  useEffect(() => {
+    if (!open) prevMsgCountRef.current = 0;
+  }, [open]);
+
+  useEffect(() => {
+    prevMsgCountRef.current = 0;
+  }, [contact.id]);
+
+  /**
+   * Solo bajar al final si el usuario ya estaba abajo (o primera pintada con historial).
+   * Si no, cada poll/socket o `setItems` devolvía el scroll arriba y arruinaba leer mensajes viejos.
+   */
   useLayoutEffect(() => {
     if (!open || !scrollRef.current) return;
     const el = scrollRef.current;
-    el.scrollTop = el.scrollHeight;
+    if (loading && items.length === 0) return;
+
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const nearBottom = distanceFromBottom < 150;
+    const firstPaintWithMessages = items.length > 0 && prevMsgCountRef.current === 0;
+
+    if (nearBottom || firstPaintWithMessages) {
+      el.scrollTop = el.scrollHeight;
+    }
+    prevMsgCountRef.current = items.length;
   }, [open, items, loading]);
 
   async function onSend() {

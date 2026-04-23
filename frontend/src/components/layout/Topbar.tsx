@@ -40,7 +40,7 @@ const routeLabels: Record<string, string> = {
   '/tareas': 'Tareas',
   '/calendario': 'Calendario',
   '/inbox': 'Correo',
-  '/campaigns': 'Campañas',
+  '/campaigns': 'Masivo',
   '/opportunities': 'Oportunidades',
   '/clients': 'Clientes',
   '/reports': 'Reportes',
