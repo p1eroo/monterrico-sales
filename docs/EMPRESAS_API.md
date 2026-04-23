@@ -33,7 +33,7 @@ Detalle por **id** (cuid). **404** si no existe.
 curl -s -X POST http://localhost:3000/companies \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"Acme SAC","ruc":"20123456789","domain":"acme.com","rubro":"mineria","tipo":"A"}'
+  -d '{"name":"Acme SAC","ruc":"20123456789","domain":"acme.com","rubro":"energia_mineria","tipo":"A"}'
 ```
 
 ## PATCH /companies/:id

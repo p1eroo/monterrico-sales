@@ -268,11 +268,11 @@ const LeadCard = memo(function LeadCard({
   return (
     <div
       className={cn(
-        'group relative select-none rounded-lg border border-border bg-[var(--pipeline-kanban-surface)] p-3.5 text-card-foreground shadow-sm',
+        'group relative select-none rounded-lg border border-border bg-[var(--pipeline-kanban-surface)] p-3.5 text-card-foreground shadow-none',
         !overlay && [
           'transition-[box-shadow,border-color,opacity] duration-150',
           'dark:shadow-md dark:shadow-black/35',
-          'hover:shadow-md hover:border-primary/30 dark:hover:shadow-lg dark:hover:shadow-black/40',
+          'hover:border-primary/30 dark:hover:shadow-lg dark:hover:shadow-black/40',
         ],
         isDragging && 'opacity-40',
         overlay && 'pointer-events-none rotate-2 shadow-xl border-primary/40',

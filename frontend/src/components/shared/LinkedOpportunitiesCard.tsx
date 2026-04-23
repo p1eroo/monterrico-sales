@@ -1,8 +1,9 @@
 import { useNavigate } from 'react-router-dom';
 import { Briefcase, CalendarDays, DollarSign, Target, TrendingUp } from 'lucide-react';
-import { etapaLabels } from '@/data/mock';
+import { etapaLabels, priorityLabels } from '@/data/mock';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { LinkedEntitiesCard } from './LinkedEntitiesCard';
+import { LinkedEntityItemHeader } from './LinkedEntityItemHeader';
 import type { Opportunity } from '@/types';
 import { opportunityDetailHref } from '@/lib/detailRoutes';
 
@@ -38,15 +39,22 @@ export function LinkedOpportunitiesCard({
       getItemKey={(o) => o.id}
       onItemClick={(o) => navigate(opportunityDetailHref(o))}
       collapsible
-      itemClassName="bg-background/35 p-4"
-      renderItem={(opp, unlinkButton) => (
+      renderItem={(opp, itemActions) => {
+        const prioritySubtitle =
+          opp.priority && priorityLabels[opp.priority]
+            ? priorityLabels[opp.priority]
+            : opp.priority
+              ? String(opp.priority)
+              : null;
+
+        return (
         <div className="space-y-3">
-          <div className="flex items-start justify-between gap-3">
-            <p className="min-w-0 flex-1 truncate text-[15px] font-semibold leading-tight text-text-primary">
-              {opp.title}
-            </p>
-            {unlinkButton}
-          </div>
+          <LinkedEntityItemHeader
+            variant="opportunity"
+            title={opp.title}
+            subtitle={prioritySubtitle}
+            trailing={itemActions}
+          />
 
           <div className="space-y-2.5">
             <div className="flex items-center justify-between gap-3">
@@ -94,7 +102,8 @@ export function LinkedOpportunitiesCard({
             </div>
           </div>
         </div>
-      )}
+        );
+      }}
     />
   );
 }

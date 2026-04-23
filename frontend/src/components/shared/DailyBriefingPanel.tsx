@@ -155,7 +155,7 @@ export function DailyBriefingPanel({
             <div className="space-y-6 p-5">
               {/* KPI Summary */}
               <div className="grid grid-cols-3 gap-3">
-                <div className="flex flex-col items-center justify-center rounded-xl border bg-muted/30 px-3 py-4 shadow-sm transition-colors hover:bg-muted/50">
+                <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-muted/30 px-3 py-4 shadow-none transition-colors hover:bg-muted/50 dark:shadow-sm">
                   <div className="flex items-center gap-1.5">
                     <Building2 className="size-4 text-primary" />
                     <span className="text-2xl font-bold text-primary">
@@ -166,7 +166,7 @@ export function DailyBriefingPanel({
                     Empresas sin actividad
                   </span>
                 </div>
-                <div className="flex flex-col items-center justify-center rounded-xl border bg-muted/30 px-3 py-4 shadow-sm transition-colors hover:bg-muted/50">
+                <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-muted/30 px-3 py-4 shadow-none transition-colors hover:bg-muted/50 dark:shadow-sm">
                   <div className="flex items-center gap-1.5">
                     <CheckSquare className="size-4 text-amber-600 dark:text-amber-400" />
                     <span className="text-2xl font-bold text-amber-600 dark:text-amber-400">
@@ -177,7 +177,7 @@ export function DailyBriefingPanel({
                     Tareas hoy
                   </span>
                 </div>
-                <div className="flex flex-col items-center justify-center rounded-xl border bg-muted/30 px-3 py-4 shadow-sm transition-colors hover:bg-muted/50">
+                <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-muted/30 px-3 py-4 shadow-none transition-colors hover:bg-muted/50 dark:shadow-sm">
                   <div className="flex items-center gap-1.5">
                     <AlertTriangle className="size-4 text-red-600 dark:text-red-400" />
                     <span className="text-2xl font-bold text-red-600 dark:text-red-400">
@@ -193,7 +193,7 @@ export function DailyBriefingPanel({
               {/* Tareas de hoy */}
               <div className="space-y-3">
                 <h3 className="text-sm font-medium text-foreground">Tareas de hoy</h3>
-                <div className="rounded-xl border bg-card shadow-sm">
+                <div className="rounded-xl border border-border bg-card shadow-none dark:shadow-sm">
                   <ScrollArea className="h-[160px]">
                     <div className="p-3 pr-4">
                       {todayTasks.length === 0 ? (

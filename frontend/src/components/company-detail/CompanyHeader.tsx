@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { ArrowLeft, BriefcaseBusiness, Edit } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,7 @@ interface CompanyHeaderProps {
   subtitle?: string;
   stageLabel: string;
   stageClassName?: string;
+  stageStyle?: CSSProperties;
   currentEtapaSlug: string;
   onEtapaChange?: (slug: string) => void;
   estimatedValueLabel: string;
@@ -23,6 +25,7 @@ export function CompanyHeader({
   subtitle,
   stageLabel,
   stageClassName,
+  stageStyle,
   currentEtapaSlug,
   onEtapaChange,
   estimatedValueLabel,
@@ -51,17 +54,26 @@ export function CompanyHeader({
             </div>
 
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                <h1 className="max-w-[220px] truncate text-lg font-semibold tracking-tight text-foreground sm:max-w-[300px] lg:max-w-[380px]">
-                  {name}
-                </h1>
-                <span className="text-lg font-semibold text-foreground">{estimatedValueLabel}</span>
-              </div>
+              <h1 className="max-w-[220px] truncate text-lg font-semibold tracking-tight text-foreground sm:max-w-[300px] lg:max-w-[380px]">
+                {name}
+              </h1>
 
-              {subtitle ? (
-                <div className="mt-0.5 flex items-center gap-1.5 text-sm text-text-secondary">
-                  <BriefcaseBusiness className="size-3.5 text-text-tertiary" />
-                  <span className="truncate">{subtitle}</span>
+              {(subtitle?.trim() || estimatedValueLabel) ? (
+                <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-text-secondary">
+                  <BriefcaseBusiness className="size-3.5 shrink-0 text-text-tertiary" aria-hidden />
+                  {subtitle?.trim() ? (
+                    <span className="min-w-0 truncate">{subtitle.trim()}</span>
+                  ) : null}
+                  {subtitle?.trim() && estimatedValueLabel ? (
+                    <span className="shrink-0 text-text-tertiary" aria-hidden>
+                      ·
+                    </span>
+                  ) : null}
+                  {estimatedValueLabel ? (
+                    <span className="shrink-0 font-semibold tabular-nums text-primary">
+                      {estimatedValueLabel}
+                    </span>
+                  ) : null}
                 </div>
               ) : null}
             </div>
@@ -72,6 +84,7 @@ export function CompanyHeader({
           <EtapaDropdownButton
             stageLabel={stageLabel}
             stageClassName={stageClassName}
+            stageStyle={stageStyle}
             currentEtapaSlug={currentEtapaSlug}
             onEtapaChange={onEtapaChange}
           />

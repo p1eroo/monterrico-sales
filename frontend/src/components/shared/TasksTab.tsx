@@ -18,12 +18,22 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { formatDate } from '@/lib/formatters';
+import {
+  activityTypeIconCircleClass,
+  ACTIVITY_ICON_INHERIT,
+} from '@/lib/activityTypeCircleStyles';
+import { cn } from '@/lib/utils';
 
 import { ActivityFormDialog } from './ActivityFormDialog';
 import { TaskDetailDialog, type TaskDetailTask, type TaskComment as TaskDetailComment } from './TaskDetailDialog';
@@ -88,13 +98,6 @@ const taskTypeIcons: Record<TaskType, typeof Phone> = {
   reunion: Users,
   correo: Mail,
   whatsapp: MessageCircle,
-};
-
-const taskTypeIconColors: Record<TaskType, string> = {
-  llamada: 'bg-blue-100 text-blue-600',
-  reunion: 'bg-purple-100 text-purple-600',
-  correo: 'bg-amber-100 text-amber-600',
-  whatsapp: 'bg-green-100 text-green-600',
 };
 
 interface TasksTabProps {
@@ -277,18 +280,20 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
     <>
       <Card className="overflow-hidden pt-2">
         <CardContent>
-          <Table>
+          <Table className="table-fixed w-full min-w-0">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-10"></TableHead>
-                <TableHead className="w-10"></TableHead>
-                <TableHead className="min-w-[120px]">Tarea</TableHead>
-                <TableHead className="hidden min-w-[92px] md:table-cell">Empresa</TableHead>
-                <TableHead className="hidden min-w-[92px] md:table-cell">Contacto</TableHead>
-                <TableHead className="hidden lg:table-cell w-[90px]">Prioridad</TableHead>
-                <TableHead className="min-w-[100px]">Responsable</TableHead>
-                <TableHead className="hidden min-w-[110px] md:table-cell">Fecha</TableHead>
-                <TableHead className="w-[100px] text-right">Estado</TableHead>
+                <TableHead className="w-10" />
+                <TableHead className="w-11 text-center text-text-tertiary">Tipo</TableHead>
+                <TableHead className="min-w-0 text-text-tertiary">Título</TableHead>
+                <TableHead className="hidden w-[92px] sm:table-cell text-text-tertiary">
+                  Prioridad
+                </TableHead>
+                <TableHead className="hidden min-w-[88px] md:table-cell text-text-tertiary">
+                  Asignado
+                </TableHead>
+                <TableHead className="hidden w-[104px] lg:table-cell text-text-tertiary">Fecha</TableHead>
+                <TableHead className="w-[104px] text-right text-text-tertiary">Estado</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -297,7 +302,7 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
                   task.type && TASK_KINDS.includes(task.type) ? task.type : 'llamada'
                 ) as TaskType;
                 const TypeIcon = taskTypeIcons[taskType];
-                const iconColor = taskTypeIconColors[taskType];
+                const circle = activityTypeIconCircleClass(taskType);
                 return (
                 <TableRow key={task.id} className="cursor-pointer hover:bg-muted/50" onClick={() => { setSelectedTask(task); setTaskDetailOpen(true); }}>
                   <TableCell onClick={(e) => e.stopPropagation()}>
@@ -306,54 +311,48 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
                       onCheckedChange={() => handleTaskToggle(task.id)}
                     />
                   </TableCell>
-                  <TableCell>
-                    <div
-                      className={`flex size-8 items-center justify-center rounded-lg ${iconColor}`}
-                      title={taskTypeLabels[taskType]}
-                    >
-                      <TypeIcon className="size-4" />
-                    </div>
+                  <TableCell className="text-center align-middle">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className={cn(
+                            'mx-auto mt-0.5 flex h-7 w-7 cursor-default items-center justify-center rounded-full border-0 p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                            ACTIVITY_ICON_INHERIT,
+                            circle ??
+                              'bg-muted text-muted-foreground [&_svg]:text-muted-foreground',
+                          )}
+                          onClick={(e) => e.stopPropagation()}
+                          aria-label={taskTypeLabels[taskType]}
+                        >
+                          <TypeIcon className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">{taskTypeLabels[taskType]}</TooltipContent>
+                    </Tooltip>
                   </TableCell>
-                  <TableCell className="w-[120px]">
-                    <div className="min-w-0 max-w-[120px]">
-                      <span
-                        className={`block truncate text-sm font-medium ${task.status === 'completada' ? 'line-through text-muted-foreground' : ''}`}
-                        title={task.title}
-                      >
-                        {task.title}
-                      </span>
-                      <span
-                        className="mt-0.5 block truncate text-xs text-muted-foreground md:hidden"
-                        title={task.company ?? task.associations?.find((a) => a.type === 'contacto')?.name ?? '—'}
-                      >
-                        {task.company ?? task.associations?.find((a) => a.type === 'contacto')?.name ?? '—'}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="hidden w-[104px] md:table-cell text-sm text-muted-foreground">
-                    <span className="block max-w-[104px] truncate" title={task.company ?? '—'}>
-                      {task.company ?? '—'}
-                    </span>
-                  </TableCell>
-                  <TableCell className="hidden w-[104px] md:table-cell text-sm text-muted-foreground">
+                  <TableCell className="min-w-0 align-middle">
                     <span
-                      className="block max-w-[104px] truncate"
-                      title={task.associations?.find((a) => a.type === 'contacto')?.name ?? '—'}
+                      className={cn(
+                        'block truncate text-sm font-medium',
+                        task.status === 'completada' && 'text-muted-foreground line-through',
+                      )}
+                      title={task.title}
                     >
-                      {task.associations?.find((a) => a.type === 'contacto')?.name ?? '—'}
+                      {task.title}
                     </span>
                   </TableCell>
-                  <TableCell className="hidden lg:table-cell">
+                  <TableCell className="hidden align-middle sm:table-cell">
                     <Badge className={`text-xs border-0 ${taskPriorityColors[task.priority]}`}>
                       {priorityLabels[task.priority]}
                     </Badge>
                   </TableCell>
-                  <TableCell className="w-[100px] text-sm text-muted-foreground">
-                    <span className="block max-w-[100px] truncate" title={task.assignee}>
+                  <TableCell className="hidden min-w-0 align-middle md:table-cell">
+                    <span className="block truncate text-sm text-muted-foreground" title={task.assignee}>
                       {task.assignee}
                     </span>
                   </TableCell>
-                  <TableCell className="hidden w-[110px] md:table-cell text-sm text-muted-foreground">
+                  <TableCell className="hidden align-middle text-sm text-muted-foreground lg:table-cell">
                     <div className="leading-tight">
                       <span className="block whitespace-nowrap">{formatDate(task.dueDate)}</span>
                       {task.startTime && (
@@ -363,7 +362,7 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right align-middle">
                     <Badge className={`text-xs border-0 ${taskStatusColors[task.status]}`}>
                       {taskStatusLabels[task.status]}
                     </Badge>
@@ -373,7 +372,7 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
               })}
               {tasks.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={9} className="py-8 text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
                     No hay tareas registradas.
                   </TableCell>
                 </TableRow>

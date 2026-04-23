@@ -216,8 +216,7 @@ export default function LoginPage() {
                 aria-invalid={!!errors.username}
                 className={cn(
                   "h-11 rounded-lg transition-all duration-200",
-                  errors.username &&
-                    "border-destructive focus-visible:ring-destructive",
+                  errors.username && "border-destructive",
                 )}
                 autoComplete="username"
               />
@@ -239,8 +238,7 @@ export default function LoginPage() {
                   aria-invalid={!!errors.password}
                   className={cn(
                     "h-11 rounded-lg pr-10 transition-all duration-200",
-                    errors.password &&
-                      "border-destructive focus-visible:ring-destructive",
+                    errors.password && "border-destructive",
                   )}
                   autoComplete="current-password"
                 />

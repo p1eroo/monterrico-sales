@@ -119,7 +119,7 @@ export function EntityInfoCard({
   }
 
   return (
-    <Card className="min-w-0 gap-2 border-border/70 bg-surface-elevated shadow-none">
+    <Card className="min-w-0 gap-2 border-border bg-surface-elevated shadow-none">
       <CardHeader className="-mb-1 -mt-1">
         <CardTitle className="text-[14px] text-text-primary">{title}</CardTitle>
       </CardHeader>

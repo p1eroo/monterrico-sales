@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
-import { Plus, Link2Off, ChevronDown } from 'lucide-react';
+import { Plus, Link2Off, ChevronDown, MoreHorizontal } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 
@@ -28,8 +28,8 @@ export interface LinkedEntitiesCardProps<T> {
   getUnlinkLabel?: (item: T) => string;
   getItemKey: (item: T, index?: number) => string;
   onItemClick: (item: T) => void;
-  /** Segundo parámetro: botón desvincular para colocar en la última fila (cuando hay onRemove) */
-  renderItem: (item: T, unlinkButton?: React.ReactNode) => React.ReactNode;
+  /** Segundo parámetro: menú de acciones (p. ej. desvincular) cuando hay onRemove */
+  renderItem: (item: T, itemActions?: React.ReactNode) => React.ReactNode;
   collapsible?: boolean;
   /** Por defecto abierto en panel lateral de detalle; usar `false` para iniciar colapsado. */
   defaultOpen?: boolean;
@@ -79,7 +79,7 @@ export function LinkedEntitiesCard<T>({
         <Button
           size="sm"
           variant="ghost"
-          className="h-7 w-7 shrink-0 rounded-md border border-border/70 bg-background/40 p-0 text-text-secondary hover:bg-surface-hover hover:text-text-primary"
+          className="h-7 w-7 shrink-0 rounded-md border-0 bg-transparent p-0 text-text-secondary hover:bg-surface-hover hover:text-text-primary"
         >
           <Plus className="size-4" />
         </Button>
@@ -92,45 +92,63 @@ export function LinkedEntitiesCard<T>({
   ) : null;
 
   const body = (
-    <CardContent className={collapsible ? 'p-4 pt-3' : 'pt-0'}>
+    <CardContent
+      className={
+        collapsible
+          ? items.length === 0
+            ? 'p-4 pt-3'
+            : 'px-4 pb-2 pt-1'
+          : 'pt-0'
+      }
+    >
       {items.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border/70 bg-background/30 px-3 py-2">
+        <div className="rounded-lg border border-dashed border-border bg-background/30 px-3 py-2">
           <p className="text-center text-xs text-text-secondary">{emptyMessage}</p>
         </div>
       ) : (
-        <div className="space-y-2.5">
+        <div className="flex flex-col divide-y divide-border">
           {items.slice(0, maxItems).map((item, idx) => {
-            const unlinkBtn = onRemove ? (
-              <div
-                className="shrink-0"
-                onClick={(e) => e.stopPropagation()}
-                title="Desvincular"
-              >
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 w-7 shrink-0 p-0 text-text-tertiary hover:bg-stage-lost/10 hover:text-stage-lost"
-                  onClick={() => handleUnlinkClick(item)}
-                >
-                  <Link2Off className="size-4" />
-                </Button>
+            const itemActions = onRemove ? (
+              <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 w-7 shrink-0 rounded-md border border-border bg-background/40 p-0 text-text-tertiary hover:bg-muted hover:text-text-primary"
+                      aria-label="Más acciones"
+                    >
+                      <MoreHorizontal className="size-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="min-w-[9.5rem]">
+                    <DropdownMenuItem
+                      className="gap-2 text-stage-lost focus:text-stage-lost"
+                      onClick={() => handleUnlinkClick(item)}
+                    >
+                      <Link2Off className="size-4 shrink-0" />
+                      Desvincular
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             ) : undefined;
             return (
               <div
                 key={getItemKey(item, idx)}
                 className={cn(
-                  'cursor-pointer rounded-xl border border-border/70 bg-background/50 p-3.5 transition-colors hover:border-border hover:bg-surface-hover',
+                  'cursor-pointer py-2.5 transition-colors hover:bg-muted/35',
                   itemClassName,
                 )}
                 onClick={() => onItemClick(item)}
               >
-                {renderItem(item, unlinkBtn)}
+                {renderItem(item, itemActions)}
               </div>
             );
           })}
           {items.length > maxItems && (
-            <p className="pt-1 text-center text-[11px] text-text-tertiary">
+            <p className="py-1.5 text-center text-[11px] text-text-tertiary">
               +{items.length - maxItems} más
             </p>
           )}
@@ -174,14 +192,14 @@ export function LinkedEntitiesCard<T>({
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="h-7 w-7 shrink-0 rounded-md border border-border/70 bg-background/40 p-0 text-text-secondary hover:bg-surface-hover hover:text-text-primary"
+                    className="h-7 w-7 shrink-0 rounded-md border-0 bg-transparent p-0 text-text-secondary hover:bg-surface-hover hover:text-text-primary"
                   >
                     <ChevronDown className={cn('size-4 transition-transform', open && 'rotate-180')} />
                   </Button>
                 </CollapsibleTrigger>
               </div>
             </div>
-            <CollapsibleContent className="border-t border-border/70">
+            <CollapsibleContent className="border-t border-border">
               {body}
             </CollapsibleContent>
           </Card>
@@ -193,7 +211,7 @@ export function LinkedEntitiesCard<T>({
 
   return (
     <>
-      <Card className="gap-2 border-border/70 bg-surface-elevated shadow-none">
+      <Card className="gap-2 border-border bg-surface-elevated shadow-none">
         <CardHeader className="-mt-1 flex flex-row items-center justify-between gap-2 pb-0">
           <CardTitle className="flex items-center gap-1.5 text-[14px] text-text-primary">
             <Icon className="size-4 text-text-tertiary" />

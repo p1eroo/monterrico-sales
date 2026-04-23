@@ -10,7 +10,7 @@ import {
 import type { Activity, ActivityType, ActivityStatus, TaskKind } from '@/types';
 import { TASK_KINDS } from '@/types';
 import type { UpdateActivityPayload } from '@/lib/activityApi';
-import { contacts } from '@/data/mock';
+import { contacts, priorityLabels } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
 import { useActivities } from '@/hooks/useActivities';
 import {
@@ -52,6 +52,10 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import {
+  activityTypeIconCircleClass,
+  ACTIVITY_ICON_INHERIT,
+} from '@/lib/activityTypeCircleStyles';
 import { ActivityFormDialog } from '@/components/shared/ActivityFormDialog';
 import {
   TaskDetailDialog,
@@ -70,12 +74,10 @@ const activityIcons: Record<ActivityType, typeof Phone> = {
   whatsapp: MessageCircle,
 };
 
-const activityIconColors: Record<ActivityType, string> = {
-  llamada: 'bg-blue-100 text-blue-600',
-  reunion: 'bg-purple-100 text-purple-600',
-  tarea: 'bg-emerald-100 text-emerald-600',
-  correo: 'bg-amber-100 text-amber-600',
-  whatsapp: 'bg-green-100 text-green-600',
+const taskPriorityBadgeClass: Record<'alta' | 'media' | 'baja', string> = {
+  alta: 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300',
+  media: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-200',
+  baja: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
 };
 
 /** Tipos de tarea (modalidades; la fila en BD tiene type = 'tarea' + taskKind) */
@@ -318,16 +320,6 @@ export default function TareasPage() {
     const dateStr = date.toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' });
     if (startTime) return `${dateStr} (${startTime})`;
     return dateStr;
-  }
-
-  function getCompanyFromContactName(contactName?: string): string | undefined {
-    if (!contactName?.includes(' - ')) return undefined;
-    return contactName.split(' - ')[1];
-  }
-
-  function getContactNameOnly(contactName?: string): string | undefined {
-    if (!contactName) return undefined;
-    return contactName.includes(' - ') ? contactName.split(' - ')[0] : contactName;
   }
 
   function activityToTaskDetail(a: Activity): TaskDetailTask {
@@ -622,18 +614,24 @@ export default function TareasPage() {
                 />
               ) : (
                 <Card>
-                  <Table>
+                  <Table className="table-fixed w-full min-w-0">
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-10" />
-                        <TableHead className="w-10">Tipo</TableHead>
-                        <TableHead>Tarea</TableHead>
-                        <TableHead className="hidden lg:table-cell">Contacto</TableHead>
-                        <TableHead className="hidden lg:table-cell">Empresa</TableHead>
-                        <TableHead className="hidden sm:table-cell">Asignado</TableHead>
-                        <TableHead className="hidden lg:table-cell">Inicio</TableHead>
-                        <TableHead>Vence</TableHead>
-                        <TableHead>Estado</TableHead>
+                        <TableHead className="w-11 text-center text-muted-foreground">
+                          Tipo
+                        </TableHead>
+                        <TableHead className="min-w-0 text-muted-foreground">Título</TableHead>
+                        <TableHead className="hidden w-[92px] sm:table-cell text-muted-foreground">
+                          Prioridad
+                        </TableHead>
+                        <TableHead className="hidden min-w-[88px] md:table-cell text-muted-foreground">
+                          Asignado
+                        </TableHead>
+                        <TableHead className="hidden w-[120px] lg:table-cell text-muted-foreground">
+                          Fecha
+                        </TableHead>
+                        <TableHead className="w-[104px] text-right text-muted-foreground">Estado</TableHead>
                         <TableHead className="w-10" />
                       </TableRow>
                     </TableHeader>
@@ -644,15 +642,16 @@ export default function TareasPage() {
                             ? task.taskKind
                             : 'llamada';
                         const TypeIcon = activityIcons[taskType];
-                        const iconColor = activityIconColors[taskType];
+                        const circle = activityTypeIconCircleClass(taskType);
                         const overdue = isOverdue(task.dueDate, task.status);
+                        const taskPriority = 'media' as const;
 
                         return (
                           <TableRow
                             key={task.id}
                             className={cn(
                               'cursor-pointer transition-colors hover:bg-muted/50',
-                              overdue && 'bg-red-50/30',
+                              overdue && 'bg-red-50/30 dark:bg-red-950/20',
                               task.status === 'completada' && 'opacity-75',
                             )}
                             onClick={() => {
@@ -666,50 +665,69 @@ export default function TareasPage() {
                                 onCheckedChange={() => handleTaskToggle(task.id)}
                               />
                             </TableCell>
-                            <TableCell>
-                              <div
-                                className={cn(
-                                  'flex size-8 items-center justify-center rounded-lg',
-                                  iconColor,
-                                )}
-                                title={taskTypeLabels[taskType]}
-                              >
-                                <TypeIcon className="size-4" />
-                              </div>
+                            <TableCell className="text-center align-middle">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    type="button"
+                                    className={cn(
+                                      'mx-auto mt-0.5 flex h-7 w-7 cursor-default items-center justify-center rounded-full border-0 p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                                      ACTIVITY_ICON_INHERIT,
+                                      circle ??
+                                        'bg-muted text-muted-foreground [&_svg]:text-muted-foreground',
+                                    )}
+                                    onClick={(e) => e.stopPropagation()}
+                                    aria-label={taskTypeLabels[taskType]}
+                                  >
+                                    <TypeIcon className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="top">{taskTypeLabels[taskType]}</TooltipContent>
+                              </Tooltip>
                             </TableCell>
-                            <TableCell className="font-medium">
+                            <TableCell className="min-w-0 align-middle font-medium">
                               <span
                                 className={cn(
+                                  'block truncate',
                                   task.status === 'completada' && 'line-through text-muted-foreground',
                                 )}
+                                title={task.title}
                               >
                                 {task.title}
                               </span>
                             </TableCell>
-                            <TableCell className="hidden lg:table-cell text-muted-foreground">
-                              {getContactNameOnly(task.contactName) ?? task.contactName ?? '—'}
+                            <TableCell className="hidden align-middle sm:table-cell">
+                              <Badge
+                                variant="outline"
+                                className={cn('border-0 text-xs font-medium', taskPriorityBadgeClass[taskPriority])}
+                              >
+                                {priorityLabels[taskPriority]}
+                              </Badge>
                             </TableCell>
-                            <TableCell className="hidden lg:table-cell text-muted-foreground">
-                              {getCompanyFromContactName(task.contactName) ?? '—'}
-                            </TableCell>
-                            <TableCell className="hidden sm:table-cell text-muted-foreground">
-                              {task.assignedToName}
-                            </TableCell>
-                            <TableCell className="hidden lg:table-cell text-muted-foreground">
-                              {task.startDate
-                                ? formatDueDate(task.startDate)
-                                : '—'}
-                            </TableCell>
-                            <TableCell>
-                              <span className={cn(
-                                'flex items-center gap-1',
-                                overdue && 'font-semibold text-red-600',
-                              )}>
-                                {formatDueDate(task.dueDate, task.startTime)}
-                                {overdue && <AlertTriangle className="size-3.5 text-red-500" />}
+                            <TableCell className="hidden min-w-0 align-middle md:table-cell text-muted-foreground">
+                              <span className="block truncate text-sm" title={task.assignedToName}>
+                                {task.assignedToName}
                               </span>
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="hidden align-middle text-sm text-muted-foreground lg:table-cell">
+                              <span
+                                className={cn(
+                                  'flex flex-col gap-0.5 whitespace-nowrap leading-tight',
+                                  overdue && 'font-semibold text-red-600 dark:text-red-400',
+                                )}
+                              >
+                                <span className="flex items-center gap-1">
+                                  {formatDueDate(task.dueDate, task.startTime)}
+                                  {overdue && <AlertTriangle className="size-3.5 shrink-0 text-red-500" />}
+                                </span>
+                                {task.startDate && (
+                                  <span className="text-xs text-muted-foreground/80">
+                                    Inicio: {formatDueDate(task.startDate)}
+                                  </span>
+                                )}
+                              </span>
+                            </TableCell>
+                            <TableCell className="align-middle text-right">
                               <TaskStatusBadge status={task.status} />
                             </TableCell>
                             <TableCell onClick={(e) => e.stopPropagation()}>
@@ -788,10 +806,23 @@ export default function TareasPage() {
                 ) : (
                   <div className="mt-3 space-y-2">
                     {selectedDateTasks.map((t) => {
-                      const Icon = activityIcons[t.taskKind ?? 'llamada'];
+                      const kind = (t.taskKind && TASK_KINDS.includes(t.taskKind)
+                        ? t.taskKind
+                        : 'llamada') as TaskKind;
+                      const Icon = activityIcons[kind];
+                      const circle = activityTypeIconCircleClass(kind);
                       return (
                         <div key={t.id} className="flex items-center gap-2 rounded-md border p-2 text-sm">
-                          <Icon className="size-4 shrink-0 text-muted-foreground" />
+                          <div
+                            className={cn(
+                              'flex h-7 w-7 shrink-0 items-center justify-center rounded-full',
+                              ACTIVITY_ICON_INHERIT,
+                              circle ??
+                                'bg-muted text-muted-foreground [&_svg]:text-muted-foreground',
+                            )}
+                          >
+                            <Icon className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+                          </div>
                           <div className="min-w-0 flex-1">
                             <p className="truncate font-medium">{t.title}</p>
                             <p className="truncate text-xs text-muted-foreground">{t.assignedToName}</p>
@@ -818,10 +849,23 @@ export default function TareasPage() {
                 ) : (
                   <div className="mt-3 space-y-2">
                     {upcomingTasks.map((t) => {
-                      const Icon = activityIcons[t.taskKind ?? 'llamada'];
+                      const kind = (t.taskKind && TASK_KINDS.includes(t.taskKind)
+                        ? t.taskKind
+                        : 'llamada') as TaskKind;
+                      const Icon = activityIcons[kind];
+                      const circle = activityTypeIconCircleClass(kind);
                       return (
                         <div key={t.id} className="flex items-center gap-2 rounded-md border p-2 text-sm">
-                          <Icon className="size-4 shrink-0 text-muted-foreground" />
+                          <div
+                            className={cn(
+                              'flex h-7 w-7 shrink-0 items-center justify-center rounded-full',
+                              ACTIVITY_ICON_INHERIT,
+                              circle ??
+                                'bg-muted text-muted-foreground [&_svg]:text-muted-foreground',
+                            )}
+                          >
+                            <Icon className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+                          </div>
                           <div className="min-w-0 flex-1">
                             <p className="truncate font-medium">{t.title}</p>
                             <p className="truncate text-xs text-muted-foreground">
@@ -873,10 +917,23 @@ export default function TareasPage() {
                 ) : (
                   <div className="mt-3 space-y-2">
                     {selectedDateTasks.map((t) => {
-                      const Icon = activityIcons[t.taskKind ?? 'llamada'];
+                      const kind = (t.taskKind && TASK_KINDS.includes(t.taskKind)
+                        ? t.taskKind
+                        : 'llamada') as TaskKind;
+                      const Icon = activityIcons[kind];
+                      const circle = activityTypeIconCircleClass(kind);
                       return (
                         <div key={t.id} className="flex items-center gap-2 rounded-md border p-2 text-sm">
-                          <Icon className="size-4 shrink-0 text-muted-foreground" />
+                          <div
+                            className={cn(
+                              'flex h-7 w-7 shrink-0 items-center justify-center rounded-full',
+                              ACTIVITY_ICON_INHERIT,
+                              circle ??
+                                'bg-muted text-muted-foreground [&_svg]:text-muted-foreground',
+                            )}
+                          >
+                            <Icon className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+                          </div>
                           <div className="min-w-0 flex-1">
                             <p className="truncate font-medium">{t.title}</p>
                           </div>

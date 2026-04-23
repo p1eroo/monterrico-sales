@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { useMemo } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { etapaLabels } from '@/data/mock';
@@ -13,6 +14,8 @@ import { cn } from '@/lib/utils';
 type Props = {
   stageLabel: string;
   stageClassName?: string;
+  /** Colores dinámicos desde catálogo CRM (prioridad sobre clases Tailwind). */
+  stageStyle?: CSSProperties;
   currentEtapaSlug: string;
   /** Si no se pasa, solo lectura (sin flecha ni menú). */
   onEtapaChange?: (slug: string) => void;
@@ -21,6 +24,7 @@ type Props = {
 export function EtapaDropdownButton({
   stageLabel,
   stageClassName,
+  stageStyle,
   currentEtapaSlug,
   onEtapaChange,
 }: Props) {
@@ -46,7 +50,12 @@ export function EtapaDropdownButton({
 
   if (!interactive) {
     return (
-      <span role="status" aria-label={`Etapa: ${stageLabel}`} className={triggerClass}>
+      <span
+        role="status"
+        aria-label={`Etapa: ${stageLabel}`}
+        className={triggerClass}
+        style={stageStyle}
+      >
         {stageLabel}
       </span>
     );
@@ -57,6 +66,7 @@ export function EtapaDropdownButton({
       <DropdownMenuTrigger
         type="button"
         className={triggerClass}
+        style={stageStyle}
         aria-label={`Etapa: ${stageLabel}. Elegir otra etapa`}
         aria-haspopup="menu"
       >

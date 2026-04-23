@@ -19,7 +19,7 @@ export function EmpresasInactivasCard({
       className={cn(
         'flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-all',
         'border-amber-200/70 bg-amber-50/80',
-        'hover:border-amber-300 hover:bg-amber-50 hover:shadow-sm',
+        'hover:border-amber-300 hover:bg-amber-50',
         'dark:border-amber-800/50 dark:bg-amber-950/45',
         'dark:hover:border-amber-700/55 dark:hover:bg-amber-950/60 dark:hover:shadow-md dark:hover:shadow-black/25',
         'focus:outline-none focus:ring-2 focus:ring-amber-400/40 dark:focus:ring-amber-500/35',

@@ -1,22 +1,22 @@
 import { Badge } from '@/components/ui/badge';
+import { etapaLabels } from '@/data/mock';
+import { getStageBadgeTone } from '@/lib/etapaConfig';
 import { cn } from '@/lib/utils';
+import { useCrmConfigStore, getStageLabelFromCatalog } from '@/store/crmConfigStore';
 
-const statusConfig: Record<string, { label: string; className: string }> = {
-  // Etapas (Contactos, Empresas, Oportunidades)
-  lead: { label: 'Lead', className: 'border-stage-lead/30 bg-stage-lead/15 text-stage-lead' },
-  contacto: { label: 'Contacto', className: 'border-stage-prospect/30 bg-stage-prospect/15 text-stage-prospect' },
-  reunion_agendada: { label: 'Reunión Agendada', className: 'border-stage-prospect/30 bg-stage-prospect/15 text-stage-prospect' },
-  reunion_efectiva: { label: 'Reunión Efectiva', className: 'border-info/30 bg-info/15 text-info' },
-  propuesta_economica: { label: 'Propuesta Económica', className: 'border-activity-task/30 bg-activity-task/15 text-activity-task' },
-  negociacion: { label: 'Negociación', className: 'border-activity-note/30 bg-activity-note/15 text-activity-note' },
-  licitacion: { label: 'Licitación', className: 'border-activity-note/30 bg-activity-note/15 text-activity-note' },
-  licitacion_etapa_final: { label: 'Licitación Etapa Final', className: 'border-warning/30 bg-warning/15 text-warning' },
-  cierre_ganado: { label: 'Cierre Ganado', className: 'border-stage-client/30 bg-stage-client/15 text-stage-client' },
-  firma_contrato: { label: 'Firma de Contrato', className: 'border-stage-client/30 bg-stage-client/15 text-stage-client' },
-  activo: { label: 'Activo', className: 'border-stage-client/30 bg-stage-client/15 text-stage-client' },
-  cierre_perdido: { label: 'Cierre Perdido', className: 'border-stage-lost/30 bg-stage-lost/15 text-stage-lost' },
-  inactivo: { label: 'Inactivo', className: 'border-border bg-muted text-text-secondary' },
-  // Activity status
+/** Estados de actividad / oportunidad: no son etapas del pipeline CRM. */
+const NON_PIPELINE_STATUS = new Set([
+  'pendiente',
+  'completada',
+  'vencida',
+  'en_progreso',
+  'potencial',
+  'abierta',
+  'ganada',
+  'perdida',
+]);
+
+const activityStatusConfig: Record<string, { label: string; className: string }> = {
   pendiente: { label: 'Pendiente', className: 'border-warning/30 bg-warning/15 text-warning' },
   completada: { label: 'Completada', className: 'border-stage-client/30 bg-stage-client/15 text-stage-client' },
   vencida: { label: 'Vencida', className: 'border-stage-lost/30 bg-stage-lost/15 text-stage-lost' },
@@ -32,13 +32,29 @@ interface StatusBadgeProps {
 }
 
 export function StatusBadge({ status }: StatusBadgeProps) {
-  const config = statusConfig[status] ?? {
-    label: status.charAt(0).toUpperCase() + status.slice(1),
-    className: 'border-border bg-muted text-text-secondary',
-  };
+  const bundle = useCrmConfigStore((s) => s.bundle);
+
+  if (NON_PIPELINE_STATUS.has(status)) {
+    const config = activityStatusConfig[status] ?? {
+      label: status.charAt(0).toUpperCase() + status.slice(1),
+      className: 'border-border bg-muted text-text-secondary',
+    };
+    return (
+      <Badge variant="outline" className={cn('text-[11px] font-medium', config.className)}>
+        {config.label}
+      </Badge>
+    );
+  }
+
+  const tone = getStageBadgeTone(bundle, status);
+  const label = getStageLabelFromCatalog(status, bundle, etapaLabels as Record<string, string>);
   return (
-    <Badge variant="outline" className={cn('text-[11px] font-medium', config.className)}>
-      {config.label}
+    <Badge
+      variant="outline"
+      className={cn('text-[11px] font-medium', tone.className)}
+      style={tone.style}
+    >
+      {label}
     </Badge>
   );
 }

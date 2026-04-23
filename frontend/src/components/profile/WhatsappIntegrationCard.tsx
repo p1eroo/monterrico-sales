@@ -215,7 +215,7 @@ export function WhatsappIntegrationCard() {
 
   return (
     <>
-    <div className="flex h-full flex-col rounded-xl border bg-card p-5 shadow-sm">
+    <div className="flex h-full flex-col rounded-xl border border-border bg-card p-5 shadow-none dark:shadow-sm">
       <div className="flex flex-col gap-4">
         <div className="flex items-start gap-4">
           <div className="flex size-12 items-center justify-center rounded-lg bg-[#25d366]/10">

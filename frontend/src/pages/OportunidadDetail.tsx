@@ -76,7 +76,8 @@ import {
   isLikelyContactCuid,
   mapApiContactRowToContact,
 } from '@/lib/contactApi';
-import { etapaColorsWithBorder } from '@/lib/etapaConfig';
+import { useStageBadgeTone } from '@/hooks/useStageBadgeTone';
+import { useCrmConfigStore, getStageLabelFromCatalog } from '@/store/crmConfigStore';
 
 const TIMELINE_PAGE_SIZE = 6;
 
@@ -141,6 +142,7 @@ export default function OportunidadDetailPage() {
   }, [fromApi, routeId]);
 
   const { users, activeAdvisors } = useUsers();
+  const crmBundle = useCrmConfigStore((s) => s.bundle);
   const currentUserRole = useAppStore((s) => s.currentUser.role ?? '');
   const canEditAssignee = canReassignCommercialAdvisor(currentUserRole);
   const { activities: activitiesFromStore, createActivity } = useActivities();
@@ -153,6 +155,8 @@ export default function OportunidadDetailPage() {
     }
     return storeOpp;
   }, [fromApi, apiRecord, storeOpp]);
+
+  const oppStageTone = useStageBadgeTone(opp?.etapa);
 
   const linkedContact = useMemo(() => {
     if (!opp) return null;
@@ -963,8 +967,9 @@ export default function OportunidadDetailPage() {
           backPath="/opportunities"
           title={opp.title}
           subtitle={headerSubtitle || undefined}
-          stageLabel={etapaLabels[opp.etapa] ?? opp.etapa}
-          stageClassName={etapaColorsWithBorder[opp.etapa] ?? 'border-border bg-muted text-text-secondary'}
+          stageLabel={getStageLabelFromCatalog(opp.etapa, crmBundle, etapaLabels as Record<string, string>)}
+          stageClassName={oppStageTone.className}
+          stageStyle={oppStageTone.style}
           currentEtapaSlug={opp.etapa}
           onEtapaChange={handleEtapaChange}
           amountLabel={formatCurrency(opp.amount)}

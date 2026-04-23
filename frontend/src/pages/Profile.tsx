@@ -556,7 +556,7 @@ export default function ProfilePage() {
 
               <TabsContent value="preferences" className="mt-0">
                 <div className="space-y-6">
-                  <div className="w-full rounded-xl border bg-card p-5 shadow-sm">
+                  <div className="w-full rounded-xl border border-border bg-card p-5 shadow-none dark:shadow-sm">
                     <div className="mb-4 flex items-start gap-3">
                       <div className="flex size-10 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-300">
                         <Bell className="size-5" />
@@ -705,7 +705,7 @@ export default function ProfilePage() {
                     <div className="grid gap-4 xl:grid-cols-2">
                       <WhatsappIntegrationCard />
 
-                      <div className="flex h-full flex-col rounded-xl border bg-card p-5 shadow-sm">
+                      <div className="flex h-full flex-col rounded-xl border border-border bg-card p-5 shadow-none dark:shadow-sm">
                         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                           <div className="flex items-start gap-4">
                             <div className="flex size-12 items-center justify-center rounded-lg bg-[#ea4335]/10">

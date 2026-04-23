@@ -788,7 +788,7 @@ export function AiAssistantDrawer() {
                       )}
                       <div
                         className={cn(
-                          'rounded-2xl px-3 py-2 shadow-sm',
+                          'rounded-2xl px-3 py-2 shadow-none dark:shadow-sm',
                           bubbleMaxClass,
                           m.role === 'user'
                             ? 'rounded-br-md bg-[#13944C] text-white'
@@ -885,7 +885,7 @@ export function AiAssistantDrawer() {
                     </div>
                     <div
                       className={cn(
-                        'rounded-2xl rounded-bl-md border border-border bg-card px-3 py-2 shadow-sm',
+                        'rounded-2xl rounded-bl-md border border-border bg-card px-3 py-2 shadow-none dark:shadow-sm',
                         bubbleMaxClass,
                       )}
                     >

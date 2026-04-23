@@ -17,7 +17,9 @@ import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { CrmDataScopeService } from '../auth/crm-data-scope.service';
 
-type AuthedReq = { user: { userId: string; roleId?: string } };
+type AuthedReq = {
+  user: { userId: string; roleId?: string; name: string };
+};
 
 @Controller('activities')
 @UseGuards(PermissionsGuard)
@@ -37,7 +39,10 @@ export class ActivitiesController {
       req.user.userId,
       req.user.roleId,
     );
-    return this.activitiesService.create(createActivityDto, scope);
+    return this.activitiesService.create(createActivityDto, scope, {
+      userId: req.user.userId,
+      userName: req.user.name,
+    });
   }
 
   @Get()
@@ -88,7 +93,10 @@ export class ActivitiesController {
     return this.crmDataScope
       .buildScope(req.user.userId, req.user.roleId)
       .then((scope) =>
-        this.activitiesService.update(id, updateActivityDto, scope),
+        this.activitiesService.update(id, updateActivityDto, scope, {
+          userId: req.user.userId,
+          userName: req.user.name,
+        }),
       );
   }
 
@@ -97,6 +105,11 @@ export class ActivitiesController {
   remove(@Param('id') id: string, @Req() req: AuthedReq) {
     return this.crmDataScope
       .buildScope(req.user.userId, req.user.roleId)
-      .then((scope) => this.activitiesService.remove(id, scope));
+      .then((scope) =>
+        this.activitiesService.remove(id, scope, {
+          userId: req.user.userId,
+          userName: req.user.name,
+        }),
+      );
   }
 }

@@ -79,7 +79,8 @@ import {
   opportunityListAll,
 } from '@/lib/opportunityApi';
 import { type ApiCompanyRecord, companyListAll } from '@/lib/companyApi';
-import { etapaColorsWithBorder } from '@/lib/etapaConfig';
+import { useStageBadgeTone } from '@/hooks/useStageBadgeTone';
+import { useCrmConfigStore, getStageLabelFromCatalog } from '@/store/crmConfigStore';
 
 const TIMELINE_PAGE_SIZE = 6;
 
@@ -106,13 +107,22 @@ function ContactoSidebar({ contact, contactOpportunities, linkedContacts, onOpen
         fields={[
           { icon: Phone, value: contact.telefono, href: `tel:${contact.telefono}` },
           { icon: Mail, value: contact.correo, href: `mailto:${contact.correo}` },
-          { icon: Building2, value: getPrimaryCompany(contact)?.name ?? '—' },
+          {
+            icon: Building2,
+            value: getPrimaryCompany(contact)?.name ?? '—',
+            truncate: true,
+          },
           { icon: Globe, value: contactSourceLabels[contact.fuente] },
           { icon: CalendarDays, value: `Fecha de creación: ${formatDate(contact.createdAt)}` },
-          ...(contact.departamento ? [{ icon: MapPin as typeof Phone, value: contact.departamento }] : []),
-          ...(contact.provincia ? [{ label: 'Provincia:', value: contact.provincia, indent: true }] : []),
-          ...(contact.distrito ? [{ label: 'Distrito:', value: contact.distrito, indent: true }] : []),
-          ...(contact.direccion ? [{ label: 'Dirección:', value: contact.direccion, indent: true }] : []),
+          ...(contact.direccion?.trim()
+            ? [
+                {
+                  icon: MapPin as typeof Phone,
+                  value: contact.direccion.trim(),
+                  truncate: true,
+                },
+              ]
+            : []),
         ]}
       />
 
@@ -148,6 +158,7 @@ export default function ContactoDetailPage() {
   const fromApi = isEntityDetailApiParam(routeId);
   const { contacts, opportunities, getOpportunitiesByContactId, addOpportunity, updateOpportunity, updateContact, addContact } = useCRMStore();
   const { users, activeAdvisors } = useUsers();
+  const crmBundle = useCrmConfigStore((s) => s.bundle);
   const { activities: activitiesFromStore, createActivity } = useActivities();
 
   const [apiRecord, setApiRecord] = useState<ApiContactDetail | null>(null);
@@ -473,6 +484,8 @@ export default function ContactoDetailPage() {
       setTimelinePage(totalTimelinePages);
     }
   }, [timelinePage, totalTimelinePages]);
+
+  const contactStageTone = useStageBadgeTone(contact?.etapa);
 
   // Los returns condicionales van después de todos los hooks
   if (fromApi && apiLoading) {
@@ -1100,8 +1113,9 @@ export default function ContactoDetailPage() {
           backPath="/contactos"
           name={contact.name}
           subtitle={contact.cargo}
-          stageLabel={etapaLabels[contact.etapa] ?? contact.etapa}
-          stageClassName={etapaColorsWithBorder[contact.etapa] ?? 'border-border bg-muted text-text-secondary'}
+          stageLabel={getStageLabelFromCatalog(contact.etapa, crmBundle, etapaLabels as Record<string, string>)}
+          stageClassName={contactStageTone.className}
+          stageStyle={contactStageTone.style}
           currentEtapaSlug={contact.etapa}
           onEtapaChange={handleEtapaChange}
           estimatedValueLabel={formatCurrency(contact.estimatedValue)}

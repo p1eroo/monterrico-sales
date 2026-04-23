@@ -24,7 +24,7 @@ export function RoleCard({ role, onEdit, isDefault }: RoleCardProps) {
   return (
     <Card
       className={cn(
-        'py-0 transition-all hover:shadow-md',
+        'py-0 transition-all hover:border-primary/35 dark:hover:shadow-md',
         isDefault && 'ring-1 ring-[#13944C]/20'
       )}
     >

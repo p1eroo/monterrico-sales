@@ -40,7 +40,8 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { etapaColorsWithBorder } from '@/lib/etapaConfig';
+import { getStageBadgeTone } from '@/lib/etapaConfig';
+import { useCrmConfigStore, getStageLabelFromCatalog } from '@/store/crmConfigStore';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { api } from '@/lib/api';
 import { opportunityDetailHref } from '@/lib/detailRoutes';
@@ -128,9 +129,12 @@ function ProbabilityBar({ value }: { value: number }) {
 }
 
 function EtapaBadge({ etapa }: { etapa: Etapa }) {
+  const bundle = useCrmConfigStore((s) => s.bundle);
+  const tone = useMemo(() => getStageBadgeTone(bundle, etapa), [bundle, etapa]);
+  const label = getStageLabelFromCatalog(etapa, bundle, etapaLabels as Record<string, string>);
   return (
-    <Badge variant="outline" className={cn('text-[11px] font-medium', etapaColorsWithBorder[etapa] ?? 'bg-gray-100 text-gray-700')}>
-      {etapaLabels[etapa]}
+    <Badge variant="outline" className={cn('text-[11px] font-medium', tone.className)} style={tone.style}>
+      {label}
     </Badge>
   );
 }

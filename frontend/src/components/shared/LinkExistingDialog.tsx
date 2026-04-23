@@ -105,7 +105,7 @@ export function LinkExistingDialog({
               value={searchValue}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder={searchPlaceholder}
-              className="h-10 pl-9 rounded-lg border-[#13944C]/30 focus-visible:ring-[#13944C]/50"
+              className="h-10 pl-9 rounded-lg border-[#13944C]/30 transition-[border-color] focus-visible:border-[#13944C]"
             />
           </div>
         </div>

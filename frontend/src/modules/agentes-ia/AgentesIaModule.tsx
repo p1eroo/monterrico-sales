@@ -244,7 +244,7 @@ export function AgentesIaModule() {
             {agents.map((a) => (
               <Card
                 key={a.id}
-                className="border-border/80 transition-shadow hover:shadow-md"
+                className="border-border/80 transition-colors hover:border-[#13944C]/35 dark:hover:shadow-md"
               >
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between gap-2">

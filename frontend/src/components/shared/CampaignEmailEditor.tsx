@@ -498,7 +498,7 @@ export function CampaignEmailEditor({
   );
 
   return (
-    <div className="campaign-email-editor rounded-md border bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ring-offset-background">
+    <div className="campaign-email-editor rounded-md border border-border bg-background shadow-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ring-offset-background dark:shadow-sm">
       <Toolbar editor={editor} />
       <EditorContent editor={editor} className="campaign-email-editor-content" />
     </div>

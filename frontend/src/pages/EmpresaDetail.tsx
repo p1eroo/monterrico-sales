@@ -4,6 +4,7 @@ import {
   Building2, Users, DollarSign, Globe, Briefcase,
   Phone, Plus, FileArchive, Loader2,
   MapPin, Mail, Linkedin, ChevronLeft, ChevronRight,
+  FileText, Hash, Tag,
 } from 'lucide-react';
 import { useCRMStore } from '@/store/crmStore';
 import { useAppStore } from '@/store';
@@ -72,7 +73,8 @@ import {
   mapApiOpportunityToOpportunity,
   opportunityListAll,
 } from '@/lib/opportunityApi';
-import { etapaColorsWithBorder } from '@/lib/etapaConfig';
+import { useStageBadgeTone } from '@/hooks/useStageBadgeTone';
+import { useCrmConfigStore, getStageLabelFromCatalog } from '@/store/crmConfigStore';
 
 const TIMELINE_PAGE_SIZE = 6;
 
@@ -100,6 +102,7 @@ export default function EmpresaDetailPage() {
   const [apiOpportunityRows, setApiOpportunityRows] = useState<ApiOpportunityListRow[]>([]);
   const [apiLoading, setApiLoading] = useState(fromApiById);
   const { users, activeAdvisors } = useUsers();
+  const crmBundle = useCrmConfigStore((s) => s.bundle);
   const currentUserRole = useAppStore((s) => s.currentUser.role ?? '');
   const canEditAssignee = canReassignCommercialAdvisor(currentUserRole);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -227,16 +230,13 @@ export default function EmpresaDetailPage() {
     fromApiById && apiRecord && typeof apiRecord.facturacionEstimada === 'number'
       ? apiRecord.facturacionEstimada
       : totalValue;
-  const displayEtapaLabel =
-    fromApiById && apiRecord?.etapa
-      ? (etapaLabels[apiRecord.etapa as Etapa] ?? apiRecord.etapa)
-      : firstContact
-        ? etapaLabels[firstContact.etapa]
-        : '—';
   const displayEtapaKey =
     fromApiById && apiRecord?.etapa
       ? apiRecord.etapa
       : firstContact?.etapa;
+  const displayEtapaLabel = displayEtapaKey
+    ? getStageLabelFromCatalog(displayEtapaKey, crmBundle, etapaLabels as Record<string, string>)
+    : '—';
   const displayFuenteLabel =
     fromApiById && apiRecord?.fuente
       ? (contactSourceLabels[apiRecord.fuente as ContactSource] ??
@@ -245,13 +245,7 @@ export default function EmpresaDetailPage() {
         ? (contactSourceLabels[firstContact.fuente] ?? firstContact.fuente)
         : '—';
 
-  const apiUbicacionLine =
-    fromApiById && apiRecord
-      ? [apiRecord.departamento, apiRecord.provincia, apiRecord.distrito]
-          .map((x) => (x ?? '').trim())
-          .filter(Boolean)
-          .join(' · ') || null
-      : null;
+  const stageTone = useStageBadgeTone(displayEtapaKey);
 
   const opportunities = useMemo(() => {
     const fromApi = apiOpportunityRows.map(mapApiOpportunityToOpportunity);
@@ -948,7 +942,8 @@ export default function EmpresaDetailPage() {
           name={companyData?.name ?? companyName}
           subtitle={subtitle || undefined}
           stageLabel={displayEtapaLabel}
-          stageClassName={displayEtapaKey ? (etapaColorsWithBorder[displayEtapaKey] ?? 'border-border bg-muted text-text-secondary') : 'border-border bg-muted text-text-secondary'}
+          stageClassName={stageTone.className}
+          stageStyle={stageTone.style}
           currentEtapaSlug={
             (fromApiById && apiRecord?.etapa) ? apiRecord.etapa : (firstContact?.etapa ?? '')
           }
@@ -975,11 +970,15 @@ export default function EmpresaDetailPage() {
             title="Información"
             collapsible
             fields={[
-              { icon: Building2, value: companyData?.name ?? companyName },
+              {
+                icon: Building2,
+                value: companyData?.name ?? companyName,
+                truncate: true,
+              },
               ...(fromApiById && apiRecord?.razonSocial?.trim()
                 ? [
                     {
-                      label: 'Razón social:',
+                      icon: FileText as typeof Building2,
                       value: apiRecord.razonSocial.trim(),
                       truncate: true,
                     },
@@ -988,7 +987,7 @@ export default function EmpresaDetailPage() {
               ...(fromApiById && apiRecord?.ruc?.trim()
                 ? [
                     {
-                      label: 'RUC:',
+                      icon: Hash as typeof Building2,
                       value: apiRecord.ruc.trim(),
                     },
                   ]
@@ -1034,10 +1033,7 @@ export default function EmpresaDetailPage() {
                   ]
                 : []),
               ...(fromApiById && apiRecord?.direccion?.trim()
-                ? [{ icon: MapPin, value: apiRecord.direccion.trim() }]
-                : []),
-              ...(fromApiById && apiUbicacionLine
-                ? [{ label: 'Ubicación:', value: apiUbicacionLine }]
+                ? [{ icon: MapPin, value: apiRecord.direccion.trim(), truncate: true }]
                 : []),
               ...(companyData?.rubro
                 ? [
@@ -1049,7 +1045,12 @@ export default function EmpresaDetailPage() {
                 : []),
               ...(companyData?.tipo ? [{ label: 'Tipo:', value: companyData.tipo }] : []),
               ...(fromApiById && apiRecord?.fuente
-                ? [{ label: 'Fuente:', value: displayFuenteLabel }]
+                ? [
+                    {
+                      icon: Tag as typeof Building2,
+                      value: displayFuenteLabel,
+                    },
+                  ]
                 : []),
             ]}
           />

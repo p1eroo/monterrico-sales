@@ -515,7 +515,7 @@ export function WhatsappContactDrawer({
                 readOnly={sending}
                 className={cn(
                   'max-h-32 min-h-[44px] flex-1 resize-none rounded-2xl border-zinc-600/80 bg-[#2a3942] px-3 py-2.5 text-[13px] text-[#e9edef] placeholder:text-white/35',
-                  'focus-visible:border-emerald-600/50 focus-visible:ring-emerald-600/20',
+                  'transition-[border-color] focus-visible:border-emerald-500',
                   sending && 'cursor-wait opacity-80',
                 )}
                 onKeyDown={(e) => {

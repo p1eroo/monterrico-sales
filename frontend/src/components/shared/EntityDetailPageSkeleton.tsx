@@ -38,7 +38,7 @@ export function EntityDetailPageSkeleton({
                 <Skeleton key={i} className="h-9 w-[5.5rem] rounded-md sm:w-28" />
               ))}
             </div>
-            <div className="space-y-4 rounded-lg border border-border/70 bg-card p-4 sm:p-5">
+            <div className="space-y-4 rounded-lg border border-border bg-card p-4 sm:p-5">
               <Skeleton className="h-5 w-36" />
               <Skeleton className="h-36 w-full rounded-md" />
               <Skeleton className="h-4 w-full max-w-xl" />
@@ -50,10 +50,10 @@ export function EntityDetailPageSkeleton({
             {Array.from({ length: 4 }).map((_, i) => (
               <div
                 key={i}
-                className="overflow-hidden rounded-lg border border-border/70 bg-surface-elevated"
+                className="overflow-hidden rounded-lg border border-border bg-surface-elevated"
               >
                 <Skeleton className="h-12 w-full rounded-none" />
-                <div className="space-y-3 border-t border-border/70 p-4">
+                <div className="space-y-3 border-t border-border p-4">
                   <Skeleton className="h-4 w-full" />
                   <Skeleton className="h-4 w-[92%]" />
                   <Skeleton className="h-4 w-[70%]" />

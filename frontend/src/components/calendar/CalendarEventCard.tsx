@@ -54,7 +54,7 @@ export function CalendarEventCard({ event, compact, onClick, className }: Calend
         onClick={(e) => { e.stopPropagation(); onClick?.(e); }}
         onKeyDown={(e) => e.key === 'Enter' && onClick?.()}
         className={cn(
-          'flex items-center gap-2 rounded-md px-2 py-1.5 text-xs transition-all hover:shadow-sm cursor-pointer',
+          'flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs transition-all hover:bg-muted/60 dark:hover:shadow-sm',
           config.bgColor,
           config.color,
           className,
@@ -74,7 +74,7 @@ export function CalendarEventCard({ event, compact, onClick, className }: Calend
       onClick={onClick}
       onKeyDown={(e) => e.key === 'Enter' && onClick?.()}
       className={cn(
-        'group rounded-lg border bg-card p-3 shadow-sm transition-all hover:shadow-md hover:border-[#13944C]/30 cursor-pointer',
+        'group cursor-pointer rounded-lg border border-border bg-card p-3 shadow-none transition-all hover:border-[#13944C]/30 dark:shadow-sm dark:hover:shadow-md',
         className,
       )}
     >

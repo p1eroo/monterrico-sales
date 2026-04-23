@@ -40,7 +40,7 @@ export function DetailLayout({
             <Button
               variant="ghost"
               size="icon"
-              className="h-9 w-9 shrink-0 rounded-lg border border-border/70 bg-surface-elevated text-text-secondary hover:bg-surface-hover hover:text-text-primary"
+              className="h-9 w-9 shrink-0 rounded-lg border border-border bg-surface-elevated text-text-secondary hover:bg-surface-hover hover:text-text-primary"
               onClick={() => navigate(backPath)}
             >
               <ArrowLeft className="size-5" />

@@ -130,6 +130,9 @@
     /* Pipeline Kanban (LeadCard + cabecera de columna; ver Pipeline.tsx) */
     --pipeline-kanban-surface: #ffffff;
     --pipeline-kanban-column-header: rgba(255, 255, 255, 0.92);
+    /* Scrollbars (thumb); el track siempre transparente en código para WebKit/Firefox */
+    --crm-scrollbar-thumb: #bcc9c4;
+    --crm-scrollbar-thumb-hover: color-mix(in srgb, var(--primary) 38%, #94a3af);
 }
 
 /* Dark mode - Notion/Linear/Slack/HubSpot inspired */
@@ -191,6 +194,8 @@
     --workflow-minimap-mask: rgba(11, 15, 23, 0.45);
     --pipeline-kanban-surface: hsl(220 18% 10%);
     --pipeline-kanban-column-header: color-mix(in srgb, hsl(220 18% 10%) 90%, transparent);
+    --crm-scrollbar-thumb: color-mix(in srgb, hsl(215 12% 48%) 75%, var(--border));
+    --crm-scrollbar-thumb-hover: color-mix(in srgb, var(--primary) 45%, hsl(215 12% 42%));
 }
 
 @layer base {
@@ -218,11 +223,26 @@
         @apply bg-background text-foreground font-sans antialiased transition-colors duration-300;
         font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     }
+
+    /*
+     * Scrollbars nativos ocultos por defecto: Firefox/WebKit en Linux a menudo ignoran
+     * colores del thumb y muestran el estilo del SO (franja oscura). El scroll sigue
+     * igual (rueda, tacto, teclado). Donde haga falta indicador: clase .scrollbar-thin.
+     */
+    * {
+        scrollbar-width: none;
+    }
+
+    *::-webkit-scrollbar {
+        display: none;
+        width: 0;
+        height: 0;
+    }
 }
 
 @layer components {
     .crm-collapsible-card {
-        @apply min-w-0 overflow-hidden border-border/70 bg-surface-elevated shadow-none;
+        @apply min-w-0 overflow-hidden border-border bg-surface-elevated shadow-none;
     }
 
     .crm-collapsible-card__trigger {
@@ -238,7 +258,7 @@
     }
 
     .crm-collapsible-card__content {
-        @apply border-t border-border/70 p-4 pt-3;
+        @apply border-t border-border p-4 pt-3;
     }
 
     .crm-info-list {
@@ -275,14 +295,43 @@
 }
 
 @layer utilities {
+    /* Opt-in: barra fina coherente con el tema (Kanban, panel de actividades, …) */
     .scrollbar-thin {
         scrollbar-width: thin;
+        scrollbar-color: var(--crm-scrollbar-thumb) var(--background);
+    }
+    .scrollbar-thin::-webkit-scrollbar {
+        display: block;
+        width: 8px;
+        height: 8px;
+        background: var(--background);
+    }
+    .scrollbar-thin::-webkit-scrollbar-button {
+        display: none;
+        width: 0;
+        height: 0;
+    }
+    .scrollbar-thin::-webkit-scrollbar-track,
+    .scrollbar-thin::-webkit-scrollbar-track-piece {
+        background-color: var(--background);
+        border-radius: 9999px;
+    }
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+        border-radius: 9999px;
+        border: 2px solid transparent;
+        background-clip: content-box;
+        background-color: var(--crm-scrollbar-thumb);
+    }
+    .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+        background-color: var(--crm-scrollbar-thumb-hover);
     }
     .scrollbar-none {
         scrollbar-width: none;
     }
     .scrollbar-none::-webkit-scrollbar {
         display: none;
+        width: 0;
+        height: 0;
     }
 }
 

@@ -1,7 +1,9 @@
 import { useNavigate } from 'react-router-dom';
-import { Building2, Globe, Star, Briefcase, Target } from 'lucide-react';
+import { Building2, Globe, Briefcase, Target } from 'lucide-react';
 import { etapaLabels, companyRubroLabels, companyTipoLabels } from '@/data/mock';
 import { LinkedEntitiesCard } from './LinkedEntitiesCard';
+import { LinkedEntityItemHeader } from './LinkedEntityItemHeader';
+import { cn } from '@/lib/utils';
 import type { LinkedCompany } from '@/types';
 import { companyDetailHref } from '@/lib/detailRoutes';
 
@@ -43,18 +45,28 @@ export function LinkedCompaniesCard({
           c.id ? companyDetailHref({ id: c.id, urlSlug: c.urlSlug }) : `/empresas/${encodeURIComponent(c.name)}`,
         )}
       collapsible
-      itemClassName="bg-background/35 p-4"
-      renderItem={(comp, unlinkButton) => (
-        <div className="space-y-3">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex min-w-0 flex-1 items-center gap-1.5">
-              {comp.isPrimary && <Star className="size-3.5 shrink-0 fill-stage-lead text-stage-lead" />}
-              <p className="min-w-0 flex-1 truncate text-[15px] font-semibold leading-tight text-text-primary">
-                {comp.name}
-              </p>
-            </div>
-            {unlinkButton}
-          </div>
+      renderItem={(comp, itemActions) => {
+        const rubroLabel = comp.rubro ? (companyRubroLabels[comp.rubro] ?? comp.rubro) : null;
+        const multiple = companies.length > 1;
+        const showPrincipal = Boolean(comp.isPrimary && multiple);
+        let subtitle: string | null = null;
+        if (showPrincipal && rubroLabel) subtitle = `Principal · ${rubroLabel}`;
+        else if (showPrincipal) subtitle = 'Principal';
+        else if (rubroLabel) subtitle = rubroLabel;
+
+        return (
+        <div
+          className={cn(
+            'space-y-3',
+            showPrincipal && 'rounded-l-sm border-l-[3px] border-primary/45 pl-2.5',
+          )}
+        >
+          <LinkedEntityItemHeader
+            variant="company"
+            title={comp.name}
+            subtitle={subtitle}
+            trailing={itemActions}
+          />
 
           <div className="space-y-2.5">
             {comp.domain && (
@@ -104,7 +116,8 @@ export function LinkedCompaniesCard({
             )}
           </div>
         </div>
-      )}
+        );
+      }}
     />
   );
 }

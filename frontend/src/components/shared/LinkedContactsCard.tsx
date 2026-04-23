@@ -3,6 +3,7 @@ import { Users, Mail, Phone, Briefcase, Target, DollarSign } from 'lucide-react'
 import { etapaLabels } from '@/data/mock';
 import { formatCurrency } from '@/lib/formatters';
 import { LinkedEntitiesCard } from './LinkedEntitiesCard';
+import { LinkedEntityItemHeader } from './LinkedEntityItemHeader';
 import type { Contact } from '@/types';
 import { contactDetailHref } from '@/lib/detailRoutes';
 
@@ -54,16 +55,17 @@ export function LinkedContactsCard({
       getItemKey={(c) => c.id}
       onItemClick={(c) => navigate(contactDetailHref(c))}
       collapsible
-      itemClassName="bg-background/35 p-4"
-      renderItem={(contact, unlinkButton) => {
+      renderItem={(contact, itemActions) => {
+        const subtitle = contact.cargo ?? contact.correo ?? null;
+
         return (
           <div className="space-y-3">
-            <div className="flex items-start justify-between gap-3">
-              <p className="min-w-0 flex-1 truncate text-[15px] font-semibold leading-tight text-text-primary">
-                {contact.name}
-              </p>
-              {unlinkButton}
-            </div>
+            <LinkedEntityItemHeader
+              variant="contact"
+              title={contact.name}
+              subtitle={subtitle}
+              trailing={itemActions}
+            />
 
             <div className="space-y-2.5">
               {contact.cargo && (

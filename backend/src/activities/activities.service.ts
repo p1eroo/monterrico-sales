@@ -10,6 +10,8 @@ import { UpdateActivityDto } from './dto/update-activity.dto';
 import type { CrmDataScope } from '../auth/crm-data-scope.service';
 import { mergeCompanyScope } from '../common/crm-data-scope-where.util';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
+import type { ActivityActor } from '../activity-logs/activity-logs.types';
 
 const TASK_KINDS = new Set(['llamada', 'reunion', 'correo', 'whatsapp']);
 
@@ -45,11 +47,21 @@ const activitySelectListSlim = {
   },
 } as const;
 
+type ActivityRowForHistoryLog = {
+  title: string;
+  type: string;
+  taskKind: string | null;
+  contacts: { contact: { id: string } }[];
+  companies: { company: { id: string } }[];
+  opportunities: { opportunity: { id: string } }[];
+};
+
 @Injectable()
 export class ActivitiesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
+    private readonly activityLogs: ActivityLogsService,
   ) {}
 
   private parseDate(s: string | null | undefined): Date | null {
@@ -91,7 +103,96 @@ export class ActivitiesService {
     return { type, taskKind: null };
   }
 
-  async create(dto: CreateActivityDto, scope?: CrmDataScope) {
+  private activityLogKindPhrase(
+    type: string,
+    taskKind: string | null | undefined,
+  ): string {
+    const t = (type ?? '').trim().toLowerCase();
+    if (t === 'tarea') {
+      const k = taskKind ? String(taskKind).trim().toLowerCase() : '';
+      return k ? `tarea (${k})` : 'tarea';
+    }
+    return t ? `actividad (${t})` : 'actividad';
+  }
+
+  private historyDescriptionFor(
+    action: 'crear' | 'actualizar' | 'eliminar',
+    row: ActivityRowForHistoryLog,
+  ): string {
+    const phrase = this.activityLogKindPhrase(row.type, row.taskKind);
+    const title = row.title ?? '';
+    if (action === 'crear') {
+      return `Se creó una ${phrase}: «${title}».`;
+    }
+    if (action === 'actualizar') {
+      return `Se actualizó la ${phrase}: «${title}».`;
+    }
+    return `Se eliminó la ${phrase}: «${title}».`;
+  }
+
+  private async recordActivityOnLinkedEntities(
+    actor: ActivityActor | null,
+    action: 'crear' | 'actualizar' | 'eliminar',
+    row: ActivityRowForHistoryLog,
+  ): Promise<void> {
+    const contactIds = [...new Set(row.contacts.map((c) => c.contact.id))];
+    const companyIds = [...new Set(row.companies.map((c) => c.company.id))];
+    const opportunityIds = [
+      ...new Set(row.opportunities.map((o) => o.opportunity.id)),
+    ];
+    if (
+      contactIds.length === 0 &&
+      companyIds.length === 0 &&
+      opportunityIds.length === 0
+    ) {
+      return;
+    }
+    const description = this.historyDescriptionFor(action, row);
+    const tasks: Promise<void>[] = [];
+    for (const entityId of contactIds) {
+      tasks.push(
+        this.activityLogs.record(actor, {
+          action,
+          module: 'actividades',
+          entityType: 'Contacto',
+          entityId,
+          entityName: row.title,
+          description,
+        }),
+      );
+    }
+    for (const entityId of companyIds) {
+      tasks.push(
+        this.activityLogs.record(actor, {
+          action,
+          module: 'actividades',
+          entityType: 'Empresa',
+          entityId,
+          entityName: row.title,
+          description,
+        }),
+      );
+    }
+    for (const entityId of opportunityIds) {
+      tasks.push(
+        this.activityLogs.record(actor, {
+          action,
+          module: 'actividades',
+          entityType: 'Oportunidad',
+          entityId,
+          entityName: row.title,
+          description,
+        }),
+      );
+    }
+    await Promise.all(tasks);
+  }
+
+  async create(
+    dto: CreateActivityDto,
+    scope?: CrmDataScope,
+    actor?: ActivityActor,
+  ) {
     const { type, taskKind } = this.resolveTypeAndTaskKind(dto);
     if (!type) {
       throw new BadRequestException('El tipo es obligatorio');
@@ -167,7 +268,7 @@ export class ActivitiesService {
       }
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const row = await this.prisma.$transaction(async (tx) => {
       const activity = await tx.activity.create({
         data: {
           type,
@@ -202,6 +303,8 @@ export class ActivitiesService {
         include: activityInclude,
       });
     });
+    await this.recordActivityOnLinkedEntities(actor ?? null, 'crear', row);
+    return row;
   }
 
   async findAll(
@@ -265,7 +368,12 @@ export class ActivitiesService {
     return row;
   }
 
-  async update(id: string, dto: UpdateActivityDto, scope?: CrmDataScope) {
+  async update(
+    id: string,
+    dto: UpdateActivityDto,
+    scope?: CrmDataScope,
+    actor?: ActivityActor,
+  ) {
     await this.findOne(id, scope);
     const existingRow = await this.prisma.activity.findUnique({
       where: { id },
@@ -351,12 +459,22 @@ export class ActivitiesService {
       await this.notifications.removeOverdueNotificationsForActivity(id);
     }
 
+    await this.recordActivityOnLinkedEntities(
+      actor ?? null,
+      'actualizar',
+      row,
+    );
     return row;
   }
 
-  async remove(id: string, scope?: CrmDataScope) {
-    await this.findOne(id, scope);
+  async remove(
+    id: string,
+    scope?: CrmDataScope,
+    actor?: ActivityActor,
+  ) {
+    const row = await this.findOne(id, scope);
     await this.notifications.removeOverdueNotificationsForActivity(id);
+    await this.recordActivityOnLinkedEntities(actor ?? null, 'eliminar', row);
     return this.prisma.activity.delete({
       where: { id },
     });

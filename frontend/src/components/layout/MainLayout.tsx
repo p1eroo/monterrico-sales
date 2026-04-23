@@ -87,7 +87,7 @@ export default function MainLayout() {
         <Topbar />
         <div
           className={cn(
-            'min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 md:px-6 md:pb-6',
+            'min-w-0 flex-1 overflow-y-auto overflow-x-hidden bg-background px-4 pb-5 md:px-6 md:pb-6',
             compactMainTop
               ? 'pt-0 md:pt-0.5'
               : 'pt-5 md:pt-6',

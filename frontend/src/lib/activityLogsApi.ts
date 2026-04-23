@@ -34,20 +34,55 @@ export function fetchActivityLogs(params: {
 }
 
 function actionToTimelineType(action: string): TimelineEvent['type'] {
-  switch (action) {
+  const a = action.trim().toLowerCase();
+  switch (a) {
+    case 'crear':
+      return 'crear';
+    case 'actualizar':
+      return 'actualizar';
     case 'cambiar_etapa':
       return 'cambio_estado';
     case 'asignar':
-    case 'crear':
-      return 'tarea';
+      return 'asignar';
     case 'eliminar':
+      return 'eliminar';
     case 'desactivar_usuario':
+      return 'eliminar';
     case 'login':
     case 'login_fallido':
     case 'cambiar_password':
+      return 'sistema';
     default:
       return 'nota';
   }
+}
+
+/**
+ * Logs del módulo `actividades` guardan el subtipo en la descripción
+ * (p. ej. «tarea (llamada)», «actividad (correo)»). Así el timeline puede
+ * reutilizar el mismo icono que en actividades/tareas reales.
+ */
+function inferActivityModuleTimelineType(
+  log: ActivityLog,
+): TimelineEvent['type'] | null {
+  if (log.module !== 'actividades') return null;
+  const d = log.description.trim();
+  const m = d.match(/^Se (?:creó|actualizó|eliminó) (?:una |la )(.+?): «/u);
+  if (!m?.[1]) return null;
+  const phrase = m[1].trim().toLowerCase();
+
+  const taskSub = phrase.match(/^tarea \(([^)]+)\)$/);
+  const activitySub = phrase.match(/^actividad \(([^)]+)\)$/);
+  const raw = (taskSub?.[1] ?? activitySub?.[1] ?? '').trim().toLowerCase();
+
+  if (raw === 'llamada') return 'llamada';
+  if (raw === 'correo') return 'correo';
+  if (raw === 'reunion' || raw === 'reunión') return 'reunion';
+  if (raw === 'nota') return 'nota';
+  if (raw === 'whatsapp') return 'whatsapp';
+  if (phrase === 'tarea') return 'tarea';
+
+  return null;
 }
 
 /** Formato compatible con `TimelinePanel` (fecha local corta). */
@@ -67,9 +102,12 @@ export function activityLogToTimelineEvent(log: ActivityLog): TimelineEvent {
     /* usar timestamp crudo */
   }
 
+  const fromActivityModule = inferActivityModuleTimelineType(log);
+  const type = fromActivityModule ?? actionToTimelineType(log.action);
+
   return {
     id: log.id,
-    type: actionToTimelineType(log.action),
+    type,
     title: actionLabels[log.action] ?? log.action,
     description: log.description,
     user: log.userName,

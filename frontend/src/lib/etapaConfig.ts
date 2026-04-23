@@ -1,7 +1,18 @@
 /**
- * Configuración centralizada de colores para badges de etapas.
- * Usado por LinkedContactsCard, LinkedOpportunitiesCard, Opportunities, etc.
+ * Colores de etapa por slug (tema / Tailwind). Fallback cuando aún no hay catálogo CRM
+ * o la etapa no tiene color válido en configuración.
  */
+
+import type { CSSProperties } from 'react';
+import type { CrmConfigBundle } from '@/lib/crmConfigApi';
+import { stageBadgeStyleFromCatalogColor } from '@/lib/stageCatalogColors';
+
+const FALLBACK_BADGE = 'border-border bg-muted text-text-secondary';
+
+export type StageBadgeTone = {
+  className: string;
+  style?: CSSProperties;
+};
 
 /** Clases para Badge de etapa (sin borde, para uso con border-0 en Linked*Card) */
 export const etapaColors: Record<string, string> = {
@@ -36,3 +47,31 @@ export const etapaColorsWithBorder: Record<string, string> = {
   cierre_perdido: 'border-stage-lost/30 bg-stage-lost/15 text-stage-lost',
   inactivo: 'border-border bg-muted text-text-secondary',
 };
+
+/**
+ * Tono del badge de etapa: prioriza `color` del catálogo CRM (Ajustes);
+ * si no hay bundle, etapa o color válido, usa `etapaColorsWithBorder`.
+ */
+export function getStageBadgeTone(
+  bundle: CrmConfigBundle | null | undefined,
+  slug: string | null | undefined,
+): StageBadgeTone {
+  if (!slug) {
+    return { className: FALLBACK_BADGE };
+  }
+  const row = bundle?.catalog?.stages?.find((s) => s.slug === slug);
+  const raw = row?.color?.trim();
+  if (raw) {
+    const style = stageBadgeStyleFromCatalogColor(raw);
+    if (style) {
+      return {
+        className: 'border border-solid',
+        style,
+      };
+    }
+  }
+  return {
+    className: etapaColorsWithBorder[slug] ?? FALLBACK_BADGE,
+    style: undefined,
+  };
+}
