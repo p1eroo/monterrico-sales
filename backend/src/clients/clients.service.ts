@@ -8,19 +8,47 @@ import { PrismaService } from '../prisma/prisma.service';
 import { UpdateClientDto } from './dto/update-client.dto';
 import type { CrmDataScope } from '../auth/crm-data-scope.service';
 import { mergeCompanyScope } from '../common/crm-data-scope-where.util';
-
-const CLIENT_WIN_ETAPA = 'cierre_ganado';
+import { STAGE_PROBABILITY_FALLBACK } from '../crm-config/crm-config.constants';
 
 const CLIENT_STATUSES = ['activo', 'inactivo', 'potencial'] as const;
 
 type Tx = Prisma.TransactionClient;
 
+type CrmStageRow = { slug: string; enabled: boolean; probability: number };
+
 @Injectable()
 export class ClientsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /** Misma regla que el alta automática: etapa habilitada al 100 % en BD, o fallback 100 %. */
+  private static companySlugQualifiesForClient(
+    etapaSlug: string,
+    stages: CrmStageRow[],
+  ): boolean {
+    const s = etapaSlug.trim();
+    if (!s) return false;
+    const row = stages.find((st) => st.slug === s && st.enabled);
+    if (row) return row.probability === 100;
+    return STAGE_PROBABILITY_FALLBACK[s] === 100;
+  }
+
+  /** Slugs de etapa que hoy califican como «cliente» (para filtrar el listado). */
+  private async qualifyingClientEtapaSlugs(): Promise<string[]> {
+    const stages = await this.prisma.crmStage.findMany({
+      select: { slug: true, enabled: true, probability: true },
+    });
+    const universe = new Set([
+      ...stages.map((st) => st.slug),
+      ...Object.keys(STAGE_PROBABILITY_FALLBACK),
+    ]);
+    return [...universe].filter((slug) =>
+      ClientsService.companySlugQualifiesForClient(slug, stages),
+    );
+  }
+
   /**
-   * Alta automática: la empresa está en etapa cierre_ganado.
+   * Alta automática del registro Cliente: empresa en etapa «Activo» o con
+   * probabilidad 100 % en el catálogo de etapas CRM (p. ej. etapa personalizada al 100 %).
    * Idempotente: no modifica fecha de creación si el cliente ya existía.
    */
   async ensureClientForCierreGanado(companyId: string): Promise<void> {
@@ -29,12 +57,14 @@ export class ClientsService {
     );
   }
 
+  /** @internal Usado también desde sync en transacción. */
   async ensureClientForCierreGanadoTx(tx: Tx, companyId: string): Promise<void> {
     const row = await tx.company.findUnique({
       where: { id: companyId },
       select: { etapa: true },
     });
-    if (row?.etapa !== CLIENT_WIN_ETAPA) return;
+    const etapa = row?.etapa?.trim() ?? '';
+    if (!(await this.companyEtapaQualifiesForClient(tx, etapa))) return;
     await tx.client.upsert({
       where: { companyId },
       create: { companyId, status: 'activo' },
@@ -42,10 +72,25 @@ export class ClientsService {
     });
   }
 
+  private async companyEtapaQualifiesForClient(
+    tx: Tx,
+    etapaSlug: string,
+  ): Promise<boolean> {
+    const s = etapaSlug.trim();
+    if (!s) return false;
+    const stage = await tx.crmStage.findFirst({
+      where: { slug: s, enabled: true },
+      select: { probability: true },
+    });
+    if (stage) return stage.probability === 100;
+    return STAGE_PROBABILITY_FALLBACK[s] === 100;
+  }
+
   async findAll(scope?: CrmDataScope) {
+    const etapaSlugs = await this.qualifyingClientEtapaSlugs();
     const rows = await this.prisma.client.findMany({
       where: {
-        company: mergeCompanyScope({}, scope),
+        company: mergeCompanyScope({ etapa: { in: etapaSlugs } }, scope),
       },
       include: {
         company: {

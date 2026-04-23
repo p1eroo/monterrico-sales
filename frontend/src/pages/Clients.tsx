@@ -207,7 +207,7 @@ export default function Clients() {
     <div className="space-y-6">
       <PageHeader
         title="Clientes"
-        description="Se registran automáticamente cuando una empresa alcanza la etapa Cierre ganado."
+        description="Se registran automáticamente cuando una empresa alcanza la etapa Activo o una etapa con probabilidad 100 %."
       >
         {hasPermission('clientes.exportar') && (
           <Button
@@ -322,7 +322,7 @@ export default function Clients() {
               <TableRow>
                 <TableCell colSpan={10} className="py-12 text-center text-muted-foreground">
                   {clientList.length === 0
-                    ? 'Aún no hay clientes. Aparecerán aquí cuando una empresa llegue a la etapa Cierre ganado.'
+                    ? 'Aún no hay clientes. Aparecerán aquí cuando una empresa llegue a la etapa Activo o a una etapa con probabilidad 100 %.'
                     : 'No se encontraron clientes con los filtros aplicados.'}
                 </TableCell>
               </TableRow>
@@ -498,7 +498,7 @@ export default function Clients() {
                       <div className="rounded-lg border p-3">
                         <p className="text-xs text-muted-foreground">Fecha de alta</p>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          Registro como cliente (Cierre ganado).
+                          Registro como cliente (Activo o etapa al 100 %).
                         </p>
                         <p className="text-sm font-medium mt-1">
                           {formatDate(selectedClient.createdAt)}

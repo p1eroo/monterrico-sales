@@ -454,7 +454,7 @@ model Company {
   linkedBy     CompanyCompany[]  @relation("LinkedCompanies")
   opportunities CompanyOpportunity[]
   activities   CompanyActivity[]
-  /** Registro CRM “Cliente”: se crea al alcanzar etapa cierre_ganado (1:1 con empresa). */
+  /** Registro CRM “Cliente”: se crea en etapa Activo o etapa con probabilidad 100 % (1:1 con empresa). */
   clientRecord Client?
 
   @@index([assignedTo])

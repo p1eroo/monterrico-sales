@@ -27,7 +27,7 @@ import {
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
 import {
-  Card, CardContent, CardHeader,
+  Card, CardAction, CardContent, CardHeader,
   CardTitle, CardDescription,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -1042,9 +1042,7 @@ export default function Settings() {
                 <CardDescription>
                   Una sola definición para contactos, empresas y oportunidades. El % indica probabilidad sugerida en oportunidades.
                 </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="mb-4 flex justify-end">
+                <CardAction>
                   <Button
                     type="button"
                     onClick={() => setAddStageOpen(true)}
@@ -1054,7 +1052,9 @@ export default function Settings() {
                     <Plus className="size-4" />
                     Añadir etapa
                   </Button>
-                </div>
+                </CardAction>
+              </CardHeader>
+              <CardContent>
                 <div className="space-y-2">
                   {pipelineStages.map((stage, idx) => (
                     <div
