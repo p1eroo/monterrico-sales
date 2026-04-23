@@ -610,6 +610,9 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
             if (nd.dueDate !== oldDetail.dueDate) payload.dueDate = nd.dueDate;
             if (nd.startDate !== oldDetail.startDate) payload.startDate = nd.startDate;
             if (nd.startTime !== oldDetail.startTime) payload.startTime = nd.startTime;
+            if ((nd.priority ?? 'media') !== (oldDetail.priority ?? 'media')) {
+              payload.priority = nd.priority ?? 'media';
+            }
             if (Object.keys(payload).length === 0) continue;
             try {
               await updateActivity(nd.id, payload);

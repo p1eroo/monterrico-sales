@@ -12,7 +12,7 @@ export const rightDrawerLayoutClass = 'flex w-full flex-col gap-0 p-0';
 
 export const rightDrawerMaxWidth = {
   md: 'sm:max-w-md',
-  /** Panel notificaciones / empresas inactivas */
+  /** Panel notificaciones / empresas sin cambio de etapa */
   notifications: 'sm:max-w-[440px] md:max-w-[480px]',
   lg: 'sm:max-w-lg',
   /** Resumen de hoy (ancho histórico del briefing) */

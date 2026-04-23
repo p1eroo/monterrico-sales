@@ -379,40 +379,4 @@ export class EntitySyncService {
     });
   }
 
-  /**
-   * Si el contacto ya está en una oportunidad vinculada a esta empresa, no hace nada.
-   * Si la empresa ya tiene alguna oportunidad, solo vincula el contacto a la más antigua
-   * (no crea otra oportunidad por cada contacto nuevo).
-   * Si no hay oportunidad para la empresa, crea una con `defaults`.
-   */
-  async ensureOpportunityForContactCompany(
-    contactId: string,
-    companyId: string,
-    defaults: {
-      title: string;
-      amount: number;
-      etapa: string;
-      assignedTo: string | null;
-      expectedCloseDate: Date | null;
-    },
-  ): Promise<string | null> {
-    const existingSamePair = await this.prisma.opportunity.findFirst({
-      where: {
-        AND: [
-          { contacts: { some: { contactId } } },
-          { companies: { some: { companyId } } },
-        ],
-      },
-      select: { id: true },
-    });
-    if (existingSamePair) return null;
-
-    const opportunityId = await this.ensureOpportunityForCompany(
-      companyId,
-      defaults,
-    );
-
-    await this.ensureContactLinkedToOpportunity(contactId, opportunityId);
-    return opportunityId;
-  }
 }

@@ -5,6 +5,7 @@ import type {
   CalendarEvent,
   CalendarEventStatus,
   CalendarEventType,
+  ContactPriority,
   RelatedEntityType,
   TaskKind,
 } from '@/types';
@@ -19,6 +20,7 @@ export type ApiActivity = {
   description: string;
   assignedTo?: string;
   status: string;
+  priority?: string | null;
   dueDate: string;
   startDate: string | null;
   startTime: string | null;
@@ -58,6 +60,14 @@ function parseTaskKind(raw: unknown): TaskKind | undefined {
   return TASK_KINDS.includes(raw as TaskKind) ? (raw as TaskKind) : undefined;
 }
 
+const PRIORITIES: ContactPriority[] = ['alta', 'media', 'baja'];
+
+function parsePriority(raw: unknown): ContactPriority | undefined {
+  if (raw == null || typeof raw !== 'string') return undefined;
+  const p = raw.trim().toLowerCase();
+  return PRIORITIES.includes(p as ContactPriority) ? (p as ContactPriority) : undefined;
+}
+
 function toDateOnly(iso: string | null): string {
   if (!iso) return '';
   return iso.slice(0, 10);
@@ -86,6 +96,7 @@ export function mapApiActivityToActivity(row: ApiActivity): Activity {
     assignedTo: row.user?.id ?? row.assignedTo ?? '',
     assignedToName: row.user?.name ?? 'Sin asignar',
     status: parseStatus(row.status),
+    priority: parsePriority(row.priority),
     dueDate: toDateOnly(row.dueDate),
     startDate: toDateOnly(row.startDate ?? '') || undefined,
     startTime: row.startTime ?? undefined,
@@ -101,6 +112,7 @@ export type CreateActivityPayload = {
   description?: string;
   assignedTo: string;
   status?: string;
+  priority?: string;
   dueDate: string;
   startDate?: string;
   startTime?: string;
@@ -117,6 +129,7 @@ export type UpdateActivityPayload = {
   description?: string;
   assignedTo?: string;
   status?: string;
+  priority?: string;
   dueDate?: string;
   startDate?: string;
   startTime?: string;

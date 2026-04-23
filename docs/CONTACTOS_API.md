@@ -69,7 +69,7 @@ Elimina el contacto; relaciones con `onDelete: Cascade` se limpian según el esq
 - **RUC nuevo**: se crea la empresa con la misma `fuente`, `etapa`, `valor_estimado` y `asignado_a` que el contacto.
 - **Solo nombre de empresa**: se busca por nombre (sin distinguir mayúsculas) o se crea la empresa.
 - Un CSV antiguo con **`empresa_id`** sigue funcionando si `empresa_nombre` y `empresa_ruc` están vacíos.
-- Con empresa vinculada, tras el alta el servicio crea (si falta) la **oportunidad** contacto+empresa y sincroniza etapa / monto / fuente en el grafo (`ensureOpportunityForContactCompany` + `propagateFromContact`).
+- Con empresa vinculada, tras el alta el servicio sincroniza etapa / monto / fuente en el grafo (`propagateFromContact`). La **oportunidad** se crea aparte (p. ej. `POST /opportunities` desde el wizard o el flujo de importación de empresas).
 - Si hay RUC **nuevo** y está configurado `FACTILIZA_API_TOKEN`, se consulta Factiliza (SUNAT) para rellenar razón social y dirección/ubigeo; el **nombre** del CSV sigue primando si lo enviaste (no es el placeholder `Empresa RUC …`).
 
 ### Alta desde el wizard

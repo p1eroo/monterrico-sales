@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import type { Activity } from '@/types';
+import type { Activity, ActivityStatus, ContactPriority, TaskKind } from '@/types';
+import { TASK_KINDS } from '@/types';
 import {
   fetchActivities,
   createActivity as apiCreate,
@@ -8,6 +9,41 @@ import {
   type CreateActivityPayload,
   type UpdateActivityPayload,
 } from '@/lib/activityApi';
+
+const ACTIVITY_STATUSES: ActivityStatus[] = ['pendiente', 'completada', 'en_progreso', 'vencida'];
+
+function parseActivityStatus(raw: string): ActivityStatus {
+  return ACTIVITY_STATUSES.includes(raw as ActivityStatus) ? (raw as ActivityStatus) : 'pendiente';
+}
+
+/** Vista previa local para que el UI reaccione al instante; el servidor confirma con la respuesta del PATCH. */
+function mergeActivityOptimistic(activity: Activity, payload: UpdateActivityPayload): Activity {
+  const next: Activity = { ...activity };
+  if (payload.type !== undefined) next.type = payload.type;
+  if (payload.taskKind !== undefined) {
+    if (payload.taskKind == null || payload.taskKind === '') {
+      next.taskKind = undefined;
+    } else if (TASK_KINDS.includes(payload.taskKind as TaskKind)) {
+      next.taskKind = payload.taskKind as TaskKind;
+    }
+  }
+  if (payload.title !== undefined) next.title = payload.title;
+  if (payload.description !== undefined) next.description = payload.description;
+  if (payload.assignedTo !== undefined) next.assignedTo = payload.assignedTo;
+  if (payload.status !== undefined) next.status = parseActivityStatus(payload.status);
+  if (payload.priority !== undefined) {
+    const p = payload.priority.trim().toLowerCase();
+    if (p === 'alta' || p === 'media' || p === 'baja') next.priority = p as ContactPriority;
+  }
+  if (payload.dueDate !== undefined) next.dueDate = payload.dueDate;
+  if (payload.startDate !== undefined) next.startDate = payload.startDate || undefined;
+  if (payload.startTime !== undefined) next.startTime = payload.startTime || undefined;
+  if (payload.completedAt !== undefined) {
+    next.completedAt =
+      payload.completedAt === '' ? undefined : payload.completedAt.slice(0, 10);
+  }
+  return next;
+}
 
 interface ActivitiesState {
   activities: Activity[];
@@ -51,11 +87,28 @@ export const useActivitiesStore = create<ActivitiesState>((set, get) => ({
   },
 
   updateActivity: async (id, payload) => {
-    const updated = await apiUpdate(id, payload);
-    set((s) => ({
-      activities: s.activities.map((a) => (a.id === id ? updated : a)),
-    }));
-    return updated;
+    const prevList = get().activities;
+    const previous = prevList.find((a) => a.id === id);
+    if (previous) {
+      const optimistic = mergeActivityOptimistic(previous, payload);
+      set((s) => ({
+        activities: s.activities.map((a) => (a.id === id ? optimistic : a)),
+      }));
+    }
+    try {
+      const updated = await apiUpdate(id, payload);
+      set((s) => ({
+        activities: s.activities.map((a) => (a.id === id ? updated : a)),
+      }));
+      return updated;
+    } catch (e) {
+      if (previous) {
+        set((s) => ({
+          activities: s.activities.map((a) => (a.id === id ? previous : a)),
+        }));
+      }
+      throw e;
+    }
   },
 
   deleteActivity: async (id) => {

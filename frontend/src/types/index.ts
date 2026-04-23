@@ -211,6 +211,8 @@ export interface Activity {
   assignedTo: string;
   assignedToName: string;
   status: ActivityStatus;
+  /** Prioridad de la tarea (alta | media | baja); por defecto en UI se trata como media si falta. */
+  priority?: ContactPriority;
   dueDate: string;
   /** Fecha de inicio (YYYY-MM-DD) */
   startDate?: string;
@@ -229,6 +231,8 @@ export interface Opportunity {
   contactName?: string;
   clientId?: string;
   clientName?: string;
+  /** Ids de empresas vinculadas (API); el primero se refleja en clientId/clientName. */
+  linkedCompanyIds?: string[];
   amount: number;
   /** Probabilidad derivada de la etapa (0-100 o negativos para cierre/perdido/inactivo) */
   probability: number;

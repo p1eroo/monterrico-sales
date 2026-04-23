@@ -42,6 +42,25 @@ export async function companyGetByRuc(rucDigits: string): Promise<ApiCompanyReco
   return api<ApiCompanyRecord>(`/companies/by-ruc/${encodeURIComponent(d)}`);
 }
 
+/** GET /companies/alerts/sin-cambio-etapa — etapas 0/10/30 % (no inactivo ni cierre perdido), ≥11 sem. sin cambio. */
+export type CompanySinCambioEtapaAlertItem = {
+  id: string;
+  urlSlug: string;
+  name: string;
+  etapa: string;
+  lastEtapaChangeAt: string;
+  assignedToName: string | null;
+};
+
+export type CompanySinCambioEtapaAlertResponse = {
+  count: number;
+  items: CompanySinCambioEtapaAlertItem[];
+};
+
+export async function companySinCambioEtapaAlert(): Promise<CompanySinCambioEtapaAlertResponse> {
+  return api<CompanySinCambioEtapaAlertResponse>('/companies/alerts/sin-cambio-etapa');
+}
+
 /** Listar empresas paginado */
 export async function companyListPaginated(params?: {
   page?: number;

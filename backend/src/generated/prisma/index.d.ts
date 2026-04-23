@@ -36639,6 +36639,7 @@ export namespace Prisma {
     description: string | null
     assignedTo: string | null
     status: string | null
+    priority: string | null
     dueDate: Date | null
     startDate: Date | null
     startTime: string | null
@@ -36655,6 +36656,7 @@ export namespace Prisma {
     description: string | null
     assignedTo: string | null
     status: string | null
+    priority: string | null
     dueDate: Date | null
     startDate: Date | null
     startTime: string | null
@@ -36671,6 +36673,7 @@ export namespace Prisma {
     description: number
     assignedTo: number
     status: number
+    priority: number
     dueDate: number
     startDate: number
     startTime: number
@@ -36689,6 +36692,7 @@ export namespace Prisma {
     description?: true
     assignedTo?: true
     status?: true
+    priority?: true
     dueDate?: true
     startDate?: true
     startTime?: true
@@ -36705,6 +36709,7 @@ export namespace Prisma {
     description?: true
     assignedTo?: true
     status?: true
+    priority?: true
     dueDate?: true
     startDate?: true
     startTime?: true
@@ -36721,6 +36726,7 @@ export namespace Prisma {
     description?: true
     assignedTo?: true
     status?: true
+    priority?: true
     dueDate?: true
     startDate?: true
     startTime?: true
@@ -36810,6 +36816,7 @@ export namespace Prisma {
     description: string
     assignedTo: string
     status: string
+    priority: string
     dueDate: Date
     startDate: Date | null
     startTime: string | null
@@ -36843,6 +36850,7 @@ export namespace Prisma {
     description?: boolean
     assignedTo?: boolean
     status?: boolean
+    priority?: boolean
     dueDate?: boolean
     startDate?: boolean
     startTime?: boolean
@@ -36864,6 +36872,7 @@ export namespace Prisma {
     description?: boolean
     assignedTo?: boolean
     status?: boolean
+    priority?: boolean
     dueDate?: boolean
     startDate?: boolean
     startTime?: boolean
@@ -36881,6 +36890,7 @@ export namespace Prisma {
     description?: boolean
     assignedTo?: boolean
     status?: boolean
+    priority?: boolean
     dueDate?: boolean
     startDate?: boolean
     startTime?: boolean
@@ -36898,6 +36908,7 @@ export namespace Prisma {
     description?: boolean
     assignedTo?: boolean
     status?: boolean
+    priority?: boolean
     dueDate?: boolean
     startDate?: boolean
     startTime?: boolean
@@ -36906,7 +36917,7 @@ export namespace Prisma {
     updatedAt?: boolean
   }
 
-  export type ActivityOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "type" | "taskKind" | "title" | "description" | "assignedTo" | "status" | "dueDate" | "startDate" | "startTime" | "completedAt" | "createdAt" | "updatedAt", ExtArgs["result"]["activity"]>
+  export type ActivityOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "type" | "taskKind" | "title" | "description" | "assignedTo" | "status" | "priority" | "dueDate" | "startDate" | "startTime" | "completedAt" | "createdAt" | "updatedAt", ExtArgs["result"]["activity"]>
   export type ActivityInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     user?: boolean | UserDefaultArgs<ExtArgs>
     contacts?: boolean | Activity$contactsArgs<ExtArgs>
@@ -36940,6 +36951,10 @@ export namespace Prisma {
       description: string
       assignedTo: string
       status: string
+      /**
+       * * alta | media | baja — sobre todo para tareas
+       */
+      priority: string
       dueDate: Date
       startDate: Date | null
       startTime: string | null
@@ -37380,6 +37395,7 @@ export namespace Prisma {
     readonly description: FieldRef<"Activity", 'String'>
     readonly assignedTo: FieldRef<"Activity", 'String'>
     readonly status: FieldRef<"Activity", 'String'>
+    readonly priority: FieldRef<"Activity", 'String'>
     readonly dueDate: FieldRef<"Activity", 'DateTime'>
     readonly startDate: FieldRef<"Activity", 'DateTime'>
     readonly startTime: FieldRef<"Activity", 'String'>
@@ -51210,6 +51226,7 @@ export namespace Prisma {
     description: 'description',
     assignedTo: 'assignedTo',
     status: 'status',
+    priority: 'priority',
     dueDate: 'dueDate',
     startDate: 'startDate',
     startTime: 'startTime',
@@ -53662,6 +53679,7 @@ export namespace Prisma {
     description?: StringFilter<"Activity"> | string
     assignedTo?: StringFilter<"Activity"> | string
     status?: StringFilter<"Activity"> | string
+    priority?: StringFilter<"Activity"> | string
     dueDate?: DateTimeFilter<"Activity"> | Date | string
     startDate?: DateTimeNullableFilter<"Activity"> | Date | string | null
     startTime?: StringNullableFilter<"Activity"> | string | null
@@ -53682,6 +53700,7 @@ export namespace Prisma {
     description?: SortOrder
     assignedTo?: SortOrder
     status?: SortOrder
+    priority?: SortOrder
     dueDate?: SortOrder
     startDate?: SortOrderInput | SortOrder
     startTime?: SortOrderInput | SortOrder
@@ -53705,6 +53724,7 @@ export namespace Prisma {
     description?: StringFilter<"Activity"> | string
     assignedTo?: StringFilter<"Activity"> | string
     status?: StringFilter<"Activity"> | string
+    priority?: StringFilter<"Activity"> | string
     dueDate?: DateTimeFilter<"Activity"> | Date | string
     startDate?: DateTimeNullableFilter<"Activity"> | Date | string | null
     startTime?: StringNullableFilter<"Activity"> | string | null
@@ -53725,6 +53745,7 @@ export namespace Prisma {
     description?: SortOrder
     assignedTo?: SortOrder
     status?: SortOrder
+    priority?: SortOrder
     dueDate?: SortOrder
     startDate?: SortOrderInput | SortOrder
     startTime?: SortOrderInput | SortOrder
@@ -53747,6 +53768,7 @@ export namespace Prisma {
     description?: StringWithAggregatesFilter<"Activity"> | string
     assignedTo?: StringWithAggregatesFilter<"Activity"> | string
     status?: StringWithAggregatesFilter<"Activity"> | string
+    priority?: StringWithAggregatesFilter<"Activity"> | string
     dueDate?: DateTimeWithAggregatesFilter<"Activity"> | Date | string
     startDate?: DateTimeNullableWithAggregatesFilter<"Activity"> | Date | string | null
     startTime?: StringNullableWithAggregatesFilter<"Activity"> | string | null
@@ -56892,6 +56914,7 @@ export namespace Prisma {
     title: string
     description: string
     status?: string
+    priority?: string
     dueDate: Date | string
     startDate?: Date | string | null
     startTime?: string | null
@@ -56912,6 +56935,7 @@ export namespace Prisma {
     description: string
     assignedTo: string
     status?: string
+    priority?: string
     dueDate: Date | string
     startDate?: Date | string | null
     startTime?: string | null
@@ -56930,6 +56954,7 @@ export namespace Prisma {
     title?: StringFieldUpdateOperationsInput | string
     description?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
     dueDate?: DateTimeFieldUpdateOperationsInput | Date | string
     startDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     startTime?: NullableStringFieldUpdateOperationsInput | string | null
@@ -56950,6 +56975,7 @@ export namespace Prisma {
     description?: StringFieldUpdateOperationsInput | string
     assignedTo?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
     dueDate?: DateTimeFieldUpdateOperationsInput | Date | string
     startDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     startTime?: NullableStringFieldUpdateOperationsInput | string | null
@@ -56969,6 +56995,7 @@ export namespace Prisma {
     description: string
     assignedTo: string
     status?: string
+    priority?: string
     dueDate: Date | string
     startDate?: Date | string | null
     startTime?: string | null
@@ -56984,6 +57011,7 @@ export namespace Prisma {
     title?: StringFieldUpdateOperationsInput | string
     description?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
     dueDate?: DateTimeFieldUpdateOperationsInput | Date | string
     startDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     startTime?: NullableStringFieldUpdateOperationsInput | string | null
@@ -57000,6 +57028,7 @@ export namespace Prisma {
     description?: StringFieldUpdateOperationsInput | string
     assignedTo?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
     dueDate?: DateTimeFieldUpdateOperationsInput | Date | string
     startDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     startTime?: NullableStringFieldUpdateOperationsInput | string | null
@@ -59395,6 +59424,7 @@ export namespace Prisma {
     description?: SortOrder
     assignedTo?: SortOrder
     status?: SortOrder
+    priority?: SortOrder
     dueDate?: SortOrder
     startDate?: SortOrder
     startTime?: SortOrder
@@ -59411,6 +59441,7 @@ export namespace Prisma {
     description?: SortOrder
     assignedTo?: SortOrder
     status?: SortOrder
+    priority?: SortOrder
     dueDate?: SortOrder
     startDate?: SortOrder
     startTime?: SortOrder
@@ -59427,6 +59458,7 @@ export namespace Prisma {
     description?: SortOrder
     assignedTo?: SortOrder
     status?: SortOrder
+    priority?: SortOrder
     dueDate?: SortOrder
     startDate?: SortOrder
     startTime?: SortOrder
@@ -63059,6 +63091,7 @@ export namespace Prisma {
     title: string
     description: string
     status?: string
+    priority?: string
     dueDate: Date | string
     startDate?: Date | string | null
     startTime?: string | null
@@ -63077,6 +63110,7 @@ export namespace Prisma {
     title: string
     description: string
     status?: string
+    priority?: string
     dueDate: Date | string
     startDate?: Date | string | null
     startTime?: string | null
@@ -63715,6 +63749,7 @@ export namespace Prisma {
     description?: StringFilter<"Activity"> | string
     assignedTo?: StringFilter<"Activity"> | string
     status?: StringFilter<"Activity"> | string
+    priority?: StringFilter<"Activity"> | string
     dueDate?: DateTimeFilter<"Activity"> | Date | string
     startDate?: DateTimeNullableFilter<"Activity"> | Date | string | null
     startTime?: StringNullableFilter<"Activity"> | string | null
@@ -69048,6 +69083,7 @@ export namespace Prisma {
     title: string
     description: string
     status?: string
+    priority?: string
     dueDate: Date | string
     startDate?: Date | string | null
     startTime?: string | null
@@ -69067,6 +69103,7 @@ export namespace Prisma {
     description: string
     assignedTo: string
     status?: string
+    priority?: string
     dueDate: Date | string
     startDate?: Date | string | null
     startTime?: string | null
@@ -69167,6 +69204,7 @@ export namespace Prisma {
     title?: StringFieldUpdateOperationsInput | string
     description?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
     dueDate?: DateTimeFieldUpdateOperationsInput | Date | string
     startDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     startTime?: NullableStringFieldUpdateOperationsInput | string | null
@@ -69186,6 +69224,7 @@ export namespace Prisma {
     description?: StringFieldUpdateOperationsInput | string
     assignedTo?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
     dueDate?: DateTimeFieldUpdateOperationsInput | Date | string
     startDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     startTime?: NullableStringFieldUpdateOperationsInput | string | null
@@ -69268,6 +69307,7 @@ export namespace Prisma {
     title: string
     description: string
     status?: string
+    priority?: string
     dueDate: Date | string
     startDate?: Date | string | null
     startTime?: string | null
@@ -69287,6 +69327,7 @@ export namespace Prisma {
     description: string
     assignedTo: string
     status?: string
+    priority?: string
     dueDate: Date | string
     startDate?: Date | string | null
     startTime?: string | null
@@ -69391,6 +69432,7 @@ export namespace Prisma {
     title?: StringFieldUpdateOperationsInput | string
     description?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
     dueDate?: DateTimeFieldUpdateOperationsInput | Date | string
     startDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     startTime?: NullableStringFieldUpdateOperationsInput | string | null
@@ -69410,6 +69452,7 @@ export namespace Prisma {
     description?: StringFieldUpdateOperationsInput | string
     assignedTo?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
     dueDate?: DateTimeFieldUpdateOperationsInput | Date | string
     startDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     startTime?: NullableStringFieldUpdateOperationsInput | string | null
@@ -69470,6 +69513,7 @@ export namespace Prisma {
     title: string
     description: string
     status?: string
+    priority?: string
     dueDate: Date | string
     startDate?: Date | string | null
     startTime?: string | null
@@ -69489,6 +69533,7 @@ export namespace Prisma {
     description: string
     assignedTo: string
     status?: string
+    priority?: string
     dueDate: Date | string
     startDate?: Date | string | null
     startTime?: string | null
@@ -69571,6 +69616,7 @@ export namespace Prisma {
     title?: StringFieldUpdateOperationsInput | string
     description?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
     dueDate?: DateTimeFieldUpdateOperationsInput | Date | string
     startDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     startTime?: NullableStringFieldUpdateOperationsInput | string | null
@@ -69590,6 +69636,7 @@ export namespace Prisma {
     description?: StringFieldUpdateOperationsInput | string
     assignedTo?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
     dueDate?: DateTimeFieldUpdateOperationsInput | Date | string
     startDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     startTime?: NullableStringFieldUpdateOperationsInput | string | null
@@ -70044,6 +70091,7 @@ export namespace Prisma {
     title: string
     description: string
     status?: string
+    priority?: string
     dueDate: Date | string
     startDate?: Date | string | null
     startTime?: string | null
@@ -70426,6 +70474,7 @@ export namespace Prisma {
     title?: StringFieldUpdateOperationsInput | string
     description?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
     dueDate?: DateTimeFieldUpdateOperationsInput | Date | string
     startDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     startTime?: NullableStringFieldUpdateOperationsInput | string | null
@@ -70444,6 +70493,7 @@ export namespace Prisma {
     title?: StringFieldUpdateOperationsInput | string
     description?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
     dueDate?: DateTimeFieldUpdateOperationsInput | Date | string
     startDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     startTime?: NullableStringFieldUpdateOperationsInput | string | null
@@ -70462,6 +70512,7 @@ export namespace Prisma {
     title?: StringFieldUpdateOperationsInput | string
     description?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
     dueDate?: DateTimeFieldUpdateOperationsInput | Date | string
     startDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     startTime?: NullableStringFieldUpdateOperationsInput | string | null

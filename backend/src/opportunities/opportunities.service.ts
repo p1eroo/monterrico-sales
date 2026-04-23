@@ -18,6 +18,7 @@ import { OPPORTUNITY_FIELD_LABELS } from '../audit-detail/audit-field-labels';
 import type { CrmDataScope } from '../auth/crm-data-scope.service';
 import { mergeCompanyScope } from '../common/crm-data-scope-where.util';
 import { NotificationsService } from '../notifications/notifications.service';
+import { parseDateOnlyToUtcNoon } from '../common/parse-date-input.util';
 
 /** Estados de pipeline derivados de la etapa (no se usa `suspendida`). */
 type PipelineOpportunityStatus = 'abierta' | 'ganada' | 'perdida';
@@ -38,6 +39,9 @@ const opportunitySelectListSlim = {
   contacts: {
     take: 1,
     select: { contact: { select: { id: true, urlSlug: true, name: true } } },
+  },
+  companies: {
+    select: { company: { select: { id: true, name: true } } },
   },
   user: { select: { id: true, name: true } },
 } as const;
@@ -101,6 +105,29 @@ export class OpportunitiesService {
     const u = await this.prisma.user.findUnique({ where: { id } });
     if (!u) {
       throw new BadRequestException('El usuario asignado no existe');
+    }
+  }
+
+  /** Misma empresa: no dos oportunidades con el mismo título (sin distinguir mayúsculas). */
+  private async assertNoDuplicateTitleForCompany(
+    companyId: string,
+    title: string,
+    excludeOpportunityId?: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<void> {
+    const db = tx ?? this.prisma;
+    const dup = await db.opportunity.findFirst({
+      where: {
+        ...(excludeOpportunityId ? { id: { not: excludeOpportunityId } } : {}),
+        title: { equals: title, mode: 'insensitive' },
+        companies: { some: { companyId } },
+      },
+      select: { id: true },
+    });
+    if (dup) {
+      throw new BadRequestException(
+        'Ya existe una oportunidad con este nombre vinculada a la empresa. Elige otro nombre o abre la oportunidad existente.',
+      );
     }
   }
 
@@ -233,7 +260,7 @@ export class OpportunitiesService {
     const status = this.statusFromEtapa(etapa);
     const expectedCloseDate =
       dto.expectedCloseDate?.trim() != null && dto.expectedCloseDate.trim() !== ''
-        ? new Date(dto.expectedCloseDate.trim())
+        ? parseDateOnlyToUtcNoon(dto.expectedCloseDate.trim())
         : null;
     if (expectedCloseDate && Number.isNaN(expectedCloseDate.getTime())) {
       throw new BadRequestException('Fecha de cierre inválida');
@@ -249,42 +276,82 @@ export class OpportunitiesService {
         },
       });
       if (existing) {
+        /**
+         * Si ya existe una oportunidad para la misma pareja contacto+empresa (import u otro flujo),
+         * el POST del wizard debe fusionar título, slug, monto, etapa, fecha, etc., no devolverla sin tocar.
+         */
+        await this.assertNoDuplicateTitleForCompany(
+          companyId,
+          title,
+          existing.id,
+        );
+        const urlSlug = await this.allocateOpportunityUrlSlug(title, existing.id);
+        await this.prisma.opportunity.update({
+          where: { id: existing.id },
+          data: {
+            title,
+            urlSlug,
+            amount: dto.amount,
+            probability,
+            etapa,
+            status,
+            priority,
+            expectedCloseDate,
+            assignedTo,
+          },
+        });
+        await this.entitySync.propagateFromOpportunityAllCompanies(existing.id);
         return this.findOne(existing.id, scope);
       }
     }
 
-    const created = await this.prisma.$transaction(async (tx) => {
-      const urlSlug = await this.allocateOpportunityUrlSlugTx(tx, title);
-      const opp = await tx.opportunity.create({
-        data: {
-          urlSlug,
-          title,
-          amount: dto.amount,
-          probability,
-          etapa,
-          status,
-          priority,
-          expectedCloseDate,
-          assignedTo,
-        },
-      });
-
-      if (contactId) {
-        await tx.contactOpportunity.create({
-          data: { contactId, opportunityId: opp.id },
+    const created = await this.prisma.$transaction(
+      async (tx) => {
+        if (companyId) {
+          await this.assertNoDuplicateTitleForCompany(
+            companyId,
+            title,
+            undefined,
+            tx,
+          );
+        }
+        const urlSlug = await this.allocateOpportunityUrlSlugTx(tx, title);
+        const opp = await tx.opportunity.create({
+          data: {
+            urlSlug,
+            title,
+            amount: dto.amount,
+            probability,
+            etapa,
+            status,
+            priority,
+            expectedCloseDate,
+            assignedTo,
+          },
         });
-      }
-      if (companyId) {
-        await tx.companyOpportunity.create({
-          data: { companyId, opportunityId: opp.id },
-        });
-      }
 
-      return tx.opportunity.findUniqueOrThrow({
-        where: { id: opp.id },
-        include: opportunityIncludeDetail,
-      });
-    });
+        if (contactId) {
+          await tx.contactOpportunity.create({
+            data: { contactId, opportunityId: opp.id },
+          });
+        }
+        if (companyId) {
+          await tx.companyOpportunity.create({
+            data: { companyId, opportunityId: opp.id },
+          });
+        }
+
+        return tx.opportunity.findUniqueOrThrow({
+          where: { id: opp.id },
+          include: opportunityIncludeDetail,
+        });
+      },
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        maxWait: 5000,
+        timeout: 15000,
+      },
+    );
 
     await this.entitySync.propagateFromOpportunityAllCompanies(created.id);
 
@@ -431,6 +498,13 @@ export class OpportunitiesService {
       if (!title) {
         throw new BadRequestException('El título no puede estar vacío');
       }
+      const companyLinks = await this.prisma.companyOpportunity.findMany({
+        where: { opportunityId: id },
+        select: { companyId: true },
+      });
+      for (const { companyId } of companyLinks) {
+        await this.assertNoDuplicateTitleForCompany(companyId, title, id);
+      }
       data.title = title;
       data.urlSlug = await this.allocateOpportunityUrlSlug(title, id);
     }
@@ -465,7 +539,7 @@ export class OpportunitiesService {
       ) {
         data.expectedCloseDate = null;
       } else if (typeof dto.expectedCloseDate === 'string') {
-        const d = new Date(dto.expectedCloseDate.trim());
+        const d = parseDateOnlyToUtcNoon(dto.expectedCloseDate.trim());
         if (Number.isNaN(d.getTime())) {
           throw new BadRequestException('Fecha de cierre inválida');
         }

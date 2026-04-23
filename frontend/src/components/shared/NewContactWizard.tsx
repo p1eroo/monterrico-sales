@@ -60,7 +60,8 @@ export interface NewContactData {
   email: string;
   source: ContactSource;
   assignedTo: string;
-  estimatedValue: number;
+  /** @deprecated El monto es solo de empresa/oportunidad; el asistente envía 0. */
+  estimatedValue?: number;
   clienteRecuperado?: 'si' | 'no';
   departamento?: string;
   provincia?: string;
@@ -80,6 +81,8 @@ interface NewContactWizardProps {
   description?: string;
   submitLabel?: string;
   defaultValues?: Partial<NewContactData>;
+  /** Si es true, la empresa queda fijada (p. ej. alta desde ficha de empresa); no se crea ni se busca otra. */
+  lockCompanySelection?: boolean;
 }
 
 const WIZARD_STEPS = [
@@ -96,6 +99,7 @@ export function NewContactWizard({
   description = 'Registra un nuevo prospecto en el sistema.',
   submitLabel = 'Crear Contacto',
   defaultValues,
+  lockCompanySelection = false,
 }: NewContactWizardProps) {
   const defaultValuesRef = useRef(defaultValues);
   defaultValuesRef.current = defaultValues;
@@ -119,7 +123,6 @@ export function NewContactWizard({
   const [email, setEmail] = useState(defaultValues?.email ?? '');
   const [source, setSource] = useState<ContactSource>(defaultValues?.source ?? 'base');
   const [assignedTo, setAssignedTo] = useState(defaultValues?.assignedTo ?? '');
-  const [estimatedValue, setEstimatedValue] = useState(defaultValues?.estimatedValue ?? 0);
   const [clienteRecuperado, setClienteRecuperado] = useState<'si' | 'no'>(defaultValues?.clienteRecuperado ?? 'no');
   const [departamento, setDepartamento] = useState(defaultValues?.departamento ?? '');
   const [provincia, setProvincia] = useState(defaultValues?.provincia ?? '');
@@ -173,7 +176,6 @@ export function NewContactWizard({
     setEmail(d?.email ?? '');
     setSource(d?.source ?? 'base');
     setAssignedTo(d?.assignedTo ?? '');
-    setEstimatedValue(d?.estimatedValue ?? 0);
     setClienteRecuperado(d?.clienteRecuperado ?? 'no');
     setDepartamento(d?.departamento ?? '');
     setProvincia(d?.provincia ?? '');
@@ -206,7 +208,7 @@ export function NewContactWizard({
       origenLead: source,
       propietario: assignedTo,
       etapa: etapaCiclo,
-      facturacion: estimatedValue ? String(estimatedValue) : '',
+      facturacion: '',
       nombreNegocio: q,
       telefono: phone,
       correo: email,
@@ -283,7 +285,7 @@ export function NewContactWizard({
   }
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || lockCompanySelection) return;
     let cancelled = false;
     setCompaniesLoading(true);
     companyListAll()
@@ -302,7 +304,7 @@ export function NewContactWizard({
     return () => {
       cancelled = true;
     };
-  }, [open]);
+  }, [open, lockCompanySelection]);
 
   const companyLinkItems = useMemo((): LinkExistingItem[] => {
     return apiCompanies.map((c) => {
@@ -352,10 +354,6 @@ export function NewContactWizard({
       toast.error('El correo es obligatorio');
       return;
     }
-    if (estimatedValue <= 0) {
-      toast.error('El valor estimado debe ser mayor que 0');
-      return;
-    }
     onSubmit({
       name: name.trim(),
       cargo: cargo.trim() || undefined,
@@ -368,7 +366,7 @@ export function NewContactWizard({
       email: email.trim(),
       source,
       assignedTo,
-      estimatedValue,
+      estimatedValue: 0,
       clienteRecuperado,
       departamento: departamento.trim() || undefined,
       provincia: provincia.trim() || undefined,
@@ -466,77 +464,91 @@ export function NewContactWizard({
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label>Empresa *</Label>
-                {pendingNewCompany && (
-                  <p className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
-                    <strong>Empresa pendiente:</strong> se registrará al pulsar «{submitLabel}».
-                    {pendingNewCompany.nombreNegocio.trim()
-                      ? ' También se creará la oportunidad indicada en el asistente de empresa.'
-                      : ''}
-                  </p>
-                )}
-                <Popover
-                  open={companyOpen}
-                  onOpenChange={(o) => {
-                    setCompanyOpen(o);
-                    if (o) {
-                      setCompanySearch(company);
-                    } else {
-                      setCompanySearch('');
-                    }
-                  }}
-                >
-                  <PopoverTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={companyOpen}
-                      className="h-10 w-full justify-between font-normal"
-                    >
-                      <span className={cn('flex min-w-0 items-center gap-2 truncate', !company && 'text-muted-foreground')}>
-                        {companyId ? (
-                          <Building2 className="size-4 shrink-0 text-muted-foreground" />
-                        ) : null}
-                        <span className="truncate">{company || 'Crear o vincular empresa…'}</span>
-                      </span>
-                      <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent
-                    className="w-[min(100vw-2rem,max(var(--radix-popover-trigger-width),22rem))] max-w-xl p-0"
-                    align="start"
-                  >
-                    <div className="grid grid-cols-2 gap-2 p-2">
-                      <button
-                        type="button"
-                        className={cn(
-                          'flex min-h-[72px] min-w-0 flex-col items-center justify-center gap-2 rounded-lg border border-border/80 bg-card px-2 py-3 text-center transition-colors',
-                          'hover:border-[#13944C]/50 hover:bg-[#13944C]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#13944C]/30',
-                        )}
-                        onClick={() => openCompanyWizardForCreate()}
-                      >
-                        <Plus className="size-6 shrink-0 text-[#13944C]" />
-                        <span className="text-sm font-semibold leading-tight">Crear empresa</span>
-                      </button>
-                      <button
-                        type="button"
-                        className={cn(
-                          'flex min-h-[72px] min-w-0 flex-col items-center justify-center gap-2 rounded-lg border border-border/80 bg-card px-2 py-3 text-center transition-colors',
-                          'hover:border-muted-foreground/40 hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                        )}
-                        onClick={() => {
-                          setCompanyOpen(false);
-                          setLinkCompanySearch(company.trim());
-                          setLinkCompanySelectedIds(companyId ? [companyId] : []);
-                          setLinkExistingCompanyOpen(true);
-                        }}
-                      >
-                        <Building2 className="size-6 shrink-0 text-muted-foreground" />
-                        <span className="text-sm font-semibold leading-tight">Empresa existente</span>
-                      </button>
+                {lockCompanySelection ? (
+                  <div className="space-y-2">
+                    <div className="flex min-h-10 w-full items-center gap-2 rounded-md border border-input bg-muted/40 px-3 py-2 text-sm">
+                      <Building2 className="size-4 shrink-0 text-muted-foreground" />
+                      <span className="min-w-0 truncate font-medium">{company || '—'}</span>
                     </div>
-                  </PopoverContent>
-                </Popover>
+                    <p className="text-xs text-muted-foreground">
+                      Este contacto se vinculará automáticamente a esta empresa.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    {pendingNewCompany && (
+                      <p className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
+                        <strong>Empresa pendiente:</strong> se registrará al pulsar «{submitLabel}».
+                        {pendingNewCompany.nombreNegocio.trim()
+                          ? ' También se creará la oportunidad indicada en el asistente de empresa.'
+                          : ''}
+                      </p>
+                    )}
+                    <Popover
+                      open={companyOpen}
+                      onOpenChange={(o) => {
+                        setCompanyOpen(o);
+                        if (o) {
+                          setCompanySearch(company);
+                        } else {
+                          setCompanySearch('');
+                        }
+                      }}
+                    >
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={companyOpen}
+                          className="h-10 w-full justify-between font-normal"
+                        >
+                          <span className={cn('flex min-w-0 items-center gap-2 truncate', !company && 'text-muted-foreground')}>
+                            {companyId ? (
+                              <Building2 className="size-4 shrink-0 text-muted-foreground" />
+                            ) : null}
+                            <span className="truncate">{company || 'Crear o vincular empresa…'}</span>
+                          </span>
+                          <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        className="w-[min(100vw-2rem,max(var(--radix-popover-trigger-width),22rem))] max-w-xl p-0"
+                        align="start"
+                      >
+                        <div className="grid grid-cols-2 gap-2 p-2">
+                          <button
+                            type="button"
+                            className={cn(
+                              'flex min-h-[72px] min-w-0 flex-col items-center justify-center gap-2 rounded-lg border border-border/80 bg-card px-2 py-3 text-center transition-colors',
+                              'hover:border-[#13944C]/50 hover:bg-[#13944C]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#13944C]/30',
+                            )}
+                            onClick={() => openCompanyWizardForCreate()}
+                          >
+                            <Plus className="size-6 shrink-0 text-[#13944C]" />
+                            <span className="text-sm font-semibold leading-tight">Crear empresa</span>
+                          </button>
+                          <button
+                            type="button"
+                            className={cn(
+                              'flex min-h-[72px] min-w-0 flex-col items-center justify-center gap-2 rounded-lg border border-border/80 bg-card px-2 py-3 text-center transition-colors',
+                              'hover:border-muted-foreground/40 hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                            )}
+                            onClick={() => {
+                              setCompanyOpen(false);
+                              setLinkCompanySearch(company.trim());
+                              setLinkCompanySelectedIds(companyId ? [companyId] : []);
+                              setLinkExistingCompanyOpen(true);
+                            }}
+                          >
+                            <Building2 className="size-6 shrink-0 text-muted-foreground" />
+                            <span className="text-sm font-semibold leading-tight">Empresa existente</span>
+                          </button>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Etapa</Label>
@@ -583,10 +595,6 @@ export function NewContactWizard({
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Valor estimado (S/)</Label>
-                <Input type="number" value={estimatedValue} onChange={(e) => setEstimatedValue(Number(e.target.value))} placeholder="0" />
               </div>
               <div className="space-y-2">
                 <Label>Cliente Recuperado</Label>

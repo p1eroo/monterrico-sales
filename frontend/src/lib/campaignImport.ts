@@ -114,7 +114,7 @@ function rowToRecipient(
   };
 }
 
-/** CSV con cabecera: nombre|name, email|correo, opcional empresa|company, etapa, teléfono */
+/** Texto CSV (p. ej. export interno) con cabecera: nombre|name, email|correo, opcional empresa|company, etapa, teléfono */
 export function parseCampaignRecipientsFromCsv(text: string): CampaignImportParseResult {
   const raw = text.replace(/^\uFEFF/, '');
   const lines = raw.split(/\r?\n/).filter((l) => l.trim().length > 0);

@@ -16,7 +16,8 @@ interface ContactHeaderProps {
   stageStyle?: CSSProperties;
   currentEtapaSlug: string;
   onEtapaChange?: (slug: string) => void;
-  estimatedValueLabel: string;
+  /** Monto del contacto (omitir para no mostrar). */
+  estimatedValueLabel?: string;
   quickActions?: React.ReactNode;
   onEdit: () => void;
   onOpenWhatsapp: () => void;

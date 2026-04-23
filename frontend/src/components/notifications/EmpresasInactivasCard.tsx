@@ -1,17 +1,18 @@
 import { Building2, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-interface EmpresasInactivasCardProps {
+interface EmpresasSinCambioEtapaCardProps {
   count: number;
   onClick: () => void;
   variant?: 'compact' | 'full';
 }
 
+/** Tarjeta de resumen: empresas en etapas tempranas sin movimiento de etapa (≥11 semanas). */
 export function EmpresasInactivasCard({
   count,
   onClick,
   variant = 'full',
-}: EmpresasInactivasCardProps) {
+}: EmpresasSinCambioEtapaCardProps) {
   return (
     <button
       type="button"
@@ -36,14 +37,14 @@ export function EmpresasInactivasCard({
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold leading-tight text-foreground">
-          Empresas inactivas
+          Empresas sin cambio de etapa
         </p>
         <p className="mt-0.5 text-xs leading-snug text-muted-foreground dark:text-amber-100/80">
           {count === 0
-            ? 'No hay empresas inactivas'
+            ? 'Ninguna empresa lleva 11+ semanas sin mover etapa (0 %, 10 %, 30 %)'
             : count === 1
-              ? 'Tienes 1 empresa inactiva'
-              : `Hoy tienes ${count} empresas inactivas`}
+              ? '1 empresa lleva 11+ semanas sin cambio de etapa en esas etapas'
+              : `${count} empresas llevan 11+ semanas sin cambio de etapa (0 %, 10 %, 30 %)`}
         </p>
       </div>
       {variant === 'full' && (

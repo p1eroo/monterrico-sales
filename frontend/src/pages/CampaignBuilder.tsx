@@ -74,10 +74,8 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import {
-  parseCampaignRecipientsFromCsv,
-  parseCampaignRecipientsFromXlsx,
-} from '@/lib/campaignImport';
+import { parseCampaignRecipientsFromXlsx } from '@/lib/campaignImport';
+import { IMPORT_SPREADSHEET_ACCEPT } from '@/lib/importSpreadsheet';
 import {
   plainTextToHtmlForEmail,
   htmlToPlainText,
@@ -375,14 +373,11 @@ export default function CampaignBuilderPage() {
       const lower = file.name.toLowerCase();
       try {
         let result;
-        if (lower.endsWith('.csv')) {
-          const text = await file.text();
-          result = parseCampaignRecipientsFromCsv(text);
-        } else if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) {
+        if (lower.endsWith('.xlsx')) {
           const buf = await file.arrayBuffer();
           result = parseCampaignRecipientsFromXlsx(buf);
         } else {
-          toast.error('Usa un archivo CSV o Excel (.xlsx / .xls).');
+          toast.error('Usa un archivo Excel (.xlsx).');
           return;
         }
         if (result.errors.length > 0) {
@@ -703,7 +698,7 @@ export default function CampaignBuilderPage() {
                           <input
                             ref={audienceFileInputRef}
                             type="file"
-                            accept=".csv,.xlsx,.xls,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                            accept={IMPORT_SPREADSHEET_ACCEPT}
                             className="sr-only"
                             onChange={handleAudienceFileChange}
                           />
@@ -715,7 +710,7 @@ export default function CampaignBuilderPage() {
                             onClick={() => audienceFileInputRef.current?.click()}
                           >
                             <FileSpreadsheet className="size-4" />
-                            XLSX/CSV
+                            Excel (.xlsx)
                           </Button>
                         </>
                       )}

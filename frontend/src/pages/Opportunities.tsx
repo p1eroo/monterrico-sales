@@ -272,7 +272,10 @@ export default function OpportunitiesPage() {
       : 0;
     const wonThisMonth = allOpportunities.filter((o) => {
       const now = new Date();
-      const closeDate = new Date(o.expectedCloseDate);
+      const closeRaw = (o.expectedCloseDate ?? '').trim();
+      const closeDate = /^\d{4}-\d{2}-\d{2}$/.test(closeRaw)
+        ? new Date(`${closeRaw}T00:00:00`)
+        : new Date(o.expectedCloseDate);
       return o.status === 'ganada' &&
         closeDate.getMonth() === now.getMonth() &&
         closeDate.getFullYear() === now.getFullYear();

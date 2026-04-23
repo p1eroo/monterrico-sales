@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { getImportJob, type ImportJob } from '@/lib/importExportApi';
+import { createMockImportJob, type MockImportScenario } from '@/lib/importJobMocks';
 
 type ImportEntity = ImportJob['entity'];
 
@@ -10,6 +11,8 @@ type ImportJobsState = {
   upsertJob: (job: ImportJob) => void;
   dismissJob: (jobId: string) => void;
   pollActiveJobs: () => Promise<void>;
+  /** Solo para desarrollo / diseño: añade un job ficticio al panel de importaciones. */
+  pushMockImportJob: (scenario: MockImportScenario) => void;
 };
 
 function sortJobs(items: ImportJob[]) {
@@ -56,7 +59,9 @@ export const useImportJobsStore = create<ImportJobsState>((set, get) => ({
     })),
   pollActiveJobs: async () => {
     const activeJobs = get().jobs.filter(
-      (job) => job.status === 'queued' || job.status === 'running',
+      (job) =>
+        (job.status === 'queued' || job.status === 'running') &&
+        !job.id.startsWith('mock-import-'),
     );
     if (activeJobs.length === 0) return;
 
@@ -70,5 +75,9 @@ export const useImportJobsStore = create<ImportJobsState>((set, get) => ({
         }
       }),
     );
+  },
+
+  pushMockImportJob: (scenario) => {
+    get().enqueueJob(createMockImportJob(scenario));
   },
 }));

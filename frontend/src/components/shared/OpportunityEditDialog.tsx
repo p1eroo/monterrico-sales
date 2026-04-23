@@ -46,7 +46,11 @@ export function OpportunityEditDialog({
     if (!opportunity || !open) return;
     setTitle(opportunity.title);
     setAmount(opportunity.amount);
-    setExpectedCloseDate(opportunity.expectedCloseDate);
+    setExpectedCloseDate(
+      opportunity.expectedCloseDate
+        ? opportunity.expectedCloseDate.slice(0, 10)
+        : '',
+    );
     setStatus(opportunity.status);
   }, [opportunity, open]);
 

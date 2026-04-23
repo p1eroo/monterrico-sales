@@ -50,6 +50,7 @@ export type ApiOpportunityListRow = {
   updatedAt: string;
   user?: { id: string; name: string } | null;
   contacts?: { contact: { id: string; name: string } }[];
+  companies?: { company: { id: string; name: string } }[];
 };
 
 export type ApiOpportunityDetail = ApiOpportunityListRow & {
@@ -86,6 +87,11 @@ export function mapApiOpportunityToOpportunity(
   row: ApiOpportunityListRow | ApiOpportunityDetail,
 ): Opportunity {
   const first = row.contacts?.[0]?.contact;
+  const companyRows = row.companies ?? [];
+  const firstCompany = companyRows[0]?.company;
+  const linkedCompanyIds = companyRows
+    .map((c) => c.company?.id)
+    .filter((id): id is string => !!id);
   const close = row.expectedCloseDate
     ? row.expectedCloseDate.slice(0, 10)
     : '';
@@ -97,6 +103,9 @@ export function mapApiOpportunityToOpportunity(
     title: row.title,
     contactId: first?.id,
     contactName: first?.name,
+    clientId: firstCompany?.id,
+    clientName: firstCompany?.name,
+    linkedCompanyIds: linkedCompanyIds.length ? linkedCompanyIds : undefined,
     amount: row.amount,
     probability: row.probability,
     etapa: parseEtapa(row.etapa),

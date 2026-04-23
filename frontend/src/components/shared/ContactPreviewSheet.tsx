@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import {
   Building2,
   CalendarDays,
-  DollarSign,
   Funnel,
   Globe,
   Loader2,
@@ -154,7 +153,6 @@ export function ContactPreviewSheet({
           <PreviewRow icon={Mail} label="Correo" value={contact.correo} />
           <PreviewRow icon={Globe} label="Fuente" value={contactSourceLabels[contact.fuente] ?? contact.fuente} />
           <PreviewRow icon={User} label="Asesor" value={contact.assignedToName ?? 'Sin asignar'} />
-          <PreviewRow icon={DollarSign} label="Valor estimado" value={formatCurrency(contact.estimatedValue)} />
           <PreviewRow icon={UserCheck} label="Cliente recuperado" value={cliRec} />
 
           {(contact.departamento || contact.direccion) && (

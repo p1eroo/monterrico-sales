@@ -23,8 +23,6 @@ import { getPrimaryCompany } from '@/lib/utils';
 
 import { EmptyState } from '@/components/shared/EmptyState';
 import { LinkExistingDialog, type LinkExistingItem } from '@/components/shared/LinkExistingDialog';
-import { NewContactWizard } from '@/components/shared/NewContactWizard';
-import type { NewContactData } from '@/components/shared/NewContactWizard';
 import { QuickActionsWithDialogs, type QuickActivityDraft } from '@/components/shared/QuickActionsWithDialogs';
 import { TimelinePanel } from '@/components/shared/TimelinePanel';
 import { EntityInfoCard } from '@/components/shared/EntityInfoCard';
@@ -33,7 +31,6 @@ import { DetailLayout } from '@/components/shared/DetailLayout';
 import { EntityDetailPageSkeleton } from '@/components/shared/EntityDetailPageSkeleton';
 import { LinkedOpportunitiesCard } from '@/components/shared/LinkedOpportunitiesCard';
 import { LinkedCompaniesCard } from '@/components/shared/LinkedCompaniesCard';
-import { LinkedContactsCard } from '@/components/shared/LinkedContactsCard';
 import {
   NewCompanyWizard,
   type NewCompanyData,
@@ -62,11 +59,8 @@ import {
   type ApiContactDetail,
   type ApiContactListRow,
   contactAddCompany,
-  contactAddLinkedContact,
   contactRemoveCompany,
-  contactRemoveLinkedContact,
   isLikelyContactCuid,
-  linkedContactsFromApiDetail,
   mapApiContactDetailToContact,
   mapApiContactRowToContact,
   opportunitiesFromApiContactDetail,
@@ -84,20 +78,15 @@ import { useCrmConfigStore, getStageLabelFromCatalog } from '@/store/crmConfigSt
 
 const TIMELINE_PAGE_SIZE = 6;
 
-function ContactoSidebar({ contact, contactOpportunities, linkedContacts, onOpenConvertDialog, onAddExistingOpportunity, onRemoveOpportunity, onAddCompany, onAddExistingCompany, onRemoveCompany, onNewContact, onAddLinkContact, onRemoveContact }: {
+function ContactoSidebar({ contact, contactOpportunities, onOpenConvertDialog, onAddExistingOpportunity, onRemoveOpportunity, onAddCompany, onAddExistingCompany, onRemoveCompany }: {
   contact: Contact;
   contactOpportunities: import('@/types').Opportunity[];
-  /** Contactos vinculados (API o resueltos desde linkedContactIds en modo mock). */
-  linkedContacts: Contact[];
   onOpenConvertDialog: () => void;
   onAddExistingOpportunity: () => void;
   onRemoveOpportunity?: (opp: import('@/types').Opportunity) => void;
   onAddCompany: () => void;
   onAddExistingCompany: () => void;
   onRemoveCompany?: (company: import('@/types').LinkedCompany) => void;
-  onNewContact: () => void;
-  onAddLinkContact: () => void;
-  onRemoveContact?: (c: import('@/components/shared/LinkedContactsCard').LinkedContact) => void;
 }) {
   return (
     <>
@@ -140,13 +129,6 @@ function ContactoSidebar({ contact, contactOpportunities, linkedContacts, onOpen
         onRemove={onRemoveCompany}
         etapa={contact.etapa}
       />
-
-      <LinkedContactsCard
-        contacts={linkedContacts}
-        onCreate={onNewContact}
-        onAddExisting={onAddLinkContact}
-        onRemove={onRemoveContact}
-      />
     </>
   );
 }
@@ -156,7 +138,7 @@ export default function ContactoDetailPage() {
   const navigate = useNavigate();
   const routeId = id ? decodeURIComponent(id) : '';
   const fromApi = isEntityDetailApiParam(routeId);
-  const { contacts, opportunities, getOpportunitiesByContactId, addOpportunity, updateOpportunity, updateContact, addContact } = useCRMStore();
+  const { contacts, opportunities, getOpportunitiesByContactId, addOpportunity, updateOpportunity, updateContact } = useCRMStore();
   const { users, activeAdvisors } = useUsers();
   const crmBundle = useCrmConfigStore((s) => s.bundle);
   const { activities: activitiesFromStore, createActivity } = useActivities();
@@ -277,16 +259,6 @@ export default function ContactoDetailPage() {
     return routeId ? getOpportunitiesByContactId(routeId) : [];
   }, [fromApi, apiRecord, routeId, getOpportunitiesByContactId]);
 
-  const linkedContactsForSidebar = useMemo(() => {
-    if (fromApi && apiRecord) {
-      return linkedContactsFromApiDetail(apiRecord);
-    }
-    if (!contact) return [];
-    return (contact.linkedContactIds ?? [])
-      .map((cid) => contacts.find((l) => l.id === cid))
-      .filter((l): l is Contact => !!l);
-  }, [fromApi, apiRecord, contact, contacts]);
-
   const defaultContactIdForNewOpp = useMemo(
     () => contact?.id ?? '',
     [contact?.id],
@@ -305,16 +277,12 @@ export default function ContactoDetailPage() {
   const [whatsappDrawerOpen, setWhatsappDrawerOpen] = useState(false);
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
   const [addCompanyOpen, setAddCompanyOpen] = useState(false);
-  const [addLinkContactOpen, setAddLinkContactOpen] = useState(false);
-  const [linkContactIds, setLinkContactIds] = useState<string[]>([]);
-  const [linkContactSearch, setLinkContactSearch] = useState('');
   const [addExistingOpportunityOpen, setAddExistingOpportunityOpen] = useState(false);
   const [linkOpportunityIds, setLinkOpportunityIds] = useState<string[]>([]);
   const [linkOpportunitySearch, setLinkOpportunitySearch] = useState('');
   const [addExistingCompanyOpen, setAddExistingCompanyOpen] = useState(false);
   const [linkCompanyNames, setLinkCompanyNames] = useState<string[]>([]);
   const [linkCompanySearch, setLinkCompanySearch] = useState('');
-  const [newContactOpen, setNewContactOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [noteText, setNoteText] = useState('');
 
@@ -540,7 +508,6 @@ export default function ContactoDetailPage() {
           telefono: payload.telefono,
           correo: payload.correo,
           fuente: payload.fuente,
-          estimatedValue: payload.estimatedValue,
         };
         if (payload.assignedTo !== undefined && canEditAssignee) {
           if (!isLikelyContactCuid(payload.assignedTo)) {
@@ -567,7 +534,6 @@ export default function ContactoDetailPage() {
       telefono: payload.telefono,
       correo: payload.correo,
       fuente: payload.fuente,
-      estimatedValue: payload.estimatedValue,
     };
     if (payload.assignedTo !== undefined && canEditAssignee) {
       const user = users.find((u) => u.id === payload.assignedTo);
@@ -689,7 +655,7 @@ export default function ContactoDetailPage() {
             facturacionEstimada: (() => {
               const f = Number(data.facturacion);
               if (Number.isFinite(f) && f > 0) return f;
-              return Math.max(contact.estimatedValue, 1);
+              return 1;
             })(),
             fuente: data.origenLead || contact.fuente,
             etapa: data.etapa || contact.etapa,
@@ -702,7 +668,9 @@ export default function ContactoDetailPage() {
         setAddCompanyOpen(false);
         toast.success('Empresa creada y vinculada correctamente');
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'No se pudo crear la empresa');
+        const msg = e instanceof Error ? e.message : 'No se pudo crear la empresa';
+        toast.error(msg);
+        throw e instanceof Error ? e : new Error(msg);
       }
       return;
     }
@@ -717,36 +685,6 @@ export default function ContactoDetailPage() {
     }];
     updateContact(contact.id, { companies });
     toast.success('Empresa agregada');
-  }
-
-  async function handleLinkContacts() {
-    if (linkContactIds.length === 0 || !contact) return;
-    if (fromApi && routeId) {
-      try {
-        for (const linkedId of linkContactIds) {
-          if (linkedId !== routeId) {
-            await contactAddLinkedContact(routeId, linkedId);
-          }
-        }
-        const updated = await api<ApiContactDetail>(`/contacts/${routeId}`);
-        setApiRecord(updated);
-        toast.success(linkContactIds.length === 1 ? 'Contacto vinculado' : `${linkContactIds.length} contactos vinculados`);
-        setLinkContactIds([]);
-        setLinkContactSearch('');
-        setAddLinkContactOpen(false);
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'No se pudo vincular');
-      }
-      return;
-    }
-    const ids = contact.linkedContactIds ?? [];
-    const toAdd = linkContactIds.filter((id) => id !== contact.id && !ids.includes(id));
-    if (toAdd.length === 0) return;
-    updateContact(contact.id, { linkedContactIds: [...ids, ...toAdd] });
-    toast.success(toAdd.length === 1 ? 'Contacto vinculado' : `${toAdd.length} contactos vinculados`);
-    setLinkContactIds([]);
-    setLinkContactSearch('');
-    setAddLinkContactOpen(false);
   }
 
   function handleLinkOpportunities() {
@@ -829,130 +767,6 @@ export default function ContactoDetailPage() {
     setAddExistingCompanyOpen(false);
   }
 
-  async function handleCreateNewContact(data: NewContactData) {
-    if (!contact) return;
-    if (fromApi && routeId) {
-      try {
-        const w = data.newCompanyWizardData;
-        const today = new Date().toISOString().slice(0, 10);
-        const baseBody: Record<string, unknown> = {
-          name: data.name.trim(),
-          telefono: data.phone?.trim() || contact.telefono,
-          correo: data.email?.trim() || contact.correo,
-          fuente: data.source,
-          cargo: data.cargo?.trim() || undefined,
-          etapa: data.etapaCiclo,
-          assignedTo: data.assignedTo?.trim() || undefined,
-          estimatedValue: data.estimatedValue ?? 0,
-          docType: data.docType || undefined,
-          docNumber: data.docNumber?.trim() || undefined,
-          departamento: data.departamento?.trim() || undefined,
-          provincia: data.provincia?.trim() || undefined,
-          distrito: data.distrito?.trim() || undefined,
-          direccion: data.direccion?.trim() || undefined,
-          clienteRecuperado: data.clienteRecuperado || undefined,
-          etapaHistory: [{ etapa: data.etapaCiclo, fecha: today }],
-        };
-
-        if (w) {
-          const coPatchId = data.newCompanyWizardUpdate?.companyId;
-          if (coPatchId) {
-            if (!w.origenLead) {
-              toast.error('Selecciona la fuente del lead en el wizard de empresa');
-              return;
-            }
-            try {
-              await api(`/companies/${coPatchId}`, {
-                method: 'PATCH',
-                body: JSON.stringify(newCompanyDataToPatchBody(w)),
-              });
-            } catch (err) {
-              toast.error(
-                err instanceof Error ? err.message : 'No se pudo actualizar la empresa',
-              );
-              return;
-            }
-            baseBody.companyId = coPatchId;
-          } else {
-            const factEmpresa = (() => {
-              const f = Number(w.facturacion);
-              if (Number.isFinite(f) && f > 0) return f;
-              return data.estimatedValue > 0 ? data.estimatedValue : 0;
-            })();
-            if (factEmpresa <= 0) {
-              toast.error(
-                'Indica facturación estimada en el wizard de empresa o un valor estimado del contacto mayor que 0',
-              );
-              return;
-            }
-            if (!w.origenLead) {
-              toast.error('Selecciona la fuente del lead en el wizard de empresa');
-              return;
-            }
-            baseBody.newCompany = {
-              name: w.nombreComercial.trim(),
-              razonSocial: w.razonSocial.trim() || undefined,
-              ruc: w.ruc.trim() || undefined,
-              telefono: w.telefono.trim() || undefined,
-              domain: w.dominio.trim() || undefined,
-              rubro: w.rubro || undefined,
-              tipo: w.tipoEmpresa || undefined,
-              linkedin: w.linkedin.trim() || undefined,
-              correo: w.correo.trim() || undefined,
-              distrito: w.distrito.trim() || undefined,
-              provincia: w.provincia.trim() || undefined,
-              departamento: w.departamento.trim() || undefined,
-              direccion: w.direccion.trim() || undefined,
-              facturacionEstimada: factEmpresa,
-              fuente: w.origenLead,
-              clienteRecuperado: w.clienteRecuperado,
-              etapa: w.etapa,
-              ...(w.propietario && isLikelyContactCuid(w.propietario)
-                ? { assignedTo: w.propietario }
-                : {}),
-            };
-          }
-        } else if (data.companyId) {
-          baseBody.companyId = data.companyId;
-        }
-
-        const createdContact = await api<ApiContactDetail>('/contacts', {
-          method: 'POST',
-          body: JSON.stringify(baseBody),
-        });
-        await contactAddLinkedContact(routeId, createdContact.id);
-        const updated = await api<ApiContactDetail>(`/contacts/${routeId}`);
-        setApiRecord(updated);
-        setNewContactOpen(false);
-        toast.success('Contacto creado y vinculado correctamente');
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'No se pudo crear el contacto');
-      }
-      return;
-    }
-    const newContact = addContact({
-      name: data.name,
-      cargo: data.cargo,
-      docType: data.docType,
-      docNumber: data.docNumber,
-      companies: [{ name: data.company }],
-      telefono: data.phone || contact.telefono,
-      correo: data.email || contact.correo,
-      fuente: data.source,
-      assignedTo: data.assignedTo || contact.assignedTo,
-      estimatedValue: data.estimatedValue,
-      clienteRecuperado: data.clienteRecuperado,
-      departamento: data.departamento,
-      provincia: data.provincia,
-      distrito: data.distrito,
-      direccion: data.direccion,
-    });
-    const ids = contact.linkedContactIds ?? [];
-    updateContact(contact.id, { linkedContactIds: [...ids, newContact.id] });
-    toast.success('Contacto creado y vinculado');
-    setNewContactOpen(false);
-  }
-
   async function handleRemoveOpportunity(opp: import('@/types').Opportunity) {
     if (!contact) return;
     if (fromApi && isLikelyOpportunityCuid(opp.id)) {
@@ -988,27 +802,6 @@ export default function ContactoDetailPage() {
     updateContact(contact.id, { companies: filtered });
     toast.success('Empresa desvinculada');
   }
-
-  async function handleRemoveContact(linkedContact: { id: string }) {
-    if (!contact) return;
-    if (fromApi && routeId) {
-      try {
-        const updated = await contactRemoveLinkedContact(routeId, linkedContact.id);
-        setApiRecord(updated);
-        toast.success('Contacto desvinculado');
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'No se pudo desvincular');
-      }
-      return;
-    }
-    const ids = (contact.linkedContactIds ?? []).filter((id) => id !== linkedContact.id);
-    updateContact(contact.id, { linkedContactIds: ids });
-    toast.success('Contacto desvinculado');
-  }
-
-  const availableContactsToLink = mergedContacts.filter(
-    (l) => l.id !== contact?.id && !(contact?.linkedContactIds ?? []).includes(l.id),
-  );
 
   const availableOpportunitiesToLink = (() => {
     if (!id) return [];
@@ -1094,14 +887,6 @@ export default function ContactoDetailPage() {
     };
   });
 
-  const contactLinkItems: LinkExistingItem[] = availableContactsToLink.map((c) => ({
-    id: c.id,
-    title: c.name,
-    subtitle: [c.cargo, getPrimaryCompany(c)?.name].filter(Boolean).join(' · ') || c.telefono,
-    status: 'Activo',
-    icon: <Users className="size-4" />,
-  }));
-
   return (
     <>
     <DetailLayout
@@ -1118,7 +903,6 @@ export default function ContactoDetailPage() {
           stageStyle={contactStageTone.style}
           currentEtapaSlug={contact.etapa}
           onEtapaChange={handleEtapaChange}
-          estimatedValueLabel={formatCurrency(contact.estimatedValue)}
           quickActions={(
             <QuickActionsWithDialogs
               entityName={contact.name}
@@ -1136,7 +920,18 @@ export default function ContactoDetailPage() {
           onOpenWhatsapp={() => setWhatsappDrawerOpen(true)}
         />
       )}
-      sidebar={<ContactoSidebar contact={contact} contactOpportunities={contactOpportunities} linkedContacts={linkedContactsForSidebar} onOpenConvertDialog={() => setConvertDialogOpen(true)} onAddExistingOpportunity={() => setAddExistingOpportunityOpen(true)} onRemoveOpportunity={handleRemoveOpportunity} onAddCompany={() => setAddCompanyOpen(true)} onAddExistingCompany={() => setAddExistingCompanyOpen(true)} onRemoveCompany={handleRemoveCompany} onNewContact={() => setNewContactOpen(true)} onAddLinkContact={() => setAddLinkContactOpen(true)} onRemoveContact={handleRemoveContact} />}
+      sidebar={(
+        <ContactoSidebar
+          contact={contact}
+          contactOpportunities={contactOpportunities}
+          onOpenConvertDialog={() => setConvertDialogOpen(true)}
+          onAddExistingOpportunity={() => setAddExistingOpportunityOpen(true)}
+          onRemoveOpportunity={handleRemoveOpportunity}
+          onAddCompany={() => setAddCompanyOpen(true)}
+          onAddExistingCompany={() => setAddExistingCompanyOpen(true)}
+          onRemoveCompany={handleRemoveCompany}
+        />
+      )}
     >
         <Tabs defaultValue="historial">
           <TabsList variant="line" className="max-w-full justify-start">
@@ -1340,37 +1135,6 @@ export default function ContactoDetailPage() {
         searchValue={linkCompanySearch}
         onSearchChange={setLinkCompanySearch}
         emptyMessage="No hay empresas disponibles para vincular."
-      />
-
-      <NewContactWizard
-        open={newContactOpen}
-        onOpenChange={setNewContactOpen}
-        onSubmit={handleCreateNewContact}
-        title="Crear nuevo contacto"
-        description={`Crea un nuevo contacto y vincúlalo a ${contact.name}.`}
-        submitLabel="Crear y vincular"
-      />
-
-      {/* Vincular contacto Dialog */}
-      <LinkExistingDialog
-        open={addLinkContactOpen}
-        onOpenChange={(open) => {
-          setAddLinkContactOpen(open);
-          if (!open) {
-            setLinkContactIds([]);
-            setLinkContactSearch('');
-          }
-        }}
-        title="Vincular Contacto Existente"
-        searchPlaceholder="Buscar contactos..."
-        contactName={contact.name}
-        items={contactLinkItems}
-        selectedIds={linkContactIds}
-        onSelectionChange={setLinkContactIds}
-        onConfirm={handleLinkContacts}
-        searchValue={linkContactSearch}
-        onSearchChange={setLinkContactSearch}
-        emptyMessage="No hay contactos disponibles para vincular."
       />
 
       <WhatsappContactDrawer

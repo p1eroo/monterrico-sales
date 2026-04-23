@@ -110,6 +110,13 @@
     --activity-call: 142 71% 40%;
     --activity-task: 280 67% 55%;
     --activity-system: 215 10% 58%;
+    /* Embudo de reportes (FunnelChart; tripleta HSL sin hsl()) */
+    --funnel-1: 142 50% 48%;
+    --funnel-2: 142 45% 38%;
+    --funnel-3: 175 55% 48%;
+    --funnel-4: 145 60% 42%;
+    --funnel-5: 280 55% 55%;
+    --funnel-track: 142 30% 88%;
     --sidebar: #0f2e1d;
     --sidebar-foreground: #e2e8f0;
     --sidebar-primary: #13944C;
@@ -176,6 +183,12 @@
     --activity-call: 142 71% 45%;
     --activity-task: 280 67% 60%;
     --activity-system: 215 10% 40%;
+    --funnel-1: 142 55% 50%;
+    --funnel-2: 142 50% 40%;
+    --funnel-3: 175 60% 50%;
+    --funnel-4: 145 65% 45%;
+    --funnel-5: 280 60% 60%;
+    --funnel-track: 220 14% 18%;
     --sidebar: hsl(220 18% 8.5%);
     --sidebar-foreground: hsl(210 20% 92%);
     --sidebar-primary: #13944C;

@@ -34,6 +34,7 @@ const activitySelectListSlim = {
   title: true,
   description: true,
   status: true,
+  priority: true,
   dueDate: true,
   startDate: true,
   startTime: true,
@@ -68,6 +69,12 @@ export class ActivitiesService {
     if (!s || typeof s !== 'string') return null;
     const d = new Date(s.trim());
     return Number.isNaN(d.getTime()) ? null : d;
+  }
+
+  private normalizePriority(raw: string | null | undefined): string {
+    const p = (raw ?? 'media').trim().toLowerCase();
+    if (p === 'alta' || p === 'media' || p === 'baja') return p;
+    return 'media';
   }
 
   private normalizeTaskKind(
@@ -221,6 +228,7 @@ export class ActivitiesService {
     const startDate = this.parseDate(dto.startDate);
     const completedAt = this.parseDate(dto.completedAt);
     const status = dto.status?.trim() || 'pendiente';
+    const priority = this.normalizePriority(dto.priority);
     const contactId = dto.contactId?.trim();
     const companyId = dto.companyId?.trim();
     const opportunityId = dto.opportunityId?.trim();
@@ -277,6 +285,7 @@ export class ActivitiesService {
           description: dto.description?.trim() ?? '',
           assignedTo,
           status,
+          priority,
           dueDate,
           startDate,
           startTime: dto.startTime?.trim() || null,
@@ -428,6 +437,9 @@ export class ActivitiesService {
     if (dto.status !== undefined) {
       const s = dto.status?.trim();
       if (s) data.status = s;
+    }
+    if (dto.priority !== undefined) {
+      data.priority = this.normalizePriority(dto.priority);
     }
     if (dto.dueDate !== undefined) {
       const d = this.parseDate(dto.dueDate);

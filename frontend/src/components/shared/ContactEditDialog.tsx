@@ -28,7 +28,6 @@ export type ContactEditSavePayload = {
   telefono: string;
   correo: string;
   fuente: ContactSource;
-  estimatedValue: number;
   /** Solo enviado cuando el usuario puede reasignar asesor. */
   assignedTo?: string;
 };
@@ -55,7 +54,6 @@ export function ContactEditDialog({
     telefono: '',
     correo: '',
     fuente: 'base' as ContactSource,
-    estimatedValue: 0,
     assignedTo: '',
   });
   const [saving, setSaving] = useState(false);
@@ -68,7 +66,6 @@ export function ContactEditDialog({
         telefono: contact.telefono,
         correo: contact.correo,
         fuente: contact.fuente,
-        estimatedValue: contact.estimatedValue,
         assignedTo: contact.assignedTo || activeAdvisors[0]?.id || '',
       });
     }
@@ -84,7 +81,6 @@ export function ContactEditDialog({
         telefono: editForm.telefono.trim(),
         correo: editForm.correo.trim(),
         fuente: editForm.fuente,
-        estimatedValue: editForm.estimatedValue,
         ...(canEditAssignee ? { assignedTo: editForm.assignedTo } : {}),
       });
       onOpenChange(false);
@@ -155,18 +151,6 @@ export function ContactEditDialog({
                 ))}
               </SelectContent>
             </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="contact-edit-value">Valor estimado (S/)</Label>
-            <Input
-              id="contact-edit-value"
-              type="number"
-              min={0}
-              value={editForm.estimatedValue}
-              onChange={(e) =>
-                setEditForm((f) => ({ ...f, estimatedValue: Number(e.target.value) }))
-              }
-            />
           </div>
           <AssignedAdvisorFormField
             htmlId="contact-edit-assigned-to"

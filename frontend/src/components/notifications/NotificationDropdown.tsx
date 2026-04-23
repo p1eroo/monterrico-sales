@@ -7,9 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { NotificationCard } from './NotificationCard';
 import { EmpresasInactivasCard } from './EmpresasInactivasCard';
 import { useNotificationStore } from '@/store/notificationStore';
-import { getInactiveCompanies } from '@/lib/inactiveCompanies';
-import { contactListAll, mapApiContactRowToContact } from '@/lib/contactApi';
-import type { Contact } from '@/types';
+import { companySinCambioEtapaAlert } from '@/lib/companyApi';
 
 interface NotificationDropdownProps {
   onOpenDrawer: () => void;
@@ -24,26 +22,28 @@ export function NotificationDropdown({
 }: NotificationDropdownProps) {
   const { notifications, markAllAsRead, refreshNotifications } =
     useNotificationStore();
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  useEffect(() => {
-    let c = true;
-    void contactListAll()
-      .then((rows) => {
-        if (c) setContacts(rows.map(mapApiContactRowToContact));
-      })
-      .catch(() => {
-        if (c) setContacts([]);
-      });
-    return () => {
-      c = false;
-    };
-  }, []);
+  const [sinCambioEtapaCount, setSinCambioEtapaCount] = useState(0);
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('todas');
 
   const unreadCount = notifications.filter((n) => !n.read).length;
   const importantCount = notifications.filter((n) => n.important).length;
-  const inactiveCompaniesCount = getInactiveCompanies(contacts).length;
+  useEffect(() => {
+    if (!open) return;
+    let c = true;
+    void companySinCambioEtapaAlert()
+      .then((res) => {
+        if (c) setSinCambioEtapaCount(res.count);
+      })
+      .catch(() => {
+        if (c) setSinCambioEtapaCount(0);
+      });
+    return () => {
+      c = false;
+    };
+  }, [open]);
+
+  const inactiveCompaniesCount = sinCambioEtapaCount;
 
   const filtered =
     activeTab === 'no-leidas'

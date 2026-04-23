@@ -1,8 +1,9 @@
 import ExcelJS from 'exceljs';
 import * as XLSX from 'xlsx';
 
+/** Solo Excel moderno (.xlsx) para importaciones CRM y afines. */
 export const IMPORT_SPREADSHEET_ACCEPT =
-  '.csv,.xlsx,.xls,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  '.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 function stripBom(text: string): string {
   return text.replace(/^\uFEFF/, '');
@@ -166,22 +167,8 @@ export async function buildTemplateWorkbookBuffer(params: {
   return (await workbook.xlsx.writeBuffer()) as ArrayBuffer;
 }
 
-function decodeTextWithFallback(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  try {
-    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-  } catch {
-    return new TextDecoder('windows-1252').decode(bytes);
-  }
-}
-
 function replaceImportExtension(name: string): string {
-  return name.replace(/\.[^.]+$/u, '') + '.csv';
-}
-
-function normalizeCsvText(text: string): string {
-  const rows = parseDelimitedText(text, detectDelimiter(text));
-  return rowsToCsv(rows);
+  return name.replace(/\.[^.]+$/u, '') + '.xlsx';
 }
 
 function workbookToCsv(buffer: ArrayBuffer): string {
@@ -208,19 +195,16 @@ function workbookToCsv(buffer: ArrayBuffer): string {
   return rowsToCsv(rows);
 }
 
+/**
+ * Convierte la primera hoja del .xlsx a texto CSV UTF-8 para el API (sigue esperando CSV en el cuerpo).
+ * El nombre del archivo se normaliza a `.xlsx` para coherencia con la plantilla.
+ */
 export async function normalizeImportSpreadsheetFile(file: File): Promise<File> {
   const lowerName = file.name.toLowerCase();
-  let csvText: string;
-
-  if (lowerName.endsWith('.xlsx') || lowerName.endsWith('.xls')) {
-    csvText = workbookToCsv(await file.arrayBuffer());
-  } else if (lowerName.endsWith('.csv')) {
-    const decoded = decodeTextWithFallback(await file.arrayBuffer());
-    csvText = normalizeCsvText(decoded);
-  } else {
-    throw new Error('Usa un archivo CSV o Excel (.xlsx / .xls).');
+  if (!lowerName.endsWith('.xlsx')) {
+    throw new Error('Usa un archivo Excel (.xlsx).');
   }
-
+  const csvText = workbookToCsv(await file.arrayBuffer());
   return new File([`\uFEFF${csvText}`], replaceImportExtension(file.name), {
     type: 'text/csv;charset=utf-8',
   });

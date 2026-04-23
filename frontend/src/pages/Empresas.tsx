@@ -40,7 +40,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { formatCurrency } from '@/lib/formatters';
+import { addCalendarDaysLocalIso, formatCurrency } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -476,8 +476,9 @@ export default function EmpresasPage() {
     meta: NewCompanyWizardSubmitMeta,
   ) {
     if (!data.origenLead) {
-      toast.error('Selecciona la fuente del lead');
-      return;
+      const msg = 'Selecciona la fuente del lead';
+      toast.error(msg);
+      throw new Error(msg);
     }
 
     if (meta.mode === 'update' && meta.existingCompanyId) {
@@ -489,17 +490,19 @@ export default function EmpresasPage() {
         await loadSummary();
         toast.success(`Empresa "${data.nombreComercial.trim()}" actualizada`);
       } catch (e) {
-        toast.error(
-          e instanceof Error ? e.message : 'No se pudo actualizar la empresa',
-        );
+        const msg =
+          e instanceof Error ? e.message : 'No se pudo actualizar la empresa';
+        toast.error(msg);
+        throw e instanceof Error ? e : new Error(msg);
       }
       return;
     }
 
     const monto = Number(data.facturacion);
     if (!Number.isFinite(monto) || monto <= 0) {
-      toast.error('La facturación estimada debe ser mayor que 0');
-      return;
+      const msg = 'La facturación estimada debe ser mayor que 0';
+      toast.error(msg);
+      throw new Error(msg);
     }
 
     const assignedTo = data.propietario?.trim() || activeAdvisors[0]?.id || '';
@@ -533,38 +536,48 @@ export default function EmpresasPage() {
       });
       await loadSummary();
     } catch (e) {
-      toast.error(
-        e instanceof Error ? e.message : 'No se pudo guardar la empresa en el servidor',
-      );
-      return;
+      const msg =
+        e instanceof Error ? e.message : 'No se pudo guardar la empresa en el servidor';
+      toast.error(msg);
+      throw e instanceof Error ? e : new Error(msg);
     }
     const oppTitle =
       data.nombreNegocio.trim() || data.nombreComercial.trim() || 'Sin título';
     const expectedCloseDate =
-      data.fechaCierre.trim() ||
-      new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      data.fechaCierre.trim() || addCalendarDaysLocalIso(30);
+    const rawCorreo = (data.correo || '').trim();
+    const useEmailAsContactName =
+      !!rawCorreo &&
+      !rawCorreo.toLowerCase().endsWith('@temp.local') &&
+      rawCorreo.includes('@');
+    const contactDisplayName = useEmailAsContactName
+      ? rawCorreo
+      : data.nombreComercial.trim();
     let contactId: string | undefined;
-    try {
-      const contactBody: Record<string, unknown> = {
-        name: data.nombreComercial.trim(),
-        telefono: (data.telefono || '').trim() || '000000000',
-        correo: (data.correo || '').trim() || `lead-${created.id}@temp.local`,
-        fuente: (data.origenLead || 'base') as ContactSource,
-        etapa: data.etapa,
-        estimatedValue: monto,
-        companyId: created.id,
-        clienteRecuperado: data.clienteRecuperado,
-      };
-      if (assignedTo && isLikelyContactCuid(assignedTo)) {
-        contactBody.assignedTo = assignedTo;
+    let contactApiError: string | null = null;
+    if (rawCorreo) {
+      try {
+        const contactBody: Record<string, unknown> = {
+          name: contactDisplayName,
+          telefono: (data.telefono || '').trim(),
+          correo: rawCorreo,
+          fuente: (data.origenLead || 'base') as ContactSource,
+          etapa: data.etapa,
+          estimatedValue: monto,
+          companyId: created.id,
+          clienteRecuperado: data.clienteRecuperado,
+        };
+        if (assignedTo && isLikelyContactCuid(assignedTo)) {
+          contactBody.assignedTo = assignedTo;
+        }
+        const createdContact = await contactCreate(contactBody);
+        contactId = createdContact.id;
+      } catch (e) {
+        contactApiError =
+          e instanceof Error
+            ? e.message
+            : 'No se pudo crear el contacto en el servidor';
       }
-      const createdContact = await contactCreate(contactBody);
-      contactId = createdContact.id;
-    } catch (e) {
-      toast.error(
-        e instanceof Error ? e.message : 'No se pudo crear el contacto en el servidor',
-      );
-      return;
     }
 
     let opportunityApiError: string | null = null;
@@ -578,7 +591,7 @@ export default function EmpresasPage() {
           fuente: data.origenLead,
           expectedCloseDate,
           companyId: created.id,
-          contactId,
+          ...(contactId ? { contactId } : {}),
           priority: 'media',
           ...(assignedTo && isLikelyContactCuid(assignedTo) ? { assignedTo } : {}),
         }),
@@ -592,11 +605,21 @@ export default function EmpresasPage() {
 
     await loadSummary();
 
-    if (!opportunityApiError) {
-      toast.success(`Empresa "${data.nombreComercial}" creada con contacto y oportunidad "${oppTitle}"`);
+    if (!opportunityApiError && !contactApiError) {
+      const suffix = contactId
+        ? `con contacto y oportunidad "${oppTitle}"`
+        : `con oportunidad "${oppTitle}" (sin contacto: indica un correo para crearlo)`;
+      toast.success(`Empresa "${data.nombreComercial}" creada ${suffix}`);
+    } else if (!opportunityApiError && contactApiError) {
+      toast.warning(
+        `Empresa y oportunidad "${oppTitle}" creadas. No se pudo crear el contacto: ${contactApiError}`,
+      );
+    } else if (opportunityApiError && !contactApiError) {
+      const saved = contactId ? 'Empresa y contacto guardados.' : 'Empresa guardada.';
+      toast.warning(`${saved} ${opportunityApiError} (la oportunidad quedó pendiente).`);
     } else {
       toast.warning(
-        `Empresa y contacto guardados. ${opportunityApiError} (la oportunidad quedó pendiente).`,
+        `Empresa guardada. No se pudo crear el contacto (${contactApiError}). ${opportunityApiError} (la oportunidad quedó pendiente).`,
       );
     }
   }
@@ -938,7 +961,7 @@ export default function EmpresasPage() {
             variant="outline"
             size="sm"
             disabled={exportBusy}
-            title="CSV sin id: RUC enriquece con SUNAT; columnas contacto_* y etapa como en contactos; oportunidad al vincular contacto."
+            title="Sin id: RUC enriquece con SUNAT; columnas contacto_* y etapa como en contactos; oportunidad al vincular contacto."
             onClick={() => void handleCompanyTemplate()}
           >
             {exportBusy ? <Loader2 className="size-4 animate-spin" /> : <FileSpreadsheet className="size-4" />}{' '}

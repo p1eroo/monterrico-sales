@@ -10,11 +10,13 @@ function getToken(): string | null {
   return localStorage.getItem('accessToken');
 }
 
+export type BulkImportRowError = { row: number; message: string; name?: string };
+
 export type BulkImportResult = {
   totalRows: number;
   created: number;
   skipped: number;
-  errors: Array<{ row: number; message: string }>;
+  errors: BulkImportRowError[];
 };
 
 export type ImportJobStatus = 'queued' | 'running' | 'completed' | 'failed';
@@ -36,6 +38,21 @@ export type ImportJob = {
   result?: BulkImportResult;
   errorMessage?: string;
 };
+
+/** Errores por fila (`completed`) o detalle sintético del fallo (`failed` con `errorMessage`). */
+export function importJobErrorsList(job: ImportJob): BulkImportRowError[] {
+  if (job.status === 'completed' && job.result?.errors?.length) {
+    return job.result.errors;
+  }
+  if (job.status === 'failed') {
+    if (job.result?.errors?.length) return job.result.errors;
+    if (job.errorMessage?.trim()) {
+      const row = job.processedRows > 0 ? job.processedRows : 0;
+      return [{ row, message: job.errorMessage.trim() }];
+    }
+  }
+  return [];
+}
 
 export type ContactImportPreviewRow = {
   row: number;
@@ -121,7 +138,10 @@ function templateRequiredHeaders(
   return ['titulo', 'monto', 'etapa'];
 }
 
-/** Descarga CSV (plantilla vacía o export con datos). */
+/**
+ * Descarga plantilla o export como `.xlsx`.
+ * El API sigue respondiendo CSV en texto; aquí se convierte a libro Excel en el cliente.
+ */
 export async function downloadImportExportCsv(
   entity: 'contacts' | 'companies' | 'opportunities',
   kind: 'template' | 'export',
@@ -146,23 +166,20 @@ export async function downloadImportExportCsv(
     }
     throw new Error(msg);
   }
-  if (kind === 'template') {
-    const text = await res.text();
-    const rows = parseSpreadsheetDelimitedText(text);
-    const bytes = await buildTemplateWorkbookBuffer({
-      rows,
-      sheetName: templateSheetName(entity),
-      requiredHeaders: templateRequiredHeaders(entity),
-    });
-    const blob = new Blob([bytes], {
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    });
-    const name = `plantilla-${entity === 'contacts' ? 'contactos' : entity === 'companies' ? 'empresas' : 'oportunidades'}.xlsx`;
-    triggerBlobDownload(blob, name);
-    return;
-  }
-  const blob = await res.blob();
-  const name = `${entity === 'contacts' ? 'contactos' : entity === 'companies' ? 'empresas' : 'oportunidades'}-export.csv`;
+  const text = await res.text();
+  const rows = parseSpreadsheetDelimitedText(text);
+  const bytes = await buildTemplateWorkbookBuffer({
+    rows,
+    sheetName: templateSheetName(entity),
+    requiredHeaders: kind === 'template' ? templateRequiredHeaders(entity) : [],
+  });
+  const blob = new Blob([bytes], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+  const slug =
+    entity === 'contacts' ? 'contactos' : entity === 'companies' ? 'empresas' : 'oportunidades';
+  const name =
+    kind === 'template' ? `plantilla-${slug}.xlsx` : `${slug}-export.xlsx`;
   triggerBlobDownload(blob, name);
 }
 

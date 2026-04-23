@@ -44,8 +44,20 @@ import {
 import { ChartCardBody } from '@/components/shared/ChartCardBody';
 import { chartHasAnyValue } from '@/lib/chartEmpty';
 import { Skeleton } from '@/components/ui/skeleton';
+import { FunnelChart, type FunnelStage } from '@/components/crm/FunnelChart';
+import { buildCompaniesStageFunnelRows } from '@/lib/companyStageFunnelData';
 
 const COLORS = ['#13944C', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];
+
+const WEEKLY_COMPANY_COLORS = {
+  avance: '#3b82f6',
+  nuevoIngreso: '#13944C',
+  retroceso: '#f59e0b',
+  sinCambios: '#ef4444',
+} as const;
+
+/** Si el periodo tiene más semanas, solo se dibujan las más recientes (las iniciales se omiten). */
+const WEEKLY_COMPANY_CHART_MAX_WEEKS = 20;
 
 const sourceOptions = [
   { value: 'all', label: 'Todas las fuentes' },
@@ -67,6 +79,48 @@ function changeTone(s: string): 'positive' | 'negative' | 'neutral' {
 
 type DateRangePreset = '7d' | '1m' | '3m' | '1y' | 'custom';
 
+/** Alineado con `analytics.service.ts` (semanas ISO lun–dom UTC). */
+function startOfUtcWeekMonday(d: Date): Date {
+  const x = new Date(d.getTime());
+  const day = x.getUTCDay();
+  const diff = day === 0 ? 6 : day - 1;
+  x.setUTCDate(x.getUTCDate() - diff);
+  x.setUTCHours(0, 0, 0, 0);
+  return x;
+}
+
+function isoWeekNumberUtc(d: Date): number {
+  const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  const dayNum = x.getUTCDay() || 7;
+  x.setUTCDate(x.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(x.getUTCFullYear(), 0, 1));
+  return Math.ceil((x.getTime() - yearStart.getTime()) / 86400000 / 7);
+}
+
+function isoWeekYearUtc(monday: Date): number {
+  const thu = new Date(monday.getTime());
+  thu.setUTCDate(thu.getUTCDate() + 3);
+  return thu.getUTCFullYear();
+}
+
+/** Etiqueta única por semana ISO (evita duplicados al cruzar año). */
+function weekAxisLabelUtc(monday: Date): string {
+  const y = isoWeekYearUtc(monday);
+  const w = isoWeekNumberUtc(monday);
+  return `${y}-W${String(w).padStart(2, '0')}`;
+}
+
+/** Acepta `YYYY-MM-DD` o ISO completo del API (`…T00:00:00.000Z`). */
+function parseAnalyticsRangeDateUtc(s: string, endOfDay: boolean): Date {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s.trim());
+  if (!m) return new Date(NaN);
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  if (endOfDay) return new Date(Date.UTC(y, mo - 1, d, 23, 59, 59, 999));
+  return new Date(Date.UTC(y, mo - 1, d, 0, 0, 0, 0));
+}
+
 export default function Reports() {
   const { users, activeAdvisors } = useUsers();
   const { hasPermission } = usePermissions();
@@ -82,6 +136,8 @@ export default function Reports() {
   const [sourceFilter, setSourceFilter] = useState('all');
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [loading, setLoading] = useState(false);
+  /** Lunes UTC (ms) de la última semana visible en el gráfico de avance semanal. */
+  const [weeklyProgressCapMs, setWeeklyProgressCapMs] = useState<number | null>(null);
   const chartTheme = useChartTheme();
 
   useEffect(() => {
@@ -124,6 +180,131 @@ export default function Reports() {
       name: getStageLabelFromCatalog(x.name, bundle),
     }));
   }, [summary, bundle]);
+
+  const companiesStageFunnelRows = useMemo(
+    () => buildCompaniesStageFunnelRows(summary?.companiesByStage ?? [], bundle),
+    [summary?.companiesByStage, bundle],
+  );
+
+  const companiesFunnelStages: FunnelStage[] = useMemo(
+    () =>
+      companiesStageFunnelRows.map((r) => ({
+        label: r.name,
+        value: r.value,
+        color: r.fill,
+      })),
+    [companiesStageFunnelRows],
+  );
+
+  const companiesWeeklyProgressData = useMemo(
+    () => summary?.companiesWeeklyProgress ?? [],
+    [summary?.companiesWeeklyProgress],
+  );
+
+  /** Semanas desde el inicio del rango del reporte hasta la semana ISO actual (UTC); rellena ceros tras el `to` del API. */
+  const weeklyProgressExtended = useMemo(() => {
+    if (!summary?.range?.from || !summary?.range?.to) return [];
+    const apiRows = summary.companiesWeeklyProgress ?? [];
+    const fromD = parseAnalyticsRangeDateUtc(summary.range.from, false);
+    const toD = parseAnalyticsRangeDateUtc(summary.range.to, true);
+    const fromMon = startOfUtcWeekMonday(fromD);
+    const todayMon = startOfUtcWeekMonday(new Date());
+    let apiIdx = 0;
+    type Row = {
+      name: string;
+      avance: number;
+      nuevoIngreso: number;
+      retroceso: number;
+      sinCambios: number;
+      weekStartMs: number;
+    };
+    const out: Row[] = [];
+    for (let cur = new Date(fromMon.getTime()); cur.getTime() <= todayMon.getTime(); ) {
+      const axisName = weekAxisLabelUtc(cur);
+      let row: Omit<Row, 'weekStartMs'>;
+      if (cur.getTime() <= toD.getTime()) {
+        if (apiIdx < apiRows.length) {
+          const api = apiRows[apiIdx]!;
+          apiIdx += 1;
+          row = { ...api, name: axisName };
+        } else {
+          row = {
+            name: axisName,
+            avance: 0,
+            nuevoIngreso: 0,
+            retroceso: 0,
+            sinCambios: 0,
+          };
+        }
+      } else {
+        row = {
+          name: axisName,
+          avance: 0,
+          nuevoIngreso: 0,
+          retroceso: 0,
+          sinCambios: 0,
+        };
+      }
+      out.push({ ...row, weekStartMs: cur.getTime() });
+      const next = new Date(cur.getTime());
+      next.setUTCDate(next.getUTCDate() + 7);
+      cur = next;
+    }
+    return out;
+  }, [summary]);
+
+  const weeklyProgressWeekOptions = useMemo(
+    () =>
+      weeklyProgressExtended.map((r) => ({
+        value: String(r.weekStartMs),
+        label: `Hasta ${r.name}`,
+      })),
+    [weeklyProgressExtended],
+  );
+
+  const weeklyProgressDefaultCapMs = useMemo(() => {
+    if (!weeklyProgressExtended.length) return null;
+    return weeklyProgressExtended[weeklyProgressExtended.length - 1]!.weekStartMs;
+  }, [weeklyProgressExtended]);
+
+  useEffect(() => {
+    if (weeklyProgressDefaultCapMs != null) {
+      setWeeklyProgressCapMs(weeklyProgressDefaultCapMs);
+    } else {
+      setWeeklyProgressCapMs(null);
+    }
+  }, [weeklyProgressDefaultCapMs]);
+
+  const weeklyProgressChartSlice = useMemo(() => {
+    const cap = weeklyProgressCapMs ?? weeklyProgressDefaultCapMs;
+    if (cap == null) {
+      return {
+        chartData: [] as {
+          name: string;
+          avance: number;
+          nuevoIngreso: number;
+          retroceso: number;
+          sinCambios: number;
+        }[],
+        truncated: false,
+        omittedWeeks: 0,
+      };
+    }
+    const rows = weeklyProgressExtended
+      .filter((r) => r.weekStartMs <= cap)
+      .map(({ weekStartMs: _w, ...rest }) => rest);
+    const max = WEEKLY_COMPANY_CHART_MAX_WEEKS;
+    if (rows.length <= max) {
+      return { chartData: rows, truncated: false, omittedWeeks: 0 };
+    }
+    return {
+      chartData: rows.slice(-max),
+      truncated: true,
+      omittedWeeks: rows.length - max,
+    };
+  }, [weeklyProgressExtended, weeklyProgressCapMs, weeklyProgressDefaultCapMs]);
+
+  const weeklyProgressChartData = weeklyProgressChartSlice.chartData;
 
   const kpis = summary?.kpis;
   const leadsByPeriodData = summary?.contactsByPeriod ?? [];
@@ -210,6 +391,16 @@ export default function Reports() {
   const followUpsChartEmpty =
     !loading &&
     (!summary || !chartHasAnyValue(followUpsData, ['completados', 'pendientes']));
+  const companiesFunnelEmpty =
+    !loading &&
+    (!summary || !chartHasAnyValue(summary.companiesByStage ?? [], ['value']));
+  const weeklyCompaniesChartEmpty =
+    !loading &&
+    (!summary ||
+      !companiesWeeklyProgressData.some(
+        (r) =>
+          r.avance + r.nuevoIngreso + r.retroceso + r.sinCambios > 0,
+      ));
 
   const summaryCards = useMemo(
     () => [
@@ -493,6 +684,139 @@ export default function Reports() {
                     }}
                   />
                 </PieChart>
+              </ResponsiveContainer>
+            </ChartCardBody>
+          </CardContent>
+        </Card>
+
+        {/* Embudo empresas por etapa (izquierda); derecha reservada */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Empresas por etapa</CardTitle>
+            <CardDescription>
+              Embudo según etapa comercial (empresas creadas en el periodo; respeta asesor y fuente).
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ChartCardBody
+              loading={loading}
+              isEmpty={companiesFunnelEmpty}
+              variant="bar"
+              emptyMessage="Sin empresas en este periodo con las etapas seleccionadas."
+              className="min-h-[min(52vh,420px)] py-3"
+            >
+              <FunnelChart stages={companiesFunnelStages} height={360} />
+            </ChartCardBody>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0 space-y-2">
+              <CardTitle className="text-base">Avance semanal · Empresas</CardTitle>
+              <CardDescription className="text-sm leading-tight">
+                Cambios de etapa por semana
+                {weeklyProgressChartSlice.truncated && (
+                  <span className="mt-1 block text-xs text-muted-foreground">
+                    Mostrando las últimas {WEEKLY_COMPANY_CHART_MAX_WEEKS} semanas; se omiten{' '}
+                    {weeklyProgressChartSlice.omittedWeeks} semana
+                    {weeklyProgressChartSlice.omittedWeeks === 1 ? '' : 's'} anteriores para
+                    mantener el gráfico legible.
+                  </span>
+                )}
+              </CardDescription>
+            </div>
+            {weeklyProgressWeekOptions.length > 0 && (
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
+                <Select
+                  value={
+                    weeklyProgressCapMs != null
+                      ? String(weeklyProgressCapMs)
+                      : String(weeklyProgressWeekOptions[weeklyProgressWeekOptions.length - 1]!.value)
+                  }
+                  onValueChange={(v) => setWeeklyProgressCapMs(Number(v))}
+                  disabled={loading || weeklyCompaniesChartEmpty}
+                >
+                  <SelectTrigger
+                    className="h-9 min-w-[160px] sm:min-w-[200px]"
+                    aria-label="Mostrar datos hasta esta semana (ISO, UTC)"
+                  >
+                    <SelectValue placeholder="Semana" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {weeklyProgressWeekOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </CardHeader>
+          <CardContent>
+            <ChartCardBody
+              loading={loading}
+              isEmpty={weeklyCompaniesChartEmpty}
+              variant="barHorizontal"
+              emptyMessage="Sin empresas en cartera en este periodo para este avance."
+              className="h-[min(58vh,560px)] min-h-[300px] w-full"
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={weeklyProgressChartData}
+                  layout="vertical"
+                  margin={{ left: 4, right: 12, top: 8, bottom: 16 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" horizontal stroke={chartTheme.gridStroke} />
+                  <XAxis type="number" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    width={76}
+                    tick={{ fontSize: 10 }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: '8px',
+                      border: `1px solid ${chartTheme.tooltipBorder}`,
+                      backgroundColor: chartTheme.tooltipBg,
+                      fontSize: '13px',
+                    }}
+                  />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: 8 }} />
+                  <Bar
+                    dataKey="avance"
+                    name="Avance"
+                    stackId="weeklyCompanies"
+                    fill={WEEKLY_COMPANY_COLORS.avance}
+                    radius={[0, 0, 0, 0]}
+                    barSize={18}
+                  />
+                  <Bar
+                    dataKey="nuevoIngreso"
+                    name="Nuevo ingreso"
+                    stackId="weeklyCompanies"
+                    fill={WEEKLY_COMPANY_COLORS.nuevoIngreso}
+                    barSize={18}
+                  />
+                  <Bar
+                    dataKey="retroceso"
+                    name="Retroceso"
+                    stackId="weeklyCompanies"
+                    fill={WEEKLY_COMPANY_COLORS.retroceso}
+                    barSize={18}
+                  />
+                  <Bar
+                    dataKey="sinCambios"
+                    name="Sin cambios"
+                    stackId="weeklyCompanies"
+                    fill={WEEKLY_COMPANY_COLORS.sinCambios}
+                    radius={[0, 4, 4, 0]}
+                    barSize={18}
+                  />
+                </BarChart>
               </ResponsiveContainer>
             </ChartCardBody>
           </CardContent>

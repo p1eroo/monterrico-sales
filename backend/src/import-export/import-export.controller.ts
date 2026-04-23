@@ -76,7 +76,7 @@ export class ImportExportController {
   @UseInterceptors(FileInterceptor('file', importFileOpts))
   async contactsPreview(@UploadedFile() file?: Express.Multer.File) {
     if (!file?.buffer?.length) {
-      throw new BadRequestException('Adjunta un archivo CSV (.csv)');
+      throw new BadRequestException('Adjunta un archivo Excel (.xlsx)');
     }
     const text = file.buffer.toString('utf-8');
     return this.importExportService.previewContactsImport(text);
@@ -90,7 +90,7 @@ export class ImportExportController {
     @Req() req: AuthedReq,
   ) {
     if (!file?.buffer?.length) {
-      throw new BadRequestException('Adjunta un archivo CSV (.csv)');
+      throw new BadRequestException('Adjunta un archivo Excel (.xlsx)');
     }
     const text = file.buffer.toString('utf-8');
     const scope = await this.crmDataScope.buildScope(
@@ -151,7 +151,7 @@ export class ImportExportController {
   @UseInterceptors(FileInterceptor('file', importFileOpts))
   async companiesPreview(@UploadedFile() file?: Express.Multer.File) {
     if (!file?.buffer?.length) {
-      throw new BadRequestException('Adjunta un archivo CSV (.csv)');
+      throw new BadRequestException('Adjunta un archivo Excel (.xlsx)');
     }
     const text = file.buffer.toString('utf-8');
     return this.importExportService.previewCompaniesImport(text);
@@ -165,7 +165,7 @@ export class ImportExportController {
     @Req() req: AuthedReq,
   ) {
     if (!file?.buffer?.length) {
-      throw new BadRequestException('Adjunta un archivo CSV (.csv)');
+      throw new BadRequestException('Adjunta un archivo Excel (.xlsx)');
     }
     const text = file.buffer.toString('utf-8');
     const scope = await this.crmDataScope.buildScope(
@@ -229,7 +229,7 @@ export class ImportExportController {
     @Req() req: AuthedReq,
   ) {
     if (!file?.buffer?.length) {
-      throw new BadRequestException('Adjunta un archivo CSV (.csv)');
+      throw new BadRequestException('Adjunta un archivo Excel (.xlsx)');
     }
     const text = file.buffer.toString('utf-8');
     const scope = await this.crmDataScope.buildScope(

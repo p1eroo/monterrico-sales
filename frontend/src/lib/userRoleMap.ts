@@ -23,6 +23,7 @@ export function roleIdToUserRole(roleId: string): User['role'] {
 const SUPERVISOR_LIKE_SLUGS = new Set([
   'supervisor',
   'gerente',
+  'gerente_comercial',
   'jefe_comercial',
   'jefe_comercial_ventas',
   'director_comercial',
@@ -36,6 +37,8 @@ export function mapApiRoleStringToUserRole(r: string): User['role'] {
   if (
     SUPERVISOR_LIKE_SLUGS.has(x) ||
     x.startsWith('jefe_') ||
+    /** Roles de mando comercial (p. ej. gerente_comercial, gerente_regional). */
+    x.startsWith('gerente_') ||
     x.endsWith('_supervisor') ||
     x.includes('jefe_comercial')
   ) {

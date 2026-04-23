@@ -59,7 +59,7 @@ import { AssistantMessageBody } from './AssistantMessageBody';
 
 const SUGGESTIONS = [
   '¿Qué oportunidades están por cerrarse?',
-  'Muéstrame empresas inactivas',
+  'Muéstrame empresas sin cambio de etapa',
   '¿Qué tareas tengo hoy?',
 ];
 

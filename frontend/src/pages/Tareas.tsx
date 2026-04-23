@@ -5,16 +5,20 @@ import {
   Plus, Search, X, MoreHorizontal, Phone, Users,
   CheckSquare, Mail, Clock, MessageCircle,
   CalendarDays, CalendarCheck, AlertTriangle,
-  RefreshCw, Check, Pencil, Trash2,
+  RefreshCw, Check, Pencil, Trash2, Building2,
+  List, Grid3X3,
 } from 'lucide-react';
-import type { Activity, ActivityType, ActivityStatus, TaskKind } from '@/types';
+import type {
+  Activity, ActivityType, ActivityStatus, TaskKind, ContactPriority,
+} from '@/types';
+import { TasksKanbanBoard } from '@/components/tasks/TasksKanbanBoard';
 import { TASK_KINDS } from '@/types';
 import type { UpdateActivityPayload } from '@/lib/activityApi';
 import { contacts, priorityLabels } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
 import { useActivities } from '@/hooks/useActivities';
 import {
-  format, isBefore, startOfDay, addDays, isWithinInterval, isSameDay,
+  format, isBefore, startOfDay, isSameDay,
 } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -124,6 +128,18 @@ function taskDueDay(dueDate: string): Date {
   return startOfDay(new Date(`${dueDate}T00:00:00`));
 }
 
+/** Nombre de empresa para listados (coherente con `mapApiActivityToActivity`). */
+function activityCompanyDisplayName(a: Activity): string | undefined {
+  const raw = a.contactName?.trim();
+  if (!raw) return undefined;
+  if (raw.includes(' - ')) {
+    const rest = raw.split(' - ').slice(1).join(' - ').trim();
+    return rest || undefined;
+  }
+  if (a.companyId && !a.contactId) return raw;
+  return undefined;
+}
+
 export default function TareasPage() {
   const { activeAdvisors } = useUsers();
   const {
@@ -143,6 +159,7 @@ export default function TareasPage() {
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('todos');
+  const [priorityFilter, setPriorityFilter] = useState<'todas' | ContactPriority>('todas');
   const [advisorFilter, setAdvisorFilter] = useState('todos');
   const { canSeeAllAdvisors, currentUserId } = useCrmTeamAdvisorFilter(
     advisorFilter,
@@ -150,7 +167,9 @@ export default function TareasPage() {
     'todos',
   );
   const [activeTab, setActiveTab] = useState('todas');
+  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('kanban');
   const [newTaskOpen, setNewTaskOpen] = useState(false);
+  const [newTaskColumnStatus, setNewTaskColumnStatus] = useState<ActivityStatus | undefined>();
   const [calendarDate, setCalendarDate] = useState<Date | undefined>();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [completedTask, setCompletedTask] = useState<Activity | null>(null);
@@ -172,20 +191,66 @@ export default function TareasPage() {
 
   const filteredTasks = useMemo(() => {
     return allTasks.filter((task) => {
+      const q = search.toLowerCase();
+      const companyQ = activityCompanyDisplayName(task)?.toLowerCase() ?? '';
       const matchesSearch =
         !search ||
-        task.title.toLowerCase().includes(search.toLowerCase()) ||
-        task.description.toLowerCase().includes(search.toLowerCase()) ||
-        (task.contactName?.toLowerCase().includes(search.toLowerCase()) ?? false);
+        task.title.toLowerCase().includes(q) ||
+        task.description.toLowerCase().includes(q) ||
+        (task.contactName?.toLowerCase().includes(q) ?? false) ||
+        companyQ.includes(q);
 
       const matchesTab = activeTab === 'todas' || task.status === activeTab;
       const matchesStatus = statusFilter === 'todos' || task.status === statusFilter;
+      const taskPriority = task.priority ?? 'media';
+      const matchesPriority =
+        priorityFilter === 'todas' || taskPriority === priorityFilter;
       const matchesAdvisor = advisorFilter === 'todos' || task.assignedTo === advisorFilter;
       const matchesCalendarDate = !calendarDate || isSameDay(taskDueDay(task.dueDate), calendarDate);
 
-      return matchesSearch && matchesTab && matchesStatus && matchesAdvisor && matchesCalendarDate;
+      return (
+        matchesSearch &&
+        matchesTab &&
+        matchesStatus &&
+        matchesPriority &&
+        matchesAdvisor &&
+        matchesCalendarDate
+      );
     });
-  }, [allTasks, search, activeTab, statusFilter, advisorFilter, calendarDate]);
+  }, [allTasks, search, activeTab, statusFilter, priorityFilter, advisorFilter, calendarDate]);
+
+  /** Misma lógica de filtros que la lista, sin pestaña de estado (el tablero agrupa por columna). */
+  const tasksForKanban = useMemo(() => {
+    return allTasks.filter((task) => {
+      const q = search.toLowerCase();
+      const companyQ = activityCompanyDisplayName(task)?.toLowerCase() ?? '';
+      const matchesSearch =
+        !search ||
+        task.title.toLowerCase().includes(q) ||
+        task.description.toLowerCase().includes(q) ||
+        (task.contactName?.toLowerCase().includes(q) ?? false) ||
+        companyQ.includes(q);
+      const matchesStatus = statusFilter === 'todos' || task.status === statusFilter;
+      const taskPriority = task.priority ?? 'media';
+      const matchesPriority =
+        priorityFilter === 'todas' || taskPriority === priorityFilter;
+      const matchesAdvisor = advisorFilter === 'todos' || task.assignedTo === advisorFilter;
+      const matchesCalendarDate = !calendarDate || isSameDay(taskDueDay(task.dueDate), calendarDate);
+      return (
+        matchesSearch &&
+        matchesStatus &&
+        matchesPriority &&
+        matchesAdvisor &&
+        matchesCalendarDate
+      );
+    });
+  }, [allTasks, search, statusFilter, priorityFilter, advisorFilter, calendarDate]);
+
+  /** Lista actualizada del store (p. ej. PATCH optimista) para que el diálogo refleje el estado al instante. */
+  const taskDetailActivity = useMemo(() => {
+    if (!selectedTaskDetail) return null;
+    return allTasks.find((a) => a.id === selectedTaskDetail.id) ?? selectedTaskDetail;
+  }, [selectedTaskDetail, allTasks]);
 
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = { todas: allTasks.length };
@@ -194,11 +259,6 @@ export default function TareasPage() {
     }
     return counts;
   }, [allTasks]);
-
-  const selectedDateTasks = useMemo(() => {
-    const targetDate = startOfDay(calendarDate ?? new Date());
-    return allTasks.filter((a) => isSameDay(taskDueDay(a.dueDate), targetDate));
-  }, [allTasks, calendarDate]);
 
   const taskDateCounts = useMemo(
     () =>
@@ -281,25 +341,20 @@ export default function TareasPage() {
     [taskDateKeys],
   );
 
-  const upcomingTasks = useMemo(() => {
-    const today = startOfDay(new Date());
-    const threeDaysLater = addDays(today, 3);
-    return allTasks.filter((a) => {
-      const due = startOfDay(new Date(a.dueDate));
-      return isWithinInterval(due, { start: addDays(today, 1), end: threeDaysLater }) &&
-        a.status !== 'completada';
-    });
-  }, [allTasks]);
-
   const advisorFilterIsActive = canSeeAllAdvisors
     ? advisorFilter !== 'todos'
     : false;
   const hasActiveFilters =
-    statusFilter !== 'todos' || advisorFilterIsActive || search !== '' || Boolean(calendarDate);
+    statusFilter !== 'todos' ||
+    priorityFilter !== 'todas' ||
+    advisorFilterIsActive ||
+    search !== '' ||
+    Boolean(calendarDate);
 
   function clearFilters() {
     setSearch('');
     setStatusFilter('todos');
+    setPriorityFilter('todas');
     setAdvisorFilter(canSeeAllAdvisors ? 'todos' : currentUserId);
     setCalendarDate(undefined);
   }
@@ -328,13 +383,13 @@ export default function TareasPage() {
     const associations = a.contactName && a.contactId
       ? [{ type: 'contacto' as const, id: a.contactId, name: a.contactName }]
       : undefined;
-    const company = a.contactName?.includes(' - ') ? a.contactName.split(' - ')[1] : undefined;
+    const company = activityCompanyDisplayName(a);
     return {
       id: a.id,
       title: a.title,
       status: a.status,
       type: kind,
-      priority: 'media',
+      priority: a.priority ?? 'media',
       company,
       dueDate: a.dueDate,
       startDate: a.startDate,
@@ -363,6 +418,31 @@ export default function TareasPage() {
         }),
     );
   }, []);
+
+  async function handleKanbanStatusChange(taskId: string, next: ActivityStatus) {
+    const task = allTasks.find((t) => t.id === taskId);
+    if (!task || task.status === next) return;
+    try {
+      const payload: UpdateActivityPayload = { status: next };
+      if (next === 'completada') {
+        payload.completedAt = new Date().toISOString().slice(0, 10);
+      } else if (task.status === 'completada') {
+        payload.completedAt = '';
+      }
+      await updateActivity(taskId, payload);
+      toast.success('Estado actualizado');
+      if (
+        next === 'completada' &&
+        task.taskKind &&
+        TASK_KINDS.includes(task.taskKind)
+      ) {
+        setCompletedTask({ ...task, status: 'completada' });
+        setActivityFromTaskOpen(true);
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al mover la tarea');
+    }
+  }
 
   async function handleTaskToggle(taskId: string) {
     const task = allTasks.find((t) => t.id === taskId);
@@ -420,9 +500,14 @@ export default function TareasPage() {
         title: data.title,
         description: '',
         assignedTo: data.assignee,
+        status: data.status,
+        priority: data.priority,
         dueDate: data.dueDate,
         startDate: data.startDate,
         startTime: data.startTime,
+        ...(data.status === 'completada'
+          ? { completedAt: new Date().toISOString().slice(0, 10) }
+          : {}),
         contactId: contactAssoc?.id,
         companyId,
         opportunityId: negocioAssoc?.id,
@@ -475,12 +560,18 @@ export default function TareasPage() {
   return (
     <TooltipProvider>
       <div className="space-y-6">
-      <PageHeader title="Tareas" description="Gestiona tus tareas pendientes">
+      <PageHeader title="Tareas">
         <div className="flex items-center gap-2">
           {activitiesLoading && (
             <span className="text-sm text-muted-foreground">Cargando…</span>
           )}
-          <Button onClick={() => setNewTaskOpen(true)} disabled={activitiesLoading}>
+          <Button
+            onClick={() => {
+              setNewTaskColumnStatus(undefined);
+              setNewTaskOpen(true);
+            }}
+            disabled={activitiesLoading}
+          >
             <Plus /> Nueva Tarea
           </Button>
         </div>
@@ -542,6 +633,23 @@ export default function TareasPage() {
           </Select>
 
           <Select
+            value={priorityFilter}
+            onValueChange={(v) => setPriorityFilter(v as 'todas' | ContactPriority)}
+          >
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Prioridad" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todas">Todas las prioridades</SelectItem>
+              {(Object.keys(priorityLabels) as ContactPriority[]).map((key) => (
+                <SelectItem key={key} value={key}>
+                  {priorityLabels[key]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select
             value={advisorFilter}
             onValueChange={setAdvisorFilter}
             disabled={!canSeeAllAdvisors}
@@ -562,6 +670,29 @@ export default function TareasPage() {
               <X className="size-4" /> Limpiar
             </Button>
           )}
+
+          <div className="ml-auto flex items-center rounded-md border" role="tablist" aria-label="Vista de tareas">
+            <Button
+              type="button"
+              variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+              size="icon-sm"
+              onClick={() => setViewMode('list')}
+              className="rounded-r-none"
+              aria-label="Vista lista"
+            >
+              <List className="size-4" />
+            </Button>
+            <Button
+              type="button"
+              variant={viewMode === 'kanban' ? 'secondary' : 'ghost'}
+              size="icon-sm"
+              onClick={() => setViewMode('kanban')}
+              className="rounded-l-none"
+              aria-label="Vista tablero"
+            >
+              <Grid3X3 className="size-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -578,9 +709,51 @@ export default function TareasPage() {
       )}
 
       {/* Main content: list + sidebar */}
-      <div className="flex gap-6">
-        {/* Task list */}
-        <div className="min-w-0 flex-1">
+      <div className="flex min-h-0 gap-6">
+        {/* Task list / Kanban */}
+        <div
+          className={cn(
+            'min-w-0 flex-1',
+            viewMode === 'kanban' && 'flex min-h-0 w-full min-w-0 flex-col',
+          )}
+        >
+          {viewMode === 'kanban' ? (
+            tasksForKanban.length === 0 ? (
+              <EmptyState
+                icon={Grid3X3}
+                title="No hay tareas para el tablero"
+                description="Ajusta los filtros o crea una nueva tarea."
+                actionLabel="Nueva Tarea"
+                onAction={() => {
+                  setNewTaskColumnStatus(undefined);
+                  setNewTaskOpen(true);
+                }}
+              />
+            ) : (
+              <TasksKanbanBoard
+                tasks={tasksForKanban}
+                loading={activitiesLoading}
+                onTaskClick={(t) => {
+                  setSelectedTaskDetail(t);
+                  setTaskDetailOpen(true);
+                }}
+                onAddTask={(columnStatus) => {
+                  setNewTaskColumnStatus(columnStatus);
+                  setNewTaskOpen(true);
+                }}
+                onStatusChange={handleKanbanStatusChange}
+                onCompleteToggle={handleTaskToggle}
+                onReschedule={handleReschedule}
+                onEdit={(t) => {
+                  setSelectedTaskDetail(t);
+                  setTaskDetailOpen(true);
+                }}
+                onDelete={handleDelete}
+                formatDueDate={formatDueDate}
+                isOverdue={isOverdue}
+              />
+            )
+          ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList
               variant="line"
@@ -613,25 +786,44 @@ export default function TareasPage() {
                   onAction={() => setNewTaskOpen(true)}
                 />
               ) : (
-                <Card>
-                  <Table className="table-fixed w-full min-w-0">
+                <Card className="min-w-0 overflow-hidden">
+                  <Table
+                    className="table-fixed w-full min-w-[1040px]"
+                    containerClassName="min-w-0 overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]"
+                  >
+                    <colgroup>
+                      <col className="w-10" />
+                      <col className="w-11" />
+                      <col className="min-w-[12rem] w-[22%]" />
+                      <col className="min-w-[11rem] w-[18%]" />
+                      <col className="w-[104px]" />
+                      <col className="w-[9.25rem]" />
+                      <col className="w-[11.25rem]" />
+                      <col className="w-[124px]" />
+                      <col className="w-10" />
+                    </colgroup>
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-10" />
                         <TableHead className="w-11 text-center text-muted-foreground">
                           Tipo
                         </TableHead>
-                        <TableHead className="min-w-0 text-muted-foreground">Título</TableHead>
-                        <TableHead className="hidden w-[92px] sm:table-cell text-muted-foreground">
+                        <TableHead className="min-w-[12rem] whitespace-normal text-muted-foreground">
+                          <span className="block hyphens-auto pr-1 leading-tight sm:whitespace-nowrap">Título</span>
+                        </TableHead>
+                        <TableHead className="hidden min-w-[11rem] whitespace-normal sm:table-cell text-muted-foreground">
+                          <span className="block pr-1 leading-tight sm:whitespace-nowrap">Empresa</span>
+                        </TableHead>
+                        <TableHead className="hidden w-[104px] sm:table-cell px-2 text-muted-foreground">
                           Prioridad
                         </TableHead>
-                        <TableHead className="hidden min-w-[88px] md:table-cell text-muted-foreground">
+                        <TableHead className="hidden w-[9.25rem] md:table-cell px-2 text-muted-foreground">
                           Asignado
                         </TableHead>
-                        <TableHead className="hidden w-[120px] lg:table-cell text-muted-foreground">
+                        <TableHead className="hidden w-[11.25rem] lg:table-cell px-2 text-muted-foreground">
                           Fecha
                         </TableHead>
-                        <TableHead className="w-[104px] text-right text-muted-foreground">Estado</TableHead>
+                        <TableHead className="w-[124px] px-2 text-right text-muted-foreground">Estado</TableHead>
                         <TableHead className="w-10" />
                       </TableRow>
                     </TableHeader>
@@ -644,7 +836,8 @@ export default function TareasPage() {
                         const TypeIcon = activityIcons[taskType];
                         const circle = activityTypeIconCircleClass(taskType);
                         const overdue = isOverdue(task.dueDate, task.status);
-                        const taskPriority = 'media' as const;
+                        const taskPriority: ContactPriority = task.priority ?? 'media';
+                        const companyLabel = activityCompanyDisplayName(task);
 
                         return (
                           <TableRow
@@ -685,7 +878,7 @@ export default function TareasPage() {
                                 <TooltipContent side="top">{taskTypeLabels[taskType]}</TooltipContent>
                               </Tooltip>
                             </TableCell>
-                            <TableCell className="min-w-0 align-middle font-medium">
+                            <TableCell className="min-w-[12rem] align-middle font-medium">
                               <span
                                 className={cn(
                                   'block truncate',
@@ -696,7 +889,17 @@ export default function TareasPage() {
                                 {task.title}
                               </span>
                             </TableCell>
-                            <TableCell className="hidden align-middle sm:table-cell">
+                            <TableCell className="hidden min-w-[11rem] align-middle sm:table-cell text-muted-foreground">
+                              {companyLabel ? (
+                                <span className="flex items-center gap-1.5" title={companyLabel}>
+                                  <Building2 className="size-3.5 shrink-0 text-muted-foreground/70" aria-hidden />
+                                  <span className="truncate text-sm">{companyLabel}</span>
+                                </span>
+                              ) : (
+                                <span className="text-sm text-muted-foreground/50">—</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="hidden align-middle px-2 sm:table-cell">
                               <Badge
                                 variant="outline"
                                 className={cn('border-0 text-xs font-medium', taskPriorityBadgeClass[taskPriority])}
@@ -704,12 +907,12 @@ export default function TareasPage() {
                                 {priorityLabels[taskPriority]}
                               </Badge>
                             </TableCell>
-                            <TableCell className="hidden min-w-0 align-middle md:table-cell text-muted-foreground">
+                            <TableCell className="hidden min-w-0 max-w-[9.25rem] align-middle px-2 md:table-cell text-muted-foreground">
                               <span className="block truncate text-sm" title={task.assignedToName}>
                                 {task.assignedToName}
                               </span>
                             </TableCell>
-                            <TableCell className="hidden align-middle text-sm text-muted-foreground lg:table-cell">
+                            <TableCell className="hidden min-w-0 max-w-[11.25rem] align-middle px-2 text-sm text-muted-foreground lg:table-cell">
                               <span
                                 className={cn(
                                   'flex flex-col gap-0.5 whitespace-nowrap leading-tight',
@@ -765,6 +968,7 @@ export default function TareasPage() {
               )}
             </TabsContent>
           </Tabs>
+          )}
         </div>
 
         {/* Calendar sidebar - desktop */}
@@ -792,93 +996,6 @@ export default function TareasPage() {
                 />
               </CardContent>
             </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <h3 className="flex items-center gap-2 font-semibold">
-                  <CalendarDays className="size-4 text-[#13944C]" />
-                  {calendarDate ? 'Día seleccionado' : 'Hoy'}
-                </h3>
-                {selectedDateTasks.length === 0 ? (
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    {calendarDate ? 'No hay tareas para esa fecha.' : 'No hay tareas para hoy.'}
-                  </p>
-                ) : (
-                  <div className="mt-3 space-y-2">
-                    {selectedDateTasks.map((t) => {
-                      const kind = (t.taskKind && TASK_KINDS.includes(t.taskKind)
-                        ? t.taskKind
-                        : 'llamada') as TaskKind;
-                      const Icon = activityIcons[kind];
-                      const circle = activityTypeIconCircleClass(kind);
-                      return (
-                        <div key={t.id} className="flex items-center gap-2 rounded-md border p-2 text-sm">
-                          <div
-                            className={cn(
-                              'flex h-7 w-7 shrink-0 items-center justify-center rounded-full',
-                              ACTIVITY_ICON_INHERIT,
-                              circle ??
-                                'bg-muted text-muted-foreground [&_svg]:text-muted-foreground',
-                            )}
-                          >
-                            <Icon className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate font-medium">{t.title}</p>
-                            <p className="truncate text-xs text-muted-foreground">{t.assignedToName}</p>
-                          </div>
-                          <TaskStatusBadge status={t.status} />
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <h3 className="flex items-center gap-2 font-semibold">
-                  <Clock className="size-4 text-blue-600" />
-                  Próximos 3 días
-                </h3>
-                {upcomingTasks.length === 0 ? (
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    No hay tareas próximas.
-                  </p>
-                ) : (
-                  <div className="mt-3 space-y-2">
-                    {upcomingTasks.map((t) => {
-                      const kind = (t.taskKind && TASK_KINDS.includes(t.taskKind)
-                        ? t.taskKind
-                        : 'llamada') as TaskKind;
-                      const Icon = activityIcons[kind];
-                      const circle = activityTypeIconCircleClass(kind);
-                      return (
-                        <div key={t.id} className="flex items-center gap-2 rounded-md border p-2 text-sm">
-                          <div
-                            className={cn(
-                              'flex h-7 w-7 shrink-0 items-center justify-center rounded-full',
-                              ACTIVITY_ICON_INHERIT,
-                              circle ??
-                                'bg-muted text-muted-foreground [&_svg]:text-muted-foreground',
-                            )}
-                          >
-                            <Icon className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate font-medium">{t.title}</p>
-                            <p className="truncate text-xs text-muted-foreground">
-                              {format(new Date(t.dueDate), "d MMM", { locale: es })} · {t.assignedToName}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
           </div>
         </aside>
       </div>
@@ -889,7 +1006,7 @@ export default function TareasPage() {
           <CollapsibleTrigger asChild>
             <Button variant="outline" className="w-full">
               <CalendarDays className="size-4" />
-              {sidebarOpen ? 'Ocultar calendario' : 'Ver calendario y agenda'}
+              {sidebarOpen ? 'Ocultar calendario' : 'Ver calendario'}
             </Button>
           </CollapsibleTrigger>
           <CollapsibleContent className="mt-4 space-y-4">
@@ -903,48 +1020,6 @@ export default function TareasPage() {
                 />
               </CardContent>
             </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <h3 className="flex items-center gap-2 font-semibold">
-                  <CalendarDays className="size-4 text-[#13944C]" />
-                  {calendarDate ? 'Tareas del día seleccionado' : 'Tareas de hoy'}
-                </h3>
-                {selectedDateTasks.length === 0 ? (
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    {calendarDate ? 'No hay tareas para esa fecha.' : 'No hay tareas para hoy.'}
-                  </p>
-                ) : (
-                  <div className="mt-3 space-y-2">
-                    {selectedDateTasks.map((t) => {
-                      const kind = (t.taskKind && TASK_KINDS.includes(t.taskKind)
-                        ? t.taskKind
-                        : 'llamada') as TaskKind;
-                      const Icon = activityIcons[kind];
-                      const circle = activityTypeIconCircleClass(kind);
-                      return (
-                        <div key={t.id} className="flex items-center gap-2 rounded-md border p-2 text-sm">
-                          <div
-                            className={cn(
-                              'flex h-7 w-7 shrink-0 items-center justify-center rounded-full',
-                              ACTIVITY_ICON_INHERIT,
-                              circle ??
-                                'bg-muted text-muted-foreground [&_svg]:text-muted-foreground',
-                            )}
-                          >
-                            <Icon className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate font-medium">{t.title}</p>
-                          </div>
-                          <TaskStatusBadge status={t.status} />
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
           </CollapsibleContent>
         </Collapsible>
       </div>
@@ -956,7 +1031,7 @@ export default function TareasPage() {
           setTaskDetailOpen(o);
           if (!o) setSelectedTaskDetail(null);
         }}
-        task={selectedTaskDetail ? activityToTaskDetail(selectedTaskDetail) : null}
+        task={taskDetailActivity ? activityToTaskDetail(taskDetailActivity) : null}
         statusLabels={tareasStatusLabels}
         statusColors={tareasStatusColors}
         tasks={allTasks.map(activityToTaskDetail)}
@@ -988,9 +1063,13 @@ export default function TareasPage() {
             if (nd.dueDate !== oldDetail.dueDate) payload.dueDate = nd.dueDate;
             if (nd.startDate !== oldDetail.startDate) payload.startDate = nd.startDate;
             if (nd.startTime !== oldDetail.startTime) payload.startTime = nd.startTime;
+            if ((nd.priority ?? 'media') !== (oldDetail.priority ?? 'media')) {
+              payload.priority = nd.priority ?? 'media';
+            }
             if (Object.keys(payload).length === 0) continue;
             try {
-              await updateActivity(nd.id, payload);
+              const updated = await updateActivity(nd.id, payload);
+              setSelectedTaskDetail((prev) => (prev?.id === updated.id ? updated : prev));
             } catch (e) {
               toast.error(e instanceof Error ? e.message : 'Error al actualizar');
             }
@@ -1092,7 +1171,10 @@ export default function TareasPage() {
         open={newTaskOpen}
         onOpenChange={(open) => {
           setNewTaskOpen(open);
-          if (!open) setNewTaskDefaultTitle('');
+          if (!open) {
+            setNewTaskDefaultTitle('');
+            setNewTaskColumnStatus(undefined);
+          }
         }}
         title="Nueva Tarea"
         description="Crea una nueva tarea."
@@ -1100,6 +1182,7 @@ export default function TareasPage() {
         companies={companiesFromContacts}
         opportunities={opportunities}
         defaultTitle={newTaskDefaultTitle}
+        defaultStatus={newTaskColumnStatus}
         onSave={handleTaskFormSave}
       />
       </div>

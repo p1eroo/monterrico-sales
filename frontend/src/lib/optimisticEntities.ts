@@ -34,7 +34,7 @@ export function buildOptimisticContact(
     etapa,
     assignedTo,
     assignedToName,
-    estimatedValue: data.estimatedValue,
+    estimatedValue: data.estimatedValue ?? 0,
     createdAt: today,
     etapaHistory: [{ etapa, fecha: today }],
     clienteRecuperado: data.clienteRecuperado,
@@ -52,13 +52,15 @@ export function buildOptimisticOpportunity(
   const assignedToName =
     useUsersStore.getState().getUserName(assignedTo) || 'Sin asignar';
 
+  const cid = data.companyId?.trim();
   return {
     id: clientId,
     title: data.title.trim(),
     contactId: data.contactId?.trim() || undefined,
     contactName: options?.contactName,
-    clientId: data.companyId?.trim() || undefined,
+    clientId: cid || undefined,
     clientName: options?.clientName,
+    linkedCompanyIds: cid ? [cid] : undefined,
     amount: data.amount,
     probability: etapaProbabilidad[etapa] ?? 0,
     etapa,

@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { CompaniesService } from './companies.service';
+import { CompanyStaleEtapaService } from './company-stale-etapa.service';
+import { CompanyStaleEtapaScheduler } from './company-stale-etapa.scheduler';
 import { CompaniesController } from './companies.controller';
 import { SyncModule } from '../sync/sync.module';
 import { AuthModule } from '../auth/auth.module';
@@ -18,7 +20,7 @@ import { AuditDetailModule } from '../audit-detail/audit-detail.module';
     AuditDetailModule,
   ],
   controllers: [CompaniesController],
-  providers: [CompaniesService],
+  providers: [CompaniesService, CompanyStaleEtapaService, CompanyStaleEtapaScheduler],
   exports: [CompaniesService],
 })
 export class CompaniesModule {}

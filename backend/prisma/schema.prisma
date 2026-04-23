@@ -513,6 +513,8 @@ model Activity {
   description   String
   assignedTo    String
   status        String    @default("pendiente")
+  /** alta | media | baja — sobre todo para tareas */
+  priority      String    @default("media")
   dueDate       DateTime
   startDate     DateTime?
   startTime     String?

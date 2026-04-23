@@ -1,18 +1,20 @@
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { Building2, ChevronLeft, Globe, X } from 'lucide-react';
+import { Building2, ChevronLeft, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { getInactiveCompanies, slugifyCompany } from '@/lib/inactiveCompanies';
-import { contactListAll, mapApiContactRowToContact } from '@/lib/contactApi';
-import type { Contact } from '@/types';
-import { etapaLabels, companyRubroLabels, companyTipoLabels } from '@/data/mock';
+import {
+  companySinCambioEtapaAlert,
+  type CompanySinCambioEtapaAlertItem,
+} from '@/lib/companyApi';
+import { etapaLabels } from '@/data/mock';
 import { cn } from '@/lib/utils';
 import type { Etapa } from '@/types';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 interface InactiveCompaniesPanelProps {
   onBack: () => void;
-  /** Si se proporciona, muestra botón X en la misma fila del header */
   onClose?: () => void;
 }
 
@@ -28,31 +30,43 @@ const etapaBadgeColors: Record<string, string> = {
 
 export function InactiveCompaniesPanel({ onBack, onClose }: InactiveCompaniesPanelProps) {
   const navigate = useNavigate();
-  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [items, setItems] = useState<CompanySinCambioEtapaAlertItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     let c = true;
-    void contactListAll()
-      .then((rows) => {
-        if (c) setContacts(rows.map(mapApiContactRowToContact));
+    setLoading(true);
+    void companySinCambioEtapaAlert()
+      .then((res) => {
+        if (c) setItems(res.items);
       })
       .catch(() => {
-        if (c) setContacts([]);
+        if (c) setItems([]);
+      })
+      .finally(() => {
+        if (c) setLoading(false);
       });
     return () => {
       c = false;
     };
   }, []);
-  const inactiveCompanies = getInactiveCompanies(contacts);
 
-  const handleCompanyClick = (company: string) => {
-    navigate(`/empresas/${slugifyCompany(company)}`);
+  const handleCompanyClick = (row: CompanySinCambioEtapaAlertItem) => {
+    navigate(`/empresas/${encodeURIComponent(row.urlSlug)}`);
     onBack();
   };
 
+  const formatLastChange = (iso: string) => {
+    try {
+      return format(new Date(iso), "d MMM yyyy", { locale: es });
+    } catch {
+      return iso;
+    }
+  };
+
   return (
-    <div className="flex h-full flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
+    <div className="flex h-full min-w-0 flex-col overflow-hidden">
+      <div className="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-3">
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <Button
             variant="ghost"
@@ -62,16 +76,16 @@ export function InactiveCompaniesPanel({ onBack, onClose }: InactiveCompaniesPan
           >
             <ChevronLeft className="size-4" />
           </Button>
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex min-w-0 items-center gap-2">
             <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400">
               <Building2 className="size-4" />
             </div>
             <div className="min-w-0">
               <h2 className="truncate font-semibold text-foreground">
-                Empresas inactivas
+                Empresas sin cambio de etapa
               </h2>
               <span className="inline-block rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">
-                Sistema
+                11+ semanas · etapas 0 %, 10 %, 30 %
               </span>
             </div>
           </div>
@@ -89,71 +103,53 @@ export function InactiveCompaniesPanel({ onBack, onClose }: InactiveCompaniesPan
         )}
       </div>
 
-      {/* List */}
-      <ScrollArea className="flex-1 min-h-0">
-        <div className="space-y-2 p-4">
-          {inactiveCompanies.length === 0 ? (
+      <ScrollArea className="min-h-0 min-w-0 flex-1">
+        <div className="box-border space-y-2 p-4 pr-5 pb-6">
+          {loading ? (
+            <p className="py-12 text-center text-sm text-muted-foreground">Cargando…</p>
+          ) : items.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <Building2 className="size-12 text-muted-foreground/40" />
               <p className="mt-3 text-sm font-medium text-foreground">
-                No hay empresas inactivas
+                No hay empresas en esta alerta
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Todas tus empresas tienen actividad reciente
+                Etapas con probabilidad 0 %, 10 % o 30 % y movimiento de etapa en las últimas 11
+                semanas
               </p>
             </div>
           ) : (
-            inactiveCompanies.map((emp) => (
+            items.map((emp) => (
               <button
                 key={emp.id}
                 type="button"
-                onClick={() => handleCompanyClick(emp.company)}
+                onClick={() => handleCompanyClick(emp)}
                 className={cn(
-                  'flex w-full flex-col gap-2 rounded-xl border p-4 text-left transition-colors',
+                  'flex w-full min-w-0 max-w-full flex-col gap-2 rounded-xl border p-4 text-left transition-colors',
                   'hover:bg-muted/60 hover:border-muted-foreground/20',
                   'focus:outline-none focus:ring-2 focus:ring-primary/30',
                 )}
               >
-                {/* Fila 1: Nombre ... Etapa */}
-                <div className="flex items-center justify-between gap-2">
-                  <span className="min-w-0 truncate font-semibold text-foreground">
-                    {emp.company}
+                <div className="min-w-0 space-y-2">
+                  <span className="block break-words font-semibold leading-snug text-foreground">
+                    {emp.name}
                   </span>
                   <span
                     className={cn(
-                      'shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-medium',
+                      'inline-flex max-w-full rounded-full px-2.5 py-0.5 text-left text-[11px] font-medium leading-snug',
                       etapaBadgeColors[emp.etapa] ?? 'bg-muted text-muted-foreground',
                     )}
                   >
                     {etapaLabels[emp.etapa as Etapa] ?? emp.etapa}
                   </span>
                 </div>
-                {/* Fila 2: Dominio | Tipo | Rubro */}
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  {emp.domain && (
-                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Globe className="size-3.5 shrink-0" />
-                      {emp.domain}
-                    </span>
-                  )}
-                  {(emp.domain && (emp.companyTipo || emp.companyRubro)) && (
-                    <span className="text-muted-foreground/50">·</span>
-                  )}
-                  {emp.companyTipo && (
-                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
-                      Tipo {companyTipoLabels[emp.companyTipo] ?? emp.companyTipo}
-                    </span>
-                  )}
-                  {emp.companyRubro && (
-                    <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
-                      {companyRubroLabels[emp.companyRubro] ?? emp.companyRubro}
-                    </span>
-                  )}
-                </div>
-                {/* Fila 3: Asesor */}
                 <p className="text-xs text-muted-foreground">
-                  {emp.assignedToName}
+                  Último cambio de etapa:{' '}
+                  <span className="font-medium text-foreground">{formatLastChange(emp.lastEtapaChangeAt)}</span>
                 </p>
+                {emp.assignedToName && (
+                  <p className="text-xs text-muted-foreground">{emp.assignedToName}</p>
+                )}
               </button>
             ))
           )}

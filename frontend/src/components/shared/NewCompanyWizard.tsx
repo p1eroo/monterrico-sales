@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useCrmConfigStore } from '@/store/crmConfigStore';
-import { Check, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Loader2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { factilizaApi } from '@/lib/factilizaApi';
 import type { CompanyRubro, CompanyTipo, ContactSource, Etapa } from '@/types';
@@ -42,7 +42,10 @@ export type NewCompanyWizardSubmitMeta = {
 interface NewCompanyWizardProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: NewCompanyData, meta: NewCompanyWizardSubmitMeta) => void;
+  onSubmit: (
+    data: NewCompanyData,
+    meta: NewCompanyWizardSubmitMeta,
+  ) => void | Promise<void>;
   title?: string;
   description?: string;
   /** Valores iniciales (p. ej. desde el wizard de contacto) */
@@ -79,6 +82,7 @@ export function NewCompanyWizard({
   const [companyNameLookupQuery, setCompanyNameLookupQuery] = useState('');
   const [existingCompanyId, setExistingCompanyId] = useState<string | null>(null);
   const [loadedRucDigits, setLoadedRucDigits] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const { activeAdvisors } = useUsers();
   const bundle = useCrmConfigStore((s) => s.bundle);
 
@@ -273,6 +277,7 @@ export function NewCompanyWizard({
   function handleOpenChange(value: boolean) {
     onOpenChange(value);
     if (!value) {
+      setSubmitting(false);
       setStep(0);
       setForm({ ...emptyForm });
       setExistingCompanyId(null);
@@ -282,6 +287,7 @@ export function NewCompanyWizard({
   }
 
   function handleNext() {
+    if (submitting) return;
     if (step === 0 && (!form.ruc.trim() || !form.nombreComercial.trim())) {
       toast.error('RUC y Nombre comercial son obligatorios');
       return;
@@ -299,7 +305,8 @@ export function NewCompanyWizard({
     setStep((s) => s + 1);
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
+    if (submitting) return;
     if (!form.ruc.trim() || !form.nombreComercial.trim()) {
       toast.error('RUC y Nombre comercial son obligatorios');
       return;
@@ -311,15 +318,25 @@ export function NewCompanyWizard({
     const nombreNegocio = form.nombreNegocio.trim() || form.nombreComercial.trim();
 
     if (existingCompanyId) {
-      onSubmit(
-        { ...form, nombreNegocio },
-        { mode: 'update', existingCompanyId },
-      );
-      setStep(0);
-      setForm({ ...emptyForm });
-      setExistingCompanyId(null);
-      setLoadedRucDigits(null);
-      onOpenChange(false);
+      setSubmitting(true);
+      try {
+        await Promise.resolve(
+          onSubmit(
+            { ...form, nombreNegocio },
+            { mode: 'update', existingCompanyId },
+          ),
+        );
+        setStep(0);
+        setForm({ ...emptyForm });
+        setExistingCompanyId(null);
+        setLoadedRucDigits(null);
+        resetCompanyNameLookup();
+        onOpenChange(false);
+      } catch {
+        /* el padre ya mostró el error */
+      } finally {
+        setSubmitting(false);
+      }
       return;
     }
 
@@ -328,12 +345,26 @@ export function NewCompanyWizard({
       toast.error('La facturación estimada es obligatoria y debe ser mayor que 0');
       return;
     }
-    onSubmit({ ...form, nombreNegocio }, { mode: 'create' });
-    setStep(0);
-    setForm({ ...emptyForm });
-    setExistingCompanyId(null);
-    setLoadedRucDigits(null);
-    onOpenChange(false);
+    if (!form.fechaCierre.trim()) {
+      toast.error('Selecciona la fecha estimada de cierre de la oportunidad');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await Promise.resolve(
+        onSubmit({ ...form, nombreNegocio }, { mode: 'create' }),
+      );
+      setStep(0);
+      setForm({ ...emptyForm });
+      setExistingCompanyId(null);
+      setLoadedRucDigits(null);
+      resetCompanyNameLookup();
+      onOpenChange(false);
+    } catch {
+      /* el padre ya mostró el error */
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   const set = <K extends keyof NewCompanyData>(key: K, value: NewCompanyData[K]) =>
@@ -382,7 +413,8 @@ export function NewCompanyWizard({
                 <Label>RUC <span className="text-destructive">*</span></Label>
                 <div className="relative">
                   <Input
-                    placeholder="20XXXXXXXXX — Enter para buscar"
+                    className="pr-10"
+                    placeholder="20XXXXXXXXX"
                     maxLength={11}
                     value={form.ruc}
                     onChange={(e) => {
@@ -402,13 +434,28 @@ export function NewCompanyWizard({
                       const val = (e.currentTarget as HTMLInputElement).value;
                       if (e.key === 'Enter' && val.trim().replace(/\D/g, '').length === 11) {
                         e.preventDefault();
-                        handleRucLookup(val);
+                        void handleRucLookup(val);
                       }
                     }}
                   />
-                  {rucLookupLoading && (
-                    <Loader2 className="absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
-                  )}
+                  <div className="absolute right-0.5 top-1/2 z-10 -translate-y-1/2">
+                    {rucLookupLoading ? (
+                      <div className="flex size-8 items-center justify-center" aria-hidden>
+                        <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 shrink-0 text-muted-foreground hover:text-foreground"
+                        aria-label="Buscar empresa por RUC"
+                        onClick={() => void handleRucLookup()}
+                      >
+                        <Search className="size-4" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="space-y-2">
@@ -639,20 +686,47 @@ export function NewCompanyWizard({
         <DialogFooter className="flex-row gap-2 sm:justify-between">
           <div>
             {step > 0 && (
-              <Button type="button" variant="outline" onClick={() => setStep((s) => s - 1)}>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={submitting}
+                onClick={() => setStep((s) => s - 1)}
+              >
                 <ChevronLeft className="size-4" /> Anterior
               </Button>
             )}
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => handleOpenChange(false)}>Cancelar</Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={submitting}
+              onClick={() => handleOpenChange(false)}
+            >
+              Cancelar
+            </Button>
             {step < 2 ? (
-              <Button type="button" className="bg-[#13944C] hover:bg-[#0f7a3d]" onClick={handleNext}>
+              <Button
+                type="button"
+                className="bg-[#13944C] hover:bg-[#0f7a3d]"
+                disabled={submitting}
+                onClick={handleNext}
+              >
                 Siguiente <ChevronRight className="size-4" />
               </Button>
             ) : (
-              <Button type="button" className="bg-[#13944C] hover:bg-[#0f7a3d]" onClick={handleSubmit}>
-                {existingCompanyId ? 'Actualizar empresa' : confirmButtonLabel}
+              <Button
+                type="button"
+                className="bg-[#13944C] hover:bg-[#0f7a3d]"
+                disabled={submitting}
+                onClick={() => void handleSubmit()}
+              >
+                <span className="inline-flex items-center gap-2">
+                  {submitting ? (
+                    <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+                  ) : null}
+                  {existingCompanyId ? 'Actualizar empresa' : confirmButtonLabel}
+                </span>
               </Button>
             )}
           </div>

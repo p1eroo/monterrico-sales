@@ -81,7 +81,7 @@ export default function TeamPage() {
   const [newUserOpen, setNewUserOpen] = useState(false);
 
   const teamUsers = [...users, ...newUsersCreated];
-  /** Vista Equipo comercial: solo asesores (admin/supervisión se gestiona en Usuarios). */
+  /** Solo cartera comercial (`asesor`); gerentes/supervisores no se listan aquí. */
   const salesTeamUsers = teamUsers.filter((u) => u.role === 'asesor');
   const filteredUsers = salesTeamUsers.filter(
     (u) =>

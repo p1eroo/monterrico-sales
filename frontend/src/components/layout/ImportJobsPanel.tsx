@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { CheckCircle2, FileSpreadsheet, Loader2, TriangleAlert, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { useImportJobsStore } from '@/store/importJobsStore';
+import { importJobErrorsList, type ImportJob } from '@/lib/importExportApi';
+import { ImportJobErrorsDialog } from '@/components/layout/ImportJobErrorsDialog';
 
 function entityLabel(entity: 'contacts' | 'companies' | 'opportunities') {
   if (entity === 'contacts') return 'contactos';
@@ -14,14 +16,22 @@ function entityLabel(entity: 'contacts' | 'companies' | 'opportunities') {
   return 'oportunidades';
 }
 
+const isDevMocks = import.meta.env.DEV;
+
 export function ImportJobsPanel() {
   const jobs = useImportJobsStore((s) => s.jobs);
   const pollActiveJobs = useImportJobsStore((s) => s.pollActiveJobs);
   const dismissJob = useImportJobsStore((s) => s.dismissJob);
+  const pushMockImportJob = useImportJobsStore((s) => s.pushMockImportJob);
   const notified = useRef(new Set<string>());
+  const [errorsModalJob, setErrorsModalJob] = useState<ImportJob | null>(null);
 
   const visibleJobs = useMemo(() => jobs.slice(0, 4), [jobs]);
-  const activeCount = jobs.filter((job) => job.status === 'queued' || job.status === 'running').length;
+  const activeCount = jobs.filter(
+    (job) =>
+      (job.status === 'queued' || job.status === 'running') &&
+      !job.id.startsWith('mock-import-'),
+  ).length;
 
   useEffect(() => {
     if (activeCount === 0) return;
@@ -37,27 +47,9 @@ export function ImportJobsPanel() {
       if (notified.current.has(job.id)) continue;
       if (job.status === 'completed') {
         notified.current.add(job.id);
-        const result = job.result;
-        const errMsg =
-          result && result.errors.length > 0
-            ? result.errors
-                .slice(0, 3)
-                .map((x) => `Fila ${x.row}: ${x.message}`)
-                .join('\n')
-            : undefined;
-        toast.success(
-          `Importación de ${entityLabel(job.entity)} completada`,
-          result
-            ? {
-                description: `${result.created} procesadas correctamente${
-                  result.skipped ? ` · ${result.skipped} omitidas` : ''
-                }${result.errors.length ? ` · ${result.errors.length} con error` : ''}${
-                  errMsg ? `\n${errMsg}` : ''
-                }`,
-              }
-            : undefined,
-        );
-      } else if (job.status === 'failed') {
+        continue;
+      }
+      if (job.status === 'failed') {
         notified.current.add(job.id);
         toast.error(`Falló la importación de ${entityLabel(job.entity)}`, {
           description: job.errorMessage,
@@ -66,14 +58,64 @@ export function ImportJobsPanel() {
     }
   }, [jobs]);
 
-  if (visibleJobs.length === 0) return null;
+  const devMockBar = isDevMocks ? (
+    <div
+      className="pointer-events-auto fixed bottom-4 left-4 z-[60] flex max-w-[min(22rem,calc(100vw-2rem))] flex-col gap-1.5 rounded-lg border border-dashed border-amber-600/40 bg-background/95 p-2 shadow-md backdrop-blur-sm dark:border-amber-500/35"
+      aria-label="Controles de desarrollo: simular estado de importación"
+    >
+      <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        Dev · panel importación
+      </p>
+      <div className="flex flex-wrap gap-1">
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          className="h-7 text-xs"
+          onClick={() => pushMockImportJob('completed_clean')}
+        >
+          Terminada OK
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          className="h-7 text-xs"
+          onClick={() => pushMockImportJob('completed_with_row_errors')}
+        >
+          OK + errores fila
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-7 text-xs border-destructive/40 text-destructive hover:bg-destructive/10"
+          onClick={() => pushMockImportJob('failed')}
+        >
+          Fallida
+        </Button>
+      </div>
+    </div>
+  ) : null;
 
   return (
-    <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-3 md:bottom-6 md:right-6">
+    <>
+      {devMockBar}
+      <ImportJobErrorsDialog
+        open={errorsModalJob != null}
+        job={errorsModalJob}
+        onOpenChange={(o) => {
+          if (!o) setErrorsModalJob(null);
+        }}
+      />
+      {visibleJobs.length > 0 ? (
+      <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-3 md:bottom-6 md:right-6">
       {visibleJobs.map((job) => {
         const running = job.status === 'queued' || job.status === 'running';
         const completed = job.status === 'completed';
         const failed = job.status === 'failed';
+        const errorRows = importJobErrorsList(job);
+        const canOpenErrors = errorRows.length > 0;
         return (
           <Card key={job.id} className="pointer-events-auto border shadow-lg">
             <CardContent className="space-y-3 p-4">
@@ -107,7 +149,10 @@ export function ImportJobsPanel() {
                         variant="ghost"
                         size="icon-sm"
                         className="shrink-0"
-                        onClick={() => dismissJob(job.id)}
+                        onClick={() => {
+                          if (errorsModalJob?.id === job.id) setErrorsModalJob(null);
+                          dismissJob(job.id);
+                        }}
                       >
                         <X className="size-4" />
                       </Button>
@@ -135,10 +180,28 @@ export function ImportJobsPanel() {
               {failed && job.errorMessage ? (
                 <p className="text-xs text-destructive">{job.errorMessage}</p>
               ) : null}
+
+              {canOpenErrors ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className={
+                    failed
+                      ? 'w-full border-destructive/50 text-destructive hover:bg-destructive/10'
+                      : 'w-full border-amber-600/40 text-amber-900 hover:bg-amber-50 dark:border-amber-500/35 dark:text-amber-100 dark:hover:bg-amber-950/40'
+                  }
+                  onClick={() => setErrorsModalJob(job)}
+                >
+                  Ver errores ({errorRows.length})
+                </Button>
+              ) : null}
             </CardContent>
           </Card>
         );
       })}
-    </div>
+      </div>
+      ) : null}
+    </>
   );
 }

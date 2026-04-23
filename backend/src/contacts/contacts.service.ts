@@ -397,23 +397,6 @@ export class ContactsService {
     );
 
     if (effectiveCompanyId) {
-      const company = await this.prisma.company.findUnique({
-        where: { id: effectiveCompanyId },
-        select: { name: true },
-      });
-      const expectedClose = new Date();
-      expectedClose.setDate(expectedClose.getDate() + 30);
-      await this.entitySync.ensureOpportunityForContactCompany(
-        row.id,
-        effectiveCompanyId,
-        {
-          title: company?.name?.trim() || 'Oportunidad',
-          amount: dto.estimatedValue!,
-          etapa,
-          assignedTo,
-          expectedCloseDate: expectedClose,
-        },
-      );
       await this.entitySync.propagateFromContact(effectiveCompanyId, row.id);
     }
 

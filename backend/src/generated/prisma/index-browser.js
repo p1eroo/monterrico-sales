@@ -453,6 +453,7 @@ exports.Prisma.ActivityScalarFieldEnum = {
   description: 'description',
   assignedTo: 'assignedTo',
   status: 'status',
+  priority: 'priority',
   dueDate: 'dueDate',
   startDate: 'startDate',
   startTime: 'startTime',

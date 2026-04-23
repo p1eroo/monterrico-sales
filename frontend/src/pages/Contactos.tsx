@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import {
   Plus, Search, Grid3X3, List, MoreHorizontal,
   Eye, Pencil, Trash2, X, ArrowUpDown,
-  Phone, Mail, Building2, DollarSign, Users, ChevronLeft, ChevronRight,
+  Phone, Mail, Building2, Users, ChevronLeft, ChevronRight,
   Upload, Download, FileSpreadsheet, Loader2,
 } from 'lucide-react';
 import { contactSourceLabels, etapaLabels } from '@/data/mock';
@@ -38,7 +38,6 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { formatCurrency } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
 import { contactDetailHref } from '@/lib/detailRoutes';
@@ -313,7 +312,6 @@ export default function ContactosPage() {
         telefono: payload.telefono,
         correo: payload.correo,
         fuente: payload.fuente,
-        estimatedValue: payload.estimatedValue,
       };
       if (payload.assignedTo !== undefined && canEditAssignee) {
         if (!isLikelyContactCuid(payload.assignedTo)) {
@@ -398,10 +396,6 @@ export default function ContactosPage() {
       toast.error('El correo es obligatorio');
       return;
     }
-    if (data.estimatedValue <= 0) {
-      toast.error('El valor estimado debe ser mayor que 0');
-      return;
-    }
     if (data.newCompanyWizardData) {
       const w = data.newCompanyWizardData;
       const existingCoId = data.newCompanyWizardUpdate?.companyId;
@@ -429,7 +423,7 @@ export default function ContactosPage() {
           correo: data.email.trim(),
           fuente: data.source,
           etapa: data.etapaCiclo,
-          estimatedValue: data.estimatedValue,
+          estimatedValue: 0,
           cargo: data.cargo?.trim() || undefined,
           docType: data.docType || undefined,
           docNumber: data.docNumber?.trim() || undefined,
@@ -476,10 +470,10 @@ export default function ContactosPage() {
       const factEmpresa = (() => {
         const f = Number(w.facturacion);
         if (Number.isFinite(f) && f > 0) return f;
-        return data.estimatedValue > 0 ? data.estimatedValue : 0;
+        return 0;
       })();
       if (factEmpresa <= 0) {
-        toast.error('Indica facturación estimada en el paso de oportunidad o un valor estimado del contacto mayor que 0');
+        toast.error('Indica facturación estimada de la empresa en el asistente (paso comercial u oportunidad).');
         return;
       }
       if (!w.origenLead) {
@@ -516,7 +510,7 @@ export default function ContactosPage() {
         correo: data.email.trim(),
         fuente: data.source,
         etapa: data.etapaCiclo,
-        estimatedValue: data.estimatedValue,
+        estimatedValue: 0,
         cargo: data.cargo?.trim() || undefined,
         docType: data.docType || undefined,
         docNumber: data.docNumber?.trim() || undefined,
@@ -603,7 +597,6 @@ export default function ContactosPage() {
     }
 
     let companyId: string | undefined;
-    let newCompany: Record<string, unknown> | undefined;
     if (data.companyId) {
       companyId = data.companyId;
     } else if (data.company.trim()) {
@@ -614,15 +607,10 @@ export default function ContactosPage() {
         if (found) {
           companyId = found.id;
         } else {
-          newCompany = {
-            name: data.company.trim(),
-            facturacionEstimada: data.estimatedValue,
-            fuente: data.source,
-            etapa: data.etapaCiclo,
-            ...(data.assignedTo && isLikelyContactCuid(data.assignedTo)
-              ? { assignedTo: data.assignedTo }
-              : {}),
-          };
+          toast.error(
+            'No existe una empresa con ese nombre. Usa «Crear empresa» en el campo Empresa o elige una existente.',
+          );
+          return;
         }
       } catch (e) {
         toast.error(
@@ -638,7 +626,7 @@ export default function ContactosPage() {
       correo: data.email.trim(),
       fuente: data.source,
       etapa: data.etapaCiclo,
-      estimatedValue: data.estimatedValue,
+      estimatedValue: 0,
       cargo: data.cargo?.trim() || undefined,
       docType: data.docType || undefined,
       docNumber: data.docNumber?.trim() || undefined,
@@ -653,9 +641,6 @@ export default function ContactosPage() {
     }
     if (companyId) {
       body.companyId = companyId;
-    }
-    if (newCompany) {
-      body.newCompany = newCompany;
     }
 
     const optIdSimple = generateOptimisticId('c');
@@ -768,7 +753,7 @@ export default function ContactosPage() {
       <ImportInProgressDialog
         open={importPreviewInProgress}
         title="Generando vista previa"
-        description="El sistema está leyendo el archivo, normalizando CSV/Excel y validando filas contra la base de datos. Las consultas externas solo ocurren al confirmar la importación."
+        description="El sistema está leyendo el archivo Excel (.xlsx), convirtiendo la primera hoja y validando filas contra la base de datos. Las consultas externas solo ocurren al confirmar la importación."
         rowHint="Puede tardar unos segundos si el archivo tiene muchas filas."
       />
       <Dialog
@@ -936,7 +921,7 @@ export default function ContactosPage() {
             variant="outline"
             size="sm"
             disabled={exportBusy}
-            title="CSV sin id: usa empresa_nombre y empresa_ruc para vincular o crear empresa"
+            title="Sin id: usa empresa_nombre y empresa_ruc para vincular o crear empresa"
             onClick={() => void handleContactTemplate()}
           >
             {exportBusy ? <Loader2 className="size-4 animate-spin" /> : <FileSpreadsheet className="size-4" />}{' '}
@@ -948,7 +933,7 @@ export default function ContactosPage() {
             variant="outline"
             size="sm"
             disabled={importBusy}
-            title="Obligatorio: valor_estimado (>0). Nombre o DNI (8 dígitos en doc_numero) para RENIEC vía Factiliza. Si indicas nombre en el CSV, prevalece sobre el de la API. doc_tipo vacío o DNI."
+            title="Obligatorio: valor_estimado (>0). Nombre o DNI (8 dígitos en doc_numero) para RENIEC vía Factiliza. Si indicas nombre en el archivo, prevalece sobre el de la API. doc_tipo vacío o DNI."
             onClick={openContactImport}
           >
             {importBusy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}{' '}
@@ -1486,11 +1471,7 @@ function ContactsGrid({
               </div>
             )}
 
-            <div className="mt-3 flex items-center justify-between border-t pt-3">
-              <span className="flex items-center gap-1 text-sm font-semibold text-emerald-600">
-                <DollarSign className="size-3.5" />
-                {formatCurrency(contact.estimatedValue)}
-              </span>
+            <div className="mt-3 flex items-center justify-end border-t pt-3">
               <span className="text-xs text-muted-foreground">{contact.assignedToName}</span>
             </div>
           </CardContent>

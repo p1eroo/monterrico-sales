@@ -63,6 +63,8 @@ export interface TaskFormDialogProps {
   opportunities: Opportunity[];
   defaultAssigneeId?: string;
   defaultTitle?: string;
+  /** Estado inicial al abrir (p. ej. columna Kanban desde la que se creó la tarea). */
+  defaultStatus?: TaskFormStatus;
   onSave: (task: TaskFormResult) => void | Promise<void>;
 }
 
@@ -76,6 +78,7 @@ export function TaskFormDialog({
   opportunities,
   defaultAssigneeId = '',
   defaultTitle = '',
+  defaultStatus,
   onSave,
 }: TaskFormDialogProps) {
   const { users, activeAdvisors } = useUsers();
@@ -83,8 +86,11 @@ export function TaskFormDialog({
   const [formTitle, setFormTitle] = useState(defaultTitle);
 
   useEffect(() => {
-    if (open) setFormTitle(defaultTitle);
-  }, [open, defaultTitle]);
+    if (open) {
+      setFormTitle(defaultTitle);
+      setFormStatus(defaultStatus ?? 'pendiente');
+    }
+  }, [open, defaultTitle, defaultStatus]);
 
   const [formType, setFormType] = useState<TaskFormType | ''>('');
   const [formStatus, setFormStatus] = useState<TaskFormStatus>('pendiente');
@@ -107,7 +113,7 @@ export function TaskFormDialog({
   function resetForm() {
     setFormTitle('');
     setFormType('');
-    setFormStatus('pendiente');
+    setFormStatus(defaultStatus ?? 'pendiente');
     setFormPriority('media');
     setFormAssignee(defaultAssigneeId);
     setFormStartTime('');

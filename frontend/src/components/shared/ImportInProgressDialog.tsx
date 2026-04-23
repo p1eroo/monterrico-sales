@@ -19,7 +19,7 @@ export type ImportInProgressDialogProps = {
 };
 
 /**
- * Modal bloqueante mientras el servidor procesa un CSV de importación (un solo POST).
+ * Modal bloqueante mientras el servidor procesa una importación masiva (un solo POST).
  * Sin barra de progreso real: indicación indeterminada + mensaje claro.
  */
 export function ImportInProgressDialog({

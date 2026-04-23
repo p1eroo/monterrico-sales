@@ -28,7 +28,12 @@ const MAX_IMPORT_ROWS = 1500;
 const MAX_COMPANY_IMPORT_ROWS = 5000;
 const UTF8_BOM = '\uFEFF';
 
-export type BulkImportRowError = { row: number; message: string };
+export type BulkImportRowError = { row: number; message: string; name?: string };
+
+function importRowErr(row: number, message: string, name?: string): BulkImportRowError {
+  const trimmed = name?.trim();
+  return trimmed ? { row, message, name: trimmed } : { row, message };
+}
 
 export type BulkImportResultDto = {
   totalRows: number;
@@ -1616,7 +1621,7 @@ export class ImportExportService {
     const rows = parseCsv(csvText);
     if (rows.length < 2) {
       throw new BadRequestException(
-        'El archivo CSV debe incluir encabezados y al menos una fila de datos',
+        'El archivo debe incluir encabezados y al menos una fila de datos',
       );
     }
     const headerIndex = buildHeaderIndex(rows[0]!);
@@ -1915,7 +1920,7 @@ export class ImportExportService {
     const rows = parseCsv(csvText);
     if (rows.length < 2) {
       throw new BadRequestException(
-        'El archivo CSV debe incluir encabezados y al menos una fila de datos',
+        'El archivo debe incluir encabezados y al menos una fila de datos',
       );
     }
     const headerIndex = buildHeaderIndex(rows[0]!);
@@ -1956,11 +1961,13 @@ export class ImportExportService {
           !nombreCsv &&
           !this.looksLikeDniForFactiliza(docTypeRow, docDigitsEarly)
         ) {
-          errors.push({
-            row: excelRow,
-            message:
+          errors.push(
+            importRowErr(
+              excelRow,
               'Falta nombre (o doc_numero con DNI de 8 dígitos para consultar RENIEC)',
-          });
+              nombreCsv || docNumberRow || undefined,
+            ),
+          );
           continue;
         }
         const telefonoRaw = this.readContactPhoneImportField(row, headerIndex);
@@ -1981,10 +1988,13 @@ export class ImportExportService {
           !Number.isFinite(estimatedValueRaw) ||
           estimatedValueRaw <= 0
         ) {
-          errors.push({
-            row: excelRow,
-            message: 'valor_estimado debe ser un número mayor que 0',
-          });
+          errors.push(
+            importRowErr(
+              excelRow,
+              'valor_estimado debe ser un número mayor que 0',
+              nombreCsv || correo || undefined,
+            ),
+          );
           continue;
         }
         const estimatedValue = estimatedValueRaw;
@@ -2017,7 +2027,9 @@ export class ImportExportService {
           etapaRaw,
         );
         if (!etapaResolved.ok) {
-          errors.push({ row: excelRow, message: etapaResolved.message });
+          errors.push(
+            importRowErr(excelRow, etapaResolved.message, nombreCsv || correo || undefined),
+          );
           continue;
         }
         const etapaRow = etapaResolved.slug;
@@ -2051,11 +2063,13 @@ export class ImportExportService {
           direccion: direccionRow || undefined,
         });
         if (!merged.name.trim()) {
-          errors.push({
-            row: excelRow,
-            message:
-              'No se pudo obtener el nombre (indícalo en el CSV o verifica el DNI y Factiliza/RENIEC)',
-          });
+          errors.push(
+            importRowErr(
+              excelRow,
+              'No se pudo obtener el nombre (indícalo en el archivo o verifica el DNI y Factiliza/RENIEC)',
+              nombreCsv || correo || undefined,
+            ),
+          );
           continue;
         }
         const nombre = merged.name.trim();
@@ -2076,7 +2090,13 @@ export class ImportExportService {
             contactClienteRecuperado: clienteRecNorm,
           });
           if (!resolved.ok) {
-            errors.push({ row: excelRow, message: resolved.message });
+            errors.push(
+              importRowErr(
+                excelRow,
+                resolved.message,
+                [nombre, empresaNombre.trim()].filter(Boolean).join(' · ') || nombre,
+              ),
+            );
             continue;
           }
           companyId = resolved.companyId;
@@ -2088,10 +2108,13 @@ export class ImportExportService {
             select: { id: true },
           });
           if (!comp) {
-            errors.push({
-              row: excelRow,
-              message: 'empresa_id no existe en el sistema',
-            });
+            errors.push(
+              importRowErr(
+                excelRow,
+                'empresa_id no existe en el sistema',
+                nombre || nombreCsv || undefined,
+              ),
+            );
             continue;
           }
           companyId = comp.id;
@@ -2101,10 +2124,13 @@ export class ImportExportService {
         const rowContactCompanyKey = `${this.contactImportRowDedupeKey(nombre, merged.docNumber ?? docNumberRow)}|${dedupeCompanyKey ?? '__none__'}`;
         const dupFileRow = fileContactCompanyFirstRow.get(rowContactCompanyKey);
         if (dupFileRow !== undefined) {
-          errors.push({
-            row: excelRow,
-            message: `Duplicado en el archivo respecto a la fila ${dupFileRow} (mismo nombre o DNI y misma empresa).`,
-          });
+          errors.push(
+            importRowErr(
+              excelRow,
+              `Duplicado en el archivo respecto a la fila ${dupFileRow} (mismo nombre o DNI y misma empresa).`,
+              nombre,
+            ),
+          );
           continue;
         }
         if (
@@ -2114,11 +2140,13 @@ export class ImportExportService {
             docDigitsMerged,
           )
         ) {
-          errors.push({
-            row: excelRow,
-            message:
+          errors.push(
+            importRowErr(
+              excelRow,
               'Ya existe un contacto con el mismo nombre o DNI vinculado a esta empresa. Elimina la fila duplicada o corrige los datos.',
-          });
+              nombre,
+            ),
+          );
           continue;
         }
         fileContactCompanyFirstRow.set(rowContactCompanyKey, excelRow);
@@ -2157,7 +2185,7 @@ export class ImportExportService {
         } catch (e: unknown) {
           const msg =
             e instanceof Error ? e.message : 'Error al crear el contacto';
-          errors.push({ row: excelRow, message: msg });
+          errors.push(importRowErr(excelRow, msg, nombre));
         }
       } finally {
         processedRows += 1;
@@ -2286,7 +2314,7 @@ export class ImportExportService {
     const rows = parseCsv(csvText);
     if (rows.length < 2) {
       throw new BadRequestException(
-        'El archivo CSV debe incluir encabezados y al menos una fila de datos',
+        'El archivo debe incluir encabezados y al menos una fila de datos',
       );
     }
     const headerRow = rows[0]!;
@@ -2749,7 +2777,7 @@ export class ImportExportService {
     const rows = parseCsv(csvText);
     if (rows.length < 2) {
       throw new BadRequestException(
-        'El archivo CSV debe incluir encabezados y al menos una fila de datos',
+        'El archivo debe incluir encabezados y al menos una fila de datos',
       );
     }
     const headerIndex = buildHeaderIndex(rows[0]!);
@@ -2801,12 +2829,15 @@ export class ImportExportService {
           ? facturacionParsed
           : 0;
       if (!effectiveCompanyName && !rucRaw) {
-        errors.push({
-          row: excelRow,
-          message: 'Indica nombre, razón social o RUC',
-        });
+        errors.push(
+          importRowErr(excelRow, 'Indica nombre, razón social o RUC', undefined),
+        );
         continue;
       }
+
+      const companyImportRowLabel =
+        [effectiveCompanyName, razonRow, rucRaw].filter((s) => (s ?? '').trim()).join(' · ') ||
+        undefined;
 
       const etapaRaw =
         this.rowGetImportText(row, headerIndex, ['etapa', 'stage']) ||
@@ -2821,7 +2852,9 @@ export class ImportExportService {
         etapaRaw,
       );
       if (!etapaResolved.ok) {
-        errors.push({ row: excelRow, message: etapaResolved.message });
+        errors.push(
+          importRowErr(excelRow, etapaResolved.message, companyImportRowLabel),
+        );
         continue;
       }
       const etapaSlug = etapaResolved.slug;
@@ -2967,11 +3000,13 @@ export class ImportExportService {
           }
         }
       } catch (e: unknown) {
-        errors.push({
-          row: excelRow,
-          message:
+        errors.push(
+          importRowErr(
+            excelRow,
             e instanceof Error ? e.message : 'Error al crear o resolver empresa',
-        });
+            companyImportRowLabel,
+          ),
+        );
         continue;
       }
 
@@ -2981,10 +3016,13 @@ export class ImportExportService {
           select: { id: true },
         });
         if (!inScope) {
-          errors.push({
-            row: excelRow,
-            message: 'La empresa no está disponible para tu usuario',
-          });
+          errors.push(
+            importRowErr(
+              excelRow,
+              'La empresa no está disponible para tu usuario',
+              companyImportRowLabel,
+            ),
+          );
           continue;
         }
       }
@@ -2994,8 +3032,6 @@ export class ImportExportService {
         where: { id: companyId },
         select: { name: true },
       });
-      const expectedClose = new Date();
-      expectedClose.setDate(expectedClose.getDate() + 30);
       const opportunityId = await this.entitySync.ensureOpportunityForCompany(
         companyId,
         {
@@ -3003,7 +3039,7 @@ export class ImportExportService {
           amount: facturacionEstimada,
           etapa: etapaSlug,
           assignedTo,
-          expectedCloseDate: expectedClose,
+          expectedCloseDate: null,
         },
       );
 
@@ -3080,11 +3116,13 @@ export class ImportExportService {
       }
 
       if (!mergedContact.name.trim()) {
-        errors.push({
-          row: excelRow,
-          message:
+        errors.push(
+          importRowErr(
+            excelRow,
             'Contacto: falta nombre o documento inválido (DNI/CEE) para completar datos',
-        });
+            companyForOpportunity?.name?.trim() || companyImportRowLabel,
+          ),
+        );
         continue;
       }
 
@@ -3146,22 +3184,29 @@ export class ImportExportService {
         }
         created += 1;
       } catch (e: unknown) {
-        errors.push({
-          row: excelRow,
-          message:
-            e instanceof Error
-              ? e.message
-              : 'Error al crear o vincular contacto',
-        });
+        errors.push(
+          importRowErr(
+            excelRow,
+            e instanceof Error ? e.message : 'Error al crear o vincular contacto',
+            [
+              mergedContact.name.trim(),
+              companyForOpportunity?.name?.trim(),
+            ]
+              .filter(Boolean)
+              .join(' · ') || companyImportRowLabel,
+          ),
+        );
       }
       } catch (e: unknown) {
-        errors.push({
-          row: excelRow,
-          message:
+        errors.push(
+          importRowErr(
+            excelRow,
             e instanceof Error
               ? e.message
               : 'Error al asegurar oportunidad o procesar la fila',
-        });
+            companyImportRowLabel,
+          ),
+        );
       }
       } finally {
         processedRows += 1;
@@ -3239,7 +3284,7 @@ export class ImportExportService {
     const rows = parseCsv(csvText);
     if (rows.length < 2) {
       throw new BadRequestException(
-        'El archivo CSV debe incluir encabezados y al menos una fila de datos',
+        'El archivo debe incluir encabezados y al menos una fila de datos',
       );
     }
     const headerIndex = buildHeaderIndex(rows[0]!);
@@ -3266,10 +3311,13 @@ export class ImportExportService {
       const montoRaw = rowGet(row, headerIndex, ['monto', 'amount']);
       const etapa = rowGet(row, headerIndex, ['etapa', 'stage']);
       if (!titulo || !etapa) {
-        errors.push({
-          row: excelRow,
-          message: 'Faltan titulo o etapa',
-        });
+        errors.push(
+          importRowErr(
+            excelRow,
+            'Faltan titulo o etapa',
+            titulo || undefined,
+          ),
+        );
         continue;
       }
       const amountRaw = this.parseImportNumericCell(montoRaw);
@@ -3278,10 +3326,13 @@ export class ImportExportService {
         !Number.isFinite(amountRaw) ||
         amountRaw <= 0
       ) {
-        errors.push({
-          row: excelRow,
-          message: 'monto debe ser un número mayor que 0',
-        });
+        errors.push(
+          importRowErr(
+            excelRow,
+            'monto debe ser un número mayor que 0',
+            titulo,
+          ),
+        );
         continue;
       }
       const amount = amountRaw;
@@ -3304,10 +3355,13 @@ export class ImportExportService {
         });
         contactId = found?.id;
         if (!contactId) {
-          errors.push({
-            row: excelRow,
-            message: `No se encontró contacto con correo ${contactCorreo}`,
-          });
+          errors.push(
+            importRowErr(
+              excelRow,
+              `No se encontró contacto con correo ${contactCorreo}`,
+              titulo,
+            ),
+          );
           continue;
         }
       }
@@ -3319,10 +3373,13 @@ export class ImportExportService {
         });
         resolvedCompanyId = comp?.id;
         if (!resolvedCompanyId) {
-          errors.push({
-            row: excelRow,
-            message: `No se encontró empresa con RUC ${companyRuc}`,
-          });
+          errors.push(
+            importRowErr(
+              excelRow,
+              `No se encontró empresa con RUC ${companyRuc}`,
+              titulo,
+            ),
+          );
           continue;
         }
       }
@@ -3364,7 +3421,7 @@ export class ImportExportService {
       } catch (e: unknown) {
         const msg =
           e instanceof Error ? e.message : 'Error al crear la oportunidad';
-        errors.push({ row: excelRow, message: msg });
+        errors.push(importRowErr(excelRow, msg, titulo));
       }
       } finally {
         processedRows += 1;

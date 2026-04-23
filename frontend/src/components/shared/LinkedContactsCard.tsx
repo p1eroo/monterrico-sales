@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom';
-import { Users, Mail, Phone, Briefcase, Target, DollarSign } from 'lucide-react';
+import { Users, Mail, Phone, Briefcase, Target } from 'lucide-react';
 import { etapaLabels } from '@/data/mock';
-import { formatCurrency } from '@/lib/formatters';
 import { LinkedEntitiesCard } from './LinkedEntitiesCard';
 import { LinkedEntityItemHeader } from './LinkedEntityItemHeader';
 import type { Contact } from '@/types';
@@ -15,7 +14,6 @@ export interface LinkedContact {
   etapa: string;
   telefono?: string;
   correo?: string;
-  estimatedValue: number;
   companies?: Contact['companies'];
 }
 
@@ -108,13 +106,6 @@ export function LinkedContactsCard({
                 </span>
               </div>
 
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 text-sm text-text-secondary">
-                  <DollarSign className="h-3.5 w-3.5 text-text-tertiary" />
-                  Valor est.
-                </div>
-                <span className="text-sm font-medium text-text-primary">{formatCurrency(contact.estimatedValue)}</span>
-              </div>
             </div>
           </div>
         );

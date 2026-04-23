@@ -22,9 +22,7 @@ import { NotificationCard } from './NotificationCard';
 import { EmpresasInactivasCard } from './EmpresasInactivasCard';
 import { InactiveCompaniesPanel } from './InactiveCompaniesPanel';
 import { useNotificationStore } from '@/store/notificationStore';
-import { getInactiveCompanies } from '@/lib/inactiveCompanies';
-import { contactListAll, mapApiContactRowToContact } from '@/lib/contactApi';
-import type { Contact } from '@/types';
+import { companySinCambioEtapaAlert } from '@/lib/companyApi';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Bell } from 'lucide-react';
 import type { NotificationItem } from '@/types';
@@ -75,20 +73,7 @@ export function NotificationDrawer({
   initialView = 'notifications',
 }: NotificationDrawerProps) {
   const { notifications, refreshNotifications } = useNotificationStore();
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  useEffect(() => {
-    let c = true;
-    void contactListAll()
-      .then((rows) => {
-        if (c) setContacts(rows.map(mapApiContactRowToContact));
-      })
-      .catch(() => {
-        if (c) setContacts([]);
-      });
-    return () => {
-      c = false;
-    };
-  }, []);
+  const [sinCambioEtapaCount, setSinCambioEtapaCount] = useState(0);
   const [activeTab, setActiveTab] = useState<TabValue>('no-leidas');
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -103,7 +88,22 @@ export function NotificationDrawer({
     if (open) void refreshNotifications();
   }, [open, refreshNotifications]);
 
-  const inactiveCompaniesCount = getInactiveCompanies(contacts).length;
+  useEffect(() => {
+    if (!open) return;
+    let c = true;
+    void companySinCambioEtapaAlert()
+      .then((res) => {
+        if (c) setSinCambioEtapaCount(res.count);
+      })
+      .catch(() => {
+        if (c) setSinCambioEtapaCount(0);
+      });
+    return () => {
+      c = false;
+    };
+  }, [open]);
+
+  const inactiveCompaniesCount = sinCambioEtapaCount;
   const showEmpresasInactivas = activeTab === 'todas' || activeTab === 'importantes';
 
   const filtered = useMemo(() => {

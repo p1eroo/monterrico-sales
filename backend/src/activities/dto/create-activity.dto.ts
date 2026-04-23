@@ -6,6 +6,8 @@ export class CreateActivityDto {
   description?: string;
   assignedTo!: string;
   status?: string;
+  /** alta | media | baja */
+  priority?: string;
   dueDate!: string;
   startDate?: string;
   startTime?: string;

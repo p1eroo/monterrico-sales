@@ -20,6 +20,16 @@ export type AnalyticsSummary = {
   salesByMonth: { name: string; ventas: number; meta: number }[];
   contactsBySource: { name: string; value: number }[];
   funnelByStage: { name: string; value: number }[];
+  /** Empresas creadas en el rango, agrupadas por `etapa` (mismos filtros que contactos). */
+  companiesByStage: { name: string; value: number }[];
+  /** Por semana ISO (UTC): avance / nuevo / retroceso / sin cambios en cartera. */
+  companiesWeeklyProgress: {
+    name: string;
+    avance: number;
+    nuevoIngreso: number;
+    retroceso: number;
+    sinCambios: number;
+  }[];
   performanceByAdvisor: { name: string; leads: number; ventas: number }[];
   pendingActivities: {
     id: string;

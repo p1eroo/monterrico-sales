@@ -11,6 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { CompaniesService } from './companies.service';
+import { CompanyStaleEtapaService } from './company-stale-etapa.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
@@ -26,6 +27,7 @@ type AuthedReq = {
 export class CompaniesController {
   constructor(
     private readonly companiesService: CompaniesService,
+    private readonly companyStaleEtapaService: CompanyStaleEtapaService,
     private readonly crmDataScope: CrmDataScopeService,
   ) {}
 
@@ -150,6 +152,20 @@ export class CompaniesController {
       },
       scope,
     );
+  }
+
+  /**
+   * Empresas en etapas 0/10/30 % (sin `inactivo` ni `cierre_perdido`) sin cambio de
+   * etapa en ≥11 semanas (notificaciones). Debe declararse antes de @Get(':id').
+   */
+  @Get('alerts/sin-cambio-etapa')
+  @RequirePermissions('empresas.ver')
+  async sinCambioEtapaAlert(@Req() req: AuthedReq) {
+    const scope = await this.crmDataScope.buildScope(
+      req.user.userId,
+      req.user.roleId,
+    );
+    return this.companyStaleEtapaService.listSinCambioEtapaAlert(scope);
   }
 
   @Get(':id')

@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import {
   Building2,
   CheckSquare,
@@ -13,9 +14,8 @@ import { Dialog as DialogPrimitive } from 'radix-ui';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useCRMStore } from '@/store/crmStore';
 import { useAppStore } from '@/store';
-import { getInactiveCompanies } from '@/lib/inactiveCompanies';
+import { companySinCambioEtapaAlert } from '@/lib/companyApi';
 import { markDailyBriefingShown } from '@/lib/dailyOverview';
 import { activities, calendarEvents, activityTypeLabels } from '@/data/mock';
 import { cn } from '@/lib/utils';
@@ -73,9 +73,22 @@ export function DailyBriefingPanel({
   onDontShowAgainChange,
 }: DailyBriefingPanelProps) {
   const navigate = useNavigate();
-  const { contacts } = useCRMStore();
   const currentUser = useAppStore((s) => s.currentUser);
-  const inactiveCompanies = getInactiveCompanies(contacts);
+  const [sinCambioEtapaCount, setSinCambioEtapaCount] = useState(0);
+  useEffect(() => {
+    if (!open) return;
+    let c = true;
+    void companySinCambioEtapaAlert()
+      .then((res) => {
+        if (c) setSinCambioEtapaCount(res.count);
+      })
+      .catch(() => {
+        if (c) setSinCambioEtapaCount(0);
+      });
+    return () => {
+      c = false;
+    };
+  }, [open]);
   const todayTasks = getTodayTasks(currentUser.id);
   const pendingTasks = todayTasks.filter((i) => {
     const s = i.activity?.status ?? i.event?.status;
@@ -159,11 +172,11 @@ export function DailyBriefingPanel({
                   <div className="flex items-center gap-1.5">
                     <Building2 className="size-4 text-primary" />
                     <span className="text-2xl font-bold text-primary">
-                      {inactiveCompanies.length}
+                      {sinCambioEtapaCount}
                     </span>
                   </div>
                   <span className="mt-1 text-center text-[11px] font-medium text-muted-foreground">
-                    Empresas sin actividad
+                    Sin cambio de etapa (11+ sem.)
                   </span>
                 </div>
                 <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-muted/30 px-3 py-4 shadow-none transition-colors hover:bg-muted/50 dark:shadow-sm">
@@ -248,7 +261,7 @@ export function DailyBriefingPanel({
               </div>
 
               {/* Alertas */}
-              {(overdueTasks.length > 0 || inactiveCompanies.length > 0) && (
+              {(overdueTasks.length > 0 || sinCambioEtapaCount > 0) && (
                 <div className="space-y-3">
                   <h3 className="text-sm font-medium text-foreground">Alertas</h3>
                   <div className="space-y-2">
@@ -261,12 +274,12 @@ export function DailyBriefingPanel({
                         </span>
                       </div>
                     )}
-                    {inactiveCompanies.length > 0 && (
+                    {sinCambioEtapaCount > 0 && (
                       <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50/50 px-3 py-2 dark:border-amber-900/50 dark:bg-amber-950/20">
                         <Building2 className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
                         <span className="text-sm">
-                          {inactiveCompanies.length} empresa{inactiveCompanies.length > 1 ? 's' : ''}{' '}
-                          sin actividad
+                          {sinCambioEtapaCount} empresa{sinCambioEtapaCount > 1 ? 's' : ''} sin cambio
+                          de etapa (11+ semanas, etapas 0 % / 10 % / 30 %)
                         </span>
                       </div>
                     )}

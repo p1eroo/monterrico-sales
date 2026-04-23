@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '../generated/prisma';
 import { PrismaService } from '../prisma/prisma.service';
 import type { CrmDataScope } from '../auth/crm-data-scope.service';
+import { mergeCompanyScope } from '../common/crm-data-scope-where.util';
 
 const MAX_RANGE_DAYS = 366;
 const ADVISOR_ROLE_SLUG = 'asesor';
@@ -62,6 +63,31 @@ function endOfUtcWeekSunday(d: Date): Date {
   e.setUTCMilliseconds(-1);
   return e;
 }
+
+function maxUtcDate(a: Date, b: Date): Date {
+  return a.getTime() >= b.getTime() ? a : b;
+}
+
+function minUtcDate(a: Date, b: Date): Date {
+  return a.getTime() <= b.getTime() ? a : b;
+}
+
+/** Semana ISO (1–53) a partir de un instante UTC (algoritmo jueves). */
+function isoWeekNumberUtc(d: Date): number {
+  const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  const dayNum = x.getUTCDay() || 7;
+  x.setUTCDate(x.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(x.getUTCFullYear(), 0, 1));
+  return Math.ceil((x.getTime() - yearStart.getTime()) / 86400000 / 7);
+}
+
+type CompanyWeeklyProgressRow = {
+  name: string;
+  avance: number;
+  nuevoIngreso: number;
+  retroceso: number;
+  sinCambios: number;
+};
 
 function startOfUtcMonth(d: Date): Date {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1, 0, 0, 0, 0));
@@ -126,6 +152,163 @@ export class AnalyticsService {
       w.fuente = sourceSlug.trim();
     }
     return w;
+  }
+
+  private companyPortfolioBaseWhere(
+    advisorId: string | undefined,
+    sourceSlug: string | undefined,
+    unrestricted: boolean,
+  ): Prisma.CompanyWhereInput {
+    const w: Prisma.CompanyWhereInput = {};
+    if (!unrestricted) {
+      w.user = this.advisorUserRelationFilter();
+    }
+    if (advisorId?.trim()) {
+      w.assignedTo = advisorId.trim();
+    }
+    if (sourceSlug && sourceSlug !== 'all') {
+      w.fuente = sourceSlug.trim();
+    }
+    return w;
+  }
+
+  private companyWhere(
+    from: Date,
+    to: Date,
+    advisorId: string | undefined,
+    sourceSlug: string | undefined,
+    unrestricted: boolean,
+  ): Prisma.CompanyWhereInput {
+    return {
+      ...this.companyPortfolioBaseWhere(advisorId, sourceSlug, unrestricted),
+      createdAt: { gte: from, lte: to },
+    };
+  }
+
+  /**
+   * Por semana ISO (lun–dom UTC): nuevas en la semana, avance/retroceso de etapa
+   * (desde auditoría) y empresas sin movimiento, sobre la cartera filtrada.
+   */
+  private async buildCompaniesWeeklyProgress(
+    from: Date,
+    to: Date,
+    advisorId: string | undefined,
+    source: string | undefined,
+    unrestricted: boolean,
+    crmScope: CrmDataScope,
+  ): Promise<CompanyWeeklyProgressRow[]> {
+    const portfolioWhere = mergeCompanyScope(
+      {
+        ...this.companyPortfolioBaseWhere(advisorId, source, unrestricted),
+        createdAt: { lte: to },
+      },
+      crmScope,
+    );
+
+    const [stages, portfolioCompanies, auditRows] = await Promise.all([
+      this.prisma.crmStage.findMany({
+        where: { enabled: true },
+        select: { slug: true, sortOrder: true },
+      }),
+      this.prisma.company.findMany({
+        where: portfolioWhere,
+        select: { id: true, createdAt: true },
+      }),
+      this.prisma.auditChangeSet.findMany({
+        where: {
+          module: 'empresas',
+          entityType: 'Empresa',
+          createdAt: { gte: from, lte: to },
+          entries: { some: { fieldKey: 'etapa' } },
+        },
+        include: {
+          entries: {
+            where: { fieldKey: 'etapa' },
+            select: { oldValue: true, newValue: true },
+          },
+        },
+      }),
+    ]);
+
+    const order = new Map(stages.map((s) => [s.slug, s.sortOrder]));
+    const rank = (slug: string) => order.get(slug.trim()) ?? 999_999;
+
+    const portfolioIds = new Set(portfolioCompanies.map((c) => c.id));
+
+    type AuditEv = { at: Date; oldSlug: string; newSlug: string };
+    const auditsByCompany = new Map<string, AuditEv[]>();
+    for (const row of auditRows) {
+      const id = row.entityId;
+      if (!id || !portfolioIds.has(id)) continue;
+      const et = row.entries[0];
+      if (!et) continue;
+      const oldSlug = et.oldValue.trim();
+      const newSlug = et.newValue.trim();
+      if (!oldSlug && !newSlug) continue;
+      const list = auditsByCompany.get(id) ?? [];
+      list.push({ at: row.createdAt, oldSlug, newSlug });
+      auditsByCompany.set(id, list);
+    }
+    for (const [, list] of auditsByCompany) {
+      list.sort((a, b) => a.at.getTime() - b.at.getTime());
+    }
+
+    const rows: CompanyWeeklyProgressRow[] = [];
+    let weekStart = startOfUtcWeekMonday(from);
+    while (weekStart <= to) {
+      const weekEnd = endOfUtcWeekSunday(weekStart);
+      const clipStart = maxUtcDate(weekStart, from);
+      const clipEnd = minUtcDate(weekEnd, to);
+
+      const subset = portfolioCompanies.filter((c) => c.createdAt <= weekEnd);
+      const total = subset.length;
+      const subsetIds = new Set(subset.map((c) => c.id));
+
+      const nuevoIds = new Set(
+        subset
+          .filter((c) => c.createdAt >= clipStart && c.createdAt <= clipEnd)
+          .map((c) => c.id),
+      );
+      const nuevoIngreso = nuevoIds.size;
+
+      const latestInWeek = new Map<string, AuditEv>();
+      for (const [cid, evs] of auditsByCompany) {
+        if (!subsetIds.has(cid) || nuevoIds.has(cid)) continue;
+        const inWeek = evs.filter((e) => e.at >= clipStart && e.at <= clipEnd);
+        if (inWeek.length === 0) continue;
+        const last = inWeek[inWeek.length - 1]!;
+        latestInWeek.set(cid, last);
+      }
+
+      let avance = 0;
+      let retroceso = 0;
+      let neutralMoves = 0;
+      for (const ev of latestInWeek.values()) {
+        const ro = rank(ev.oldSlug);
+        const rn = rank(ev.newSlug);
+        if (rn > ro) avance += 1;
+        else if (rn < ro) retroceso += 1;
+        else neutralMoves += 1;
+      }
+
+      const sinCambios = Math.max(
+        0,
+        total - nuevoIngreso - avance - retroceso - neutralMoves,
+      );
+
+      rows.push({
+        name: String(isoWeekNumberUtc(weekStart)),
+        avance,
+        nuevoIngreso,
+        retroceso,
+        sinCambios,
+      });
+
+      weekStart = new Date(weekStart);
+      weekStart.setUTCDate(weekStart.getUTCDate() + 7);
+    }
+
+    return rows;
   }
 
   private opportunityWhereOpen(
@@ -196,6 +379,10 @@ export class AnalyticsService {
 
     const cw = this.contactWhere(from, to, advisorId, source, unrestricted);
     const pw = this.contactWhere(prevFrom, prevTo, advisorId, source, unrestricted);
+    const compW = mergeCompanyScope(
+      this.companyWhere(from, to, advisorId, source, unrestricted),
+      opts.crmScope,
+    );
 
     const [
       totalContacts,
@@ -211,6 +398,7 @@ export class AnalyticsService {
       sourceGroups,
       funnelGroups,
       userRows,
+      companyStageGroups,
     ] = await Promise.all([
       this.prisma.contact.count({ where: cw }),
       this.prisma.contact.count({ where: pw }),
@@ -288,6 +476,11 @@ export class AnalyticsService {
             orderBy: { name: 'asc' },
             take: 1,
           }),
+      this.prisma.company.groupBy({
+        by: ['etapa'],
+        where: compW,
+        _count: { id: true },
+      }),
     ]);
 
     const closedSalesAmount = closedAgg._sum.amount ?? 0;
@@ -382,6 +575,11 @@ export class AnalyticsService {
       }))
       .sort((a, b) => b.value - a.value);
 
+    const companiesByStage = companyStageGroups.map((g) => ({
+      name: g.etapa,
+      value: g._count.id,
+    }));
+
     const contactByAdvisor = await this.prisma.contact.groupBy({
       by: ['assignedTo'],
       where: {
@@ -405,14 +603,27 @@ export class AnalyticsService {
         .filter((x) => x.assignedTo)
         .map((x) => [x.assignedTo!, x._sum.amount ?? 0]),
     );
-    const idToName = new Map(userRows.map((u) => [u.id, u.name] as const));
+    const idToName = new Map(
+      userRows.map((u) => [u.id, u.name.trim() || 'Sin nombre'] as const),
+    );
     const advisorIds = new Set<string>();
     for (const k of contactMap.keys()) advisorIds.add(k);
     for (const k of wonMap.keys()) if (k) advisorIds.add(k!);
 
+    const missingNameIds = [...advisorIds].filter((id) => !idToName.has(id));
+    if (missingNameIds.length > 0) {
+      const resolved = await this.prisma.user.findMany({
+        where: { id: { in: missingNameIds } },
+        select: { id: true, name: true },
+      });
+      for (const u of resolved) {
+        idToName.set(u.id, u.name.trim() || 'Sin nombre');
+      }
+    }
+
     const performanceByAdvisor = [...advisorIds]
       .map((id) => ({
-        name: idToName.get(id) ?? id.slice(0, 8),
+        name: idToName.get(id) ?? 'Usuario no encontrado',
         leads: contactMap.get(id) ?? 0,
         ventas: wonMap.get(id) ?? 0,
       }))
@@ -581,6 +792,15 @@ export class AnalyticsService {
       }),
     );
 
+    const companiesWeeklyProgress = await this.buildCompaniesWeeklyProgress(
+      from,
+      to,
+      advisorId,
+      source,
+      unrestricted,
+      opts.crmScope,
+    );
+
     return {
       range: {
         from: from.toISOString(),
@@ -606,6 +826,8 @@ export class AnalyticsService {
       salesByMonth,
       contactsBySource,
       funnelByStage,
+      companiesByStage,
+      companiesWeeklyProgress,
       performanceByAdvisor,
       pendingActivities: pendingActivitiesDto,
       contactsByPeriod,
