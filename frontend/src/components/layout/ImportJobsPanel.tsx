@@ -16,13 +16,10 @@ function entityLabel(entity: 'contacts' | 'companies' | 'opportunities') {
   return 'oportunidades';
 }
 
-const isDevMocks = import.meta.env.DEV;
-
 export function ImportJobsPanel() {
   const jobs = useImportJobsStore((s) => s.jobs);
   const pollActiveJobs = useImportJobsStore((s) => s.pollActiveJobs);
   const dismissJob = useImportJobsStore((s) => s.dismissJob);
-  const pushMockImportJob = useImportJobsStore((s) => s.pushMockImportJob);
   const notified = useRef(new Set<string>());
   const [errorsModalJob, setErrorsModalJob] = useState<ImportJob | null>(null);
 
@@ -58,49 +55,8 @@ export function ImportJobsPanel() {
     }
   }, [jobs]);
 
-  const devMockBar = isDevMocks ? (
-    <div
-      className="pointer-events-auto fixed bottom-4 left-4 z-[60] flex max-w-[min(22rem,calc(100vw-2rem))] flex-col gap-1.5 rounded-lg border border-dashed border-amber-600/40 bg-background/95 p-2 shadow-md backdrop-blur-sm dark:border-amber-500/35"
-      aria-label="Controles de desarrollo: simular estado de importación"
-    >
-      <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-        Dev · panel importación
-      </p>
-      <div className="flex flex-wrap gap-1">
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          className="h-7 text-xs"
-          onClick={() => pushMockImportJob('completed_clean')}
-        >
-          Terminada OK
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          className="h-7 text-xs"
-          onClick={() => pushMockImportJob('completed_with_row_errors')}
-        >
-          OK + errores fila
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          className="h-7 text-xs border-destructive/40 text-destructive hover:bg-destructive/10"
-          onClick={() => pushMockImportJob('failed')}
-        >
-          Fallida
-        </Button>
-      </div>
-    </div>
-  ) : null;
-
   return (
     <>
-      {devMockBar}
       <ImportJobErrorsDialog
         open={errorsModalJob != null}
         job={errorsModalJob}
