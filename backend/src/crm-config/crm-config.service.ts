@@ -14,6 +14,7 @@ import {
   SYSTEM_PRIORITY_SLUGS,
   SYSTEM_STAGE_SLUGS,
 } from './crm-config.constants';
+import { resolveLeadSourceSlug } from './lead-source-normalize.util';
 
 const ORG_ID = 'default';
 
@@ -429,6 +430,28 @@ export class CrmConfigService implements OnModuleInit {
         `La etapa "${slug}" está deshabilitada en configuración`,
       );
     }
+  }
+
+  /**
+   * Normaliza fuente de contacto/empresa al `slug` del catálogo (mayúsculas, nombre visible o slug).
+   */
+  async normalizeLeadSource(raw: string): Promise<string> {
+    await this.ensureReady();
+    const trimmed = raw?.trim() ?? '';
+    if (!trimmed) {
+      throw new BadRequestException('La fuente no puede estar vacía');
+    }
+    const rows = await this.prisma.crmLeadSource.findMany({
+      where: { enabled: true },
+      select: { slug: true, name: true },
+    });
+    const slug = resolveLeadSourceSlug(trimmed, rows);
+    if (!slug) {
+      throw new BadRequestException(
+        `Fuente no válida: "${trimmed}". Usa una fuente del catálogo CRM.`,
+      );
+    }
+    return slug;
   }
 
   /** Probabilidad comercial según catálogo; fallback si el slug no está en BD. */

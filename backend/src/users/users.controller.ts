@@ -19,6 +19,16 @@ import { RequirePermissions } from '../auth/decorators/require-permissions.decor
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  /**
+   * Lista solo asesores (cartera comercial) para la vista Equipo.
+   * Independiente de `usuarios.ver` para no exponer administración de cuentas.
+   */
+  @Get('asesores-equipo')
+  @RequirePermissions('equipo.ver')
+  findAsesoresEquipo() {
+    return this.usersService.findAsesoresEquipo();
+  }
+
   @Get()
   @RequirePermissions('usuarios.ver')
   findAll() {

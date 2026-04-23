@@ -1,18 +1,17 @@
 import { useEffect, useMemo } from 'react';
 import { useUsersStore } from '@/store/usersStore';
+import { useAppStore } from '@/store';
 
 /**
- * Usuarios cargados desde GET /users.
- * Compatible con el formato que usaban los componentes con users de mock.
+ * Usuarios: GET /users con `usuarios.ver`, o GET /users/asesores-equipo solo con `equipo.ver`.
  */
 export function useUsers() {
-  const { users, loading, error, loaded, loadUsers } = useUsersStore();
+  const permissionKeys = useAppStore((s) => s.permissionKeys);
+  const { users, loading, error, loadUsers } = useUsersStore();
 
   useEffect(() => {
-    if (!loaded && !loading) {
-      void loadUsers();
-    }
-  }, [loaded, loading, loadUsers]);
+    void loadUsers();
+  }, [permissionKeys, loadUsers]);
 
   const activeUsers = useMemo(
     () => users.filter((u) => u.status === 'activo'),

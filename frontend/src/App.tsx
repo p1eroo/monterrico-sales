@@ -3,6 +3,7 @@ import { lazy, Suspense } from 'react';
 import { useAppStore } from '@/store';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 import { ModuleGate } from '@/components/layout/ModuleGate';
+import { AppUpdateBanner } from '@/components/system/AppUpdateBanner';
 
 const MainLayout = lazy(() => import('@/components/layout/MainLayout'));
 const Login = lazy(() => import('@/pages/Login'));
@@ -63,6 +64,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <BrowserRouter>
+        <AppUpdateBanner />
         <Suspense fallback={<LoadingFallback />}>
           <Routes>
             <Route

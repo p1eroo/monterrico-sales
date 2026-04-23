@@ -10,6 +10,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { BCRYPT_ROUNDS } from '../auth/auth.constants';
 import type { CreateUserDto } from './dto/create-user.dto';
 import type { UpdateUserDto } from './dto/update-user.dto';
+import { isCommercialAdvisorRoleSlug } from './user-role-slug.util';
 
 function normalizeUsername(username: string): string {
   return username.trim().toLowerCase();
@@ -27,6 +28,7 @@ function toApiUser(
   row: {
     id: string;
     name: string;
+    phone?: string | null;
     role: { id: string; slug: string };
     status: string;
     lastActivity?: Date | null;
@@ -38,6 +40,7 @@ function toApiUser(
     id: row.id,
     username: getUsernameFromAccounts(row.accounts),
     name: row.name,
+    phone: row.phone ?? undefined,
     roleId: row.role.id,
     role: row.role.slug,
     status: row.status,
@@ -58,6 +61,22 @@ export class UsersService {
       },
     });
     return rows.map(toApiUser);
+  }
+
+  /** Asesores / cartera comercial (vista Equipo). Sin administradores ni mandos. */
+  async findAsesoresEquipo() {
+    const rows = await this.prisma.user.findMany({
+      where: {
+        role: { slug: { not: 'admin' } },
+      },
+      include: {
+        role: { select: { id: true, slug: true } },
+        accounts: { select: { provider: true, providerId: true } },
+      },
+    });
+    return rows
+      .filter((r) => isCommercialAdvisorRoleSlug(r.role.slug))
+      .map(toApiUser);
   }
 
   async findOne(id: string) {

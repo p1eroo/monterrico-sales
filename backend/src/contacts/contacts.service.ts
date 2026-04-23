@@ -226,10 +226,7 @@ export class ContactsService {
         'La facturación estimada es obligatoria y debe ser mayor que 0',
       );
     }
-    const fuente = dto.fuente?.trim();
-    if (!fuente) {
-      throw new BadRequestException('La fuente es obligatoria');
-    }
+    const fuente = await this.crmConfig.normalizeLeadSource(dto.fuente ?? '');
     const etapa = dto.etapa?.trim() || 'lead';
     const assignedTo = dto.assignedTo?.trim() || null;
     await this.crmConfig.assertEtapaAssignable(etapa);
@@ -295,7 +292,9 @@ export class ContactsService {
     }
     const telefono = dto.telefono?.trim() || '-';
     const correo = dto.correo?.trim() ?? '';
-    const fuente = dto.fuente?.trim() || 'base';
+    const fuente = await this.crmConfig.normalizeLeadSource(
+      dto.fuente?.trim() || 'base',
+    );
     const estimatedValue =
       dto.estimatedValue !== undefined &&
       dto.estimatedValue !== null &&
@@ -429,7 +428,7 @@ export class ContactsService {
     return this.findOne(row.id, scope);
   }
 
-  private contactListWhere(
+  private async contactListWhere(
     opts?: {
       search?: string;
       etapa?: string;
@@ -437,7 +436,7 @@ export class ContactsService {
       assignedTo?: string;
     },
     scope?: CrmDataScope,
-  ): Prisma.ContactWhereInput {
+  ): Promise<Prisma.ContactWhereInput> {
     const where: Prisma.ContactWhereInput = {};
     if (opts?.search?.trim()) {
       const q = opts.search.trim();
@@ -458,7 +457,10 @@ export class ContactsService {
       ];
     }
     if (opts?.etapa?.trim()) where.etapa = opts.etapa.trim();
-    if (opts?.fuente?.trim()) where.fuente = opts.fuente.trim();
+    if (opts?.fuente?.trim()) {
+      const canon = await this.crmConfig.normalizeLeadSource(opts.fuente);
+      where.fuente = { equals: canon, mode: 'insensitive' };
+    }
     if (scope && !scope.unrestricted) {
       where.assignedTo = scope.viewerUserId;
     } else if (opts?.assignedTo?.trim()) {
@@ -479,11 +481,13 @@ export class ContactsService {
     scope?: CrmDataScope,
   ): Promise<{ counts: Record<string, number> }> {
     const results = await Promise.all(
-      CONTACT_TAB_ETAPAS.map((slug) =>
-        this.prisma.contact.count({
-          where: this.contactListWhere({ ...opts, etapa: slug }, scope),
-        }),
-      ),
+      CONTACT_TAB_ETAPAS.map(async (slug) => {
+        const where = await this.contactListWhere(
+          { ...opts, etapa: slug },
+          scope,
+        );
+        return this.prisma.contact.count({ where });
+      }),
     );
     const counts: Record<string, number> = {};
     CONTACT_TAB_ETAPAS.forEach((slug, i) => {
@@ -507,7 +511,7 @@ export class ContactsService {
     const limit = Math.min(5000, Math.max(1, opts?.limit ?? 25));
     const skip = (page - 1) * limit;
 
-    const where = this.contactListWhere(opts, scope);
+    const where = await this.contactListWhere(opts, scope);
 
     const [rows, total] = await Promise.all([
       this.prisma.contact.findMany({
@@ -620,11 +624,7 @@ export class ContactsService {
       data.correo = correo;
     }
     if (dto.fuente !== undefined) {
-      const fuente = dto.fuente.trim();
-      if (!fuente) {
-        throw new BadRequestException('La fuente no puede estar vacía');
-      }
-      data.fuente = fuente;
+      data.fuente = await this.crmConfig.normalizeLeadSource(dto.fuente);
     }
     if (dto.cargo !== undefined) data.cargo = dto.cargo?.trim() || null;
     if (dto.etapa !== undefined) {

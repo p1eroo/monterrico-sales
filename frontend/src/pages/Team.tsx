@@ -10,6 +10,7 @@ import {
 import type { User } from '@/types';
 import { activities } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
+import { usePermissions } from '@/hooks/usePermissions';
 import { UserFormModal, type UserFormData } from '@/components/users/UserFormModal';
 
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -73,6 +74,8 @@ const mockActivity = [
 ];
 
 export default function TeamPage() {
+  const { hasPermission } = usePermissions();
+  const canCreateUsers = hasPermission('usuarios.crear');
   const { users } = useUsers();
   const [newUsersCreated, setNewUsersCreated] = useState<User[]>([]);
   const [search, setSearch] = useState('');
@@ -146,9 +149,11 @@ export default function TeamPage() {
         title="Equipo Comercial"
         description="Asesores comercialmente asignados (administradores y supervisores se gestionan en Usuarios)"
       >
-        <Button className="bg-[#13944C] hover:bg-[#0f7a3d]" onClick={() => setNewUserOpen(true)}>
-          <UserPlus className="size-4" /> Nuevo Usuario
-        </Button>
+        {canCreateUsers ? (
+          <Button className="bg-[#13944C] hover:bg-[#0f7a3d]" onClick={() => setNewUserOpen(true)}>
+            <UserPlus className="size-4" /> Nuevo Usuario
+          </Button>
+        ) : null}
       </PageHeader>
 
       {/* Stats */}
@@ -447,13 +452,15 @@ export default function TeamPage() {
         </DialogContent>
       </Dialog>
 
-      <UserFormModal
-        open={newUserOpen}
-        onOpenChange={setNewUserOpen}
-        user={null}
-        onSubmit={handleTeamUserSubmit}
-        excludeRoleSlugs={['admin']}
-      />
+      {canCreateUsers ? (
+        <UserFormModal
+          open={newUserOpen}
+          onOpenChange={setNewUserOpen}
+          user={null}
+          onSubmit={handleTeamUserSubmit}
+          excludeRoleSlugs={['admin']}
+        />
+      ) : null}
     </div>
   );
 }

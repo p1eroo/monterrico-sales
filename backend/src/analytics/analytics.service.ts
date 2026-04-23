@@ -3,6 +3,8 @@ import { Prisma } from '../generated/prisma';
 import { PrismaService } from '../prisma/prisma.service';
 import type { CrmDataScope } from '../auth/crm-data-scope.service';
 import { mergeCompanyScope } from '../common/crm-data-scope-where.util';
+import { CrmConfigService } from '../crm-config/crm-config.service';
+import { resolveLeadSourceKeyLoose } from '../crm-config/lead-source-normalize.util';
 
 const MAX_RANGE_DAYS = 366;
 const ADVISOR_ROLE_SLUG = 'asesor';
@@ -103,7 +105,10 @@ const TASK_ACTIVITY_FILTER = { type: 'tarea' } as const;
 
 @Injectable()
 export class AnalyticsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly crmConfig: CrmConfigService,
+  ) {}
 
   /**
    * Alcance “cartera de asesores”: solo aplica cuando el usuario NO tiene
@@ -149,7 +154,7 @@ export class AnalyticsService {
       w.assignedTo = advisorId.trim();
     }
     if (sourceSlug && sourceSlug !== 'all') {
-      w.fuente = sourceSlug.trim();
+      w.fuente = { equals: sourceSlug.trim(), mode: 'insensitive' };
     }
     return w;
   }
@@ -167,7 +172,7 @@ export class AnalyticsService {
       w.assignedTo = advisorId.trim();
     }
     if (sourceSlug && sourceSlug !== 'all') {
-      w.fuente = sourceSlug.trim();
+      w.fuente = { equals: sourceSlug.trim(), mode: 'insensitive' };
     }
     return w;
   }
@@ -371,7 +376,17 @@ export class AnalyticsService {
     const advisorId = unrestricted
       ? opts.advisorId?.trim() || undefined
       : opts.crmScope.viewerUserId;
-    const source = opts.source?.trim() || undefined;
+
+    let source: string | undefined = opts.source?.trim();
+    if (!source || source === 'all') {
+      source = undefined;
+    } else {
+      try {
+        source = await this.crmConfig.normalizeLeadSource(source);
+      } catch {
+        /* filtro legacy (p. ej. slug antiguo no en catálogo) */
+      }
+    }
 
     const prevLen = to.getTime() - from.getTime();
     const prevFrom = new Date(from.getTime() - prevLen);
@@ -561,11 +576,17 @@ export class AnalyticsService {
       }),
     );
 
-    const contactsBySource = sourceGroups
-      .map((g) => ({
-        name: g.fuente,
-        value: g._count.id,
-      }))
+    const leadCatalog = await this.prisma.crmLeadSource.findMany({
+      where: { enabled: true },
+      select: { slug: true, name: true },
+    });
+    const mergedBySource = new Map<string, number>();
+    for (const g of sourceGroups) {
+      const k = resolveLeadSourceKeyLoose(g.fuente, leadCatalog);
+      mergedBySource.set(k, (mergedBySource.get(k) ?? 0) + g._count.id);
+    }
+    const contactsBySource = [...mergedBySource.entries()]
+      .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
 
     const funnelByStage = funnelGroups

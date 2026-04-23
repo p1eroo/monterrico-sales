@@ -8,6 +8,7 @@ export type ApiUserRecord = {
   role: string;
   roleId?: string | null;
   status: string;
+  phone?: string | null;
   lastActivity?: string | null;
   joinedAt?: string | null;
 };
@@ -73,6 +74,7 @@ export function apiUserRecordToUser(row: ApiUserRecord): User {
     id: row.id,
     name: row.name,
     username: row.username,
+    phone: typeof row.phone === 'string' && row.phone.trim() ? row.phone.trim() : undefined,
     role: mapApiRoleStringToUserRole(row.role),
     roleId,
     status: row.status === 'inactivo' ? 'inactivo' : 'activo',

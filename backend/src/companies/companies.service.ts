@@ -166,7 +166,9 @@ export class CompaniesService {
         ? dto.facturacionEstimada
         : 0;
 
-    const fuente = dto.fuente?.trim() || 'base';
+    const fuente = await this.crmConfig.normalizeLeadSource(
+      dto.fuente?.trim() || 'base',
+    );
 
     const etapa = dto.etapa?.trim() || 'lead';
     let assignedTo = dto.assignedTo?.trim() || null;
@@ -301,7 +303,7 @@ export class CompaniesService {
   /**
    * Filtros del listado summary sin la condición de etapa (búsqueda, rubro, tipo, fuente, asesor).
    */
-  private buildCompanySummaryAndParts(
+  private async buildCompanySummaryAndParts(
     opts?: {
       search?: string;
       rubro?: string;
@@ -310,7 +312,7 @@ export class CompaniesService {
       assignedTo?: string;
     },
     scope?: CrmDataScope,
-  ): Prisma.CompanyWhereInput[] {
+  ): Promise<Prisma.CompanyWhereInput[]> {
     const andParts: Prisma.CompanyWhereInput[] = [];
 
     if (opts?.search?.trim()) {
@@ -340,12 +342,20 @@ export class CompaniesService {
     if (opts?.tipo?.trim()) andParts.push({ tipo: opts.tipo.trim() });
     const fuenteQ = opts?.fuente?.trim();
     if (fuenteQ) {
+      let canon = fuenteQ;
+      try {
+        canon = await this.crmConfig.normalizeLeadSource(fuenteQ);
+      } catch {
+        /* filtro legacy fuera del catálogo */
+      }
       andParts.push({
         OR: [
-          { fuente: fuenteQ },
+          { fuente: { equals: canon, mode: 'insensitive' } },
           {
             contacts: {
-              some: { contact: { fuente: fuenteQ } },
+              some: {
+                contact: { fuente: { equals: canon, mode: 'insensitive' } },
+              },
             },
           },
         ],
@@ -383,7 +393,7 @@ export class CompaniesService {
     },
     scope?: CrmDataScope,
   ): Promise<{ counts: Record<string, number> }> {
-    const andParts = this.buildCompanySummaryAndParts(opts, scope);
+    const andParts = await this.buildCompanySummaryAndParts(opts, scope);
     const countForEtapa = (etapaQ: string) =>
       this.prisma.company.count({
         where: mergeCompanyScope(
@@ -436,7 +446,7 @@ export class CompaniesService {
     const limit = Math.min(5000, Math.max(1, opts?.limit ?? 25));
     const skip = (page - 1) * limit;
 
-    const andParts = this.buildCompanySummaryAndParts(opts, scope);
+    const andParts = await this.buildCompanySummaryAndParts(opts, scope);
     const etapaQ = opts?.etapa?.trim();
     if (etapaQ) {
       andParts.push({
@@ -660,11 +670,7 @@ export class CompaniesService {
       data.facturacionEstimada = dto.facturacionEstimada;
     }
     if (dto.fuente !== undefined) {
-      const s = dto.fuente?.trim();
-      if (!s) {
-        throw new BadRequestException('La fuente no puede estar vacía');
-      }
-      data.fuente = s;
+      data.fuente = await this.crmConfig.normalizeLeadSource(dto.fuente);
     }
     if (dto.clienteRecuperado !== undefined) {
       data.clienteRecuperado = dto.clienteRecuperado?.trim() || null;
