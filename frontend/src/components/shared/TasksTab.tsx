@@ -28,7 +28,8 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { formatDate } from '@/lib/formatters';
+import { formatDate, formatTodayPeruYmd } from '@/lib/formatters';
+import { taskAssociationsFromActivity } from '@/lib/taskAssociationsFromActivity';
 import {
   activityTypeIconCircleClass,
   ACTIVITY_ICON_INHERIT,
@@ -121,10 +122,10 @@ function isTaskActivity(a: Activity): boolean {
 }
 
 function activityToMockTask(a: Activity): MockTask {
-  const company = a.contactName?.includes(' - ') ? a.contactName.split(' - ')[1] : undefined;
-  const contactName = a.contactName?.includes(' - ') ? a.contactName.split(' - ')[0] : a.contactName;
-  const associations: TaskAssociation[] = [];
-  if (a.contactId && contactName) associations.push({ type: 'contacto', id: a.contactId, name: contactName });
+  const associations = taskAssociationsFromActivity(a);
+  const company =
+    associations.find((x) => x.type === 'empresa')?.name ??
+    (a.contactName && !a.contactId ? a.contactName.trim() : undefined);
   return {
     id: a.id,
     title: a.title,
@@ -214,6 +215,7 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
   const [completedTask, setCompletedTask] = useState<MockTask | null>(null);
   const [activityFromTaskOpen, setActivityFromTaskOpen] = useState(false);
   const [linkedTaskPromptOpen, setLinkedTaskPromptOpen] = useState(false);
+  const [, setLinkPromptSource] = useState<MockTask | null>(null);
   const [linkedTaskOpen, setLinkedTaskOpen] = useState(false);
   const [linkedTaskTitle, setLinkedTaskTitle] = useState('');
   const [linkedTaskType, setLinkedTaskType] = useState<TaskType | ''>('');
@@ -253,27 +255,30 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
     setLinkedTaskDueDate('');
   }
 
-  async function handleTaskToggle(taskId: string) {
+  function handleTaskToggle(taskId: string) {
     const task = tasks.find((t) => t.id === taskId);
     if (!task) return;
 
     const newStatus = task.status === 'completada' ? 'pendiente' : 'completada';
-    try {
-      const payload: { status: string; completedAt?: string } = { status: newStatus };
-      if (newStatus === 'completada') payload.completedAt = new Date().toISOString().slice(0, 10);
-      await updateActivity(taskId, payload);
-      toast.success(newStatus === 'completada' ? 'Tarea completada' : 'Tarea reactivada');
-      if (
-        newStatus === 'completada' &&
-        task.type &&
-        TASK_KINDS.includes(task.type)
-      ) {
-        setCompletedTask(task);
-        setActivityFromTaskOpen(true);
-      }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error al actualizar');
+    if (
+      newStatus === 'completada' &&
+      task.type &&
+      TASK_KINDS.includes(task.type)
+    ) {
+      setCompletedTask(task);
+      setActivityFromTaskOpen(true);
+      return;
     }
+    const payload: { status: string; completedAt?: string } = { status: newStatus };
+    if (newStatus === 'completada') {
+      payload.completedAt = new Date().toISOString().slice(0, 10);
+    } else if (task.status === 'completada') {
+      payload.completedAt = '';
+    }
+    toast.success(newStatus === 'completada' ? 'Tarea completada' : 'Tarea reactivada');
+    void updateActivity(taskId, payload).catch((e) => {
+      toast.error(e instanceof Error ? e.message : 'Error al actualizar');
+    });
   }
 
   return (
@@ -390,29 +395,38 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
           type={completedTask.type}
           open={activityFromTaskOpen}
           onOpenChange={(open) => { setActivityFromTaskOpen(open); if (!open) setCompletedTask(null); }}
-          onSave={async (data) => {
+          onSave={(data) => {
+            if (!completedTask) return;
+            const t = completedTask;
             const summary = data.description?.trim() || '';
-            if (summary && completedTask) {
-              try {
-                await updateActivity(completedTask.id, { description: summary });
-              } catch (e) {
-                toast.error(e instanceof Error ? e.message : 'Error al guardar');
-              }
-            }
-            onActivityCreated?.({
-              id: completedTask!.id,
-              type: completedTask!.type!,
-              title: completedTask!.title,
-              description: summary,
-              assignedTo: '',
-              assignedToName: completedTask!.assignee,
+            const payload: UpdateActivityPayload = {
               status: 'completada',
-              dueDate: completedTask!.dueDate,
-              createdAt: new Date().toISOString().slice(0, 10),
-              contactId,
-            });
+              completedAt: new Date().toISOString().slice(0, 10),
+            };
+            if (summary) payload.description = summary;
+            setLinkPromptSource(t);
             setActivityFromTaskOpen(false);
             setLinkedTaskPromptOpen(true);
+            void updateActivity(t.id, payload)
+              .then(() => {
+                onActivityCreated?.({
+                  id: t.id,
+                  type: t.type!,
+                  title: t.title,
+                  description: summary,
+                  assignedTo: '',
+                  assignedToName: t.assignee,
+                  status: 'completada',
+                  dueDate: t.dueDate,
+                  createdAt: new Date().toISOString().slice(0, 10),
+                  contactId,
+                });
+              })
+              .catch((e) => {
+                toast.error(
+                  e instanceof Error ? e.message : 'Error al guardar; el estado se revirtió.',
+                );
+              });
           }}
           taskSummary={{
             title: completedTask.title,
@@ -420,14 +434,22 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
             assignee: completedTask.assignee,
           }}
           defaultTitle={completedTask.title}
-          defaultDate={completedTask.dueDate || undefined}
-          defaultTime={completedTask.startTime || undefined}
+          defaultDate={formatTodayPeruYmd()}
           showSkip
         />
       )}
 
       {/* Prompt para crear tarea vinculada */}
-      <Dialog open={linkedTaskPromptOpen} onOpenChange={(open) => { setLinkedTaskPromptOpen(open); if (!open) setCompletedTask(null); }}>
+      <Dialog
+        open={linkedTaskPromptOpen}
+        onOpenChange={(open) => {
+          setLinkedTaskPromptOpen(open);
+          if (!open) {
+            setCompletedTask(null);
+            setLinkPromptSource(null);
+          }
+        }}
+      >
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>Crear tarea vinculada</DialogTitle>
@@ -436,15 +458,25 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex-row gap-2 sm:justify-end">
-            <Button variant="outline" onClick={() => { setLinkedTaskPromptOpen(false); setCompletedTask(null); }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setLinkedTaskPromptOpen(false);
+                setCompletedTask(null);
+                setLinkPromptSource(null);
+              }}
+            >
               No, gracias
             </Button>
-            <Button className="bg-[#13944C] hover:bg-[#0f7a3d]" onClick={() => {
-              setLinkedTaskPromptOpen(false);
-              resetLinkedTaskForm();
-              setLinkedTaskTitle(`Seguimiento: ${completedTask?.title ?? ''}`);
-              setLinkedTaskOpen(true);
-            }}>
+            <Button
+              className="bg-[#13944C] hover:bg-[#0f7a3d]"
+              onClick={() => {
+                setLinkedTaskPromptOpen(false);
+                resetLinkedTaskForm();
+                setLinkPromptSource(null);
+                setLinkedTaskOpen(true);
+              }}
+            >
               Sí, crear tarea
             </Button>
           </DialogFooter>
@@ -616,19 +648,6 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
             if (Object.keys(payload).length === 0) continue;
             try {
               await updateActivity(nd.id, payload);
-              const becameCompleted =
-                oldDetail.status !== 'completada' && nd.status === 'completada';
-              if (
-                becameCompleted &&
-                selectedTask?.id === nd.id &&
-                nd.type &&
-                TASK_KINDS.includes(nd.type as TaskKind)
-              ) {
-                setCompletedTask(tasks.find((ta) => ta.id === nd.id) as MockTask);
-                setTaskDetailOpen(false);
-                setSelectedTask(null);
-                setActivityFromTaskOpen(true);
-              }
             } catch (e) {
               toast.error(e instanceof Error ? e.message : 'Error al actualizar');
             }

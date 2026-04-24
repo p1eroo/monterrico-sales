@@ -12,6 +12,7 @@ import { useUsersStore } from '@/store/usersStore';
 import { isLikelyCompanyCuid } from './companyApi';
 import type { ApiOpportunityListRow } from './opportunityApi';
 import { mapApiOpportunityToOpportunity } from './opportunityApi';
+import { optionalContactCargoFromApi } from './contactCargo';
 
 export const isLikelyContactCuid = isLikelyCompanyCuid;
 
@@ -25,6 +26,7 @@ export type ApiCompanyInContact = {
   domain?: string | null;
   rubro?: string | null;
   tipo?: string | null;
+  facturacionEstimada?: number | null;
 };
 
 export type ApiContactCompanyRow = {
@@ -108,15 +110,37 @@ function parseSource(raw: string): ContactSource {
 
 function mapCompanies(rows: ApiContactCompanyRow[] | undefined): LinkedCompany[] {
   if (!rows?.length) return [];
-  return rows.map((r) => ({
-    name: r.company.name,
-    id: r.company.id,
-    urlSlug: r.company.urlSlug,
-    domain: r.company.domain ?? undefined,
-    rubro: parseRubro(r.company.rubro),
-    tipo: parseTipo(r.company.tipo),
-    isPrimary: r.isPrimary,
-  }));
+  return rows.map((r) => {
+    const f = r.company.facturacionEstimada;
+    return {
+      name: r.company.name,
+      id: r.company.id,
+      urlSlug: r.company.urlSlug,
+      domain: r.company.domain ?? undefined,
+      rubro: parseRubro(r.company.rubro),
+      tipo: parseTipo(r.company.tipo),
+      isPrimary: r.isPrimary,
+      ...(typeof f === 'number' && !Number.isNaN(f) ? { facturacionEstimada: f } : {}),
+    };
+  });
+}
+
+/** Empresa anidada (contacto, oportunidad) → tarjeta lateral */
+export function mapApiCompanyInContactToLinkedCompany(
+  c: ApiCompanyInContact,
+  isPrimary?: boolean,
+): LinkedCompany {
+  const f = c.facturacionEstimada;
+  return {
+    name: c.name,
+    id: c.id,
+    urlSlug: c.urlSlug,
+    domain: c.domain ?? undefined,
+    rubro: parseRubro(c.rubro),
+    tipo: parseTipo(c.tipo),
+    ...(isPrimary != null ? { isPrimary } : {}),
+    ...(typeof f === 'number' && !Number.isNaN(f) ? { facturacionEstimada: f } : {}),
+  };
 }
 
 function parseEtapaHistory(raw: unknown): Contact['etapaHistory'] {
@@ -152,7 +176,7 @@ export function mapApiContactRowToContact(row: ApiContactListRow | ApiContactNes
     id: row.id,
     urlSlug: row.urlSlug,
     name: row.name,
-    cargo: row.cargo ?? undefined,
+    cargo: optionalContactCargoFromApi(row.cargo),
     companies: mapCompanies(row.companies),
     telefono: row.telefono,
     correo: row.correo,

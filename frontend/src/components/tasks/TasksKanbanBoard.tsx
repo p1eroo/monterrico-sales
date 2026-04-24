@@ -126,9 +126,8 @@ export type TasksKanbanBoardProps = {
   loading?: boolean;
   onTaskClick: (task: Activity) => void;
   onAddTask: (defaultStatus?: ActivityStatus) => void;
-  onStatusChange: (taskId: string, next: ActivityStatus) => Promise<void>;
+  onStatusChange: (taskId: string, next: ActivityStatus) => void | Promise<void>;
   onCompleteToggle: (taskId: string) => void;
-  onReschedule: (taskId: string) => void;
   onEdit: (task: Activity) => void;
   onDelete: (taskId: string) => void;
   formatDueDate: (dueDate: string, startTime?: string) => string;
@@ -155,7 +154,6 @@ const TaskKanbanCard = memo(function TaskKanbanCard({
   formatDueDate,
   isOverdue,
   onCompleteToggle,
-  onReschedule,
   onEdit,
   onDelete,
 }: {
@@ -165,7 +163,6 @@ const TaskKanbanCard = memo(function TaskKanbanCard({
   formatDueDate: (dueDate: string, startTime?: string) => string;
   isOverdue: (dueDate: string, status: ActivityStatus) => boolean;
   onCompleteToggle: () => void;
-  onReschedule: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -233,7 +230,6 @@ const TaskKanbanCard = memo(function TaskKanbanCard({
               {task.status !== 'completada' && (
                 <DropdownMenuItem onClick={onCompleteToggle}>Completar</DropdownMenuItem>
               )}
-              <DropdownMenuItem onClick={onReschedule}>Reprogramar</DropdownMenuItem>
               <DropdownMenuItem onClick={onEdit}>Editar</DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem variant="destructive" onClick={onDelete}>
@@ -272,7 +268,6 @@ const DraggableTaskCard = memo(function DraggableTaskCard({
   formatDueDate,
   isOverdue,
   onCompleteToggle,
-  onReschedule,
   onEdit,
   onDelete,
 }: {
@@ -281,7 +276,6 @@ const DraggableTaskCard = memo(function DraggableTaskCard({
   formatDueDate: (dueDate: string, startTime?: string) => string;
   isOverdue: (dueDate: string, status: ActivityStatus) => boolean;
   onCompleteToggle: () => void;
-  onReschedule: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -307,7 +301,6 @@ const DraggableTaskCard = memo(function DraggableTaskCard({
         formatDueDate={formatDueDate}
         isOverdue={isOverdue}
         onCompleteToggle={onCompleteToggle}
-        onReschedule={onReschedule}
         onEdit={onEdit}
         onDelete={onDelete}
       />
@@ -394,7 +387,6 @@ export const TasksKanbanBoard = memo(function TasksKanbanBoard({
   onAddTask,
   onStatusChange,
   onCompleteToggle,
-  onReschedule,
   onEdit,
   onDelete,
   formatDueDate,
@@ -535,7 +527,6 @@ export const TasksKanbanBoard = memo(function TasksKanbanBoard({
                       formatDueDate={formatDueDate}
                       isOverdue={isOverdue}
                       onCompleteToggle={() => onCompleteToggle(task.id)}
-                      onReschedule={() => onReschedule(task.id)}
                       onEdit={() => onEdit(task)}
                       onDelete={() => onDelete(task.id)}
                     />
@@ -557,7 +548,6 @@ export const TasksKanbanBoard = memo(function TasksKanbanBoard({
               formatDueDate={formatDueDate}
               isOverdue={isOverdue}
               onCompleteToggle={() => {}}
-              onReschedule={() => {}}
               onEdit={() => {}}
               onDelete={() => {}}
             />

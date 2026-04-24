@@ -18,6 +18,8 @@ import { buildChangeEntries } from '../common/audit-diff.util';
 import { COMPANY_FIELD_LABELS } from '../audit-detail/audit-field-labels';
 import type { CrmDataScope } from '../auth/crm-data-scope.service';
 import { mergeCompanyScope } from '../common/crm-data-scope-where.util';
+import { formatImportedCompanyName } from '../common/import-display-name.util';
+import { FactilizaService } from '../factiliza/factiliza.service';
 
 /** Select slim para listado: excluye linkedin, correo, direcciones */
 const companySelectListSlim = {
@@ -95,6 +97,7 @@ export class CompaniesService {
     private readonly crmConfig: CrmConfigService,
     private readonly activityLogs: ActivityLogsService,
     private readonly auditDetail: AuditDetailService,
+    private readonly factiliza: FactilizaService,
   ) {}
 
   private async assertUserExists(id: string): Promise<void> {
@@ -122,6 +125,152 @@ export class CompaniesService {
       n += 1;
       candidate = `${base}-${n}`;
     }
+  }
+
+  /** RUC normalizado a 11 dígitos o null si no aplica. */
+  private normalizeCompanyRucDigits(ruc?: string | null): string | null {
+    const d = (ruc ?? '').replace(/\D/g, '').trim();
+    return d.length === 11 ? d : null;
+  }
+
+  /** Primera empresa con ese RUC (formato guardado o solo dígitos), la más antigua por id. */
+  private async findFirstCompanyByRucDigits(
+    digits: string,
+  ): Promise<{ id: string; name: string } | null> {
+    const grouped = await this.prisma.$queryRaw<{ id: string; name: string }[]>(
+      Prisma.sql`
+        SELECT id, name FROM "Company"
+        WHERE "ruc" IS NOT NULL
+          AND regexp_replace("ruc", '[^0-9]', '', 'g') = ${digits}
+        ORDER BY id ASC
+        LIMIT 1
+      `,
+    );
+    return grouped[0] ?? null;
+  }
+
+  /**
+   * Unifica alta: mismo RUC → actualizar empresa existente (SUNAT + datos del DTO), sin crear duplicado.
+   */
+  private async mergeCompanyOnDuplicateRuc(
+    companyId: string,
+    dto: CreateCompanyDto,
+  ): Promise<void> {
+    const digits =
+      this.normalizeCompanyRucDigits(dto.ruc) ??
+      (await this.prisma.company
+        .findUnique({
+          where: { id: companyId },
+          select: { ruc: true },
+        })
+        .then((r) => this.normalizeCompanyRucDigits(r?.ruc ?? null)));
+
+    const data: Prisma.CompanyUncheckedUpdateInput = {};
+    let filledRsFromSunat = false;
+
+    if (digits) {
+      try {
+        const sunat = await this.factiliza.consultarRuc(digits);
+        const rs = sunat.nombre_o_razon_social?.trim();
+        if (rs) {
+          const fmt = formatImportedCompanyName(rs);
+          data.name = fmt;
+          data.razonSocial = fmt;
+          filledRsFromSunat = true;
+        }
+        if (sunat.departamento?.trim()) {
+          data.departamento = sunat.departamento.trim();
+        }
+        if (sunat.provincia?.trim()) {
+          data.provincia = sunat.provincia.trim();
+        }
+        if (sunat.distrito?.trim()) {
+          data.distrito = sunat.distrito.trim();
+        }
+        const dir =
+          sunat.direccion?.trim() ||
+          sunat.direccion_completa?.trim() ||
+          undefined;
+        if (dir) data.direccion = dir;
+      } catch {
+        /* SUNAT opcional */
+      }
+    }
+
+    if (!filledRsFromSunat && dto.razonSocial?.trim()) {
+      data.razonSocial = formatImportedCompanyName(dto.razonSocial.trim());
+    }
+    if (dto.telefono?.trim()) data.telefono = dto.telefono.trim();
+    if (dto.domain?.trim()) data.domain = dto.domain.trim();
+    if (dto.rubro?.trim()) data.rubro = dto.rubro.trim();
+    if (dto.tipo?.trim()) data.tipo = dto.tipo.trim();
+    if (dto.linkedin?.trim()) data.linkedin = dto.linkedin.trim();
+    if (dto.correo?.trim()) data.correo = dto.correo.trim();
+    if (dto.distrito?.trim()) data.distrito = dto.distrito.trim();
+    if (dto.provincia?.trim()) data.provincia = dto.provincia.trim();
+    if (dto.departamento?.trim()) data.departamento = dto.departamento.trim();
+    if (dto.direccion?.trim()) data.direccion = dto.direccion.trim();
+    if (dto.clienteRecuperado?.trim()) {
+      data.clienteRecuperado = dto.clienteRecuperado.trim();
+    }
+
+    if (
+      dto.facturacionEstimada !== undefined &&
+      dto.facturacionEstimada !== null &&
+      Number.isFinite(dto.facturacionEstimada) &&
+      dto.facturacionEstimada > 0
+    ) {
+      data.facturacionEstimada = dto.facturacionEstimada;
+    }
+    if (dto.fuente?.trim()) {
+      data.fuente = await this.crmConfig.normalizeLeadSource(dto.fuente);
+    }
+    if (dto.etapa?.trim()) {
+      await this.crmConfig.assertEtapaAssignable(dto.etapa.trim());
+      data.etapa = dto.etapa.trim();
+    }
+    if (dto.assignedTo !== undefined) {
+      const a = dto.assignedTo?.trim() || null;
+      if (a) await this.assertUserExists(a);
+      data.assignedTo = a;
+    }
+
+    const rucStore = dto.ruc?.trim() || undefined;
+    if (rucStore) {
+      const normalizedDigits = rucStore.replace(/\D/g, '');
+      data.ruc =
+        normalizedDigits.length === 11 ? normalizedDigits : rucStore;
+    }
+
+    if (typeof data.name === 'string' && data.name.length > 0) {
+      const before = await this.prisma.company.findUnique({
+        where: { id: companyId },
+        select: { name: true },
+      });
+      if (
+        before &&
+        before.name.trim().toLowerCase() !== data.name.trim().toLowerCase()
+      ) {
+        data.urlSlug = await this.allocateCompanyUrlSlug(data.name, companyId);
+      }
+    }
+
+    if (Object.keys(data).length === 0) return;
+
+    await this.prisma.company.update({
+      where: { id: companyId },
+      data,
+    });
+  }
+
+  /**
+   * Importación: aplica consulta SUNAT (Factiliza) y campos del DTO sobre una empresa ya existente con el mismo RUC.
+   */
+  async mergeExistingByRucPayload(
+    companyId: string,
+    dto: CreateCompanyDto,
+  ): Promise<void> {
+    await this.mergeCompanyOnDuplicateRuc(companyId, dto);
   }
 
   private async resolveCompanyId(param: string): Promise<string> {
@@ -179,21 +328,22 @@ export class CompaniesService {
     }
     await this.crmConfig.assertEtapaAssignable(etapa);
 
-    const rucTrim = dto.ruc?.trim();
-    if (rucTrim) {
-      const sameIdentity = await this.prisma.company.findFirst({
-        where: {
-          ruc: rucTrim,
-          OR: [
-            { name: { equals: name, mode: 'insensitive' } },
-            { razonSocial: { equals: name, mode: 'insensitive' } },
-          ],
-        },
-      });
-      if (sameIdentity) {
-        throw new BadRequestException(
-          'Ya existe una empresa registrada con el mismo RUC y nombre.',
-        );
+    const rucDigits = this.normalizeCompanyRucDigits(dto.ruc);
+    if (rucDigits) {
+      const existing = await this.findFirstCompanyByRucDigits(rucDigits);
+      if (existing) {
+        await this.mergeCompanyOnDuplicateRuc(existing.id, dto);
+        await this.entitySync.propagateFromCompany(existing.id);
+        await this.clientsService.ensureClientForCierreGanado(existing.id);
+        await this.activityLogs.record(actor ?? null, {
+          action: 'actualizar',
+          module: 'empresas',
+          entityType: 'Empresa',
+          entityId: existing.id,
+          entityName: existing.name,
+          description: `Empresa unificada por RUC: datos actualizados (sin crear duplicado)`,
+        });
+        return this.findOne(existing.id, scope);
       }
     }
 
@@ -211,13 +361,19 @@ export class CompaniesService {
       );
     }
 
+    const rucStore = dto.ruc?.trim() || null;
+    const rucForDb =
+      rucStore && rucStore.replace(/\D/g, '').length === 11
+        ? rucStore.replace(/\D/g, '')
+        : rucStore;
+
     const urlSlug = await this.allocateCompanyUrlSlug(name);
     const company = await this.prisma.company.create({
       data: {
         urlSlug,
         name,
         razonSocial: dto.razonSocial?.trim() || null,
-        ruc: rucTrim || null,
+        ruc: rucForDb,
         telefono: dto.telefono?.trim() || null,
         domain: dto.domain?.trim() || null,
         rubro: dto.rubro?.trim() || null,

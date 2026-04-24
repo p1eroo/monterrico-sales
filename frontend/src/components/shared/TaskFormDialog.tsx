@@ -52,6 +52,9 @@ const taskStatusLabels: Record<TaskFormStatus, string> = {
   vencida: 'Vencida',
 };
 
+/** Filas visibles por pestaña al abrir el buscador; el resto se alcanza filtrando por texto. */
+const ASSOCIATION_PICKER_PAGE_SIZE = 8;
+
 export interface TaskFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -65,44 +68,67 @@ export interface TaskFormDialogProps {
   defaultTitle?: string;
   /** Estado inicial al abrir (p. ej. columna Kanban desde la que se creó la tarea). */
   defaultStatus?: TaskFormStatus;
+  /** Vínculos prellenados (p. ej. tarea de seguimiento tras completar otra). */
+  defaultAssociations?: TaskAssociation[];
   onSave: (task: TaskFormResult) => void | Promise<void>;
+  /**
+   * Si es true, no espera al API: cierra y muestra éxito al instante (creación optimista en el store).
+   * En otras pantallas debe ser false para esperar `onSave` (p. ej. Calendario).
+   */
+  optimisticClose?: boolean;
 }
 
 export function TaskFormDialog({
   open,
   onOpenChange,
   title = 'Crear Tarea',
-  description = 'Crea una nueva tarea.',
+  description = 'Registra una nueva tarea.',
   contacts,
   companies,
   opportunities,
   defaultAssigneeId = '',
   defaultTitle = '',
   defaultStatus,
+  defaultAssociations,
   onSave,
+  optimisticClose = false,
 }: TaskFormDialogProps) {
   const { users, activeAdvisors } = useUsers();
-  const today = new Date().toISOString().slice(0, 10);
+
+  function getDefaultStartDate() {
+    return new Date().toISOString().slice(0, 10);
+  }
+  /** Límite sugerida: una semana después de hoy (evita prellenar hoy en fecha límite). */
+  function getDefaultDueDate() {
+    const d = new Date();
+    d.setDate(d.getDate() + 7);
+    return d.toISOString().slice(0, 10);
+  }
+
   const [formTitle, setFormTitle] = useState(defaultTitle);
-
-  useEffect(() => {
-    if (open) {
-      setFormTitle(defaultTitle);
-      setFormStatus(defaultStatus ?? 'pendiente');
-    }
-  }, [open, defaultTitle, defaultStatus]);
-
   const [formType, setFormType] = useState<TaskFormType | ''>('');
   const [formStatus, setFormStatus] = useState<TaskFormStatus>('pendiente');
   const [formPriority, setFormPriority] = useState<TaskFormPriority>('media');
   const [formAssignee, setFormAssignee] = useState(defaultAssigneeId);
   const [formStartTime, setFormStartTime] = useState('');
   const [formStartDate, setFormStartDate] = useState('');
-  const [formDueDate, setFormDueDate] = useState(today);
+  const [formDueDate, setFormDueDate] = useState('');
   const [associations, setAssociations] = useState<TaskAssociation[]>([]);
   const [assocPanelOpen, setAssocPanelOpen] = useState(false);
   const [assocSearch, setAssocSearch] = useState('');
   const [assocCategory, setAssocCategory] = useState<'contactos' | 'empresas' | 'negocios'>('contactos');
+
+  useEffect(() => {
+    if (open) {
+      setFormTitle(defaultTitle);
+      setFormStatus(defaultStatus ?? 'pendiente');
+      setFormStartDate(getDefaultStartDate());
+      setFormDueDate(getDefaultDueDate());
+      setAssociations(
+        defaultAssociations?.length ? defaultAssociations.map((a) => ({ ...a })) : [],
+      );
+    }
+  }, [open, defaultTitle, defaultStatus, defaultAssociations]);
 
   const assocCounts = {
     contactos: contacts.length,
@@ -117,8 +143,8 @@ export function TaskFormDialog({
     setFormPriority('media');
     setFormAssignee(defaultAssigneeId);
     setFormStartTime('');
-    setFormStartDate('');
-    setFormDueDate(today);
+    setFormStartDate(getDefaultStartDate());
+    setFormDueDate(getDefaultDueDate());
     setAssociations([]);
     setAssocPanelOpen(false);
     setAssocSearch('');
@@ -133,9 +159,17 @@ export function TaskFormDialog({
       toast.error('Selecciona el tipo de tarea');
       return;
     }
+    if (associations.length === 0) {
+      toast.error('Debes vincular la tarea a al menos un contacto, empresa u oportunidad');
+      return;
+    }
+    if (!formDueDate.trim()) {
+      toast.error('Selecciona la fecha límite');
+      return;
+    }
     const assigneeUser = users.find((u) => u.id === formAssignee);
     const assigneeName = assigneeUser?.name ?? 'Sin asignar';
-    const result = onSave({
+    const payload: TaskFormResult = {
       title: formTitle.trim(),
       type: formType,
       status: formStatus,
@@ -145,9 +179,22 @@ export function TaskFormDialog({
       startDate: formStartDate || undefined,
       startTime: formStartTime || undefined,
       dueDate: formDueDate,
-      associations: associations.length > 0 ? [...associations] : undefined,
-    });
-    await (result instanceof Promise ? result : Promise.resolve());
+      associations: [...associations],
+    };
+    try {
+      const result = onSave(payload);
+      if (result instanceof Promise) {
+        if (optimisticClose) {
+          void result.catch(() => {
+            /* el padre hace toast al fallar (p. ej. Tareas) */
+          });
+        } else {
+          await result;
+        }
+      }
+    } catch {
+      return;
+    }
     resetForm();
     onOpenChange(false);
     toast.success('Tarea creada');
@@ -178,7 +225,7 @@ export function TaskFormDialog({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label className="flex items-center gap-1.5">
-                <Link2 className="size-3.5" /> Asociaciones
+                <Link2 className="size-3.5" /> Asociaciones *
               </Label>
               {associations.length > 0 && (
                 <span className="text-xs text-muted-foreground">{associations.length} registro{associations.length !== 1 ? 's' : ''}</span>
@@ -247,7 +294,7 @@ export function TaskFormDialog({
                       {assocCategory === 'contactos' &&
                         contacts
                           .filter((l) => l.name.toLowerCase().includes(assocSearch.toLowerCase()))
-                          .slice(0, 8)
+                          .slice(0, ASSOCIATION_PICKER_PAGE_SIZE)
                           .map((l) => {
                             const isSelected = associations.some((a) => a.type === 'contacto' && a.id === l.id);
                             return (
@@ -273,6 +320,7 @@ export function TaskFormDialog({
                       {assocCategory === 'empresas' &&
                         companies
                           .filter((c) => c.name.toLowerCase().includes(assocSearch.toLowerCase()))
+                          .slice(0, ASSOCIATION_PICKER_PAGE_SIZE)
                           .map((c) => {
                             const rowId = c.id ?? c.name;
                             const isSelected = associations.some((a) => a.type === 'empresa' && a.id === rowId);
@@ -299,6 +347,7 @@ export function TaskFormDialog({
                       {assocCategory === 'negocios' &&
                         opportunities
                           .filter((o) => o.title.toLowerCase().includes(assocSearch.toLowerCase()))
+                          .slice(0, ASSOCIATION_PICKER_PAGE_SIZE)
                           .map((o) => {
                             const isSelected = associations.some((a) => a.type === 'negocio' && a.id === o.id);
                             return (
@@ -329,15 +378,8 @@ export function TaskFormDialog({
 
           <div className="grid gap-4 grid-cols-2">
             <div className="space-y-2">
-              <Label>Asignar a</Label>
-              <Select value={formAssignee} onValueChange={setFormAssignee}>
-                <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar asesor" /></SelectTrigger>
-                <SelectContent>
-                  {activeAdvisors.map((u) => (
-                    <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Fecha de inicio</Label>
+              <Input type="date" value={formStartDate} onChange={(e) => setFormStartDate(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label>Tipo</Label>
@@ -349,6 +391,14 @@ export function TaskFormDialog({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Fecha límite</Label>
+              <Input type="date" value={formDueDate} onChange={(e) => setFormDueDate(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Hora estimada</Label>
+              <Input type="time" value={formStartTime} onChange={(e) => setFormStartTime(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label>Estado</Label>
@@ -373,17 +423,17 @@ export function TaskFormDialog({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Hora estimada</Label>
-              <Input type="time" value={formStartTime} onChange={(e) => setFormStartTime(e.target.value)} />
+              <Label>Asignado</Label>
+              <Select value={formAssignee} onValueChange={setFormAssignee}>
+                <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar asesor" /></SelectTrigger>
+                <SelectContent>
+                  {activeAdvisors.map((u) => (
+                    <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Fecha de inicio</Label>
-              <Input type="date" value={formStartDate} onChange={(e) => setFormStartDate(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Fecha límite</Label>
-              <Input type="date" value={formDueDate} onChange={(e) => setFormDueDate(e.target.value)} />
-            </div>
+            <div aria-hidden className="min-h-0" />
           </div>
         </div>
         <DialogFooter>

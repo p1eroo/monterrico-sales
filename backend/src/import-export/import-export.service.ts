@@ -1158,21 +1158,6 @@ export class ImportExportService {
       this.foldContactImportKey(company.razonSocial) === folded;
   }
 
-  private pickCompanyForImportByRucAndName(
-    companies: Array<{
-      id: string;
-      name: string;
-      razonSocial?: string | null;
-      ruc: string | null;
-    }>,
-    nombre?: string,
-  ) {
-    if (companies.length === 0) return null;
-    const nameTrim = (nombre ?? '').trim();
-    if (!nameTrim) return companies[0] ?? null;
-    return companies.find((c) => this.companyMatchesImportName(c, nameTrim)) ?? null;
-  }
-
   private pickCompanyForImportByRucAndNames(
     companies: Array<{
       id: string;
@@ -1183,11 +1168,18 @@ export class ImportExportService {
     nombres: Array<string | undefined>,
   ) {
     if (companies.length === 0) return null;
+    const canonical = [...companies].sort((a, b) =>
+      a.id < b.id ? -1 : a.id > b.id ? 1 : 0,
+    )[0]!;
     for (const nombre of nombres) {
-      const match = this.pickCompanyForImportByRucAndName(companies, nombre);
-      if (match) return match;
+      const nameTrim = (nombre ?? '').trim();
+      if (!nameTrim) continue;
+      const hit = companies.find((c) =>
+        this.companyMatchesImportName(c, nameTrim),
+      );
+      if (hit) return hit;
     }
-    return null;
+    return canonical;
   }
 
   private async findCompaniesByRucInputAll(rucRaw: string) {
@@ -1447,7 +1439,7 @@ export class ImportExportService {
 
   /**
    * Resuelve vínculo de empresa para import de contactos (por `empresa_nombre` / `empresa_ruc`).
-   * - RUC: si existe en BD, reutiliza; si viene nombre distinto, actualiza solo `name` (salvo `dryRun`).
+   * - RUC: si existe en BD, reutiliza la misma empresa; un nombre distinto en el CSV no renombra la empresa (mismo RUC).
    * - RUC del CSV no registrado pero nombre coincide con una empresa: vincula el contacto a esa empresa (no crea duplicado).
    * - Tras consultar SUNAT (solo import real): si el nombre definitivo ya existe, vincula en lugar de crear.
    * - Sin RUC: igual que antes (por nombre o nueva empresa).
@@ -1487,19 +1479,14 @@ export class ImportExportService {
     if (rucRaw) {
       const found = await this.findCompanyByRucInput(rucRaw);
       if (found) {
-        const willRename =
-          !!nombre && nombre.toLowerCase() !== found.name.toLowerCase();
-        if (willRename && !dryRun) {
-          await this.prisma.company.update({
-            where: { id: found.id },
-            data: { name: formatImportedCompanyName(nombre) },
-          });
-        }
         let resumen = `Existente: ${found.name}`;
-        if (willRename) {
+        if (
+          nombre &&
+          nombre.toLowerCase() !== found.name.toLowerCase()
+        ) {
           resumen += dryRun
-            ? ` · se actualizará el nombre a «${nombre}»`
-            : ' · nombre actualizado';
+            ? ` · mismo RUC: no se renombra la empresa; el nombre «${nombre}» queda como referencia de la fila`
+            : ` · mismo RUC: empresa sin renombrar (nombre CSV «${nombre}»)`;
         }
         return {
           ok: true,
@@ -2565,9 +2552,6 @@ export class ImportExportService {
                 : w.razonRowPreview) || provisionalName
             : `${rd || w.rucRaw.trim()} (SUNAT)`
           : provisionalName;
-        if (w.rucRaw && existingRucCandidates.length > 0) {
-          empresaResumen += ' · mismo RUC, nombre distinto: se creará otra empresa';
-        }
       }
 
       if (!w.puedeContacto) {
@@ -2928,18 +2912,42 @@ export class ImportExportService {
 
         if (existingRuc) {
           companyId = existingRuc.id;
-          const exactRucAndNameMatch =
-            !!effectiveCompanyName &&
-            this.companyMatchesImportName(existingRuc, effectiveCompanyName);
-          if (exactRucAndNameMatch) {
-            shouldRefreshExactCompanyFromImport = true;
-            await this.updateExistingCompanyFromImport(
+          const dtoForMerge: CreateCompanyDto = {
+            name: formatImportedCompanyName(
+              effectiveCompanyName || existingRuc.name || 'Empresa',
+            ),
+            razonSocial: razonRow
+              ? formatImportedCompanyName(razonRow)
+              : undefined,
+            ruc: rucRaw || undefined,
+            telefono: companyImportUpdate.telefono,
+            domain: companyImportUpdate.domain,
+            rubro: companyImportUpdate.rubro,
+            tipo: companyImportUpdate.tipo,
+            correo: companyImportUpdate.correo,
+            linkedin: companyImportUpdate.linkedin,
+            distrito: companyImportUpdate.distrito,
+            provincia: companyImportUpdate.provincia,
+            departamento: companyImportUpdate.departamento,
+            direccion: companyImportUpdate.direccion,
+            facturacionEstimada,
+            fuente: companyImportUpdate.fuente,
+            ...(clienteRecNorm
+              ? { clienteRecuperado: clienteRecNorm }
+              : {}),
+            etapa: companyImportUpdate.etapa,
+            assignedTo: companyImportUpdate.assignedTo,
+          };
+          if (rucRaw) {
+            await this.companiesService.mergeExistingByRucPayload(
               companyId,
-              companyImportUpdate,
+              dtoForMerge,
             );
-          } else {
-            await this.mergeCompanyPhoneForImport(companyId, companyTelefono);
           }
+          await this.updateExistingCompanyFromImport(
+            companyId,
+            companyImportUpdate,
+          );
         } else if (existingName) {
           companyId = existingName.id;
           await this.mergeCompanyPhoneForImport(companyId, companyTelefono);
@@ -3032,10 +3040,13 @@ export class ImportExportService {
         where: { id: companyId },
         select: { name: true },
       });
+      const opportunityTitle = effectiveCompanyName.trim()
+        ? formatImportedCompanyName(effectiveCompanyName.trim())
+        : companyForOpportunity?.name?.trim() || 'Oportunidad';
       const opportunityId = await this.entitySync.ensureOpportunityForCompany(
         companyId,
         {
-          title: companyForOpportunity?.name?.trim() || 'Oportunidad',
+          title: opportunityTitle,
           amount: facturacionEstimada,
           etapa: etapaSlug,
           assignedTo,

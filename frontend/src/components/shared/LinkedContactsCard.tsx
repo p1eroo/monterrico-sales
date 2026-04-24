@@ -1,10 +1,11 @@
 import { useNavigate } from 'react-router-dom';
-import { Users, Mail, Phone, Briefcase, Target } from 'lucide-react';
+import { Users, Mail, Phone, Target } from 'lucide-react';
 import { etapaLabels } from '@/data/mock';
 import { LinkedEntitiesCard } from './LinkedEntitiesCard';
 import { LinkedEntityItemHeader } from './LinkedEntityItemHeader';
 import type { Contact } from '@/types';
 import { contactDetailHref } from '@/lib/detailRoutes';
+import { optionalContactCargoFromApi } from '@/lib/contactCargo';
 
 export interface LinkedContact {
   id: string;
@@ -54,28 +55,18 @@ export function LinkedContactsCard({
       onItemClick={(c) => navigate(contactDetailHref(c))}
       collapsible
       renderItem={(contact, itemActions) => {
-        const subtitle = contact.cargo ?? contact.correo ?? null;
+        const cargoLine = optionalContactCargoFromApi(contact.cargo);
 
         return (
           <div className="space-y-3">
             <LinkedEntityItemHeader
               variant="contact"
               title={contact.name}
-              subtitle={subtitle}
+              subtitle={cargoLine ?? null}
               trailing={itemActions}
             />
 
             <div className="space-y-2.5">
-              {contact.cargo && (
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 text-sm text-text-secondary">
-                    <Briefcase className="h-3.5 w-3.5 text-text-tertiary" />
-                    Cargo
-                  </div>
-                  <span className="truncate text-right text-sm text-text-primary">{contact.cargo}</span>
-                </div>
-              )}
-
               {contact.correo && (
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2 text-sm text-text-secondary">

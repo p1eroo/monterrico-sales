@@ -312,7 +312,9 @@ export class ActivitiesService {
         include: activityInclude,
       });
     });
-    await this.recordActivityOnLinkedEntities(actor ?? null, 'crear', row);
+    void this.recordActivityOnLinkedEntities(actor ?? null, 'crear', row).catch(
+      () => undefined,
+    );
     return row;
   }
 
@@ -471,11 +473,11 @@ export class ActivitiesService {
       await this.notifications.removeOverdueNotificationsForActivity(id);
     }
 
-    await this.recordActivityOnLinkedEntities(
+    void this.recordActivityOnLinkedEntities(
       actor ?? null,
       'actualizar',
       row,
-    );
+    ).catch(() => undefined);
     return row;
   }
 
@@ -486,7 +488,9 @@ export class ActivitiesService {
   ) {
     const row = await this.findOne(id, scope);
     await this.notifications.removeOverdueNotificationsForActivity(id);
-    await this.recordActivityOnLinkedEntities(actor ?? null, 'eliminar', row);
+    void this.recordActivityOnLinkedEntities(actor ?? null, 'eliminar', row).catch(
+      () => undefined,
+    );
     return this.prisma.activity.delete({
       where: { id },
     });

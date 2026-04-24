@@ -1,9 +1,10 @@
 import { useNavigate } from 'react-router-dom';
-import { Building2, Globe, Briefcase, Target } from 'lucide-react';
+import { Building2, Globe, DollarSign, Target } from 'lucide-react';
 import { etapaLabels, companyRubroLabels, companyTipoLabels } from '@/data/mock';
 import { LinkedEntitiesCard } from './LinkedEntitiesCard';
 import { LinkedEntityItemHeader } from './LinkedEntityItemHeader';
 import { cn } from '@/lib/utils';
+import { formatCurrency } from '@/lib/formatters';
 import type { LinkedCompany } from '@/types';
 import { companyDetailHref } from '@/lib/detailRoutes';
 
@@ -46,13 +47,20 @@ export function LinkedCompaniesCard({
         )}
       collapsible
       renderItem={(comp, itemActions) => {
-        const rubroLabel = comp.rubro ? (companyRubroLabels[comp.rubro] ?? comp.rubro) : null;
+        const rubroLabel = comp.rubro
+          ? (companyRubroLabels[comp.rubro] ?? comp.rubro)
+          : null;
         const multiple = companies.length > 1;
         const showPrincipal = Boolean(comp.isPrimary && multiple);
+        /** Rubro solo bajo el nombre (no se duplica en la lista de campos) */
         let subtitle: string | null = null;
         if (showPrincipal && rubroLabel) subtitle = `Principal · ${rubroLabel}`;
         else if (showPrincipal) subtitle = 'Principal';
         else if (rubroLabel) subtitle = rubroLabel;
+        const facturacion = typeof comp.facturacionEstimada === 'number'
+          && !Number.isNaN(comp.facturacionEstimada)
+          ? comp.facturacionEstimada
+          : null;
 
         return (
         <div
@@ -79,18 +87,6 @@ export function LinkedCompaniesCard({
               </div>
             )}
 
-            {comp.rubro && (
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 text-sm text-text-secondary">
-                  <Briefcase className="h-3.5 w-3.5 text-text-tertiary" />
-                  Rubro
-                </div>
-                <span className="text-right text-sm text-text-primary">
-                  {companyRubroLabels[comp.rubro] ?? comp.rubro}
-                </span>
-              </div>
-            )}
-
             {comp.tipo && (
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 text-sm text-text-secondary">
@@ -99,6 +95,18 @@ export function LinkedCompaniesCard({
                 </div>
                 <span className="text-sm text-text-primary">
                   {companyTipoLabels[comp.tipo] ?? comp.tipo}
+                </span>
+              </div>
+            )}
+
+            {facturacion != null && (
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-sm text-text-secondary">
+                  <DollarSign className="h-3.5 w-3.5 text-text-tertiary" />
+                  Facturación
+                </div>
+                <span className="text-right text-sm text-text-primary tabular-nums">
+                  {formatCurrency(facturacion)}
                 </span>
               </div>
             )}

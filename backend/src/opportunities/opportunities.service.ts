@@ -83,7 +83,8 @@ export class OpportunitiesService {
 
   /** Deriva estado comercial solo a partir de la etapa (abierta | ganada | perdida). */
   private statusFromEtapa(etapa: string): PipelineOpportunityStatus {
-    if (['activo', 'cierre_ganado', 'firma_contrato'].includes(etapa)) {
+    /** Solo `activo` (100 % en catálogo) → ganada; no cierre_ganado ni firma_contrato. */
+    if (etapa === 'activo') {
       return 'ganada';
     }
     if (['cierre_perdido', 'inactivo'].includes(etapa)) {

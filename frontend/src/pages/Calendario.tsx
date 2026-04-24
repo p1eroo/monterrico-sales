@@ -918,7 +918,7 @@ export default function CalendarioPage() {
         open={taskFormOpen}
         onOpenChange={setTaskFormOpen}
         title="Nueva tarea"
-        description="Crea una tarea y vincúlala a un contacto, empresa u oportunidad."
+        description="Crea una tarea y vincúlala a al menos un contacto, empresa u oportunidad."
         contacts={taskContacts}
         companies={taskCompanies}
         opportunities={taskOpportunities}

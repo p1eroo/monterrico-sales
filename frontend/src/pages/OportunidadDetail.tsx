@@ -67,6 +67,7 @@ import {
   contactRemoveCompany,
   isLikelyContactCuid,
   mapApiContactRowToContact,
+  mapApiCompanyInContactToLinkedCompany,
 } from '@/lib/contactApi';
 import { useStageBadgeTone } from '@/hooks/useStageBadgeTone';
 import { useCrmConfigStore, getStageLabelFromCatalog } from '@/store/crmConfigStore';
@@ -156,8 +157,7 @@ export default function OportunidadDetailPage() {
   const primaryCompany = useMemo(() => {
     if (!opp) return null;
     if (fromApi && apiRecord?.companies?.[0]?.company) {
-      const comp = apiRecord.companies[0].company;
-      return { id: comp.id, name: comp.name };
+      return mapApiCompanyInContactToLinkedCompany(apiRecord.companies[0].company);
     }
     return linkedContact ? getPrimaryCompany(linkedContact) : null;
   }, [fromApi, apiRecord, opp, linkedContact]);

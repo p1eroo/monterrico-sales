@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import { Phone, Users, Mail, MessageCircle } from 'lucide-react';
+import { Phone, Users, Mail, MessageCircle, User, Building2, Briefcase } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ActivityType, ActivityStatus } from '@/types';
+import { formatNowPeruTimeHHmm, formatTodayPeruYmd } from '@/lib/formatters';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -38,16 +40,18 @@ export interface ActivityResult {
   contactId?: string;
 }
 
-const emptyForm: ActivityFormData = {
-  title: '',
-  description: '',
-  date: new Date().toISOString().slice(0, 10),
-  time: new Date().toTimeString().slice(0, 5),
-  duration: '',
-  result: '',
-  dateTime: '',
-  meetingType: '',
-};
+function createEmptyForm(): ActivityFormData {
+  return {
+    title: '',
+    description: '',
+    date: formatTodayPeruYmd(),
+    time: formatNowPeruTimeHHmm(),
+    duration: '',
+    result: '',
+    dateTime: '',
+    meetingType: '',
+  };
+}
 
 interface TaskSummary {
   title: string;
@@ -55,6 +59,8 @@ interface TaskSummary {
   assignee: string;
   dueDate?: string;
   startTime?: string;
+  /** Entidades vinculadas a la tarea (contacto, empresa, oportunidad). */
+  linkBadges?: { type: 'contacto' | 'empresa' | 'negocio'; name: string }[];
 }
 
 interface ActivityFormDialogProps {
@@ -91,12 +97,16 @@ export function ActivityFormDialog({
   defaultTime,
   showSkip = false,
 }: ActivityFormDialogProps) {
-  const [form, setForm] = useState<ActivityFormData>({
-    ...emptyForm,
-    title: defaultTitle,
-    date: defaultDate || emptyForm.date,
-    time: defaultTime || emptyForm.time,
-    dateTime: defaultDate && defaultTime ? `${defaultDate}T${defaultTime}` : '',
+  const [form, setForm] = useState<ActivityFormData>(() => {
+    const base = createEmptyForm();
+    const time = defaultTime ?? base.time;
+    return {
+      ...base,
+      title: defaultTitle,
+      date: defaultDate ?? base.date,
+      time,
+      dateTime: defaultDate ? `${defaultDate}T${time}` : '',
+    };
   });
 
   const config = typeConfig[type];
@@ -105,7 +115,7 @@ export function ActivityFormDialog({
   function handleOpenChange(value: boolean) {
     onOpenChange(value);
     if (!value) {
-      setForm({ ...emptyForm });
+      setForm(createEmptyForm());
     }
   }
 
@@ -113,7 +123,7 @@ export function ActivityFormDialog({
     try {
       await Promise.resolve(onSave(form));
       toast.success(`${config.label} registrad${config.labelFem} exitosamente`);
-      setForm({ ...emptyForm });
+      setForm(createEmptyForm());
     } catch {
       /* el padre ya mostró el error */
     }
@@ -131,7 +141,7 @@ export function ActivityFormDialog({
           </DialogTitle>
           <DialogDescription>
             {taskSummary
-              ? `La tarea "${taskSummary.title}" fue completada. Registra los detalles de la actividad.`
+              ? `Registra los detalles de la actividad. Al guardar, la tarea «${taskSummary.title}» quedará como completada.`
               : `Registra los detalles de la ${type === 'correo' ? 'el correo' : type === 'llamada' ? 'llamada' : type === 'whatsapp' ? 'conversación de WhatsApp' : 'reunión'}.`
             }
           </DialogDescription>
@@ -148,6 +158,21 @@ export function ActivityFormDialog({
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Empresa</span>
                   <span className="font-medium">{taskSummary.company}</span>
+                </div>
+              )}
+              {taskSummary.linkBadges && taskSummary.linkBadges.length > 0 && (
+                <div className="pt-0.5">
+                  <p className="text-xs text-muted-foreground mb-1.5">Vinculado a</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {taskSummary.linkBadges.map((row, idx) => (
+                      <Badge key={`${row.type}-${idx}-${row.name}`} variant="secondary" className="gap-1 pr-1.5 text-xs">
+                        {row.type === 'contacto' && <User className="size-3" />}
+                        {row.type === 'empresa' && <Building2 className="size-3" />}
+                        {row.type === 'negocio' && <Briefcase className="size-3" />}
+                        <span className="truncate max-w-[12rem]">{row.name}</span>
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
               )}
               <div className="flex items-center justify-between">

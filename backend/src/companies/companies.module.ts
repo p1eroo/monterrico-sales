@@ -9,6 +9,7 @@ import { ClientsModule } from '../clients/clients.module';
 import { CrmConfigModule } from '../crm-config/crm-config.module';
 import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
 import { AuditDetailModule } from '../audit-detail/audit-detail.module';
+import { FactilizaModule } from '../factiliza/factiliza.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { AuditDetailModule } from '../audit-detail/audit-detail.module';
     CrmConfigModule,
     ActivityLogsModule,
     AuditDetailModule,
+    FactilizaModule,
   ],
   controllers: [CompaniesController],
   providers: [CompaniesService, CompanyStaleEtapaService, CompanyStaleEtapaScheduler],

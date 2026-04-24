@@ -295,7 +295,7 @@ export class EntitySyncService {
   }
 
   private statusFromEtapa(etapa: string): string {
-    if (['activo', 'cierre_ganado', 'firma_contrato'].includes(etapa)) {
+    if (etapa === 'activo') {
       return 'ganada';
     }
     if (['cierre_perdido', 'inactivo'].includes(etapa)) {
@@ -305,7 +305,7 @@ export class EntitySyncService {
   }
 
   /**
-   * Si la empresa ya tiene una oportunidad vinculada, reutiliza la más antigua.
+   * Reutiliza una oportunidad ya vinculada a la empresa con el mismo título (sin distinguir mayúsculas).
    * Si no existe, crea una nueva vinculada solo a la empresa.
    */
   async ensureOpportunityForCompany(
@@ -318,8 +318,12 @@ export class EntitySyncService {
       expectedCloseDate: Date | null;
     },
   ): Promise<string> {
+    const titleTrim = defaults.title?.trim() || 'Oportunidad';
     const oppForCompany = await this.prisma.opportunity.findFirst({
-      where: { companies: { some: { companyId } } },
+      where: {
+        companies: { some: { companyId } },
+        title: { equals: titleTrim, mode: 'insensitive' },
+      },
       orderBy: { createdAt: 'asc' },
       select: { id: true },
     });
@@ -332,7 +336,7 @@ export class EntitySyncService {
     const status = this.statusFromEtapa(defaults.etapa);
 
     const opp = await this.prisma.$transaction(async (tx) => {
-      const base = slugifyForUrl(defaults.title);
+      const base = slugifyForUrl(titleTrim);
       let urlSlug = base;
       let n = 0;
       for (;;) {
@@ -346,7 +350,7 @@ export class EntitySyncService {
       const o = await tx.opportunity.create({
         data: {
           urlSlug,
-          title: defaults.title,
+          title: titleTrim,
           amount: defaults.amount,
           etapa: defaults.etapa,
           status,

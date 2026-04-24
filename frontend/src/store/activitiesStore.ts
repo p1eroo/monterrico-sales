@@ -10,10 +10,53 @@ import {
   type UpdateActivityPayload,
 } from '@/lib/activityApi';
 
+/** Nombres usados al insertar tarea al instante (antes de la respuesta del API). */
+export type CreateTaskOptimisticDisplay = {
+  assigneeName: string;
+  contactNameLine?: string;
+};
+
+const OPTIMISTIC_PREFIX = 'opt-task-';
+
 const ACTIVITY_STATUSES: ActivityStatus[] = ['pendiente', 'completada', 'en_progreso', 'vencida'];
 
 function parseActivityStatus(raw: string): ActivityStatus {
   return ACTIVITY_STATUSES.includes(raw as ActivityStatus) ? (raw as ActivityStatus) : 'pendiente';
+}
+
+function contactPriorityOrMedia(p: string | undefined): ContactPriority {
+  const x = p?.trim().toLowerCase() ?? '';
+  if (x === 'alta' || x === 'media' || x === 'baja') return x;
+  return 'media';
+}
+
+function buildOptimisticTask(
+  id: string,
+  payload: CreateActivityPayload,
+  display: CreateTaskOptimisticDisplay,
+) {
+  return {
+    id,
+    type: 'tarea' as const,
+    taskKind:
+      payload.taskKind && TASK_KINDS.includes(payload.taskKind as TaskKind)
+        ? (payload.taskKind as TaskKind)
+        : ('llamada' as TaskKind),
+    title: payload.title,
+    description: payload.description?.trim() ?? '',
+    contactId: payload.contactId,
+    contactName: display.contactNameLine,
+    companyId: payload.companyId,
+    opportunityId: payload.opportunityId,
+    assignedTo: payload.assignedTo,
+    assignedToName: display.assigneeName,
+    status: parseActivityStatus(payload.status?.trim() || 'pendiente'),
+    priority: contactPriorityOrMedia(payload.priority),
+    dueDate: payload.dueDate,
+    startDate: payload.startDate,
+    startTime: payload.startTime,
+    createdAt: new Date().toISOString().slice(0, 10),
+  } satisfies Activity;
 }
 
 /** Vista previa local para que el UI reaccione al instante; el servidor confirma con la respuesta del PATCH. */
@@ -51,7 +94,10 @@ interface ActivitiesState {
   error: string | null;
   loaded: boolean;
   loadActivities: () => Promise<void>;
-  createActivity: (payload: CreateActivityPayload) => Promise<Activity>;
+  createActivity: (
+    payload: CreateActivityPayload,
+    optimisticDisplay?: CreateTaskOptimisticDisplay,
+  ) => Promise<Activity>;
   updateActivity: (id: string, payload: UpdateActivityPayload) => Promise<Activity>;
   deleteActivity: (id: string) => Promise<void>;
 }
@@ -80,10 +126,40 @@ export const useActivitiesStore = create<ActivitiesState>((set, get) => ({
     }
   },
 
-  createActivity: async (payload) => {
-    const activity = await apiCreate(payload);
-    set((s) => ({ activities: [activity, ...s.activities] }));
-    return activity;
+  createActivity: async (payload, optimisticDisplay) => {
+    const isTask =
+      (payload.type?.trim() || '') === 'tarea' && optimisticDisplay != null;
+    const tempId = isTask
+      ? `${OPTIMISTIC_PREFIX}${
+          typeof globalThis.crypto !== 'undefined' &&
+          typeof globalThis.crypto.randomUUID === 'function'
+            ? globalThis.crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
+        }`
+      : null;
+
+    if (tempId && optimisticDisplay) {
+      const placeholder = buildOptimisticTask(tempId, payload, optimisticDisplay);
+      set((s) => ({ activities: [placeholder, ...s.activities] }));
+    }
+    try {
+      const activity = await apiCreate(payload);
+      if (tempId) {
+        set((s) => ({
+          activities: s.activities.map((a) => (a.id === tempId ? activity : a)),
+        }));
+      } else {
+        set((s) => ({ activities: [activity, ...s.activities] }));
+      }
+      return activity;
+    } catch (e) {
+      if (tempId) {
+        set((s) => ({
+          activities: s.activities.filter((a) => a.id !== tempId),
+        }));
+      }
+      throw e;
+    }
   },
 
   updateActivity: async (id, payload) => {

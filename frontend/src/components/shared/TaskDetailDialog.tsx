@@ -23,6 +23,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { formatDate, formatDateTime } from '@/lib/formatters';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 
 export type TaskDetailStatus = string;
 export type TaskDetailType = TaskKind;
@@ -57,6 +58,8 @@ const taskTypeLabels: Record<TaskDetailType, string> = {
   correo: 'Correo',
   whatsapp: 'WhatsApp',
 };
+
+const ASSOCIATION_PICKER_PAGE_SIZE = 8;
 
 function getInitials(name: string) {
   return name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();
@@ -109,6 +112,7 @@ export function TaskDetailDialog({
   const [editAssocPanelOpen, setEditAssocPanelOpen] = useState(false);
   const [editAssocSearch, setEditAssocSearch] = useState('');
   const [editAssocCategory, setEditAssocCategory] = useState<'contactos' | 'empresas' | 'negocios'>('contactos');
+  const [deleteTaskConfirmOpen, setDeleteTaskConfirmOpen] = useState(false);
 
   const assocCounts = {
     contactos: contacts.length,
@@ -121,25 +125,26 @@ export function TaskDetailDialog({
     setTaskEditMode(false);
     setTaskEditForm(null);
     setNewCommentText('');
+    setDeleteTaskConfirmOpen(false);
   }
 
   function handleStatusChange(newStatus: string) {
     if (!task) return;
-    const updated = { ...task, status: newStatus };
-    onTasksChange(tasks.map((t) => (t.id === task.id ? updated : t)));
     if (
       newStatus === 'completada' &&
       onCompleteWithActivity &&
       task.type &&
       TASK_KINDS.includes(task.type)
     ) {
-      toast.success('Tarea completada');
       handleClose();
       onCompleteWithActivity(task);
+      return;
     }
+    const updated = { ...task, status: newStatus };
+    onTasksChange(tasks.map((t) => (t.id === task.id ? updated : t)));
   }
 
-  function handleDelete() {
+  function confirmTaskDelete() {
     if (!task) return;
     onTasksChange(tasks.filter((t) => t.id !== task.id));
     handleClose();
@@ -149,6 +154,7 @@ export function TaskDetailDialog({
   const statusKeys = Object.keys(statusLabels);
 
   return (
+    <>
     <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) handleClose(); }}>
       <DialogContent className="max-w-lg">
         {task && !taskEditMode && (
@@ -362,7 +368,13 @@ export function TaskDetailDialog({
             </div>
 
             <DialogFooter className="flex-row gap-2 sm:justify-between">
-              <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={handleDelete}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="text-destructive hover:text-destructive"
+                onClick={() => setDeleteTaskConfirmOpen(true)}
+              >
                 <Trash2 className="size-4" /> Eliminar
               </Button>
               <div className="flex gap-2">
@@ -447,15 +459,15 @@ export function TaskDetailDialog({
                           <Input placeholder="Buscar..." value={editAssocSearch} onChange={(e) => setEditAssocSearch(e.target.value)} className="pl-7 h-8 text-sm" />
                         </div>
                         <div className="max-h-36 overflow-y-auto space-y-0.5">
-                          {editAssocCategory === 'contactos' && contacts.filter((l) => l.name.toLowerCase().includes(editAssocSearch.toLowerCase())).slice(0, 8).map((l) => {
+                          {editAssocCategory === 'contactos' && contacts.filter((l) => l.name.toLowerCase().includes(editAssocSearch.toLowerCase())).slice(0, ASSOCIATION_PICKER_PAGE_SIZE).map((l) => {
                             const isSelected = editAssociations.some((a) => a.type === 'contacto' && a.id === l.id);
                             return (<button key={l.id} type="button" className={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted ${isSelected ? 'bg-muted' : ''}`} onClick={() => { if (isSelected) { setEditAssociations((prev) => prev.filter((a) => !(a.type === 'contacto' && a.id === l.id))); } else { setEditAssociations((prev) => [...prev, { type: 'contacto' as const, id: l.id, name: l.name }]); } }}><Checkbox checked={isSelected} className="size-3.5" /><User className="size-3.5 text-muted-foreground" /><span className="truncate">{l.name}</span></button>);
                           })}
-                          {editAssocCategory === 'empresas' && companies.filter((c) => c.name.toLowerCase().includes(editAssocSearch.toLowerCase())).map((c) => {
+                          {editAssocCategory === 'empresas' && companies.filter((c) => c.name.toLowerCase().includes(editAssocSearch.toLowerCase())).slice(0, ASSOCIATION_PICKER_PAGE_SIZE).map((c) => {
                             const isSelected = editAssociations.some((a) => a.type === 'empresa' && a.id === c.name);
                             return (<button key={c.name} type="button" className={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted ${isSelected ? 'bg-muted' : ''}`} onClick={() => { if (isSelected) { setEditAssociations((prev) => prev.filter((a) => !(a.type === 'empresa' && a.id === c.name))); } else { setEditAssociations((prev) => [...prev, { type: 'empresa' as const, id: c.name, name: c.name }]); } }}><Checkbox checked={isSelected} className="size-3.5" /><Building2 className="size-3.5 text-muted-foreground" /><span className="truncate">{c.name}</span></button>);
                           })}
-                          {editAssocCategory === 'negocios' && opportunities.filter((o) => o.title.toLowerCase().includes(editAssocSearch.toLowerCase())).map((o) => {
+                          {editAssocCategory === 'negocios' && opportunities.filter((o) => o.title.toLowerCase().includes(editAssocSearch.toLowerCase())).slice(0, ASSOCIATION_PICKER_PAGE_SIZE).map((o) => {
                             const isSelected = editAssociations.some((a) => a.type === 'negocio' && a.id === o.id);
                             return (<button key={o.id} type="button" className={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted ${isSelected ? 'bg-muted' : ''}`} onClick={() => { if (isSelected) { setEditAssociations((prev) => prev.filter((a) => !(a.type === 'negocio' && a.id === o.id))); } else { setEditAssociations((prev) => [...prev, { type: 'negocio' as const, id: o.id, name: o.title }]); } }}><Checkbox checked={isSelected} className="size-3.5" /><Briefcase className="size-3.5 text-muted-foreground" /><span className="truncate">{o.title}</span></button>);
                           })}
@@ -534,5 +546,19 @@ export function TaskDetailDialog({
         )}
       </DialogContent>
     </Dialog>
+
+    <ConfirmDialog
+      open={deleteTaskConfirmOpen}
+      onOpenChange={setDeleteTaskConfirmOpen}
+      title="Eliminar tarea"
+      description={
+        task
+          ? `¿Estás seguro de que deseas eliminar la tarea «${task.title}»? Esta acción no se puede deshacer.`
+          : ''
+      }
+      onConfirm={confirmTaskDelete}
+      variant="destructive"
+    />
+    </>
   );
 }

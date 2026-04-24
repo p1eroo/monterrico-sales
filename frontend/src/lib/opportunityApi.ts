@@ -9,6 +9,8 @@ import type {
 import { etapaLabels } from '@/data/mock';
 import { useUsersStore } from '@/store/usersStore';
 import { api } from '@/lib/api';
+import { optionalContactCargoFromApi } from './contactCargo';
+import type { ApiCompanyInContact } from './contactApi';
 
 /** Misma heurística que empresas (cuid Prisma) */
 export function isLikelyOpportunityCuid(value: string): boolean {
@@ -55,7 +57,7 @@ export type ApiOpportunityListRow = {
 
 export type ApiOpportunityDetail = ApiOpportunityListRow & {
   contacts: { contact: ApiContactFromOpportunity }[];
-  companies: { company: { id: string; name: string } }[];
+  companies: { company: ApiCompanyInContact }[];
 };
 
 function parseEtapa(raw: string): Etapa {
@@ -175,7 +177,7 @@ export function mapApiContactToContact(c: ApiContactFromOpportunity): Contact {
     id: c.id,
     urlSlug: c.urlSlug,
     name: c.name,
-    cargo: c.cargo ?? undefined,
+    cargo: optionalContactCargoFromApi(c.cargo),
     companies: [],
     telefono: c.telefono,
     correo: c.correo,

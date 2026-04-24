@@ -19,6 +19,7 @@ import { CONTACT_FIELD_LABELS } from '../audit-detail/audit-field-labels';
 import type { CrmDataScope } from '../auth/crm-data-scope.service';
 import { mergeCompanyScope } from '../common/crm-data-scope-where.util';
 import { NotificationsService } from '../notifications/notifications.service';
+import { normalizeContactCargo } from './contact-cargo.util';
 
 /** Orden de pestañas de etapa en listado contactos (alineado con Empresas). */
 const CONTACT_TAB_ETAPAS = [
@@ -231,6 +232,33 @@ export class ContactsService {
     const assignedTo = dto.assignedTo?.trim() || null;
     await this.crmConfig.assertEtapaAssignable(etapa);
 
+    const rucTrim = dto.ruc?.trim();
+    if (rucTrim) {
+      const digits = rucTrim.replace(/\D/g, '');
+      if (digits.length === 11) {
+        const byDigits = await tx.$queryRaw<{ id: string; name: string }[]>(
+          Prisma.sql`
+            SELECT id, name FROM "Company"
+            WHERE "ruc" IS NOT NULL
+              AND regexp_replace("ruc", '[^0-9]', '', 'g') = ${digits}
+            ORDER BY id ASC
+            LIMIT 1
+          `,
+        );
+        const row = byDigits[0];
+        if (row) {
+          return { id: row.id, name: row.name };
+        }
+      }
+      const dupRuc = await tx.company.findFirst({
+        where: { ruc: rucTrim },
+        select: { id: true, name: true },
+      });
+      if (dupRuc) {
+        return { id: dupRuc.id, name: dupRuc.name };
+      }
+    }
+
     const dupName = await tx.company.findFirst({
       where: {
         name: { equals: name, mode: 'insensitive' },
@@ -240,18 +268,6 @@ export class ContactsService {
       throw new BadRequestException(
         'Ya existe una empresa con el mismo nombre. Revisa o elige otro nombre.',
       );
-    }
-
-    const rucTrim = dto.ruc?.trim();
-    if (rucTrim) {
-      const dupRuc = await tx.company.findFirst({
-        where: { ruc: rucTrim },
-      });
-      if (dupRuc) {
-        throw new BadRequestException(
-          'Ya existe una empresa registrada con el mismo RUC.',
-        );
-      }
     }
 
     const companyUrlSlug = await this.allocateCompanyUrlSlugTx(tx, name);
@@ -366,7 +382,7 @@ export class ContactsService {
             telefono,
             correo,
             fuente,
-            cargo: dto.cargo?.trim() || null,
+            cargo: normalizeContactCargo(dto.cargo) ?? null,
             etapa,
             assignedTo,
             estimatedValue,
@@ -626,7 +642,9 @@ export class ContactsService {
     if (dto.fuente !== undefined) {
       data.fuente = await this.crmConfig.normalizeLeadSource(dto.fuente);
     }
-    if (dto.cargo !== undefined) data.cargo = dto.cargo?.trim() || null;
+    if (dto.cargo !== undefined) {
+      data.cargo = normalizeContactCargo(dto.cargo) ?? null;
+    }
     if (dto.etapa !== undefined) {
       const etapa = dto.etapa.trim();
       if (!etapa) {

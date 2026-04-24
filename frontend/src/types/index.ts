@@ -35,6 +35,8 @@ export interface LinkedCompany {
   rubro?: CompanyRubro;
   tipo?: CompanyTipo;
   isPrimary?: boolean;
+  /** Facturación / ingreso estimado a nivel cuenta (empresa) */
+  facturacionEstimada?: number;
 }
 
 /** Empresa independiente (creada sola, sin contacto) */
