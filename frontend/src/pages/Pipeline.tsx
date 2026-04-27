@@ -1182,7 +1182,7 @@ export default function Pipeline() {
         <DndContext
           sensors={sensors}
           collisionDetection={pipelineCollisionDetection}
-          autoScroll={false}
+          autoScroll={{ threshold: { x: 0.16, y: 0.12 } }}
           onDragStart={handleDragStart}
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
