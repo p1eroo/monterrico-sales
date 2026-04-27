@@ -42,7 +42,7 @@ import {
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
 import { contactDetailHref } from '@/lib/detailRoutes';
-import type { Contact, Etapa } from '@/types';
+import type { Contact } from '@/types';
 import { companyListAll } from '@/lib/companyApi';
 import { newCompanyDataToPatchBody } from '@/lib/companyWizardMap';
 import {
@@ -107,8 +107,6 @@ function importPreviewCell(v: string | undefined) {
     </span>
   );
 }
-
-const etapaOrder: Etapa[] = ['lead', 'contacto', 'reunion_agendada', 'reunion_efectiva', 'propuesta_economica', 'negociacion', 'licitacion', 'licitacion_etapa_final', 'cierre_ganado', 'firma_contrato', 'activo', 'cierre_perdido', 'inactivo'];
 
 export default function ContactosPage() {
   const navigate = useNavigate();

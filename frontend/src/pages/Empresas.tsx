@@ -96,13 +96,6 @@ const EMPRESAS_TABLE_SKELETON_COLUMNS = [
   { label: '', className: 'w-10' },
 ] as const;
 
-const etapaOrder: Etapa[] = ['lead', 'contacto', 'reunion_agendada', 'reunion_efectiva', 'propuesta_economica', 'negociacion', 'licitacion', 'licitacion_etapa_final', 'cierre_ganado', 'firma_contrato', 'activo', 'cierre_perdido', 'inactivo'];
-
-const etapaTabs: { value: string; label: string }[] = [
-  { value: 'todos', label: 'Todos' },
-  ...etapaOrder.map((e) => ({ value: e, label: etapaLabels[e] })),
-];
-
 type EmpresaSummaryRow = CompanySummaryRow & { isLocalOnly?: boolean };
 
 function slugifyCompany(company: string): string {

@@ -1,4 +1,3 @@
-import type { TooltipProps } from 'recharts';
 import { formatCurrency } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 
@@ -21,12 +20,20 @@ type PayloadItem = {
   color?: string;
 };
 
+/** Props que Recharts pasa al `content` del Tooltip (tipos genéricos de Recharts omiten payload/label). */
+type SalesByMonthChartTooltipProps = {
+  active?: boolean;
+  payload?: readonly PayloadItem[] | PayloadItem[];
+  label?: string | number;
+  className?: string;
+};
+
 export function SalesByMonthChartTooltip({
   active,
   payload,
   label,
   className,
-}: TooltipProps<number, string> & { className?: string }) {
+}: SalesByMonthChartTooltipProps) {
   if (!active || !payload?.length) return null;
 
   const items = payload as PayloadItem[];
