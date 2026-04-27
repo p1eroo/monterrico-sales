@@ -8,7 +8,7 @@ Campos principales: `title`, `amount`, `probability`, `etapa`, `status`, `priori
 
 **Estado (`status`)** se deriva de la **etapa** (solo `abierta`, `ganada`, `perdida`; no se usa `suspendida` en esta lógica):
 
-- **ganada** si `etapa` es `cierre_ganado`, `firma_contrato` o `activo`
+- **ganada** solo si `etapa` es `activo` (100 % en el catálogo de probabilidades). Las etapas `cierre_ganado` y `firma_contrato` siguen siendo **abierta** hasta que la oportunidad pase a `activo`.
 - **perdida** si `etapa` es `cierre_perdido` o `inactivo`
 - **abierta** en el resto de etapas
 

@@ -7,6 +7,7 @@ import { CrmConfigService } from '../crm-config/crm-config.service';
 import { resolveLeadSourceKeyLoose } from '../crm-config/lead-source-normalize.util';
 
 const MAX_RANGE_DAYS = 366;
+/** Solo para listados de asesores (nombres); el filtrado de métricas usa `assignedTo`. */
 const ADVISOR_ROLE_SLUG = 'asesor';
 
 function parseDayStart(isoDate: string): Date {
@@ -47,6 +48,16 @@ function eachMonthBetween(from: Date, to: Date): string[] {
     cur.setUTCMonth(cur.getUTCMonth() + 1);
   }
   return keys;
+}
+
+/** Intersección del mes calendario `ym` (YYYY-MM) con el rango de analytics. */
+function clipMonthToAnalyticsRange(ym: string, from: Date, to: Date): { start: Date; end: Date } {
+  const [y, m] = ym.split('-').map((x) => parseInt(x, 10));
+  const mStart = new Date(Date.UTC(y, m - 1, 1, 0, 0, 0, 0));
+  const mEnd = new Date(Date.UTC(y, m, 0, 23, 59, 59, 999));
+  const start = mStart.getTime() > from.getTime() ? mStart : from;
+  const end = mEnd.getTime() < to.getTime() ? mEnd : to;
+  return { start, end };
 }
 
 function startOfUtcWeekMonday(d: Date): Date {
@@ -110,16 +121,6 @@ export class AnalyticsService {
     private readonly crmConfig: CrmConfigService,
   ) {}
 
-  /**
-   * Alcance “cartera de asesores”: solo aplica cuando el usuario NO tiene
-   * `equipo.datos_completos` (crmScope.unrestricted === false). Así un asesor
-   * ve solo lo asignado a usuarios con rol asesor (cartera típica); directivos
-   * con permiso de equipo ven totales sin este filtro.
-   */
-  private advisorUserRelationFilter() {
-    return { role: { slug: ADVISOR_ROLE_SLUG } } as const;
-  }
-
   private resolveRange(fromStr?: string, toStr?: string): { from: Date; to: Date } {
     const to = toStr ? parseDayEnd(toStr) : new Date();
     const from = fromStr
@@ -142,14 +143,11 @@ export class AnalyticsService {
     to: Date,
     advisorId: string | undefined,
     sourceSlug: string | undefined,
-    unrestricted: boolean,
+    _unrestricted: boolean,
   ): Prisma.ContactWhereInput {
     const w: Prisma.ContactWhereInput = {
       createdAt: { gte: from, lte: to },
     };
-    if (!unrestricted) {
-      w.user = this.advisorUserRelationFilter();
-    }
     if (advisorId?.trim()) {
       w.assignedTo = advisorId.trim();
     }
@@ -162,12 +160,9 @@ export class AnalyticsService {
   private companyPortfolioBaseWhere(
     advisorId: string | undefined,
     sourceSlug: string | undefined,
-    unrestricted: boolean,
+    _unrestricted: boolean,
   ): Prisma.CompanyWhereInput {
     const w: Prisma.CompanyWhereInput = {};
-    if (!unrestricted) {
-      w.user = this.advisorUserRelationFilter();
-    }
     if (advisorId?.trim()) {
       w.assignedTo = advisorId.trim();
     }
@@ -318,14 +313,11 @@ export class AnalyticsService {
 
   private opportunityWhereOpen(
     advisorId: string | undefined,
-    unrestricted: boolean,
+    _unrestricted: boolean,
   ): Prisma.OpportunityWhereInput {
     const w: Prisma.OpportunityWhereInput = {
       status: 'abierta',
     };
-    if (!unrestricted) {
-      w.user = this.advisorUserRelationFilter();
-    }
     if (advisorId?.trim()) {
       w.assignedTo = advisorId.trim();
     }
@@ -336,15 +328,12 @@ export class AnalyticsService {
     from: Date,
     to: Date,
     advisorId: string | undefined,
-    unrestricted: boolean,
+    _unrestricted: boolean,
   ): Prisma.OpportunityWhereInput {
     const w: Prisma.OpportunityWhereInput = {
       status: 'ganada',
       updatedAt: { gte: from, lte: to },
     };
-    if (!unrestricted) {
-      w.user = this.advisorUserRelationFilter();
-    }
     if (advisorId?.trim()) {
       w.assignedTo = advisorId.trim();
     }
@@ -354,13 +343,10 @@ export class AnalyticsService {
   private activityWhereForAnalytics(
     base: Prisma.ActivityWhereInput,
     advisorId: string | undefined,
-    unrestricted: boolean,
+    _unrestricted: boolean,
   ): Prisma.ActivityWhereInput {
     const adv = advisorId?.trim() ? { assignedTo: advisorId.trim() } : {};
-    if (unrestricted) {
-      return { ...base, ...adv };
-    }
-    return { ...base, user: this.advisorUserRelationFilter(), ...adv };
+    return { ...base, ...adv };
   }
 
   /** Resumen principal: dashboard y reportes (misma fuente de datos). */
@@ -483,10 +469,7 @@ export class AnalyticsService {
             take: 200,
           })
         : this.prisma.user.findMany({
-            where: {
-              id: opts.crmScope.viewerUserId,
-              role: { slug: ADVISOR_ROLE_SLUG },
-            },
+            where: { id: opts.crmScope.viewerUserId },
             select: { id: true, name: true },
             orderBy: { name: 'asc' },
             take: 1,
@@ -551,6 +534,50 @@ export class AnalyticsService {
       }
     }
 
+    const wonOppRowsForMonthBreakdown = await this.prisma.opportunity.findMany({
+      where: this.opportunityWhereWonInRange(from, to, advisorId, unrestricted),
+      select: {
+        id: true,
+        title: true,
+        amount: true,
+        updatedAt: true,
+        companies: {
+          take: 1,
+          select: { company: { select: { name: true } } },
+        },
+      },
+      orderBy: { amount: 'desc' },
+    });
+
+    const WON_OPP_PER_MONTH_MAX = 50;
+    const wonOppByMonth = new Map<
+      string,
+      { id: string; title: string; amount: number; companyName: string | null }[]
+    >();
+    for (const ym of months) {
+      wonOppByMonth.set(ym, []);
+    }
+    for (const o of wonOppRowsForMonthBreakdown) {
+      for (const ym of months) {
+        const { start, end } = clipMonthToAnalyticsRange(ym, from, to);
+        if (o.updatedAt >= start && o.updatedAt <= end) {
+          wonOppByMonth.get(ym)!.push({
+            id: o.id,
+            title: o.title,
+            amount: o.amount,
+            companyName: o.companies[0]?.company.name ?? null,
+          });
+          break;
+        }
+      }
+    }
+    for (const ym of months) {
+      const sorted = (wonOppByMonth.get(ym) ?? [])
+        .sort((a, b) => b.amount - a.amount)
+        .slice(0, WON_OPP_PER_MONTH_MAX);
+      wonOppByMonth.set(ym, sorted);
+    }
+
     const salesByMonth = await Promise.all(
       months.map(async (ym) => {
         const [y, m] = ym.split('-').map((x) => parseInt(x, 10));
@@ -572,6 +599,7 @@ export class AnalyticsService {
           name: monthLabelEs(ym),
           ventas: agg._sum.amount ?? 0,
           meta,
+          oportunidadesGanadas: wonOppByMonth.get(ym) ?? [],
         };
       }),
     );
@@ -601,10 +629,10 @@ export class AnalyticsService {
       value: g._count.id,
     }));
 
-    const contactByAdvisor = await this.prisma.contact.groupBy({
+    const companyByAdvisor = await this.prisma.company.groupBy({
       by: ['assignedTo'],
       where: {
-        ...cw,
+        ...compW,
         assignedTo: { not: null },
       },
       _count: { id: true },
@@ -614,8 +642,8 @@ export class AnalyticsService {
       where: this.opportunityWhereWonInRange(from, to, advisorId, unrestricted),
       _sum: { amount: true },
     });
-    const contactMap = new Map(
-      contactByAdvisor
+    const companyMap = new Map(
+      companyByAdvisor
         .filter((x) => x.assignedTo)
         .map((x) => [x.assignedTo!, x._count.id]),
     );
@@ -628,7 +656,7 @@ export class AnalyticsService {
       userRows.map((u) => [u.id, u.name.trim() || 'Sin nombre'] as const),
     );
     const advisorIds = new Set<string>();
-    for (const k of contactMap.keys()) advisorIds.add(k);
+    for (const k of companyMap.keys()) advisorIds.add(k);
     for (const k of wonMap.keys()) if (k) advisorIds.add(k!);
 
     const missingNameIds = [...advisorIds].filter((id) => !idToName.has(id));
@@ -645,10 +673,10 @@ export class AnalyticsService {
     const performanceByAdvisor = [...advisorIds]
       .map((id) => ({
         name: idToName.get(id) ?? 'Usuario no encontrado',
-        leads: contactMap.get(id) ?? 0,
+        empresas: companyMap.get(id) ?? 0,
         ventas: wonMap.get(id) ?? 0,
       }))
-      .filter((r) => r.leads > 0 || r.ventas > 0)
+      .filter((r) => r.empresas > 0 || r.ventas > 0)
       .sort((a, b) => b.ventas - a.ventas)
       .slice(0, 20);
 
@@ -876,16 +904,9 @@ export class AnalyticsService {
       ? userId
       : advisorFilter?.trim() || userId;
 
-    const portfolio = restrictTeam
-      ? ({
-          user: this.advisorUserRelationFilter(),
-          assignedTo: userId,
-        } as const)
-      : ({} as const);
+    const portfolio = restrictTeam ? ({ assignedTo: userId } as const) : ({} as const);
 
-    const myPortfolio = restrictTeam
-      ? { user: this.advisorUserRelationFilter() }
-      : {};
+    const myPortfolio = {} as const;
 
     const [teamWeek, teamMonth, myWeek, myMonth] = await Promise.all([
       this.prisma.opportunity.aggregate({

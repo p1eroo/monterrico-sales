@@ -106,6 +106,7 @@ export type CompanySummaryRow = {
   displayAdvisorName: string | null;
   clienteRecuperado: 'si' | 'no' | null;
   contactsPreview: { id: string; name: string; urlSlug?: string }[];
+  lastInteractionAt: string | null;
 };
 
 export type CompanySummaryListResponse = {

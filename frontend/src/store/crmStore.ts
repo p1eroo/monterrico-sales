@@ -3,9 +3,9 @@ import type { Contact, Etapa, Opportunity, OpportunityStatus } from '@/types';
 import { etapaProbabilidad } from '@/data/mock';
 import { useUsersStore } from '@/store/usersStore';
 
-/** Alineado con `OpportunitiesService.statusFromEtapa` (sin `suspendida`). */
+/** Alineado con `OpportunitiesService.statusFromEtapa` (sin `suspendida`). Solo `activo` → ganada. */
 function opportunityStatusFromEtapa(etapa: Etapa): OpportunityStatus {
-  if (['activo', 'cierre_ganado', 'firma_contrato'].includes(etapa)) return 'ganada';
+  if (etapa === 'activo') return 'ganada';
   if (['cierre_perdido', 'inactivo'].includes(etapa)) return 'perdida';
   return 'abierta';
 }
@@ -110,7 +110,7 @@ export const useCRMStore = create<CRMState>((set, get) => ({
 
       let newContacts = state.contacts;
       if (opp.contactId) {
-        const isWon = newStatus === 'ganada' || ['activo', 'cierre_ganado', 'firma_contrato'].includes(newEtapa);
+        const isWon = newEtapa === 'activo';
         const isLost = newStatus === 'perdida' || newEtapa === 'cierre_perdido' || newEtapa === 'inactivo';
         if (isWon || isLost) {
           newContacts = state.contacts.map((c) =>

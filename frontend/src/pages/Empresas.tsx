@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   Search, Building2, Users, ChevronRight, ChevronLeft, Briefcase,
-  FileSpreadsheet, Upload, Download, Plus, List, Grid3X3, DollarSign, Loader2,
-  Eye, Pencil, Trash2, MoreHorizontal,
+  FileSpreadsheet, Upload, Download, Plus, List, Grid3X3, Loader2,
+  Eye, Pencil, Trash2, MoreHorizontal, Globe, Tag, User, MapPin,
 } from 'lucide-react';
 import type { Etapa, CompanyRubro, CompanyTipo, Company, ContactSource } from '@/types';
 import { companyRubroLabels, companyTipoLabels, etapaLabels, contactSourceLabels } from '@/data/mock';
@@ -40,7 +40,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { addCalendarDaysLocalIso, formatCurrency } from '@/lib/formatters';
+import { addCalendarDaysLocalIso } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -88,10 +88,11 @@ const EMPRESAS_TABLE_SKELETON_COLUMNS = [
   { label: 'Fuente', className: 'hidden lg:table-cell' },
   { label: 'Rubro', className: 'hidden md:table-cell' },
   { label: 'Tipo', className: 'hidden md:table-cell' },
-  { label: 'Cliente Recuperado', className: 'hidden lg:table-cell' },
+  { label: 'Recuperado', className: 'hidden lg:table-cell' },
   { label: 'Asesor', className: 'hidden xl:table-cell' },
+  { label: 'Creación', className: '' },
   { label: 'Contactos', className: 'text-center' },
-  { label: 'Valor total', className: 'text-right' },
+  { label: 'Última interacción', className: '' },
   { label: '', className: 'w-10' },
 ] as const;
 
@@ -139,6 +140,7 @@ function localCompanyToSummary(c: Company): EmpresaSummaryRow {
     displayAdvisorName: null,
     clienteRecuperado: null,
     contactsPreview: [],
+    lastInteractionAt: null,
     isLocalOnly: true,
   };
 }
@@ -454,14 +456,6 @@ export default function EmpresasPage() {
     standaloneCompanies,
     summaryRows,
   ]);
-
-  const visibleEtapaTabs = useMemo(() => {
-    const rest = etapaTabs.slice(1);
-    if (etapaTabCounts == null) {
-      return rest;
-    }
-    return rest.filter((tab) => (effectiveEtapaTabCounts[tab.value] ?? 0) > 0);
-  }, [etapaTabCounts, effectiveEtapaTabCounts]);
 
   useEffect(() => {
     if (etapaTabCounts == null) return;
@@ -956,10 +950,10 @@ export default function EmpresasPage() {
         title="Empresas"
         description="Gestiona empresas y cuentas comerciales"
       >
+        <span className="mr-2 text-sm text-muted-foreground">Total: {total}</span>
         {hasPermission('empresas.exportar') && (
           <Button
             variant="outline"
-            size="sm"
             disabled={exportBusy}
             title="Sin id: RUC enriquece con SUNAT; columnas contacto_* y etapa como en contactos; oportunidad al vincular contacto."
             onClick={() => void handleCompanyTemplate()}
@@ -971,7 +965,6 @@ export default function EmpresasPage() {
         {hasPermission('empresas.crear') && (
           <Button
             variant="outline"
-            size="sm"
             disabled={importBusy}
             title="Por fila: empresa (reutiliza si nombre/RUC existe), contacto opcional con DNI/CEE Factiliza, misma lógica de etapa que contactos."
             onClick={openCompanyImport}
@@ -983,7 +976,6 @@ export default function EmpresasPage() {
         {hasPermission('empresas.exportar') && (
           <Button
             variant="outline"
-            size="sm"
             disabled={exportBusy}
             onClick={() => void handleCompanyExport()}
           >
@@ -996,81 +988,72 @@ export default function EmpresasPage() {
         </Button>
       </PageHeader>
 
-      {/* Stats (conteos por etapa solo en servidor filtrado; aquí filtros como en Contactos) */}
-      <div className="flex flex-wrap gap-2">
-        <Badge
-          variant={etapaFilter === 'todos' ? 'secondary' : 'outline'}
-          className="cursor-pointer gap-1.5 px-3 py-1.5 text-sm transition-colors hover:bg-accent"
-          onClick={() => { setEtapaFilter('todos'); setPage(1); }}
-        >
-          <Briefcase className="size-3.5" /> Total: {total}
-        </Badge>
-        {visibleEtapaTabs.map((tab) => (
-          <Badge
-            key={tab.value}
-            variant={etapaFilter === tab.value ? 'secondary' : 'outline'}
-            className="cursor-pointer gap-1.5 px-3 py-1.5 text-sm transition-colors hover:bg-accent"
-            onClick={() => { setEtapaFilter(tab.value); setPage(1); }}
-          >
-            {tab.label}
-          </Badge>
-        ))}
-      </div>
-
       {/* Filters */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por empresa o contacto..."
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-            className="pl-9"
-          />
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 flex-1">
+          <div className="relative w-[580px]">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por empresa o contacto..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              className="pl-9"
+            />
+          </div>
           <Select value={sourceFilter} onValueChange={(v) => { setSourceFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Fuente" />
+            <SelectTrigger className="w-auto">
+              <div className="flex items-center gap-3">
+                <Globe className="size-3.5" />
+                <SelectValue placeholder="Fuente" />
+              </div>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="todos">Todas las fuentes</SelectItem>
+              <SelectItem value="todos">Fuentes</SelectItem>
               {Object.entries(contactSourceLabels).map(([key, label]) => (
                 <SelectItem key={key} value={key}>{label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
           <Select value={etapaFilter} onValueChange={(v) => { setEtapaFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Etapa" />
+            <SelectTrigger className="w-auto">
+              <div className="flex items-center gap-3">
+                <Tag className="size-3.5" />
+                <SelectValue placeholder="Etapa" />
+              </div>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="todos">Todas las etapas</SelectItem>
+              <SelectItem value="todos">Etapas</SelectItem>
               {Object.entries(etapaLabels).map(([key, label]) => (
                 <SelectItem key={key} value={key}>{label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
           <Select value={rubroFilter} onValueChange={(v) => { setRubroFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Rubro" />
+            <SelectTrigger className="w-auto">
+              <div className="flex items-center gap-3">
+                <MapPin className="size-3.5" />
+                <SelectValue placeholder="Rubro" />
+              </div>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="todos">Todos los rubros</SelectItem>
+              <SelectItem value="todos">Rubros</SelectItem>
               {Object.entries(companyRubroLabels).map(([key, label]) => (
                 <SelectItem key={key} value={key}>{label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
           <Select value={tipoFilter} onValueChange={(v) => { setTipoFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-[100px]">
-              <SelectValue placeholder="Tipo" />
+            <SelectTrigger className="w-auto">
+              <div className="flex items-center gap-3">
+                <Building2 className="size-3.5" />
+                <SelectValue placeholder="Tipo" />
+              </div>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="todos">Todos</SelectItem>
+              <SelectItem value="todos">Tipos</SelectItem>
               {Object.entries(companyTipoLabels).map(([key, label]) => (
                 <SelectItem key={key} value={key}>{label}</SelectItem>
               ))}
@@ -1081,11 +1064,14 @@ export default function EmpresasPage() {
             onValueChange={(v) => { setAdvisorFilter(v); setPage(1); }}
             disabled={!canSeeAllAdvisors}
           >
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Asesor" />
+            <SelectTrigger className="w-auto">
+              <div className="flex items-center gap-3">
+                <User className="size-3.5" />
+                <SelectValue placeholder="Asesor" />
+              </div>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="todos">Todos los asesores</SelectItem>
+              <SelectItem value="todos">Asesores</SelectItem>
               {activeAdvisors.map((u) => (
                 <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
               ))}
@@ -1143,10 +1129,11 @@ export default function EmpresasPage() {
                   <TableHead className="hidden lg:table-cell">Fuente</TableHead>
                   <TableHead className="hidden md:table-cell">Rubro</TableHead>
                   <TableHead className="hidden md:table-cell">Tipo</TableHead>
-                  <TableHead className="hidden lg:table-cell">Cliente Recuperado</TableHead>
+                  <TableHead className="hidden lg:table-cell">Recuperado</TableHead>
                   <TableHead className="hidden xl:table-cell">Asesor</TableHead>
+                  <TableHead>Creación</TableHead>
                   <TableHead className="text-center">Contactos</TableHead>
-                  <TableHead className="text-right">Valor total</TableHead>
+                  <TableHead>Última interacción</TableHead>
                   <TableHead className="w-10" />
                 </TableRow>
               </TableHeader>
@@ -1161,19 +1148,19 @@ export default function EmpresasPage() {
                     className="cursor-pointer hover:bg-muted/50"
                     onClick={() => openCompanyDetail(emp)}
                   >
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+<TableCell>
+                      <div className="min-w-0 flex items-center gap-2 max-w-[220px]">
+                        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
                           <Building2 className="size-4 text-muted-foreground" />
                         </div>
-                        <div>
-                          <p className="font-medium">{emp.name}</p>
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">{emp.name}</p>
                           {emp.domain && (
                             <a
                               href={emp.domain.startsWith('http') ? emp.domain : `https://${emp.domain}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-xs text-muted-foreground hover:text-primary hover:underline"
+                              className="text-xs text-muted-foreground hover:text-primary hover:underline truncate block"
                               onClick={(e) => e.stopPropagation()}
                             >
                               {emp.domain}
@@ -1195,10 +1182,13 @@ export default function EmpresasPage() {
                       {tipo ?? '—'}
                     </TableCell>
                     <TableCell className="hidden lg:table-cell text-muted-foreground">
-                      {emp.clienteRecuperado === 'si' ? 'Sí' : emp.clienteRecuperado === 'no' ? 'No' : '—'}
+                      {emp.clienteRecuperado === 'si' ? 'Recuperado' : '—'}
                     </TableCell>
                     <TableCell className="hidden xl:table-cell text-muted-foreground">
                       {emp.displayAdvisorName ?? '—'}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {new Date(emp.createdAt).toLocaleDateString('es-PE')}
                     </TableCell>
                     <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-center">
@@ -1209,8 +1199,10 @@ export default function EmpresasPage() {
                         />
                       </div>
                     </TableCell>
-                    <TableCell className="text-right font-medium text-emerald-600">
-                      {formatCurrency(emp.totalEstimatedValue)}
+                    <TableCell className="text-muted-foreground">
+                      {emp.lastInteractionAt
+                        ? new Date(emp.lastInteractionAt).toLocaleDateString('es-PE')
+                        : '—'}
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>
@@ -1320,7 +1312,7 @@ export default function EmpresasPage() {
                       <Badge variant="outline" className="text-xs">Tipo {tipo}</Badge>
                     )}
                     {emp.clienteRecuperado === 'si' && (
-                      <Badge variant="secondary" className="text-xs">Cliente Recuperado</Badge>
+                      <Badge variant="secondary" className="text-xs">Recuperado</Badge>
                     )}
                   </div>
 
@@ -1336,10 +1328,14 @@ export default function EmpresasPage() {
                   </div>
 
                   <div className="mt-3 flex items-center justify-between border-t pt-3">
-                    <span className="flex items-center gap-1 text-sm font-semibold text-emerald-600">
-                      <DollarSign className="size-3.5" />
-                      {formatCurrency(emp.totalEstimatedValue)}
-                    </span>
+                    <div className="flex flex-col gap-0.5 text-xs text-muted-foreground">
+                      <span>Creación: {new Date(emp.createdAt).toLocaleDateString('es-PE')}</span>
+                      <span>
+                        Última interact.: {emp.lastInteractionAt
+                          ? new Date(emp.lastInteractionAt).toLocaleDateString('es-PE')
+                          : '—'}
+                      </span>
+                    </div>
                     <span className="text-xs text-muted-foreground">
                       {emp.displayAdvisorName ?? '—'}
                     </span>

@@ -6,6 +6,7 @@ import {
   Eye, Pencil, Trash2, X, ArrowUpDown,
   Phone, Mail, Building2, Users, ChevronLeft, ChevronRight,
   Upload, Download, FileSpreadsheet, Loader2,
+  Globe, Tag, User,
 } from 'lucide-react';
 import { contactSourceLabels, etapaLabels } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
@@ -107,26 +108,7 @@ function importPreviewCell(v: string | undefined) {
   );
 }
 
-const etapaOrder: Etapa[] = [
-  'lead',
-  'contacto',
-  'reunion_agendada',
-  'reunion_efectiva',
-  'propuesta_economica',
-  'negociacion',
-  'licitacion',
-  'licitacion_etapa_final',
-  'cierre_ganado',
-  'firma_contrato',
-  'activo',
-  'cierre_perdido',
-  'inactivo',
-];
-
-const etapaTabs: { value: string; label: string }[] = [
-  { value: 'todos', label: 'Todos' },
-  ...etapaOrder.map((e) => ({ value: e, label: etapaLabels[e] })),
-];
+const etapaOrder: Etapa[] = ['lead', 'contacto', 'reunion_agendada', 'reunion_efectiva', 'propuesta_economica', 'negociacion', 'licitacion', 'licitacion_etapa_final', 'cierre_ganado', 'firma_contrato', 'activo', 'cierre_perdido', 'inactivo'];
 
 export default function ContactosPage() {
   const navigate = useNavigate();
@@ -262,14 +244,6 @@ export default function ContactosPage() {
     }
     return base;
   }, [etapaTabCounts, pendingContacts]);
-
-  const visibleEtapaTabs = useMemo(() => {
-    const rest = etapaTabs.slice(1);
-    if (etapaTabCounts == null) {
-      return rest;
-    }
-    return rest.filter((tab) => (effectiveEtapaTabCounts[tab.value] ?? 0) > 0);
-  }, [etapaTabCounts, effectiveEtapaTabCounts]);
 
   useEffect(() => {
     if (etapaTabCounts == null) return;
@@ -904,22 +878,10 @@ export default function ContactosPage() {
         onChange={onContactImportChange}
       />
       <PageHeader title="Contactos" description="Gestiona y da seguimiento a tus prospectos de venta">
-        {(totalContacts > 0 || pendingContacts.length > 0) && (
-          <Badge variant="secondary" className="mr-2 font-normal">
-            <Users className="size-3.5" />{' '}
-            {totalContacts > 0 ? `${totalContacts} contactos` : `${pendingContacts.length} nuevos`}
-            {pendingContacts.length > 0 && totalContacts > 0 && (
-              <span className="ml-1 opacity-80">· {pendingContacts.length} guardándose</span>
-            )}
-            {pendingContacts.length > 0 && totalContacts === 0 && (
-              <span className="ml-1 opacity-80">· sincronizando</span>
-            )}
-          </Badge>
-        )}
+        <span className="mr-2 text-sm text-muted-foreground">Total: {totalContacts}</span>
         {hasPermission('contactos.exportar') && (
           <Button
             variant="outline"
-            size="sm"
             disabled={exportBusy}
             title="Sin id: usa empresa_nombre y empresa_ruc para vincular o crear empresa"
             onClick={() => void handleContactTemplate()}
@@ -931,7 +893,6 @@ export default function ContactosPage() {
         {hasPermission('contactos.crear') && (
           <Button
             variant="outline"
-            size="sm"
             disabled={importBusy}
             title="Obligatorio: valor_estimado (>0). Nombre o DNI (8 dígitos en doc_numero) para RENIEC vía Factiliza. Si indicas nombre en el archivo, prevalece sobre el de la API. doc_tipo vacío o DNI."
             onClick={openContactImport}
@@ -943,7 +904,6 @@ export default function ContactosPage() {
         {hasPermission('contactos.exportar') && (
           <Button
             variant="outline"
-            size="sm"
             disabled={exportBusy}
             onClick={() => void handleContactExport()}
           >
@@ -956,30 +916,9 @@ export default function ContactosPage() {
         </Button>
       </PageHeader>
 
-      {/* Stats bar */}
-      <div className="flex flex-wrap gap-2">
-        <Badge
-          variant={etapaFilter === 'todos' ? 'secondary' : 'outline'}
-          className="cursor-pointer gap-1.5 px-3 py-1.5 text-sm transition-colors hover:bg-accent"
-          onClick={() => { setEtapaFilter('todos'); setPage(1); }}
-        >
-          <Users className="size-3.5" /> Total: {totalContacts}
-        </Badge>
-        {visibleEtapaTabs.map((tab) => (
-          <Badge
-            key={tab.value}
-            variant={etapaFilter === tab.value ? 'secondary' : 'outline'}
-            className="cursor-pointer gap-1.5 px-3 py-1.5 text-sm transition-colors hover:bg-accent"
-            onClick={() => { setEtapaFilter(tab.value); setPage(1); }}
-          >
-            {tab.label}
-          </Badge>
-        ))}
-      </div>
-
       {/* Filter bar */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-        <div className="relative flex-1">
+        <div className="relative w-[580px]">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Buscar por nombre, empresa, email o teléfono..."
@@ -988,13 +927,16 @@ export default function ContactosPage() {
             className="pl-9"
           />
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 flex-1">
           <Select value={sourceFilter} onValueChange={(v) => { setSourceFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Fuente" />
+            <SelectTrigger className="w-auto">
+              <div className="flex items-center gap-1.5">
+                <Globe className="size-3.5" />
+                <SelectValue placeholder="Fuente" />
+              </div>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="todos">Todas las fuentes</SelectItem>
+              <SelectItem value="todos">Fuentes</SelectItem>
               {Object.entries(contactSourceLabels).map(([key, label]) => (
                 <SelectItem key={key} value={key}>{label}</SelectItem>
               ))}
@@ -1002,11 +944,14 @@ export default function ContactosPage() {
           </Select>
 
           <Select value={etapaFilter} onValueChange={(v) => { setEtapaFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Etapa" />
+            <SelectTrigger className="w-auto">
+              <div className="flex items-center gap-1.5">
+                <Tag className="size-3.5" />
+                <SelectValue placeholder="Etapa" />
+              </div>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="todos">Todas las etapas</SelectItem>
+              <SelectItem value="todos">Etapas</SelectItem>
               {Object.entries(etapaLabels).map(([key, label]) => (
                 <SelectItem key={key} value={key}>{label}</SelectItem>
               ))}
@@ -1018,11 +963,14 @@ export default function ContactosPage() {
             onValueChange={(v) => { setAdvisorFilter(v); setPage(1); }}
             disabled={!canSeeAllAdvisors}
           >
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Asesor" />
+            <SelectTrigger className="w-auto">
+              <div className="flex items-center gap-1.5">
+                <User className="size-3.5" />
+                <SelectValue placeholder="Asesor" />
+              </div>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="todos">Todos los asesores</SelectItem>
+              <SelectItem value="todos">Asesores</SelectItem>
               {activeAdvisors.map((u) => (
                 <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
               ))}

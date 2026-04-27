@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useLayoutEffect } from 'react';
 import { useAppStore } from '@/store';
 import { usePermissions } from '@/hooks/usePermissions';
 
@@ -15,7 +15,8 @@ export function useCrmTeamAdvisorFilter(
   const currentUserId = useAppStore((s) => s.currentUser.id);
   const canSeeAllAdvisors = hasPermission('equipo.datos_completos');
 
-  useEffect(() => {
+  /** useLayoutEffect evita un frame con "Todos" y, junto a opciones de sesión, un Select sin ítem. */
+  useLayoutEffect(() => {
     if (!canSeeAllAdvisors && filterValue === allToken) {
       setFilter(currentUserId);
     }

@@ -17,7 +17,18 @@ export type AnalyticsSummary = {
     activitiesCompleted: number;
     changes: { contacts: string; sales: string };
   };
-  salesByMonth: { name: string; ventas: number; meta: number }[];
+  salesByMonth: {
+    name: string;
+    ventas: number;
+    meta: number;
+    /** Oportunidades con status ganada en ese mes (mismo criterio que `ventas`). */
+    oportunidadesGanadas: {
+      id: string;
+      title: string;
+      amount: number;
+      companyName: string | null;
+    }[];
+  }[];
   contactsBySource: { name: string; value: number }[];
   funnelByStage: { name: string; value: number }[];
   /** Empresas creadas en el rango, agrupadas por `etapa` (mismos filtros que contactos). */
@@ -30,7 +41,7 @@ export type AnalyticsSummary = {
     retroceso: number;
     sinCambios: number;
   }[];
-  performanceByAdvisor: { name: string; leads: number; ventas: number }[];
+  performanceByAdvisor: { name: string; empresas: number; ventas: number }[];
   pendingActivities: {
     id: string;
     title: string;

@@ -7,6 +7,7 @@ import {
   DollarSign, Target, TrendingUp, Trophy,
   Calendar, X, User, Loader2,
   FileSpreadsheet, Upload, Download, ChevronLeft, ChevronRight,
+  Globe, Tag,
 } from 'lucide-react';
 import type { Etapa, OpportunityStatus, Opportunity } from '@/types';
 import { etapaLabels } from '@/data/mock';
@@ -436,16 +437,10 @@ export default function OpportunitiesPage() {
         onChange={onOppImportChange}
       />
       <PageHeader title="Oportunidades" description="Gestiona el pipeline de ventas y oportunidades comerciales">
-        <div className="flex flex-wrap items-center gap-2">
-          {allOpportunities.length > 0 && (
-            <Badge variant="secondary" className="font-normal">
-              <Target className="size-3.5" /> {allOpportunities.length} oportunidades
-            </Badge>
-          )}
-          {hasPermission('oportunidades.exportar') && (
+        <span className="mr-2 text-sm text-muted-foreground">Total: {allOpportunities.length}</span>
+        {hasPermission('oportunidades.exportar') && (
             <Button
               variant="outline"
-              size="sm"
               disabled={exportBusy}
               onClick={() => void handleOppTemplate()}
             >
@@ -454,7 +449,7 @@ export default function OpportunitiesPage() {
             </Button>
           )}
           {hasPermission('oportunidades.crear') && (
-            <Button variant="outline" size="sm" disabled={importBusy} onClick={openOppImport}>
+            <Button variant="outline" disabled={importBusy} onClick={openOppImport}>
               {importBusy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}{' '}
               Importar
             </Button>
@@ -462,7 +457,6 @@ export default function OpportunitiesPage() {
           {hasPermission('oportunidades.exportar') && (
             <Button
               variant="outline"
-              size="sm"
               disabled={exportBusy}
               onClick={() => void handleOppExport()}
             >
@@ -473,8 +467,7 @@ export default function OpportunitiesPage() {
           <Button onClick={() => setNewDialogOpen(true)}>
             <Plus /> Nueva Oportunidad
           </Button>
-        </div>
-      </PageHeader>
+        </PageHeader>
 
       {initialOppLoad ? (
         <div
@@ -541,7 +534,7 @@ export default function OpportunitiesPage() {
 
       {/* Filter bar */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-        <div className="relative flex-1">
+        <div className="relative w-[580px]">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Buscar por nombre, contacto o cliente..."
@@ -550,25 +543,31 @@ export default function OpportunitiesPage() {
             className="pl-9"
           />
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 flex-1">
           <Select value={etapaFilter} onValueChange={setEtapaFilter}>
-              <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-auto">
+              <div className="flex items-center gap-1.5">
+                <Tag className="size-3.5" />
                 <SelectValue placeholder="Etapa" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todas">Todas las etapas</SelectItem>
-                {etapas.map((e) => (
-                  <SelectItem key={e} value={e}>{etapaLabels[e]}</SelectItem>
-                ))}
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todas">Etapas</SelectItem>
+              {etapas.map((e) => (
+                <SelectItem key={e} value={e}>{etapaLabels[e]}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
 
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Estado" />
+            <SelectTrigger className="w-auto">
+              <div className="flex items-center gap-1.5">
+                <Globe className="size-3.5" />
+                <SelectValue placeholder="Estado" />
+              </div>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="todas">Todos</SelectItem>
+              <SelectItem value="todas">Estados</SelectItem>
               {(Object.keys(statusLabels) as OpportunityStatus[]).map((s) => (
                 <SelectItem key={s} value={s}>{statusLabels[s]}</SelectItem>
               ))}
@@ -580,11 +579,14 @@ export default function OpportunitiesPage() {
             onValueChange={setAssigneeFilter}
             disabled={!canSeeAllAdvisors}
           >
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Asesor" />
+            <SelectTrigger className="w-auto">
+              <div className="flex items-center gap-1.5">
+                <User className="size-3.5" />
+                <SelectValue placeholder="Asesor" />
+              </div>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="todos">Todos</SelectItem>
+              <SelectItem value="todos">Asesores</SelectItem>
               {activeAdvisors.map((u) => (
                 <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
               ))}

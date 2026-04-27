@@ -17,6 +17,7 @@ import {
   CalendarDays,
   FileSpreadsheet,
   FileDown,
+  Maximize2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -33,6 +34,12 @@ import {
   Legend,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { MetricCard } from '@/components/shared/MetricCard';
 import { StatusBadge } from '@/components/shared/StatusBadge';
@@ -48,6 +55,7 @@ import {
 import { contactSourceLabels } from '@/data/mock';
 import type { Contact } from '@/types';
 import { contactListAll, mapApiContactRowToContact } from '@/lib/contactApi';
+import { FunnelChart, type FunnelStage } from '@/components/crm/FunnelChart';
 import { WeeklyGoalCard } from '@/components/shared/WeeklyGoalCard';
 import { MonthlyGoalCard } from '@/components/shared/MonthlyGoalCard';
 import { formatCurrency, formatDateShort } from '@/lib/formatters';
@@ -65,9 +73,11 @@ import {
 import { useCrmConfigStore, getStageLabelFromCatalog, getSourceLabelFromCatalog } from '@/store/crmConfigStore';
 import { ChartCardBody } from '@/components/shared/ChartCardBody';
 import { chartHasAnyValue } from '@/lib/chartEmpty';
+import { useChartTheme } from '@/hooks/useChartTheme';
+import { SalesByMonthBarChart } from '@/components/shared/SalesByMonthBarChart';
 
 const PIE_COLORS = ['#13944C', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899'];
-const FUNNEL_COLORS = ['#13944C', '#22c55e', '#3b82f6', '#f59e0b', '#8b5cf6', '#06b6d4'];
+const FUNNEL_COLORS = ['#13944C', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];
 
 const activityIconMap: Record<string, typeof Phone> = {
   llamada: Phone,
@@ -88,12 +98,14 @@ function changeTone(s: string): 'positive' | 'negative' | 'neutral' {
 
 export default function Dashboard() {
   const { hasPermission } = usePermissions();
+  const chartTheme = useChartTheme();
   const bundle = useCrmConfigStore((s) => s.bundle);
   const [dateRange, setDateRange] = useState<DateRangePreset>('1m');
   const [customRange, setCustomRange] = useState<DateRange | undefined>();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
+  const [salesChartModalOpen, setSalesChartModalOpen] = useState(false);
 
   useEffect(() => {
     let c = true;
@@ -155,9 +167,18 @@ export default function Dashboard() {
 
   const funnelData = useMemo(() => {
     if (!summary) return [];
-    return summary.funnelByStage.map((x) => ({
-      ...x,
+    return summary.opportunitiesByStageData.map((x) => ({
       name: getStageLabelFromCatalog(x.name, bundle),
+      value: x.count,
+    }));
+  }, [summary, bundle]);
+
+  const funnelStages: FunnelStage[] = useMemo(() => {
+    if (!summary) return [];
+    return summary.opportunitiesByStageData.map((x, i) => ({
+      label: getStageLabelFromCatalog(x.name, bundle),
+      value: x.count,
+      color: FUNNEL_COLORS[i % FUNNEL_COLORS.length],
     }));
   }, [summary, bundle]);
 
@@ -190,7 +211,7 @@ export default function Dashboard() {
     (!summary || !chartHasAnyValue(funnelData, ['value']));
   const advisorChartEmpty =
     !summaryLoading &&
-    (!summary || !chartHasAnyValue(performanceByAdvisor, ['leads', 'ventas']));
+    (!summary || !chartHasAnyValue(performanceByAdvisor, ['empresas', 'ventas']));
 
   const handleExport = useCallback(
     (format: 'PDF' | 'Excel' | 'CSV') => {
@@ -373,8 +394,19 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Ventas por Mes */}
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-base">Ventas por Mes</CardTitle>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0 text-muted-foreground"
+              onClick={() => setSalesChartModalOpen(true)}
+              disabled={summaryLoading || salesChartEmpty}
+              aria-label="Ampliar gráfico de ventas por mes"
+            >
+              <Maximize2 className="h-4 w-4" />
+            </Button>
           </CardHeader>
           <CardContent>
             <ChartCardBody
@@ -383,29 +415,24 @@ export default function Dashboard() {
               variant="bar"
               emptyMessage="Sin datos de ventas en este periodo."
             >
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={salesByMonthData} barGap={4}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                  <XAxis dataKey="name" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
-                  <YAxis
-                    tick={{ fontSize: 12 }}
-                    axisLine={false}
-                    tickLine={false}
-                    tickFormatter={(v: number) => `S/${(v / 1000).toFixed(0)}k`}
-                  />
-                  <Tooltip
-                    formatter={(value?: number, name?: string) => [
-                      `S/ ${(value ?? 0).toLocaleString()}`,
-                      name === 'ventas' ? 'Ventas' : 'Meta',
-                    ]}
-                  />
-                  <Bar dataKey="ventas" fill="#13944C" radius={[4, 4, 0, 0]} name="ventas" />
-                  <Bar dataKey="meta" fill="#3b82f6" radius={[4, 4, 0, 0]} opacity={0.5} name="meta" />
-                </BarChart>
-              </ResponsiveContainer>
+              <SalesByMonthBarChart data={salesByMonthData} variant="dashboard" />
             </ChartCardBody>
           </CardContent>
         </Card>
+
+        <Dialog open={salesChartModalOpen} onOpenChange={setSalesChartModalOpen}>
+          <DialogContent
+            className="max-h-[min(90vh,900px)] w-full max-w-[min(100vw-2rem,56rem)] gap-0 p-0 sm:max-w-[min(100vw-2rem,56rem)]"
+            showCloseButton
+          >
+            <DialogHeader className="px-6 pt-6 pb-0">
+              <DialogTitle className="text-base">Ventas por Mes</DialogTitle>
+            </DialogHeader>
+            <div className="h-[min(70vh,520px)] w-full px-6 pb-6 pt-4">
+              {!salesChartEmpty ? <SalesByMonthBarChart data={salesByMonthData} variant="dashboard" /> : null}
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Contactos por Fuente */}
         <Card>
@@ -436,7 +463,18 @@ export default function Dashboard() {
                       <Cell key={index} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value?: number) => [value ?? 0, 'Contactos']} />
+                  <Tooltip
+                    formatter={(value?: number) => [value ?? 0, 'Contactos']}
+                    contentStyle={{
+                      borderRadius: '8px',
+                      border: `1px solid ${chartTheme.tooltipBorder}`,
+                      backgroundColor: chartTheme.tooltipBg,
+                      color: chartTheme.tooltipText,
+                      fontSize: '13px',
+                    }}
+                    itemStyle={{ color: chartTheme.tooltipText }}
+                    labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
+                  />
                   <Legend
                     iconType="circle"
                     iconSize={8}
@@ -460,34 +498,16 @@ export default function Dashboard() {
             <ChartCardBody
               loading={summaryLoading}
               isEmpty={funnelChartEmpty}
-              variant="barHorizontal"
+              variant="bar"
               emptyMessage="Sin datos de embudo en este periodo."
+              className="min-h-[min(52vh,420px)] py-3"
             >
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={funnelData} layout="vertical" barSize={24}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e5e7eb" />
-                  <XAxis type="number" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
-                  <YAxis
-                    type="category"
-                    dataKey="name"
-                    tick={{ fontSize: 12 }}
-                    axisLine={false}
-                    tickLine={false}
-                    width={90}
-                  />
-                  <Tooltip formatter={(value?: number) => [value ?? 0, 'Contactos']} />
-                  <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                    {funnelData.map((_, index) => (
-                      <Cell key={index} fill={FUNNEL_COLORS[index % FUNNEL_COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+              <FunnelChart stages={funnelStages} height={360} singularLabel="oportunidad" />
             </ChartCardBody>
           </CardContent>
         </Card>
 
-        {/* Rendimiento por Asesor */}
+        {/* Rendimiento por Asesor (barras horizontales, misma altura mín. que Funnel) */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Rendimiento por Asesor</CardTitle>
@@ -496,17 +516,48 @@ export default function Dashboard() {
             <ChartCardBody
               loading={summaryLoading}
               isEmpty={advisorChartEmpty}
-              variant="bar"
+              variant="barHorizontal"
               emptyMessage="Sin rendimiento por asesor en este periodo."
+              className="h-[min(52vh,420px)] py-3"
             >
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={performanceByAdvisor} barGap={4}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
-                  <Tooltip />
-                  <Bar dataKey="leads" fill="#13944C" radius={[4, 4, 0, 0]} name="Contactos" />
-                  <Bar dataKey="ventas" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Ventas" />
+                <BarChart data={performanceByAdvisor} layout="vertical" barGap={2} margin={{ left: 4, right: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={chartTheme.gridStroke} />
+                  <XAxis type="number" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    tick={{ fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={false}
+                    width={100}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: '8px',
+                      border: `1px solid ${chartTheme.tooltipBorder}`,
+                      backgroundColor: chartTheme.tooltipBg,
+                      color: chartTheme.tooltipText,
+                      fontSize: '13px',
+                    }}
+                    itemStyle={{ color: chartTheme.tooltipText }}
+                    labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
+                  />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
+                  <Bar
+                    dataKey="empresas"
+                    name="Empresas"
+                    fill="#3b82f6"
+                    radius={[0, 4, 4, 0]}
+                    barSize={14}
+                  />
+                  <Bar
+                    dataKey="ventas"
+                    name="Ventas"
+                    fill="#13944C"
+                    radius={[0, 4, 4, 0]}
+                    barSize={14}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </ChartCardBody>

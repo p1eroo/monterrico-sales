@@ -59,6 +59,24 @@ const companySelectSummary = {
           estimatedValue: true,
           clienteRecuperado: true,
           user: { select: { id: true, name: true } },
+          activities: {
+            select: { activity: { select: { createdAt: true } } },
+          },
+        },
+      },
+    },
+  },
+  activities: {
+    select: { activity: { select: { createdAt: true } } },
+  },
+  opportunities: {
+    select: {
+      opportunity: {
+        select: {
+          id: true,
+          activities: {
+            select: { activity: { select: { createdAt: true } } },
+          },
         },
       },
     },
@@ -645,7 +663,7 @@ export class CompaniesService {
 
   private mapCompanySummaryRow(row: CompanySummaryDbRow) {
     const contacts = row.contacts.map((cc) => cc.contact);
-    const { contacts: _omit, user: companyUser, ...rest } = row;
+    const { contacts: _omitContacts, user: companyUser, activities: _companyActivities, opportunities: _companyOpps, ...rest } = row;
 
     let clienteRecuperado: 'si' | 'no' | null =
       (rest.clienteRecuperado === 'si' || rest.clienteRecuperado === 'no'
@@ -664,6 +682,19 @@ export class CompaniesService {
       .map((c) => ({ id: c.id, name: c.name, urlSlug: c.urlSlug }));
 
     const contactCount = contacts.length;
+
+    const companyActivityDates = _companyActivities?.map((a) => a.activity.createdAt) ?? [];
+    const contactActivityDates = contacts.flatMap((c) =>
+      (c as { activities?: { activity: { createdAt: Date } }[] }).activities?.map((a) => a.activity.createdAt) ?? []
+    );
+    const opportunityActivityDates = _companyOpps?.flatMap((co) =>
+      co.opportunity?.activities?.map((a) => a.activity.createdAt) ?? []
+    ) ?? [];
+
+    const allActivityDates = [...companyActivityDates, ...contactActivityDates, ...opportunityActivityDates];
+    const lastInteractionAt = allActivityDates.length > 0
+      ? new Date(Math.max(...allActivityDates.map((d) => d.getTime()))).toISOString()
+      : null;
 
     return {
       id: rest.id,
@@ -689,6 +720,7 @@ export class CompaniesService {
       displayAdvisorName: companyUser?.name ?? null,
       clienteRecuperado,
       contactsPreview: preview,
+      lastInteractionAt,
     };
   }
 

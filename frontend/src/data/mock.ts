@@ -181,11 +181,11 @@ export const funnelData: ChartDataPoint[] = [
 ];
 
 export const performanceByAdvisor: ChartDataPoint[] = [
-  { name: 'Carlos M.', value: 45, leads: 45, ventas: 28, conversion: 62 },
-  { name: 'María G.', value: 38, leads: 38, ventas: 22, conversion: 58 },
-  { name: 'José R.', value: 32, leads: 32, ventas: 18, conversion: 56 },
-  { name: 'Ana T.', value: 28, leads: 28, ventas: 15, conversion: 54 },
-  { name: 'Roberto S.', value: 25, leads: 25, ventas: 12, conversion: 48 },
+  { name: 'Carlos M.', value: 45, empresas: 45, ventas: 28, conversion: 62 },
+  { name: 'María G.', value: 38, empresas: 38, ventas: 22, conversion: 58 },
+  { name: 'José R.', value: 32, empresas: 32, ventas: 18, conversion: 56 },
+  { name: 'Ana T.', value: 28, empresas: 28, ventas: 15, conversion: 54 },
+  { name: 'Roberto S.', value: 25, empresas: 25, ventas: 12, conversion: 48 },
 ];
 
 export const opportunitiesByStageData: ChartDataPoint[] = [

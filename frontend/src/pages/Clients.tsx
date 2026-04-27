@@ -14,6 +14,11 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
+  Building2, Users, UserX, DollarSign, Search, Eye,
+  Phone, Mail, Calendar, FileText, Clock, User, RefreshCw, Download, ExternalLink,
+  Globe,
+} from 'lucide-react';
+import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import {
@@ -30,10 +35,6 @@ import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useCrmTeamAdvisorFilter } from '@/hooks/useCrmTeamAdvisorFilter';
 import { fetchClients, updateClientApi } from '@/lib/clientApi';
-import {
-  Building2, Users, UserX, DollarSign, Search, Eye,
-  Phone, Mail, Calendar, FileText, Clock, User, RefreshCw, Download, ExternalLink,
-} from 'lucide-react';
 import { CrmDataTableSkeleton, CrmStatCardsSkeleton } from '@/components/shared/CrmListPageSkeleton';
 
 const CLIENTS_TABLE_SKELETON_COLUMNS = [
@@ -209,10 +210,10 @@ export default function Clients() {
         title="Clientes"
         description="Se registran automáticamente cuando una empresa alcanza la etapa Activo o una etapa con probabilidad 100 %."
       >
+        <span className="mr-2 text-sm text-muted-foreground">Total: {filteredClients.length}</span>
         {hasPermission('clientes.exportar') && (
           <Button
             variant="outline"
-            size="sm"
             onClick={() => {
               exportClientsToCSV(filteredClients);
               toast.success('Exportación completada', {
@@ -252,7 +253,7 @@ export default function Clients() {
       )}
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-        <div className="relative flex-1">
+        <div className="relative w-[280px]">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Buscar por empresa, contacto, email o teléfono…"
@@ -261,13 +262,16 @@ export default function Clients() {
             className="pl-9"
           />
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 flex-1">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <SelectValue placeholder="Estado" />
+            <SelectTrigger className="w-auto">
+              <div className="flex items-center gap-1.5">
+                <Globe className="size-3.5" />
+                <SelectValue placeholder="Estado" />
+              </div>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos los estados</SelectItem>
+              <SelectItem value="all">Estados</SelectItem>
               <SelectItem value="activo">Activo</SelectItem>
               <SelectItem value="inactivo">Inactivo</SelectItem>
               <SelectItem value="potencial">Potencial</SelectItem>
@@ -278,11 +282,14 @@ export default function Clients() {
             onValueChange={setAssigneeFilter}
             disabled={!canSeeAllAdvisors}
           >
-            <SelectTrigger className="w-full sm:w-[200px]">
-              <SelectValue placeholder="Asesor" />
+            <SelectTrigger className="w-auto">
+              <div className="flex items-center gap-1.5">
+                <User className="size-3.5" />
+                <SelectValue placeholder="Asesor" />
+              </div>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos los asesores</SelectItem>
+              <SelectItem value="all">Asesores</SelectItem>
               {activeAdvisors.map((u) => (
                 <SelectItem key={u.id} value={u.id}>
                   {u.name}

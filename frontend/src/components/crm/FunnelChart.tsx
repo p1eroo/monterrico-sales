@@ -12,6 +12,8 @@ interface FunnelChartProps {
   height?: number;
   /** Leyenda con punto de color y nombre bajo el SVG (desactivada por defecto). */
   showLegend?: boolean;
+  /** Texto singular para el tooltip (default "empresa"). */
+  singularLabel?: string;
 }
 
 function resolveStageColor(color: string): string {
@@ -30,7 +32,7 @@ function resolveStageColor(color: string): string {
 /**
  * Embudo horizontal por etapa (anchos relativos al máximo), tomado de sales-workspace.
  */
-export function FunnelChart({ stages, height = 380, showLegend = false }: FunnelChartProps) {
+export function FunnelChart({ stages, height = 380, showLegend = false, singularLabel = 'empresa' }: FunnelChartProps) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '');
 
@@ -101,8 +103,7 @@ export function FunnelChart({ stages, height = 380, showLegend = false }: Funnel
               style={{ opacity: hoverIdx === null || isHover ? 1 : 0.55 }}
             >
               <title>
-                {p.stage.label}: {p.stage.value}{' '}
-                {p.stage.value === 1 ? 'empresa' : 'empresas'}
+                {p.stage.label}: {p.stage.value} {p.stage.value === 1 ? singularLabel : `${singularLabel}s`}
               </title>
               <path
                 d={p.d}

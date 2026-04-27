@@ -4,6 +4,12 @@ import { useUsers } from '@/hooks/useUsers';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -19,6 +25,7 @@ import {
 import {
   FileText, FileSpreadsheet, FileDown,
   TrendingUp, Target, DollarSign, Activity,
+  Maximize2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useChartTheme } from '@/hooks/useChartTheme';
@@ -36,12 +43,14 @@ import {
   reportExportBaseFilename,
   type ReportsExportInput,
 } from '@/lib/reportsExport';
+import { useAppStore } from '@/store';
 import {
   useCrmConfigStore,
   getSourceLabelFromCatalog,
   getStageLabelFromCatalog,
 } from '@/store/crmConfigStore';
 import { ChartCardBody } from '@/components/shared/ChartCardBody';
+import { SalesByMonthBarChart } from '@/components/shared/SalesByMonthBarChart';
 import { chartHasAnyValue } from '@/lib/chartEmpty';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FunnelChart, type FunnelStage } from '@/components/crm/FunnelChart';
@@ -123,6 +132,7 @@ function parseAnalyticsRangeDateUtc(s: string, endOfDay: boolean): Date {
 
 export default function Reports() {
   const { users, activeAdvisors } = useUsers();
+  const currentUser = useAppStore((s) => s.currentUser);
   const { hasPermission } = usePermissions();
   const bundle = useCrmConfigStore((s) => s.bundle);
   const [dateRange, setDateRange] = useState<DateRangePreset>('3m');
@@ -133,11 +143,41 @@ export default function Reports() {
     setAdvisorFilter,
     'all',
   );
+  /**
+   * Sin `usuarios.ver` / `equipo.ver` el listado API puede quedar vacío, pero el filtro
+   * sigue fijado al id de sesión: el Select necesita al menos un ítem con ese value.
+   */
+  const advisorSelectOptions = useMemo(() => {
+    if (!canSeeAllAdvisors && currentUserId) {
+      return [
+        {
+          id: currentUserId,
+          name: currentUser.name || currentUser.username || 'Asesor',
+        },
+      ];
+    }
+    const out: { id: string; name: string }[] = [];
+    const seen = new Set<string>();
+    for (const u of activeAdvisors) {
+      if (!seen.has(u.id)) {
+        seen.add(u.id);
+        out.push({ id: u.id, name: u.name });
+      }
+    }
+    if (currentUserId && !seen.has(currentUserId)) {
+      out.push({
+        id: currentUserId,
+        name: currentUser.name || currentUser.username || currentUserId,
+      });
+    }
+    return out;
+  }, [canSeeAllAdvisors, currentUserId, currentUser, activeAdvisors]);
   const [sourceFilter, setSourceFilter] = useState('all');
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [loading, setLoading] = useState(false);
   /** Lunes UTC (ms) de la última semana visible en el gráfico de avance semanal. */
   const [weeklyProgressCapMs, setWeeklyProgressCapMs] = useState<number | null>(null);
+  const [companiesFunnelModalOpen, setCompaniesFunnelModalOpen] = useState(false);
   const chartTheme = useChartTheme();
 
   useEffect(() => {
@@ -320,11 +360,17 @@ export default function Reports() {
         toast.error('Espera a que carguen los datos o elige un periodo válido.');
         return;
       }
+      const nameFromSession =
+        (users.find((u) => u.id === currentUserId)?.name ?? currentUser.name) ||
+        'Mi cartera';
       const advisorLabel = !canSeeAllAdvisors
-        ? users.find((u) => u.id === currentUserId)?.name ?? 'Mi cartera'
+        ? nameFromSession
         : advisorFilter === 'all'
           ? 'Todos los asesores'
-          : activeAdvisors.find((u) => u.id === advisorFilter)?.name ?? advisorFilter;
+          : activeAdvisors.find((u) => u.id === advisorFilter)?.name ??
+            (advisorFilter === currentUserId
+              ? (currentUser.name || currentUser.username)
+              : advisorFilter);
       const sourceLabel =
         sourceOptions.find((o) => o.value === sourceFilter)?.label ?? sourceFilter;
 
@@ -356,6 +402,7 @@ export default function Reports() {
       activeAdvisors,
       canSeeAllAdvisors,
       currentUserId,
+      currentUser,
       sourceFilter,
       leadsByPeriodData,
       leadsBySourceData,
@@ -378,7 +425,7 @@ export default function Reports() {
     !loading && (!summary || !chartHasAnyValue(conversionData, ['tasa']));
   const advisorChartEmpty =
     !loading &&
-    (!summary || !chartHasAnyValue(performanceByAdvisor, ['leads', 'ventas']));
+    (!summary || !chartHasAnyValue(performanceByAdvisor, ['empresas', 'ventas']));
   const salesChartEmpty =
     !loading && (!summary || !chartHasAnyValue(salesByMonthData, ['ventas', 'meta']));
   const pipelineChartEmpty =
@@ -405,7 +452,7 @@ export default function Reports() {
   const summaryCards = useMemo(
     () => [
       {
-        label: 'Total Contactos del Periodo',
+        label: 'Contactos creados en el periodo',
         value: kpis ? String(kpis.totalContacts) : '—',
         icon: TrendingUp,
         color: 'text-primary',
@@ -450,7 +497,9 @@ export default function Reports() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Reportes" description="Análisis y métricas del rendimiento comercial" />
+      <PageHeader
+        title="Reportes"
+      />
 
       {/* Filters */}
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:flex-wrap">
@@ -485,13 +534,27 @@ export default function Reports() {
           disabled={!canSeeAllAdvisors}
         >
           <SelectTrigger className="w-full md:w-[200px]">
-            <SelectValue />
+            <SelectValue
+              placeholder={
+                canSeeAllAdvisors ? 'Asesor' : currentUser.name || 'Asesor'
+              }
+            />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos los asesores</SelectItem>
-            {activeAdvisors.map((u) => (
-              <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-            ))}
+            {canSeeAllAdvisors ? (
+              <>
+                <SelectItem value="all">Todos los asesores</SelectItem>
+                {advisorSelectOptions.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>
+                    {u.name}
+                  </SelectItem>
+                ))}
+              </>
+            ) : currentUserId ? (
+              <SelectItem value={currentUserId}>
+                {currentUser.name || currentUser.username}
+              </SelectItem>
+            ) : null}
           </SelectContent>
         </Select>
 
@@ -616,8 +679,11 @@ export default function Reports() {
                       borderRadius: '8px',
                       border: `1px solid ${chartTheme.tooltipBorder}`,
                       backgroundColor: chartTheme.tooltipBg,
+                      color: chartTheme.tooltipText,
                       fontSize: '13px',
                     }}
+                    itemStyle={{ color: chartTheme.tooltipText }}
+                    labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
                   />
                   <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
                   <Area
@@ -680,8 +746,11 @@ export default function Reports() {
                       borderRadius: '8px',
                       border: `1px solid ${chartTheme.tooltipBorder}`,
                       backgroundColor: chartTheme.tooltipBg,
+                      color: chartTheme.tooltipText,
                       fontSize: '13px',
                     }}
+                    itemStyle={{ color: chartTheme.tooltipText }}
+                    labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -691,11 +760,24 @@ export default function Reports() {
 
         {/* Embudo empresas por etapa (izquierda); derecha reservada */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Empresas por etapa</CardTitle>
-            <CardDescription>
-              Embudo según etapa comercial (empresas creadas en el periodo; respeta asesor y fuente).
-            </CardDescription>
+          <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2">
+            <div className="min-w-0 space-y-1">
+              <CardTitle className="text-base">Empresas por etapa</CardTitle>
+              <CardDescription>
+                Embudo según etapa comercial (empresas creadas en el periodo; respeta asesor y fuente).
+              </CardDescription>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0 text-muted-foreground"
+              onClick={() => setCompaniesFunnelModalOpen(true)}
+              disabled={loading || companiesFunnelEmpty}
+              aria-label="Ampliar embudo de empresas por etapa"
+            >
+              <Maximize2 className="h-4 w-4" />
+            </Button>
           </CardHeader>
           <CardContent>
             <ChartCardBody
@@ -709,6 +791,22 @@ export default function Reports() {
             </ChartCardBody>
           </CardContent>
         </Card>
+
+        <Dialog open={companiesFunnelModalOpen} onOpenChange={setCompaniesFunnelModalOpen}>
+          <DialogContent
+            className="flex max-h-[min(calc(100dvh-1.5rem),900px)] w-full max-w-[min(100vw-1rem,56rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(100vw-2rem,56rem)]"
+            showCloseButton
+          >
+            <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
+              <DialogTitle className="pr-8 text-base">Empresas por etapa</DialogTitle>
+            </DialogHeader>
+            <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 sm:px-6 sm:pb-6">
+              {!companiesFunnelEmpty ? (
+                <FunnelChart stages={companiesFunnelStages} height={500} showLegend />
+              ) : null}
+            </div>
+          </DialogContent>
+        </Dialog>
         <Card>
           <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0 space-y-2">
@@ -782,8 +880,11 @@ export default function Reports() {
                       borderRadius: '8px',
                       border: `1px solid ${chartTheme.tooltipBorder}`,
                       backgroundColor: chartTheme.tooltipBg,
+                      color: chartTheme.tooltipText,
                       fontSize: '13px',
                     }}
+                    itemStyle={{ color: chartTheme.tooltipText }}
+                    labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
                   />
                   <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: 8 }} />
                   <Bar
@@ -851,8 +952,11 @@ export default function Reports() {
                       borderRadius: '8px',
                       border: `1px solid ${chartTheme.tooltipBorder}`,
                       backgroundColor: chartTheme.tooltipBg,
+                      color: chartTheme.tooltipText,
                       fontSize: '13px',
                     }}
+                    itemStyle={{ color: chartTheme.tooltipText }}
+                    labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
                     formatter={(value?: number) => [`${(value ?? 0)}%`, 'Conversión']}
                   />
                   <Line
@@ -874,7 +978,6 @@ export default function Reports() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Rendimiento por Asesor</CardTitle>
-            <CardDescription>Contactos asignados y ventas cerradas por ejecutivo</CardDescription>
           </CardHeader>
           <CardContent>
             <ChartCardBody
@@ -901,11 +1004,14 @@ export default function Reports() {
                       borderRadius: '8px',
                       border: `1px solid ${chartTheme.tooltipBorder}`,
                       backgroundColor: chartTheme.tooltipBg,
+                      color: chartTheme.tooltipText,
                       fontSize: '13px',
                     }}
+                    itemStyle={{ color: chartTheme.tooltipText }}
+                    labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
                   />
                   <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
-                  <Bar dataKey="leads" name="Contactos" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={14} />
+                  <Bar dataKey="empresas" name="Empresas" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={14} />
                   <Bar dataKey="ventas" name="Ventas" fill="#13944C" radius={[0, 4, 4, 0]} barSize={14} />
                 </BarChart>
               </ResponsiveContainer>
@@ -927,30 +1033,7 @@ export default function Reports() {
               emptyMessage="Sin ventas por mes en este periodo."
               className={chartH}
             >
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={salesByMonthData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartTheme.gridStroke} />
-                  <XAxis dataKey="name" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-                  <YAxis
-                    tick={{ fontSize: 12 }}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      borderRadius: '8px',
-                      border: `1px solid ${chartTheme.tooltipBorder}`,
-                      backgroundColor: chartTheme.tooltipBg,
-                      fontSize: '13px',
-                    }}
-                    formatter={(value?: number) => [formatCurrency(value ?? 0)]}
-                  />
-                  <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
-                  <Bar dataKey="ventas" name="Ventas" fill="#13944C" radius={[4, 4, 0, 0]} barSize={28} />
-                  <Bar dataKey="meta" name="Meta" fill={chartTheme.metaBar} radius={[4, 4, 0, 0]} barSize={28} />
-                </BarChart>
-              </ResponsiveContainer>
+              <SalesByMonthBarChart data={salesByMonthData} variant="reports" barSize={28} />
             </ChartCardBody>
           </CardContent>
         </Card>
@@ -984,8 +1067,11 @@ export default function Reports() {
                       borderRadius: '8px',
                       border: `1px solid ${chartTheme.tooltipBorder}`,
                       backgroundColor: chartTheme.tooltipBg,
+                      color: chartTheme.tooltipText,
                       fontSize: '13px',
                     }}
+                    itemStyle={{ color: chartTheme.tooltipText }}
+                    labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
                     formatter={(value?: number, name?: string) => [
                       name === 'value' ? formatCurrency(value ?? 0) : (value ?? 0),
                       name === 'value' ? 'Valor' : 'Oportunidades',
@@ -1026,8 +1112,11 @@ export default function Reports() {
                       borderRadius: '8px',
                       border: `1px solid ${chartTheme.tooltipBorder}`,
                       backgroundColor: chartTheme.tooltipBg,
+                      color: chartTheme.tooltipText,
                       fontSize: '13px',
                     }}
+                    itemStyle={{ color: chartTheme.tooltipText }}
+                    labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
                   />
                   <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
                   <Bar dataKey="llamadas" name="Llamadas" stackId="a" fill="#13944C" />
@@ -1063,8 +1152,11 @@ export default function Reports() {
                       borderRadius: '8px',
                       border: `1px solid ${chartTheme.tooltipBorder}`,
                       backgroundColor: chartTheme.tooltipBg,
+                      color: chartTheme.tooltipText,
                       fontSize: '13px',
                     }}
+                    itemStyle={{ color: chartTheme.tooltipText }}
+                    labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
                   />
                   <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
                   <Line

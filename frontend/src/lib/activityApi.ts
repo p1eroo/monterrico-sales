@@ -148,6 +148,25 @@ export async function fetchActivities(): Promise<Activity[]> {
   return rows.map(mapApiActivityToActivity);
 }
 
+export async function fetchActivitiesList(params: {
+  assignedTo?: string;
+  limit?: number;
+}): Promise<Activity[]> {
+  const q = new URLSearchParams();
+  q.set('page', '1');
+  q.set('limit', String(params.limit ?? 2000));
+  if (params.assignedTo) q.set('assignedTo', params.assignedTo);
+  const res = await api<{
+    data: ApiActivity[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }>(`/activities?${q.toString()}`);
+  const rows = res?.data ?? [];
+  return rows.map(mapApiActivityToActivity);
+}
+
 export async function createActivity(payload: CreateActivityPayload): Promise<Activity> {
   const row = await api<ApiActivity>('/activities', {
     method: 'POST',
