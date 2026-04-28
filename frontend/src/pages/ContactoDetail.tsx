@@ -78,7 +78,45 @@ import { useCrmConfigStore, getStageLabelFromCatalog } from '@/store/crmConfigSt
 
 const TIMELINE_PAGE_SIZE = 6;
 
-function ContactoSidebar({ contact, contactOpportunities, onOpenConvertDialog, onAddExistingOpportunity, onRemoveOpportunity, onAddCompany, onAddExistingCompany, onRemoveCompany }: {
+function ContactoInformacionAside({ contact }: { contact: Contact }) {
+  return (
+    <EntityInfoCard
+      title="Información"
+      collapsible
+      fields={[
+        { icon: Phone, value: contact.telefono, href: `tel:${contact.telefono}` },
+        { icon: Mail, value: contact.correo, href: `mailto:${contact.correo}` },
+        {
+          icon: Building2,
+          value: getPrimaryCompany(contact)?.name ?? '—',
+          truncate: true,
+        },
+        { icon: Globe, value: contactSourceLabels[contact.fuente] },
+        { icon: CalendarDays, value: `Fecha de creación: ${formatDate(contact.createdAt)}` },
+        ...(contact.direccion?.trim()
+          ? [
+              {
+                icon: MapPin as typeof Phone,
+                value: contact.direccion.trim(),
+                truncate: true,
+              },
+            ]
+          : []),
+      ]}
+    />
+  );
+}
+
+function ContactoVinculadosAside({
+  contact,
+  contactOpportunities,
+  onOpenConvertDialog,
+  onAddExistingOpportunity,
+  onRemoveOpportunity,
+  onAddCompany,
+  onAddExistingCompany,
+  onRemoveCompany,
+}: {
   contact: Contact;
   contactOpportunities: import('@/types').Opportunity[];
   onOpenConvertDialog: () => void;
@@ -90,31 +128,6 @@ function ContactoSidebar({ contact, contactOpportunities, onOpenConvertDialog, o
 }) {
   return (
     <>
-      <EntityInfoCard
-        title="Información"
-        collapsible
-        fields={[
-          { icon: Phone, value: contact.telefono, href: `tel:${contact.telefono}` },
-          { icon: Mail, value: contact.correo, href: `mailto:${contact.correo}` },
-          {
-            icon: Building2,
-            value: getPrimaryCompany(contact)?.name ?? '—',
-            truncate: true,
-          },
-          { icon: Globe, value: contactSourceLabels[contact.fuente] },
-          { icon: CalendarDays, value: `Fecha de creación: ${formatDate(contact.createdAt)}` },
-          ...(contact.direccion?.trim()
-            ? [
-                {
-                  icon: MapPin as typeof Phone,
-                  value: contact.direccion.trim(),
-                  truncate: true,
-                },
-              ]
-            : []),
-        ]}
-      />
-
       <LinkedOpportunitiesCard
         opportunities={contactOpportunities}
         onCreate={onOpenConvertDialog}
@@ -920,8 +933,11 @@ export default function ContactoDetailPage() {
           onOpenWhatsapp={() => setWhatsappDrawerOpen(true)}
         />
       )}
+      leftAside={(
+        <ContactoInformacionAside contact={contact} />
+      )}
       sidebar={(
-        <ContactoSidebar
+        <ContactoVinculadosAside
           contact={contact}
           contactOpportunities={contactOpportunities}
           onOpenConvertDialog={() => setConvertDialogOpen(true)}

@@ -87,10 +87,11 @@ export default function MainLayout() {
         <Topbar />
         <div
           className={cn(
-            'min-w-0 flex-1 overflow-y-auto overflow-x-hidden bg-background px-4 pb-5 md:px-6 md:pb-6',
+            /* min-h-0 evita scroll residual en cadenas flex + overflow */
+            'min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden bg-background px-4 md:px-6',
             compactMainTop
-              ? 'pt-0 md:pt-0.5'
-              : 'pt-5 md:pt-6',
+              ? 'pt-0 pb-4 md:pt-0.5 md:pb-5'
+              : 'pt-5 pb-5 md:pt-6 md:pb-6',
           )}
         >
           <ModuleGate />

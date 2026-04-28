@@ -17,7 +17,7 @@ import { fetchActivityLogs, activityLogToTimelineEvent } from '@/lib/activityLog
 import { useUsers } from '@/hooks/useUsers';
 import { useActivities } from '@/hooks/useActivities';
 import { getPrimaryCompany } from '@/lib/utils';
-import type { Etapa, CompanyRubro, CompanyTipo, ContactSource, TimelineEvent } from '@/types';
+import type { Etapa, CompanyRubro, CompanyTipo, ContactSource, TimelineEvent, Contact } from '@/types';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { EntityDetailPageSkeleton } from '@/components/shared/EntityDetailPageSkeleton';
 import { DetailLayout } from '@/components/shared/DetailLayout';
@@ -55,10 +55,11 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { api } from '@/lib/api';
-import { companyDetailHref, isEntityDetailApiParam } from '@/lib/detailRoutes';
+import { companyDetailHref, contactDetailHref, isEntityDetailApiParam } from '@/lib/detailRoutes';
 import { type ApiCompanyRecord, isLikelyCompanyCuid } from '@/lib/companyApi';
 import {
   type ApiContactListRow,
+  apiContactDetailToListRow,
   contactCreate,
   contactRemoveCompany,
   isLikelyContactCuid,
@@ -71,6 +72,8 @@ import {
   mapApiOpportunityToOpportunity,
   opportunityListAll,
 } from '@/lib/opportunityApi';
+import { buildOptimisticContact } from '@/lib/optimisticEntities';
+import { generateOptimisticId, useOptimisticCrmStore } from '@/store/optimisticCrmStore';
 import { useStageBadgeTone } from '@/hooks/useStageBadgeTone';
 import { useCrmConfigStore, getStageLabelFromCatalog } from '@/store/crmConfigStore';
 
@@ -104,6 +107,11 @@ export default function EmpresaDetailPage() {
   const currentUserRole = useAppStore((s) => s.currentUser.role ?? '');
   const canEditAssignee = canReassignCommercialAdvisor(currentUserRole);
   const [apiError, setApiError] = useState<string | null>(null);
+
+  const pendingContacts = useOptimisticCrmStore((s) => s.pendingContacts);
+  const addPendingContact = useOptimisticCrmStore((s) => s.addPendingContact);
+  const removePendingContact = useOptimisticCrmStore((s) => s.removePendingContact);
+  const isPendingContactId = useOptimisticCrmStore((s) => s.isPendingContactId);
 
   const loadApiContacts = useCallback(async () => {
     try {
@@ -165,13 +173,26 @@ export default function EmpresaDetailPage() {
 
   const contacts = useMemo(() => {
     const fromApi = apiContactRows.map(mapApiContactRowToContact);
+    const pendingForCompany = pendingContacts.filter((c) =>
+      c.companies?.some((comp) => {
+        if (fromApiById && apiRecord) {
+          return (
+            comp.id === apiRecord.id ||
+            comp.name?.trim().toLowerCase() === companyName.trim().toLowerCase()
+          );
+        }
+        return comp.name?.trim().toLowerCase() === companyName.trim().toLowerCase();
+      }),
+    );
+    const apiIds = new Set(fromApi.map((c) => c.id));
+    const pendingExtra = pendingForCompany.filter((p) => !apiIds.has(p.id));
+
     if (fromApiById) {
-      return fromApi;
+      return [...pendingExtra, ...fromApi];
     }
-    const apiIds = new Set(apiContactRows.map((r) => r.id));
     const fromStore = storeContacts.filter((c) => !apiIds.has(c.id));
-    return [...fromApi, ...fromStore];
-  }, [apiContactRows, storeContacts, fromApiById]);
+    return [...pendingExtra, ...fromApi, ...fromStore];
+  }, [apiContactRows, storeContacts, fromApiById, pendingContacts, apiRecord, companyName]);
 
   const companyContacts = useMemo(() => {
     if (!companyName) return [];
@@ -693,60 +714,127 @@ export default function EmpresaDetailPage() {
     setAddExistingOppOpen(false);
   }
 
-  async function handleCreateNewContact(data: NewContactData) {
-    const defaultAssignedTo = firstContact?.assignedTo ?? activeAdvisors[0]?.id ?? '';
-    if (resolvedCompanyId) {
-      try {
-        const body: Record<string, unknown> = {
-          name: data.name.trim(),
-          telefono: (data.phone || '').trim() || '000000000',
-          correo: (data.email || '').trim() || `noreply-${Date.now()}@temp.local`,
-          fuente: data.source,
-          etapa: 'lead',
-          estimatedValue: 0,
-          companyId: resolvedCompanyId,
-          cargo: data.cargo?.trim() || undefined,
-          docType: data.docType || undefined,
-          docNumber: data.docNumber?.trim() || undefined,
-          clienteRecuperado: data.clienteRecuperado,
-          departamento: data.departamento?.trim() || undefined,
-          provincia: data.provincia?.trim() || undefined,
-          distrito: data.distrito?.trim() || undefined,
-          direccion: data.direccion?.trim() || undefined,
-        };
-        if ((data.assignedTo || defaultAssignedTo) && isLikelyContactCuid(data.assignedTo || defaultAssignedTo)) {
-          body.assignedTo = data.assignedTo || defaultAssignedTo;
-        }
-        await contactCreate(body);
-        await loadApiContacts();
-        toast.success('Contacto creado y vinculado a la empresa');
-        setNewContactOpen(false);
-        return;
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'No se pudo crear el contacto');
-        return;
-      }
-    }
-    addContact({
-      name: data.name,
-      cargo: data.cargo,
-      docType: data.docType,
-      docNumber: data.docNumber,
-      companies: [{ name: companyName, rubro: companyData?.rubro, tipo: companyData?.tipo }],
-      telefono: data.phone || '',
-      correo: data.email || '',
-      fuente: data.source,
-      assignedTo: data.assignedTo || defaultAssignedTo,
-      estimatedValue: 0,
-      clienteRecuperado: data.clienteRecuperado,
-      departamento: data.departamento,
-      provincia: data.provincia,
-      distrito: data.distrito,
-      direccion: data.direccion,
+async function handleCreateNewContact(data: NewContactData) {
+  const defaultAssignedTo = firstContact?.assignedTo ?? activeAdvisors[0]?.id ?? '';
+  const opportunityIdsToLink = data.selectedOpportunityIds ?? [];
+
+  if (resolvedCompanyId) {
+    const optId = generateOptimisticId('c');
+    const baseOpt = buildOptimisticContact(optId, data, {
+      companyDisplayName: companyData?.name ?? companyName,
     });
-    toast.success('Contacto creado y vinculado a la empresa');
+    const optimisticContact: Contact = {
+      ...baseOpt,
+      etapa: 'lead',
+      companies: [{ name: companyData?.name ?? companyName, id: resolvedCompanyId, isPrimary: true }],
+    };
+
+    const body: Record<string, unknown> = {
+      name: data.name.trim(),
+      telefono: (data.phone || '').trim() || '000000000',
+      correo: (data.email || '').trim() || `noreply-${Date.now()}@temp.local`,
+      fuente: data.source,
+      etapa: 'lead',
+      estimatedValue: 0,
+      companyId: resolvedCompanyId,
+      cargo: data.cargo?.trim() || undefined,
+      docType: data.docType || undefined,
+      docNumber: data.docNumber?.trim() || undefined,
+      clienteRecuperado: data.clienteRecuperado,
+      departamento: data.departamento?.trim() || undefined,
+      provincia: data.provincia?.trim() || undefined,
+      distrito: data.distrito?.trim() || undefined,
+      direccion: data.direccion?.trim() || undefined,
+    };
+    if ((data.assignedTo || defaultAssignedTo) && isLikelyContactCuid(data.assignedTo || defaultAssignedTo)) {
+      body.assignedTo = data.assignedTo || defaultAssignedTo;
+    }
+
+    addPendingContact(optimisticContact);
     setNewContactOpen(false);
+
+    void (async () => {
+      try {
+        const created = await contactCreate(body);
+        /** Quitar optimista antes de mezclar con API: evita dos filas del mismo contacto. */
+        removePendingContact(optId);
+        /** Fila real al instante: no esperar `contactListAll` (puede ser lenta). La recarga sigue en segundo plano. */
+        const createdListRow = apiContactDetailToListRow(created);
+        setApiContactRows((prev) => {
+          const without = prev.filter((r) => r.id !== createdListRow.id);
+          return [createdListRow, ...without];
+        });
+
+        const oppCuids = opportunityIdsToLink.filter((id) => isLikelyOpportunityCuid(id));
+        let nFail = 0;
+        if (oppCuids.length > 0) {
+          const settled = await Promise.allSettled(
+            oppCuids.map((oppId) =>
+              api(`/opportunities/${oppId}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ contactId: created.id }),
+              }),
+            ),
+          );
+          nFail = settled.filter((r) => r.status === 'rejected').length;
+        }
+        for (const oppId of opportunityIdsToLink) {
+          if (!isLikelyOpportunityCuid(oppId)) {
+            updateOpportunity(oppId, { contactId: created.id, contactName: created.name });
+          }
+        }
+        if (opportunityIdsToLink.length > 0) {
+          if (nFail > 0) {
+            toast.error(
+              `Contacto creado. ${nFail} oportunidad(es) no se pudieron vincular en el servidor.`,
+            );
+          } else {
+            toast.success(
+              `Contacto creado y vinculado a ${opportunityIdsToLink.length} oportunidad${opportunityIdsToLink.length > 1 ? 'es' : ''}`,
+            );
+          }
+        } else {
+          toast.success('Contacto creado y vinculado a la empresa');
+        }
+        void Promise.all([loadApiContacts(), loadApiOpportunities()]).catch(() => {
+          /* reconciliar con servidor; fallo silencioso para no duplicar toasts de éxito */
+        });
+      } catch (e) {
+        removePendingContact(optId);
+        toast.error(e instanceof Error ? e.message : 'No se pudo crear el contacto');
+      }
+    })();
+    return;
   }
+  addContact({
+    name: data.name,
+    cargo: data.cargo,
+    docType: data.docType,
+    docNumber: data.docNumber,
+    companies: [{ name: companyName, rubro: companyData?.rubro, tipo: companyData?.tipo }],
+    telefono: data.phone || '',
+    correo: data.email || '',
+    fuente: data.source,
+    assignedTo: data.assignedTo || defaultAssignedTo,
+    estimatedValue: 0,
+    clienteRecuperado: data.clienteRecuperado,
+    departamento: data.departamento,
+    provincia: data.provincia,
+    distrito: data.distrito,
+    direccion: data.direccion,
+  });
+  
+  if (opportunityIdsToLink.length > 0) {
+    const newContactId = `temp-${Date.now()}`;
+    for (const oppId of opportunityIdsToLink) {
+      updateOpportunity(oppId, { contactId: newContactId, contactName: data.name });
+    }
+    toast.success(`Contacto creado y vinculado a ${opportunityIdsToLink.length} oportunidad${opportunityIdsToLink.length > 1 ? 'es' : ''}`);
+  } else {
+    toast.success('Contacto creado y vinculado a la empresa');
+  }
+  setNewContactOpen(false);
+}
 
   function handleLinkContacts() {
     if (linkContactIds.length === 0) return;
@@ -783,6 +871,10 @@ export default function EmpresaDetailPage() {
   }
 
   async function handleRemoveContact(contact: { id: string }) {
+    if (isPendingContactId(contact.id)) {
+      toast.info('Espera a que termine de guardarse el contacto');
+      return;
+    }
     const c = companyContacts.find((l) => l.id === contact.id);
     if (!c) return;
     if (fromApiById && routeId && isLikelyContactCuid(contact.id)) {
@@ -910,8 +1002,7 @@ export default function EmpresaDetailPage() {
           onEdit={handleOpenEditDialog}
         />
       )}
-      sidebar={
-        <>
+      leftAside={
           <EntityInfoCard
             title="Información"
             collapsible
@@ -1000,7 +1091,9 @@ export default function EmpresaDetailPage() {
                 : []),
             ]}
           />
-
+      }
+      sidebar={
+        <>
           {(fromApiById || !isStandalone) && (
             <>
               <LinkedOpportunitiesCard
@@ -1019,6 +1112,13 @@ export default function EmpresaDetailPage() {
             onCreate={() => setNewContactOpen(true)}
             onAddExisting={() => setAddExistingContactOpen(true)}
             onRemove={handleRemoveContact}
+            onContactNavigate={(c) => {
+              if (isPendingContactId(c.id)) {
+                toast.info('El contacto se está guardando; en unos segundos podrás abrir el detalle.');
+                return;
+              }
+              navigate(contactDetailHref(c));
+            }}
           />
         </>
       }
@@ -1178,21 +1278,25 @@ export default function EmpresaDetailPage() {
       emptyMessage="No hay oportunidades disponibles para vincular."
     />
 
-    {/* Crear nuevo contacto */}
-    <NewContactWizard
-      open={newContactOpen}
-      onOpenChange={setNewContactOpen}
-      onSubmit={handleCreateNewContact}
-      title="Crear nuevo contacto"
-      description={`Crea un nuevo contacto vinculado a ${companyName}.`}
-      submitLabel="Crear y vincular"
-      lockCompanySelection
-      defaultValues={{
-        company: companyName,
-        companyId: resolvedCompanyId,
-        etapaCiclo: 'lead',
-      }}
-    />
+{/* Crear nuevo contacto */}
+<NewContactWizard
+  open={newContactOpen}
+  onOpenChange={setNewContactOpen}
+  onSubmit={handleCreateNewContact}
+  title="Crear nuevo contacto"
+  description={`Crea un nuevo contacto vinculado a ${companyName}.`}
+  submitLabel="Crear y vincular"
+  lockCompanySelection
+  defaultCompanyId={resolvedCompanyId}
+  defaultOpportunityIds={companyOpportunities
+    .filter(o => !o.contactId)
+    .map(o => o.id)}
+  defaultValues={{
+    company: companyName,
+    companyId: resolvedCompanyId,
+    etapaCiclo: 'lead',
+  }}
+/>
 
     {/* Vincular contacto existente */}
     <LinkExistingDialog

@@ -13,7 +13,10 @@ interface DetailLayoutProps {
   quickActions?: React.ReactNode;
   summaryCards?: React.ReactNode;
   children: React.ReactNode;
+  /** Columna derecha (p. ej. vinculados). */
   sidebar?: React.ReactNode;
+  /** Columna izquierda (p. ej. información del contacto). Si existe junto con `sidebar`, hay 3 columnas en `xl`. */
+  leftAside?: React.ReactNode;
   className?: string;
 }
 
@@ -28,9 +31,12 @@ export function DetailLayout({
   summaryCards,
   children,
   sidebar,
+  leftAside,
   className,
 }: DetailLayoutProps) {
   const navigate = useNavigate();
+  const threeColumn = Boolean(leftAside && sidebar);
+  const twoColumnSidebar = Boolean(sidebar && !leftAside);
 
   return (
     <div className={cn('text-text-primary', className)}>
@@ -59,20 +65,49 @@ export function DetailLayout({
         </div>
       )}
 
-      <div className="mx-auto w-full max-w-7xl pt-2 md:pt-4">
+      <div
+        className={cn(
+          'mx-auto w-full pt-2 md:pt-6',
+          threeColumn ? 'max-w-[min(100%,108rem)]' : 'max-w-7xl',
+        )}
+      >
         <div
           className={cn(
             'flex flex-col items-start gap-6',
-            sidebar && 'lg:flex-row',
+            twoColumnSidebar && 'lg:flex-row',
+            /* Trío: sin pt en laterales para alinear su borde superior con la barra de tabs del centro. */
+            threeColumn &&
+              'xl:grid xl:[grid-template-columns:minmax(0,12fr)_minmax(0,24fr)_minmax(0,12fr)] xl:items-start',
           )}
         >
-          <div className="min-w-0 flex-1 space-y-6 lg:max-w-[65%]">
+          {leftAside ? (
+            <aside
+              className={cn(
+                'w-full space-y-4',
+                threeColumn && 'min-w-0',
+              )}
+            >
+              {leftAside}
+            </aside>
+          ) : null}
+          <div
+            className={cn(
+              'min-w-0 flex-1 space-y-6',
+              twoColumnSidebar && 'lg:max-w-[65%]',
+            )}
+          >
             {quickActions}
             {summaryCards}
             {children}
           </div>
           {sidebar ? (
-            <aside className="w-full space-y-4 lg:w-[35%] lg:flex-shrink-0 lg:pt-14">
+            <aside
+              className={cn(
+                'w-full space-y-4',
+                twoColumnSidebar && 'lg:w-[35%] lg:flex-shrink-0 lg:pt-14',
+                threeColumn && 'min-w-0',
+              )}
+            >
               {sidebar}
             </aside>
           ) : null}

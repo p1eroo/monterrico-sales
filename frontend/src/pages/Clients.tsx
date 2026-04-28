@@ -220,6 +220,7 @@ export default function Clients() {
                 description: `Se exportaron ${filteredClients.length} clientes.`,
               });
             }}
+            className="bg-card"
           >
             <Download className="size-4" /> Exportar
           </Button>
@@ -253,18 +254,18 @@ export default function Clients() {
       )}
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-        <div className="relative w-[280px]">
+        <div className="relative w-[580px]">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Buscar por empresa, contacto, email o teléfono…"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9"
+            className="pl-9 bg-card"
           />
         </div>
         <div className="flex flex-wrap items-center gap-2 flex-1">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-auto">
+            <SelectTrigger className="w-auto bg-card">
               <div className="flex items-center gap-1.5">
                 <Globe className="size-3.5" />
                 <SelectValue placeholder="Estado" />
@@ -282,7 +283,7 @@ export default function Clients() {
             onValueChange={setAssigneeFilter}
             disabled={!canSeeAllAdvisors}
           >
-            <SelectTrigger className="w-auto">
+            <SelectTrigger className="w-auto bg-card">
               <div className="flex items-center gap-1.5">
                 <User className="size-3.5" />
                 <SelectValue placeholder="Asesor" />
@@ -306,9 +307,10 @@ export default function Clients() {
           rows={8}
           aria-label="Cargando clientes"
           roundedClass="rounded-lg"
+          className="bg-card"
         />
       ) : (
-      <div className="overflow-x-auto rounded-lg border">
+      <div className="overflow-x-auto rounded-lg border bg-card">
         <Table>
           <TableHeader>
             <TableRow>

@@ -24,6 +24,8 @@ interface LinkedContactsCardProps {
   onCreate?: () => void;
   onAddExisting?: () => void;
   onRemove?: (contact: LinkedContact) => void;
+  /** Si se define, sustituye la navegación por defecto al detalle (p. ej. contacto optimista aún guardándose). */
+  onContactNavigate?: (contact: LinkedContact) => void;
   maxItems?: number;
   variant?: 'full' | 'compact';
 }
@@ -34,6 +36,7 @@ export function LinkedContactsCard({
   onCreate,
   onAddExisting,
   onRemove,
+  onContactNavigate,
   maxItems = 3,
   variant = 'full',
 }: LinkedContactsCardProps) {
@@ -52,7 +55,7 @@ export function LinkedContactsCard({
       onRemove={onRemove}
       getUnlinkLabel={(c) => c.name}
       getItemKey={(c) => c.id}
-      onItemClick={(c) => navigate(contactDetailHref(c))}
+      onItemClick={(c) => (onContactNavigate ? onContactNavigate(c) : navigate(contactDetailHref(c)))}
       collapsible
       renderItem={(contact, itemActions) => {
         const cargoLine = optionalContactCargoFromApi(contact.cargo);

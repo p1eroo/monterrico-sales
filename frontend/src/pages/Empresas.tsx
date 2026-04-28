@@ -950,6 +950,7 @@ export default function EmpresasPage() {
             disabled={exportBusy}
             title="Sin id: RUC enriquece con SUNAT; columnas contacto_* y etapa como en contactos; oportunidad al vincular contacto."
             onClick={() => void handleCompanyTemplate()}
+            className="bg-card"
           >
             {exportBusy ? <Loader2 className="size-4 animate-spin" /> : <FileSpreadsheet className="size-4" />}{' '}
             Plantilla
@@ -961,6 +962,7 @@ export default function EmpresasPage() {
             disabled={importBusy}
             title="Por fila: empresa (reutiliza si nombre/RUC existe), contacto opcional con DNI/CEE Factiliza, misma lógica de etapa que contactos."
             onClick={openCompanyImport}
+            className="bg-card"
           >
             {importBusy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}{' '}
             Importar
@@ -971,6 +973,7 @@ export default function EmpresasPage() {
             variant="outline"
             disabled={exportBusy}
             onClick={() => void handleCompanyExport()}
+            className="bg-card"
           >
             {exportBusy ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}{' '}
             Exportar
@@ -993,11 +996,11 @@ export default function EmpresasPage() {
                 setSearch(e.target.value);
                 setPage(1);
               }}
-              className="pl-9"
+              className="pl-9 bg-card"
             />
           </div>
           <Select value={sourceFilter} onValueChange={(v) => { setSourceFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-auto">
+            <SelectTrigger className="w-auto bg-card">
               <div className="flex items-center gap-3">
                 <Globe className="size-3.5" />
                 <SelectValue placeholder="Fuente" />
@@ -1011,7 +1014,7 @@ export default function EmpresasPage() {
             </SelectContent>
           </Select>
           <Select value={etapaFilter} onValueChange={(v) => { setEtapaFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-auto">
+            <SelectTrigger className="w-auto bg-card">
               <div className="flex items-center gap-3">
                 <Tag className="size-3.5" />
                 <SelectValue placeholder="Etapa" />
@@ -1025,7 +1028,7 @@ export default function EmpresasPage() {
             </SelectContent>
           </Select>
           <Select value={rubroFilter} onValueChange={(v) => { setRubroFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-auto">
+            <SelectTrigger className="w-auto bg-card">
               <div className="flex items-center gap-3">
                 <MapPin className="size-3.5" />
                 <SelectValue placeholder="Rubro" />
@@ -1039,7 +1042,7 @@ export default function EmpresasPage() {
             </SelectContent>
           </Select>
           <Select value={tipoFilter} onValueChange={(v) => { setTipoFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-auto">
+            <SelectTrigger className="w-auto bg-card">
               <div className="flex items-center gap-3">
                 <Building2 className="size-3.5" />
                 <SelectValue placeholder="Tipo" />
@@ -1057,7 +1060,7 @@ export default function EmpresasPage() {
             onValueChange={(v) => { setAdvisorFilter(v); setPage(1); }}
             disabled={!canSeeAllAdvisors}
           >
-            <SelectTrigger className="w-auto">
+            <SelectTrigger className="w-auto bg-card">
               <div className="flex items-center gap-3">
                 <User className="size-3.5" />
                 <SelectValue placeholder="Asesor" />
@@ -1071,7 +1074,7 @@ export default function EmpresasPage() {
             </SelectContent>
           </Select>
 
-          <div className="ml-auto flex items-center rounded-md border">
+          <div className="ml-auto flex items-center rounded-md border bg-card">
             <Button
               variant={viewMode === 'table' ? 'secondary' : 'ghost'}
               size="icon-sm"
@@ -1100,6 +1103,7 @@ export default function EmpresasPage() {
               columns={[...EMPRESAS_TABLE_SKELETON_COLUMNS]}
               rows={10}
               aria-label="Cargando empresas"
+              className="bg-card"
             />
           ) : (
             <CrmEntityCardGridSkeleton count={8} aria-label="Cargando empresas" />
@@ -1113,7 +1117,7 @@ export default function EmpresasPage() {
             onAction={() => setNewEmpresaOpen(true)}
           />
         ) : viewMode === 'table' ? (
-          <div className="rounded-md border">
+          <div className="rounded-md border bg-card">
             <Table>
               <TableHeader>
                 <TableRow>

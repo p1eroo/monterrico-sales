@@ -84,6 +84,29 @@ import {
 
 const ITEMS_PER_PAGE = 25;
 
+/** Tras crear un contacto, vincula oportunidades existentes por PATCH (mismo criterio que detalle de oportunidad). */
+async function linkNewContactToOpportunities(
+  contactId: string,
+  opportunityIds: string[] | undefined,
+): Promise<{ linked: number; hadError: boolean }> {
+  const unique = [...new Set(opportunityIds ?? [])].filter((id) => isLikelyOpportunityCuid(id));
+  if (unique.length === 0) return { linked: 0, hadError: false };
+  let linked = 0;
+  let hadError = false;
+  for (const oppId of unique) {
+    try {
+      await api(`/opportunities/${oppId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ contactId }),
+      });
+      linked += 1;
+    } catch {
+      hadError = true;
+    }
+  }
+  return { linked, hadError };
+}
+
 const CONTACTOS_TABLE_SKELETON_COLUMNS = [
   { label: '', className: 'w-10', skeletonCell: 'checkbox' as const },
   { label: 'Nombre', className: 'min-w-0 max-w-[20rem]' },
@@ -417,11 +440,16 @@ export default function ContactosPage() {
           }),
         );
 
+        let linkedOpps = 0;
+        let hadOppLinkError = false;
         try {
-          await api<ApiContactDetail>('/contacts', {
+          const created = await api<ApiContactDetail>('/contacts', {
             method: 'POST',
             body: JSON.stringify(body),
           });
+          const r = await linkNewContactToOpportunities(created.id, data.selectedOpportunityIds);
+          linkedOpps = r.linked;
+          hadOppLinkError = r.hadError;
         } catch (e) {
           removePendingContact(optId);
           toast.error(
@@ -432,9 +460,12 @@ export default function ContactosPage() {
 
         removePendingContact(optId);
         await loadApiContacts();
-        toast.success(
-          `Contacto "${data.name}" creado · empresa "${w.nombreComercial.trim()}" actualizada`,
-        );
+        let successMsg = `Contacto "${data.name}" creado · empresa "${w.nombreComercial.trim()}" actualizada`;
+        if (linkedOpps > 0) {
+          successMsg += ` · ${linkedOpps} oportunidad${linkedOpps > 1 ? 'es' : ''} vinculada${linkedOpps > 1 ? 's' : ''}`;
+          if (hadOppLinkError) successMsg += ' (algunas oportunidades no se pudieron vincular)';
+        }
+        toast.success(successMsg);
         setNewContactOpen(false);
         return;
       }
@@ -506,6 +537,8 @@ export default function ContactosPage() {
 
       let contactId: string;
       let companyId: string | undefined;
+      let linkedExistingOpps = 0;
+      let hadExistingOppErr = false;
       try {
         const created = await api<ApiContactDetail>('/contacts', {
           method: 'POST',
@@ -513,6 +546,9 @@ export default function ContactosPage() {
         });
         contactId = created.id;
         companyId = primaryCompanyIdFromApiContact(created);
+        const r = await linkNewContactToOpportunities(contactId, data.selectedOpportunityIds);
+        linkedExistingOpps = r.linked;
+        hadExistingOppErr = r.hadError;
       } catch (e) {
         removePendingContact(optId);
         toast.error(
@@ -562,7 +598,12 @@ export default function ContactosPage() {
       removePendingContact(optId);
       await loadApiContacts();
       const msgParts = [`Contacto "${data.name}"`, `empresa "${w.nombreComercial.trim()}"`];
-      if (w.nombreNegocio.trim()) msgParts.push('oportunidad vinculada');
+      if (w.nombreNegocio.trim()) msgParts.push('oportunidad nueva desde el asistente');
+      if (linkedExistingOpps > 0) {
+        msgParts.push(
+          `${linkedExistingOpps} oportunidad existente vinculada${hadExistingOppErr ? ' (algunas no se pudieron vincular)' : ''}`,
+        );
+      }
       toast.success(`${msgParts.join(' · ')} — creados correctamente`);
       setNewContactOpen(false);
       return;
@@ -622,11 +663,16 @@ export default function ContactosPage() {
       }),
     );
 
+    let linkedListOpps = 0;
+    let hadListOppErr = false;
     try {
-      await api('/contacts', {
+      const created = await api<ApiContactDetail>('/contacts', {
         method: 'POST',
         body: JSON.stringify(body),
       });
+      const r = await linkNewContactToOpportunities(created.id, data.selectedOpportunityIds);
+      linkedListOpps = r.linked;
+      hadListOppErr = r.hadError;
     } catch (e) {
       removePendingContact(optIdSimple);
       toast.error(
@@ -637,7 +683,12 @@ export default function ContactosPage() {
 
     removePendingContact(optIdSimple);
     await loadApiContacts();
-    toast.success(`Contacto "${data.name}" creado exitosamente`);
+    let doneMsg = `Contacto "${data.name}" creado exitosamente`;
+    if (linkedListOpps > 0) {
+      doneMsg += ` · ${linkedListOpps} oportunidad${linkedListOpps > 1 ? 'es' : ''} vinculada${linkedListOpps > 1 ? 's' : ''}`;
+      if (hadListOppErr) doneMsg += ' (algunas oportunidades no se pudieron vincular)';
+    }
+    toast.success(doneMsg);
     setNewContactOpen(false);
   }
 
@@ -883,6 +934,7 @@ export default function ContactosPage() {
             disabled={exportBusy}
             title="Sin id: usa empresa_nombre y empresa_ruc para vincular o crear empresa"
             onClick={() => void handleContactTemplate()}
+            className="bg-card"
           >
             {exportBusy ? <Loader2 className="size-4 animate-spin" /> : <FileSpreadsheet className="size-4" />}{' '}
             Plantilla
@@ -894,6 +946,7 @@ export default function ContactosPage() {
             disabled={importBusy}
             title="Obligatorio: valor_estimado (>0). Nombre o DNI (8 dígitos en doc_numero) para RENIEC vía Factiliza. Si indicas nombre en el archivo, prevalece sobre el de la API. doc_tipo vacío o DNI."
             onClick={openContactImport}
+            className="bg-card"
           >
             {importBusy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}{' '}
             Importar
@@ -904,6 +957,7 @@ export default function ContactosPage() {
             variant="outline"
             disabled={exportBusy}
             onClick={() => void handleContactExport()}
+            className="bg-card"
           >
             {exportBusy ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}{' '}
             Exportar
@@ -922,12 +976,12 @@ export default function ContactosPage() {
             placeholder="Buscar por nombre, empresa, email o teléfono..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            className="pl-9"
+            className="pl-9 bg-card"
           />
         </div>
         <div className="flex flex-wrap items-center gap-2 flex-1">
           <Select value={sourceFilter} onValueChange={(v) => { setSourceFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-auto">
+            <SelectTrigger className="w-auto bg-card">
               <div className="flex items-center gap-1.5">
                 <Globe className="size-3.5" />
                 <SelectValue placeholder="Fuente" />
@@ -942,7 +996,7 @@ export default function ContactosPage() {
           </Select>
 
           <Select value={etapaFilter} onValueChange={(v) => { setEtapaFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-auto">
+            <SelectTrigger className="w-auto bg-card">
               <div className="flex items-center gap-1.5">
                 <Tag className="size-3.5" />
                 <SelectValue placeholder="Etapa" />
@@ -961,7 +1015,7 @@ export default function ContactosPage() {
             onValueChange={(v) => { setAdvisorFilter(v); setPage(1); }}
             disabled={!canSeeAllAdvisors}
           >
-            <SelectTrigger className="w-auto">
+            <SelectTrigger className="w-auto bg-card">
               <div className="flex items-center gap-1.5">
                 <User className="size-3.5" />
                 <SelectValue placeholder="Asesor" />
@@ -981,7 +1035,7 @@ export default function ContactosPage() {
             </Button>
           )}
 
-          <div className="ml-auto flex items-center rounded-md border">
+          <div className="ml-auto flex items-center rounded-md border bg-card">
             <Button
               variant={viewMode === 'table' ? 'secondary' : 'ghost'}
               size="icon-sm"
@@ -1010,6 +1064,7 @@ export default function ContactosPage() {
               columns={CONTACTOS_TABLE_SKELETON_COLUMNS}
               rows={10}
               aria-label="Cargando contactos"
+              className="bg-card"
             />
           ) : (
             <CrmEntityCardGridSkeleton count={8} aria-label="Cargando contactos" />
@@ -1069,6 +1124,7 @@ export default function ContactosPage() {
               <Button
                 variant="outline"
                 size="sm"
+                className="bg-card"
                 disabled={page <= 1 || loading}
                 onClick={() => setPage((p) => p - 1)}
               >
@@ -1080,6 +1136,7 @@ export default function ContactosPage() {
               <Button
                 variant="outline"
                 size="sm"
+                className="bg-card"
                 disabled={page >= totalPages || loading}
                 onClick={() => setPage((p) => p + 1)}
               >
@@ -1165,7 +1222,7 @@ function ContactsTable({
   onDelete,
 }: ContactsTableProps) {
   return (
-    <div className="rounded-md border">
+    <div className="rounded-md border bg-card">
       <Table>
         <TableHeader>
           <TableRow>

@@ -443,13 +443,14 @@ export default function OpportunitiesPage() {
               variant="outline"
               disabled={exportBusy}
               onClick={() => void handleOppTemplate()}
+              className="bg-card"
             >
               {exportBusy ? <Loader2 className="size-4 animate-spin" /> : <FileSpreadsheet className="size-4" />}{' '}
               Plantilla
             </Button>
           )}
           {hasPermission('oportunidades.crear') && (
-            <Button variant="outline" disabled={importBusy} onClick={openOppImport}>
+            <Button variant="outline" disabled={importBusy} onClick={openOppImport} className="bg-card">
               {importBusy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}{' '}
               Importar
             </Button>
@@ -459,6 +460,7 @@ export default function OpportunitiesPage() {
               variant="outline"
               disabled={exportBusy}
               onClick={() => void handleOppExport()}
+              className="bg-card"
             >
               {exportBusy ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}{' '}
               Exportar
@@ -487,6 +489,7 @@ export default function OpportunitiesPage() {
                   rows={10}
                   aria-label="Cargando lista de oportunidades"
                   roundedClass="rounded-lg"
+                  className="bg-card"
                 />
               ) : (
                 <CrmEntityCardGridSkeleton count={8} aria-label="Cargando tarjetas de oportunidades" />
@@ -540,12 +543,12 @@ export default function OpportunitiesPage() {
             placeholder="Buscar por nombre, contacto o cliente..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
+            className="pl-9 bg-card"
           />
         </div>
         <div className="flex flex-wrap items-center gap-2 flex-1">
           <Select value={etapaFilter} onValueChange={setEtapaFilter}>
-            <SelectTrigger className="w-auto">
+            <SelectTrigger className="w-auto bg-card">
               <div className="flex items-center gap-1.5">
                 <Tag className="size-3.5" />
                 <SelectValue placeholder="Etapa" />
@@ -560,7 +563,7 @@ export default function OpportunitiesPage() {
           </Select>
 
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-auto">
+            <SelectTrigger className="w-auto bg-card">
               <div className="flex items-center gap-1.5">
                 <Globe className="size-3.5" />
                 <SelectValue placeholder="Estado" />
@@ -579,7 +582,7 @@ export default function OpportunitiesPage() {
             onValueChange={setAssigneeFilter}
             disabled={!canSeeAllAdvisors}
           >
-            <SelectTrigger className="w-auto">
+            <SelectTrigger className="w-auto bg-card">
               <div className="flex items-center gap-1.5">
                 <User className="size-3.5" />
                 <SelectValue placeholder="Asesor" />
@@ -599,7 +602,7 @@ export default function OpportunitiesPage() {
             </Button>
           )}
 
-          <div className="ml-auto flex items-center rounded-md border">
+          <div className="ml-auto flex items-center rounded-md border bg-card">
             <Button
               variant={viewMode === 'table' ? 'secondary' : 'ghost'}
               size="icon-sm"
@@ -685,18 +688,7 @@ export default function OpportunitiesPage() {
         </>
       )}
 
-      {/* Info footer */}
-      {filteredOpportunities.length > 0 && (
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>
-            {filteredOpportunities.length} oportunidad{filteredOpportunities.length !== 1 && 'es'} &middot; Valor:{' '}
-            <span className="font-semibold text-foreground">
-              {formatCurrency(filteredOpportunities.reduce((s, o) => s + o.amount, 0))}
-            </span>
-          </span>
-        </div>
-      )}
-
+      {/* Pagination */}
       {filteredOpportunities.length > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm text-muted-foreground">
@@ -707,6 +699,7 @@ export default function OpportunitiesPage() {
             <Button
               variant="outline"
               size="sm"
+              className="bg-card"
               disabled={page <= 1}
               onClick={() => setPage((p) => p - 1)}
             >
@@ -718,6 +711,7 @@ export default function OpportunitiesPage() {
             <Button
               variant="outline"
               size="sm"
+              className="bg-card"
               disabled={page >= totalPages}
               onClick={() => setPage((p) => p + 1)}
             >
@@ -801,7 +795,7 @@ function OpportunitiesTable({
   canDelete: boolean;
 }) {
   return (
-    <div className="rounded-lg border">
+    <div className="rounded-lg border bg-card">
       <Table>
         <TableHeader>
           <TableRow>

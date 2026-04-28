@@ -48,15 +48,18 @@ export function CrmDataTableSkeleton({
   rows = 8,
   'aria-label': ariaLabel,
   roundedClass = 'rounded-md',
+  className,
 }: {
   columns: CrmSkeletonColumn[];
   rows?: number;
   'aria-label': string;
   roundedClass?: string;
+  /** p. ej. `bg-card` para alinear con tarjetas KPI en modo oscuro */
+  className?: string;
 }) {
   return (
     <div
-      className={cn('overflow-x-auto border', roundedClass)}
+      className={cn('overflow-x-auto border', roundedClass, className)}
       aria-busy="true"
       aria-live="polite"
       aria-label={ariaLabel}

@@ -34,6 +34,7 @@ import {
   Users,
   MessageSquare,
   CheckSquare,
+  Search,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Contact, Etapa, Opportunity, PipelineColumn } from '@/types';
@@ -64,6 +65,7 @@ import {
   type NewOpportunityFormValues,
 } from '@/components/shared/NewOpportunityFormDialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -817,6 +819,7 @@ export default function Pipeline() {
     }
   }
   const [filters, setFilters] = useState<PipelineFilters>(emptyFilters);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     if (!canSeeAllAdvisors && filters.assignedTo === '') {
@@ -925,7 +928,12 @@ export default function Pipeline() {
     (filters.etapas.length > 0 ? 1 : 0);
 
   const filteredContacts = useMemo(() => {
+    const term = searchTerm.toLowerCase();
     return allContacts.filter((c) => {
+      if (term && !c.name.toLowerCase().includes(term) &&
+          !getPrimaryCompany(c)?.name?.toLowerCase().includes(term) &&
+          !c.telefono?.includes(term) &&
+          !c.correo?.toLowerCase().includes(term)) return false;
       if (filters.assignedTo && c.assignedTo !== filters.assignedTo) return false;
       if (filters.etapas.length > 0 && !filters.etapas.includes(c.etapa)) return false;
       if (filters.rubro) {
@@ -934,7 +942,7 @@ export default function Pipeline() {
       }
       return true;
     });
-  }, [allContacts, filters]);
+  }, [allContacts, filters, searchTerm]);
 
   const pipeline = useMemo(() => {
     const all = buildPipeline(filteredContacts, displayColumns);
@@ -1051,7 +1059,7 @@ export default function Pipeline() {
             Arrastra las tarjetas entre columnas para cambiar la etapa del contacto.
           </p>
         </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
+<div className="flex shrink-0 flex-wrap items-center gap-2">
           <span className="text-sm font-medium text-muted-foreground">
             Valor total:{' '}
             {initialPipelineLoad ? (
@@ -1062,7 +1070,7 @@ export default function Pipeline() {
           </span>
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className={cn(activeFilterCount > 0 && 'border-primary text-primary')}>
+              <Button variant="outline" size="sm" className={cn('bg-white dark:bg-gray-900', activeFilterCount > 0 && 'border-primary text-primary')}>
                 <Filter className="size-4" />
                 Filtros
                 {activeFilterCount > 0 && (
@@ -1093,6 +1101,16 @@ export default function Pipeline() {
                       Limpiar
                     </Button>
                   )}
+                </div>
+
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="h-8 pl-8 text-xs bg-white dark:bg-gray-900"
+                  />
                 </div>
 
                 <div className="space-y-2">

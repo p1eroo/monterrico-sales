@@ -465,126 +465,144 @@ export default function OportunidadDetailPage() {
     toast.success('Etapa actualizada correctamente');
   }
 
-  async function handleCreateNewContact(data: NewContactData) {
-    if (!opp) return;
-    if (fromApi && routeId) {
-      try {
-        const w = data.newCompanyWizardData;
-        const today = new Date().toISOString().slice(0, 10);
-        const baseBody: Record<string, unknown> = {
-          name: data.name.trim(),
-          telefono: data.phone?.trim() || '',
-          correo: data.email?.trim() || '',
-          fuente: data.source,
-          cargo: data.cargo?.trim() || undefined,
-          etapa: data.etapaCiclo,
-          assignedTo: data.assignedTo?.trim() || opp.assignedTo || undefined,
-          estimatedValue: data.estimatedValue ?? 0,
-          docType: data.docType || undefined,
-          docNumber: data.docNumber?.trim() || undefined,
-          departamento: data.departamento?.trim() || undefined,
-          provincia: data.provincia?.trim() || undefined,
-          distrito: data.distrito?.trim() || undefined,
-          direccion: data.direccion?.trim() || undefined,
-          clienteRecuperado: data.clienteRecuperado || undefined,
-          etapaHistory: [{ etapa: data.etapaCiclo, fecha: today }],
-        };
+async function handleCreateNewContact(data: NewContactData) {
+  if (!opp) return;
+  const opportunityIdsToLink = data.selectedOpportunityIds ?? [];
+  const allOppIds = [...new Set([opp.id, ...opportunityIdsToLink])];
+  
+  if (fromApi && routeId) {
+    try {
+      const w = data.newCompanyWizardData;
+      const today = new Date().toISOString().slice(0, 10);
+      const baseBody: Record<string, unknown> = {
+        name: data.name.trim(),
+        telefono: data.phone?.trim() || '',
+        correo: data.email?.trim() || '',
+        fuente: data.source,
+        cargo: data.cargo?.trim() || undefined,
+        etapa: data.etapaCiclo,
+        assignedTo: data.assignedTo?.trim() || opp.assignedTo || undefined,
+        estimatedValue: data.estimatedValue ?? 0,
+        docType: data.docType || undefined,
+        docNumber: data.docNumber?.trim() || undefined,
+        departamento: data.departamento?.trim() || undefined,
+        provincia: data.provincia?.trim() || undefined,
+        distrito: data.distrito?.trim() || undefined,
+        direccion: data.direccion?.trim() || undefined,
+        clienteRecuperado: data.clienteRecuperado || undefined,
+        etapaHistory: [{ etapa: data.etapaCiclo, fecha: today }],
+      };
 
-        if (w) {
-          const coPatchId = data.newCompanyWizardUpdate?.companyId;
-          if (coPatchId) {
-            if (!w.origenLead) {
-              toast.error('Selecciona la fuente del lead en el wizard de empresa');
-              return;
-            }
-            try {
-              await api(`/companies/${coPatchId}`, {
-                method: 'PATCH',
-                body: JSON.stringify(newCompanyDataToPatchBody(w)),
-              });
-            } catch (err) {
-              toast.error(
-                err instanceof Error ? err.message : 'No se pudo actualizar la empresa',
-              );
-              return;
-            }
-            baseBody.companyId = coPatchId;
-          } else {
-            const factEmpresa = (() => {
-              const f = Number(w.facturacion);
-              if (Number.isFinite(f) && f > 0) return f;
-              return 0;
-            })();
-            if (factEmpresa <= 0) {
-              toast.error(
-                'Indica facturación estimada de la empresa en el asistente (paso comercial u oportunidad).',
-              );
-              return;
-            }
-            if (!w.origenLead) {
-              toast.error('Selecciona la fuente del lead en el wizard de empresa');
-              return;
-            }
-            baseBody.newCompany = {
-              name: w.nombreComercial.trim(),
-              razonSocial: w.razonSocial.trim() || undefined,
-              ruc: w.ruc.trim() || undefined,
-              telefono: w.telefono.trim() || undefined,
-              domain: w.dominio.trim() || undefined,
-              rubro: w.rubro || undefined,
-              tipo: w.tipoEmpresa || undefined,
-              linkedin: w.linkedin.trim() || undefined,
-              correo: w.correo.trim() || undefined,
-              distrito: w.distrito.trim() || undefined,
-              provincia: w.provincia.trim() || undefined,
-              departamento: w.departamento.trim() || undefined,
-              direccion: w.direccion.trim() || undefined,
-              facturacionEstimada: factEmpresa,
-              fuente: w.origenLead,
-              clienteRecuperado: w.clienteRecuperado,
-              etapa: w.etapa,
-              ...(w.propietario && isLikelyContactCuid(w.propietario)
-                ? { assignedTo: w.propietario }
-                : {}),
-            };
+      if (w) {
+        const coPatchId = data.newCompanyWizardUpdate?.companyId;
+        if (coPatchId) {
+          if (!w.origenLead) {
+            toast.error('Selecciona la fuente del lead en el wizard de empresa');
+            return;
           }
-        } else if (data.companyId) {
-          baseBody.companyId = data.companyId;
+          try {
+            await api(`/companies/${coPatchId}`, {
+              method: 'PATCH',
+              body: JSON.stringify(newCompanyDataToPatchBody(w)),
+            });
+          } catch (err) {
+            toast.error(
+              err instanceof Error ? err.message : 'No se pudo actualizar la empresa',
+            );
+            return;
+          }
+          baseBody.companyId = coPatchId;
+        } else {
+          const factEmpresa = (() => {
+            const f = Number(w.facturacion);
+            if (Number.isFinite(f) && f > 0) return f;
+            return 0;
+          })();
+          if (factEmpresa <= 0) {
+            toast.error(
+              'Indica facturación estimada de la empresa en el asistente (paso comercial u oportunidad).',
+            );
+            return;
+          }
+          if (!w.origenLead) {
+            toast.error('Selecciona la fuente del lead en el wizard de empresa');
+            return;
+          }
+          baseBody.newCompany = {
+            name: w.nombreComercial.trim(),
+            razonSocial: w.razonSocial.trim() || undefined,
+            ruc: w.ruc.trim() || undefined,
+            telefono: w.telefono.trim() || undefined,
+            domain: w.dominio.trim() || undefined,
+            rubro: w.rubro || undefined,
+            tipo: w.tipoEmpresa || undefined,
+            linkedin: w.linkedin.trim() || undefined,
+            correo: w.correo.trim() || undefined,
+            distrito: w.distrito.trim() || undefined,
+            provincia: w.provincia.trim() || undefined,
+            departamento: w.departamento.trim() || undefined,
+            direccion: w.direccion.trim() || undefined,
+            facturacionEstimada: factEmpresa,
+            fuente: w.origenLead,
+            clienteRecuperado: w.clienteRecuperado,
+            etapa: w.etapa,
+            ...(w.propietario && isLikelyContactCuid(w.propietario)
+              ? { assignedTo: w.propietario }
+              : {}),
+          };
         }
-
-        const createdContact = await api<ApiContactDetail>('/contacts', {
-          method: 'POST',
-          body: JSON.stringify(baseBody),
-        });
-        const updated = await api<ApiOpportunityDetail>(`/opportunities/${routeId}`, {
-          method: 'PATCH',
-          body: JSON.stringify({ contactId: createdContact.id }),
-        });
-        setApiRecord(updated);
-        setNewContactOpen(false);
-        toast.success('Contacto creado y vinculado a la oportunidad');
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'No se pudo crear el contacto');
+      } else if (data.companyId) {
+        baseBody.companyId = data.companyId;
       }
-      return;
+
+      const createdContact = await api<ApiContactDetail>('/contacts', {
+        method: 'POST',
+        body: JSON.stringify(baseBody),
+      });
+      
+      for (const oppId of allOppIds) {
+        if (isLikelyOpportunityCuid(oppId)) {
+          await api(`/opportunities/${oppId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ contactId: createdContact.id }),
+          });
+        }
+      }
+      
+      const updated = await api<ApiOpportunityDetail>(`/opportunities/${routeId}`);
+      setApiRecord(updated);
+      setNewContactOpen(false);
+      toast.success(allOppIds.length > 1 
+        ? `Contacto creado y vinculado a ${allOppIds.length} oportunidades`
+        : 'Contacto creado y vinculado a la oportunidad');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'No se pudo crear el contacto');
     }
-    const newContact = addContact({
-      name: data.name,
-      cargo: data.cargo,
-      docType: data.docType,
-      docNumber: data.docNumber,
-      companies: data.company ? [{ name: data.company }] : [],
-      telefono: data.phone || '',
-      correo: data.email || '',
-      fuente: data.source,
-      assignedTo: data.assignedTo || opp.assignedTo,
-      estimatedValue: 0,
-      clienteRecuperado: data.clienteRecuperado,
-    });
-    updateOpportunity(opp.id, { contactId: newContact.id, contactName: newContact.name });
-    toast.success('Contacto creado y vinculado a la oportunidad');
-    setNewContactOpen(false);
+    return;
   }
+  const newContact = addContact({
+    name: data.name,
+    cargo: data.cargo,
+    docType: data.docType,
+    docNumber: data.docNumber,
+    companies: data.company ? [{ name: data.company }] : [],
+    telefono: data.phone || '',
+    correo: data.email || '',
+    fuente: data.source,
+    assignedTo: data.assignedTo || opp.assignedTo,
+    estimatedValue: 0,
+    clienteRecuperado: data.clienteRecuperado,
+  });
+  
+  for (const oppId of allOppIds) {
+    updateOpportunity(oppId, { contactId: newContact.id, contactName: newContact.name });
+  }
+  
+  toast.success(allOppIds.length > 1 
+    ? `Contacto creado y vinculado a ${allOppIds.length} oportunidades`
+    : 'Contacto creado y vinculado a la oportunidad');
+  setNewContactOpen(false);
+}
 
   async function handleLinkContacts() {
     if (linkContactIds.length === 0 || !opp) return;
@@ -852,8 +870,7 @@ export default function OportunidadDetailPage() {
           onEdit={handleOpenEditDialog}
         />
       )}
-      sidebar={
-        <>
+      leftAside={
           <EntityInfoCard
             title="Información"
             collapsible
@@ -865,7 +882,9 @@ export default function OportunidadDetailPage() {
               { icon: CalendarDays, value: `Creada: ${formatDate(opp.createdAt)}` },
             ]}
           />
-
+      }
+      sidebar={
+        <>
           <LinkedCompaniesCard
             companies={primaryCompany ? [primaryCompany] : (linkedContact?.companies ?? [])}
             onCreate={() => setNewCompanyDialogOpen(true)}
@@ -1011,15 +1030,17 @@ export default function OportunidadDetailPage() {
       </Tabs>
     </DetailLayout>
 
-    {/* Crear nuevo contacto */}
-    <NewContactWizard
-      open={newContactOpen}
-      onOpenChange={setNewContactOpen}
-      onSubmit={handleCreateNewContact}
-      title="Crear nuevo contacto"
-      description={`Crea un nuevo contacto vinculado a la oportunidad "${opp.title}".`}
-      submitLabel="Crear y vincular"
-    />
+{/* Crear nuevo contacto */}
+<NewContactWizard
+  open={newContactOpen}
+  onOpenChange={setNewContactOpen}
+  onSubmit={handleCreateNewContact}
+  title="Crear nuevo contacto"
+  description={`Crea un nuevo contacto vinculado a la oportunidad "${opp.title}".`}
+  submitLabel="Crear y vincular"
+  defaultCompanyId={opp.clientId}
+  defaultOpportunityIds={!opp.contactId ? [opp.id] : []}
+/>
 
     {/* Vincular contacto existente */}
     <LinkExistingDialog

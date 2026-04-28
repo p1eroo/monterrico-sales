@@ -1,6 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
-  Search,
   User,
   Settings,
   LogOut,
@@ -15,7 +14,6 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -87,14 +85,6 @@ export function Topbar() {
       </Breadcrumb>
 
       <div className="ml-auto flex items-center gap-2">
-        <div className="relative hidden md:block">
-          <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-text-tertiary" />
-          <Input
-            placeholder="Buscar..."
-            className="h-8 w-56 border-border/80 bg-card pl-8 text-sm"
-          />
-        </div>
-
         <NotificationCenter />
 
         <AssistantLauncherButton />

@@ -1,13 +1,14 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useCrmConfigStore } from '@/store/crmConfigStore';
 import { toast } from 'sonner';
-import { Check, ChevronLeft, ChevronRight, ChevronsUpDown, Loader2, Plus, Building2 } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Loader2, Building2, Link2, Briefcase, Search, ChevronDown } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import type { Etapa, ContactSource } from '@/types';
-import { contactSourceLabels, etapaLabels, companyRubroLabels } from '@/data/mock';
+import { contactSourceLabels, etapaLabels } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
 import { companyListAll, type ApiCompanyRecord } from '@/lib/companyApi';
+import { opportunityListAll, type ApiOpportunityListRow } from '@/lib/opportunityApi';
 import { factilizaApi } from '@/lib/factilizaApi';
-import { cn } from '@/lib/utils';
 
 /** Convierte "APELLIDO APELLIDO, NOMBRES" → "Nombres Apellido Apellido" con mayúscula inicial */
 function formatNombreCompleto(nombreCompleto: string): string {
@@ -38,13 +39,11 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   NewCompanyWizard,
   type NewCompanyData,
   type NewCompanyWizardSubmitMeta,
 } from '@/components/shared/NewCompanyWizard';
-import { LinkExistingDialog, type LinkExistingItem } from '@/components/shared/LinkExistingDialog';
 
 export interface NewContactData {
   name: string;
@@ -71,6 +70,8 @@ export interface NewContactData {
   newCompanyWizardData?: NewCompanyData;
   /** Si el RUC ya existía: PATCH empresa y vincular por id (sin crear empresa nueva ni oportunidad desde el wizard) */
   newCompanyWizardUpdate?: { companyId: string };
+  /** IDs de oportunidades seleccionadas en el paso de asociaciones */
+  selectedOpportunityIds?: string[];
 }
 
 interface NewContactWizardProps {
@@ -83,6 +84,10 @@ interface NewContactWizardProps {
   defaultValues?: Partial<NewContactData>;
   /** Si es true, la empresa queda fijada (p. ej. alta desde ficha de empresa); no se crea ni se busca otra. */
   lockCompanySelection?: boolean;
+  /** ID de empresa preseleccionada (vista detallada) */
+  defaultCompanyId?: string;
+  /** IDs de oportunidades preseleccionadas (vista detallada) */
+  defaultOpportunityIds?: string[];
 }
 
 const WIZARD_STEPS = [
@@ -90,6 +95,9 @@ const WIZARD_STEPS = [
   { label: 'Comercial' },
   { label: 'Ubicación' },
 ];
+
+/** Mismo criterio que `TaskFormDialog`: pocas filas visibles; el filtro recorre toda la lista cargada. */
+const ASSOCIATION_PICKER_PAGE_SIZE = 8;
 
 export function NewContactWizard({
   open,
@@ -100,9 +108,17 @@ export function NewContactWizard({
   submitLabel = 'Crear Contacto',
   defaultValues,
   lockCompanySelection = false,
+  defaultCompanyId,
+  defaultOpportunityIds = [],
 }: NewContactWizardProps) {
   const defaultValuesRef = useRef(defaultValues);
   defaultValuesRef.current = defaultValues;
+  const defaultCompanyIdRef = useRef(defaultCompanyId);
+  defaultCompanyIdRef.current = defaultCompanyId;
+  const defaultOpportunityIdsRef = useRef(defaultOpportunityIds);
+  defaultOpportunityIdsRef.current = defaultOpportunityIds;
+  const lockCompanySelectionRef = useRef(lockCompanySelection);
+  lockCompanySelectionRef.current = lockCompanySelection;
 
   const [step, setStep] = useState(0);
   const [name, setName] = useState(defaultValues?.name ?? '');
@@ -111,13 +127,7 @@ export function NewContactWizard({
   const [docNumber, setDocNumber] = useState(defaultValues?.docNumber ?? '');
   const [company, setCompany] = useState(defaultValues?.company ?? '');
   const [companyId, setCompanyId] = useState<string | null>(defaultValues?.companyId ?? null);
-  const [companyOpen, setCompanyOpen] = useState(false);
-  const [companySearch, setCompanySearch] = useState('');
-  const [linkExistingCompanyOpen, setLinkExistingCompanyOpen] = useState(false);
-  const [linkCompanySearch, setLinkCompanySearch] = useState('');
-  const [linkCompanySelectedIds, setLinkCompanySelectedIds] = useState<string[]>([]);
   const [apiCompanies, setApiCompanies] = useState<ApiCompanyRecord[]>([]);
-  const [companiesLoading, setCompaniesLoading] = useState(false);
   const [etapaCiclo, setEtapaCiclo] = useState<Etapa>(defaultValues?.etapaCiclo ?? 'lead');
   const [phone, setPhone] = useState(defaultValues?.phone ?? '');
   const [email, setEmail] = useState(defaultValues?.email ?? '');
@@ -129,6 +139,15 @@ export function NewContactWizard({
   const [distrito, setDistrito] = useState(defaultValues?.distrito ?? '');
   const [direccion, setDireccion] = useState(defaultValues?.direccion ?? '');
   const [docLookupLoading, setDocLookupLoading] = useState(false);
+  const [apiOpportunities, setApiOpportunities] = useState<ApiOpportunityListRow[]>([]);
+  const [assocPanelOpen, setAssocPanelOpen] = useState(false);
+  const [assocCategory, setAssocCategory] = useState<'empresas' | 'oportunidades'>(() =>
+    (lockCompanySelection ? 'oportunidades' : 'empresas'),
+  );
+  const [assocSearch, setAssocSearch] = useState('');
+  const assocPickerRef = useRef<HTMLDivElement>(null);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(defaultCompanyId ?? null);
+  const [selectedOpportunityIds, setSelectedOpportunityIds] = useState<string[]>(defaultOpportunityIds);
   const { activeAdvisors } = useUsers();
   const bundle = useCrmConfigStore((s) => s.bundle);
 
@@ -159,6 +178,9 @@ export function NewContactWizard({
 
   const reset = useCallback(() => {
     const d = defaultValuesRef.current;
+    const defCo = defaultCompanyIdRef.current;
+    const defOpps = defaultOpportunityIdsRef.current ?? [];
+    const lockCo = lockCompanySelectionRef.current;
     setStep(0);
     setName(d?.name ?? '');
     setCargo(d?.cargo ?? '');
@@ -166,11 +188,6 @@ export function NewContactWizard({
     setDocNumber(d?.docNumber ?? '');
     setCompany(d?.company ?? '');
     setCompanyId(d?.companyId ?? null);
-    setCompanySearch('');
-    setCompanyOpen(false);
-    setLinkExistingCompanyOpen(false);
-    setLinkCompanySearch('');
-    setLinkCompanySelectedIds([]);
     setEtapaCiclo(d?.etapaCiclo ?? 'lead');
     setPhone(d?.phone ?? '');
     setEmail(d?.email ?? '');
@@ -185,57 +202,51 @@ export function NewContactWizard({
     setWizardCompanyPatchId(null);
     setCompanyWizardOpen(false);
     setCompanyWizardDefaults({});
+    setAssocPanelOpen(false);
+    setAssocCategory(lockCo ? 'oportunidades' : 'empresas');
+    setAssocSearch('');
+    setSelectedCompanyId(lockCo ? (defCo ?? null) : (defCo ?? d?.companyId ?? null));
+    setSelectedOpportunityIds([...defOpps]);
   }, []);
 
   useEffect(() => {
-    if (!open) reset();
-  }, [open, reset]);
+    if (!open) return;
+    const d = defaultValuesRef.current;
+    const defCo = defaultCompanyId;
+    const defOpps = defaultOpportunityIds ?? [];
+    if (lockCompanySelection) {
+      setSelectedCompanyId(defCo ?? null);
+      setAssocCategory('oportunidades');
+    } else {
+      setSelectedCompanyId(defCo ?? d?.companyId ?? null);
+      setAssocCategory('empresas');
+    }
+    setSelectedOpportunityIds([...defOpps]);
+  }, [open, defaultCompanyId, lockCompanySelection, (defaultOpportunityIds ?? []).join(',')]);
 
-  /** Abre el asistente de nueva empresa (nombre sugerido opcional desde búsqueda o valor ya elegido) */
-  function openCompanyWizardForCreate() {
-    const q = companySearch.trim() || company.trim();
-    if (q) {
-      const exact = apiCompanies.some((c) => c.name.trim().toLowerCase() === q.toLowerCase());
-      if (exact) {
-        toast.message('Ya existe una empresa con ese nombre', {
-          description: 'Usa «Empresa existente» y elígela en la lista.',
-        });
-        return;
+  const assocCompanyCount = apiCompanies.length;
+  const assocOppCount = apiOpportunities.length;
+
+  useEffect(() => {
+    if (!assocPanelOpen) return;
+    function onMouseDown(e: MouseEvent) {
+      const root = assocPickerRef.current;
+      if (root && !root.contains(e.target as Node)) {
+        setAssocPanelOpen(false);
       }
     }
-    setCompanyWizardDefaults({
-      nombreComercial: q,
-      origenLead: source,
-      propietario: assignedTo,
-      etapa: etapaCiclo,
-      facturacion: '',
-      nombreNegocio: q,
-      telefono: phone,
-      correo: email,
-      clienteRecuperado,
-    });
-    setCompanyWizardOpen(true);
-    setCompanyOpen(false);
-    setCompanySearch('');
-  }
-
-  function handleConfirmLinkExistingCompany() {
-    const id = linkCompanySelectedIds[0];
-    if (!id) return;
-    const found = apiCompanies.find((c) => c.id === id);
-    if (!found) {
-      toast.error('No se encontró la empresa seleccionada');
-      return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setAssocPanelOpen(false);
     }
-    setPendingNewCompany(null);
-    setCompanyId(found.id);
-    setCompany(found.name);
-    setLinkExistingCompanyOpen(false);
-    setLinkCompanySearch('');
-    setLinkCompanySelectedIds([]);
-  }
+    document.addEventListener('mousedown', onMouseDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onMouseDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [assocPanelOpen]);
 
-  function handleCompanyWizardSubmit(
+function handleCompanyWizardSubmit(
     data: NewCompanyData,
     meta: NewCompanyWizardSubmitMeta,
   ) {
@@ -244,14 +255,19 @@ export function NewContactWizard({
     if (meta.mode === 'update' && meta.existingCompanyId) {
       setWizardCompanyPatchId(meta.existingCompanyId);
       setCompanyId(meta.existingCompanyId);
+      setSelectedCompanyId(meta.existingCompanyId);
     } else {
       setWizardCompanyPatchId(null);
       setCompanyId(null);
+      setSelectedCompanyId(null);
     }
     setCompanyWizardOpen(false);
   }
 
   function handleOpenChange(next: boolean) {
+    if (!next) {
+      reset();
+    }
     onOpenChange(next);
   }
 
@@ -287,7 +303,6 @@ export function NewContactWizard({
   useEffect(() => {
     if (!open || lockCompanySelection) return;
     let cancelled = false;
-    setCompaniesLoading(true);
     companyListAll()
       .then((list) => {
         if (!cancelled) setApiCompanies(list);
@@ -297,31 +312,26 @@ export function NewContactWizard({
           setApiCompanies([]);
           toast.error('No se pudieron cargar las empresas. Puedes escribir una nueva.');
         }
-      })
-      .finally(() => {
-        if (!cancelled) setCompaniesLoading(false);
       });
     return () => {
       cancelled = true;
     };
   }, [open, lockCompanySelection]);
 
-  const companyLinkItems = useMemo((): LinkExistingItem[] => {
-    return apiCompanies.map((c) => {
-      const rubroLabel =
-        c.rubro && c.rubro in companyRubroLabels
-          ? companyRubroLabels[c.rubro as keyof typeof companyRubroLabels]
-          : c.rubro ?? undefined;
-      const subtitle = [c.ruc, c.domain, rubroLabel].filter(Boolean).join(' · ') || undefined;
-      return {
-        id: c.id,
-        title: c.name,
-        subtitle,
-        status: 'Activo',
-        icon: <Building2 className="size-4" />,
-      };
-    });
-  }, [apiCompanies]);
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    opportunityListAll()
+      .then((list) => {
+        if (!cancelled) setApiOpportunities(list);
+      })
+      .catch(() => {
+        if (!cancelled) setApiOpportunities([]);
+      });
+return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   function handleNext() {
     if (step === 0) {
@@ -354,13 +364,14 @@ export function NewContactWizard({
       toast.error('El correo es obligatorio');
       return;
     }
+    const finalCompanyId = selectedCompanyId || companyId;
     onSubmit({
       name: name.trim(),
       cargo: cargo.trim() || undefined,
       docType: docType || undefined,
       docNumber: docNumber.trim() || undefined,
       company: company.trim(),
-      companyId: companyId ?? undefined,
+      companyId: finalCompanyId ?? undefined,
       etapaCiclo,
       phone: phone.trim(),
       email: email.trim(),
@@ -380,6 +391,7 @@ export function NewContactWizard({
               : {}),
           }
         : {}),
+      selectedOpportunityIds: selectedOpportunityIds.length > 0 ? selectedOpportunityIds : undefined,
     });
   }
 
@@ -462,94 +474,172 @@ export function NewContactWizard({
                 <Label>Cargo</Label>
                 <Input value={cargo} onChange={(e) => setCargo(e.target.value)} placeholder="Ej: Gerente de Compras" />
               </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label>Empresa *</Label>
-                {lockCompanySelection ? (
-                  <div className="space-y-2">
-                    <div className="flex min-h-10 w-full items-center gap-2 rounded-md border border-input bg-muted/40 px-3 py-2 text-sm">
-                      <Building2 className="size-4 shrink-0 text-muted-foreground" />
-                      <span className="min-w-0 truncate font-medium">{company || '—'}</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Este contacto se vinculará automáticamente a esta empresa.
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    {pendingNewCompany && (
-                      <p className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
-                        <strong>Empresa pendiente:</strong> se registrará al pulsar «{submitLabel}».
-                        {pendingNewCompany.nombreNegocio.trim()
-                          ? ' También se creará la oportunidad indicada en el asistente de empresa.'
-                          : ''}
-                      </p>
-                    )}
-                    <Popover
-                      open={companyOpen}
-                      onOpenChange={(o) => {
-                        setCompanyOpen(o);
-                        if (o) {
-                          setCompanySearch(company);
-                        } else {
-                          setCompanySearch('');
-                        }
-                      }}
-                    >
-                      <PopoverTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          role="combobox"
-                          aria-expanded={companyOpen}
-                          className="h-10 w-full justify-between font-normal"
-                        >
-                          <span className={cn('flex min-w-0 items-center gap-2 truncate', !company && 'text-muted-foreground')}>
-                            {companyId ? (
-                              <Building2 className="size-4 shrink-0 text-muted-foreground" />
-                            ) : null}
-                            <span className="truncate">{company || 'Crear o vincular empresa…'}</span>
-                          </span>
-                          <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent
-                        className="w-[min(100vw-2rem,max(var(--radix-popover-trigger-width),22rem))] max-w-xl p-0"
-                        align="start"
-                      >
-                        <div className="grid grid-cols-2 gap-2 p-2">
-                          <button
-                            type="button"
-                            className={cn(
-                              'flex min-h-[72px] min-w-0 flex-col items-center justify-center gap-2 rounded-lg border border-border/80 bg-card px-2 py-3 text-center transition-colors',
-                              'hover:border-[#13944C]/50 hover:bg-[#13944C]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#13944C]/30',
-                            )}
-                            onClick={() => openCompanyWizardForCreate()}
-                          >
-                            <Plus className="size-6 shrink-0 text-[#13944C]" />
-                            <span className="text-sm font-semibold leading-tight">Crear empresa</span>
-                          </button>
-                          <button
-                            type="button"
-                            className={cn(
-                              'flex min-h-[72px] min-w-0 flex-col items-center justify-center gap-2 rounded-lg border border-border/80 bg-card px-2 py-3 text-center transition-colors',
-                              'hover:border-muted-foreground/40 hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                            )}
-                            onClick={() => {
-                              setCompanyOpen(false);
-                              setLinkCompanySearch(company.trim());
-                              setLinkCompanySelectedIds(companyId ? [companyId] : []);
-                              setLinkExistingCompanyOpen(true);
-                            }}
-                          >
-                            <Building2 className="size-6 shrink-0 text-muted-foreground" />
-                            <span className="text-sm font-semibold leading-tight">Empresa existente</span>
-                          </button>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  </>
-                )}
-              </div>
+<div className="space-y-2 sm:col-span-2">
+  <div className="flex items-center justify-between">
+    <Label className="flex items-center gap-1.5">
+      <Link2 className="size-3.5" /> Asociaciones
+    </Label>
+    {(selectedCompanyId || selectedOpportunityIds.length > 0) && (
+      <span className="text-xs text-muted-foreground">
+        {(selectedCompanyId ? 1 : 0) + selectedOpportunityIds.length} registro
+        {(selectedCompanyId ? 1 : 0) + selectedOpportunityIds.length !== 1 ? 's' : ''}
+      </span>
+    )}
+  </div>
+
+  {(selectedCompanyId || selectedOpportunityIds.length > 0) && (
+    <div className="flex flex-wrap gap-1.5">
+      {selectedCompanyId && (() => {
+        const comp = apiCompanies.find((c) => c.id === selectedCompanyId);
+        const label = comp?.name ?? (company.trim() || 'Empresa');
+        return (
+          <div
+            key={`company-${selectedCompanyId}`}
+            className="flex items-center gap-1 rounded-md border border-input bg-muted/60 px-2 py-1 text-xs"
+          >
+            <Building2 className="size-3" />
+            <span className="truncate max-w-[120px]">{label}</span>
+            {!lockCompanySelection && (
+              <button
+                type="button"
+                className="ml-0.5 rounded-sm hover:bg-muted p-0.5"
+                onClick={() => setSelectedCompanyId(null)}
+              >
+                <span className="text-xs leading-none">&times;</span>
+              </button>
+            )}
+          </div>
+        );
+      })()}
+      {selectedOpportunityIds.map((oppId) => {
+        const opp = apiOpportunities.find((o) => o.id === oppId);
+        const label = opp?.title ?? `Oportunidad ${oppId.slice(0, 8)}…`;
+        return (
+          <div
+            key={`opp-${oppId}`}
+            className="flex items-center gap-1 rounded-md border border-input bg-muted/60 px-2 py-1 text-xs"
+          >
+            <Briefcase className="size-3" />
+            <span className="truncate max-w-[120px]">{label}</span>
+            <button
+              type="button"
+              className="ml-0.5 rounded-sm hover:bg-muted p-0.5"
+              onClick={() => setSelectedOpportunityIds((prev) => prev.filter((id) => id !== oppId))}
+            >
+              <span className="text-xs leading-none">&times;</span>
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  )}
+
+<div className="relative" ref={assocPickerRef}>
+  <Button
+    type="button"
+    variant="outline"
+    size="sm"
+    className="w-full justify-between text-muted-foreground font-normal"
+    onClick={() => setAssocPanelOpen((v) => !v)}
+  >
+    Buscar asociaciones
+    <ChevronDown className={`size-4 transition-transform ${assocPanelOpen ? 'rotate-180' : ''}`} />
+  </Button>
+
+  {assocPanelOpen && (
+    <div className="absolute z-[60] mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md">
+      <div className="flex shrink-0 border-b">
+        {(lockCompanySelection ? (['oportunidades'] as const) : (['empresas', 'oportunidades'] as const)).map((cat) => (
+          <button
+            key={cat}
+            type="button"
+            className={`flex-1 px-2 py-2 text-xs font-medium capitalize transition-colors ${assocCategory === cat ? 'border-b-2 border-primary text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+            onClick={() => { setAssocCategory(cat); setAssocSearch(''); }}
+          >
+            {cat === 'empresas' ? (
+              <>Empresas <span className="text-muted-foreground">({assocCompanyCount})</span></>
+            ) : (
+              <>Oportunidades <span className="text-muted-foreground">({assocOppCount})</span></>
+            )}
+          </button>
+        ))}
+      </div>
+
+      <div className="p-2">
+        <div className="relative mb-2 shrink-0">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+          <Input
+            placeholder="Buscar..."
+            value={assocSearch}
+            onChange={(e) => setAssocSearch(e.target.value)}
+            className="pl-7 h-8 text-sm"
+          />
+        </div>
+
+        <div className="max-h-36 overflow-y-auto overscroll-contain touch-pan-y space-y-0.5 [scrollbar-gutter:stable]">
+          {!lockCompanySelection && assocCategory === 'empresas' &&
+            apiCompanies
+              .filter((c) => c.name.toLowerCase().includes(assocSearch.toLowerCase()))
+              .slice(0, ASSOCIATION_PICKER_PAGE_SIZE)
+              .map((c) => {
+                const isSelected = selectedCompanyId === c.id;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted ${isSelected ? 'bg-muted' : ''}`}
+                    onClick={() => {
+                      if (isSelected) {
+                        setSelectedCompanyId(null);
+                      } else {
+                        setSelectedCompanyId(c.id);
+                        setCompany(c.name);
+                      }
+                    }}
+                  >
+                    <Checkbox checked={isSelected} className="size-3.5 shrink-0" />
+                    <Building2 className="size-3.5 shrink-0 text-muted-foreground" />
+                    <span className="min-w-0 truncate text-left">{c.name}</span>
+                  </button>
+                );
+              })}
+
+          {(lockCompanySelection || assocCategory === 'oportunidades') &&
+            apiOpportunities
+              .filter((o) => o.title.toLowerCase().includes(assocSearch.toLowerCase()))
+              .slice(0, ASSOCIATION_PICKER_PAGE_SIZE)
+              .map((o) => {
+                const isSelected = selectedOpportunityIds.includes(o.id);
+                return (
+                  <button
+                    key={o.id}
+                    type="button"
+                    className={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted ${isSelected ? 'bg-muted' : ''}`}
+                    onClick={() => {
+                      if (isSelected) {
+                        setSelectedOpportunityIds((prev) => prev.filter((id) => id !== o.id));
+                      } else {
+                        setSelectedOpportunityIds((prev) => [...prev, o.id]);
+                      }
+                    }}
+                  >
+                    <Checkbox checked={isSelected} className="size-3.5 shrink-0" />
+                    <Briefcase className="size-3.5 shrink-0 text-muted-foreground" />
+                    <span className="min-w-0 truncate text-left">{o.title}</span>
+                  </button>
+                );
+              })}
+        </div>
+      </div>
+    </div>
+  )}
+</div>
+  <p className="text-xs text-muted-foreground">
+    {lockCompanySelection
+      ? 'Vincula oportunidades al contacto (la empresa ya está fijada en esta pantalla).'
+      : 'Filtra por texto sobre todas las empresas y oportunidades cargadas; se muestran las primeras coincidencias.'}
+  </p>
+</div>
               <div className="space-y-2">
                 <Label>Etapa</Label>
                 <Select value={etapaCiclo} onValueChange={(v) => setEtapaCiclo(v as Etapa)}>
@@ -659,45 +749,16 @@ export function NewContactWizard({
             </div>
           </DialogFooter>
         </form>
-      </DialogContent>
-    </Dialog>
-    <NewCompanyWizard
-      open={companyWizardOpen}
-      onOpenChange={setCompanyWizardOpen}
-      onSubmit={handleCompanyWizardSubmit}
-      defaultValues={companyWizardDefaults}
-      title="Nueva empresa (vinculada al contacto)"
-      confirmButtonLabel="Usar estos datos"
-    />
-    <LinkExistingDialog
-      open={linkExistingCompanyOpen}
-      onOpenChange={(o) => {
-        setLinkExistingCompanyOpen(o);
-        if (!o) {
-          setLinkCompanySearch('');
-          setLinkCompanySelectedIds([]);
-        }
-      }}
-      title="Vincular Empresa Existente"
-      searchPlaceholder="Buscar empresas..."
-      leadName={name.trim() || 'el nuevo contacto'}
-      items={companyLinkItems}
-      selectedIds={linkCompanySelectedIds}
-      onSelectionChange={setLinkCompanySelectedIds}
-      onConfirm={handleConfirmLinkExistingCompany}
-      searchValue={linkCompanySearch}
-      onSearchChange={setLinkCompanySearch}
-      emptyMessage={
-        companiesLoading
-          ? 'Cargando empresas…'
-          : apiCompanies.length === 0
-            ? 'No hay empresas cargadas o la lista está vacía.'
-            : 'Ninguna empresa coincide con la búsqueda.'
-      }
-      selectionMode="single"
-      confirmLabel="Vincular"
-      contentClassName="z-[100]"
-    />
-    </>
+</DialogContent>
+  </Dialog>
+  <NewCompanyWizard
+    open={companyWizardOpen}
+    onOpenChange={setCompanyWizardOpen}
+    onSubmit={handleCompanyWizardSubmit}
+    defaultValues={companyWizardDefaults}
+    title="Nueva empresa (vinculada al contacto)"
+    confirmButtonLabel="Usar estos datos"
+  />
+</>
   );
 }

@@ -262,6 +262,12 @@ export function primaryCompanyIdFromApiContact(
   return (primary ?? list[0])?.company.id;
 }
 
+/** Convierte detalle POST/PATCH en fila de listado (sin relaciones anidadas). */
+export function apiContactDetailToListRow(d: ApiContactDetail): ApiContactListRow {
+  const { contacts: _c, linkedBy: _l, opportunities: _o, ...row } = d;
+  return row;
+}
+
 /** Crear contacto: POST /contacts */
 export async function contactCreate(body: Record<string, unknown>): Promise<ApiContactDetail> {
   return api<ApiContactDetail>('/contacts', {
