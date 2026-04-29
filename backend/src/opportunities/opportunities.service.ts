@@ -197,6 +197,30 @@ export class OpportunitiesService {
     throw new NotFoundException('Oportunidad no encontrada');
   }
 
+  private async resolveCompanyId(param: string): Promise<string> {
+    const raw = param.trim();
+    if (!raw) {
+      throw new NotFoundException('Empresa no encontrada');
+    }
+    const byId = await this.prisma.company.findUnique({
+      where: { id: raw },
+      select: { id: true },
+    });
+    if (byId) return byId.id;
+    let slug = raw;
+    try {
+      slug = decodeURIComponent(raw);
+    } catch {
+      /* usar raw */
+    }
+    const bySlug = await this.prisma.company.findUnique({
+      where: { urlSlug: slug },
+      select: { id: true },
+    });
+    if (bySlug) return bySlug.id;
+    throw new NotFoundException('Empresa no encontrada');
+  }
+
   async create(
     dto: CreateOpportunityDto,
     actor?: ActivityActor,
@@ -559,8 +583,13 @@ export class OpportunitiesService {
     }
 
     const hasContactLinkUpdate = dto.contactId !== undefined;
+    const hasCompanyLinkUpdate = dto.companyId !== undefined;
 
-    if (Object.keys(data).length === 0 && !hasContactLinkUpdate) {
+    if (
+      Object.keys(data).length === 0 &&
+      !hasContactLinkUpdate &&
+      !hasCompanyLinkUpdate
+    ) {
       throw new BadRequestException('No hay campos para actualizar');
     }
 
@@ -601,6 +630,44 @@ export class OpportunitiesService {
             data: { contactId: cid, opportunityId: id },
           });
         });
+      }
+    }
+
+    if (hasCompanyLinkUpdate) {
+      const rawCo = dto.companyId;
+      if (
+        rawCo !== null &&
+        typeof rawCo === 'string' &&
+        rawCo.trim() !== ''
+      ) {
+        const companyIdTrim = rawCo.trim();
+        const comp = await this.prisma.company.findFirst({
+          where: mergeCompanyScope({ id: companyIdTrim }, scope),
+          select: { id: true, name: true },
+        });
+        if (!comp) {
+          throw new BadRequestException('La empresa indicada no existe');
+        }
+        await this.assertNoDuplicateTitleForCompany(
+          comp.id,
+          snapshot.title,
+          id,
+        );
+        const existingLink = await this.prisma.companyOpportunity.findUnique({
+          where: {
+            companyId_opportunityId: {
+              companyId: comp.id,
+              opportunityId: id,
+            },
+          },
+        });
+        if (!existingLink) {
+          await this.prisma.companyOpportunity.create({
+            data: { companyId: comp.id, opportunityId: id },
+          });
+          await this.entitySync.propagateFromCompany(comp.id);
+          await this.entitySync.propagateFromOpportunityAllCompanies(id);
+        }
       }
     }
 
@@ -662,16 +729,34 @@ export class OpportunitiesService {
       dto.status === undefined &&
       dto.expectedCloseDate === undefined &&
       dto.priority === undefined &&
-      dto.contactId === undefined
+      dto.contactId === undefined &&
+      !hasCompanyLinkUpdate
     ) {
       action = 'asignar';
       description = 'Asesor de la oportunidad actualizado.';
+    } else if (
+      dto.contactId !== undefined &&
+      hasCompanyLinkUpdate &&
+      dto.companyId !== null &&
+      typeof dto.companyId === 'string' &&
+      dto.companyId.trim() !== '' &&
+      dto.contactId !== null &&
+      !(typeof dto.contactId === 'string' && dto.contactId.trim() === '')
+    ) {
+      description = 'Se vincularon contacto y empresa a la oportunidad.';
     } else if (dto.contactId !== undefined) {
       description =
         dto.contactId === null ||
         (typeof dto.contactId === 'string' && dto.contactId.trim() === '')
           ? 'Se desvinculó el contacto principal de la oportunidad.'
           : 'Se actualizó el contacto vinculado a la oportunidad.';
+    } else if (
+      hasCompanyLinkUpdate &&
+      dto.companyId !== null &&
+      typeof dto.companyId === 'string' &&
+      dto.companyId.trim() !== ''
+    ) {
+      description = 'Se vinculó una empresa a la oportunidad.';
     }
 
     const displayTitle =
@@ -724,6 +809,83 @@ export class OpportunitiesService {
     }
 
     return this.findOne(id, scope);
+  }
+
+  async unlinkCompanyFromOpportunity(
+    opportunityIdOrSlug: string,
+    companyIdOrSlug: string,
+    actor: ActivityActor,
+    scope?: CrmDataScope,
+  ) {
+    const opportunityId = await this.resolveOpportunityId(opportunityIdOrSlug);
+    const oppRow = await this.prisma.opportunity.findUnique({
+      where: { id: opportunityId },
+      select: { title: true, assignedTo: true },
+    });
+    if (!oppRow) {
+      throw new NotFoundException('Oportunidad no encontrada');
+    }
+
+    const companyIdResolved = await this.resolveCompanyId(companyIdOrSlug);
+    const companyBasic = await this.prisma.company.findUnique({
+      where: { id: companyIdResolved },
+      select: { id: true, name: true },
+    });
+    if (!companyBasic) {
+      throw new NotFoundException('Empresa no encontrada');
+    }
+
+    if (scope && !scope.unrestricted) {
+      const canSeeOpp = oppRow.assignedTo === scope.viewerUserId;
+      const companyScoped = await this.prisma.company.findFirst({
+        where: mergeCompanyScope({ id: companyIdResolved }, scope),
+        select: { id: true },
+      });
+      if (!canSeeOpp && !companyScoped) {
+        throw new NotFoundException('Oportunidad no encontrada');
+      }
+    }
+
+    const deleted = await this.prisma.companyOpportunity.deleteMany({
+      where: {
+        companyId: companyBasic.id,
+        opportunityId,
+      },
+    });
+    if (deleted.count === 0) {
+      throw new BadRequestException(
+        'La oportunidad no está vinculada a esta empresa',
+      );
+    }
+
+    await this.entitySync.propagateFromCompany(companyBasic.id);
+    await this.entitySync.propagateFromOpportunityAllCompanies(opportunityId);
+
+    await this.activityLogs.record(actor, {
+      action: 'actualizar',
+      module: 'empresas',
+      entityType: 'Empresa',
+      entityId: companyBasic.id,
+      entityName: companyBasic.name,
+      description: `Oportunidad "${oppRow.title}" desvinculada de la empresa`,
+    });
+    await this.activityLogs.record(actor, {
+      action: 'actualizar',
+      module: 'oportunidades',
+      entityType: 'Oportunidad',
+      entityId: opportunityId,
+      entityName: oppRow.title,
+      description: `Desvinculada de la empresa "${companyBasic.name}"`,
+    });
+
+    const fresh = await this.prisma.opportunity.findUnique({
+      where: { id: opportunityId },
+      include: opportunityIncludeDetail,
+    });
+    if (!fresh) {
+      throw new NotFoundException('Oportunidad no encontrada');
+    }
+    return fresh;
   }
 
   async remove(

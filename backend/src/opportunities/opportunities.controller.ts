@@ -15,6 +15,7 @@ import { CreateOpportunityDto } from './dto/create-opportunity.dto';
 import { UpdateOpportunityDto } from './dto/update-opportunity.dto';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
+import { RequireAnyPermission } from '../auth/decorators/require-any-permission.decorator';
 import { CrmDataScopeService } from '../auth/crm-data-scope.service';
 
 type AuthedReq = {
@@ -103,6 +104,25 @@ export class OpportunitiesController {
           userId: req.user.userId,
           userName: req.user.name,
         }, scope),
+      );
+  }
+
+  @Delete(':id/companies/:companyId')
+  @RequireAnyPermission('oportunidades.editar', 'empresas.editar')
+  unlinkCompany(
+    @Param('id') id: string,
+    @Param('companyId') companyId: string,
+    @Req() req: AuthedReq,
+  ) {
+    return this.crmDataScope
+      .buildScope(req.user.userId, req.user.roleId)
+      .then((scope) =>
+        this.opportunitiesService.unlinkCompanyFromOpportunity(
+          id,
+          companyId,
+          { userId: req.user.userId, userName: req.user.name },
+          scope,
+        ),
       );
   }
 

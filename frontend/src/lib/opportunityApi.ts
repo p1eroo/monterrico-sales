@@ -171,6 +171,19 @@ export async function opportunityListAll(opts?: {
   return res.data;
 }
 
+/** Quita el vínculo empresa–oportunidad (`CompanyOpportunity`). */
+export async function opportunityUnlinkCompany(
+  opportunityId: string,
+  companyId: string,
+): Promise<ApiOpportunityDetail> {
+  const o = encodeURIComponent(opportunityId);
+  const c = encodeURIComponent(companyId);
+  return api<ApiOpportunityDetail>(
+    `/opportunities/${o}/companies/${c}`,
+    { method: 'DELETE' },
+  );
+}
+
 export function mapApiContactToContact(c: ApiContactFromOpportunity): Contact {
   const assignedTo = c.assignedTo ?? '';
   return {

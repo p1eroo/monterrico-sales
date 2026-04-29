@@ -71,6 +71,7 @@ import {
   isLikelyOpportunityCuid,
   mapApiOpportunityToOpportunity,
   opportunityListAll,
+  opportunityUnlinkCompany,
 } from '@/lib/opportunityApi';
 import { buildOptimisticContact } from '@/lib/optimisticEntities';
 import { generateOptimisticId, useOptimisticCrmStore } from '@/store/optimisticCrmStore';
@@ -291,9 +292,13 @@ export default function EmpresaDetailPage() {
         (o.clientId === companyId ||
           (o.linkedCompanyIds?.includes(companyId) ?? false))
       );
+      /** En API solo listamos vínculo `CompanyOpportunity`; si no, al desvincular empresa la fila seguiría por contacto compartido y el DELETE fallaría en el segundo intento. */
+      if (fromApiById) {
+        return viaCompany;
+      }
       return viaContact || viaCompany;
     });
-  }, [companyContacts, opportunities, resolvedCompanyId]);
+  }, [companyContacts, opportunities, resolvedCompanyId, fromApiById]);
 
   const opportunitiesAmountSum = useMemo(
     () => companyOpportunities.reduce((sum, o) => sum + (Number(o.amount) || 0), 0),
@@ -714,7 +719,80 @@ export default function EmpresaDetailPage() {
   }
 
   function handleLinkOpportunities() {
-    if (linkOppIds.length === 0 || !firstContact) return;
+    if (linkOppIds.length === 0) return;
+
+    if (fromApiById) {
+      const companyKey = apiRecord?.id ?? routeId;
+      if (!companyKey || !isLikelyCompanyCuid(companyKey)) {
+        toast.error('Empresa no disponible');
+        return;
+      }
+      const ids = linkOppIds.filter((oppId) => isLikelyOpportunityCuid(oppId));
+      if (ids.length === 0) {
+        toast.error('No hay oportunidades válidas para vincular');
+        return;
+      }
+      const companyDisplayName = apiRecord?.name ?? companyName;
+      const contactForRow =
+        firstContact?.id && isLikelyContactCuid(firstContact.id)
+          ? { id: firstContact.id, name: firstContact.name }
+          : undefined;
+      const idSet = new Set(ids);
+
+      setApiOpportunityRows((prev) =>
+        prev.map((row) => {
+          if (!idSet.has(row.id)) return row;
+          const existing = row.companies ?? [];
+          if (existing.some((c) => c.company?.id === companyKey)) return row;
+          return {
+            ...row,
+            companies: [
+              ...existing,
+              { company: { id: companyKey, name: companyDisplayName } },
+            ],
+            ...(contactForRow
+              ? { contacts: [{ contact: contactForRow }] }
+              : {}),
+            updatedAt: new Date().toISOString(),
+          };
+        }),
+      );
+
+      setLinkOppIds([]);
+      setLinkOppSearch('');
+      setAddExistingOppOpen(false);
+      toast.success(
+        ids.length === 1
+          ? 'Oportunidad vinculada'
+          : `${ids.length} oportunidades vinculadas`,
+      );
+
+      void (async () => {
+        try {
+          const body: Record<string, unknown> = { companyId: companyKey };
+          if (firstContact?.id && isLikelyContactCuid(firstContact.id)) {
+            body.contactId = firstContact.id;
+          }
+          await Promise.all(
+            ids.map((oppId) =>
+              api(`/opportunities/${oppId}`, {
+                method: 'PATCH',
+                body: JSON.stringify(body),
+              }),
+            ),
+          );
+          void loadApiOpportunities();
+        } catch (e) {
+          toast.error(
+            e instanceof Error ? e.message : 'No se pudo vincular en el servidor',
+          );
+          await loadApiOpportunities();
+        }
+      })();
+      return;
+    }
+
+    if (!firstContact) return;
     for (const oppId of linkOppIds) {
       updateOpportunity(oppId, { contactId: firstContact.id, contactName: firstContact.name });
     }
@@ -863,17 +941,38 @@ async function handleCreateNewContact(data: NewContactData) {
     setAddExistingContactOpen(false);
   }
 
-  async function handleRemoveOpportunity(opp: import('@/types').Opportunity) {
+  function handleRemoveOpportunity(opp: import('@/types').Opportunity) {
     if (fromApiById && isLikelyOpportunityCuid(opp.id)) {
-      try {
-        await api(`/opportunities/${opp.id}`, {
-          method: 'PATCH',
-          body: JSON.stringify({ contactId: null }),
-        });
-        toast.success('Oportunidad desvinculada');
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'No se pudo desvincular');
+      const companyKey = apiRecord?.id ?? routeId;
+      if (!companyKey) {
+        toast.error('Empresa no disponible');
+        return;
       }
+      const oppId = opp.id;
+      setApiOpportunityRows((prev) =>
+        prev.map((row) => {
+          if (row.id !== oppId) return row;
+          const existing = row.companies ?? [];
+          const next = existing.filter((c) => c.company?.id !== companyKey);
+          if (next.length === existing.length) return row;
+          return {
+            ...row,
+            companies: next,
+            updatedAt: new Date().toISOString(),
+          };
+        }),
+      );
+      toast.success('Oportunidad desvinculada de la empresa');
+
+      void (async () => {
+        try {
+          await opportunityUnlinkCompany(oppId, companyKey);
+          void loadApiOpportunities();
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : 'No se pudo desvincular');
+          await loadApiOpportunities();
+        }
+      })();
       return;
     }
     updateOpportunity(opp.id, { contactId: '', contactName: '' });
@@ -910,7 +1009,9 @@ async function handleCreateNewContact(data: NewContactData) {
 
   // --- Link items ---
   const contactIds = new Set(companyContacts.map((l) => l.id));
+  const companyOppIdSet = new Set(companyOpportunities.map((o) => o.id));
   const availableOpps = opportunities.filter((o) => {
+    if (companyOppIdSet.has(o.id)) return false;
     if (
       resolvedCompanyId &&
       (o.clientId === resolvedCompanyId ||
@@ -918,7 +1019,13 @@ async function handleCreateNewContact(data: NewContactData) {
     ) {
       return false;
     }
-    if (o.contactId && contactIds.has(o.contactId)) return false;
+    /**
+     * Mock: evitar duplicar la misma relación contacto–empresa en el store local.
+     * API: no aplicar — el vínculo empresa–oportunidad es `CompanyOpportunity`; un
+     * contacto de la empresa puede ser el principal de la opp y aun así hay que
+     * poder volver a vincular tras desvincular solo la empresa.
+     */
+    if (!fromApiById && o.contactId && contactIds.has(o.contactId)) return false;
     return true;
   });
   const oppLinkItems: LinkExistingItem[] = availableOpps.map((o) => ({
