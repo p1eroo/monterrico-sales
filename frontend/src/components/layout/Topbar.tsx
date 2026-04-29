@@ -1,9 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import {
-  User,
-  Settings,
-  LogOut,
-} from 'lucide-react';
+import { User, Settings, LogOut } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -69,10 +65,12 @@ export function Topbar() {
 
   return (
     <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b border-border/80 bg-background/80 px-4 backdrop-blur-xl md:px-6">
-      <SidebarTrigger className="-ml-1 text-text-secondary hover:bg-surface-hover hover:text-foreground" />
-      <Separator orientation="vertical" className="h-5 bg-border/80" />
+      <SidebarTrigger className="-ml-1 text-text-secondary hover:bg-surface-hover hover:text-foreground md:hidden" />
+      <Separator orientation="vertical" className="h-5 bg-border/80 md:hidden" />
 
-      <Breadcrumb className="hidden sm:flex">
+      <Separator orientation="vertical" className="hidden h-5 bg-border/80 md:block" />
+
+      <Breadcrumb className="hidden min-w-0 flex-1 sm:flex">
         <BreadcrumbList>
           <BreadcrumbItem>
             <BreadcrumbPage className="text-text-secondary">Taxi Monterrico</BreadcrumbPage>

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { SidebarProvider, SidebarInset, useSidebar } from '@/components/ui/sidebar';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { isCrmEntityDetailPath } from '@/lib/detailRoutes';
 import { Toaster } from '@/components/ui/sonner';
@@ -19,6 +21,33 @@ import { fetchAnalyticsGoalProgress } from '@/lib/analyticsApi';
 import { useAnalyticsGoalStore } from '@/store/analyticsGoalStore';
 import { AiAssistantDrawer } from '@/components/assistant/AiAssistantDrawer';
 import { ImportJobsPanel } from './ImportJobsPanel';
+
+/** Toggle en la costura sidebar / contenido (solo desktop; fuera del topbar). */
+function SidebarDividerToggle() {
+  const { toggleSidebar, state } = useSidebar();
+
+  return (
+    <Button
+      type="button"
+      variant="default"
+      size="icon-sm"
+      aria-label={state === 'expanded' ? 'Contraer barra lateral' : 'Expandir barra lateral'}
+      className={cn(
+        'absolute left-0 z-[60] hidden size-7 -translate-x-1/2 -translate-y-1/2 rounded-full border-0 p-0 md:inline-flex',
+        'top-[4rem]',
+        'shadow-[0_2px_8px_rgba(15,23,42,0.16)] hover:shadow-[0_2px_12px_rgba(15,23,42,0.2)]',
+        'dark:shadow-[0_2px_10px_rgba(0,0,0,0.4)] dark:hover:shadow-[0_2px_14px_rgba(0,0,0,0.5)]',
+      )}
+      onClick={toggleSidebar}
+    >
+      {state === 'expanded' ? (
+        <ChevronLeft className="size-4 text-primary-foreground" strokeWidth={1.75} aria-hidden />
+      ) : (
+        <ChevronRight className="size-4 text-primary-foreground" strokeWidth={1.75} aria-hidden />
+      )}
+    </Button>
+  );
+}
 
 export default function MainLayout() {
   const { pathname } = useLocation();
@@ -83,19 +112,23 @@ export default function MainLayout() {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset className="overflow-hidden bg-background">
-        <Topbar />
-        <div
-          className={cn(
-            /* min-h-0 evita scroll residual en cadenas flex + overflow */
-            'min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden bg-background px-4 md:px-6',
-            compactMainTop
-              ? 'pt-0 pb-4 md:pt-0.5 md:pb-5'
-              : 'pt-5 pb-5 md:pt-6 md:pb-6',
-          )}
-        >
-          <ModuleGate />
+      <SidebarInset className="bg-background md:z-20">
+        {/* overflow aquí recorta el card; el toggle es hermano para no cortarlo */}
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:rounded-xl">
+          <Topbar />
+          <div
+            className={cn(
+              /* min-h-0 evita scroll residual en cadenas flex + overflow */
+              'min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden bg-background px-4 md:px-6',
+              compactMainTop
+                ? 'pt-0 pb-4 md:pt-0.5 md:pb-5'
+                : 'pt-5 pb-5 md:pt-6 md:pb-6',
+            )}
+          >
+            <ModuleGate />
+          </div>
         </div>
+        <SidebarDividerToggle />
       </SidebarInset>
       <Toaster position="bottom-right" richColors />
       <ImportJobsPanel />

@@ -1,5 +1,6 @@
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { navigateBackOrTo } from '@/lib/navigateBackOrTo';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -47,7 +48,7 @@ export function DetailLayout({
               variant="ghost"
               size="icon"
               className="h-9 w-9 shrink-0 rounded-lg border border-border bg-surface-elevated text-text-secondary hover:bg-surface-hover hover:text-text-primary"
-              onClick={() => navigate(backPath)}
+              onClick={() => navigateBackOrTo(navigate, backPath)}
             >
               <ArrowLeft className="size-5" />
             </Button>

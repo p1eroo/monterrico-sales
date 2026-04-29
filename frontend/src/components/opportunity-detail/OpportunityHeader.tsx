@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import { ArrowLeft, BriefcaseBusiness, Edit } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { navigateBackOrTo } from '@/lib/navigateBackOrTo';
 import { Button } from '@/components/ui/button';
 import { EtapaDropdownButton } from '@/components/shared/EtapaDropdownButton';
 import { initialsFromName } from '@/lib/utils';
@@ -43,7 +44,7 @@ export function OpportunityHeader({
               variant="ghost"
               size="icon"
               className="h-9 w-9 shrink-0 rounded-lg text-text-secondary hover:bg-accent hover:text-accent-foreground"
-              onClick={() => navigate(backPath)}
+              onClick={() => navigateBackOrTo(navigate, backPath)}
               aria-label="Volver"
             >
               <ArrowLeft className="size-4" />
