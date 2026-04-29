@@ -502,7 +502,7 @@ export default function Dashboard() {
               emptyMessage="Sin datos de embudo en este periodo."
               className="min-h-[min(52vh,420px)] py-3"
             >
-              <FunnelChart stages={funnelStages} height={360} singularLabel="oportunidad" />
+              <FunnelChart stages={funnelStages} height={360} singularLabel="oportunidad" variant="rect" />
             </ChartCardBody>
           </CardContent>
         </Card>

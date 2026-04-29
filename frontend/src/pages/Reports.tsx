@@ -787,7 +787,7 @@ export default function Reports() {
               emptyMessage="Sin empresas en este periodo con las etapas seleccionadas."
               className="min-h-[min(52vh,420px)] py-3"
             >
-              <FunnelChart stages={companiesFunnelStages} height={360} />
+              <FunnelChart stages={companiesFunnelStages} height={360} variant="rect" />
             </ChartCardBody>
           </CardContent>
         </Card>
@@ -802,7 +802,7 @@ export default function Reports() {
             </DialogHeader>
             <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 sm:px-6 sm:pb-6">
               {!companiesFunnelEmpty ? (
-                <FunnelChart stages={companiesFunnelStages} height={500} showLegend />
+                <FunnelChart stages={companiesFunnelStages} height={500} showLegend variant="rect" />
               ) : null}
             </div>
           </DialogContent>
