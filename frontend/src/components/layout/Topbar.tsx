@@ -64,7 +64,7 @@ export function Topbar() {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b border-border/80 bg-background/80 px-4 backdrop-blur-xl md:px-6">
+    <header className="sticky top-0 z-30 flex h-14 min-w-0 shrink-0 items-center gap-3 border-b border-border/80 bg-background/80 px-4 backdrop-blur-xl md:px-6">
       <SidebarTrigger className="-ml-1 text-text-secondary hover:bg-surface-hover hover:text-foreground md:hidden" />
       <Separator orientation="vertical" className="h-5 bg-border/80 md:hidden" />
 

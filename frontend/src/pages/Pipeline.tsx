@@ -570,7 +570,7 @@ function ColumnDropSlot({ accentColor }: { accentColor: string }) {
 function PipelineKanbanSkeleton({ columns }: { columns: PipelineStageColumnConfig[] }) {
   return (
     <div
-      className="scrollbar-thin -mx-2 flex h-[calc(100dvh-13rem)] min-h-[32rem] min-w-0 gap-3 overflow-x-auto overflow-y-hidden px-2 pb-4"
+      className="scrollbar-thin -mx-2 flex h-[calc(100dvh-13rem)] min-h-[32rem] w-full max-w-full min-w-0 gap-3 overflow-x-auto overflow-y-hidden px-2 pb-4"
       aria-busy="true"
       aria-live="polite"
       aria-label="Cargando datos del pipeline"
@@ -1206,7 +1206,7 @@ export default function Pipeline() {
           onDragEnd={handleDragEnd}
           onDragCancel={handleDragCancel}
         >
-          <div className="scrollbar-thin -mx-2 flex h-[calc(100dvh-13rem)] min-h-[32rem] min-w-0 gap-3 overflow-x-auto overflow-y-hidden px-2 pb-4">
+          <div className="scrollbar-thin -mx-2 flex h-[calc(100dvh-13rem)] min-h-[32rem] w-full max-w-full min-w-0 gap-3 overflow-x-auto overflow-y-hidden px-2 pb-4">
             {pipeline.map((column) => {
               const colConfig = displayColumns.find((c) => c.id === column.id)!;
               const sourceCol = activeId ? findColumnByContactId(activeId) : undefined;

@@ -77,11 +77,6 @@ export function mapApiActivityToActivity(row: ApiActivity): Activity {
   const contact = row.contacts?.[0]?.contact;
   const company = row.companies?.[0]?.company;
   const opportunity = row.opportunities?.[0]?.opportunity;
-  const contactName = contact
-    ? company
-      ? `${contact.name} - ${company.name}`
-      : contact.name
-    : company?.name;
   return {
     id: row.id,
     type: parseType(row.type),
@@ -89,8 +84,9 @@ export function mapApiActivityToActivity(row: ApiActivity): Activity {
     title: row.title,
     description: row.description ?? '',
     contactId: contact?.id,
-    contactName: contactName ?? opportunity?.title ?? undefined,
+    contactName: contact?.name,
     companyId: company?.id,
+    companyName: company?.name,
     opportunityId: opportunity?.id,
     opportunityTitle: opportunity?.title,
     assignedTo: row.user?.id ?? row.assignedTo ?? '',
@@ -202,10 +198,20 @@ export function activityToCalendarEvent(activity: Activity): CalendarEvent {
   let relatedEntityType: RelatedEntityType | undefined;
   let relatedEntityId: string | undefined;
   let relatedEntityName: string | undefined;
+  let relatedCompanyId: string | undefined;
+  let relatedCompanyName: string | undefined;
   if (activity.contactId) {
     relatedEntityType = 'contact';
     relatedEntityId = activity.contactId;
     relatedEntityName = activity.contactName;
+    if (activity.companyId) {
+      relatedCompanyId = activity.companyId;
+      relatedCompanyName = activity.companyName;
+    }
+  } else if (activity.companyId) {
+    relatedEntityType = 'company';
+    relatedEntityId = activity.companyId;
+    relatedEntityName = activity.companyName ?? undefined;
   } else if (activity.opportunityId) {
     relatedEntityType = 'opportunity';
     relatedEntityId = activity.opportunityId;
@@ -231,6 +237,8 @@ export function activityToCalendarEvent(activity: Activity): CalendarEvent {
     relatedEntityType,
     relatedEntityId,
     relatedEntityName,
+    relatedCompanyId,
+    relatedCompanyName,
     description: activity.description || undefined,
     status: (activity.status as CalendarEventStatus) ?? 'pendiente',
   };

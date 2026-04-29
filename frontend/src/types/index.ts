@@ -90,6 +90,8 @@ export interface CalendarEvent {
   relatedEntityType?: RelatedEntityType;
   relatedEntityId?: string;
   relatedEntityName?: string;
+  relatedCompanyId?: string;
+  relatedCompanyName?: string;
   description?: string;
   status: CalendarEventStatus;
 }
@@ -208,6 +210,7 @@ export interface Activity {
   contactId?: string;
   contactName?: string;
   companyId?: string;
+  companyName?: string;
   opportunityId?: string;
   opportunityTitle?: string;
   assignedTo: string;

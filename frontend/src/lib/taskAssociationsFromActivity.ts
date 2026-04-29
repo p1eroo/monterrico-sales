@@ -8,19 +8,26 @@ export function taskAssociationsFromActivity(a: Activity): TaskAssociation[] {
   const out: TaskAssociation[] = [];
   if (a.contactId) {
     const raw = a.contactName?.trim() ?? '';
-    const name = raw.includes(' - ') ? raw.split(' - ')[0].trim() : raw;
+    const name = a.companyName?.trim()
+      ? raw
+      : raw.includes(' - ')
+        ? raw.split(' - ')[0].trim()
+        : raw;
     out.push({ type: 'contacto', id: a.contactId, name: name || raw || 'Contacto' });
   }
   if (a.companyId) {
-    let name = 'Empresa';
-    const cn = a.contactName?.trim();
-    if (cn) {
-      if (a.contactId && cn.includes(' - ')) {
-        const rest = cn.split(' - ').slice(1).join(' - ').trim();
-        if (rest) name = rest;
-      } else if (!a.contactId) {
-        name = cn;
+    let name = a.companyName?.trim();
+    if (!name) {
+      const cn = a.contactName?.trim();
+      if (cn) {
+        if (a.contactId && cn.includes(' - ')) {
+          const rest = cn.split(' - ').slice(1).join(' - ').trim();
+          if (rest) name = rest;
+        } else if (!a.contactId) {
+          name = cn;
+        }
       }
+      if (!name) name = 'Empresa';
     }
     out.push({ type: 'empresa', id: a.companyId, name });
   }

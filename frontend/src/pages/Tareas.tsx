@@ -627,7 +627,7 @@ export default function TareasPage() {
 
   return (
     <TooltipProvider>
-      <div className="space-y-6">
+      <div className="min-w-0 max-w-full space-y-6">
       <PageHeader title="Tareas">
         <div className="flex items-center gap-2">
           {activitiesLoading && (
@@ -656,11 +656,11 @@ export default function TareasPage() {
       )}
 
       {/* Stats cards */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3 lg:[grid-template-columns:repeat(5,minmax(0,1fr))]">
         {statsCards.map((stat) => {
           const StatIcon = stat.icon;
           return (
-            <Card key={stat.label} className={cn('border py-0', stat.className)}>
+            <Card key={stat.label} className={cn('min-w-0 border py-0', stat.className)}>
               <CardContent className="flex items-center gap-3 px-4 py-3">
                 <div
                   className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white/90 shadow-sm ring-1 ring-black/[0.06] dark:bg-black/35 dark:ring-white/10"
@@ -778,7 +778,7 @@ export default function TareasPage() {
       )}
 
       {/* Main content: list + sidebar */}
-      <div className="flex min-h-0 gap-6">
+      <div className="flex min-h-0 min-w-0 max-w-full gap-6">
         {/* Task list / Kanban */}
         <div
           className={cn(

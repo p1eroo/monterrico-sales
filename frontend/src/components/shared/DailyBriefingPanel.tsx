@@ -21,7 +21,22 @@ import { activities, calendarEvents, activityTypeLabels } from '@/data/mock';
 import { cn } from '@/lib/utils';
 import { rightDrawerDialogContentClass } from '@/lib/rightPanelShell';
 import type { Activity, CalendarEvent } from '@/types';
+import { resolveCalendarEventLinks } from '@/lib/calendarEventLinks';
+import { taskAssociationsFromActivity } from '@/lib/taskAssociationsFromActivity';
 
+type TaskItem = { activity?: Activity; event?: CalendarEvent };
+
+function briefingTaskSubtitle(item: TaskItem): string {
+  if (item.activity) {
+    const assocs = taskAssociationsFromActivity(item.activity);
+    return assocs.map((x) => x.name).join(' · ');
+  }
+  if (item.event) {
+    const r = resolveCalendarEventLinks(item.event);
+    return [r.contactName, r.companyName, r.opportunityTitle].filter(Boolean).join(' · ');
+  }
+  return '';
+}
 
 interface DailyBriefingPanelProps {
   open: boolean;
@@ -29,8 +44,6 @@ interface DailyBriefingPanelProps {
   dontShowAgainToday?: boolean;
   onDontShowAgainChange?: (checked: boolean) => void;
 }
-
-type TaskItem = { activity?: Activity; event?: CalendarEvent };
 
 function getTodayTasks(currentUserId: string): TaskItem[] {
   const today = format(new Date(), 'yyyy-MM-dd');
@@ -220,8 +233,7 @@ export function DailyBriefingPanel({
                             const time = item.activity?.startTime ?? item.event?.startTime ?? '';
                             const type = item.activity?.type ?? item.event?.type ?? 'tarea';
                             const status = item.activity?.status ?? item.event?.status ?? 'pendiente';
-                            const companyContact =
-                              item.activity?.contactName ?? item.event?.relatedEntityName ?? '';
+                            const companyContact = briefingTaskSubtitle(item);
                             const overdue = isOverdue(item);
 
                             return (
@@ -245,7 +257,7 @@ export function DailyBriefingPanel({
                                     {status === 'vencida' ? 'Vencida' : status === 'en_progreso' ? 'En progreso' : 'Pendiente'}
                                   </span>
                                 </div>
-                                <p className="text-xs text-muted-foreground">
+                                <p className="min-w-0 break-words text-xs text-muted-foreground">
                                   {companyContact && `${companyContact} · `}
                                   {time && `${time} · `}
                                   {activityTypeLabels[type] ?? type}

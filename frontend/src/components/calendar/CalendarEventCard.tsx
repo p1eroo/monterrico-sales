@@ -1,12 +1,9 @@
 import { useNavigate } from 'react-router-dom';
+import { User, Building2, Briefcase } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CalendarEvent } from '@/types';
 import { eventTypeConfig } from './eventTypeConfig';
-import {
-  companyDetailHref,
-  contactDetailHref,
-  opportunityDetailHref,
-} from '@/lib/detailRoutes';
+import { getCalendarEventNavPaths } from '@/lib/calendarEventLinks';
 
 interface CalendarEventCardProps {
   event: CalendarEvent;
@@ -15,36 +12,21 @@ interface CalendarEventCardProps {
   className?: string;
 }
 
-function getEntityLink(event: CalendarEvent): string | null {
-  if (!event.relatedEntityType || !event.relatedEntityId) return null;
-  switch (event.relatedEntityType) {
-    case 'contact':
-      return contactDetailHref({ id: event.relatedEntityId });
-    case 'company':
-      if (event.relatedEntityId) {
-        return companyDetailHref({ id: event.relatedEntityId });
-      }
-      if (event.relatedEntityName) {
-        return `/empresas/${encodeURIComponent(event.relatedEntityName)}`;
-      }
-      return null;
-    case 'opportunity':
-      return opportunityDetailHref({ id: event.relatedEntityId });
-    default:
-      return null;
-  }
-}
-
 export function CalendarEventCard({ event, compact, onClick, className }: CalendarEventCardProps) {
   const navigate = useNavigate();
   const config = eventTypeConfig[event.type];
   const Icon = config.icon;
-  const link = getEntityLink(event);
+  const links = getCalendarEventNavPaths(event);
 
-  const handleEntityClick = (e: React.MouseEvent) => {
+  const go = (path: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (link) navigate(link);
+    navigate(path);
   };
+
+  const hasContactRow = Boolean(links.contactPath && links.contactName);
+  const hasCompanyRow = Boolean(links.companyPath && links.companyName);
+  const hasOpportunityRow = Boolean(links.opportunityPath && links.opportunityTitle);
+  const hasLinkedRows = hasContactRow || hasCompanyRow || hasOpportunityRow;
 
   if (compact) {
     return (
@@ -87,17 +69,39 @@ export function CalendarEventCard({ event, compact, onClick, className }: Calend
           <p className="text-xs text-muted-foreground mt-0.5">
             {event.startTime} - {event.endTime}
           </p>
-          {event.relatedEntityName && (
-            <button
-              type="button"
-              onClick={handleEntityClick}
-              className="mt-1.5 text-xs text-[#13944C] hover:underline font-medium truncate block text-left"
-            >
-              {event.relatedEntityType === 'contact' && '👤 '}
-              {event.relatedEntityType === 'company' && '🏢 '}
-              {event.relatedEntityType === 'opportunity' && '💼 '}
-              {event.relatedEntityName}
-            </button>
+          {hasLinkedRows && (
+            <div className="mt-1.5 flex min-w-0 flex-col gap-1">
+              {hasContactRow ? (
+                <button
+                  type="button"
+                  onClick={(e) => go(links.contactPath!, e)}
+                  className="flex min-w-0 w-full items-start gap-1.5 text-left text-xs font-medium text-[#13944C] hover:underline"
+                >
+                  <User className="mt-0.5 size-3 shrink-0 opacity-90" aria-hidden />
+                  <span className="min-w-0 break-words">{links.contactName}</span>
+                </button>
+              ) : null}
+              {hasCompanyRow ? (
+                <button
+                  type="button"
+                  onClick={(e) => go(links.companyPath!, e)}
+                  className="flex min-w-0 w-full items-start gap-1.5 text-left text-xs font-medium text-[#13944C] hover:underline"
+                >
+                  <Building2 className="mt-0.5 size-3 shrink-0 opacity-90" aria-hidden />
+                  <span className="min-w-0 break-words">{links.companyName}</span>
+                </button>
+              ) : null}
+              {hasOpportunityRow ? (
+                <button
+                  type="button"
+                  onClick={(e) => go(links.opportunityPath!, e)}
+                  className="flex min-w-0 w-full items-start gap-1.5 text-left text-xs font-medium text-[#13944C] hover:underline"
+                >
+                  <Briefcase className="mt-0.5 size-3 shrink-0 opacity-90" aria-hidden />
+                  <span className="min-w-0 break-words">{links.opportunityTitle}</span>
+                </button>
+              ) : null}
+            </div>
           )}
           <p className="text-xs text-muted-foreground mt-1">{event.assignedToName}</p>
         </div>

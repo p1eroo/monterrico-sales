@@ -484,7 +484,7 @@ export const TasksKanbanBoard = memo(function TasksKanbanBoard({
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col gap-2">
+      <div className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col gap-2">
         <div
           className={cn(
             'scrollbar-thin flex h-[min(calc(100dvh-15rem),72rem)] min-h-[22rem] w-full min-w-0 flex-row gap-3',
