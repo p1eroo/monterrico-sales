@@ -24,6 +24,11 @@ import { EntitySyncService } from '../sync/entity-sync.service';
 import type { CrmDataScope } from '../auth/crm-data-scope.service';
 import { mergeCompanyScope } from '../common/crm-data-scope-where.util';
 import { normalizeClienteRecuperadoForCsv } from '../common/normalize-cliente-recuperado';
+import { STAGE_PROBABILITY_FALLBACK } from '../crm-config/crm-config.constants';
+import {
+  buildEtapaStepFunction,
+  buildIsoWeekExportColumns,
+} from './company-export-weeks.util';
 
 const MAX_IMPORT_ROWS = 1500;
 const MAX_COMPANY_IMPORT_ROWS = 5000;
@@ -2181,97 +2186,151 @@ export class ImportExportService {
     return UTF8_BOM + stringifyCsvRow([...COMPANY_HEADERS]);
   }
 
+  /**
+   * Export comercial (CSV): fecha de ingreso, empresa, teléfono, origen, asesor y
+   * columnas por semana ISO con cabecera en español (`Semana N`, o `Semana N (AAAA)`
+   * si el rango cruza años ISO). Cada celda es porcentaje con sufijo `%` (p. ej. `40%`);
+   * semanas anteriores al alta o sin dato se exportan como `0%`.
+   * La reconstrucción de etapa usa auditoría de `etapa`; sin historial, etapa constante.
+   * La plantilla de importación sigue usando {@link COMPANY_HEADERS}.
+   */
   async companiesExportCsv(scope?: CrmDataScope): Promise<string> {
     const list = await this.prisma.company.findMany({
       where: mergeCompanyScope({}, scope),
       take: 10_000,
       orderBy: { updatedAt: 'desc' },
       select: {
+        id: true,
         name: true,
-        razonSocial: true,
-        ruc: true,
         telefono: true,
-        domain: true,
-        rubro: true,
-        tipo: true,
-        correo: true,
-        linkedin: true,
-        distrito: true,
-        provincia: true,
-        departamento: true,
-        direccion: true,
-        facturacionEstimada: true,
         fuente: true,
-        clienteRecuperado: true,
         etapa: true,
-        assignedTo: true,
-        contacts: {
-          where: { isPrimary: true },
-          take: 1,
-          select: {
-            contact: {
-              select: {
-                name: true,
-                telefono: true,
-                correo: true,
-                cargo: true,
-                docType: true,
-                docNumber: true,
-                departamento: true,
-                provincia: true,
-                distrito: true,
-                direccion: true,
-                clienteRecuperado: true,
-              },
-            },
-          },
-        },
+        createdAt: true,
+        user: { select: { name: true } },
       },
     });
-    const lines: string[] = [stringifyCsvRow([...COMPANY_HEADERS])];
-    for (const c of list) {
-      const p = c.contacts[0]?.contact;
-      lines.push(
-        stringifyCsvRow([
-          c.name,
-          c.razonSocial ?? '',
-          c.ruc ?? '',
-          c.telefono ?? '',
-          '',
-          '',
-          '',
-          '',
-          c.domain ?? '',
-          c.rubro ?? '',
-          c.tipo ?? '',
-          c.correo ?? '',
-          c.linkedin ?? '',
-          c.distrito ?? '',
-          c.provincia ?? '',
-          c.departamento ?? '',
-          c.direccion ?? '',
-          String(c.facturacionEstimada),
-          c.fuente ?? '',
-          c.clienteRecuperado ?? '',
-          c.etapa,
-          c.assignedTo ?? '',
-          p?.name ?? '',
-          p?.telefono ?? '',
-          '',
-          '',
-          '',
-          '',
-          p?.correo ?? '',
-          p?.cargo ?? '',
-          p?.docType ?? '',
-          p?.docNumber ?? '',
-          p?.departamento ?? '',
-          p?.provincia ?? '',
-          p?.distrito ?? '',
-          p?.direccion ?? '',
-          p?.clienteRecuperado ?? '',
-        ]),
+
+    const now = new Date();
+    const minCreatedTs =
+      list.length === 0
+        ? now.getTime()
+        : Math.min(...list.map((c) => c.createdAt.getTime()));
+    const weekCols = buildIsoWeekExportColumns(new Date(minCreatedTs), now);
+
+    const baseHeaders = [
+      'Fecha de Ingreso',
+      'Empresa / Cliente',
+      'Teléfono',
+      'Origen',
+      'Asesor',
+    ];
+    const headers = [...baseHeaders, ...weekCols.map((w) => w.key)];
+
+    const [stages, leadSources] = await Promise.all([
+      this.prisma.crmStage.findMany({
+        select: { slug: true, probability: true },
+      }),
+      this.prisma.crmLeadSource.findMany({
+        select: { slug: true, name: true },
+      }),
+    ]);
+
+    const probBySlug = new Map<string, number>();
+    for (const s of stages) {
+      probBySlug.set(
+        s.slug.trim().toLowerCase(),
+        Math.round(Number(s.probability) || 0),
       );
+    }
+    const sourceLabel = new Map<string, string>();
+    for (const s of leadSources) {
+      sourceLabel.set(s.slug.trim().toLowerCase(), s.name.trim());
+    }
+
+    const resolveProb = (slugRaw: string): number => {
+      const slug = slugRaw.trim().toLowerCase();
+      const p = probBySlug.get(slug);
+      if (p !== undefined) return p;
+      return STAGE_PROBABILITY_FALLBACK[slug] ?? 0;
+    };
+
+    const companyIds = list.map((c) => c.id);
+    const auditRows =
+      companyIds.length === 0
+        ? []
+        : await this.prisma.auditChangeSet.findMany({
+            where: {
+              module: 'empresas',
+              entityType: 'Empresa',
+              entityId: { in: companyIds },
+              entries: { some: { fieldKey: 'etapa' } },
+            },
+            orderBy: { createdAt: 'asc' },
+            select: {
+              entityId: true,
+              createdAt: true,
+              entries: {
+                where: { fieldKey: 'etapa' },
+                take: 1,
+                select: { oldValue: true, newValue: true },
+              },
+            },
+          });
+
+    const auditsByCompany = new Map<
+      string,
+      { at: Date; oldValue: string; newValue: string }[]
+    >();
+    for (const r of auditRows) {
+      const ent = r.entries[0];
+      if (!ent || !r.entityId) continue;
+      const arr = auditsByCompany.get(r.entityId) ?? [];
+      arr.push({
+        at: r.createdAt,
+        oldValue: ent.oldValue,
+        newValue: ent.newValue,
+      });
+      auditsByCompany.set(r.entityId, arr);
+    }
+    for (const arr of auditsByCompany.values()) {
+      arr.sort((a, b) => a.at.getTime() - b.at.getTime());
+    }
+
+    const fuenteLabel = (slug: string | null | undefined): string => {
+      if (!slug?.trim()) return '';
+      const key = slug.trim().toLowerCase();
+      return sourceLabel.get(key) ?? slug.trim();
+    };
+
+    /** Fecha de ingreso en día/mes/año (misma referencia UTC que antes con ISO). */
+    const ingresoStr = (d: Date) => {
+      const dd = String(d.getUTCDate()).padStart(2, '0');
+      const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+      const yyyy = String(d.getUTCFullYear());
+      return `${dd}/${mm}/${yyyy}`;
+    };
+
+    const lines: string[] = [stringifyCsvRow(headers)];
+    for (const c of list) {
+      const audits = auditsByCompany.get(c.id) ?? [];
+      const etapaAt = buildEtapaStepFunction(c.createdAt, c.etapa, audits);
+      const row: string[] = [
+        ingresoStr(c.createdAt),
+        c.name,
+        c.telefono ?? '',
+        fuenteLabel(c.fuente),
+        c.user?.name ?? '',
+      ];
+      const createdMs = c.createdAt.getTime();
+      for (const col of weekCols) {
+        if (col.weekEnd.getTime() < createdMs) {
+          row.push('0%');
+        } else {
+          const p = resolveProb(etapaAt(col.weekEnd));
+          row.push(`${p}%`);
+        }
+      }
+      lines.push(stringifyCsvRow(row));
     }
     return UTF8_BOM + lines.join('\n');
   }

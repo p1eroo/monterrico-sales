@@ -179,7 +179,11 @@ export async function downloadImportExportCsv(
   const slug =
     entity === 'contacts' ? 'contactos' : entity === 'companies' ? 'empresas' : 'oportunidades';
   const name =
-    kind === 'template' ? `plantilla-${slug}.xlsx` : `${slug}-export.xlsx`;
+    kind === 'template'
+      ? `plantilla-${slug}.xlsx`
+      : entity === 'companies'
+        ? 'empresas-export-comercial.xlsx'
+        : `${slug}-export.xlsx`;
   triggerBlobDownload(blob, name);
 }
 

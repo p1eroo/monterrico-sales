@@ -205,7 +205,10 @@ export default function OpportunitiesPage() {
     'todos',
   );
   const [activeTab, setActiveTab] = useState('todas');
-  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) return 'cards';
+    return 'table';
+  });
   const [newDialogOpen, setNewDialogOpen] = useState(false);
   const [previewOpportunity, setPreviewOpportunity] = useState<Opportunity | null>(null);
   const [editOpportunity, setEditOpportunity] = useState<Opportunity | null>(null);
@@ -602,24 +605,24 @@ export default function OpportunitiesPage() {
             </Button>
           )}
 
-          <div className="ml-auto flex items-center rounded-md border bg-card">
-            <Button
-              variant={viewMode === 'table' ? 'secondary' : 'ghost'}
-              size="icon-sm"
-              onClick={() => setViewMode('table')}
-              className="rounded-r-none"
-            >
-              <List className="size-4" />
-            </Button>
-            <Button
-              variant={viewMode === 'cards' ? 'secondary' : 'ghost'}
-              size="icon-sm"
-              onClick={() => setViewMode('cards')}
-              className="rounded-l-none"
-            >
-              <Grid3X3 className="size-4" />
-            </Button>
-          </div>
+<div className="ml-auto hidden md:flex items-center rounded-md border bg-card">
+  <Button
+    variant={viewMode === 'table' ? 'secondary' : 'ghost'}
+    size="icon-sm"
+    onClick={() => setViewMode('table')}
+    className="rounded-r-none"
+  >
+    <List className="size-4" />
+  </Button>
+  <Button
+    variant={viewMode === 'cards' ? 'secondary' : 'ghost'}
+    size="icon-sm"
+    onClick={() => setViewMode('cards')}
+    className="rounded-l-none"
+  >
+    <Grid3X3 className="size-4" />
+  </Button>
+</div>
         </div>
       </div>
 
@@ -943,18 +946,18 @@ function OpportunitiesGrid({
   canDelete: boolean;
 }) {
   return (
-    <div className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="grid w-full grid-cols-1 gap-3 px-0 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {data.map((opp) => {
         const pending = isPendingOpportunityId(opp.id);
         return (
-        <Card
-          key={opp.id}
-          className={
-            pending
-              ? 'group gap-0 border-dashed bg-muted/30 py-0'
-              : 'group cursor-pointer gap-0 py-0 transition-all hover:shadow-md hover:border-[#13944C]/30'
-          }
-          onClick={() => onOpenDetail(opp)}
+<Card
+              key={opp.id}
+              className={
+                pending
+                  ? 'group gap-0 max-w-full overflow-hidden border-dashed bg-muted/30 py-0'
+                  : 'group cursor-pointer gap-0 max-w-full overflow-hidden py-0 transition-all hover:shadow-md hover:border-[#13944C]/30'
+              }
+              onClick={() => onOpenDetail(opp)}
         >
           <CardContent className="p-4">
             <div className="flex items-start justify-between gap-2">

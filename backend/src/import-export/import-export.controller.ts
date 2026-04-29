@@ -141,7 +141,7 @@ export class ImportExportController {
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader(
       'Content-Disposition',
-      'attachment; filename="empresas-export.csv"',
+      'attachment; filename="empresas-export-comercial.csv"',
     );
     res.send(body);
   }

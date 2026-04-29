@@ -986,16 +986,16 @@ export default function ContactoDetailPage() {
       )}
     >
         <Tabs defaultValue="historial">
-          <TabsList variant="line" className="max-w-full justify-start">
-            <TabsTrigger value="historial">Historial</TabsTrigger>
-            <TabsTrigger value="actividades">Actividades</TabsTrigger>
-            <TabsTrigger value="tareas">Tareas</TabsTrigger>
-            <TabsTrigger value="notas">Notas</TabsTrigger>
-            <TabsTrigger value="archivos" className="gap-1.5">
-              <FileArchive className="size-3.5" />
-              Archivos
-            </TabsTrigger>
-          </TabsList>
+<TabsList variant="line" className="max-w-full w-full overflow-x-auto justify-start">
+  <TabsTrigger value="historial" className="text-xs px-2 sm:text-sm sm:px-4">Historial</TabsTrigger>
+  <TabsTrigger value="actividades" className="text-xs px-2 sm:text-sm sm:px-4">Actividades</TabsTrigger>
+  <TabsTrigger value="tareas" className="text-xs px-2 sm:text-sm sm:px-4">Tareas</TabsTrigger>
+  <TabsTrigger value="notas" className="text-xs px-2 sm:text-sm sm:px-4">Notas</TabsTrigger>
+  <TabsTrigger value="archivos" className="gap-1.5 text-xs px-2 sm:text-sm sm:px-4">
+    <FileArchive className="size-3.5" />
+    Archivos
+  </TabsTrigger>
+</TabsList>
 
           <TabsContent value="actividades" className="mt-4">
             <ActivityPanel activities={contactActivities} onRegisterActivity={() => toast.info('Usa las acciones rápidas para registrar una actividad')} />
@@ -1019,12 +1019,12 @@ export default function ContactoDetailPage() {
             />
           </TabsContent>
 
-          <TabsContent value="notas" className="mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Notas</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+<TabsContent value="notas" className="mt-4">
+  <Card>
+    <CardHeader className="pb-2">
+      <CardTitle className="text-base">Notas</CardTitle>
+    </CardHeader>
+    <CardContent className="space-y-3 p-3 sm:p-5 sm:space-y-4">
                 <div className="space-y-2">
                   <Textarea
                     placeholder="Escribe una nota..."

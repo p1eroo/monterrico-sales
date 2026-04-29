@@ -156,7 +156,10 @@ export default function ContactosPage() {
     setAdvisorFilter,
     'todos',
   );
-  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) return 'cards';
+    return 'table';
+  });
   const [page, setPage] = useState(1);
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
   const [newContactOpen, setNewContactOpen] = useState(false);
@@ -1035,24 +1038,24 @@ export default function ContactosPage() {
             </Button>
           )}
 
-          <div className="ml-auto flex items-center rounded-md border bg-card">
-            <Button
-              variant={viewMode === 'table' ? 'secondary' : 'ghost'}
-              size="icon-sm"
-              onClick={() => setViewMode('table')}
-              className="rounded-r-none"
-            >
-              <List className="size-4" />
-            </Button>
-            <Button
-              variant={viewMode === 'cards' ? 'secondary' : 'ghost'}
-              size="icon-sm"
-              onClick={() => setViewMode('cards')}
-              className="rounded-l-none"
-            >
-              <Grid3X3 className="size-4" />
-            </Button>
-          </div>
+<div className="ml-auto hidden md:flex items-center rounded-md border bg-card">
+  <Button
+    variant={viewMode === 'table' ? 'secondary' : 'ghost'}
+    size="icon-sm"
+    onClick={() => setViewMode('table')}
+    className="rounded-r-none"
+  >
+    <List className="size-4" />
+  </Button>
+  <Button
+    variant={viewMode === 'cards' ? 'secondary' : 'ghost'}
+    size="icon-sm"
+    onClick={() => setViewMode('cards')}
+    className="rounded-l-none"
+  >
+    <Grid3X3 className="size-4" />
+  </Button>
+</div>
         </div>
       </div>
 
@@ -1378,7 +1381,7 @@ function ContactsGrid({
   onDelete,
 }: ContactsGridProps) {
   return (
-    <div className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="grid w-full grid-cols-1 gap-3 px-0 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {data.map((contact) => {
         const pending = isPendingContactId(contact.id);
         const tel = contact.telefono?.trim() ?? '';
@@ -1386,15 +1389,15 @@ function ContactsGrid({
         const showTel = !!tel && tel !== '-';
         const showMail = !!mail;
         return (
-        <Card
-          key={contact.id}
-          className={
-            pending
-              ? 'gap-0 border-dashed bg-muted/30 py-0'
-              : 'cursor-pointer gap-0 py-0 transition-shadow hover:shadow-md'
-          }
-          onClick={() => onView(contact)}
-        >
+<Card
+              key={contact.id}
+              className={
+                pending
+                  ? 'gap-0 max-w-full overflow-hidden border-dashed bg-muted/30 py-0'
+                  : 'cursor-pointer gap-0 max-w-full overflow-hidden py-0 transition-shadow hover:shadow-md'
+              }
+              onClick={() => onView(contact)}
+            >
           <CardContent className="p-4">
             <div className="flex items-start justify-between">
               <div className="flex-1 min-w-0">
