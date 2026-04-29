@@ -126,6 +126,9 @@ export async function companyListSummaryPaginated(params?: {
   etapa?: string;
   fuente?: string;
   assignedTo?: string;
+  lastInteraction?: string;
+  lastInteractionFrom?: string;
+  lastInteractionTo?: string;
 }): Promise<CompanySummaryListResponse> {
   const sp = new URLSearchParams();
   if (params?.page != null) sp.set('page', String(params.page));
@@ -136,6 +139,9 @@ export async function companyListSummaryPaginated(params?: {
   if (params?.etapa?.trim()) sp.set('etapa', params.etapa.trim());
   if (params?.fuente?.trim()) sp.set('fuente', params.fuente.trim());
   if (params?.assignedTo?.trim()) sp.set('assignedTo', params.assignedTo.trim());
+  if (params?.lastInteraction?.trim()) sp.set('lastInteraction', params.lastInteraction.trim());
+  if (params?.lastInteractionFrom?.trim()) sp.set('lastInteractionFrom', params.lastInteractionFrom.trim());
+  if (params?.lastInteractionTo?.trim()) sp.set('lastInteractionTo', params.lastInteractionTo.trim());
   const qs = sp.toString();
   return api<CompanySummaryListResponse>(
     qs ? `/companies/summary?${qs}` : '/companies/summary',
@@ -149,6 +155,9 @@ export async function companySummaryEtapaCounts(params?: {
   tipo?: string;
   fuente?: string;
   assignedTo?: string;
+  lastInteraction?: string;
+  lastInteractionFrom?: string;
+  lastInteractionTo?: string;
 }): Promise<{ counts: Record<string, number> }> {
   const sp = new URLSearchParams();
   if (params?.search?.trim()) sp.set('search', params.search.trim());
@@ -156,6 +165,9 @@ export async function companySummaryEtapaCounts(params?: {
   if (params?.tipo?.trim()) sp.set('tipo', params.tipo.trim());
   if (params?.fuente?.trim()) sp.set('fuente', params.fuente.trim());
   if (params?.assignedTo?.trim()) sp.set('assignedTo', params.assignedTo.trim());
+  if (params?.lastInteraction?.trim()) sp.set('lastInteraction', params.lastInteraction.trim());
+  if (params?.lastInteractionFrom?.trim()) sp.set('lastInteractionFrom', params.lastInteractionFrom.trim());
+  if (params?.lastInteractionTo?.trim()) sp.set('lastInteractionTo', params.lastInteractionTo.trim());
   const qs = sp.toString();
   return api<{ counts: Record<string, number> }>(
     qs

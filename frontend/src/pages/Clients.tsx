@@ -265,7 +265,7 @@ export default function Clients() {
         </div>
         <div className="flex flex-wrap items-center gap-2 flex-1">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-auto bg-card">
+            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card shadow-none">
               <div className="flex items-center gap-1.5">
                 <Globe className="size-3.5" />
                 <SelectValue placeholder="Estado" />
@@ -283,7 +283,7 @@ export default function Clients() {
             onValueChange={setAssigneeFilter}
             disabled={!canSeeAllAdvisors}
           >
-            <SelectTrigger className="w-auto bg-card">
+            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card shadow-none">
               <div className="flex items-center gap-1.5">
                 <User className="size-3.5" />
                 <SelectValue placeholder="Asesor" />

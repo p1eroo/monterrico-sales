@@ -13,6 +13,7 @@ import { isLikelyCompanyCuid } from './companyApi';
 import type { ApiOpportunityListRow } from './opportunityApi';
 import { mapApiOpportunityToOpportunity } from './opportunityApi';
 import { optionalContactCargoFromApi } from './contactCargo';
+import { normalizeClienteRecuperado } from './normalizeClienteRecuperado';
 
 export const isLikelyContactCuid = isLikelyCompanyCuid;
 
@@ -165,8 +166,8 @@ function parseEtapaHistory(raw: unknown): Contact['etapaHistory'] {
 }
 
 function parseClienteRec(s: string | null | undefined): 'si' | 'no' | undefined {
-  if (s === 'si' || s === 'no') return s;
-  return undefined;
+  const v = normalizeClienteRecuperado(s);
+  return v ?? undefined;
 }
 
 export function mapApiContactRowToContact(row: ApiContactListRow | ApiContactNested): Contact {

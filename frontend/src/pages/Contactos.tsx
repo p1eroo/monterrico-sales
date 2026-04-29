@@ -981,7 +981,7 @@ export default function ContactosPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2 flex-1">
           <Select value={sourceFilter} onValueChange={(v) => { setSourceFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-auto bg-card">
+            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card shadow-none">
               <div className="flex items-center gap-1.5">
                 <Globe className="size-3.5" />
                 <SelectValue placeholder="Fuente" />
@@ -996,7 +996,7 @@ export default function ContactosPage() {
           </Select>
 
           <Select value={etapaFilter} onValueChange={(v) => { setEtapaFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-auto bg-card">
+            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card shadow-none">
               <div className="flex items-center gap-1.5">
                 <Tag className="size-3.5" />
                 <SelectValue placeholder="Etapa" />
@@ -1015,7 +1015,7 @@ export default function ContactosPage() {
             onValueChange={(v) => { setAdvisorFilter(v); setPage(1); }}
             disabled={!canSeeAllAdvisors}
           >
-            <SelectTrigger className="w-auto bg-card">
+            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card shadow-none">
               <div className="flex items-center gap-1.5">
                 <User className="size-3.5" />
                 <SelectValue placeholder="Asesor" />

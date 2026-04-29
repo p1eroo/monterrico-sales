@@ -86,12 +86,12 @@ export function FileListItem({
   }
 
   return (
-    <div className="flex items-center justify-between gap-4 rounded-lg border p-3 transition-colors hover:bg-muted/50">
+    <div className="flex w-full items-center justify-between gap-3 px-0 py-2.5 sm:py-3 transition-colors hover:bg-muted/40">
       <div
         className="flex min-w-0 flex-1 cursor-pointer items-center gap-3"
         onClick={() => onView(file)}
       >
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted/80">
           <FileTypeIcon mimeType={file.mimeType} />
         </div>
         <div className="min-w-0 flex-1">

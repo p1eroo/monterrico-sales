@@ -8,6 +8,7 @@ import {
 import { isLikelyContactCuid } from '@/lib/contactApi';
 import type { NewCompanyData } from '@/lib/newCompanyData';
 import type { ApiCompanyRecord } from '@/lib/companyApi';
+import { normalizeClienteRecuperado } from '@/lib/normalizeClienteRecuperado';
 
 /** Cuerpo PATCH /companies/:id desde el asistente de empresa. */
 export function newCompanyDataToPatchBody(
@@ -84,7 +85,8 @@ export function mapApiCompanyRecordToNewCompanyData(
     origenLead:
       fuenteRaw && isContactSourceKey(fuenteRaw) ? fuenteRaw : 'base',
     propietario: c.assignedTo ?? '',
-    clienteRecuperado: c.clienteRecuperado === 'si' ? 'si' : 'no',
+    clienteRecuperado:
+      normalizeClienteRecuperado(c.clienteRecuperado) === 'si' ? 'si' : 'no',
     nombreNegocio: c.name ?? '',
     etapa: etapaRaw && isEtapaKey(etapaRaw) ? etapaRaw : 'lead',
     facturacion:

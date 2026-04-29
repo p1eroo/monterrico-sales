@@ -1,18 +1,12 @@
-import { useState, useCallback, useEffect } from 'react';
-import { toast } from 'sonner';
+import { useState } from 'react';
 import { FileArchive } from 'lucide-react';
-import { usePermissions } from '@/hooks/usePermissions';
-import type { FileAttachment, FileEntityType } from '@/types';
+import type { FileEntityType, FileAttachment } from '@/types';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { FileUploadArea } from './FileUploadArea';
 import { FileListItem } from './FileListItem';
 import { FilePreviewModal } from './FilePreviewModal';
-import {
-  fetchFiles,
-  uploadFileToApi,
-  deleteFileApi,
-  fetchFileContentBlobUrl,
-} from '@/lib/fileApi';
+import { useEntityFiles, type UseEntityFilesReturn } from './useEntityFiles';
 
 interface EntityFilesTabProps {
   entityType: FileEntityType;
@@ -20,111 +14,102 @@ interface EntityFilesTabProps {
   entityName?: string;
 }
 
-export function EntityFilesTab({
-  entityType,
-  entityId,
-  entityName,
-}: EntityFilesTabProps) {
-  const { hasPermission } = usePermissions();
-  const [files, setFiles] = useState<FileAttachment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [previewFile, setPreviewFile] = useState<FileAttachment | null>(null);
-  const [previewOpen, setPreviewOpen] = useState(false);
+export function EntityFilesListSection({
+  state,
+  emptyVariant = 'full',
+}: {
+  state: UseEntityFilesReturn;
+  emptyVariant?: 'full' | 'compact';
+}) {
+  const {
+    loading,
+    files,
+    canDelete,
+    handleView,
+    handleDownload,
+    handleDelete,
+    previewFile,
+    previewOpen,
+    setPreviewOpen,
+  } = state;
 
-  const canCreate = hasPermission('archivos.crear');
-  const canDelete = hasPermission('archivos.eliminar');
-
-  const load = useCallback(async () => {
-    if (!entityId?.trim()) {
-      setFiles([]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      const rows = await fetchFiles({ entityType, entityId: entityId.trim() });
-      setFiles(rows);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'No se pudieron cargar los archivos');
-      setFiles([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [entityType, entityId]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  const handleUpload = useCallback(
-    async (uploadedFiles: File[]) => {
-      if (!entityId?.trim()) {
-        toast.error('Falta el identificador de la entidad para adjuntar archivos');
-        return;
-      }
-      if (!canCreate) {
-        toast.error('No tienes permiso para subir archivos');
-        return;
-      }
-      try {
-        for (const f of uploadedFiles) {
-          await uploadFileToApi(f, {
-            entityType,
-            entityId: entityId.trim(),
-            entityName,
-          });
-        }
-        toast.success(`${uploadedFiles.length} archivo(s) subido(s)`);
-        await load();
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'Error al subir');
-      }
-    },
-    [entityType, entityId, entityName, canCreate, load],
+  const [filePendingDelete, setFilePendingDelete] = useState<FileAttachment | null>(
+    null,
   );
 
-  const handleView = useCallback((file: FileAttachment) => {
-    setPreviewFile(file);
-    setPreviewOpen(true);
-  }, []);
+  if (loading) {
+    return (
+      <p className="py-4 text-center text-sm text-muted-foreground">
+        Cargando archivos…
+      </p>
+    );
+  }
 
-  const handleDownload = useCallback(async (file: FileAttachment) => {
-    try {
-      const url = await fetchFileContentBlobUrl(file.id, 'attachment');
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = file.name;
-      a.rel = 'noopener noreferrer';
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success('Descarga iniciada');
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'No se pudo descargar');
+  if (files.length === 0) {
+    if (emptyVariant === 'compact') {
+      return (
+        <p className="py-2 text-sm text-muted-foreground">Sin archivos adjuntos</p>
+      );
     }
-  }, []);
-
-  const handleDelete = useCallback(
-    async (file: FileAttachment) => {
-      if (!canDelete) {
-        toast.error('No tienes permiso para eliminar archivos');
-        return;
-      }
-      try {
-        await deleteFileApi(file.id);
-        toast.success('Archivo eliminado');
-        if (previewFile?.id === file.id) {
-          setPreviewOpen(false);
-          setPreviewFile(null);
+    return (
+      <EmptyState
+        icon={FileArchive}
+        title="No hay archivos adjuntos"
+        description={
+          state.canCreate
+            ? 'Los archivos que subas quedarán asociados a este registro y se listarán aquí'
+            : 'Aún no hay archivos para esta entidad'
         }
-        await load();
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'No se pudo eliminar');
-      }
-    },
-    [canDelete, previewFile?.id, load],
-  );
+      />
+    );
+  }
 
-  if (!entityId?.trim()) {
+  return (
+    <>
+      <div className="divide-y divide-border">
+        {files.map((f) => (
+          <FileListItem
+            key={f.id}
+            file={f}
+            onView={handleView}
+            onDownload={handleDownload}
+            onDelete={canDelete ? (file) => setFilePendingDelete(file) : undefined}
+            canDelete={canDelete}
+          />
+        ))}
+      </div>
+      <ConfirmDialog
+        open={filePendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setFilePendingDelete(null);
+        }}
+        title="Eliminar Archivo"
+        description="¿Estás seguro que deseas eliminar este archivo? Esta acción no se puede deshacer."
+        onConfirm={() => {
+          const f = filePendingDelete;
+          if (f) void handleDelete(f);
+        }}
+        variant="destructive"
+      />
+      <FilePreviewModal
+        file={previewFile}
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        onDownload={handleDownload}
+      />
+    </>
+  );
+}
+
+/** Solo zona de arrastre / selección (p. ej. pestaña Archivos en detalle de contacto). */
+export function EntityFilesUploadSection({
+  state,
+}: {
+  state: UseEntityFilesReturn;
+}) {
+  const { entityIdValid, canCreate, handleUpload } = state;
+
+  if (!entityIdValid) {
     return (
       <EmptyState
         icon={FileArchive}
@@ -139,40 +124,33 @@ export function EntityFilesTab({
       {canCreate && (
         <FileUploadArea onUpload={handleUpload} className="min-h-[120px]" />
       )}
+    </div>
+  );
+}
 
-      {loading ? (
-        <p className="text-sm text-muted-foreground py-6 text-center">Cargando archivos…</p>
-      ) : files.length === 0 ? (
-        <EmptyState
-          icon={FileArchive}
-          title="No hay archivos adjuntos"
-          description={
-            canCreate
-              ? 'Los archivos que subas quedarán asociados a este registro y se listarán aquí'
-              : 'Aún no hay archivos para esta entidad'
-          }
-        />
-      ) : (
-        <div className="space-y-2">
-          {files.map((f) => (
-            <FileListItem
-              key={f.id}
-              file={f}
-              onView={handleView}
-              onDownload={handleDownload}
-              onDelete={canDelete ? handleDelete : undefined}
-              canDelete={canDelete}
-            />
-          ))}
-        </div>
-      )}
+export function EntityFilesTab({
+  entityType,
+  entityId,
+  entityName,
+}: EntityFilesTabProps) {
+  const state = useEntityFiles({ entityType, entityId, entityName });
 
-      <FilePreviewModal
-        file={previewFile}
-        open={previewOpen}
-        onOpenChange={setPreviewOpen}
-        onDownload={handleDownload}
+  if (!state.entityIdValid) {
+    return (
+      <EmptyState
+        icon={FileArchive}
+        title="Adjuntos no disponibles"
+        description="No se pudo determinar el identificador de esta entidad en el servidor. Abre el detalle desde el listado conectado a la API."
       />
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {state.canCreate && (
+        <FileUploadArea onUpload={state.handleUpload} className="min-h-[120px]" />
+      )}
+      <EntityFilesListSection state={state} emptyVariant="full" />
     </div>
   );
 }

@@ -20,6 +20,7 @@ import type { CrmDataScope } from '../auth/crm-data-scope.service';
 import { mergeCompanyScope } from '../common/crm-data-scope-where.util';
 import { NotificationsService } from '../notifications/notifications.service';
 import { normalizeContactCargo } from './contact-cargo.util';
+import { normalizeClienteRecuperado } from '../common/normalize-cliente-recuperado';
 
 /** Orden de pestañas de etapa en listado contactos (alineado con Empresas). */
 const CONTACT_TAB_ETAPAS = [
@@ -289,7 +290,7 @@ export class ContactsService {
         direccion: dto.direccion?.trim() || null,
         facturacionEstimada: dto.facturacionEstimada,
         fuente,
-        clienteRecuperado: dto.clienteRecuperado?.trim() || null,
+        clienteRecuperado: normalizeClienteRecuperado(dto.clienteRecuperado),
         etapa,
         assignedTo,
       },
@@ -392,7 +393,7 @@ export class ContactsService {
             provincia: dto.provincia?.trim() || null,
             distrito: dto.distrito?.trim() || null,
             direccion: dto.direccion?.trim() || null,
-            clienteRecuperado: dto.clienteRecuperado?.trim() || null,
+            clienteRecuperado: normalizeClienteRecuperado(dto.clienteRecuperado),
             etapaHistory,
           },
         });
@@ -541,7 +542,10 @@ export class ContactsService {
     ]);
 
     return {
-      data: rows,
+      data: rows.map((r) => ({
+        ...r,
+        clienteRecuperado: normalizeClienteRecuperado(r.clienteRecuperado),
+      })),
       total,
       page,
       limit,
@@ -565,7 +569,10 @@ export class ContactsService {
     ) {
       throw new NotFoundException('Contacto no encontrado');
     }
-    return row;
+    return {
+      ...row,
+      clienteRecuperado: normalizeClienteRecuperado(row.clienteRecuperado),
+    };
   }
 
   async update(
@@ -687,7 +694,7 @@ export class ContactsService {
       data.direccion = dto.direccion?.trim() || null;
     }
     if (dto.clienteRecuperado !== undefined) {
-      data.clienteRecuperado = dto.clienteRecuperado?.trim() || null;
+      data.clienteRecuperado = normalizeClienteRecuperado(dto.clienteRecuperado);
     }
     if (dto.etapaHistory !== undefined) {
       data.etapaHistory =

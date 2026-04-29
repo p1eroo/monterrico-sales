@@ -3,7 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   ArrowLeft,
-  Phone, Mail, Users,
+  Phone,
+  Mail,
+  Users,
+  User,
   Building2, Globe, DollarSign, CalendarDays, MapPin,
   FileArchive, Loader2, Plus, ChevronLeft, ChevronRight,
 } from 'lucide-react';
@@ -45,7 +48,12 @@ import {
 import { WhatsappContactDrawer } from '@/components/shared/WhatsappContactDrawer';
 import { TasksTab, type TasksTabHandle } from '@/components/shared/TasksTab';
 import { ContactEditDialog, type ContactEditSavePayload } from '@/components/shared/ContactEditDialog';
-import { EntityFilesTab } from '@/components/files';
+import {
+  EntityFilesListSection,
+  EntityFilesUploadSection,
+  useEntityFiles,
+  type UseEntityFilesReturn,
+} from '@/components/files';
 import { ContactHeader } from '@/components/contact-detail/ContactHeader';
 
 import { Button } from '@/components/ui/button';
@@ -76,34 +84,53 @@ import { type ApiCompanyRecord, companyListAll } from '@/lib/companyApi';
 import { useStageBadgeTone } from '@/hooks/useStageBadgeTone';
 import { useCrmConfigStore, getStageLabelFromCatalog } from '@/store/crmConfigStore';
 
-const TIMELINE_PAGE_SIZE = 6;
+const TIMELINE_PAGE_SIZE = 8;
 
 function ContactoInformacionAside({ contact }: { contact: Contact }) {
-  return (
-    <EntityInfoCard
-      title="Información"
-      collapsible
-      fields={[
-        { icon: Phone, value: contact.telefono, href: `tel:${contact.telefono}` },
-        { icon: Mail, value: contact.correo, href: `mailto:${contact.correo}` },
+return (
+<EntityInfoCard
+  title="Información"
+  collapsible
+  fields={[
+    ...(contact.assignedToName
+      ? [{ icon: User, value: contact.assignedToName }]
+      : []),
+    { icon: Phone, value: contact.telefono, href: `tel:${contact.telefono}` },
+    { icon: Mail, value: contact.correo, href: `mailto:${contact.correo}` },
+    {
+      icon: Building2,
+      value: getPrimaryCompany(contact)?.name ?? '—',
+      truncate: true,
+    },
+    { icon: Globe, value: contactSourceLabels[contact.fuente] },
+    { icon: CalendarDays, value: `Fecha de creación: ${formatDate(contact.createdAt)}` },
+    ...(contact.direccion?.trim()
+    ? [
         {
-          icon: Building2,
-          value: getPrimaryCompany(contact)?.name ?? '—',
+          icon: MapPin as typeof Phone,
+          value: contact.direccion.trim(),
           truncate: true,
         },
-        { icon: Globe, value: contactSourceLabels[contact.fuente] },
-        { icon: CalendarDays, value: `Fecha de creación: ${formatDate(contact.createdAt)}` },
-        ...(contact.direccion?.trim()
-          ? [
-              {
-                icon: MapPin as typeof Phone,
-                value: contact.direccion.trim(),
-                truncate: true,
-              },
-            ]
-          : []),
-      ]}
-    />
+      ]
+    : []),
+  ]}
+/>
+);
+}
+
+function ContactoArchivosAside({ state }: { state: UseEntityFilesReturn }) {
+  const extra = !state.entityIdValid ? (
+    <p className="px-4 pb-4 text-sm text-muted-foreground">
+      Adjuntos no disponibles para este registro.
+    </p>
+  ) : (
+    <div className="min-w-0 -mx-1 pb-3">
+      <EntityFilesListSection state={state} emptyVariant="compact" />
+    </div>
+  );
+
+  return (
+    <EntityInfoCard title="Archivos" collapsible fields={[]} extraContent={extra} />
   );
 }
 
@@ -238,6 +265,12 @@ export default function ContactoDetailPage() {
     }
     return storeContact;
   }, [fromApi, apiRecord, storeContact]);
+
+  const contactFiles = useEntityFiles({
+    entityType: 'contact',
+    entityId: contact?.id ?? '',
+    entityName: contact?.name,
+  });
 
   const mergedContacts = useMemo(() => {
     if (fromApi) {
@@ -934,7 +967,10 @@ export default function ContactoDetailPage() {
         />
       )}
       leftAside={(
-        <ContactoInformacionAside contact={contact} />
+        <>
+          <ContactoInformacionAside contact={contact} />
+          <ContactoArchivosAside state={contactFiles} />
+        </>
       )}
       sidebar={(
         <ContactoVinculadosAside
@@ -967,11 +1003,7 @@ export default function ContactoDetailPage() {
 
           {/* Archivos Tab */}
           <TabsContent value="archivos" className="mt-4">
-            <EntityFilesTab
-              entityType="contact"
-              entityId={contact.id}
-              entityName={contact.name}
-            />
+            <EntityFilesUploadSection state={contactFiles} />
           </TabsContent>
 
           {/* Tareas Tab */}

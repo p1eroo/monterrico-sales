@@ -178,7 +178,19 @@ export default function Reports() {
   /** Lunes UTC (ms) de la última semana visible en el gráfico de avance semanal. */
   const [weeklyProgressCapMs, setWeeklyProgressCapMs] = useState<number | null>(null);
   const [companiesFunnelModalOpen, setCompaniesFunnelModalOpen] = useState(false);
+  const [periodModalOpen, setPeriodModalOpen] = useState(false);
+  const [sourceModalOpen, setSourceModalOpen] = useState(false);
+  const [weeklyCompaniesModalOpen, setWeeklyCompaniesModalOpen] = useState(false);
+  const [conversionModalOpen, setConversionModalOpen] = useState(false);
+  const [advisorPerfModalOpen, setAdvisorPerfModalOpen] = useState(false);
+  const [salesByMonthModalOpen, setSalesByMonthModalOpen] = useState(false);
+  const [pipelineModalOpen, setPipelineModalOpen] = useState(false);
+  const [activitiesModalOpen, setActivitiesModalOpen] = useState(false);
+  const [tasksModalOpen, setTasksModalOpen] = useState(false);
   const chartTheme = useChartTheme();
+
+  const dialogContentClass =
+    "flex max-h-[min(calc(100dvh-1.5rem),900px)] w-full max-w-[min(100vw-1rem,56rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(100vw-2rem,56rem)]";
 
   useEffect(() => {
     if (dateRange === 'custom' && (!customRange?.from || !customRange?.to)) {
@@ -505,7 +517,7 @@ export default function Reports() {
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:flex-wrap">
         <div className="flex flex-wrap items-center gap-2">
           <Select value={dateRange} onValueChange={(v) => setDateRange(v as DateRangePreset)}>
-            <SelectTrigger className="w-full md:w-[200px]">
+            <SelectTrigger className="h-9 w-full rounded-md border-input bg-card shadow-none md:w-[200px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -533,7 +545,7 @@ export default function Reports() {
           onValueChange={setAdvisorFilter}
           disabled={!canSeeAllAdvisors}
         >
-          <SelectTrigger className="w-full md:w-[200px]">
+          <SelectTrigger className="h-9 w-full rounded-md border-input bg-card shadow-none md:w-[200px]">
             <SelectValue
               placeholder={
                 canSeeAllAdvisors ? 'Asesor' : currentUser.name || 'Asesor'
@@ -559,7 +571,7 @@ export default function Reports() {
         </Select>
 
         <Select value={sourceFilter} onValueChange={setSourceFilter}>
-          <SelectTrigger className="w-full md:w-[200px]">
+          <SelectTrigger className="h-9 w-full rounded-md border-input bg-card shadow-none md:w-[200px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -647,9 +659,22 @@ export default function Reports() {
       <div className="grid gap-6 md:grid-cols-2">
         {/* 1. Contactos por Periodo - AreaChart */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Contactos por Periodo</CardTitle>
-            <CardDescription>Evolución de captación de contactos en el tiempo</CardDescription>
+          <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2">
+            <div className="min-w-0 space-y-1">
+              <CardTitle className="text-base">Contactos por Periodo</CardTitle>
+              <CardDescription>Evolución de captación de contactos en el tiempo</CardDescription>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0 text-muted-foreground"
+              onClick={() => setPeriodModalOpen(true)}
+              disabled={loading || periodChartEmpty}
+              aria-label="Ampliar contactos por periodo"
+            >
+              <Maximize2 className="h-4 w-4" />
+            </Button>
           </CardHeader>
           <CardContent>
             <ChartCardBody
@@ -710,9 +735,22 @@ export default function Reports() {
 
         {/* 2. Contactos por Fuente - PieChart Donut */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Contactos por Fuente</CardTitle>
-            <CardDescription>Distribución de contactos según canal de origen</CardDescription>
+          <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2">
+            <div className="min-w-0 space-y-1">
+              <CardTitle className="text-base">Contactos por Fuente</CardTitle>
+              <CardDescription>Distribución de contactos según canal de origen</CardDescription>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0 text-muted-foreground"
+              onClick={() => setSourceModalOpen(true)}
+              disabled={loading || sourceChartEmpty}
+              aria-label="Ampliar contactos por fuente"
+            >
+              <Maximize2 className="h-4 w-4" />
+            </Button>
           </CardHeader>
           <CardContent>
             <ChartCardBody
@@ -794,7 +832,7 @@ export default function Reports() {
 
         <Dialog open={companiesFunnelModalOpen} onOpenChange={setCompaniesFunnelModalOpen}>
           <DialogContent
-            className="flex max-h-[min(calc(100dvh-1.5rem),900px)] w-full max-w-[min(100vw-1rem,56rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(100vw-2rem,56rem)]"
+            className={dialogContentClass}
             showCloseButton
           >
             <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
@@ -803,6 +841,422 @@ export default function Reports() {
             <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 sm:px-6 sm:pb-6">
               {!companiesFunnelEmpty ? (
                 <FunnelChart stages={companiesFunnelStages} height={500} showLegend variant="rect" />
+              ) : null}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={periodModalOpen} onOpenChange={setPeriodModalOpen}>
+          <DialogContent className={dialogContentClass} showCloseButton>
+            <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
+              <DialogTitle className="pr-8 text-base">Contactos por Periodo</DialogTitle>
+            </DialogHeader>
+            <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 sm:px-6 sm:pb-6">
+              {!periodChartEmpty ? (
+                <div className="h-[520px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={leadsByPeriodData}>
+                      <defs>
+                        <linearGradient id="modalColorLeads" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#13944C" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#13944C" stopOpacity={0} />
+                        </linearGradient>
+                        <linearGradient id="modalColorNuevos" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartTheme.gridStroke} />
+                      <XAxis dataKey="name" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                      <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                      <Tooltip
+                        contentStyle={{
+                          borderRadius: '8px',
+                          border: `1px solid ${chartTheme.tooltipBorder}`,
+                          backgroundColor: chartTheme.tooltipBg,
+                          color: chartTheme.tooltipText,
+                          fontSize: '13px',
+                        }}
+                        itemStyle={{ color: chartTheme.tooltipText }}
+                        labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
+                      />
+                      <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
+                      <Area
+                        type="monotone"
+                        dataKey="leads"
+                        name="Total Contactos"
+                        stroke="#13944C"
+                        strokeWidth={2}
+                        fill="url(#modalColorLeads)"
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="nuevos"
+                        name="Nuevos"
+                        stroke="#3b82f6"
+                        strokeWidth={2}
+                        fill="url(#modalColorNuevos)"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : null}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={sourceModalOpen} onOpenChange={setSourceModalOpen}>
+          <DialogContent className={dialogContentClass} showCloseButton>
+            <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
+              <DialogTitle className="pr-8 text-base">Contactos por Fuente</DialogTitle>
+            </DialogHeader>
+            <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 sm:px-6 sm:pb-6">
+              {!sourceChartEmpty ? (
+                <div className="h-[520px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={leadsBySourceData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={90}
+                        outerRadius={140}
+                        paddingAngle={3}
+                        dataKey="value"
+                        nameKey="name"
+                        label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                        labelLine={{ strokeWidth: 1 }}
+                        style={{ fontSize: '11px' }}
+                      >
+                        {leadsBySourceData.map((_entry, index) => (
+                          <Cell key={`cell-source-modal-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{
+                          borderRadius: '8px',
+                          border: `1px solid ${chartTheme.tooltipBorder}`,
+                          backgroundColor: chartTheme.tooltipBg,
+                          color: chartTheme.tooltipText,
+                          fontSize: '13px',
+                        }}
+                        itemStyle={{ color: chartTheme.tooltipText }}
+                        labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : null}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={weeklyCompaniesModalOpen} onOpenChange={setWeeklyCompaniesModalOpen}>
+          <DialogContent className={dialogContentClass} showCloseButton>
+            <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
+              <DialogTitle className="pr-8 text-base">Avance semanal · Empresas</DialogTitle>
+            </DialogHeader>
+            <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 sm:px-6 sm:pb-6">
+              {!weeklyCompaniesChartEmpty ? (
+                <div className="h-[560px] min-h-[360px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={weeklyProgressChartData}
+                      layout="vertical"
+                      margin={{ left: 4, right: 12, top: 8, bottom: 16 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" horizontal stroke={chartTheme.gridStroke} />
+                      <XAxis type="number" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
+                      <YAxis
+                        type="category"
+                        dataKey="name"
+                        width={76}
+                        tick={{ fontSize: 10 }}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          borderRadius: '8px',
+                          border: `1px solid ${chartTheme.tooltipBorder}`,
+                          backgroundColor: chartTheme.tooltipBg,
+                          color: chartTheme.tooltipText,
+                          fontSize: '13px',
+                        }}
+                        itemStyle={{ color: chartTheme.tooltipText }}
+                        labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
+                      />
+                      <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: 8 }} />
+                      <Bar
+                        dataKey="avance"
+                        name="Avance"
+                        stackId="weeklyCompanies"
+                        fill={WEEKLY_COMPANY_COLORS.avance}
+                        radius={[0, 0, 0, 0]}
+                        barSize={18}
+                      />
+                      <Bar
+                        dataKey="nuevoIngreso"
+                        name="Nuevo ingreso"
+                        stackId="weeklyCompanies"
+                        fill={WEEKLY_COMPANY_COLORS.nuevoIngreso}
+                        barSize={18}
+                      />
+                      <Bar
+                        dataKey="retroceso"
+                        name="Retroceso"
+                        stackId="weeklyCompanies"
+                        fill={WEEKLY_COMPANY_COLORS.retroceso}
+                        barSize={18}
+                      />
+                      <Bar
+                        dataKey="sinCambios"
+                        name="Sin cambios"
+                        stackId="weeklyCompanies"
+                        fill={WEEKLY_COMPANY_COLORS.sinCambios}
+                        radius={[0, 4, 4, 0]}
+                        barSize={18}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : null}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={conversionModalOpen} onOpenChange={setConversionModalOpen}>
+          <DialogContent className={dialogContentClass} showCloseButton>
+            <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
+              <DialogTitle className="pr-8 text-base">Tasa de Conversión</DialogTitle>
+            </DialogHeader>
+            <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 sm:px-6 sm:pb-6">
+              {!conversionChartEmpty ? (
+                <div className="h-[520px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={conversionData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartTheme.gridStroke} />
+                      <XAxis dataKey="name" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                      <YAxis
+                        tick={{ fontSize: 12 }}
+                        tickLine={false}
+                        axisLine={false}
+                        tickFormatter={(v) => `${v}%`}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          borderRadius: '8px',
+                          border: `1px solid ${chartTheme.tooltipBorder}`,
+                          backgroundColor: chartTheme.tooltipBg,
+                          color: chartTheme.tooltipText,
+                          fontSize: '13px',
+                        }}
+                        itemStyle={{ color: chartTheme.tooltipText }}
+                        labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
+                        formatter={(value?: number) => [`${(value ?? 0)}%`, 'Conversión']}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="tasa"
+                        name="Tasa de Conversión"
+                        stroke="#8b5cf6"
+                        strokeWidth={2.5}
+                        dot={{ r: 5, fill: '#8b5cf6', strokeWidth: 2, stroke: '#fff' }}
+                        activeDot={{ r: 7 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : null}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={advisorPerfModalOpen} onOpenChange={setAdvisorPerfModalOpen}>
+          <DialogContent className={dialogContentClass} showCloseButton>
+            <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
+              <DialogTitle className="pr-8 text-base">Rendimiento por Asesor</DialogTitle>
+            </DialogHeader>
+            <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 sm:px-6 sm:pb-6">
+              {!advisorChartEmpty ? (
+                <div className="h-[520px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={performanceByAdvisor} layout="vertical" margin={{ left: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={chartTheme.gridStroke} />
+                      <XAxis type="number" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                      <YAxis
+                        type="category"
+                        dataKey="name"
+                        tick={{ fontSize: 12 }}
+                        tickLine={false}
+                        axisLine={false}
+                        width={110}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          borderRadius: '8px',
+                          border: `1px solid ${chartTheme.tooltipBorder}`,
+                          backgroundColor: chartTheme.tooltipBg,
+                          color: chartTheme.tooltipText,
+                          fontSize: '13px',
+                        }}
+                        itemStyle={{ color: chartTheme.tooltipText }}
+                        labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
+                      />
+                      <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
+                      <Bar dataKey="empresas" name="Empresas" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={16} />
+                      <Bar dataKey="ventas" name="Ventas" fill="#13944C" radius={[0, 4, 4, 0]} barSize={16} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : null}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={salesByMonthModalOpen} onOpenChange={setSalesByMonthModalOpen}>
+          <DialogContent className={dialogContentClass} showCloseButton>
+            <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
+              <DialogTitle className="pr-8 text-base">Ventas Cerradas por Mes</DialogTitle>
+            </DialogHeader>
+            <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 sm:px-6 sm:pb-6">
+              {!salesChartEmpty ? (
+                <div className="h-[520px] w-full">
+                  <SalesByMonthBarChart data={salesByMonthData} variant="reports" barSize={32} />
+                </div>
+              ) : null}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={pipelineModalOpen} onOpenChange={setPipelineModalOpen}>
+          <DialogContent className={dialogContentClass} showCloseButton>
+            <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
+              <DialogTitle className="pr-8 text-base">Pipeline por Etapa</DialogTitle>
+            </DialogHeader>
+            <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 sm:px-6 sm:pb-6">
+              {!pipelineChartEmpty ? (
+                <div className="h-[520px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={opportunitiesByStageData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartTheme.gridStroke} />
+                      <XAxis dataKey="name" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                      <YAxis
+                        tick={{ fontSize: 12 }}
+                        tickLine={false}
+                        axisLine={false}
+                        tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          borderRadius: '8px',
+                          border: `1px solid ${chartTheme.tooltipBorder}`,
+                          backgroundColor: chartTheme.tooltipBg,
+                          color: chartTheme.tooltipText,
+                          fontSize: '13px',
+                        }}
+                        itemStyle={{ color: chartTheme.tooltipText }}
+                        labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
+                        formatter={(value?: number, name?: string) => [
+                          name === 'value' ? formatCurrency(value ?? 0) : (value ?? 0),
+                          name === 'value' ? 'Valor' : 'Oportunidades',
+                        ]}
+                      />
+                      <Bar dataKey="value" name="Valor" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={42}>
+                        {opportunitiesByStageData.map((_entry, index) => (
+                          <Cell key={`cell-pipeline-modal-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : null}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={activitiesModalOpen} onOpenChange={setActivitiesModalOpen}>
+          <DialogContent className={dialogContentClass} showCloseButton>
+            <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
+              <DialogTitle className="pr-8 text-base">Actividades Realizadas</DialogTitle>
+            </DialogHeader>
+            <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 sm:px-6 sm:pb-6">
+              {!activitiesChartEmpty ? (
+                <div className="h-[520px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={activitiesByTypeData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartTheme.gridStroke} />
+                      <XAxis dataKey="name" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                      <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                      <Tooltip
+                        contentStyle={{
+                          borderRadius: '8px',
+                          border: `1px solid ${chartTheme.tooltipBorder}`,
+                          backgroundColor: chartTheme.tooltipBg,
+                          color: chartTheme.tooltipText,
+                          fontSize: '13px',
+                        }}
+                        itemStyle={{ color: chartTheme.tooltipText }}
+                        labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
+                      />
+                      <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
+                      <Bar dataKey="llamadas" name="Llamadas" stackId="a" fill="#13944C" />
+                      <Bar dataKey="reuniones" name="Reuniones" stackId="a" fill="#3b82f6" />
+                      <Bar dataKey="correos" name="Correos" stackId="a" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : null}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={tasksModalOpen} onOpenChange={setTasksModalOpen}>
+          <DialogContent className={dialogContentClass} showCloseButton>
+            <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
+              <DialogTitle className="pr-8 text-base">Tareas</DialogTitle>
+            </DialogHeader>
+            <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 sm:px-6 sm:pb-6">
+              {!followUpsChartEmpty ? (
+                <div className="h-[520px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={followUpsData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartTheme.gridStroke} />
+                      <XAxis dataKey="name" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                      <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                      <Tooltip
+                        contentStyle={{
+                          borderRadius: '8px',
+                          border: `1px solid ${chartTheme.tooltipBorder}`,
+                          backgroundColor: chartTheme.tooltipBg,
+                          color: chartTheme.tooltipText,
+                          fontSize: '13px',
+                        }}
+                        itemStyle={{ color: chartTheme.tooltipText }}
+                        labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
+                      />
+                      <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
+                      <Line
+                        type="monotone"
+                        dataKey="completados"
+                        name="Completadas"
+                        stroke="#13944C"
+                        strokeWidth={2.5}
+                        dot={{ r: 4, fill: '#13944C', strokeWidth: 2, stroke: '#fff' }}
+                        activeDot={{ r: 6 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="pendientes"
+                        name="Pendientes"
+                        stroke="#ec4899"
+                        strokeWidth={2.5}
+                        dot={{ r: 4, fill: '#ec4899', strokeWidth: 2, stroke: '#fff' }}
+                        activeDot={{ r: 6 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
               ) : null}
             </div>
           </DialogContent>
@@ -823,33 +1277,46 @@ export default function Reports() {
                 )}
               </CardDescription>
             </div>
-            {weeklyProgressWeekOptions.length > 0 && (
-              <div className="flex shrink-0 flex-wrap items-center gap-2">
-                <Select
-                  value={
-                    weeklyProgressCapMs != null
-                      ? String(weeklyProgressCapMs)
-                      : String(weeklyProgressWeekOptions[weeklyProgressWeekOptions.length - 1]!.value)
-                  }
-                  onValueChange={(v) => setWeeklyProgressCapMs(Number(v))}
-                  disabled={loading || weeklyCompaniesChartEmpty}
-                >
-                  <SelectTrigger
-                    className="h-9 min-w-[160px] sm:min-w-[200px]"
-                    aria-label="Mostrar datos hasta esta semana (ISO, UTC)"
+            <div className="flex shrink-0 items-center gap-2">
+              {weeklyProgressWeekOptions.length > 0 && (
+                <>
+                  <Select
+                    value={
+                      weeklyProgressCapMs != null
+                        ? String(weeklyProgressCapMs)
+                        : String(weeklyProgressWeekOptions[weeklyProgressWeekOptions.length - 1]!.value)
+                    }
+                    onValueChange={(v) => setWeeklyProgressCapMs(Number(v))}
+                    disabled={loading || weeklyCompaniesChartEmpty}
                   >
-                    <SelectValue placeholder="Semana" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {weeklyProgressWeekOptions.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+                    <SelectTrigger
+                      className="h-9 min-w-[160px] sm:min-w-[200px]"
+                      aria-label="Mostrar datos hasta esta semana (ISO, UTC)"
+                    >
+                      <SelectValue placeholder="Semana" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {weeklyProgressWeekOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0 text-muted-foreground"
+                    onClick={() => setWeeklyCompaniesModalOpen(true)}
+                    disabled={loading || weeklyCompaniesChartEmpty}
+                    aria-label="Ampliar avance semanal de empresas"
+                  >
+                    <Maximize2 className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             <ChartCardBody
@@ -925,9 +1392,22 @@ export default function Reports() {
 
         {/* 3. Tasa de Conversión - LineChart */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Tasa de Conversión</CardTitle>
-            <CardDescription>Porcentaje de conversión mensual de contactos a clientes</CardDescription>
+          <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2">
+            <div className="min-w-0 space-y-1">
+              <CardTitle className="text-base">Tasa de Conversión</CardTitle>
+              <CardDescription>Porcentaje de conversión mensual de contactos a clientes</CardDescription>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0 text-muted-foreground"
+              onClick={() => setConversionModalOpen(true)}
+              disabled={loading || conversionChartEmpty}
+              aria-label="Ampliar tasa de conversión"
+            >
+              <Maximize2 className="h-4 w-4" />
+            </Button>
           </CardHeader>
           <CardContent>
             <ChartCardBody
@@ -976,8 +1456,21 @@ export default function Reports() {
 
         {/* 4. Rendimiento por Asesor - Horizontal BarChart */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Rendimiento por Asesor</CardTitle>
+          <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2">
+            <div className="min-w-0 space-y-1">
+              <CardTitle className="text-base">Rendimiento por Asesor</CardTitle>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0 text-muted-foreground"
+              onClick={() => setAdvisorPerfModalOpen(true)}
+              disabled={loading || advisorChartEmpty}
+              aria-label="Ampliar rendimiento por asesor"
+            >
+              <Maximize2 className="h-4 w-4" />
+            </Button>
           </CardHeader>
           <CardContent>
             <ChartCardBody
@@ -1021,9 +1514,22 @@ export default function Reports() {
 
         {/* 5. Ventas Cerradas por Mes - BarChart */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Ventas Cerradas por Mes</CardTitle>
-            <CardDescription>Ingresos mensuales vs meta establecida</CardDescription>
+          <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2">
+            <div className="min-w-0 space-y-1">
+              <CardTitle className="text-base">Ventas Cerradas por Mes</CardTitle>
+              <CardDescription>Ingresos mensuales vs meta establecida</CardDescription>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0 text-muted-foreground"
+              onClick={() => setSalesByMonthModalOpen(true)}
+              disabled={loading || salesChartEmpty}
+              aria-label="Ampliar ventas cerradas por mes"
+            >
+              <Maximize2 className="h-4 w-4" />
+            </Button>
           </CardHeader>
           <CardContent>
             <ChartCardBody
@@ -1040,9 +1546,22 @@ export default function Reports() {
 
         {/* 6. Pipeline por Etapa - BarChart */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Pipeline por Etapa</CardTitle>
-            <CardDescription>Valor total de oportunidades por etapa del embudo</CardDescription>
+          <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2">
+            <div className="min-w-0 space-y-1">
+              <CardTitle className="text-base">Pipeline por Etapa</CardTitle>
+              <CardDescription>Valor total de oportunidades por etapa del embudo</CardDescription>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0 text-muted-foreground"
+              onClick={() => setPipelineModalOpen(true)}
+              disabled={loading || pipelineChartEmpty}
+              aria-label="Ampliar pipeline por etapa"
+            >
+              <Maximize2 className="h-4 w-4" />
+            </Button>
           </CardHeader>
           <CardContent>
             <ChartCardBody
@@ -1090,9 +1609,22 @@ export default function Reports() {
 
         {/* 7. Actividades Realizadas - Stacked BarChart */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Actividades Realizadas</CardTitle>
-            <CardDescription>Desglose mensual por tipo de actividad comercial</CardDescription>
+          <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2">
+            <div className="min-w-0 space-y-1">
+              <CardTitle className="text-base">Actividades Realizadas</CardTitle>
+              <CardDescription>Desglose mensual por tipo de actividad comercial</CardDescription>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0 text-muted-foreground"
+              onClick={() => setActivitiesModalOpen(true)}
+              disabled={loading || activitiesChartEmpty}
+              aria-label="Ampliar actividades realizadas"
+            >
+              <Maximize2 className="h-4 w-4" />
+            </Button>
           </CardHeader>
           <CardContent>
             <ChartCardBody
@@ -1130,9 +1662,22 @@ export default function Reports() {
 
         {/* 8. Tareas - LineChart */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Tareas</CardTitle>
-            <CardDescription>Completadas vs pendientes por mes</CardDescription>
+          <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2">
+            <div className="min-w-0 space-y-1">
+              <CardTitle className="text-base">Tareas</CardTitle>
+              <CardDescription>Completadas vs pendientes por mes</CardDescription>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0 text-muted-foreground"
+              onClick={() => setTasksModalOpen(true)}
+              disabled={loading || followUpsChartEmpty}
+              aria-label="Ampliar gráfico de tareas"
+            >
+              <Maximize2 className="h-4 w-4" />
+            </Button>
           </CardHeader>
           <CardContent>
             <ChartCardBody

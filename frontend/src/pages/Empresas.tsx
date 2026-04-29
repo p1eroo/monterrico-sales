@@ -6,6 +6,7 @@ import {
   FileSpreadsheet, Upload, Download, Plus, List, Grid3X3, Loader2,
   Eye, Pencil, Trash2, MoreHorizontal, Globe, Tag, User, MapPin,
 } from 'lucide-react';
+import type { DateRange } from 'react-day-picker';
 import type { Etapa, CompanyRubro, CompanyTipo, Company, ContactSource } from '@/types';
 import { companyRubroLabels, companyTipoLabels, etapaLabels, contactSourceLabels } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
@@ -35,6 +36,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { DateRangeFilterButton } from '@/components/ui/date-range-filter-button';
 import {
   Popover,
   PopoverContent,
@@ -286,6 +288,7 @@ export default function EmpresasPage() {
   const [rubroFilter, setRubroFilter] = useState<string>('todos');
   const [tipoFilter, setTipoFilter] = useState<string>('todos');
   const [advisorFilter, setAdvisorFilter] = useState<string>('todos');
+  const [interactionRange, setInteractionRange] = useState<DateRange | undefined>();
   const { canSeeAllAdvisors, currentUserId } = useCrmTeamAdvisorFilter(
     advisorFilter,
     setAdvisorFilter,
@@ -327,6 +330,25 @@ export default function EmpresasPage() {
   const loadSummary = useCallback(async () => {
     setLoading(true);
     try {
+      const interactionFromIso =
+        interactionRange?.from
+          ? new Date(
+              interactionRange.from.getFullYear(),
+              interactionRange.from.getMonth(),
+              interactionRange.from.getDate(),
+              0, 0, 0, 0,
+            ).toISOString()
+          : undefined;
+      const interactionToIso =
+        interactionRange?.to
+          ? new Date(
+              interactionRange.to.getFullYear(),
+              interactionRange.to.getMonth(),
+              interactionRange.to.getDate(),
+              23, 59, 59, 999,
+            ).toISOString()
+          : undefined;
+
       const res = await companyListSummaryPaginated({
         page,
         limit: ITEMS_PER_PAGE,
@@ -336,6 +358,9 @@ export default function EmpresasPage() {
         assignedTo: advisorFilter === 'todos' ? undefined : advisorFilter,
         rubro: rubroFilter === 'todos' ? undefined : rubroFilter,
         tipo: tipoFilter === 'todos' ? undefined : tipoFilter,
+        lastInteraction: undefined,
+        lastInteractionFrom: interactionFromIso,
+        lastInteractionTo: interactionToIso,
       });
       setSummaryRows(res.data);
       setTotal(res.total);
@@ -355,6 +380,8 @@ export default function EmpresasPage() {
     advisorFilter,
     rubroFilter,
     tipoFilter,
+    interactionRange?.from,
+    interactionRange?.to,
   ]);
 
   useEffect(() => {
@@ -363,12 +390,33 @@ export default function EmpresasPage() {
 
   const loadEtapaTabCounts = useCallback(async () => {
     try {
+      const interactionFromIso =
+        interactionRange?.from
+          ? new Date(
+              interactionRange.from.getFullYear(),
+              interactionRange.from.getMonth(),
+              interactionRange.from.getDate(),
+              0, 0, 0, 0,
+            ).toISOString()
+          : undefined;
+      const interactionToIso =
+        interactionRange?.to
+          ? new Date(
+              interactionRange.to.getFullYear(),
+              interactionRange.to.getMonth(),
+              interactionRange.to.getDate(),
+              23, 59, 59, 999,
+            ).toISOString()
+          : undefined;
       const { counts } = await companySummaryEtapaCounts({
         search: searchDebounced || undefined,
         fuente: sourceFilter === 'todos' ? undefined : sourceFilter,
         assignedTo: advisorFilter === 'todos' ? undefined : advisorFilter,
         rubro: rubroFilter === 'todos' ? undefined : rubroFilter,
         tipo: tipoFilter === 'todos' ? undefined : tipoFilter,
+        lastInteraction: undefined,
+        lastInteractionFrom: interactionFromIso,
+        lastInteractionTo: interactionToIso,
       });
       setEtapaTabCounts(counts);
     } catch {
@@ -380,6 +428,8 @@ export default function EmpresasPage() {
     advisorFilter,
     rubroFilter,
     tipoFilter,
+    interactionRange?.from,
+    interactionRange?.to,
   ]);
 
   useEffect(() => {
@@ -398,6 +448,8 @@ export default function EmpresasPage() {
     etapaFilter === 'todos' &&
     rubroFilter === 'todos' &&
     tipoFilter === 'todos' &&
+    !interactionRange?.from &&
+    !interactionRange?.to &&
     (canSeeAllAdvisors
       ? advisorFilter === 'todos'
       : advisorFilter === currentUserId);
@@ -1000,7 +1052,7 @@ export default function EmpresasPage() {
             />
           </div>
           <Select value={sourceFilter} onValueChange={(v) => { setSourceFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-auto bg-card">
+            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card shadow-none">
               <div className="flex items-center gap-3">
                 <Globe className="size-3.5" />
                 <SelectValue placeholder="Fuente" />
@@ -1014,7 +1066,7 @@ export default function EmpresasPage() {
             </SelectContent>
           </Select>
           <Select value={etapaFilter} onValueChange={(v) => { setEtapaFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-auto bg-card">
+            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card shadow-none">
               <div className="flex items-center gap-3">
                 <Tag className="size-3.5" />
                 <SelectValue placeholder="Etapa" />
@@ -1028,7 +1080,7 @@ export default function EmpresasPage() {
             </SelectContent>
           </Select>
           <Select value={rubroFilter} onValueChange={(v) => { setRubroFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-auto bg-card">
+            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card shadow-none">
               <div className="flex items-center gap-3">
                 <MapPin className="size-3.5" />
                 <SelectValue placeholder="Rubro" />
@@ -1042,7 +1094,7 @@ export default function EmpresasPage() {
             </SelectContent>
           </Select>
           <Select value={tipoFilter} onValueChange={(v) => { setTipoFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-auto bg-card">
+            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card shadow-none">
               <div className="flex items-center gap-3">
                 <Building2 className="size-3.5" />
                 <SelectValue placeholder="Tipo" />
@@ -1060,7 +1112,7 @@ export default function EmpresasPage() {
             onValueChange={(v) => { setAdvisorFilter(v); setPage(1); }}
             disabled={!canSeeAllAdvisors}
           >
-            <SelectTrigger className="w-auto bg-card">
+            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card shadow-none">
               <div className="flex items-center gap-3">
                 <User className="size-3.5" />
                 <SelectValue placeholder="Asesor" />
@@ -1073,6 +1125,15 @@ export default function EmpresasPage() {
               ))}
             </SelectContent>
           </Select>
+          <DateRangeFilterButton
+            value={interactionRange}
+            onChange={(r) => {
+              setInteractionRange(r);
+              setPage(1);
+            }}
+            placeholder="Última interacción"
+            className="bg-card"
+          />
 
           <div className="ml-auto flex items-center rounded-md border bg-card">
             <Button

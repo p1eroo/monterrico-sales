@@ -91,6 +91,9 @@ export class CompaniesController {
     @Query('tipo') tipo?: string,
     @Query('fuente') fuente?: string,
     @Query('assignedTo') assignedTo?: string,
+    @Query('lastInteraction') lastInteraction?: string,
+    @Query('lastInteractionFrom') lastInteractionFrom?: string,
+    @Query('lastInteractionTo') lastInteractionTo?: string,
   ) {
     const scope = await this.crmDataScope.buildScope(
       req.user.userId,
@@ -103,6 +106,9 @@ export class CompaniesController {
         tipo: tipo?.trim() || undefined,
         fuente: fuente?.trim() || undefined,
         assignedTo: assignedTo?.trim() || undefined,
+        lastInteraction: lastInteraction?.trim() || undefined,
+        lastInteractionFrom: lastInteractionFrom?.trim() || undefined,
+        lastInteractionTo: lastInteractionTo?.trim() || undefined,
       },
       scope,
     );
@@ -130,6 +136,9 @@ export class CompaniesController {
     @Query('etapa') etapa?: string,
     @Query('fuente') fuente?: string,
     @Query('assignedTo') assignedTo?: string,
+    @Query('lastInteraction') lastInteraction?: string,
+    @Query('lastInteractionFrom') lastInteractionFrom?: string,
+    @Query('lastInteractionTo') lastInteractionTo?: string,
   ) {
     const scope = await this.crmDataScope.buildScope(
       req.user.userId,
@@ -149,6 +158,9 @@ export class CompaniesController {
         etapa: etapa?.trim() || undefined,
         fuente: fuente?.trim() || undefined,
         assignedTo: assignedTo?.trim() || undefined,
+        lastInteraction: lastInteraction?.trim() || undefined,
+        lastInteractionFrom: lastInteractionFrom?.trim() || undefined,
+        lastInteractionTo: lastInteractionTo?.trim() || undefined,
       },
       scope,
     );

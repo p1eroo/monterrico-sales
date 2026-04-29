@@ -23,6 +23,7 @@ import { CrmConfigService } from '../crm-config/crm-config.service';
 import { EntitySyncService } from '../sync/entity-sync.service';
 import type { CrmDataScope } from '../auth/crm-data-scope.service';
 import { mergeCompanyScope } from '../common/crm-data-scope-where.util';
+import { normalizeClienteRecuperadoForCsv } from '../common/normalize-cliente-recuperado';
 
 const MAX_IMPORT_ROWS = 1500;
 const MAX_COMPANY_IMPORT_ROWS = 5000;
@@ -194,25 +195,6 @@ export class ImportExportService {
     const rows = parseCsv(csvText);
     if (rows.length < 2) return 0;
     return rows.length - 1;
-  }
-
-  /** `cliente_recuperado` en CSV: sí/no y alias → `si` | `no`; valor desconocido → omitir. */
-  private normalizeClienteRecuperadoCsv(
-    raw: string | undefined,
-  ): 'si' | 'no' | undefined {
-    if (raw == null || !String(raw).trim()) return undefined;
-    const n = String(raw)
-      .trim()
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '');
-    if (['si', 's', 'yes', 'y', '1', 'true', 'verdadero'].includes(n)) {
-      return 'si';
-    }
-    if (['no', 'n', '0', 'false', 'falso', 'falsa'].includes(n)) {
-      return 'no';
-    }
-    return undefined;
   }
 
   /** 8 dígitos y tipo vacío o claramente DNI → consulta RENIEC vía Factiliza. */
@@ -1755,7 +1737,7 @@ export class ImportExportService {
         continue;
       }
       const etapaRow = etapaResolved.slug;
-      const clienteRecNorm = this.normalizeClienteRecuperadoCsv(
+      const clienteRecNorm = normalizeClienteRecuperadoForCsv(
         rowGet(row, headerIndex, [
           'cliente_recuperado',
           'cliente recuperado',
@@ -2020,7 +2002,7 @@ export class ImportExportService {
           continue;
         }
         const etapaRow = etapaResolved.slug;
-        const clienteRecNorm = this.normalizeClienteRecuperadoCsv(
+        const clienteRecNorm = normalizeClienteRecuperadoForCsv(
           rowGet(row, headerIndex, [
             'cliente_recuperado',
             'cliente recuperado',
@@ -2843,7 +2825,7 @@ export class ImportExportService {
       }
       const etapaSlug = etapaResolved.slug;
 
-      const clienteRecNorm = this.normalizeClienteRecuperadoCsv(
+      const clienteRecNorm = normalizeClienteRecuperadoForCsv(
         rowGet(row, headerIndex, [
           'cliente_recuperado',
           'cliente recuperado',
@@ -3137,7 +3119,7 @@ export class ImportExportService {
         continue;
       }
 
-      const contactoClienteRec = this.normalizeClienteRecuperadoCsv(
+      const contactoClienteRec = normalizeClienteRecuperadoForCsv(
         this.rowGetImportText(row, headerIndex, ['contacto_cliente_recuperado']),
       );
 

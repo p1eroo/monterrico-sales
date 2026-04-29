@@ -4,7 +4,7 @@ import {
   Building2, Users, DollarSign, Globe, Briefcase,
   Phone, Plus, FileArchive, Loader2,
   MapPin, Mail, Linkedin, ChevronLeft, ChevronRight,
-  FileText, Hash, Tag,
+  FileText, Hash, Tag, User, CalendarDays, RefreshCw,
 } from 'lucide-react';
 import { useCRMStore } from '@/store/crmStore';
 import { useAppStore } from '@/store';
@@ -77,7 +77,7 @@ import { generateOptimisticId, useOptimisticCrmStore } from '@/store/optimisticC
 import { useStageBadgeTone } from '@/hooks/useStageBadgeTone';
 import { useCrmConfigStore, getStageLabelFromCatalog } from '@/store/crmConfigStore';
 
-const TIMELINE_PAGE_SIZE = 6;
+const TIMELINE_PAGE_SIZE = 8;
 
 function parseRubroField(s: string | null | undefined): CompanyRubro | undefined {
   if (!s) return undefined;
@@ -260,6 +260,16 @@ export default function EmpresaDetailPage() {
         : '—';
 
   const stageTone = useStageBadgeTone(displayEtapaKey);
+
+  const displayAssignedToName = fromApiById && apiRecord?.user?.name
+    ? apiRecord.user.name
+    : firstContact?.assignedToName;
+  const displayClienteRecuperado = fromApiById && apiRecord?.clienteRecuperado
+    ? apiRecord.clienteRecuperado
+    : firstContact?.clienteRecuperado;
+  const displayCreatedAt = fromApiById && apiRecord?.createdAt
+    ? apiRecord.createdAt
+    : firstContact?.createdAt;
 
   const opportunities = useMemo(() => {
     const fromApi = apiOpportunityRows.map(mapApiOpportunityToOpportunity);
@@ -962,13 +972,18 @@ async function handleCreateNewContact(data: NewContactData) {
     companyContacts.length === 0 &&
     (!!standaloneCompany || (fromApiById && !!apiRecord));
 
-  const subtitle = [
-    companyData?.domain,
-    companyData?.rubro ? companyRubroLabels[companyData.rubro] : null,
-    companyData?.tipo ? `Tipo ${companyData.tipo}` : null,
-  ].filter(Boolean).join(' · ');
+const subtitle = [
+  companyData?.domain,
+  companyData?.rubro ? companyRubroLabels[companyData.rubro] : null,
+  companyData?.tipo ? `Tipo ${companyData.tipo}` : null,
+].filter(Boolean).join(' · ');
 
-  return (
+const displayLastInteraction = companyTimelineEvents[0]?.date
+  ?? companyActivities[0]?.createdAt
+  ?? companyActivities[0]?.dueDate
+  ?? null;
+
+return (
     <>
     <DetailLayout
       backPath="/empresas"
@@ -1072,24 +1087,36 @@ async function handleCreateNewContact(data: NewContactData) {
               ...(fromApiById && apiRecord?.direccion?.trim()
                 ? [{ icon: MapPin, value: apiRecord.direccion.trim(), truncate: true }]
                 : []),
-              ...(companyData?.rubro
-                ? [
-                    {
-                      icon: Briefcase as typeof Building2,
-                      value: companyRubroLabels[companyData.rubro],
-                    },
-                  ]
-                : []),
-              ...(companyData?.tipo ? [{ label: 'Tipo:', value: companyData.tipo }] : []),
-              ...(fromApiById && apiRecord?.fuente
-                ? [
-                    {
-                      icon: Tag as typeof Building2,
-                      value: displayFuenteLabel,
-                    },
-                  ]
-                : []),
-            ]}
+...(companyData?.rubro
+    ? [
+        {
+          icon: Briefcase as typeof Building2,
+          value: companyRubroLabels[companyData.rubro],
+        },
+      ]
+    : []),
+  ...(companyData?.tipo ? [{ label: 'Tipo:', value: companyData.tipo }] : []),
+  ...(displayAssignedToName
+    ? [{ icon: User, value: displayAssignedToName }]
+    : []),
+  ...(displayClienteRecuperado
+    ? [{ icon: RefreshCw, value: displayClienteRecuperado === 'si' ? 'Sí' : 'No', label: 'Cliente recuperado:' }]
+    : []),
+  ...(displayCreatedAt
+    ? [{ icon: CalendarDays, value: `Creado: ${formatDate(displayCreatedAt)}` }]
+    : []),
+  ...(displayLastInteraction
+    ? [{ icon: CalendarDays, value: `Última interacción: ${formatDate(displayLastInteraction)}`, label: '' }]
+    : []),
+  ...(fromApiById && apiRecord?.fuente
+    ? [
+        {
+          icon: Tag as typeof Building2,
+          value: displayFuenteLabel,
+        },
+      ]
+    : []),
+]}
           />
       }
       sidebar={

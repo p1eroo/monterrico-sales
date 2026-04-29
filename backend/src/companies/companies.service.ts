@@ -20,6 +20,7 @@ import type { CrmDataScope } from '../auth/crm-data-scope.service';
 import { mergeCompanyScope } from '../common/crm-data-scope-where.util';
 import { formatImportedCompanyName } from '../common/import-display-name.util';
 import { FactilizaService } from '../factiliza/factiliza.service';
+import { normalizeClienteRecuperado } from '../common/normalize-cliente-recuperado';
 
 /** Select slim para listado: excluye linkedin, correo, direcciones */
 const companySelectListSlim = {
@@ -228,8 +229,9 @@ export class CompaniesService {
     if (dto.provincia?.trim()) data.provincia = dto.provincia.trim();
     if (dto.departamento?.trim()) data.departamento = dto.departamento.trim();
     if (dto.direccion?.trim()) data.direccion = dto.direccion.trim();
-    if (dto.clienteRecuperado?.trim()) {
-      data.clienteRecuperado = dto.clienteRecuperado.trim();
+    const crMerge = normalizeClienteRecuperado(dto.clienteRecuperado);
+    if (crMerge) {
+      data.clienteRecuperado = crMerge;
     }
 
     if (
@@ -404,7 +406,7 @@ export class CompaniesService {
         direccion: dto.direccion?.trim() || null,
         facturacionEstimada,
         fuente,
-        clienteRecuperado: dto.clienteRecuperado?.trim() || null,
+        clienteRecuperado: normalizeClienteRecuperado(dto.clienteRecuperado),
         etapa,
         assignedTo,
       },
@@ -466,7 +468,10 @@ export class CompaniesService {
     ]);
 
     return {
-      data: rows,
+      data: rows.map((r) => ({
+        ...r,
+        clienteRecuperado: normalizeClienteRecuperado(r.clienteRecuperado),
+      })),
       total,
       page,
       limit,
@@ -484,6 +489,17 @@ export class CompaniesService {
       tipo?: string;
       fuente?: string;
       assignedTo?: string;
+      /**
+       * Filtro por última interacción (actividad) en empresa/contactos/oportunidades.
+       * Valores soportados:
+       * - "none": sin interacciones
+       * - "7d" | "30d" | "90d" | "180d": interacciones dentro de los últimos N días
+       */
+      lastInteraction?: string;
+      /** ISO date (YYYY-MM-DD o ISO completo). Si existe junto a `lastInteractionTo`, filtra por rango. */
+      lastInteractionFrom?: string;
+      /** ISO date (YYYY-MM-DD o ISO completo). Si existe junto a `lastInteractionFrom`, filtra por rango. */
+      lastInteractionTo?: string;
     },
     scope?: CrmDataScope,
   ): Promise<Prisma.CompanyWhereInput[]> {
@@ -551,6 +567,84 @@ export class CompaniesService {
         ],
       });
     }
+
+    const li = opts?.lastInteraction?.trim();
+    const fromRaw = opts?.lastInteractionFrom?.trim();
+    const toRaw = opts?.lastInteractionTo?.trim();
+    const from = fromRaw ? new Date(fromRaw) : null;
+    const to = toRaw ? new Date(toRaw) : null;
+    const hasValidRange =
+      !!from &&
+      !!to &&
+      !Number.isNaN(from.getTime()) &&
+      !Number.isNaN(to.getTime());
+
+    if (li || hasValidRange) {
+      const activityAny: Prisma.CompanyWhereInput = {
+        OR: [
+          { activities: { some: { activity: {} } } },
+          { contacts: { some: { contact: { activities: { some: { activity: {} } } } } } },
+          { opportunities: { some: { opportunity: { activities: { some: { activity: {} } } } } } },
+        ],
+      };
+
+      if (li === 'none') {
+        andParts.push({ NOT: activityAny });
+      } else if (hasValidRange && from && to) {
+        andParts.push({
+          OR: [
+            { activities: { some: { activity: { createdAt: { gte: from, lte: to } } } } },
+            {
+              contacts: {
+                some: {
+                  contact: {
+                    activities: { some: { activity: { createdAt: { gte: from, lte: to } } } },
+                  },
+                },
+              },
+            },
+            {
+              opportunities: {
+                some: {
+                  opportunity: {
+                    activities: { some: { activity: { createdAt: { gte: from, lte: to } } } },
+                  },
+                },
+              },
+            },
+          ],
+        });
+      } else {
+        const daysMap: Record<string, number> = { '7d': 7, '30d': 30, '90d': 90, '180d': 180 };
+        const days = li ? daysMap[li] : undefined;
+        if (days) {
+          const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+          andParts.push({
+            OR: [
+              { activities: { some: { activity: { createdAt: { gte: cutoff } } } } },
+              {
+                contacts: {
+                  some: {
+                    contact: {
+                      activities: { some: { activity: { createdAt: { gte: cutoff } } } },
+                    },
+                  },
+                },
+              },
+              {
+                opportunities: {
+                  some: {
+                    opportunity: {
+                      activities: { some: { activity: { createdAt: { gte: cutoff } } } },
+                    },
+                  },
+                },
+              },
+            ],
+          });
+        }
+      }
+    }
     return andParts;
   }
 
@@ -564,6 +658,9 @@ export class CompaniesService {
       tipo?: string;
       fuente?: string;
       assignedTo?: string;
+      lastInteraction?: string;
+      lastInteractionFrom?: string;
+      lastInteractionTo?: string;
     },
     scope?: CrmDataScope,
   ): Promise<{ counts: Record<string, number> }> {
@@ -613,6 +710,9 @@ export class CompaniesService {
       etapa?: string;
       fuente?: string;
       assignedTo?: string;
+      lastInteraction?: string;
+      lastInteractionFrom?: string;
+      lastInteractionTo?: string;
     },
     scope?: CrmDataScope,
   ) {
@@ -665,14 +765,21 @@ export class CompaniesService {
     const contacts = row.contacts.map((cc) => cc.contact);
     const { contacts: _omitContacts, user: companyUser, activities: _companyActivities, opportunities: _companyOpps, ...rest } = row;
 
-    let clienteRecuperado: 'si' | 'no' | null =
-      (rest.clienteRecuperado === 'si' || rest.clienteRecuperado === 'no'
-        ? rest.clienteRecuperado
-        : null) as 'si' | 'no' | null;
+    let clienteRecuperado: 'si' | 'no' | null = normalizeClienteRecuperado(
+      rest.clienteRecuperado,
+    );
     if (clienteRecuperado == null) {
-      if (contacts.some((c) => c.clienteRecuperado === 'si')) {
+      if (
+        contacts.some(
+          (c) => normalizeClienteRecuperado(c.clienteRecuperado) === 'si',
+        )
+      ) {
         clienteRecuperado = 'si';
-      } else if (contacts.some((c) => c.clienteRecuperado === 'no')) {
+      } else if (
+        contacts.some(
+          (c) => normalizeClienteRecuperado(c.clienteRecuperado) === 'no',
+        )
+      ) {
         clienteRecuperado = 'no';
       }
     }
@@ -773,7 +880,10 @@ export class CompaniesService {
     if (!company) {
       throw new NotFoundException('Empresa no encontrada');
     }
-    return company;
+    return {
+      ...company,
+      clienteRecuperado: normalizeClienteRecuperado(company.clienteRecuperado),
+    };
   }
 
   async update(
@@ -861,7 +971,7 @@ export class CompaniesService {
       data.fuente = await this.crmConfig.normalizeLeadSource(dto.fuente);
     }
     if (dto.clienteRecuperado !== undefined) {
-      data.clienteRecuperado = dto.clienteRecuperado?.trim() || null;
+      data.clienteRecuperado = normalizeClienteRecuperado(dto.clienteRecuperado);
     }
     if (dto.etapa !== undefined) {
       const e = dto.etapa?.trim();

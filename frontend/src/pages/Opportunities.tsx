@@ -548,7 +548,7 @@ export default function OpportunitiesPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2 flex-1">
           <Select value={etapaFilter} onValueChange={setEtapaFilter}>
-            <SelectTrigger className="w-auto bg-card">
+            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card shadow-none">
               <div className="flex items-center gap-1.5">
                 <Tag className="size-3.5" />
                 <SelectValue placeholder="Etapa" />
@@ -563,7 +563,7 @@ export default function OpportunitiesPage() {
           </Select>
 
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-auto bg-card">
+            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card shadow-none">
               <div className="flex items-center gap-1.5">
                 <Globe className="size-3.5" />
                 <SelectValue placeholder="Estado" />
@@ -582,7 +582,7 @@ export default function OpportunitiesPage() {
             onValueChange={setAssigneeFilter}
             disabled={!canSeeAllAdvisors}
           >
-            <SelectTrigger className="w-auto bg-card">
+            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card shadow-none">
               <div className="flex items-center gap-1.5">
                 <User className="size-3.5" />
                 <SelectValue placeholder="Asesor" />

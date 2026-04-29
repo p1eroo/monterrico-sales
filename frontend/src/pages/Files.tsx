@@ -9,6 +9,7 @@ import {
   Filter,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { FileListItem } from '@/components/files';
 import { FilePreviewModal } from '@/components/files';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -70,6 +71,7 @@ export default function FilesPage() {
   const [userFilter, setUserFilter] = useState<string>('all');
   const [previewFile, setPreviewFile] = useState<FileAttachment | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [filePendingDelete, setFilePendingDelete] = useState<FileAttachment | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -141,6 +143,11 @@ export default function FilesPage() {
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'No se pudo eliminar');
     }
+  };
+
+  const confirmDeleteFile = () => {
+    const f = filePendingDelete;
+    if (f) void handleDelete(f);
   };
 
   const handleNavigateToEntity = (file: FileAttachment) => {
@@ -250,13 +257,13 @@ export default function FilesPage() {
               variant="card"
               onView={handleView}
               onDownload={handleDownload}
-              onDelete={canDelete ? handleDelete : undefined}
+              onDelete={canDelete ? (file) => setFilePendingDelete(file) : undefined}
               canDelete={canDelete}
             />
           ))}
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="divide-y divide-border">
           {filteredFiles.map((file) => (
             <FileListItem
               key={file.id}
@@ -264,7 +271,7 @@ export default function FilesPage() {
               variant="list"
               onView={handleView}
               onDownload={handleDownload}
-              onDelete={canDelete ? handleDelete : undefined}
+              onDelete={canDelete ? (file) => setFilePendingDelete(file) : undefined}
               canDelete={canDelete}
             />
           ))}
@@ -277,6 +284,17 @@ export default function FilesPage() {
         onOpenChange={setPreviewOpen}
         onDownload={handleDownload}
         onNavigateToEntity={handleNavigateToEntity}
+      />
+
+      <ConfirmDialog
+        open={filePendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setFilePendingDelete(null);
+        }}
+        title="Eliminar Archivo"
+        description="¿Estás seguro que deseas eliminar este archivo? Esta acción no se puede deshacer."
+        onConfirm={confirmDeleteFile}
+        variant="destructive"
       />
     </div>
   );

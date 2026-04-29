@@ -72,7 +72,7 @@ import {
 import { useStageBadgeTone } from '@/hooks/useStageBadgeTone';
 import { useCrmConfigStore, getStageLabelFromCatalog } from '@/store/crmConfigStore';
 
-const TIMELINE_PAGE_SIZE = 6;
+const TIMELINE_PAGE_SIZE = 8;
 
 const statusLabels: Record<string, string> = {
   abierta: 'Abierta',
