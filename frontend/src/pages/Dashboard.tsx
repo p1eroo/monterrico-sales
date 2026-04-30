@@ -75,9 +75,9 @@ import { ChartCardBody } from '@/components/shared/ChartCardBody';
 import { chartHasAnyValue } from '@/lib/chartEmpty';
 import { useChartTheme } from '@/hooks/useChartTheme';
 import { SalesByMonthBarChart } from '@/components/shared/SalesByMonthBarChart';
+import { buildOpportunitiesStageFunnelStages } from '@/lib/companyStageFunnelData';
 
 const PIE_COLORS = ['#13944C', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899'];
-const FUNNEL_COLORS = ['#13944C', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];
 
 const activityIconMap: Record<string, typeof Phone> = {
   llamada: Phone,
@@ -175,11 +175,10 @@ export default function Dashboard() {
 
   const funnelStages: FunnelStage[] = useMemo(() => {
     if (!summary) return [];
-    return summary.opportunitiesByStageData.map((x, i) => ({
-      label: getStageLabelFromCatalog(x.name, bundle),
-      value: x.count,
-      color: FUNNEL_COLORS[i % FUNNEL_COLORS.length],
-    }));
+    return buildOpportunitiesStageFunnelStages(
+      summary.opportunitiesByStageData,
+      bundle,
+    );
   }, [summary, bundle]);
 
   const opportunitiesByStageData = useMemo(() => {

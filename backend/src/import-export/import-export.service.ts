@@ -2187,7 +2187,7 @@ export class ImportExportService {
   }
 
   /**
-   * Export comercial (CSV): fecha de ingreso, empresa, teléfono, origen, asesor y
+   * Export comercial (CSV): fecha de ingreso, empresa, origen, asesor y
    * columnas por semana ISO con cabecera en español (`Semana N`, o `Semana N (AAAA)`
    * si el rango cruza años ISO). Cada celda es porcentaje con sufijo `%` (p. ej. `40%`);
    * semanas anteriores al alta o sin dato se exportan como `0%`.
@@ -2202,7 +2202,6 @@ export class ImportExportService {
       select: {
         id: true,
         name: true,
-        telefono: true,
         fuente: true,
         etapa: true,
         createdAt: true,
@@ -2220,7 +2219,6 @@ export class ImportExportService {
     const baseHeaders = [
       'Fecha de Ingreso',
       'Empresa / Cliente',
-      'Teléfono',
       'Origen',
       'Asesor',
     ];
@@ -2317,7 +2315,6 @@ export class ImportExportService {
       const row: string[] = [
         ingresoStr(c.createdAt),
         c.name,
-        c.telefono ?? '',
         fuenteLabel(c.fuente),
         c.user?.name ?? '',
       ];

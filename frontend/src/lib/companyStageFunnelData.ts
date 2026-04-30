@@ -1,3 +1,4 @@
+import type { FunnelStage } from '@/components/crm/FunnelChart';
 import type { CrmConfigBundle } from '@/lib/crmConfigApi';
 import { etapaLabels } from '@/data/mock';
 
@@ -114,6 +115,55 @@ export function buildCompaniesStageFunnelRows(
       name: etapaLabels[slug] ?? slug,
       value,
       fill: pickStageFill(slug, catalogBySlug.get(slug)?.color),
+    });
+  }
+  extras.sort((a, b) => b.value - a.value);
+  return [...rows, ...extras];
+}
+
+/**
+ * Mismo criterio de orden que `buildCompaniesStageFunnelRows` (catálogo `sortOrder`),
+ * para el embudo de oportunidades en el dashboard.
+ */
+export function buildOpportunitiesStageFunnelStages(
+  raw: { name: string; count: number }[],
+  bundle: CrmConfigBundle | null,
+): FunnelStage[] {
+  const countMap = new Map(raw.map((x) => [x.name, x.count]));
+  const ordered: { slug: string; name: string }[] =
+    bundle?.catalog?.stages?.length ?
+      [...bundle.catalog.stages]
+        .filter((s) => s.enabled)
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map((s) => ({ slug: s.slug, name: s.name }))
+    : FALLBACK_STAGE_ORDER.map((slug) => ({
+        slug,
+        name: etapaLabels[slug] ?? slug,
+      }));
+
+  const catalogBySlug = new Map((bundle?.catalog?.stages ?? []).map((s) => [s.slug, s]));
+
+  const rows: FunnelStage[] = [];
+  const seen = new Set<string>();
+  for (const st of ordered) {
+    const value = countMap.get(st.slug) ?? 0;
+    if (value <= 0) continue;
+    seen.add(st.slug);
+    const cat = catalogBySlug.get(st.slug);
+    rows.push({
+      label: st.name,
+      value,
+      color: pickStageFill(st.slug, cat?.color),
+    });
+  }
+
+  const extras: FunnelStage[] = [];
+  for (const [slug, value] of countMap) {
+    if (value <= 0 || seen.has(slug)) continue;
+    extras.push({
+      label: etapaLabels[slug] ?? slug,
+      value,
+      color: pickStageFill(slug, catalogBySlug.get(slug)?.color),
     });
   }
   extras.sort((a, b) => b.value - a.value);
