@@ -5,13 +5,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import {
   User, Building2, ChevronsUpDown, X,
 } from 'lucide-react';
-import type { ContactPriority } from '@/types';
-import { etapaLabels } from '@/data/mock';
+import type { ContactPriority, ContactSource } from '@/types';
+import { etapaLabels, contactSourceLabels } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
 import { useCRMStore } from '@/store/crmStore';
 import { useCrmConfigStore } from '@/store/crmConfigStore';
 import { getPrimaryCompany, cn } from '@/lib/utils';
-import { LinkExistingDialog } from '@/components/shared/LinkExistingDialog';
+import { LinkExistingDialog, type LinkExistingItem } from '@/components/shared/LinkExistingDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,9 +25,10 @@ import {
   type ApiContactListRow,
   isLikelyContactCuid,
   mapApiContactRowToContact,
-  contactListAll,
 } from '@/lib/contactApi';
-import { type ApiCompanyRecord, companyListAll, isLikelyCompanyCuid } from '@/lib/companyApi';
+import { type ApiCompanyRecord, isLikelyCompanyCuid } from '@/lib/companyApi';
+import { usePaginatedContactPicker, type PaginatedContactPickerOptions } from '@/hooks/usePaginatedContactPicker';
+import { usePaginatedCompanyPicker, type PaginatedCompanyPickerOptions } from '@/hooks/usePaginatedCompanyPicker';
 
 const FALLBACK_ETAPA_SLUGS = [
   'lead', 'contacto', 'reunion_agendada', 'reunion_efectiva', 'propuesta_economica',
@@ -99,62 +100,64 @@ export function NewOpportunityFormDialog({
       label: etapaLabels[slug] ?? slug,
     }));
   }, [bundle]);
-  const [apiContactRows, setApiContactRows] = useState<ApiContactListRow[]>([]);
-  const [apiCompanies, setApiCompanies] = useState<ApiCompanyRecord[]>([]);
+
+  const newOppContactPickerOpts = useMemo(
+    (): PaginatedContactPickerOptions => ({ fetchAll: true, pageSize: 25 }),
+    [],
+  );
+  const newOppCompanyPickerOpts = useMemo(
+    (): PaginatedCompanyPickerOptions => ({ fetchAll: true, pageSize: 25 }),
+    [],
+  );
+
   const [linkContactOpen, setLinkContactOpen] = useState(false);
   const [linkCompanyOpen, setLinkCompanyOpen] = useState(false);
   const [linkContactSearch, setLinkContactSearch] = useState('');
   const [linkCompanySearch, setLinkCompanySearch] = useState('');
   const [linkContactSelectedIds, setLinkContactSelectedIds] = useState<string[]>([]);
   const [linkCompanySelectedIds, setLinkCompanySelectedIds] = useState<string[]>([]);
+  const [pickedContactRow, setPickedContactRow] = useState<ApiContactListRow | null>(null);
+  const [pickedCompanyRow, setPickedCompanyRow] = useState<ApiCompanyRecord | null>(null);
 
-  const loadApiContacts = useCallback(async () => {
-    try {
-      setApiContactRows(await contactListAll());
-    } catch {
-      setApiContactRows([]);
-    }
-  }, []);
+  const {
+    items: contactPickerRows,
+    loading: contactPickerLoading,
+    loadingMore: contactPickerLoadingMore,
+    hasMore: contactPickerHasMore,
+    loadMore: contactPickerLoadMore,
+  } = usePaginatedContactPicker(linkContactOpen, linkContactSearch, newOppContactPickerOpts);
 
-  const loadApiCompanies = useCallback(async () => {
-    try {
-      setApiCompanies(await companyListAll());
-    } catch {
-      setApiCompanies([]);
-    }
-  }, []);
+  const {
+    items: companyPickerRows,
+    loading: companyPickerLoading,
+    loadingMore: companyPickerLoadingMore,
+    hasMore: companyPickerHasMore,
+    loadMore: companyPickerLoadMore,
+  } = usePaginatedCompanyPicker(linkCompanyOpen, linkCompanySearch, newOppCompanyPickerOpts);
 
-  useEffect(() => {
-    if (!open) return;
-    void loadApiContacts();
-    void loadApiCompanies();
-  }, [open, loadApiContacts, loadApiCompanies]);
+  const mergedContactsForForm = useMemo(() => contacts, [contacts]);
 
-  const mergedContactsForForm = useMemo(() => {
-    const apiIds = new Set(apiContactRows.map((r) => r.id));
-    const fromApi = apiContactRows.map(mapApiContactRowToContact);
-    const fromStore = contacts.filter((c) => !apiIds.has(c.id));
-    return [...fromApi, ...fromStore];
-  }, [apiContactRows, contacts]);
-
-  const linkContactItems = useMemo(
+  const linkContactItems: LinkExistingItem[] = useMemo(
     () =>
-      mergedContactsForForm.map((c) => ({
-        id: c.id,
-        title: c.name,
-        subtitle: getPrimaryCompany(c)?.name,
-      })),
-    [mergedContactsForForm],
+      contactPickerRows.map((row) => {
+        const c = mapApiContactRowToContact(row);
+        return {
+          id: c.id,
+          title: c.name,
+          subtitle: getPrimaryCompany(c)?.name,
+        };
+      }),
+    [contactPickerRows],
   );
 
-  const linkCompanyItems = useMemo(
+  const linkCompanyItems: LinkExistingItem[] = useMemo(
     () =>
-      apiCompanies.map((c) => ({
+      companyPickerRows.map((c) => ({
         id: c.id,
         title: c.name,
         subtitle: c.ruc ?? undefined,
       })),
-    [apiCompanies],
+    [companyPickerRows],
   );
 
   const form = useForm<NewOpportunityFormValues>({
@@ -173,6 +176,8 @@ export function NewOpportunityFormDialog({
     setLinkCompanySearch('');
     setLinkContactSelectedIds([]);
     setLinkCompanySelectedIds([]);
+    setPickedContactRow(null);
+    setPickedCompanyRow(null);
   }, [open, defaultContactId, defaultCompanyId, form]);
 
   const watchContactId = form.watch('contactId');
@@ -180,23 +185,55 @@ export function NewOpportunityFormDialog({
 
   const contactLinkedLabel = useMemo(() => {
     if (!watchContactId?.trim()) return null;
+    if (pickedContactRow?.id === watchContactId) {
+      const c = mapApiContactRowToContact(pickedContactRow);
+      return `${c.name} — ${getPrimaryCompany(c)?.name ?? '—'}`;
+    }
     const c = mergedContactsForForm.find((x) => x.id === watchContactId);
     return c
       ? `${c.name} — ${getPrimaryCompany(c)?.name ?? '—'}`
       : `Contacto (${watchContactId.slice(0, 8)}…)`;
-  }, [watchContactId, mergedContactsForForm]);
+  }, [watchContactId, mergedContactsForForm, pickedContactRow]);
 
   const companyLinkedLabel = useMemo(() => {
     if (!watchCompanyId?.trim()) return null;
-    const c = apiCompanies.find((x) => x.id === watchCompanyId);
-    return c?.name ?? `Empresa (${watchCompanyId.slice(0, 8)}…)`;
-  }, [watchCompanyId, apiCompanies]);
+    if (pickedCompanyRow?.id === watchCompanyId) {
+      return pickedCompanyRow.name;
+    }
+    return `Empresa (${watchCompanyId.slice(0, 8)}…)`;
+  }, [watchCompanyId, pickedCompanyRow]);
+
+  const fuentePreviewLabel = useMemo(() => {
+    const contactId = watchContactId?.trim();
+    let oppFuenteLabel = contactSourceLabels.base;
+    if (contactId && pickedContactRow?.id === contactId && pickedContactRow.fuente) {
+      const slug = pickedContactRow.fuente.toLowerCase() as ContactSource;
+      oppFuenteLabel = contactSourceLabels[slug] ?? pickedContactRow.fuente;
+    } else {
+      const c = contactId ? mergedContactsForForm.find((x) => x.id === contactId) : undefined;
+      if (c?.fuente) {
+        oppFuenteLabel = contactSourceLabels[c.fuente] ?? c.fuente;
+      }
+    }
+    const hasCompany = !!watchCompanyId?.trim();
+    if (hasCompany) {
+      return `Oportunidad: ${oppFuenteLabel}. La empresa mostrará la fuente de la oportunidad principal (mayor probabilidad) cuando el CRM sincronice.`;
+    }
+    return `Oportunidad: ${oppFuenteLabel}.`;
+  }, [
+    watchCompanyId,
+    watchContactId,
+    pickedContactRow,
+    mergedContactsForForm,
+  ]);
 
   function resetLinkState() {
     setLinkContactSearch('');
     setLinkCompanySearch('');
     setLinkContactSelectedIds([]);
     setLinkCompanySelectedIds([]);
+    setPickedContactRow(null);
+    setPickedCompanyRow(null);
   }
 
   function handleDialogOpenChange(next: boolean) {
@@ -231,9 +268,16 @@ export function NewOpportunityFormDialog({
         selectionMode="single"
         confirmLabel="Usar contacto"
         contentClassName="z-[60]"
+        serverFilteredList
+        listLoading={contactPickerLoading}
+        listLoadingMore={contactPickerLoadingMore}
+        hasMore={contactPickerHasMore}
+        onLoadMore={contactPickerLoadMore}
         onConfirm={() => {
           const id = linkContactSelectedIds[0];
           if (!id) return;
+          const row = contactPickerRows.find((r) => r.id === id);
+          if (row) setPickedContactRow(row);
           form.setValue('contactId', id);
           form.clearErrors('contactId');
           setLinkContactOpen(false);
@@ -254,9 +298,16 @@ export function NewOpportunityFormDialog({
         selectionMode="single"
         confirmLabel="Usar empresa"
         contentClassName="z-[60]"
+        serverFilteredList
+        listLoading={companyPickerLoading}
+        listLoadingMore={companyPickerLoadingMore}
+        hasMore={companyPickerHasMore}
+        onLoadMore={companyPickerLoadMore}
         onConfirm={() => {
           const id = linkCompanySelectedIds[0];
           if (!id) return;
+          const row = companyPickerRows.find((r) => r.id === id);
+          if (row) setPickedCompanyRow(row);
           form.setValue('companyId', id);
           form.clearErrors('companyId');
           setLinkCompanyOpen(false);
@@ -329,6 +380,7 @@ export function NewOpportunityFormDialog({
                         e.preventDefault();
                         e.stopPropagation();
                         form.setValue('contactId', '');
+                        setPickedContactRow(null);
                       }}
                       aria-label="Quitar contacto"
                     >
@@ -370,6 +422,7 @@ export function NewOpportunityFormDialog({
                         e.preventDefault();
                         e.stopPropagation();
                         form.setValue('companyId', '');
+                        setPickedCompanyRow(null);
                       }}
                       aria-label="Quitar empresa"
                     >
@@ -377,6 +430,13 @@ export function NewOpportunityFormDialog({
                     </button>
                   ) : null}
                 </div>
+              </div>
+
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>Fuente</Label>
+                <p className="rounded-md border border-dashed bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                  {fuentePreviewLabel}
+                </p>
               </div>
 
               <div className="space-y-2">

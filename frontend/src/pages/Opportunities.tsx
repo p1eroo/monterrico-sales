@@ -10,7 +10,7 @@ import {
   Globe, Tag,
 } from 'lucide-react';
 import type { Etapa, OpportunityStatus, Opportunity } from '@/types';
-import { etapaLabels } from '@/data/mock';
+import { etapaLabels, contactSourceLabels } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
 import { cn } from '@/lib/utils';
 
@@ -76,6 +76,7 @@ import {
 const OPPORTUNITIES_TABLE_SKELETON_COLUMNS = [
   { label: 'Nombre', className: 'min-w-0 max-w-[20rem]' },
   { label: 'Contacto / Cliente', className: 'hidden min-w-0 max-w-[16rem] md:table-cell' },
+  { label: 'Fuente', className: 'hidden min-w-[6.5rem] sm:table-cell' },
   { label: 'Prioridad', className: 'hidden lg:table-cell' },
   { label: 'Monto' },
   { label: 'Probabilidad', className: 'hidden sm:table-cell' },
@@ -806,6 +807,7 @@ function OpportunitiesTable({
             <TableHead className="hidden min-w-0 max-w-[16rem] md:table-cell">
               Contacto / Cliente
             </TableHead>
+            <TableHead className="hidden min-w-[6.5rem] sm:table-cell">Fuente</TableHead>
             <TableHead className="hidden lg:table-cell">Prioridad</TableHead>
             <TableHead>Monto</TableHead>
             <TableHead className="hidden sm:table-cell">Probabilidad</TableHead>
@@ -854,6 +856,9 @@ function OpportunitiesTable({
                   >
                     {contactClientLabel}
                   </p>
+                  <p className="truncate text-xs text-muted-foreground/90 sm:hidden">
+                    {contactSourceLabels[opp.fuente ?? 'base'] ?? opp.fuente}
+                  </p>
                 </div>
               </TableCell>
               <TableCell className="hidden min-w-0 max-w-[16rem] whitespace-normal md:table-cell align-top text-muted-foreground">
@@ -862,6 +867,11 @@ function OpportunitiesTable({
                   title={contactClientLabel !== '—' ? contactClientLabel : undefined}
                 >
                   {contactClientLabel}
+                </span>
+              </TableCell>
+              <TableCell className="hidden min-w-[6.5rem] sm:table-cell align-top text-muted-foreground">
+                <span className="text-sm">
+                  {contactSourceLabels[opp.fuente ?? 'base'] ?? opp.fuente ?? '—'}
                 </span>
               </TableCell>
               <TableCell className="hidden lg:table-cell">
@@ -1025,6 +1035,9 @@ function OpportunitiesGrid({
               <PriorityBadge priority={opp.priority ?? 'media'} />
               <EtapaBadge etapa={opp.etapa} />
               <OpportunityStatusBadge status={opp.status} />
+              <Badge variant="outline" className="text-[11px] font-normal text-muted-foreground">
+                {contactSourceLabels[opp.fuente ?? 'base'] ?? opp.fuente}
+              </Badge>
             </div>
 
             <div className="mt-3 space-y-1 border-t pt-3 text-xs text-muted-foreground">

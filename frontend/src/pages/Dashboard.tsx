@@ -106,6 +106,9 @@ export default function Dashboard() {
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [salesChartModalOpen, setSalesChartModalOpen] = useState(false);
+  const [sourceChartModalOpen, setSourceChartModalOpen] = useState(false);
+  const [funnelChartModalOpen, setFunnelChartModalOpen] = useState(false);
+  const [advisorChartModalOpen, setAdvisorChartModalOpen] = useState(false);
 
   useEffect(() => {
     let c = true;
@@ -255,6 +258,9 @@ export default function Dashboard() {
       followUpsData,
     ],
   );
+
+  const dashboardChartModalClass =
+    'max-h-[min(90vh,900px)] w-full max-w-[min(100vw-2rem,56rem)] gap-0 p-0 sm:max-w-[min(100vw-2rem,56rem)]';
 
   return (
     <div className="space-y-6">
@@ -421,7 +427,7 @@ export default function Dashboard() {
 
         <Dialog open={salesChartModalOpen} onOpenChange={setSalesChartModalOpen}>
           <DialogContent
-            className="max-h-[min(90vh,900px)] w-full max-w-[min(100vw-2rem,56rem)] gap-0 p-0 sm:max-w-[min(100vw-2rem,56rem)]"
+            className={dashboardChartModalClass}
             showCloseButton
           >
             <DialogHeader className="px-6 pt-6 pb-0">
@@ -435,8 +441,19 @@ export default function Dashboard() {
 
         {/* Contactos por Fuente */}
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-base">Contactos por Fuente</CardTitle>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0 text-muted-foreground"
+              onClick={() => setSourceChartModalOpen(true)}
+              disabled={summaryLoading || sourceChartEmpty}
+              aria-label="Ampliar gráfico de contactos por fuente"
+            >
+              <Maximize2 className="h-4 w-4" />
+            </Button>
           </CardHeader>
           <CardContent>
             <ChartCardBody
@@ -490,16 +507,27 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Funnel de Ventas */}
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2 max-md:pb-1.5">
             <CardTitle className="text-base">Funnel de Ventas</CardTitle>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0 text-muted-foreground"
+              onClick={() => setFunnelChartModalOpen(true)}
+              disabled={summaryLoading || funnelChartEmpty}
+              aria-label="Ampliar funnel de ventas"
+            >
+              <Maximize2 className="h-4 w-4" />
+            </Button>
           </CardHeader>
-          <CardContent>
+          <CardContent className="max-md:px-3 max-md:pb-2 max-md:pt-0">
             <ChartCardBody
               loading={summaryLoading}
               isEmpty={funnelChartEmpty}
               variant="bar"
               emptyMessage="Sin datos de embudo en este periodo."
-              className="min-h-[min(52vh,420px)] py-3"
+              className="min-h-[min(52vh,420px)] py-3 max-md:min-h-0 max-md:py-1"
             >
               <FunnelChart stages={funnelStages} height={360} singularLabel="oportunidad" variant="rect" />
             </ChartCardBody>
@@ -508,8 +536,19 @@ export default function Dashboard() {
 
         {/* Rendimiento por Asesor (barras horizontales, misma altura mín. que Funnel) */}
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-base">Rendimiento por Asesor</CardTitle>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0 text-muted-foreground"
+              onClick={() => setAdvisorChartModalOpen(true)}
+              disabled={summaryLoading || advisorChartEmpty}
+              aria-label="Ampliar gráfico de rendimiento por asesor"
+            >
+              <Maximize2 className="h-4 w-4" />
+            </Button>
           </CardHeader>
           <CardContent>
             <ChartCardBody
@@ -563,6 +602,121 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={sourceChartModalOpen} onOpenChange={setSourceChartModalOpen}>
+        <DialogContent className={dashboardChartModalClass} showCloseButton>
+          <DialogHeader className="px-6 pt-6 pb-0">
+            <DialogTitle className="text-base">Contactos por Fuente</DialogTitle>
+          </DialogHeader>
+          <div className="h-[min(70vh,520px)] w-full px-6 pb-6 pt-4">
+            {!sourceChartEmpty ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={leadsBySourceData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={65}
+                    outerRadius={100}
+                    dataKey="value"
+                    nameKey="name"
+                    stroke="none"
+                    paddingAngle={3}
+                  >
+                    {leadsBySourceData.map((_, index) => (
+                      <Cell key={index} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value?: number) => [value ?? 0, 'Contactos']}
+                    contentStyle={{
+                      borderRadius: '8px',
+                      border: `1px solid ${chartTheme.tooltipBorder}`,
+                      backgroundColor: chartTheme.tooltipBg,
+                      color: chartTheme.tooltipText,
+                      fontSize: '13px',
+                    }}
+                    itemStyle={{ color: chartTheme.tooltipText }}
+                    labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
+                  />
+                  <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '12px' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : null}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={funnelChartModalOpen} onOpenChange={setFunnelChartModalOpen}>
+        <DialogContent className={dashboardChartModalClass} showCloseButton>
+          <DialogHeader className="px-6 pt-6 pb-0">
+            <DialogTitle className="text-base">Funnel de Ventas</DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[min(72vh,640px)] w-full overflow-y-auto px-6 pb-6 pt-4">
+            {!funnelChartEmpty ? (
+              <FunnelChart
+                stages={funnelStages}
+                height={500}
+                showLegend
+                singularLabel="oportunidad"
+                variant="rect"
+              />
+            ) : null}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={advisorChartModalOpen} onOpenChange={setAdvisorChartModalOpen}>
+        <DialogContent className={dashboardChartModalClass} showCloseButton>
+          <DialogHeader className="px-6 pt-6 pb-0">
+            <DialogTitle className="text-base">Rendimiento por Asesor</DialogTitle>
+          </DialogHeader>
+          <div className="h-[min(70vh,520px)] w-full px-6 pb-6 pt-4">
+            {!advisorChartEmpty ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={performanceByAdvisor} layout="vertical" barGap={2} margin={{ left: 4, right: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={chartTheme.gridStroke} />
+                  <XAxis type="number" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    tick={{ fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={false}
+                    width={100}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: '8px',
+                      border: `1px solid ${chartTheme.tooltipBorder}`,
+                      backgroundColor: chartTheme.tooltipBg,
+                      color: chartTheme.tooltipText,
+                      fontSize: '13px',
+                    }}
+                    itemStyle={{ color: chartTheme.tooltipText }}
+                    labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
+                  />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
+                  <Bar
+                    dataKey="empresas"
+                    name="Empresas"
+                    fill="#3b82f6"
+                    radius={[0, 4, 4, 0]}
+                    barSize={14}
+                  />
+                  <Bar
+                    dataKey="ventas"
+                    name="Ventas"
+                    fill="#13944C"
+                    radius={[0, 4, 4, 0]}
+                    barSize={14}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : null}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Bottom Sections */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

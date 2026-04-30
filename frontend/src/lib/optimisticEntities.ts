@@ -45,7 +45,7 @@ export function buildOptimisticContact(
 export function buildOptimisticOpportunity(
   clientId: string,
   data: NewOpportunityFormValues,
-  options?: { contactName?: string; clientName?: string },
+  options?: { contactName?: string; clientName?: string; fuente?: ContactSource },
 ): Opportunity {
   const etapa = data.etapa as Etapa;
   const assignedTo = data.assignedTo?.trim() ?? '';
@@ -70,5 +70,6 @@ export function buildOptimisticOpportunity(
     assignedTo,
     assignedToName,
     createdAt: new Date().toISOString().slice(0, 10),
+    fuente: options?.fuente ?? 'base',
   };
 }

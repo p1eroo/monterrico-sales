@@ -85,6 +85,7 @@ export const useCRMStore = create<CRMState>((set, get) => ({
       probability: etapaProbabilidad[etapa] ?? 0,
       assignedToName: getUserName(oppData.assignedTo),
       contactName: resolvedContactName,
+      fuente: oppData.fuente ?? 'base',
     };
     set((state) => ({ opportunities: [newOpp, ...state.opportunities] }));
     return newOpp;

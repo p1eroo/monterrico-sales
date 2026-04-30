@@ -798,11 +798,11 @@ export default function Reports() {
 
         {/* Embudo empresas por etapa (izquierda); derecha reservada */}
         <Card>
-          <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2">
+          <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2 max-md:pb-1.5">
             <div className="min-w-0 space-y-1">
               <CardTitle className="text-base">Empresas por etapa</CardTitle>
               <CardDescription>
-                Embudo según etapa comercial (empresas creadas en el periodo; respeta asesor y fuente).
+                Embudo según etapa comercial
               </CardDescription>
             </div>
             <Button
@@ -817,13 +817,13 @@ export default function Reports() {
               <Maximize2 className="h-4 w-4" />
             </Button>
           </CardHeader>
-          <CardContent>
+          <CardContent className="max-md:px-3 max-md:pb-2 max-md:pt-0">
             <ChartCardBody
               loading={loading}
               isEmpty={companiesFunnelEmpty}
               variant="bar"
               emptyMessage="Sin empresas en este periodo con las etapas seleccionadas."
-              className="min-h-[min(52vh,420px)] py-3"
+              className="min-h-[min(52vh,420px)] py-3 max-md:min-h-0 max-md:py-1"
             >
               <FunnelChart stages={companiesFunnelStages} height={360} variant="rect" />
             </ChartCardBody>

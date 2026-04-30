@@ -68,6 +68,8 @@ export async function companyListPaginated(params?: {
   search?: string;
   rubro?: string;
   tipo?: string;
+  excludeContactLinkId?: string;
+  excludeOpportunityLinkId?: string;
 }): Promise<CompanyListPaginatedResponse> {
   const sp = new URLSearchParams();
   if (params?.page != null) sp.set('page', String(params.page));
@@ -75,6 +77,12 @@ export async function companyListPaginated(params?: {
   if (params?.search?.trim()) sp.set('search', params.search.trim());
   if (params?.rubro?.trim()) sp.set('rubro', params.rubro.trim());
   if (params?.tipo?.trim()) sp.set('tipo', params.tipo.trim());
+  if (params?.excludeContactLinkId?.trim()) {
+    sp.set('excludeContactLink', params.excludeContactLinkId.trim());
+  }
+  if (params?.excludeOpportunityLinkId?.trim()) {
+    sp.set('excludeOpportunityLink', params.excludeOpportunityLinkId.trim());
+  }
   const qs = sp.toString();
   const url = qs ? `/companies?${qs}` : '/companies';
   return api<CompanyListPaginatedResponse>(url);

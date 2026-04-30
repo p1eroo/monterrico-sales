@@ -65,26 +65,32 @@ import { api } from '@/lib/api';
 import { isEntityDetailApiParam } from '@/lib/detailRoutes';
 import {
   type ApiContactDetail,
-  type ApiContactListRow,
   contactAddCompany,
   contactRemoveCompany,
   isLikelyContactCuid,
   mapApiContactDetailToContact,
-  mapApiContactRowToContact,
   opportunitiesFromApiContactDetail,
-  contactListAll,
 } from '@/lib/contactApi';
 import {
-  type ApiOpportunityListRow,
   isLikelyOpportunityCuid,
   mapApiOpportunityToOpportunity,
-  opportunityListAll,
 } from '@/lib/opportunityApi';
-import { type ApiCompanyRecord, companyListAll } from '@/lib/companyApi';
+import { type ApiCompanyRecord } from '@/lib/companyApi';
+import { usePaginatedCompanyPicker, type PaginatedCompanyPickerOptions } from '@/hooks/usePaginatedCompanyPicker';
 import { useStageBadgeTone } from '@/hooks/useStageBadgeTone';
 import { useCrmConfigStore, getStageLabelFromCatalog } from '@/store/crmConfigStore';
+import {
+  usePaginatedOpportunityPicker,
+  type OpportunityPickerExcludeFilter,
+} from '@/hooks/usePaginatedOpportunityPicker';
+import { ENTITY_DETAIL_SECTION_TAB_OPTIONS } from '@/lib/entityDetailSectionTabs';
 
 const TIMELINE_PAGE_SIZE = 8;
+
+function parseRubroFromApi(s: string | null | undefined): CompanyRubro | undefined {
+  if (!s) return undefined;
+  return s in companyRubroLabels ? (s as CompanyRubro) : undefined;
+}
 
 function ContactoInformacionAside({ contact }: { contact: Contact }) {
 return (
@@ -186,9 +192,6 @@ export default function ContactoDetailPage() {
   const [apiRecord, setApiRecord] = useState<ApiContactDetail | null>(null);
   const [apiLoading, setApiLoading] = useState(fromApi);
   const [apiError, setApiError] = useState<string | null>(null);
-  const [apiContactsList, setApiContactsList] = useState<ApiContactListRow[]>([]);
-  const [apiCompaniesList, setApiCompaniesList] = useState<ApiCompanyRecord[]>([]);
-  const [apiOpportunitiesList, setApiOpportunitiesList] = useState<ApiOpportunityListRow[]>([]);
 
   const refreshApiContact = useCallback(async () => {
     if (!fromApi || !routeId) return;
@@ -228,34 +231,6 @@ export default function ContactoDetailPage() {
     };
   }, [fromApi, routeId]);
 
-  useEffect(() => {
-    if (!fromApi) {
-      setApiContactsList([]);
-      setApiCompaniesList([]);
-      setApiOpportunitiesList([]);
-      return;
-    }
-    let cancelled = false;
-    Promise.all([contactListAll(), companyListAll(), opportunityListAll()])
-      .then(([contactsList, companiesList, oppsList]) => {
-        if (!cancelled) {
-          setApiContactsList(contactsList);
-          setApiCompaniesList(companiesList);
-          setApiOpportunitiesList(oppsList);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setApiContactsList([]);
-          setApiCompaniesList([]);
-          setApiOpportunitiesList([]);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [fromApi]);
-
   const storeContact = contacts.find((l) => l.id === routeId);
 
   const contact = useMemo(() => {
@@ -272,19 +247,7 @@ export default function ContactoDetailPage() {
     entityName: contact?.name,
   });
 
-  const mergedContacts = useMemo(() => {
-    if (fromApi) {
-      return apiContactsList.map(mapApiContactRowToContact);
-    }
-    const byId = new Map<string, Contact>();
-    for (const r of apiContactsList) {
-      byId.set(r.id, mapApiContactRowToContact(r));
-    }
-    for (const c of contacts) {
-      if (!byId.has(c.id)) byId.set(c.id, c);
-    }
-    return Array.from(byId.values());
-  }, [fromApi, apiContactsList, contacts]);
+  const mergedContacts = useMemo(() => contacts, [contacts]);
 
   const initialActivities = useMemo(
     () => activities.filter((a) => a.contactId === routeId),
@@ -326,11 +289,51 @@ export default function ContactoDetailPage() {
   const [addExistingOpportunityOpen, setAddExistingOpportunityOpen] = useState(false);
   const [linkOpportunityIds, setLinkOpportunityIds] = useState<string[]>([]);
   const [linkOpportunitySearch, setLinkOpportunitySearch] = useState('');
+
+  const contactOppPickerFilter = useMemo((): OpportunityPickerExcludeFilter | null => {
+    if (fromApi && contact && isLikelyContactCuid(contact.id)) {
+      return { excludeContactLinkId: contact.id };
+    }
+    return null;
+  }, [fromApi, contact?.id]);
+
+  const {
+    items: linkPickerApiRows,
+    loading: linkOppPickerLoading,
+    loadingMore: linkOppPickerLoadingMore,
+    hasMore: linkOppPickerHasMore,
+    loadMore: linkOppPickerLoadMore,
+  } = usePaginatedOpportunityPicker(
+    addExistingOpportunityOpen,
+    linkOpportunitySearch,
+    contactOppPickerFilter,
+    25,
+  );
+
   const [addExistingCompanyOpen, setAddExistingCompanyOpen] = useState(false);
   const [linkCompanyNames, setLinkCompanyNames] = useState<string[]>([]);
   const [linkCompanySearch, setLinkCompanySearch] = useState('');
+
+  const linkCompanyPickerOpts = useMemo((): PaginatedCompanyPickerOptions | null => {
+    if (!fromApi || !contact?.id || !isLikelyContactCuid(contact.id)) return null;
+    return { excludeContactLinkId: contact.id, pageSize: 25 };
+  }, [fromApi, contact?.id]);
+
+  const {
+    items: linkCompanyPickerRows,
+    loading: linkCompanyPickerLoading,
+    loadingMore: linkCompanyPickerLoadingMore,
+    hasMore: linkCompanyPickerHasMore,
+    loadMore: linkCompanyPickerLoadMore,
+  } = usePaginatedCompanyPicker(addExistingCompanyOpen, linkCompanySearch, linkCompanyPickerOpts);
+
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [noteText, setNoteText] = useState('');
+  const [detailSectionTab, setDetailSectionTab] = useState<string>('historial');
+
+  useEffect(() => {
+    setDetailSectionTab('historial');
+  }, [contact?.id]);
 
   useEffect(() => {
     if (fromApi) {
@@ -500,6 +503,66 @@ export default function ContactoDetailPage() {
   }, [timelinePage, totalTimelinePages]);
 
   const contactStageTone = useStageBadgeTone(contact?.etapa);
+
+  const availableCompaniesToLink = useMemo(() => {
+    if (fromApi) return [];
+    if (!contact?.companies) return [];
+    const currentNames = new Set(contact.companies.map((c) => c.name));
+    const seen = new Set<string>();
+    const result: { id: string; name: string; rubro?: CompanyRubro; tipo?: CompanyTipo; contactName?: string; contactPhone?: string }[] = [];
+    for (const l of mergedContacts) {
+      for (const c of l.companies ?? []) {
+        if (!currentNames.has(c.name) && !seen.has(c.name)) {
+          seen.add(c.name);
+          result.push({
+            id: c.name,
+            name: c.name,
+            rubro: c.rubro,
+            tipo: c.tipo,
+            contactName: l.name,
+            contactPhone: l.telefono,
+          });
+        }
+      }
+    }
+    return result;
+  }, [fromApi, contact, mergedContacts]);
+
+  const companyLinkItems: LinkExistingItem[] = useMemo(() => {
+    if (fromApi && linkCompanyPickerOpts) {
+      return linkCompanyPickerRows.map((c) => {
+        const rubro = parseRubroFromApi(c.rubro);
+        return {
+          id: c.id,
+          title: c.name,
+          subtitle: c.ruc ?? (rubro ? companyRubroLabels[rubro] : undefined),
+          status: 'Activo',
+          icon: <Building2 className="size-4" />,
+        };
+      });
+    }
+    return availableCompaniesToLink.map((c) => {
+      const contactInfo = 'contactName' in c && c.contactName && c.contactPhone
+        ? `${c.contactName} · ${c.contactPhone}`
+        : undefined;
+      const fallback = 'contactName' in c && typeof c.contactName === 'string'
+        ? c.contactName
+        : (c.rubro ? companyRubroLabels[c.rubro] : undefined);
+      const subtitle: string | undefined = contactInfo ?? fallback;
+      return {
+        id: c.id,
+        title: c.name,
+        subtitle,
+        status: 'Activo',
+        icon: <Building2 className="size-4" />,
+      };
+    });
+  }, [
+    fromApi,
+    linkCompanyPickerOpts,
+    linkCompanyPickerRows,
+    availableCompaniesToLink,
+  ]);
 
   // Los returns condicionales van después de todos los hooks
   if (fromApi && apiLoading) {
@@ -849,58 +912,10 @@ export default function ContactoDetailPage() {
     toast.success('Empresa desvinculada');
   }
 
-  const availableOpportunitiesToLink = (() => {
-    if (!id) return [];
-    if (fromApi) {
-      return apiOpportunitiesList
-        .map(mapApiOpportunityToOpportunity)
-        .filter((o) => o.contactId !== id);
-    }
-    return opportunities.filter((o) => o.contactId !== id);
-  })();
-
-  function parseRubroFromApi(s: string | null | undefined): CompanyRubro | undefined {
-    if (!s) return undefined;
-    return s in companyRubroLabels ? (s as CompanyRubro) : undefined;
-  }
-  function parseTipoFromApi(s: string | null | undefined): CompanyTipo | undefined {
-    if (!s) return undefined;
-    return s === 'A' || s === 'B' || s === 'C' ? s : undefined;
-  }
-
-  const availableCompaniesToLink = (() => {
-    if (fromApi && apiRecord) {
-      const linkedIds = new Set((apiRecord.companies ?? []).map((x) => x.company.id));
-      return apiCompaniesList
-        .filter((c) => !linkedIds.has(c.id))
-        .map((c) => ({
-          id: c.id,
-          name: c.name,
-          rubro: parseRubroFromApi(c.rubro),
-          tipo: parseTipoFromApi(c.tipo),
-        }));
-    }
-    if (!contact?.companies) return [];
-    const currentNames = new Set(contact.companies.map((c) => c.name));
-    const seen = new Set<string>();
-    const result: { id: string; name: string; rubro?: CompanyRubro; tipo?: CompanyTipo; contactName?: string; contactPhone?: string }[] = [];
-    for (const l of mergedContacts) {
-      for (const c of l.companies ?? []) {
-        if (!currentNames.has(c.name) && !seen.has(c.name)) {
-          seen.add(c.name);
-          result.push({
-            id: c.name,
-            name: c.name,
-            rubro: c.rubro,
-            tipo: c.tipo,
-            contactName: l.name,
-            contactPhone: l.telefono,
-          });
-        }
-      }
-    }
-    return result;
-  })();
+  const availableOpportunitiesToLink =
+    !fromApi && routeId
+      ? opportunities.filter((o) => o.contactId !== routeId)
+      : [];
 
   const opportunityStatusLabels: Record<string, string> = {
     abierta: 'Abierta',
@@ -908,30 +923,29 @@ export default function ContactoDetailPage() {
     perdida: 'Perdida',
     suspendida: 'Suspendida',
   };
-  const opportunityLinkItems: LinkExistingItem[] = availableOpportunitiesToLink.map((o) => ({
-    id: o.id,
-    title: o.title,
-    subtitle: `${formatCurrency(o.amount)} · ${etapaLabels[o.etapa]}`,
-    status: opportunityStatusLabels[o.status] ?? o.status,
-    icon: <DollarSign className="size-4" />,
-  }));
 
-  const companyLinkItems: LinkExistingItem[] = availableCompaniesToLink.map((c) => {
-    const contactInfo = 'contactName' in c && c.contactName && c.contactPhone
-      ? `${c.contactName} · ${c.contactPhone}`
-      : undefined;
-    const fallback = 'contactName' in c && typeof c.contactName === 'string'
-      ? c.contactName
-      : (c.rubro ? companyRubroLabels[c.rubro] : undefined);
-    const subtitle: string | undefined = contactInfo ?? fallback;
-    return {
-      id: c.id,
-      title: c.name,
-      subtitle,
-      status: 'Activo',
-      icon: <Building2 className="size-4" />,
-    };
-  });
+  const opportunityLinkItemsFromPicker: LinkExistingItem[] = [];
+  for (const row of linkPickerApiRows) {
+    const o = mapApiOpportunityToOpportunity(row);
+    if (contact?.id && o.contactId === contact.id) continue;
+    opportunityLinkItemsFromPicker.push({
+      id: o.id,
+      title: o.title,
+      subtitle: `${formatCurrency(o.amount)} · ${opportunityStatusLabels[o.status] ?? o.status}`,
+      status: getStageLabelFromCatalog(o.etapa, crmBundle, etapaLabels as Record<string, string>),
+      icon: <DollarSign className="size-4" />,
+    });
+  }
+
+  const opportunityLinkItems: LinkExistingItem[] = fromApi
+    ? opportunityLinkItemsFromPicker
+    : availableOpportunitiesToLink.map((o) => ({
+        id: o.id,
+        title: o.title,
+        subtitle: `${formatCurrency(o.amount)} · ${opportunityStatusLabels[o.status] ?? o.status}`,
+        status: getStageLabelFromCatalog(o.etapa, crmBundle, etapaLabels as Record<string, string>),
+        icon: <DollarSign className="size-4" />,
+      }));
 
   return (
     <>
@@ -985,17 +999,37 @@ export default function ContactoDetailPage() {
         />
       )}
     >
-        <Tabs defaultValue="historial">
-<TabsList variant="line" className="max-w-full w-full overflow-x-auto justify-start">
-  <TabsTrigger value="historial" className="text-xs px-2 sm:text-sm sm:px-4">Historial</TabsTrigger>
-  <TabsTrigger value="actividades" className="text-xs px-2 sm:text-sm sm:px-4">Actividades</TabsTrigger>
-  <TabsTrigger value="tareas" className="text-xs px-2 sm:text-sm sm:px-4">Tareas</TabsTrigger>
-  <TabsTrigger value="notas" className="text-xs px-2 sm:text-sm sm:px-4">Notas</TabsTrigger>
-  <TabsTrigger value="archivos" className="gap-1.5 text-xs px-2 sm:text-sm sm:px-4">
-    <FileArchive className="size-3.5" />
-    Archivos
-  </TabsTrigger>
-</TabsList>
+        <Tabs value={detailSectionTab} onValueChange={setDetailSectionTab}>
+          <div className="md:hidden space-y-1.5">
+            <label htmlFor="contacto-detail-section" className="text-xs font-medium text-muted-foreground">
+              Sección
+            </label>
+            <select
+              id="contacto-detail-section"
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              value={detailSectionTab}
+              onChange={(e) => setDetailSectionTab(e.target.value)}
+            >
+              {ENTITY_DETAIL_SECTION_TAB_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <TabsList
+            variant="line"
+            className="hidden max-w-full w-full overflow-x-auto justify-start md:inline-flex"
+          >
+            <TabsTrigger value="historial" className="text-xs px-2 sm:text-sm sm:px-4">Historial</TabsTrigger>
+            <TabsTrigger value="actividades" className="text-xs px-2 sm:text-sm sm:px-4">Actividades</TabsTrigger>
+            <TabsTrigger value="tareas" className="text-xs px-2 sm:text-sm sm:px-4">Tareas</TabsTrigger>
+            <TabsTrigger value="notas" className="text-xs px-2 sm:text-sm sm:px-4">Notas</TabsTrigger>
+            <TabsTrigger value="archivos" className="gap-1.5 text-xs px-2 sm:text-sm sm:px-4">
+              <FileArchive className="size-3.5" />
+              Archivos
+            </TabsTrigger>
+          </TabsList>
 
           <TabsContent value="actividades" className="mt-4">
             <ActivityPanel activities={contactActivities} onRegisterActivity={() => toast.info('Usa las acciones rápidas para registrar una actividad')} />
@@ -1140,7 +1174,7 @@ export default function ContactoDetailPage() {
           }
         }}
         title="Vincular Oportunidad Existente"
-        searchPlaceholder="Buscar oportunidades..."
+        searchPlaceholder="Buscar por título…"
         contactName={contact.name}
         items={opportunityLinkItems}
         selectedIds={linkOpportunityIds}
@@ -1148,7 +1182,12 @@ export default function ContactoDetailPage() {
         onConfirm={handleLinkOpportunities}
         searchValue={linkOpportunitySearch}
         onSearchChange={setLinkOpportunitySearch}
-        emptyMessage="No hay oportunidades disponibles para vincular."
+        emptyMessage="No hay oportunidades disponibles para vincular. Prueba a buscar por título."
+        serverFilteredList={fromApi}
+        listLoading={fromApi && !!contactOppPickerFilter && linkOppPickerLoading}
+        listLoadingMore={fromApi && !!contactOppPickerFilter && linkOppPickerLoadingMore}
+        hasMore={fromApi && !!contactOppPickerFilter && linkOppPickerHasMore}
+        onLoadMore={fromApi && contactOppPickerFilter ? linkOppPickerLoadMore : undefined}
       />
 
       <NewOpportunityFormDialog
@@ -1183,6 +1222,11 @@ export default function ContactoDetailPage() {
         searchValue={linkCompanySearch}
         onSearchChange={setLinkCompanySearch}
         emptyMessage="No hay empresas disponibles para vincular."
+        serverFilteredList={!!linkCompanyPickerOpts}
+        listLoading={!!linkCompanyPickerOpts && linkCompanyPickerLoading}
+        listLoadingMore={!!linkCompanyPickerOpts && linkCompanyPickerLoadingMore}
+        hasMore={!!linkCompanyPickerOpts && linkCompanyPickerHasMore}
+        onLoadMore={linkCompanyPickerOpts ? linkCompanyPickerLoadMore : undefined}
       />
 
       <WhatsappContactDrawer

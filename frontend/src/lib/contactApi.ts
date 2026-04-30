@@ -28,6 +28,7 @@ export type ApiCompanyInContact = {
   rubro?: string | null;
   tipo?: string | null;
   facturacionEstimada?: number | null;
+  fuente?: string | null;
 };
 
 export type ApiContactCompanyRow = {
@@ -348,6 +349,9 @@ export async function contactListPaginated(params?: {
   etapa?: string;
   fuente?: string;
   assignedTo?: string;
+  linkedToCompanyId?: string;
+  excludeCompanyLinkId?: string;
+  excludeOpportunityLinkId?: string;
 }): Promise<ContactListPaginatedResponse> {
   const sp = new URLSearchParams();
   if (params?.page != null) sp.set('page', String(params.page));
@@ -356,6 +360,15 @@ export async function contactListPaginated(params?: {
   if (params?.etapa?.trim()) sp.set('etapa', params.etapa.trim());
   if (params?.fuente?.trim()) sp.set('fuente', params.fuente.trim());
   if (params?.assignedTo?.trim()) sp.set('assignedTo', params.assignedTo.trim());
+  if (params?.linkedToCompanyId?.trim()) {
+    sp.set('linkedToCompany', params.linkedToCompanyId.trim());
+  }
+  if (params?.excludeCompanyLinkId?.trim()) {
+    sp.set('excludeCompanyLink', params.excludeCompanyLinkId.trim());
+  }
+  if (params?.excludeOpportunityLinkId?.trim()) {
+    sp.set('excludeOpportunityLink', params.excludeOpportunityLinkId.trim());
+  }
   const qs = sp.toString();
   const url = qs ? `/contacts?${qs}` : '/contacts';
   return api<ContactListPaginatedResponse>(url);

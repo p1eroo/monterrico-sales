@@ -1,4 +1,4 @@
-import { Search, Link2 } from 'lucide-react';
+import { Search, Link2, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -38,6 +38,12 @@ interface LinkExistingDialogProps {
   confirmLabel?: string;
   /** p. ej. z-index cuando el diálogo se abre encima de otro modal */
   contentClassName?: string;
+  /** Si true, no filtra en cliente: `items` ya vienen acotados del servidor (p. ej. búsqueda paginada). */
+  serverFilteredList?: boolean;
+  listLoading?: boolean;
+  listLoadingMore?: boolean;
+  hasMore?: boolean;
+  onLoadMore?: () => void;
 }
 
 export function LinkExistingDialog({
@@ -57,6 +63,11 @@ export function LinkExistingDialog({
   selectionMode = 'multiple',
   confirmLabel = 'Vincular',
   contentClassName,
+  serverFilteredList = false,
+  listLoading = false,
+  listLoadingMore = false,
+  hasMore = false,
+  onLoadMore,
 }: LinkExistingDialogProps) {
   const displayLead =
     (leadName?.trim() || contactName?.trim() || 'este registro');
@@ -77,11 +88,21 @@ export function LinkExistingDialog({
     }
   };
 
-  const filteredItems = items.filter(
-    (item) =>
-      item.title.toLowerCase().includes(searchValue.toLowerCase()) ||
-      item.subtitle?.toLowerCase().includes(searchValue.toLowerCase()),
-  );
+  const filteredItems = serverFilteredList
+    ? items
+    : items.filter(
+        (item) =>
+          item.title.toLowerCase().includes(searchValue.toLowerCase()) ||
+          item.subtitle?.toLowerCase().includes(searchValue.toLowerCase()),
+      );
+
+  const handleListScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    if (!onLoadMore || !hasMore || listLoadingMore || listLoading) return;
+    const el = e.currentTarget;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 80) {
+      onLoadMore();
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -110,8 +131,15 @@ export function LinkExistingDialog({
           </div>
         </div>
 
-        <div className="max-h-64 overflow-y-auto border-y px-6 py-3">
-          {filteredItems.length === 0 ? (
+        <div
+          className="max-h-64 overflow-y-auto border-y px-6 py-3"
+          onScroll={handleListScroll}
+        >
+          {listLoading && filteredItems.length === 0 ? (
+            <div className="flex justify-center py-12 text-muted-foreground">
+              <Loader2 className="size-8 animate-spin" aria-label="Cargando" />
+            </div>
+          ) : filteredItems.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">{emptyMessage}</p>
           ) : (
             <div className="space-y-2">
@@ -149,6 +177,11 @@ export function LinkExistingDialog({
                   )}
                 </label>
               ))}
+              {listLoadingMore && (
+                <div className="flex justify-center py-3 text-muted-foreground">
+                  <Loader2 className="size-5 animate-spin" aria-label="Cargando más" />
+                </div>
+              )}
             </div>
           )}
         </div>

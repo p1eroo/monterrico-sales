@@ -511,7 +511,7 @@ model Company {
   opportunities       CompanyOpportunity[]
   activities          CompanyActivity[]
   /**
-   * Registro CRM “Cliente”: se crea al alcanzar etapa cierre_ganado (1:1 con empresa).
+   * Registro CRM “Cliente”: se crea en etapa Activo o etapa con probabilidad 100 % (1:1 con empresa).
    */
   clientRecord        Client?
 
@@ -548,6 +548,10 @@ model Opportunity {
   priority          String                   @default("media")
   expectedCloseDate DateTime?
   assignedTo        String?
+  /**
+   * Slug de fuente comercial (mismo catálogo que Contact/Company).
+   */
+  fuente            String                   @default("base")
   createdAt         DateTime                 @default(now())
   updatedAt         DateTime                 @updatedAt
   user              User?                    @relation(fields: [assignedTo], references: [id], onDelete: SetNull)

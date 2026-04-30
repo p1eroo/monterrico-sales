@@ -182,6 +182,7 @@ const OPPORTUNITY_HEADERS = [
   'empresa_id',
   'contacto_correo',
   'empresa_ruc',
+  'fuente',
 ] as const;
 
 @Injectable()
@@ -3318,6 +3319,7 @@ export class ImportExportService {
           co?.id ?? '',
           c?.correo ?? '',
           co?.ruc ?? '',
+          o.fuente ?? 'base',
         ]),
       );
     }
@@ -3449,6 +3451,8 @@ export class ImportExportService {
           'assignedto',
           'usuario_id',
         ]) || undefined;
+      const fuenteCsv =
+        rowGet(row, headerIndex, ['fuente', 'source']) || undefined;
       const dto: CreateOpportunityDto = {
         title: titulo,
         amount,
@@ -3463,6 +3467,7 @@ export class ImportExportService {
         ),
         contactId,
         companyId: resolvedCompanyId,
+        fuente: fuenteCsv?.trim() ? fuenteCsv.trim() : undefined,
       };
       try {
         await this.opportunitiesService.create(dto, undefined, scope);

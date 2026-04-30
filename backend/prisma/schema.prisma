@@ -486,6 +486,8 @@ model Opportunity {
   priority          String    @default("media")
   expectedCloseDate DateTime?
   assignedTo        String?
+  /** Slug de fuente comercial (mismo catálogo que Contact/Company). */
+  fuente            String    @default("base")
   createdAt         DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
   user              User?     @relation(fields: [assignedTo], references: [id], onDelete: SetNull)

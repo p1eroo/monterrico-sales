@@ -434,6 +434,10 @@ export class CompaniesService {
       search?: string;
       rubro?: string;
       tipo?: string;
+      /** Excluir empresas que ya tienen vínculo `CompanyContact` con este contacto */
+      excludeContactLinkId?: string;
+      /** Excluir empresas que ya tienen vínculo `CompanyOpportunity` con esta oportunidad */
+      excludeOpportunityLinkId?: string;
     },
     scope?: CrmDataScope,
   ) {
@@ -453,6 +457,14 @@ export class CompaniesService {
     }
     if (opts?.rubro?.trim()) base.rubro = opts.rubro.trim();
     if (opts?.tipo?.trim()) base.tipo = opts.tipo.trim();
+    const excludeCt = opts?.excludeContactLinkId?.trim();
+    if (excludeCt) {
+      base.contacts = { none: { contactId: excludeCt } };
+    }
+    const excludeOpp = opts?.excludeOpportunityLinkId?.trim();
+    if (excludeOpp) {
+      base.opportunities = { none: { opportunityId: excludeOpp } };
+    }
 
     const where = mergeCompanyScope(base, scope);
 

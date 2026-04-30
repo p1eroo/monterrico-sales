@@ -60,6 +60,8 @@ export class CompaniesController {
     @Query('search') search?: string,
     @Query('rubro') rubro?: string,
     @Query('tipo') tipo?: string,
+    @Query('excludeContactLink') excludeContactLink?: string,
+    @Query('excludeOpportunityLink') excludeOpportunityLink?: string,
   ) {
     const scope = await this.crmDataScope.buildScope(
       req.user.userId,
@@ -76,6 +78,8 @@ export class CompaniesController {
         search: search?.trim() || undefined,
         rubro: rubro?.trim() || undefined,
         tipo: tipo?.trim() || undefined,
+        excludeContactLinkId: excludeContactLink?.trim() || undefined,
+        excludeOpportunityLinkId: excludeOpportunityLink?.trim() || undefined,
       },
       scope,
     );

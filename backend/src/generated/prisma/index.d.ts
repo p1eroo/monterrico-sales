@@ -33124,7 +33124,7 @@ export namespace Prisma {
       opportunities: Prisma.$CompanyOpportunityPayload<ExtArgs>[]
       activities: Prisma.$CompanyActivityPayload<ExtArgs>[]
       /**
-       * * Registro CRM “Cliente”: se crea al alcanzar etapa cierre_ganado (1:1 con empresa).
+       * * Registro CRM “Cliente”: se crea en etapa Activo o etapa con probabilidad 100 % (1:1 con empresa).
        */
       clientRecord: Prisma.$ClientPayload<ExtArgs> | null
     }
@@ -35298,6 +35298,7 @@ export namespace Prisma {
     priority: string | null
     expectedCloseDate: Date | null
     assignedTo: string | null
+    fuente: string | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -35313,6 +35314,7 @@ export namespace Prisma {
     priority: string | null
     expectedCloseDate: Date | null
     assignedTo: string | null
+    fuente: string | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -35328,6 +35330,7 @@ export namespace Prisma {
     priority: number
     expectedCloseDate: number
     assignedTo: number
+    fuente: number
     createdAt: number
     updatedAt: number
     _all: number
@@ -35355,6 +35358,7 @@ export namespace Prisma {
     priority?: true
     expectedCloseDate?: true
     assignedTo?: true
+    fuente?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -35370,6 +35374,7 @@ export namespace Prisma {
     priority?: true
     expectedCloseDate?: true
     assignedTo?: true
+    fuente?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -35385,6 +35390,7 @@ export namespace Prisma {
     priority?: true
     expectedCloseDate?: true
     assignedTo?: true
+    fuente?: true
     createdAt?: true
     updatedAt?: true
     _all?: true
@@ -35487,6 +35493,7 @@ export namespace Prisma {
     priority: string
     expectedCloseDate: Date | null
     assignedTo: string | null
+    fuente: string
     createdAt: Date
     updatedAt: Date
     _count: OpportunityCountAggregateOutputType | null
@@ -35521,6 +35528,7 @@ export namespace Prisma {
     priority?: boolean
     expectedCloseDate?: boolean
     assignedTo?: boolean
+    fuente?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     user?: boolean | Opportunity$userArgs<ExtArgs>
@@ -35543,6 +35551,7 @@ export namespace Prisma {
     priority?: boolean
     expectedCloseDate?: boolean
     assignedTo?: boolean
+    fuente?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     user?: boolean | Opportunity$userArgs<ExtArgs>
@@ -35559,6 +35568,7 @@ export namespace Prisma {
     priority?: boolean
     expectedCloseDate?: boolean
     assignedTo?: boolean
+    fuente?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     user?: boolean | Opportunity$userArgs<ExtArgs>
@@ -35575,11 +35585,12 @@ export namespace Prisma {
     priority?: boolean
     expectedCloseDate?: boolean
     assignedTo?: boolean
+    fuente?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type OpportunityOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "urlSlug" | "title" | "amount" | "probability" | "etapa" | "status" | "priority" | "expectedCloseDate" | "assignedTo" | "createdAt" | "updatedAt", ExtArgs["result"]["opportunity"]>
+  export type OpportunityOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "urlSlug" | "title" | "amount" | "probability" | "etapa" | "status" | "priority" | "expectedCloseDate" | "assignedTo" | "fuente" | "createdAt" | "updatedAt", ExtArgs["result"]["opportunity"]>
   export type OpportunityInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     user?: boolean | Opportunity$userArgs<ExtArgs>
     contacts?: boolean | Opportunity$contactsArgs<ExtArgs>
@@ -35620,6 +35631,10 @@ export namespace Prisma {
       priority: string
       expectedCloseDate: Date | null
       assignedTo: string | null
+      /**
+       * * Slug de fuente comercial (mismo catálogo que Contact/Company).
+       */
+      fuente: string
       createdAt: Date
       updatedAt: Date
     }, ExtArgs["result"]["opportunity"]>
@@ -36061,6 +36076,7 @@ export namespace Prisma {
     readonly priority: FieldRef<"Opportunity", 'String'>
     readonly expectedCloseDate: FieldRef<"Opportunity", 'DateTime'>
     readonly assignedTo: FieldRef<"Opportunity", 'String'>
+    readonly fuente: FieldRef<"Opportunity", 'String'>
     readonly createdAt: FieldRef<"Opportunity", 'DateTime'>
     readonly updatedAt: FieldRef<"Opportunity", 'DateTime'>
   }
@@ -51211,6 +51227,7 @@ export namespace Prisma {
     priority: 'priority',
     expectedCloseDate: 'expectedCloseDate',
     assignedTo: 'assignedTo',
+    fuente: 'fuente',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
   };
@@ -53575,6 +53592,7 @@ export namespace Prisma {
     priority?: StringFilter<"Opportunity"> | string
     expectedCloseDate?: DateTimeNullableFilter<"Opportunity"> | Date | string | null
     assignedTo?: StringNullableFilter<"Opportunity"> | string | null
+    fuente?: StringFilter<"Opportunity"> | string
     createdAt?: DateTimeFilter<"Opportunity"> | Date | string
     updatedAt?: DateTimeFilter<"Opportunity"> | Date | string
     user?: XOR<UserNullableScalarRelationFilter, UserWhereInput> | null
@@ -53596,6 +53614,7 @@ export namespace Prisma {
     priority?: SortOrder
     expectedCloseDate?: SortOrderInput | SortOrder
     assignedTo?: SortOrderInput | SortOrder
+    fuente?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     user?: UserOrderByWithRelationInput
@@ -53620,6 +53639,7 @@ export namespace Prisma {
     priority?: StringFilter<"Opportunity"> | string
     expectedCloseDate?: DateTimeNullableFilter<"Opportunity"> | Date | string | null
     assignedTo?: StringNullableFilter<"Opportunity"> | string | null
+    fuente?: StringFilter<"Opportunity"> | string
     createdAt?: DateTimeFilter<"Opportunity"> | Date | string
     updatedAt?: DateTimeFilter<"Opportunity"> | Date | string
     user?: XOR<UserNullableScalarRelationFilter, UserWhereInput> | null
@@ -53641,6 +53661,7 @@ export namespace Prisma {
     priority?: SortOrder
     expectedCloseDate?: SortOrderInput | SortOrder
     assignedTo?: SortOrderInput | SortOrder
+    fuente?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     _count?: OpportunityCountOrderByAggregateInput
@@ -53664,6 +53685,7 @@ export namespace Prisma {
     priority?: StringWithAggregatesFilter<"Opportunity"> | string
     expectedCloseDate?: DateTimeNullableWithAggregatesFilter<"Opportunity"> | Date | string | null
     assignedTo?: StringNullableWithAggregatesFilter<"Opportunity"> | string | null
+    fuente?: StringWithAggregatesFilter<"Opportunity"> | string
     createdAt?: DateTimeWithAggregatesFilter<"Opportunity"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"Opportunity"> | Date | string
   }
@@ -56793,6 +56815,7 @@ export namespace Prisma {
     status?: string
     priority?: string
     expectedCloseDate?: Date | string | null
+    fuente?: string
     createdAt?: Date | string
     updatedAt?: Date | string
     user?: UserCreateNestedOneWithoutOpportunitiesAssignedInput
@@ -56814,6 +56837,7 @@ export namespace Prisma {
     priority?: string
     expectedCloseDate?: Date | string | null
     assignedTo?: string | null
+    fuente?: string
     createdAt?: Date | string
     updatedAt?: Date | string
     contacts?: ContactOpportunityUncheckedCreateNestedManyWithoutOpportunityInput
@@ -56833,6 +56857,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     priority?: StringFieldUpdateOperationsInput | string
     expectedCloseDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    fuente?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     user?: UserUpdateOneWithoutOpportunitiesAssignedNestedInput
@@ -56854,6 +56879,7 @@ export namespace Prisma {
     priority?: StringFieldUpdateOperationsInput | string
     expectedCloseDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
+    fuente?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     contacts?: ContactOpportunityUncheckedUpdateManyWithoutOpportunityNestedInput
@@ -56874,6 +56900,7 @@ export namespace Prisma {
     priority?: string
     expectedCloseDate?: Date | string | null
     assignedTo?: string | null
+    fuente?: string
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -56888,6 +56915,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     priority?: StringFieldUpdateOperationsInput | string
     expectedCloseDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    fuente?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -56903,6 +56931,7 @@ export namespace Prisma {
     priority?: StringFieldUpdateOperationsInput | string
     expectedCloseDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
+    fuente?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -59372,6 +59401,7 @@ export namespace Prisma {
     priority?: SortOrder
     expectedCloseDate?: SortOrder
     assignedTo?: SortOrder
+    fuente?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -59392,6 +59422,7 @@ export namespace Prisma {
     priority?: SortOrder
     expectedCloseDate?: SortOrder
     assignedTo?: SortOrder
+    fuente?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -59407,6 +59438,7 @@ export namespace Prisma {
     priority?: SortOrder
     expectedCloseDate?: SortOrder
     assignedTo?: SortOrder
+    fuente?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -62976,6 +63008,7 @@ export namespace Prisma {
     status?: string
     priority?: string
     expectedCloseDate?: Date | string | null
+    fuente?: string
     createdAt?: Date | string
     updatedAt?: Date | string
     contacts?: ContactOpportunityCreateNestedManyWithoutOpportunityInput
@@ -62995,6 +63028,7 @@ export namespace Prisma {
     status?: string
     priority?: string
     expectedCloseDate?: Date | string | null
+    fuente?: string
     createdAt?: Date | string
     updatedAt?: Date | string
     contacts?: ContactOpportunityUncheckedCreateNestedManyWithoutOpportunityInput
@@ -63674,6 +63708,7 @@ export namespace Prisma {
     priority?: StringFilter<"Opportunity"> | string
     expectedCloseDate?: DateTimeNullableFilter<"Opportunity"> | Date | string | null
     assignedTo?: StringNullableFilter<"Opportunity"> | string | null
+    fuente?: StringFilter<"Opportunity"> | string
     createdAt?: DateTimeFilter<"Opportunity"> | Date | string
     updatedAt?: DateTimeFilter<"Opportunity"> | Date | string
   }
@@ -68182,6 +68217,7 @@ export namespace Prisma {
     status?: string
     priority?: string
     expectedCloseDate?: Date | string | null
+    fuente?: string
     createdAt?: Date | string
     updatedAt?: Date | string
     user?: UserCreateNestedOneWithoutOpportunitiesAssignedInput
@@ -68202,6 +68238,7 @@ export namespace Prisma {
     priority?: string
     expectedCloseDate?: Date | string | null
     assignedTo?: string | null
+    fuente?: string
     createdAt?: Date | string
     updatedAt?: Date | string
     companies?: CompanyOpportunityUncheckedCreateNestedManyWithoutOpportunityInput
@@ -68303,6 +68340,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     priority?: StringFieldUpdateOperationsInput | string
     expectedCloseDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    fuente?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     user?: UserUpdateOneWithoutOpportunitiesAssignedNestedInput
@@ -68323,6 +68361,7 @@ export namespace Prisma {
     priority?: StringFieldUpdateOperationsInput | string
     expectedCloseDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
+    fuente?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     companies?: CompanyOpportunityUncheckedUpdateManyWithoutOpportunityNestedInput
@@ -68678,6 +68717,7 @@ export namespace Prisma {
     status?: string
     priority?: string
     expectedCloseDate?: Date | string | null
+    fuente?: string
     createdAt?: Date | string
     updatedAt?: Date | string
     user?: UserCreateNestedOneWithoutOpportunitiesAssignedInput
@@ -68698,6 +68738,7 @@ export namespace Prisma {
     priority?: string
     expectedCloseDate?: Date | string | null
     assignedTo?: string | null
+    fuente?: string
     createdAt?: Date | string
     updatedAt?: Date | string
     contacts?: ContactOpportunityUncheckedCreateNestedManyWithoutOpportunityInput
@@ -68803,6 +68844,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     priority?: StringFieldUpdateOperationsInput | string
     expectedCloseDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    fuente?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     user?: UserUpdateOneWithoutOpportunitiesAssignedNestedInput
@@ -68823,6 +68865,7 @@ export namespace Prisma {
     priority?: StringFieldUpdateOperationsInput | string
     expectedCloseDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
+    fuente?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     contacts?: ContactOpportunityUncheckedUpdateManyWithoutOpportunityNestedInput
@@ -68841,6 +68884,7 @@ export namespace Prisma {
     status?: string
     priority?: string
     expectedCloseDate?: Date | string | null
+    fuente?: string
     createdAt?: Date | string
     updatedAt?: Date | string
     user?: UserCreateNestedOneWithoutOpportunitiesAssignedInput
@@ -68861,6 +68905,7 @@ export namespace Prisma {
     priority?: string
     expectedCloseDate?: Date | string | null
     assignedTo?: string | null
+    fuente?: string
     createdAt?: Date | string
     updatedAt?: Date | string
     contacts?: ContactOpportunityUncheckedCreateNestedManyWithoutOpportunityInput
@@ -68884,6 +68929,7 @@ export namespace Prisma {
     status?: string
     priority?: string
     expectedCloseDate?: Date | string | null
+    fuente?: string
     createdAt?: Date | string
     updatedAt?: Date | string
     user?: UserCreateNestedOneWithoutOpportunitiesAssignedInput
@@ -68904,6 +68950,7 @@ export namespace Prisma {
     priority?: string
     expectedCloseDate?: Date | string | null
     assignedTo?: string | null
+    fuente?: string
     createdAt?: Date | string
     updatedAt?: Date | string
     contacts?: ContactOpportunityUncheckedCreateNestedManyWithoutOpportunityInput
@@ -68938,6 +68985,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     priority?: StringFieldUpdateOperationsInput | string
     expectedCloseDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    fuente?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     user?: UserUpdateOneWithoutOpportunitiesAssignedNestedInput
@@ -68958,6 +69006,7 @@ export namespace Prisma {
     priority?: StringFieldUpdateOperationsInput | string
     expectedCloseDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
+    fuente?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     contacts?: ContactOpportunityUncheckedUpdateManyWithoutOpportunityNestedInput
@@ -68987,6 +69036,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     priority?: StringFieldUpdateOperationsInput | string
     expectedCloseDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    fuente?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     user?: UserUpdateOneWithoutOpportunitiesAssignedNestedInput
@@ -69007,6 +69057,7 @@ export namespace Prisma {
     priority?: StringFieldUpdateOperationsInput | string
     expectedCloseDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
+    fuente?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     contacts?: ContactOpportunityUncheckedUpdateManyWithoutOpportunityNestedInput
@@ -69473,6 +69524,7 @@ export namespace Prisma {
     status?: string
     priority?: string
     expectedCloseDate?: Date | string | null
+    fuente?: string
     createdAt?: Date | string
     updatedAt?: Date | string
     user?: UserCreateNestedOneWithoutOpportunitiesAssignedInput
@@ -69493,6 +69545,7 @@ export namespace Prisma {
     priority?: string
     expectedCloseDate?: Date | string | null
     assignedTo?: string | null
+    fuente?: string
     createdAt?: Date | string
     updatedAt?: Date | string
     contacts?: ContactOpportunityUncheckedCreateNestedManyWithoutOpportunityInput
@@ -69570,6 +69623,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     priority?: StringFieldUpdateOperationsInput | string
     expectedCloseDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    fuente?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     user?: UserUpdateOneWithoutOpportunitiesAssignedNestedInput
@@ -69590,6 +69644,7 @@ export namespace Prisma {
     priority?: StringFieldUpdateOperationsInput | string
     expectedCloseDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
+    fuente?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     contacts?: ContactOpportunityUncheckedUpdateManyWithoutOpportunityNestedInput
@@ -70056,6 +70111,7 @@ export namespace Prisma {
     status?: string
     priority?: string
     expectedCloseDate?: Date | string | null
+    fuente?: string
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -70341,6 +70397,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     priority?: StringFieldUpdateOperationsInput | string
     expectedCloseDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    fuente?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     contacts?: ContactOpportunityUpdateManyWithoutOpportunityNestedInput
@@ -70360,6 +70417,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     priority?: StringFieldUpdateOperationsInput | string
     expectedCloseDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    fuente?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     contacts?: ContactOpportunityUncheckedUpdateManyWithoutOpportunityNestedInput
@@ -70379,6 +70437,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     priority?: StringFieldUpdateOperationsInput | string
     expectedCloseDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    fuente?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }

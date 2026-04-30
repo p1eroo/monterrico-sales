@@ -121,22 +121,41 @@ export function ActivityPanel({ activities, onRegisterActivity }: ActivityPanelP
 
   return (
     <div className="flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-none">
-      <div className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-border px-4 py-2 scrollbar-thin">
-        {FILTERS.map((f) => (
-          <button
-            key={f.key}
-            type="button"
-            onClick={() => setActiveFilter(f.key)}
-            className={cn(
-              'whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
-              activeFilter === f.key
-                ? 'bg-primary/15 text-primary'
-                : 'text-text-secondary hover:bg-muted/60 hover:text-foreground',
-            )}
+      <div className="shrink-0 border-b border-border px-4 py-2">
+        <div className="md:hidden space-y-1.5">
+          <label htmlFor="activity-panel-filter" className="text-xs font-medium text-muted-foreground">
+            Filtrar por tipo
+          </label>
+          <select
+            id="activity-panel-filter"
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            value={activeFilter}
+            onChange={(e) => setActiveFilter(e.target.value as ActivityFilter)}
           >
-            {f.label}
-          </button>
-        ))}
+            {FILTERS.map((f) => (
+              <option key={f.key} value={f.key}>
+                {f.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="hidden min-w-0 items-center gap-1 overflow-x-auto md:flex md:scrollbar-thin">
+          {FILTERS.map((f) => (
+            <button
+              key={f.key}
+              type="button"
+              onClick={() => setActiveFilter(f.key)}
+              className={cn(
+                'shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+                activeFilter === f.key
+                  ? 'bg-primary/15 text-primary'
+                  : 'text-text-secondary hover:bg-muted/60 hover:text-foreground',
+              )}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="max-h-[min(420px,55vh)] min-h-[120px] flex-1 overflow-y-auto p-4 scrollbar-thin">

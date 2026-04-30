@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Briefcase, CalendarDays, DollarSign, Target, TrendingUp } from 'lucide-react';
 import { etapaLabels, priorityLabels } from '@/data/mock';
@@ -6,6 +7,21 @@ import { LinkedEntitiesCard } from './LinkedEntitiesCard';
 import { LinkedEntityItemHeader } from './LinkedEntityItemHeader';
 import type { Opportunity } from '@/types';
 import { opportunityDetailHref } from '@/lib/detailRoutes';
+
+/** Mayor probabilidad de etapa; empate: monto, luego id (alineado con EntitySync en backend). */
+function resolvePrimaryOpportunityId(opportunities: Opportunity[]): string | undefined {
+  if (opportunities.length < 2) return undefined;
+  const sorted = [...opportunities].sort((a, b) => {
+    const pa = a.probability ?? 0;
+    const pb = b.probability ?? 0;
+    if (pb !== pa) return pb - pa;
+    const amta = Number(a.amount) || 0;
+    const amtb = Number(b.amount) || 0;
+    if (amtb !== amta) return amtb - amta;
+    return a.id.localeCompare(b.id);
+  });
+  return sorted[0]?.id;
+}
 
 interface LinkedOpportunitiesCardProps {
   opportunities: Opportunity[];
@@ -23,6 +39,10 @@ export function LinkedOpportunitiesCard({
   maxItems = 3,
 }: LinkedOpportunitiesCardProps) {
   const navigate = useNavigate();
+  const primaryOpportunityId = useMemo(
+    () => resolvePrimaryOpportunityId(opportunities),
+    [opportunities],
+  );
 
   return (
     <LinkedEntitiesCard<Opportunity>
@@ -47,10 +67,14 @@ export function LinkedOpportunitiesCard({
               ? String(opp.priority)
               : null;
 
+        const showPrincipal =
+          primaryOpportunityId != null && opp.id === primaryOpportunityId;
+
         return (
         <div className="space-y-3">
           <LinkedEntityItemHeader
             variant="opportunity"
+            overline={showPrincipal ? 'Principal' : undefined}
             title={opp.title}
             subtitle={prioritySubtitle}
             trailing={itemActions}

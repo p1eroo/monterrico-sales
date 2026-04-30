@@ -50,6 +50,8 @@ export type ApiOpportunityListRow = {
   assignedTo?: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Slug de fuente comercial (persistido en oportunidad). */
+  fuente?: string | null;
   user?: { id: string; name: string } | null;
   contacts?: { contact: { id: string; name: string } }[];
   companies?: { company: { id: string; name: string } }[];
@@ -99,6 +101,9 @@ export function mapApiOpportunityToOpportunity(
     : '';
   const assignedId =
     row.user?.id ?? (row as ApiOpportunityListRow).assignedTo ?? '';
+  const rawFuente = (row as ApiOpportunityListRow).fuente;
+  const rowFuente =
+    typeof rawFuente === 'string' && rawFuente.trim() ? rawFuente.trim() : undefined;
   return {
     id: row.id,
     urlSlug: row.urlSlug,
@@ -119,7 +124,9 @@ export function mapApiOpportunityToOpportunity(
       row.user?.name ??
       useUsersStore.getState().getUserName(assignedId),
     createdAt: row.createdAt.slice(0, 10),
-    fuente: parseFuente((first as ApiContactFromOpportunity | undefined)?.fuente),
+    fuente: parseFuente(
+      rowFuente ?? (first as ApiContactFromOpportunity | undefined)?.fuente,
+    ),
   };
 }
 
@@ -140,6 +147,9 @@ export async function opportunityListPaginated(params?: {
   etapa?: string;
   status?: string;
   assignedTo?: string;
+  linkedToCompanyId?: string;
+  excludeCompanyLinkId?: string;
+  excludeContactLinkId?: string;
 }): Promise<OpportunityListPaginatedResponse> {
   const sp = new URLSearchParams();
   if (params?.page != null) sp.set('page', String(params.page));
@@ -148,6 +158,15 @@ export async function opportunityListPaginated(params?: {
   if (params?.etapa?.trim()) sp.set('etapa', params.etapa.trim());
   if (params?.status?.trim()) sp.set('status', params.status.trim());
   if (params?.assignedTo?.trim()) sp.set('assignedTo', params.assignedTo.trim());
+  if (params?.linkedToCompanyId?.trim()) {
+    sp.set('linkedToCompany', params.linkedToCompanyId.trim());
+  }
+  if (params?.excludeCompanyLinkId?.trim()) {
+    sp.set('excludeCompanyLink', params.excludeCompanyLinkId.trim());
+  }
+  if (params?.excludeContactLinkId?.trim()) {
+    sp.set('excludeContactLink', params.excludeContactLinkId.trim());
+  }
   const qs = sp.toString();
   const url = qs ? `/opportunities?${qs}` : '/opportunities';
   return api<OpportunityListPaginatedResponse>(url);

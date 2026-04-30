@@ -60,12 +60,14 @@ export function FunnelChart({
     const width = 800;
     const perStage = variant === 'rect' ? 44 : 56;
     const chartHeight = Math.min(560, Math.max(height, 48 + stages.length * perStage));
-    const stageH = (chartHeight - 40) / stages.length;
+    const topPad = variant === 'rect' ? 6 : 20;
+    const bottomPad = variant === 'rect' ? 6 : 20;
+    const stageH = (chartHeight - topPad - bottomPad) / stages.length;
     const gap = variant === 'rect' ? 2 : 6;
 
     const segments = stages.map((s, i) => {
       const cx = width / 2;
-      const y = 20 + i * stageH;
+      const y = topPad + i * stageH;
       const h = stageH - gap;
 
       if (variant === 'rect') {
@@ -95,11 +97,11 @@ export function FunnelChart({
   }
 
   return (
-    <div className="w-full text-foreground">
+    <div className="min-w-0 w-full text-foreground">
       <svg
         viewBox={`0 0 800 ${chartHeight}`}
-        className="h-auto w-full"
-        preserveAspectRatio="xMidYMid meet"
+        className="h-auto w-full min-w-0 max-md:max-h-[min(72vh,640px)]"
+        preserveAspectRatio="xMidYMin meet"
         role="img"
         aria-label="Embudo por etapas"
       >
@@ -165,8 +167,7 @@ export function FunnelChart({
                 textAnchor="middle"
                 dominantBaseline="middle"
                 fill="currentColor"
-                className="font-semibold"
-                style={{ fontSize: 10 }}
+                className="font-semibold text-[10px] max-md:text-[11px]"
               >
                 {seg.stage.label}
               </text>

@@ -16,7 +16,6 @@ import {
 import { fetchActivityLogs, activityLogToTimelineEvent } from '@/lib/activityLogsApi';
 import { useUsers } from '@/hooks/useUsers';
 import { useActivities } from '@/hooks/useActivities';
-import { getPrimaryCompany } from '@/lib/utils';
 import type { Etapa, CompanyRubro, CompanyTipo, ContactSource, TimelineEvent, Contact } from '@/types';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { EntityDetailPageSkeleton } from '@/components/shared/EntityDetailPageSkeleton';
@@ -54,25 +53,37 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { formatCurrency, formatDate } from '@/lib/formatters';
+import { ENTITY_DETAIL_SECTION_TAB_OPTIONS } from '@/lib/entityDetailSectionTabs';
 import { api } from '@/lib/api';
 import { companyDetailHref, contactDetailHref, isEntityDetailApiParam } from '@/lib/detailRoutes';
 import { type ApiCompanyRecord, isLikelyCompanyCuid } from '@/lib/companyApi';
 import {
   type ApiContactListRow,
   apiContactDetailToListRow,
+  contactAddCompany,
   contactCreate,
   contactRemoveCompany,
   isLikelyContactCuid,
   mapApiContactRowToContact,
   contactListAll,
+  contactListPaginated,
 } from '@/lib/contactApi';
 import {
   type ApiOpportunityListRow,
   isLikelyOpportunityCuid,
   mapApiOpportunityToOpportunity,
   opportunityListAll,
+  opportunityListPaginated,
   opportunityUnlinkCompany,
 } from '@/lib/opportunityApi';
+import {
+  usePaginatedOpportunityPicker,
+  type OpportunityPickerExcludeFilter,
+} from '@/hooks/usePaginatedOpportunityPicker';
+import {
+  usePaginatedContactPicker,
+  type PaginatedContactPickerOptions,
+} from '@/hooks/usePaginatedContactPicker';
 import { buildOptimisticContact } from '@/lib/optimisticEntities';
 import { generateOptimisticId, useOptimisticCrmStore } from '@/store/optimisticCrmStore';
 import { useStageBadgeTone } from '@/hooks/useStageBadgeTone';
@@ -123,6 +134,31 @@ export default function EmpresaDetailPage() {
     }
   }, []);
 
+  const loadLinkedCompanyContacts = useCallback(async () => {
+    if (!fromApiById) return;
+    const companyId =
+      apiRecord?.id ?? (routeId && isLikelyCompanyCuid(routeId) ? routeId : '');
+    if (!companyId || !isLikelyCompanyCuid(companyId)) {
+      setApiContactRows([]);
+      return;
+    }
+    try {
+      const res = await contactListPaginated({
+        linkedToCompanyId: companyId,
+        limit: 200,
+        page: 1,
+      });
+      setApiContactRows(Array.isArray(res.data) ? res.data : []);
+    } catch {
+      setApiContactRows([]);
+    }
+  }, [fromApiById, apiRecord?.id, routeId]);
+
+  const reloadContactsData = useCallback(async () => {
+    if (fromApiById) await loadLinkedCompanyContacts();
+    else await loadApiContacts();
+  }, [fromApiById, loadLinkedCompanyContacts, loadApiContacts]);
+
   const loadApiOpportunities = useCallback(async () => {
     try {
       const list = await opportunityListAll();
@@ -131,6 +167,31 @@ export default function EmpresaDetailPage() {
       setApiOpportunityRows([]);
     }
   }, []);
+
+  const loadLinkedCompanyOpportunities = useCallback(async () => {
+    if (!fromApiById) return;
+    const companyId =
+      apiRecord?.id ?? (routeId && isLikelyCompanyCuid(routeId) ? routeId : '');
+    if (!companyId || !isLikelyCompanyCuid(companyId)) {
+      setApiOpportunityRows([]);
+      return;
+    }
+    try {
+      const res = await opportunityListPaginated({
+        linkedToCompanyId: companyId,
+        limit: 200,
+        page: 1,
+      });
+      setApiOpportunityRows(Array.isArray(res.data) ? res.data : []);
+    } catch {
+      setApiOpportunityRows([]);
+    }
+  }, [fromApiById, apiRecord?.id, routeId]);
+
+  const reloadOpportunityLists = useCallback(async () => {
+    if (fromApiById) await loadLinkedCompanyOpportunities();
+    else await loadApiOpportunities();
+  }, [fromApiById, loadLinkedCompanyOpportunities, loadApiOpportunities]);
 
   useEffect(() => {
     if (!fromApiById || !routeId) {
@@ -161,9 +222,14 @@ export default function EmpresaDetailPage() {
   }, [fromApiById, routeId]);
 
   useEffect(() => {
-    void loadApiContacts();
-    void loadApiOpportunities();
-  }, [loadApiContacts, loadApiOpportunities]);
+    if (fromApiById) void loadLinkedCompanyContacts();
+    else void loadApiContacts();
+  }, [fromApiById, loadLinkedCompanyContacts, loadApiContacts]);
+
+  useEffect(() => {
+    if (fromApiById) void loadLinkedCompanyOpportunities();
+    else void loadApiOpportunities();
+  }, [fromApiById, loadLinkedCompanyOpportunities, loadApiOpportunities]);
 
   const companyName =
     fromApiById && apiRecord
@@ -349,13 +415,65 @@ export default function EmpresaDetailPage() {
   const [linkOppIds, setLinkOppIds] = useState<string[]>([]);
   const [linkOppSearch, setLinkOppSearch] = useState('');
 
+  const oppLinkPickerFilter = useMemo((): OpportunityPickerExcludeFilter | null => {
+    if (
+      fromApiById &&
+      resolvedCompanyId &&
+      isLikelyCompanyCuid(resolvedCompanyId)
+    ) {
+      return { excludeCompanyLinkId: resolvedCompanyId };
+    }
+    return null;
+  }, [fromApiById, resolvedCompanyId]);
+
+  const {
+    items: linkPickerApiRows,
+    loading: linkOppPickerLoading,
+    loadingMore: linkOppPickerLoadingMore,
+    hasMore: linkOppPickerHasMore,
+    loadMore: linkOppPickerLoadMore,
+  } = usePaginatedOpportunityPicker(
+    addExistingOppOpen,
+    linkOppSearch,
+    oppLinkPickerFilter,
+    25,
+  );
+
   const [newContactOpen, setNewContactOpen] = useState(false);
 
   const [addExistingContactOpen, setAddExistingContactOpen] = useState(false);
   const [linkContactIds, setLinkContactIds] = useState<string[]>([]);
   const [linkContactSearch, setLinkContactSearch] = useState('');
 
+  const contactLinkPickerOptions = useMemo((): PaginatedContactPickerOptions | null => {
+    if (
+      fromApiById &&
+      resolvedCompanyId &&
+      isLikelyCompanyCuid(resolvedCompanyId)
+    ) {
+      return { excludeCompanyLinkId: resolvedCompanyId, pageSize: 25 };
+    }
+    return null;
+  }, [fromApiById, resolvedCompanyId]);
+
+  const {
+    items: linkContactPickerApiRows,
+    loading: linkContactPickerLoading,
+    loadingMore: linkContactPickerLoadingMore,
+    hasMore: linkContactPickerHasMore,
+    loadMore: linkContactPickerLoadMore,
+  } = usePaginatedContactPicker(
+    addExistingContactOpen,
+    linkContactSearch,
+    contactLinkPickerOptions,
+  );
+
   const [noteText, setNoteText] = useState('');
+  const [detailSectionTab, setDetailSectionTab] = useState<string>('historial');
+
+  useEffect(() => {
+    setDetailSectionTab('historial');
+  }, [routeId]);
 
   const { addOpportunity, updateOpportunity, addContact, updateContact } = useCRMStore();
 
@@ -639,7 +757,7 @@ export default function EmpresaDetailPage() {
           });
           const row = await api<ApiCompanyRecord>(`/companies/${apiRecord.id}`);
           setApiRecord(row);
-          await loadApiContacts();
+          await reloadContactsData();
           toast.success('Etapa actualizada correctamente');
         } catch (e) {
           toast.error(e instanceof Error ? e.message : 'Error al actualizar etapa');
@@ -671,7 +789,7 @@ export default function EmpresaDetailPage() {
         };
         const body = buildOpportunityCreateBody(merged);
         await api('/opportunities', { method: 'POST', body: JSON.stringify(body) });
-        await loadApiOpportunities();
+        await reloadOpportunityLists();
         toast.success(`Oportunidad "${data.title.trim()}" creada`);
       } catch (e) {
         toast.error(e instanceof Error ? e.message : 'No se pudo crear la oportunidad');
@@ -693,7 +811,7 @@ export default function EmpresaDetailPage() {
       try {
         const body = buildOpportunityCreateBody(merged);
         await api('/opportunities', { method: 'POST', body: JSON.stringify(body) });
-        await loadApiOpportunities();
+        await reloadOpportunityLists();
         toast.success(`Oportunidad "${data.title.trim()}" creada`);
       } catch (e) {
         toast.error(e instanceof Error ? e.message : 'No se pudo crear la oportunidad');
@@ -732,40 +850,6 @@ export default function EmpresaDetailPage() {
         toast.error('No hay oportunidades válidas para vincular');
         return;
       }
-      const companyDisplayName = apiRecord?.name ?? companyName;
-      const contactForRow =
-        firstContact?.id && isLikelyContactCuid(firstContact.id)
-          ? { id: firstContact.id, name: firstContact.name }
-          : undefined;
-      const idSet = new Set(ids);
-
-      setApiOpportunityRows((prev) =>
-        prev.map((row) => {
-          if (!idSet.has(row.id)) return row;
-          const existing = row.companies ?? [];
-          if (existing.some((c) => c.company?.id === companyKey)) return row;
-          return {
-            ...row,
-            companies: [
-              ...existing,
-              { company: { id: companyKey, name: companyDisplayName } },
-            ],
-            ...(contactForRow
-              ? { contacts: [{ contact: contactForRow }] }
-              : {}),
-            updatedAt: new Date().toISOString(),
-          };
-        }),
-      );
-
-      setLinkOppIds([]);
-      setLinkOppSearch('');
-      setAddExistingOppOpen(false);
-      toast.success(
-        ids.length === 1
-          ? 'Oportunidad vinculada'
-          : `${ids.length} oportunidades vinculadas`,
-      );
 
       void (async () => {
         try {
@@ -781,12 +865,20 @@ export default function EmpresaDetailPage() {
               }),
             ),
           );
-          void loadApiOpportunities();
+          await reloadOpportunityLists();
+          setLinkOppIds([]);
+          setLinkOppSearch('');
+          setAddExistingOppOpen(false);
+          toast.success(
+            ids.length === 1
+              ? 'Oportunidad vinculada'
+              : `${ids.length} oportunidades vinculadas`,
+          );
         } catch (e) {
           toast.error(
             e instanceof Error ? e.message : 'No se pudo vincular en el servidor',
           );
-          await loadApiOpportunities();
+          await reloadOpportunityLists();
         }
       })();
       return;
@@ -884,7 +976,7 @@ async function handleCreateNewContact(data: NewContactData) {
         } else {
           toast.success('Contacto creado y vinculado a la empresa');
         }
-        void Promise.all([loadApiContacts(), loadApiOpportunities()]).catch(() => {
+        void Promise.all([reloadContactsData(), reloadOpportunityLists()]).catch(() => {
           /* reconciliar con servidor; fallo silencioso para no duplicar toasts de éxito */
         });
       } catch (e) {
@@ -924,8 +1016,42 @@ async function handleCreateNewContact(data: NewContactData) {
   setNewContactOpen(false);
 }
 
-  function handleLinkContacts() {
+  async function handleLinkContacts() {
     if (linkContactIds.length === 0) return;
+
+    if (
+      fromApiById &&
+      resolvedCompanyId &&
+      isLikelyCompanyCuid(resolvedCompanyId)
+    ) {
+      const companyKey = resolvedCompanyId;
+      const ids = linkContactIds.filter((id) => isLikelyContactCuid(id));
+      if (ids.length === 0) {
+        toast.error('No hay contactos válidos para vincular');
+        return;
+      }
+      try {
+        await Promise.all(
+          ids.map((contactId) =>
+            contactAddCompany(contactId, companyKey, false),
+          ),
+        );
+        await reloadContactsData();
+        toast.success(
+          ids.length === 1
+            ? 'Contacto vinculado'
+            : `${ids.length} contactos vinculados`,
+        );
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'No se pudo vincular');
+        await reloadContactsData();
+      }
+      setLinkContactIds([]);
+      setLinkContactSearch('');
+      setAddExistingContactOpen(false);
+      return;
+    }
+
     for (const contactId of linkContactIds) {
       const contact = contacts.find((l) => l.id === contactId);
       if (!contact) continue;
@@ -967,10 +1093,10 @@ async function handleCreateNewContact(data: NewContactData) {
       void (async () => {
         try {
           await opportunityUnlinkCompany(oppId, companyKey);
-          void loadApiOpportunities();
+          void reloadOpportunityLists();
         } catch (e) {
           toast.error(e instanceof Error ? e.message : 'No se pudo desvincular');
-          await loadApiOpportunities();
+          await reloadOpportunityLists();
         }
       })();
       return;
@@ -990,10 +1116,7 @@ async function handleCreateNewContact(data: NewContactData) {
       try {
         const companyKey = apiRecord?.id ?? routeId;
         await contactRemoveCompany(contact.id, companyKey);
-        const filtered = (c.companies ?? []).filter(
-          (co) => co.name.trim().toLowerCase() !== companyName.trim().toLowerCase(),
-        );
-        updateContact(contact.id, { companies: filtered });
+        await reloadContactsData();
         toast.success('Contacto desvinculado de la empresa');
       } catch (e) {
         toast.error(e instanceof Error ? e.message : 'No se pudo desvincular');
@@ -1028,22 +1151,67 @@ async function handleCreateNewContact(data: NewContactData) {
     if (!fromApiById && o.contactId && contactIds.has(o.contactId)) return false;
     return true;
   });
-  const oppLinkItems: LinkExistingItem[] = availableOpps.map((o) => ({
-    id: o.id,
-    title: o.title,
-    subtitle: `${formatCurrency(o.amount)} · ${etapaLabels[o.etapa]}`,
-    status: o.status,
-    icon: <DollarSign className="size-4" />,
-  }));
+  const oppStatusLabels: Record<string, string> = {
+    abierta: 'Abierta',
+    ganada: 'Ganada',
+    perdida: 'Perdida',
+    suspendida: 'Suspendida',
+  };
+
+  const oppLinkItemsFromApiPicker: LinkExistingItem[] = [];
+  for (const row of linkPickerApiRows) {
+    const o = mapApiOpportunityToOpportunity(row);
+    if (companyOppIdSet.has(o.id)) continue;
+    if (
+      resolvedCompanyId &&
+      (o.clientId === resolvedCompanyId ||
+        (o.linkedCompanyIds?.includes(resolvedCompanyId) ?? false))
+    ) {
+      continue;
+    }
+    if (!fromApiById && o.contactId && contactIds.has(o.contactId)) continue;
+    oppLinkItemsFromApiPicker.push({
+      id: o.id,
+      title: o.title,
+      subtitle: `${formatCurrency(o.amount)} · ${oppStatusLabels[o.status] ?? o.status}`,
+      status: getStageLabelFromCatalog(o.etapa, crmBundle, etapaLabels as Record<string, string>),
+      icon: <DollarSign className="size-4" />,
+    });
+  }
+
+  const oppLinkItems: LinkExistingItem[] = fromApiById
+    ? oppLinkItemsFromApiPicker
+    : availableOpps.map((o) => ({
+        id: o.id,
+        title: o.title,
+        subtitle: `${formatCurrency(o.amount)} · ${oppStatusLabels[o.status] ?? o.status}`,
+        status: getStageLabelFromCatalog(o.etapa, crmBundle, etapaLabels as Record<string, string>),
+        icon: <DollarSign className="size-4" />,
+      }));
 
   const availableContacts = contacts.filter((l) => !contactIds.has(l.id));
-  const contactLinkItems: LinkExistingItem[] = availableContacts.map((c) => ({
-    id: c.id,
-    title: c.name,
-    subtitle: [c.cargo, getPrimaryCompany(c)?.name].filter(Boolean).join(' · ') || c.telefono,
-    status: 'Activo',
-    icon: <Users className="size-4" />,
-  }));
+  const contactLinkItemsFromApiPicker: LinkExistingItem[] = linkContactPickerApiRows.map(
+    (row) => {
+      const c = mapApiContactRowToContact(row);
+      return {
+        id: c.id,
+        title: c.name,
+        subtitle: c.cargo?.trim() || undefined,
+        status: getStageLabelFromCatalog(c.etapa, crmBundle, etapaLabels as Record<string, string>),
+        icon: <Users className="size-4" />,
+      };
+    },
+  );
+  const contactLinkItems: LinkExistingItem[] =
+    fromApiById && contactLinkPickerOptions
+      ? contactLinkItemsFromApiPicker
+      : availableContacts.map((c) => ({
+          id: c.id,
+          title: c.name,
+          subtitle: c.cargo?.trim() || undefined,
+          status: getStageLabelFromCatalog(c.etapa, crmBundle, etapaLabels as Record<string, string>),
+          icon: <Users className="size-4" />,
+        }));
 
   const hasCompany =
     companyContacts.length > 0 ||
@@ -1257,17 +1425,37 @@ return (
         </>
       }
     >
-      <Tabs defaultValue="historial">
-<TabsList variant="line" className="max-w-full w-full overflow-x-auto justify-start">
-  <TabsTrigger value="historial" className="text-xs px-2 sm:text-sm sm:px-4">Historial</TabsTrigger>
-  <TabsTrigger value="actividades" className="text-xs px-2 sm:text-sm sm:px-4">Actividades</TabsTrigger>
-  <TabsTrigger value="tareas" className="text-xs px-2 sm:text-sm sm:px-4">Tareas</TabsTrigger>
-  <TabsTrigger value="notas" className="text-xs px-2 sm:text-sm sm:px-4">Notas</TabsTrigger>
-  <TabsTrigger value="archivos" className="gap-1.5 text-xs px-2 sm:text-sm sm:px-4">
-    <FileArchive className="size-3.5" />
-    Archivos
-  </TabsTrigger>
-</TabsList>
+      <Tabs value={detailSectionTab} onValueChange={setDetailSectionTab}>
+        <div className="md:hidden space-y-1.5">
+          <label htmlFor="empresa-detail-section" className="text-xs font-medium text-muted-foreground">
+            Sección
+          </label>
+          <select
+            id="empresa-detail-section"
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            value={detailSectionTab}
+            onChange={(e) => setDetailSectionTab(e.target.value)}
+          >
+            {ENTITY_DETAIL_SECTION_TAB_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <TabsList
+          variant="line"
+          className="hidden max-w-full w-full overflow-x-auto justify-start md:inline-flex"
+        >
+          <TabsTrigger value="historial" className="text-xs px-2 sm:text-sm sm:px-4">Historial</TabsTrigger>
+          <TabsTrigger value="actividades" className="text-xs px-2 sm:text-sm sm:px-4">Actividades</TabsTrigger>
+          <TabsTrigger value="tareas" className="text-xs px-2 sm:text-sm sm:px-4">Tareas</TabsTrigger>
+          <TabsTrigger value="notas" className="text-xs px-2 sm:text-sm sm:px-4">Notas</TabsTrigger>
+          <TabsTrigger value="archivos" className="gap-1.5 text-xs px-2 sm:text-sm sm:px-4">
+            <FileArchive className="size-3.5" />
+            Archivos
+          </TabsTrigger>
+        </TabsList>
 
 <TabsContent value="historial" className="mt-4">
   <Card>
@@ -1401,7 +1589,7 @@ return (
       open={addExistingOppOpen}
       onOpenChange={(open) => { setAddExistingOppOpen(open); if (!open) { setLinkOppIds([]); setLinkOppSearch(''); } }}
       title="Vincular Oportunidad Existente"
-      searchPlaceholder="Buscar oportunidades..."
+      searchPlaceholder="Buscar por título…"
       contactName={companyName}
       items={oppLinkItems}
       selectedIds={linkOppIds}
@@ -1409,7 +1597,12 @@ return (
       onConfirm={handleLinkOpportunities}
       searchValue={linkOppSearch}
       onSearchChange={setLinkOppSearch}
-      emptyMessage="No hay oportunidades disponibles para vincular."
+      emptyMessage="No hay oportunidades disponibles para vincular. Prueba a buscar por título."
+      serverFilteredList={fromApiById}
+      listLoading={fromApiById && !!oppLinkPickerFilter && linkOppPickerLoading}
+      listLoadingMore={fromApiById && !!oppLinkPickerFilter && linkOppPickerLoadingMore}
+      hasMore={fromApiById && !!oppLinkPickerFilter && linkOppPickerHasMore}
+      onLoadMore={fromApiById && oppLinkPickerFilter ? linkOppPickerLoadMore : undefined}
     />
 
 {/* Crear nuevo contacto */}
@@ -1437,15 +1630,20 @@ return (
       open={addExistingContactOpen}
       onOpenChange={(open) => { setAddExistingContactOpen(open); if (!open) { setLinkContactIds([]); setLinkContactSearch(''); } }}
       title="Vincular Contacto Existente"
-      searchPlaceholder="Buscar contactos..."
+      searchPlaceholder="Buscar por nombre, correo, cargo…"
       contactName={companyName}
       items={contactLinkItems}
       selectedIds={linkContactIds}
       onSelectionChange={setLinkContactIds}
-      onConfirm={handleLinkContacts}
+      onConfirm={() => void handleLinkContacts()}
       searchValue={linkContactSearch}
       onSearchChange={setLinkContactSearch}
-      emptyMessage="No hay contactos disponibles para vincular."
+      emptyMessage="No hay contactos disponibles para vincular. Prueba a buscar."
+      serverFilteredList={fromApiById && !!contactLinkPickerOptions}
+      listLoading={fromApiById && !!contactLinkPickerOptions && linkContactPickerLoading}
+      listLoadingMore={fromApiById && !!contactLinkPickerOptions && linkContactPickerLoadingMore}
+      hasMore={fromApiById && !!contactLinkPickerOptions && linkContactPickerHasMore}
+      onLoadMore={fromApiById && contactLinkPickerOptions ? linkContactPickerLoadMore : undefined}
     />
 
     {/* Editar Empresa */}

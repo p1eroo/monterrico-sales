@@ -451,10 +451,24 @@ export class ContactsService {
       etapa?: string;
       fuente?: string;
       assignedTo?: string;
+      linkedToCompanyId?: string;
+      excludeCompanyLinkId?: string;
+      excludeOpportunityLinkId?: string;
     },
     scope?: CrmDataScope,
   ): Promise<Prisma.ContactWhereInput> {
     const where: Prisma.ContactWhereInput = {};
+    const linkedCo = opts?.linkedToCompanyId?.trim();
+    const excludeCo = opts?.excludeCompanyLinkId?.trim();
+    if (linkedCo) {
+      where.companies = { some: { companyId: linkedCo } };
+    } else if (excludeCo) {
+      where.companies = { none: { companyId: excludeCo } };
+    }
+    const excludeOpp = opts?.excludeOpportunityLinkId?.trim();
+    if (excludeOpp) {
+      where.opportunities = { none: { opportunityId: excludeOpp } };
+    }
     if (opts?.search?.trim()) {
       const q = opts.search.trim();
       where.OR = [
@@ -521,6 +535,9 @@ export class ContactsService {
       etapa?: string;
       fuente?: string;
       assignedTo?: string;
+      linkedToCompanyId?: string;
+      excludeCompanyLinkId?: string;
+      excludeOpportunityLinkId?: string;
     },
     scope?: CrmDataScope,
   ) {

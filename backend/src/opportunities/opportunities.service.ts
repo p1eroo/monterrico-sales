@@ -19,6 +19,7 @@ import type { CrmDataScope } from '../auth/crm-data-scope.service';
 import { mergeCompanyScope } from '../common/crm-data-scope-where.util';
 import { NotificationsService } from '../notifications/notifications.service';
 import { parseDateOnlyToUtcNoon } from '../common/parse-date-input.util';
+import { normalizeOpportunityFuente } from '../common/normalize-opportunity-fuente.util';
 
 /** Estados de pipeline derivados de la etapa (no se usa `suspendida`). */
 type PipelineOpportunityStatus = 'abierta' | 'ganada' | 'perdida';
@@ -36,6 +37,7 @@ const opportunitySelectListSlim = {
   expectedCloseDate: true,
   createdAt: true,
   updatedAt: true,
+  fuente: true,
   contacts: {
     take: 1,
     select: { contact: { select: { id: true, urlSlug: true, name: true } } },
@@ -100,6 +102,23 @@ export class OpportunitiesService {
       return s;
     }
     return 'abierta';
+  }
+
+  private async resolveFuenteForCreate(dto: CreateOpportunityDto): Promise<string> {
+    if (dto.fuente?.trim()) {
+      return normalizeOpportunityFuente(dto.fuente);
+    }
+    const contactId = dto.contactId?.trim();
+    if (contactId) {
+      const c = await this.prisma.contact.findUnique({
+        where: { id: contactId },
+        select: { fuente: true },
+      });
+      if (c?.fuente?.trim()) {
+        return normalizeOpportunityFuente(c.fuente);
+      }
+    }
+    return 'base';
   }
 
   private async assertUserExists(id: string): Promise<void> {
@@ -291,6 +310,8 @@ export class OpportunitiesService {
       throw new BadRequestException('Fecha de cierre inválida');
     }
 
+    const fuenteResolved = await this.resolveFuenteForCreate(dto);
+
     if (contactId && companyId) {
       const existing = await this.prisma.opportunity.findFirst({
         where: {
@@ -323,6 +344,7 @@ export class OpportunitiesService {
             priority,
             expectedCloseDate,
             assignedTo,
+            fuente: fuenteResolved,
           },
         });
         await this.entitySync.propagateFromOpportunityAllCompanies(existing.id);
@@ -352,6 +374,7 @@ export class OpportunitiesService {
             priority,
             expectedCloseDate,
             assignedTo,
+            fuente: fuenteResolved,
           },
         });
 
@@ -409,6 +432,12 @@ export class OpportunitiesService {
       etapa?: string;
       status?: string;
       assignedTo?: string;
+      /** Solo oportunidades con vínculo `CompanyOpportunity` a esta empresa */
+      linkedToCompanyId?: string;
+      /** Excluir oportunidades que ya tienen vínculo empresa–oportunidad con esta empresa */
+      excludeCompanyLinkId?: string;
+      /** Excluir oportunidades que ya tienen vínculo contacto–oportunidad con este contacto */
+      excludeContactLinkId?: string;
     },
     scope?: CrmDataScope,
   ) {
@@ -417,6 +446,17 @@ export class OpportunitiesService {
     const skip = (page - 1) * limit;
 
     const where: Prisma.OpportunityWhereInput = {};
+    const linkedCo = opts?.linkedToCompanyId?.trim();
+    const excludeCo = opts?.excludeCompanyLinkId?.trim();
+    if (linkedCo) {
+      where.companies = { some: { companyId: linkedCo } };
+    } else if (excludeCo) {
+      where.companies = { none: { companyId: excludeCo } };
+    }
+    const excludeCt = opts?.excludeContactLinkId?.trim();
+    if (excludeCt) {
+      where.contacts = { none: { contactId: excludeCt } };
+    }
     if (opts?.search?.trim()) {
       const q = opts.search.trim();
       where.title = { contains: q, mode: 'insensitive' };
@@ -490,6 +530,7 @@ export class OpportunitiesService {
         priority: true,
         expectedCloseDate: true,
         assignedTo: true,
+        fuente: true,
       },
     });
     if (!snapshot) {
@@ -580,6 +621,9 @@ export class OpportunitiesService {
     }
     if (dto.priority !== undefined) {
       data.priority = this.normalizePriority(dto.priority);
+    }
+    if (dto.fuente !== undefined) {
+      data.fuente = normalizeOpportunityFuente(dto.fuente);
     }
 
     const hasContactLinkUpdate = dto.contactId !== undefined;

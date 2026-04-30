@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -83,12 +83,47 @@ const ACTION_LABELS: Record<string, string> = {
 
 const PROFILE_TABS = ['profile', 'security', 'preferences', 'activity', 'integraciones'] as const;
 
+const PROFILE_TAB_OPTIONS: { value: (typeof PROFILE_TABS)[number]; label: string }[] = [
+  { value: 'profile', label: 'Perfil' },
+  { value: 'security', label: 'Seguridad' },
+  { value: 'preferences', label: 'Preferencias' },
+  { value: 'activity', label: 'Actividad' },
+  { value: 'integraciones', label: 'Integraciones' },
+];
+
 export default function ProfilePage() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab');
-  const defaultTab = tabFromUrl && PROFILE_TABS.includes(tabFromUrl as (typeof PROFILE_TABS)[number])
-    ? tabFromUrl
-    : 'profile';
+  const urlTab =
+    tabFromUrl && PROFILE_TABS.includes(tabFromUrl as (typeof PROFILE_TABS)[number])
+      ? tabFromUrl
+      : 'profile';
+
+  const [activeTab, setActiveTab] = useState<string>(urlTab);
+
+  useEffect(() => {
+    setActiveTab(urlTab);
+  }, [urlTab]);
+
+  const handleProfileTabChange = useCallback(
+    (value: string) => {
+      if (!PROFILE_TABS.includes(value as (typeof PROFILE_TABS)[number])) return;
+      setActiveTab(value);
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (value === 'profile') {
+            next.delete('tab');
+          } else {
+            next.set('tab', value);
+          }
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
   const {
     currentUser,
     updateCurrentUser,
@@ -296,27 +331,47 @@ export default function ProfilePage() {
 
         {/* Right: Tabs */}
         <Card>
-          <Tabs defaultValue={defaultTab} className="w-full">
-            <CardHeader className="pb-2">
-              <TabsList className="h-auto w-full flex-wrap justify-start">
-                <TabsTrigger value="profile" className="gap-2">
-                  <User className="size-4" />
+          <Tabs value={activeTab} onValueChange={handleProfileTabChange} className="w-full">
+            <CardHeader className="space-y-3 pb-3 max-md:space-y-2 max-md:pb-2">
+              <div className="md:hidden space-y-1.5">
+                <label htmlFor="profile-main-tab" className="text-xs font-medium text-muted-foreground">
+                  Sección
+                </label>
+                <select
+                  id="profile-main-tab"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  value={activeTab}
+                  onChange={(e) => handleProfileTabChange(e.target.value)}
+                >
+                  {PROFILE_TAB_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <TabsList
+                variant="line"
+                className="hidden h-auto min-h-0 w-full min-w-0 flex-nowrap items-center justify-start gap-1 overflow-x-auto p-1 md:inline-flex"
+              >
+                <TabsTrigger value="profile" className="shrink-0 gap-2 text-xs sm:text-sm">
+                  <User className="size-4 shrink-0" />
                   Perfil
                 </TabsTrigger>
-                <TabsTrigger value="security" className="gap-2">
-                  <Shield className="size-4" />
+                <TabsTrigger value="security" className="shrink-0 gap-2 text-xs sm:text-sm">
+                  <Shield className="size-4 shrink-0" />
                   Seguridad
                 </TabsTrigger>
-                <TabsTrigger value="preferences" className="gap-2">
-                  <Settings className="size-4" />
+                <TabsTrigger value="preferences" className="shrink-0 gap-2 text-xs sm:text-sm">
+                  <Settings className="size-4 shrink-0" />
                   Preferencias
                 </TabsTrigger>
-                <TabsTrigger value="activity" className="gap-2">
-                  <Activity className="size-4" />
+                <TabsTrigger value="activity" className="shrink-0 gap-2 text-xs sm:text-sm">
+                  <Activity className="size-4 shrink-0" />
                   Actividad
                 </TabsTrigger>
-                <TabsTrigger value="integraciones" className="gap-2">
-                  <Link2 className="size-4" />
+                <TabsTrigger value="integraciones" className="shrink-0 gap-2 text-xs sm:text-sm">
+                  <Link2 className="size-4 shrink-0" />
                   Integraciones
                 </TabsTrigger>
               </TabsList>

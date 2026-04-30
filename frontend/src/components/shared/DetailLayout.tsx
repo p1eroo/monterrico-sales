@@ -74,11 +74,12 @@ export function DetailLayout({
       >
         <div
           className={cn(
-            'flex flex-col items-start gap-6',
+            'flex flex-col gap-6',
+            /* Tres columnas: en stack (<xl) la columna central debe ocupar todo el ancho; items-start la dejaba al ancho del contenido. */
+            threeColumn
+              ? 'items-stretch xl:grid xl:[grid-template-columns:minmax(0,12fr)_minmax(0,24fr)_minmax(0,12fr)] xl:items-start'
+              : 'items-start',
             twoColumnSidebar && 'lg:flex-row',
-            /* Trío: sin pt en laterales para alinear su borde superior con la barra de tabs del centro. */
-            threeColumn &&
-              'xl:grid xl:[grid-template-columns:minmax(0,12fr)_minmax(0,24fr)_minmax(0,12fr)] xl:items-start',
           )}
         >
           {leftAside ? (

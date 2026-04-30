@@ -16,4 +16,6 @@ export class CreateOpportunityDto {
   contactId?: string;
   /** Vincular a empresa existente (tabla `CompanyOpportunity`) */
   companyId?: string;
+  /** Slug de fuente (p. ej. import). La empresa toma la fuente de la oportunidad principal, no al revés. */
+  fuente?: string;
 }

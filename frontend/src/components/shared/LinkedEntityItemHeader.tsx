@@ -24,6 +24,8 @@ export type LinkedEntityItemHeaderVariant = keyof typeof variantConfig;
 
 export interface LinkedEntityItemHeaderProps {
   variant: LinkedEntityItemHeaderVariant;
+  /** Línea pequeña encima del título (p. ej. “Principal”). */
+  overline?: string | null;
   title: string;
   titleHint?: string;
   subtitle?: string | null;
@@ -39,6 +41,7 @@ export interface LinkedEntityItemHeaderProps {
  */
 export function LinkedEntityItemHeader({
   variant,
+  overline,
   title,
   titleHint,
   subtitle,
@@ -61,6 +64,11 @@ export function LinkedEntityItemHeader({
           <Icon className={cn('size-4', iconClass)} />
         </div>
         <div className="min-w-0 flex-1">
+          {overline ? (
+            <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+              {overline}
+            </p>
+          ) : null}
           <p
             className="min-w-0 truncate text-sm font-medium leading-snug tracking-normal text-text-primary normal-case"
             title={titleHint ?? title}

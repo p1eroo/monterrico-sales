@@ -61,6 +61,9 @@ export class ContactsController {
     @Query('etapa') etapa?: string,
     @Query('fuente') fuente?: string,
     @Query('assignedTo') assignedTo?: string,
+    @Query('linkedToCompany') linkedToCompany?: string,
+    @Query('excludeCompanyLink') excludeCompanyLink?: string,
+    @Query('excludeOpportunityLink') excludeOpportunityLink?: string,
   ) {
     const scope = await this.crmDataScope.buildScope(
       req.user.userId,
@@ -76,6 +79,9 @@ export class ContactsController {
         etapa: etapa?.trim() || undefined,
         fuente: fuente?.trim() || undefined,
         assignedTo: assignedTo?.trim() || undefined,
+        linkedToCompanyId: linkedToCompany?.trim() || undefined,
+        excludeCompanyLinkId: excludeCompanyLink?.trim() || undefined,
+        excludeOpportunityLinkId: excludeOpportunityLink?.trim() || undefined,
       },
       scope,
     );

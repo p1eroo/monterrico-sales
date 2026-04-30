@@ -50,4 +50,5 @@ export const OPPORTUNITY_FIELD_LABELS: Record<string, string> = {
   expectedCloseDate: 'Fecha de cierre esperada',
   assignedTo: 'Asesor asignado',
   primaryContactId: 'Contacto principal',
+  fuente: 'Fuente',
 };

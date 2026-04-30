@@ -441,6 +441,7 @@ exports.Prisma.OpportunityScalarFieldEnum = {
   priority: 'priority',
   expectedCloseDate: 'expectedCloseDate',
   assignedTo: 'assignedTo',
+  fuente: 'fuente',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
