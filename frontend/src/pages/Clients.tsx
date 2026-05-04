@@ -143,8 +143,12 @@ export default function Clients() {
       ]);
 
       const mappedExternal: Client[] = externalRaw.map((ext) => {
-        // Mapeo de asesor: buscamos por username en nuestra lista de usuarios
-        const advisor = users.find((u) => u.username === ext.asesorresponsable);
+        const rawAsesor = (ext.asesorresponsable || '').trim().toLowerCase();
+        
+        // Mapeo de asesor: búsqueda insensible a mayúsculas/minúsculas y espacios
+        const advisor = users.find(
+          (u) => u.username.toLowerCase() === rawAsesor
+        );
         
         return {
           id: `ext-${ext.idclienteempresa || ext.codigoempresa}`,
@@ -152,12 +156,13 @@ export default function Clients() {
           contactName: ext.contacto || '—',
           phone: ext.telefono || '—',
           email: ext.contactoemail || '—',
-          status: 'activo', // Requerimiento: que aparezca activo a todos
-          assignedTo: ext.asesorresponsable,
-          assignedToName: advisor ? advisor.name : ext.asesorresponsable,
+          status: 'activo',
+          // Usamos el ID interno si lo encontramos para que los filtros de la tabla funcionen
+          assignedTo: advisor ? advisor.id : (ext.asesorresponsable || 'unassigned'),
+          assignedToName: advisor ? advisor.name : (ext.asesorresponsable || 'Sin asesor'),
           service: ext.tipopagodetalle || '—',
-          createdAt: ext.fechor, // Fecha de alta
-          totalRevenue: 0, // Requerimiento: dejarlo vacío con un guion (formatCurrency(0) lo hará o manejaremos el guion)
+          createdAt: ext.fechor,
+          totalRevenue: 0,
           notes: '',
         };
       });

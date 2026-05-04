@@ -98,7 +98,8 @@ export type ExternalApiResponse = {
  */
 export async function fetchExternalClients(agente: string): Promise<ExternalClientRow[]> {
   try {
-    const url = `https://api.taximonterrico.com/api/WClientes/Registrados?agente=${agente}&condicion=1`;
+    // Añadimos un intento de límite alto por si la API lo soporta, para traer "todos"
+    const url = `https://api.taximonterrico.com/api/WClientes/Registrados?agente=${agente}&condicion=1&limit=5000`;
     const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`Error API externa: ${response.statusText}`);
