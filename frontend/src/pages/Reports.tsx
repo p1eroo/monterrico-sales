@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import type { DateRange } from 'react-day-picker';
+import html2canvas from 'html2canvas';
 import { useUsers } from '@/hooks/useUsers';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -25,7 +26,7 @@ import {
 import {
   FileText, FileSpreadsheet, FileDown,
   TrendingUp, Target, DollarSign, Activity,
-  Maximize2,
+  Maximize2, Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useChartTheme } from '@/hooks/useChartTheme';
@@ -187,6 +188,7 @@ export default function Reports() {
   const [pipelineModalOpen, setPipelineModalOpen] = useState(false);
   const [activitiesModalOpen, setActivitiesModalOpen] = useState(false);
   const [tasksModalOpen, setTasksModalOpen] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const chartTheme = useChartTheme();
 
   const dialogContentClass =
@@ -399,6 +401,55 @@ export default function Reports() {
         activitiesByType: activitiesByTypeData,
         followUpsByMonth: followUpsData,
       };
+
+      if (format === 'PDF') {
+        setExportingPdf(true);
+        const captureCharts = async () => {
+          const chartIds = {
+            contacts: 'chart-contacts',
+            sources: 'chart-sources',
+            conversion: 'chart-conversion',
+            performance: 'chart-performance',
+            sales: 'chart-sales',
+            pipeline: 'chart-pipeline',
+            activities: 'chart-activities',
+            tasks: 'chart-tasks',
+          };
+          const chartImages: ReportsExportInput['charts'] = {};
+
+          for (const [key, id] of Object.entries(chartIds)) {
+            const el = document.getElementById(id);
+            if (el) {
+              try {
+                const canvas = await html2canvas(el, {
+                  scale: 2, // Mayor calidad
+                  logging: false,
+                  useCORS: true,
+                  backgroundColor: null,
+                });
+                chartImages[key as keyof typeof chartIds] = canvas.toDataURL('image/png');
+              } catch (e) {
+                console.error(`Error capturando gráfico ${id}:`, e);
+              }
+            }
+          }
+          return chartImages;
+        };
+
+        void captureCharts().then((charts) => {
+          try {
+            downloadReport(format, { ...payload, charts }, reportExportBaseFilename());
+            toast.success(`Reporte PDF con gráficos generado`);
+          } catch (err) {
+            console.error(err);
+            toast.error('Error al generar PDF con gráficos. Intenta de nuevo.');
+          } finally {
+            setExportingPdf(false);
+          }
+        });
+        return;
+      }
+
       try {
         downloadReport(format, payload, reportExportBaseFilename());
         toast.success(`Archivo ${format} generado`);
@@ -586,11 +637,15 @@ export default function Reports() {
             <Button
               variant="outline"
               size="sm"
-              disabled={loading || !summary}
+              disabled={loading || !summary || exportingPdf}
               onClick={() => handleExport('PDF')}
             >
-              <FileText className="mr-1.5 size-4" />
-              PDF
+              {exportingPdf ? (
+                <Loader2 className="mr-1.5 size-4 animate-spin" />
+              ) : (
+                <FileText className="mr-1.5 size-4" />
+              )}
+              {exportingPdf ? 'Generando...' : 'PDF'}
             </Button>
             <Button
               variant="outline"
@@ -658,7 +713,7 @@ export default function Reports() {
       {/* Charts Grid */}
       <div className="grid gap-6 md:grid-cols-2">
         {/* 1. Contactos por Periodo - AreaChart */}
-        <Card>
+        <Card id="chart-contacts">
           <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2">
             <div className="min-w-0 space-y-1">
               <CardTitle className="text-base">Contactos por Periodo</CardTitle>
@@ -734,7 +789,7 @@ export default function Reports() {
         </Card>
 
         {/* 2. Contactos por Fuente - PieChart Donut */}
-        <Card>
+        <Card id="chart-sources">
           <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2">
             <div className="min-w-0 space-y-1">
               <CardTitle className="text-base">Contactos por Fuente</CardTitle>
@@ -1390,8 +1445,8 @@ export default function Reports() {
           </CardContent>
         </Card>
 
-        {/* 3. Tasa de Conversión - LineChart */}
-        <Card>
+        {/* 3. Tasa de conversión - LineChart */}
+        <Card id="chart-conversion">
           <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2">
             <div className="min-w-0 space-y-1">
               <CardTitle className="text-base">Tasa de Conversión</CardTitle>
@@ -1454,8 +1509,8 @@ export default function Reports() {
           </CardContent>
         </Card>
 
-        {/* 4. Rendimiento por Asesor - Horizontal BarChart */}
-        <Card>
+        {/* 4. Rendimiento por Asesor - BarChart */}
+        <Card id="chart-performance">
           <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2">
             <div className="min-w-0 space-y-1">
               <CardTitle className="text-base">Rendimiento por Asesor</CardTitle>
@@ -1512,8 +1567,8 @@ export default function Reports() {
           </CardContent>
         </Card>
 
-        {/* 5. Ventas Cerradas por Mes - BarChart */}
-        <Card>
+        {/* 5. Ventas por Mes - BarChart */}
+        <Card id="chart-sales">
           <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2">
             <div className="min-w-0 space-y-1">
               <CardTitle className="text-base">Ventas Cerradas por Mes</CardTitle>
@@ -1544,8 +1599,8 @@ export default function Reports() {
           </CardContent>
         </Card>
 
-        {/* 6. Pipeline por Etapa - BarChart */}
-        <Card>
+        {/* 6. Pipeline por Etapa - BarChart Horizontal */}
+        <Card id="chart-pipeline">
           <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2">
             <div className="min-w-0 space-y-1">
               <CardTitle className="text-base">Pipeline por Etapa</CardTitle>
@@ -1608,7 +1663,7 @@ export default function Reports() {
         </Card>
 
         {/* 7. Actividades Realizadas - Stacked BarChart */}
-        <Card>
+        <Card id="chart-activities">
           <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2">
             <div className="min-w-0 space-y-1">
               <CardTitle className="text-base">Actividades Realizadas</CardTitle>
@@ -1661,7 +1716,7 @@ export default function Reports() {
         </Card>
 
         {/* 8. Tareas - LineChart */}
-        <Card>
+        <Card id="chart-tasks">
           <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2">
             <div className="min-w-0 space-y-1">
               <CardTitle className="text-base">Tareas</CardTitle>

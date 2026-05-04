@@ -41,6 +41,17 @@ export type ReportsExportInput = {
     correos: number;
   }[];
   followUpsByMonth: { name: string; completados: number; pendientes: number }[];
+  /** Imágenes de los gráficos (base64) capturadas desde el DOM */
+  charts?: {
+    contacts?: string;
+    sources?: string;
+    conversion?: string;
+    performance?: string;
+    sales?: string;
+    pipeline?: string;
+    activities?: string;
+    tasks?: string;
+  };
   /** Encabezado en PDF / CSV / Excel (por defecto: Reporte comercial) */
   documentTitle?: string;
 };
@@ -323,22 +334,25 @@ export function downloadReportsPdf(data: ReportsExportInput, baseName: string) {
   });
   y = (doc as JsPdfWithAutoTable).lastAutoTable.finalY + 12;
 
-  const sections: { title: string; head: string[][]; body: (string | number)[][] }[] =
+  const sections: { title: string; head: string[][]; body: (string | number)[][], chartKey: keyof NonNullable<ReportsExportInput['charts']> }[] =
     [
       {
         title: 'Contactos por periodo',
         head: [['Periodo', 'Total', 'Nuevos']],
         body: data.contactsByPeriod.map((x) => [x.name, x.leads, x.nuevos]),
+        chartKey: 'contacts',
       },
       {
         title: 'Contactos por fuente',
         head: [['Fuente', 'Cantidad']],
         body: data.contactsBySource.map((x) => [x.name, x.value]),
+        chartKey: 'sources',
       },
       {
         title: 'Tasa de conversión por mes',
         head: [['Mes', 'Tasa %']],
         body: data.conversionByMonth.map((x) => [x.name, x.tasa]),
+        chartKey: 'conversion',
       },
       {
         title: 'Rendimiento por asesor',
@@ -348,6 +362,7 @@ export function downloadReportsPdf(data: ReportsExportInput, baseName: string) {
           x.empresas,
           x.ventas,
         ]),
+        chartKey: 'performance',
       },
       {
         title: 'Ventas cerradas por mes',
@@ -357,6 +372,7 @@ export function downloadReportsPdf(data: ReportsExportInput, baseName: string) {
           formatCurrency(x.ventas),
           formatCurrency(x.meta),
         ]),
+        chartKey: 'sales',
       },
       {
         title: 'Pipeline por etapa',
@@ -366,6 +382,7 @@ export function downloadReportsPdf(data: ReportsExportInput, baseName: string) {
           x.count,
           formatCurrency(x.value),
         ]),
+        chartKey: 'pipeline',
       },
       {
         title: 'Actividades por tipo',
@@ -376,6 +393,7 @@ export function downloadReportsPdf(data: ReportsExportInput, baseName: string) {
           x.reuniones,
           x.correos,
         ]),
+        chartKey: 'activities',
       },
       {
         title: 'Tareas por mes',
@@ -385,28 +403,65 @@ export function downloadReportsPdf(data: ReportsExportInput, baseName: string) {
           x.completados,
           x.pendientes,
         ]),
+        chartKey: 'tasks',
       },
     ];
 
-  const pageMaxY = 280;
+  const pageMaxY = 270;
+  const contentWidth = 182; // 210 - 14*2
+
   for (const sec of sections) {
-    if (!sec.body.length) continue;
-    if (y > pageMaxY - 20) {
+    if (!sec.body.length && !data.charts?.[sec.chartKey]) continue;
+
+    // Título de la sección
+    if (y > pageMaxY - 30) {
       doc.addPage();
       y = 14;
     }
     doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
     doc.text(sec.title, 14, y);
-    y += 4;
-    autoTable(doc, {
-      startY: y,
-      head: sec.head,
-      body: sec.body,
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [59, 130, 246] },
-      margin: { left: 14, right: 14 },
-    });
-    y = (doc as JsPdfWithAutoTable).lastAutoTable.finalY + 10;
+    doc.setFont('helvetica', 'normal');
+    y += 6;
+
+    // 1. Gráfico (si existe)
+    const chartImg = data.charts?.[sec.chartKey];
+    if (chartImg) {
+      // Intentamos ajustar el gráfico al ancho de la página
+      // Usualmente los gráficos tienen un aspect ratio de 2:1 o similar
+      const imgProps = doc.getImageProperties(chartImg);
+      const imgHeight = (imgProps.height * contentWidth) / imgProps.width;
+
+      if (y + imgHeight > pageMaxY) {
+        doc.addPage();
+        y = 14;
+        // Repetir título en nueva página si el gráfico no cabía
+        doc.setFont('helvetica', 'bold');
+        doc.text(`${sec.title} (Cont.)`, 14, y);
+        doc.setFont('helvetica', 'normal');
+        y += 6;
+      }
+
+      doc.addImage(chartImg, 'PNG', 14, y, contentWidth, imgHeight);
+      y += imgHeight + 8;
+    }
+
+    // 2. Tabla
+    if (sec.body.length) {
+      if (y > pageMaxY - 20) {
+        doc.addPage();
+        y = 14;
+      }
+      autoTable(doc, {
+        startY: y,
+        head: sec.head,
+        body: sec.body,
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [59, 130, 246] },
+        margin: { left: 14, right: 14 },
+      });
+      y = (doc as JsPdfWithAutoTable).lastAutoTable.finalY + 12;
+    }
   }
 
   doc.save(`${baseName}.pdf`);
