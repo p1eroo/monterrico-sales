@@ -1224,6 +1224,7 @@ function ContactsTable({
   onEdit,
   onDelete,
 }: ContactsTableProps) {
+  const { hasPermission } = usePermissions();
   return (
     <div className="rounded-md border bg-card">
       <Table>
@@ -1346,9 +1347,11 @@ function ContactsTable({
                       <Pencil /> Editar
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem variant="destructive" onClick={() => onDelete(contact.id)}>
-                      <Trash2 /> Eliminar
-                    </DropdownMenuItem>
+                    {hasPermission('contactos.eliminar') && (
+                      <DropdownMenuItem variant="destructive" onClick={() => onDelete(contact.id)}>
+                        <Trash2 /> Eliminar
+                      </DropdownMenuItem>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TableCell>
@@ -1380,6 +1383,7 @@ function ContactsGrid({
   onEdit,
   onDelete,
 }: ContactsGridProps) {
+  const { hasPermission } = usePermissions();
   return (
     <div className="grid w-full grid-cols-1 gap-3 px-0 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {data.map((contact) => {
@@ -1442,15 +1446,17 @@ function ContactsGrid({
                     <Pencil /> Editar
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    variant="destructive"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDelete(contact.id);
-                    }}
-                  >
-                    <Trash2 /> Eliminar
-                  </DropdownMenuItem>
+                  {hasPermission('contactos.eliminar') && (
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete(contact.id);
+                      }}
+                    >
+                      <Trash2 /> Eliminar
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

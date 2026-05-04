@@ -146,9 +146,16 @@ export default function Clients() {
         const rawAsesor = (ext.asesorresponsable || '').trim().toLowerCase();
         
         // Mapeo de asesor: búsqueda insensible a mayúsculas/minúsculas y espacios
-        const advisor = users.find(
+        // Intentamos buscar en la lista de usuarios cargada
+        let advisor = users.find(
           (u) => u.username.toLowerCase() === rawAsesor
         );
+
+        // CASO ESPECIAL: Si no hay lista de usuarios (por falta de permisos) 
+        // pero el cliente es del usuario actual, lo vinculamos directamente.
+        if (!advisor && currentUser.username.toLowerCase() === rawAsesor) {
+          advisor = currentUser as any;
+        }
         
         return {
           id: `ext-${ext.idclienteempresa || ext.codigoempresa}`,
@@ -159,7 +166,7 @@ export default function Clients() {
           status: 'activo',
           // Usamos el ID interno si lo encontramos para que los filtros de la tabla funcionen
           assignedTo: advisor ? advisor.id : (ext.asesorresponsable || 'unassigned'),
-          assignedToName: advisor ? advisor.name : (ext.asesorresponsable || 'Sin asesor'),
+          assignedToName: advisor ? (advisor.name || advisor.username) : (ext.asesorresponsable || 'Sin asesor'),
           service: ext.tipopagodetalle || '—',
           createdAt: ext.fechor,
           totalRevenue: 0,

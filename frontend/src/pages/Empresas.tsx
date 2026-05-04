@@ -1276,20 +1276,20 @@ export default function EmpresasPage() {
                           <DropdownMenuItem onClick={() => openCompanyPreview(emp)}>
                             <Eye /> Vista previa
                           </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => openCompanyEdit(emp)}
-                            disabled={!hasPermission('empresas.editar')}
-                          >
-                            <Pencil /> Editar
-                          </DropdownMenuItem>
+                          {hasPermission('empresas.editar') && (
+                            <DropdownMenuItem onClick={() => openCompanyEdit(emp)}>
+                              <Pencil /> Editar
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            variant="destructive"
-                            onClick={() => requestDeleteCompany(emp)}
-                            disabled={!hasPermission('empresas.eliminar')}
-                          >
-                            <Trash2 /> Eliminar
-                          </DropdownMenuItem>
+                          {hasPermission('empresas.eliminar') && (
+                            <DropdownMenuItem
+                              variant="destructive"
+                              onClick={() => requestDeleteCompany(emp)}
+                            >
+                              <Trash2 /> Eliminar
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -1340,26 +1340,28 @@ export default function EmpresasPage() {
                         >
                           <Eye /> Vista previa
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openCompanyEdit(emp);
-                          }}
-                          disabled={!hasPermission('empresas.editar')}
-                        >
-                          <Pencil /> Editar
-                        </DropdownMenuItem>
+                        {hasPermission('empresas.editar') && (
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openCompanyEdit(emp);
+                            }}
+                          >
+                            <Pencil /> Editar
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          variant="destructive"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            requestDeleteCompany(emp);
-                          }}
-                          disabled={!hasPermission('empresas.eliminar')}
-                        >
-                          <Trash2 /> Eliminar
-                        </DropdownMenuItem>
+                        {hasPermission('empresas.eliminar') && (
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              requestDeleteCompany(emp);
+                            }}
+                          >
+                            <Trash2 /> Eliminar
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>

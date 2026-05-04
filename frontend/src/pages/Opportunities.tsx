@@ -908,20 +908,24 @@ function OpportunitiesTable({
                     <DropdownMenuItem onClick={() => onOpenPreview(opp)}>
                       <Eye /> Vista previa
                     </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => onOpenEdit(opp)}
-                      disabled={!canEdit || pending}
-                    >
-                      <Pencil /> Editar
-                    </DropdownMenuItem>
+                    {canEdit && (
+                      <DropdownMenuItem
+                        onClick={() => onOpenEdit(opp)}
+                        disabled={pending}
+                      >
+                        <Pencil /> Editar
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      variant="destructive"
-                      onClick={() => onRequestDelete(opp)}
-                      disabled={!canDelete || pending}
-                    >
-                      <Trash2 /> Eliminar
-                    </DropdownMenuItem>
+                    {canDelete && (
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onClick={() => onRequestDelete(opp)}
+                        disabled={pending}
+                      >
+                        <Trash2 /> Eliminar
+                      </DropdownMenuItem>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TableCell>
@@ -1005,20 +1009,24 @@ function OpportunitiesGrid({
                   <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onOpenPreview(opp); }}>
                     <Eye /> Vista previa
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    disabled={!canEdit || pending}
-                    onClick={(e) => { e.stopPropagation(); onOpenEdit(opp); }}
-                  >
-                    <Pencil /> Editar
-                  </DropdownMenuItem>
+                  {canEdit && (
+                    <DropdownMenuItem
+                      disabled={pending}
+                      onClick={(e) => { e.stopPropagation(); onOpenEdit(opp); }}
+                    >
+                      <Pencil /> Editar
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    variant="destructive"
-                    disabled={!canDelete || pending}
-                    onClick={(e) => { e.stopPropagation(); onRequestDelete(opp); }}
-                  >
-                    <Trash2 /> Eliminar
-                  </DropdownMenuItem>
+                  {canDelete && (
+                    <DropdownMenuItem
+                      variant="destructive"
+                      disabled={pending}
+                      onClick={(e) => { e.stopPropagation(); onRequestDelete(opp); }}
+                    >
+                      <Trash2 /> Eliminar
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
