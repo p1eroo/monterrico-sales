@@ -86,6 +86,16 @@ export type ExternalClientRow = {
   fechor: string;
   tipopagodetalle?: string;
   monto?: number;
+  mes1?: string;
+  monto1?: number;
+  mes2?: string;
+  monto2?: number;
+  mes3?: string;
+  monto3?: number;
+  mes4?: string;
+  monto4?: number;
+  mes5?: string;
+  monto5?: number;
 };
 
 export type ExternalApiResponse = {

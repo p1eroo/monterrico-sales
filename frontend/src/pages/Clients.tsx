@@ -145,16 +145,27 @@ export default function Clients() {
       const mappedExternal: Client[] = externalRaw.map((ext) => {
         const rawAsesor = (ext.asesorresponsable || '').trim().toLowerCase();
         
-        // Mapeo de asesor: búsqueda insensible a mayúsculas/minúsculas y espacios
-        // Intentamos buscar en la lista de usuarios cargada
         let advisor = users.find(
           (u) => u.username.toLowerCase() === rawAsesor
         );
 
-        // CASO ESPECIAL: Si no hay lista de usuarios (por falta de permisos) 
-        // pero el cliente es del usuario actual, lo vinculamos directamente.
         if (!advisor && currentUser.username.toLowerCase() === rawAsesor) {
           advisor = currentUser as any;
+        }
+
+        // Lógica de cálculo anual inteligente
+        const monthsOrder: Record<string, number> = {
+          'enero': 0, 'febrero': 1, 'marzo': 2, 'abril': 3, 'mayo': 4, 'junio': 5,
+          'julio': 6, 'agosto': 7, 'septiembre': 8, 'octubre': 9, 'noviembre': 10, 'diciembre': 11
+        };
+        const currentMonthIdx = new Date().getMonth();
+        let yearTotal = 0;
+        for (let i = 1; i <= 5; i++) {
+          const mName = (ext as any)[`mes${i}`]?.toLowerCase().trim();
+          const mAmount = (ext as any)[`monto${i}`] || 0;
+          if (mName && monthsOrder[mName] !== undefined && monthsOrder[mName] <= currentMonthIdx) {
+            yearTotal += mAmount;
+          }
         }
         
         return {
@@ -164,12 +175,22 @@ export default function Clients() {
           phone: ext.telefono || '—',
           email: ext.contactoemail || '—',
           status: 'activo',
-          // Usamos el ID interno si lo encontramos para que los filtros de la tabla funcionen
           assignedTo: advisor ? advisor.id : (ext.asesorresponsable || 'unassigned'),
           assignedToName: advisor ? (advisor.name || advisor.username) : (ext.asesorresponsable || 'Sin asesor'),
           service: ext.tipopagodetalle || '—',
           createdAt: ext.fechor,
           totalRevenue: 0,
+          externalMonthName: ext.mes1,
+          externalMonthAmount: ext.monto1,
+          externalYearTotal: yearTotal,
+          // Pasamos los datos adicionales para las tarjetas del drawer
+          ...({
+            mes1: ext.mes1, monto1: ext.monto1,
+            mes2: ext.mes2, monto2: ext.monto2,
+            mes3: ext.mes3, monto3: ext.monto3,
+            mes4: ext.mes4, monto4: ext.monto4,
+            mes5: ext.mes5, monto5: ext.monto5,
+          } as any),
           notes: '',
         };
       });
@@ -196,7 +217,10 @@ export default function Clients() {
     const total = clientList.length;
     const activos = clientList.filter((c) => c.status === 'activo').length;
     const inactivos = clientList.filter((c) => c.status === 'inactivo').length;
-    const ingresos = clientList.reduce((sum, c) => sum + c.totalRevenue, 0);
+    const ingresos = clientList.reduce((sum, c) => {
+      const rev = c.id.startsWith('ext-') ? (c.externalYearTotal || 0) : c.totalRevenue;
+      return sum + rev;
+    }, 0);
     return { total, activos, inactivos, ingresos };
   }, [clientList]);
 
@@ -398,10 +422,10 @@ export default function Clients() {
                     )}
                     onClick={() => {
                       if (client.id.startsWith('ext-')) {
+                        // Solo informamos que es de solo lectura, pero permitimos ver el detalle
                         toast.info('Cliente Externo', {
                           description: 'Este registro proviene de Taxi Monterrico y es de solo lectura.',
                         });
-                        return;
                       }
                       setSelectedClient(client);
                     }}
@@ -437,7 +461,16 @@ export default function Clients() {
                     <TableCell className="hidden md:table-cell">{client.assignedToName}</TableCell>
                     <TableCell className="hidden xl:table-cell">{formatDate(client.createdAt)}</TableCell>
                     <TableCell className="text-right font-medium">
-                      {client.id.startsWith('ext-') ? '—' : formatCurrency(client.totalRevenue)}
+                      {client.id.startsWith('ext-') ? (
+                        <div className="flex flex-col items-end leading-tight">
+                          <span>{formatCurrency(client.externalMonthAmount || 0).replace('S/ ', 'S/ ')}</span>
+                          <span className="text-[10px] text-muted-foreground uppercase font-normal">
+                            {client.externalMonthName || 'Mes'} · Año: S/ {(client.externalYearTotal || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      ) : (
+                        formatCurrency(client.totalRevenue)
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
@@ -613,32 +646,66 @@ export default function Clients() {
 
                   <Separator />
 
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
                       Métricas
                     </h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="rounded-lg border p-3">
-                        <p className="text-xs text-muted-foreground">Ingresos</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          Misma facturación estimada de la empresa.
-                        </p>
-                        <p className="text-lg font-bold text-[#13944C] mt-1">
-                          {formatCurrency(selectedClient.totalRevenue)}
-                        </p>
+                    
+                    {selectedClient.id.startsWith('ext-') ? (
+                      <div className="space-y-4">
+                        {/* Tarjeta de Total Anual */}
+                        <div className="rounded-xl bg-primary/5 border border-primary/10 p-4">
+                          <p className="text-xs text-muted-foreground uppercase font-medium">Acumulado Año 2026</p>
+                          <p className="text-2xl font-bold text-primary mt-1">
+                            S/ {(selectedClient.externalYearTotal || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </p>
+                        </div>
+
+                        {/* Grid de Meses */}
+                        <div className="grid grid-cols-3 gap-2">
+                          {[1, 2, 3, 4, 5].map((i) => {
+                            const mName = (selectedClient as any)[`mes${i}`];
+                            const mAmount = (selectedClient as any)[`monto${i}`];
+                            if (!mName) return null;
+                            
+                            return (
+                              <div key={i} className="flex flex-col items-center justify-center rounded-lg border bg-card p-2 text-center shadow-sm">
+                                <span className="text-[10px] font-bold text-muted-foreground uppercase">
+                                  {mName.substring(0, 3)}
+                                </span>
+                                <span className="text-sm font-bold text-blue-600 mt-1">
+                                  {(mAmount || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                                <span className="text-[9px] text-muted-foreground mt-0.5">Soles</span>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
-                      <div className="rounded-lg border p-3">
-                        <p className="text-xs text-muted-foreground">Fecha de alta</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          Registro como cliente (Activo o etapa al 100 %).
-                        </p>
-                        <p className="text-sm font-medium mt-1">
-                          {formatDate(selectedClient.createdAt)}
-                        </p>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="rounded-lg border p-3">
+                          <p className="text-xs text-muted-foreground">Ingresos</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Misma facturación estimada de la empresa.
+                          </p>
+                          <p className="text-lg font-bold text-[#13944C] mt-1">
+                            {formatCurrency(selectedClient.totalRevenue)}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border p-3">
+                          <p className="text-xs text-muted-foreground">Fecha de alta</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Registro como cliente en CRM.
+                          </p>
+                          <p className="text-sm font-medium mt-1">
+                            {formatDate(selectedClient.createdAt)}
+                          </p>
+                        </div>
                       </div>
-                    </div>
+                    )}
                     {selectedClient.lastActivity && (
-                      <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-3 text-sm text-muted-foreground pt-2">
                         <Clock className="size-4 shrink-0" />
                         Última actividad: {formatDate(selectedClient.lastActivity)}
                       </div>
@@ -668,31 +735,6 @@ export default function Clients() {
                     </div>
                   </div>
 
-                  <Separator />
-
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                      Actividad reciente
-                    </h4>
-                    <div className="space-y-3">
-                      {timelineEvents.slice(0, 5).map((event) => (
-                        <div key={event.id} className="flex gap-3">
-                          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted">
-                            <Calendar className="size-3.5 text-muted-foreground" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium">{event.title}</p>
-                            <p className="text-xs text-muted-foreground line-clamp-2">
-                              {event.description}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {event.user} · {event.date}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
 
                   {selectedClient.notes && (
                     <>

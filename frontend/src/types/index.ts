@@ -271,6 +271,10 @@ export interface Client {
   createdAt: string;
   lastActivity?: string;
   totalRevenue: number;
+  /** Datos de facturación externa (Taxi Monterrico) */
+  externalMonthName?: string;
+  externalMonthAmount?: number;
+  externalYearTotal?: number;
   notes?: string;
 }
 
