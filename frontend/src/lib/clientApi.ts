@@ -73,3 +73,41 @@ export async function updateClientApi(
   });
   return mapApiClientRow(row);
 }
+
+export type ExternalClientRow = {
+  idclienteempresa: number;
+  codigoempresa: string;
+  razonsocial: string;
+  nombrecomercial: string;
+  contacto: string;
+  contactoemail: string;
+  telefono?: string;
+  asesorresponsable: string;
+  fechor: string;
+  tipopagodetalle?: string;
+  monto?: number;
+};
+
+export type ExternalApiResponse = {
+  detalle: string;
+  ARegistrados: ExternalClientRow[];
+};
+
+/**
+ * Obtiene clientes registrados desde la API externa de Taxi Monterrico.
+ */
+export async function fetchExternalClients(agente: string): Promise<ExternalClientRow[]> {
+  try {
+    const url = `https://api.taximonterrico.com/api/WClientes/Registrados?agente=${agente}&condicion=1`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Error API externa: ${response.statusText}`);
+    }
+    const data = (await response.json()) as ExternalApiResponse;
+    return data.ARegistrados || [];
+  } catch (error) {
+    console.error('Error fetching external clients:', error);
+    // Devolvemos array vacío para no bloquear la carga de clientes locales si falla la externa
+    return [];
+  }
+}

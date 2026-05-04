@@ -16,7 +16,7 @@ import {
 import {
   Building2, Users, UserX, DollarSign, Search, Eye,
   Phone, Mail, Calendar, FileText, Clock, User, RefreshCw, Download, ExternalLink,
-  Globe,
+  Globe, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
@@ -34,7 +34,8 @@ import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useCrmTeamAdvisorFilter } from '@/hooks/useCrmTeamAdvisorFilter';
-import { fetchClients, updateClientApi } from '@/lib/clientApi';
+import { useAppStore } from '@/store';
+import { fetchClients, updateClientApi, fetchExternalClients } from '@/lib/clientApi';
 import { CrmDataTableSkeleton, CrmStatCardsSkeleton } from '@/components/shared/CrmListPageSkeleton';
 
 const CLIENTS_TABLE_SKELETON_COLUMNS = [
@@ -120,6 +121,8 @@ export default function Clients() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [assigneeFilter, setAssigneeFilter] = useState<string>('all');
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
   const { canSeeAllAdvisors } = useCrmTeamAdvisorFilter(
     assigneeFilter,
     setAssigneeFilter,
@@ -128,12 +131,38 @@ export default function Clients() {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isChangeStatusOpen, setIsChangeStatusOpen] = useState(false);
 
+  const { currentUser } = useAppStore();
+
   const reloadClients = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
     try {
-      const rows = await fetchClients();
-      setClientList(rows);
+      const [rows, externalRaw] = await Promise.all([
+        fetchClients(),
+        fetchExternalClients(currentUser.username)
+      ]);
+
+      const mappedExternal: Client[] = externalRaw.map((ext) => {
+        // Mapeo de asesor: buscamos por username en nuestra lista de usuarios
+        const advisor = users.find((u) => u.username === ext.asesorresponsable);
+        
+        return {
+          id: `ext-${ext.idclienteempresa || ext.codigoempresa}`,
+          company: ext.nombrecomercial || ext.razonsocial,
+          contactName: ext.contacto || '—',
+          phone: ext.telefono || '—',
+          email: ext.contactoemail || '—',
+          status: 'activo', // Requerimiento: que aparezca activo a todos
+          assignedTo: ext.asesorresponsable,
+          assignedToName: advisor ? advisor.name : ext.asesorresponsable,
+          service: ext.tipopagodetalle || '—',
+          createdAt: ext.fechor, // Fecha de alta
+          totalRevenue: 0, // Requerimiento: dejarlo vacío con un guion (formatCurrency(0) lo hará o manejaremos el guion)
+          notes: '',
+        };
+      });
+
+      setClientList([...rows, ...mappedExternal]);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'No se pudieron cargar los clientes';
       setLoadError(msg);
@@ -141,7 +170,11 @@ export default function Clients() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentUser.username, users]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, statusFilter, assigneeFilter]);
 
   useEffect(() => {
     void reloadClients();
@@ -171,6 +204,12 @@ export default function Clients() {
       return matchesSearch && matchesStatus && matchesAssignee;
     });
   }, [clientList, searchTerm, statusFilter, assigneeFilter]);
+
+  const totalPages = Math.ceil(filteredClients.length / pageSize);
+  const paginatedClients = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredClients.slice(start, start + pageSize);
+  }, [filteredClients, page, pageSize]);
 
   const selectedAssigneeUser = useMemo(
     () =>
@@ -327,7 +366,7 @@ export default function Clients() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredClients.length === 0 ? (
+            {paginatedClients.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={10} className="py-12 text-center text-muted-foreground">
                   {clientList.length === 0
@@ -336,13 +375,24 @@ export default function Clients() {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredClients.map((client) => {
+              paginatedClients.map((client) => {
                 const emailDomain = getDomainFromEmail(client.email);
                 return (
                   <TableRow
                     key={client.id}
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => setSelectedClient(client)}
+                    className={cn(
+                      'cursor-pointer hover:bg-muted/50',
+                      client.id.startsWith('ext-') && 'bg-blue-50/30'
+                    )}
+                    onClick={() => {
+                      if (client.id.startsWith('ext-')) {
+                        toast.info('Cliente Externo', {
+                          description: 'Este registro proviene de Taxi Monterrico y es de solo lectura.',
+                        });
+                        return;
+                      }
+                      setSelectedClient(client);
+                    }}
                   >
                     <TableCell>
                       <div>
@@ -375,33 +425,37 @@ export default function Clients() {
                     <TableCell className="hidden md:table-cell">{client.assignedToName}</TableCell>
                     <TableCell className="hidden xl:table-cell">{formatDate(client.createdAt)}</TableCell>
                     <TableCell className="text-right font-medium">
-                      {formatCurrency(client.totalRevenue)}
+                      {client.id.startsWith('ext-') ? '—' : formatCurrency(client.totalRevenue)}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-8"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedClient(client);
-                          }}
-                        >
-                          <Eye className="size-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-8"
-                          title="Ver empresa"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(empresaPath(client));
-                          }}
-                        >
-                          <ExternalLink className="size-4" />
-                        </Button>
+                        {!client.id.startsWith('ext-') && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-8"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedClient(client);
+                              }}
+                            >
+                              <Eye className="size-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-8"
+                              title="Ver empresa"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(empresaPath(client));
+                              }}
+                            >
+                              <ExternalLink className="size-4" />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -411,6 +465,63 @@ export default function Clients() {
           </TableBody>
         </Table>
       </div>
+      )}
+
+      {!loading && totalPages > 1 && (
+        <div className="flex items-center justify-between px-2 py-4">
+          <p className="text-sm text-muted-foreground">
+            Mostrando <span className="font-medium">{(page - 1) * pageSize + 1}</span> a{' '}
+            <span className="font-medium">
+              {Math.min(page * pageSize, filteredClients.length)}
+            </span> de{' '}
+            <span className="font-medium">{filteredClients.length}</span> clientes
+          </p>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="h-8 w-8 p-0"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
+                // Solo mostrar las primeras 3, la actual, y las últimas 3 si hay muchas páginas
+                if (
+                  totalPages > 7 &&
+                  p > 2 &&
+                  p < totalPages - 1 &&
+                  Math.abs(p - page) > 1
+                ) {
+                  if (p === 3 || p === totalPages - 2) return <span key={p} className="px-1 text-muted-foreground text-xs">...</span>;
+                  return null;
+                }
+                return (
+                  <Button
+                    key={p}
+                    variant={page === p ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setPage(p)}
+                    className="h-8 w-8 p-0 text-xs"
+                  >
+                    {p}
+                  </Button>
+                );
+              })}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="h-8 w-8 p-0"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
       )}
 
       <Sheet open={!!selectedClient} onOpenChange={(open) => !open && setSelectedClient(null)}>
