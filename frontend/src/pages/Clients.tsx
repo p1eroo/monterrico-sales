@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import type { Client, ClientStatus } from '@/types';
-import { timelineEvents, companyRubroLabels } from '@/data/mock';
+import { companyRubroLabels } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/select';
 import {
   Building2, Users, UserX, DollarSign, Search, Eye,
-  Phone, Mail, Calendar, FileText, Clock, User, RefreshCw, Download, ExternalLink,
+  Phone, Mail, FileText, Clock, User, RefreshCw, Download, ExternalLink,
   Globe, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import {
