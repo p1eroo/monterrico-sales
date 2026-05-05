@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '../generated/prisma';
 import { PrismaService } from '../prisma/prisma.service';
 import { slugifyForUrl } from '../common/url-slug.util';
-import { ClientsService } from '../clients/clients.service';
 import { CrmConfigService } from '../crm-config/crm-config.service';
 import { normalizeOpportunityFuente } from '../common/normalize-opportunity-fuente.util';
 
@@ -22,7 +21,6 @@ export class EntitySyncService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly clientsService: ClientsService,
     private readonly crmConfig: CrmConfigService,
   ) {}
 
@@ -175,7 +173,6 @@ export class EntitySyncService {
         assignedTo,
       },
     });
-    await this.clientsService.ensureClientForCierreGanadoTx(tx, companyId);
 
     const ccRows = await tx.companyContact.findMany({
       where: { companyId },
@@ -298,7 +295,6 @@ export class EntitySyncService {
         assignedTo,
       },
     });
-    await this.clientsService.ensureClientForCierreGanadoTx(tx, companyId);
 
     const ccRows = await tx.companyContact.findMany({
       where: { companyId },

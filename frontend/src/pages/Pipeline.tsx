@@ -58,6 +58,7 @@ import {
   type ApiOpportunityListRow,
   mapApiOpportunityToOpportunity,
   opportunityListAll,
+  opportunityUpdate,
 } from '@/lib/opportunityApi';
 import {
   NewOpportunityFormDialog,
@@ -151,6 +152,44 @@ function formatEtapaDate(dateStr: string): string {
   return formatDateShortLocal(dateStr);
 }
 
+function buildPipelineFromOpportunities(
+  allOpps: Opportunity[],
+  columnConfigs: PipelineStageColumnConfig[],
+): PipelineColumn[] {
+  return columnConfigs.map(({ id, title }) => {
+    const columnOpps = allOpps.filter((o) => o.etapa === id);
+    return {
+      id,
+      title,
+      contacts: [],
+      opportunities: columnOpps,
+      totalValue: columnOpps.reduce((sum, o) => sum + (o.amount ?? 0), 0),
+    };
+  });
+}
+
+function mergePipelineColumnsFromOpportunities(
+  base: PipelineStageColumnConfig[],
+  opps: Opportunity[],
+): PipelineStageColumnConfig[] {
+  const seen = new Set(base.map((c) => c.id));
+  const tail: PipelineStageColumnConfig[] = [];
+  for (const opp of opps) {
+    const e = opp.etapa;
+    if (seen.has(e)) continue;
+    seen.add(e);
+    const fb = FALLBACK_PIPELINE_COLUMNS.find((x) => x.id === e);
+    tail.push(
+      fb ?? {
+        id: e,
+        title: etapaLabels[e] ?? e,
+        accentColor: '#94a3b8',
+      },
+    );
+  }
+  return [...base, ...tail];
+}
+
 function buildPipeline(
   allContacts: Contact[],
   columnConfigs: PipelineStageColumnConfig[],
@@ -194,6 +233,43 @@ const activityTypeIconMap: Record<ActivityType, typeof Phone> = {
 
 // --- Draggable card: useDraggable hace menos trabajo por frame que useSortable + SortableContext.
 //    Misma LeadCard en lista y en DragOverlay (UX); colisión solo contra columnas (pipelineCollisionDetection).
+
+interface PipelineOppCardProps {
+  opportunity: Opportunity;
+  overlay?: boolean;
+  onCardClick?: (opportunity: Opportunity) => void;
+}
+
+const PipelineOppCard = memo(function PipelineOppCard({
+  opportunity,
+  overlay,
+  onCardClick,
+}: PipelineOppCardProps) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: opportunity.id,
+    data: { opportunity, type: 'opportunity' },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={isDragging ? { opacity: 0.35 } : undefined}
+      className={cn(
+        'touch-none cursor-grab select-none active:cursor-grabbing',
+        isDragging && 'will-change-transform',
+      )}
+      {...attributes}
+      {...listeners}
+    >
+      <OpportunityCard
+        opportunity={opportunity}
+        isDragging={isDragging}
+        overlay={overlay}
+        onCardClick={onCardClick}
+      />
+    </div>
+  );
+});
 
 interface PipelineLeadCardProps {
   lead: Contact;
@@ -345,6 +421,109 @@ const LeadCard = memo(function LeadCard({
   );
 });
 
+// --- Opportunity Card for Pipeline ---
+
+interface OpportunityCardProps {
+  opportunity: Opportunity;
+  isDragging?: boolean;
+  overlay?: boolean;
+  onCardClick?: (opp: Opportunity) => void;
+}
+
+const OpportunityCard = memo(function OpportunityCard({
+  opportunity,
+  isDragging,
+  overlay,
+  onCardClick,
+}: OpportunityCardProps) {
+  const navigate = useNavigate();
+
+  const handleNameClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    navigate(opportunityDetailHref(opportunity));
+  };
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (onCardClick) {
+      onCardClick(opportunity);
+    }
+  };
+
+  return (
+    <div
+      className={cn(
+        'group relative select-none rounded-lg border border-border bg-[var(--pipeline-kanban-surface)] p-3.5 text-card-foreground shadow-none',
+        !overlay && [
+          'transition-[box-shadow,border-color,opacity] duration-150',
+          'dark:shadow-md dark:shadow-black/35',
+          'hover:border-primary/30 dark:hover:shadow-lg dark:hover:shadow-black/40',
+        ],
+        isDragging && 'opacity-40',
+        overlay && 'pointer-events-none rotate-2 shadow-xl border-primary/40',
+      )}
+      onClick={onCardClick ? handleCardClick : undefined}
+    >
+      {onCardClick && !overlay && (
+        <button
+          type="button"
+          className="absolute right-2 top-2 z-[1] rounded p-1 text-muted-foreground opacity-60 transition-opacity hover:bg-muted hover:opacity-100 hover:text-foreground"
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            onCardClick(opportunity);
+          }}
+          aria-label="Ver detalle del proceso"
+        >
+          <Info className="size-4" />
+        </button>
+      )}
+      <div className="space-y-2.5">
+        <div>
+          {overlay ? (
+            <span className="block w-full truncate text-left text-sm font-semibold text-foreground">
+              {opportunity.title}
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={handleNameClick}
+              className="block w-full truncate text-left text-sm font-semibold text-foreground hover:underline hover:text-primary"
+            >
+              {opportunity.title}
+            </button>
+          )}
+          <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+            <Building2 className="size-3 shrink-0" />
+            {opportunity.clientName ?? '—'}
+          </p>
+          {opportunity.contactName && (
+            <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+              <User className="size-3 shrink-0" />
+              {opportunity.contactName}
+            </p>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-bold text-foreground">
+            {formatCurrencyShort(opportunity.amount ?? 0)}
+          </span>
+        </div>
+
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span className="flex items-center gap-1 truncate">
+            <User className="size-3 shrink-0" />
+            <span className="truncate">{(opportunity.assignedToName ?? '').split(' ')[0]}</span>
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+});
+
 // --- Card Detail Dialog ---
 
 interface CardDetailDialogProps {
@@ -372,14 +551,16 @@ function CardDetailDialog({
   const opportunity = pipelineOpportunity;
   const company = contact ? getPrimaryCompany(contact) : undefined;
 
-  if (!contact) return null;
+  if (!contact && !opportunity) return null;
 
-  const currentIndex = stageColumns.findIndex((c) => c.id === contact.etapa);
-  const history = contact.etapaHistory ?? [];
+  const currentEtapa = opportunity?.etapa ?? contact?.etapa;
+  const currentIndex = stageColumns.findIndex((c) => c.id === currentEtapa);
+  const history = contact?.etapaHistory ?? [];
   const today = new Date().toISOString().slice(0, 10);
 
+  const opportunityId = opportunity?.id ?? contact?.id;
   const recentActivities = activities
-    .filter((a) => a.contactId === contact.id)
+    .filter((a) => a.contactId === opportunityId || a.opportunityId === opportunityId)
     .sort((a, b) => {
       const da = a.completedAt ?? a.createdAt;
       const db = b.completedAt ?? b.createdAt;
@@ -392,7 +573,7 @@ function CardDetailDialog({
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-lg">
-            {opportunity?.title ?? contact.name}
+            {opportunity?.title ?? contact?.name ?? ''}
           </DialogTitle>
         </DialogHeader>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_1.2fr]">
@@ -401,10 +582,10 @@ function CardDetailDialog({
             <p className="mb-2 text-xs font-medium text-muted-foreground">Progreso en el pipeline</p>
             <div className="max-h-48 space-y-1.5 overflow-y-auto sm:max-h-[calc(90vh-10rem)]">
               {stageColumns.map((col, idx) => {
-                const isCurrent = col.id === contact.etapa;
+                const isCurrent = col.id === currentEtapa;
                 const isPast = currentIndex >= 0 && idx < currentIndex;
-                const etapaEntry = history.find((e) => e.etapa === col.id);
-                const nextEntry = history[history.findIndex((e) => e.etapa === col.id) + 1];
+                const etapaEntry = history.find((e) => (e as { etapa: string }).etapa === col.id);
+                const nextEntry = history[(history.findIndex((e) => (e as { etapa: string }).etapa === col.id)) + 1];
                 const fecha = etapaEntry ? formatEtapaDate(etapaEntry.fecha) : (isPast || isCurrent ? '—' : 'Pendiente');
                 const dias = etapaEntry && nextEntry ? daysBetween(etapaEntry.fecha, nextEntry.fecha) : (etapaEntry && isCurrent ? daysBetween(etapaEntry.fecha, today) : null);
                 const diasLabel = dias !== null ? (dias === 0 ? '<1 día' : dias === 1 ? '1 día' : `${dias} días`) : null;
@@ -449,11 +630,11 @@ function CardDetailDialog({
           <div className="space-y-1 text-sm text-muted-foreground">
             <p className="flex items-center gap-1.5">
               <Building2 className="size-3.5 shrink-0" />
-              {company?.name ?? '—'}
+              {opportunity?.clientName ?? company?.name ?? '—'}
             </p>
             <p className="flex items-center gap-1.5">
               <User className="size-3.5 shrink-0" />
-              {contact.name}
+              {opportunity?.contactName ?? contact?.name ?? '—'}
             </p>
           </div>
 
@@ -484,7 +665,7 @@ function CardDetailDialog({
           <div className="flex flex-wrap gap-3 border-t pt-3">
             <div>
               <p className="text-[10px] text-muted-foreground">Valor</p>
-              <p className="text-sm font-semibold">{formatCurrencyShort(opportunity?.amount ?? contact.estimatedValue)}</p>
+              <p className="text-sm font-semibold">{formatCurrencyShort(opportunity?.amount ?? contact?.estimatedValue ?? 0)}</p>
             </div>
             {opportunity && (
               <>
@@ -505,7 +686,7 @@ function CardDetailDialog({
             )}
             <div>
               <p className="text-[10px] text-muted-foreground">Asignado</p>
-              <p className="text-sm">{contact.assignedToName}</p>
+              <p className="text-sm">{opportunity?.assignedToName ?? contact?.assignedToName ?? '—'}</p>
             </div>
           </div>
 
@@ -527,7 +708,7 @@ function CardDetailDialog({
               onOpenChange(false);
               if (opportunity) {
                 navigate(opportunityDetailHref(opportunity));
-              } else {
+              } else if (contact) {
                 navigate(contactDetailHref(contact));
               }
             }}
@@ -546,9 +727,8 @@ function CardDetailDialog({
 interface KanbanColumnProps {
   column: PipelineColumn;
   accentColor: string;
-  onCardClick?: (contact: Contact) => void;
-  pipelineOpportunityFor: (contactId: string) => Opportunity | undefined;
-  /** Zona de suelta visual (estilo HubSpot): solo UI, sin persistir aquí. */
+  onCardClick?: (opp: Opportunity) => void;
+  pipelineOpportunityFor?: (contactId: string) => Opportunity | undefined;
   showDropPlaceholder?: boolean;
 }
 
@@ -617,11 +797,13 @@ const KanbanColumn = memo(function KanbanColumn({
     [setNodeRef],
   );
 
-  const contacts = column.contacts;
-  const useVirtual = contacts.length >= PIPELINE_VIRTUAL_MIN_CARDS;
+  const contacts = column.contacts ?? [];
+  const opportunities = column.opportunities ?? [];
+  const items = opportunities.length > 0 ? opportunities : contacts;
+  const useVirtual = items.length >= PIPELINE_VIRTUAL_MIN_CARDS;
 
   const virtualizer = useVirtualizer({
-    count: useVirtual ? contacts.length : 0,
+    count: useVirtual ? items.length : 0,
     enabled: useVirtual,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => PIPELINE_CARD_ESTIMATE_PX,
@@ -637,7 +819,7 @@ const KanbanColumn = memo(function KanbanColumn({
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <h3 className="min-w-0 truncate text-sm font-semibold text-foreground">{column.title}</h3>
           <Badge variant="secondary" className="shrink-0 font-bold tabular-nums">
-            {column.contacts.length}
+            {items.length}
           </Badge>
         </div>
         <span className="shrink-0 text-xs font-medium text-muted-foreground">
@@ -651,10 +833,41 @@ const KanbanColumn = memo(function KanbanColumn({
       >
         {showDropPlaceholder && <ColumnDropSlot accentColor={accentColor} />}
 
-        {contacts.length === 0 && !showDropPlaceholder ? (
+        {items.length === 0 && !showDropPlaceholder ? (
           <div className="flex flex-1 items-center justify-center rounded-md border border-dashed py-8 text-xs text-muted-foreground">
-            Sin contactos
+            Sin oportunidades
           </div>
+        ) : opportunities.length > 0 ? (
+          useVirtual ? (
+            <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
+              {virtualizer.getVirtualItems().map((v) => {
+                const opp = opportunities[v.index];
+                if (!opp) return null;
+                return (
+                  <div
+                    key={opp.id}
+                    data-index={v.index}
+                    ref={virtualizer.measureElement}
+                    className="absolute left-0 top-0 w-full"
+                    style={{ transform: `translateY(${v.start}px)` }}
+                  >
+                    <PipelineOppCard
+                      opportunity={opp}
+                      onCardClick={onCardClick as unknown as (opp: Opportunity) => void}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            opportunities.map((opp) => (
+              <PipelineOppCard
+                key={opp.id}
+                opportunity={opp}
+                onCardClick={onCardClick as unknown as (opp: Opportunity) => void}
+              />
+            ))
+          )
         ) : useVirtual ? (
           <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
             {virtualizer.getVirtualItems().map((v) => {
@@ -670,8 +883,8 @@ const KanbanColumn = memo(function KanbanColumn({
                 >
                   <PipelineLeadCard
                     lead={contact}
-                    onCardClick={onCardClick}
-                    pipelineOpportunity={pipelineOpportunityFor(contact.id)}
+                    onCardClick={onCardClick as unknown as (contact: Contact) => void}
+                    pipelineOpportunity={pipelineOpportunityFor?.(contact.id)}
                   />
                 </div>
               );
@@ -682,8 +895,8 @@ const KanbanColumn = memo(function KanbanColumn({
             <PipelineLeadCard
               key={contact.id}
               lead={contact}
-              onCardClick={onCardClick}
-              pipelineOpportunity={pipelineOpportunityFor(contact.id)}
+              onCardClick={onCardClick as unknown as (contact: Contact) => void}
+              pipelineOpportunity={pipelineOpportunityFor?.(contact.id)}
             />
           ))
         )}
@@ -696,11 +909,10 @@ const KanbanColumn = memo(function KanbanColumn({
 
 interface PipelineFilters {
   assignedTo: string;
-  rubro: string;
   etapas: Etapa[];
 }
 
-const emptyFilters: PipelineFilters = { assignedTo: '', rubro: '', etapas: [] };
+const emptyFilters: PipelineFilters = { assignedTo: '', etapas: [] };
 
 /** Fusiona PATCH de detalle en la fila de lista (evita `contactListAll` tras cada movimiento). */
 function mergeListRowFromContactDetail(
@@ -760,9 +972,9 @@ export default function Pipeline() {
 
   const loadPipelineData = useCallback(async () => {
     try {
-      const [contacts, opps] = await Promise.all([contactListAll(), opportunityListAll()]);
-      setApiRows(contacts);
+      const opps = await opportunityListAll();
       setOppsApiRows(opps);
+      setApiRows([]);
     } catch {
       setApiRows([]);
       setOppsApiRows([]);
@@ -785,9 +997,9 @@ export default function Pipeline() {
     [opportunityByContactId],
   );
 
-  const allContacts = useMemo(
-    () => apiRows.map(mapApiContactRowToContact),
-    [apiRows],
+  const allOpportunities = useMemo(
+    () => oppsApiRows.map(mapApiOpportunityToOpportunity),
+    [oppsApiRows],
   );
 
   const catalogStageColumns = useMemo(
@@ -795,10 +1007,10 @@ export default function Pipeline() {
     [bundle?.catalog.stages],
   );
 
-  const displayColumns = useMemo(
-    () => mergePipelineColumns(catalogStageColumns, allContacts),
-    [catalogStageColumns, allContacts],
-  );
+  const displayColumns = useMemo(() => {
+    const oppsOnly = mergePipelineColumnsFromOpportunities(catalogStageColumns, allOpportunities);
+    return oppsOnly;
+  }, [catalogStageColumns, allOpportunities]);
 
   const [newOpportunityOpen, setNewOpportunityOpen] = useState(false);
 
@@ -827,9 +1039,71 @@ export default function Pipeline() {
     }
   }, [canSeeAllAdvisors, currentUserId, filters.assignedTo]);
 
-  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [selectedOpp, setSelectedOpp] = useState<Opportunity | null>(null);
   const [changeEtapaOpen, setChangeEtapaOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
+
+  async function applyOppEtapaUpdate(oppId: string, etapa: Etapa): Promise<void> {
+    let previousEtapa: string | undefined;
+    let hadRow = false;
+    setOppsApiRows((prev) => {
+      const cur = prev.find((r) => r.id === oppId);
+      if (!cur) return prev;
+      hadRow = true;
+      previousEtapa = cur.etapa;
+      return prev.map((r) => (r.id === oppId ? { ...r, etapa } : r));
+    });
+
+    try {
+      const updated = await opportunityUpdate(oppId, { etapa });
+      setOppsApiRows((prev) => {
+        const idx = prev.findIndex((r) => r.id === oppId);
+        if (idx === -1) {
+          void loadPipelineData();
+          return prev;
+        }
+        return prev.map((r, i) =>
+          i === idx ? { ...r, etapa: updated.etapa } : r,
+        );
+      });
+    } catch (e) {
+      if (hadRow && previousEtapa !== undefined) {
+        setOppsApiRows((prev) =>
+          prev.map((r) => (r.id === oppId ? { ...r, etapa: previousEtapa! } : r)),
+        );
+      }
+      toast.error(e instanceof Error ? e.message : 'Error al actualizar etapa');
+      throw e;
+    }
+  }
+
+  async function applyOppAssignUpdate(oppId: string, assignedTo: string): Promise<void> {
+    let previousAssigned: string | undefined;
+    let hadRow = false;
+    setOppsApiRows((prev) => {
+      const cur = prev.find((r) => r.id === oppId);
+      if (!cur) return prev;
+      hadRow = true;
+      previousAssigned = cur.assignedTo ?? undefined;
+      return prev.map((r) =>
+        r.id === oppId
+          ? { ...r, assignedTo: assignedTo || null, user: null }
+          : r,
+      );
+    });
+
+    try {
+      await opportunityUpdate(oppId, { assignedTo });
+    } catch (e) {
+      if (hadRow && previousAssigned !== undefined) {
+        setOppsApiRows((prev) =>
+          prev.map((r) => (r.id === oppId ? { ...r, assignedTo: previousAssigned } : r)),
+        );
+      }
+      toast.error(e instanceof Error ? e.message : 'Error al asignar');
+      throw e;
+    }
+  }
 
   async function applyEtapaUpdate(contactId: string, etapa: Etapa): Promise<void> {
     if (!isLikelyContactCuid(contactId)) {
@@ -924,40 +1198,34 @@ export default function Pipeline() {
     : false;
   const activeFilterCount =
     (advisorFilterIsActive ? 1 : 0) +
-    (filters.rubro ? 1 : 0) +
     (filters.etapas.length > 0 ? 1 : 0);
 
-  const filteredContacts = useMemo(() => {
+  const filteredOpportunities = useMemo(() => {
     const term = searchTerm.toLowerCase();
-    return allContacts.filter((c) => {
-      if (term && !c.name.toLowerCase().includes(term) &&
-          !getPrimaryCompany(c)?.name?.toLowerCase().includes(term) &&
-          !c.telefono?.includes(term) &&
-          !c.correo?.toLowerCase().includes(term)) return false;
-      if (filters.assignedTo && c.assignedTo !== filters.assignedTo) return false;
-      if (filters.etapas.length > 0 && !filters.etapas.includes(c.etapa)) return false;
-      if (filters.rubro) {
-        const company = getPrimaryCompany(c);
-        if (!company?.rubro || company.rubro !== filters.rubro) return false;
-      }
+    return allOpportunities.filter((o) => {
+      if (term && !o.title.toLowerCase().includes(term) &&
+          !o.clientName?.toLowerCase().includes(term) &&
+          !o.contactName?.toLowerCase().includes(term)) return false;
+      if (filters.assignedTo && o.assignedTo !== filters.assignedTo) return false;
+      if (filters.etapas.length > 0 && !filters.etapas.includes(o.etapa)) return false;
       return true;
     });
-  }, [allContacts, filters, searchTerm]);
+  }, [allOpportunities, filters, searchTerm]);
 
   const pipeline = useMemo(() => {
-    const all = buildPipeline(filteredContacts, displayColumns);
+    const all = buildPipelineFromOpportunities(filteredOpportunities, displayColumns);
     if (filters.etapas.length > 0) return all.filter((col) => filters.etapas.includes(col.id));
     return all;
-  }, [filteredContacts, filters.etapas, displayColumns]);
+  }, [filteredOpportunities, filters.etapas, displayColumns]);
 
-  const activeLead = useMemo(
-    () => (activeId ? allContacts.find((l) => l.id === activeId) : undefined),
-    [activeId, allContacts],
+  const activeOpp = useMemo(
+    () => (activeId ? allOpportunities.find((o) => o.id === activeId) : undefined),
+    [activeId, allOpportunities],
   );
 
   const totalPipelineValue = useMemo(
-    () => filteredContacts.reduce((sum, l) => sum + l.estimatedValue, 0),
-    [filteredContacts],
+    () => filteredOpportunities.reduce((sum, o) => sum + (o.amount ?? 0), 0),
+    [filteredOpportunities],
   );
 
   const columnIdsForCollision = useMemo(
@@ -983,26 +1251,26 @@ export default function Pipeline() {
     }),
   );
 
-  const handlePipelineCardClick = useCallback((c: Contact) => {
-    setSelectedContact(c);
+const handlePipelineCardClick = useCallback((o: Opportunity) => {
+    setSelectedOpp(o);
   }, []);
 
-  function findColumnByContactId(contactId: string): Etapa | undefined {
-    const lead = allContacts.find((l) => l.id === contactId);
-    return lead?.etapa;
+  function findColumnByOppId(oppId: string): Etapa | undefined {
+    const opp = allOpportunities.find((o) => o.id === oppId);
+    return opp?.etapa;
   }
 
   function resolveOverColumn(overId: string): Etapa | undefined {
     if (displayColumns.some((c) => c.id === overId)) {
       return overId as Etapa;
     }
-    return findColumnByContactId(overId);
+    return findColumnByOppId(overId);
   }
 
   function handleDragStart(event: DragStartEvent) {
     const id = event.active.id as string;
     setActiveId(id);
-    setDropTargetColumnId(findColumnByContactId(id) ?? null);
+    setDropTargetColumnId(findColumnByOppId(id) ?? null);
   }
 
   /**
@@ -1030,7 +1298,7 @@ export default function Pipeline() {
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
-    const activeContactId = active.id as string;
+    const activeOppId = active.id as string;
     clearDragUi();
     if (!over) return;
 
@@ -1040,10 +1308,10 @@ export default function Pipeline() {
 
     if (!overColumn) return;
 
-    const fromColumn = findColumnByContactId(activeContactId);
+    const fromColumn = findColumnByOppId(activeOppId);
     if (fromColumn === overColumn) return;
 
-    void applyEtapaUpdate(activeContactId, overColumn);
+    void applyOppEtapaUpdate(activeOppId, overColumn);
   }
 
   function handleDragCancel() {
@@ -1056,7 +1324,7 @@ export default function Pipeline() {
         <div className="min-w-0">
           <h1 className="text-2xl font-bold tracking-tight">Pipeline Comercial</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Arrastra las tarjetas entre columnas para cambiar la etapa del contacto.
+            Arrastra las tarjetas entre columnas para cambiar la etapa de la oportunidad.
           </p>
         </div>
 <div className="flex shrink-0 flex-wrap items-center gap-2">
@@ -1138,21 +1406,6 @@ export default function Pipeline() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-xs">Rubro</Label>
-                  <Select value={filters.rubro} onValueChange={(v) => setFilters((f) => ({ ...f, rubro: v === '_all' ? '' : v }))}>
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="Todos" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="_all">Todos</SelectItem>
-                      {Object.entries(companyRubroLabels).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>{label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label className="text-xs">Etapa</Label>
                     {filters.etapas.length > 0 && (
@@ -1209,7 +1462,7 @@ export default function Pipeline() {
           <div className="scrollbar-thin -mx-2 flex h-[calc(100dvh-13rem)] min-h-[32rem] w-full max-w-full min-w-0 gap-3 overflow-x-auto overflow-y-hidden px-2 pb-4">
             {pipeline.map((column) => {
               const colConfig = displayColumns.find((c) => c.id === column.id)!;
-              const sourceCol = activeId ? findColumnByContactId(activeId) : undefined;
+              const sourceCol = activeId ? findColumnByOppId(activeId) : undefined;
               const showSlot =
                 Boolean(activeId) &&
                 dropTargetColumnId === column.id &&
@@ -1220,8 +1473,7 @@ export default function Pipeline() {
                   key={column.id}
                   column={column}
                   accentColor={colConfig.accentColor}
-                  onCardClick={handlePipelineCardClick}
-                  pipelineOpportunityFor={pipelineOpportunityFor}
+                  onCardClick={handlePipelineCardClick as unknown as (opp: Opportunity) => void}
                   showDropPlaceholder={showSlot}
                 />
               );
@@ -1229,12 +1481,12 @@ export default function Pipeline() {
           </div>
 
           <DragOverlay dropAnimation={null}>
-            {activeLead ? (
+            {activeOpp ? (
               <div className="w-[280px]">
-                <LeadCard
-                  lead={activeLead}
+                <OpportunityCard
+                  opportunity={activeOpp}
+                  isDragging
                   overlay
-                  pipelineOpportunity={pipelineOpportunityFor(activeLead.id)}
                 />
               </div>
             ) : null}
@@ -1251,28 +1503,26 @@ export default function Pipeline() {
       />
 
       <CardDetailDialog
-        contact={selectedContact ? allContacts.find((c) => c.id === selectedContact.id) ?? selectedContact : null}
-        pipelineOpportunity={
-          selectedContact ? pipelineOpportunityFor(selectedContact.id) : undefined
-        }
-        open={!!selectedContact}
-        onOpenChange={(open) => !open && setSelectedContact(null)}
+        contact={null}
+        pipelineOpportunity={selectedOpp ?? undefined}
+        open={!!selectedOpp}
+        onOpenChange={(open) => !open && setSelectedOpp(null)}
         onOpenChangeEtapa={() => setChangeEtapaOpen(true)}
         onOpenAssign={() => setAssignOpen(true)}
         stageColumns={displayColumns}
       />
 
-      {selectedContact && (() => {
-        const freshContact = allContacts.find((c) => c.id === selectedContact.id) ?? selectedContact;
+      {selectedOpp && (() => {
+        const freshOpp = selectedOpp;
         return (
         <>
           <ChangeEtapaDialog
             open={changeEtapaOpen}
             onOpenChange={setChangeEtapaOpen}
-            entityName={pipelineOpportunityFor(selectedContact.id)?.title ?? selectedContact.name}
-            currentEtapa={freshContact.etapa}
+            entityName={freshOpp.title}
+            currentEtapa={freshOpp.etapa}
             onEtapaChange={(newEtapa) => {
-              void applyEtapaUpdate(selectedContact.id, newEtapa as Etapa)
+              void applyOppEtapaUpdate(freshOpp.id, newEtapa as Etapa)
                 .then(() => {
                   setChangeEtapaOpen(false);
                   toast.success('Etapa actualizada');
@@ -1283,10 +1533,10 @@ export default function Pipeline() {
           <AssignDialog
             open={assignOpen}
             onOpenChange={setAssignOpen}
-            entityName={pipelineOpportunityFor(selectedContact.id)?.title ?? selectedContact.name}
-            currentAssigneeId={freshContact.assignedTo}
+            entityName={freshOpp.title}
+            currentAssigneeId={freshOpp.assignedTo ?? ''}
             onAssignChange={(newAssigneeId) => {
-              void applyAssignUpdate(selectedContact.id, newAssigneeId)
+              void applyOppAssignUpdate(freshOpp.id, newAssigneeId)
                 .then(() => {
                   setAssignOpen(false);
                   toast.success('Asesor asignado');

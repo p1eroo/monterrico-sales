@@ -14,6 +14,29 @@ export class AnalyticsController {
     private readonly crmDataScope: CrmDataScopeService,
   ) {}
 
+  /** KPIs rápidos (sin charts) para carga priorizada. */
+  @Get('kpis')
+  @RequireAnyPermission('dashboard.ver', 'reportes.ver')
+  async getKPIs(
+    @Req() req: AuthedReq,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('advisorId') advisorId?: string,
+    @Query('source') source?: string,
+  ) {
+    const crmScope = await this.crmDataScope.buildScope(
+      req.user.userId,
+      req.user.roleId,
+    );
+    return this.analytics.getKPIs({
+      from,
+      to,
+      advisorId,
+      source,
+      crmScope,
+    });
+  }
+
   /** Dashboard + Reportes: KPIs y series en el rango indicado (YYYY-MM-DD). */
   @Get('summary')
   @RequireAnyPermission('dashboard.ver', 'reportes.ver')

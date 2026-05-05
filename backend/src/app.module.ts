@@ -16,7 +16,6 @@ import { ConfigModule } from '@nestjs/config';
 import { FactilizaModule } from './factiliza/factiliza.module';
 import { RolesModule } from './roles/roles.module';
 import { CampaignsModule } from './campaigns/campaigns.module';
-import { ClientsModule } from './clients/clients.module';
 import { FilesModule } from './files/files.module';
 import { CrmConfigModule } from './crm-config/crm-config.module';
 import { AnalyticsModule } from './analytics/analytics.module';
@@ -42,7 +41,6 @@ import { WhatsappModule } from './whatsapp/whatsapp.module';
     AuthModule,
     FactilizaModule,
     CampaignsModule,
-    ClientsModule,
     FilesModule,
     CrmConfigModule,
     AnalyticsModule,

@@ -35,7 +35,7 @@ import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useCrmTeamAdvisorFilter } from '@/hooks/useCrmTeamAdvisorFilter';
 import { useAppStore } from '@/store';
-import { fetchClients, updateClientApi, fetchExternalClients } from '@/lib/clientApi';
+import { fetchExternalClients } from '@/lib/clientApi';
 import { CrmDataTableSkeleton, CrmStatCardsSkeleton } from '@/components/shared/CrmListPageSkeleton';
 
 const CLIENTS_TABLE_SKELETON_COLUMNS = [
@@ -78,6 +78,11 @@ function getInitials(name: string) {
 function getDomainFromEmail(email: string): string | null {
   const match = email?.match(/@([\w.-]+\.[a-z]{2,})/i);
   return match ? match[1] : null;
+}
+
+function truncateCompanyName(name: string, maxLength = 28): string {
+  if (name.length <= maxLength) return name;
+  return name.slice(0, maxLength - 3) + '...';
 }
 
 function empresaPath(client: Client): string {
@@ -137,10 +142,7 @@ export default function Clients() {
     setLoading(true);
     setLoadError(null);
     try {
-      const [rows, externalRaw] = await Promise.all([
-        fetchClients(),
-        fetchExternalClients(currentUser.username)
-      ]);
+      const externalRaw = await fetchExternalClients(currentUser.username);
 
       const mappedExternal: Client[] = externalRaw.map((ext) => {
         const rawAsesor = (ext.asesorresponsable || '').trim().toLowerCase();
@@ -195,7 +197,7 @@ export default function Clients() {
         };
       });
 
-      setClientList([...rows, ...mappedExternal]);
+      setClientList(mappedExternal);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'No se pudieron cargar los clientes';
       setLoadError(msg);
@@ -424,15 +426,15 @@ export default function Clients() {
                       if (client.id.startsWith('ext-')) {
                         // Solo informamos que es de solo lectura, pero permitimos ver el detalle
                         toast.info('Cliente Externo', {
-                          description: 'Este registro proviene de Taxi Monterrico y es de solo lectura.',
+                          description: 'Este registro proviene del system y es de solo lectura.',
                         });
                       }
                       setSelectedClient(client);
                     }}
                   >
-                    <TableCell>
+                    <TableCell className="max-w-[280px]">
                       <div>
-                        <p className="font-medium">{client.company}</p>
+                        <p className="font-medium truncate" title={client.company}>{truncateCompanyName(client.company)}</p>
                         {emailDomain && (
                           <a
                             href={`https://${emailDomain}`}
@@ -585,17 +587,6 @@ export default function Clients() {
                     <SheetTitle className="truncate">{selectedClient.company}</SheetTitle>
                     <SheetDescription className="flex flex-wrap items-center gap-2 pt-1">
                       <ClientStatusBadge status={selectedClient.status} />
-                      {hasPermission('clientes.editar') && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 px-2 text-xs"
-                          onClick={() => setIsChangeStatusOpen(true)}
-                        >
-                          <RefreshCw className="size-3.5 mr-1" />
-                          Cambiar estado
-                        </Button>
-                      )}
                       <Button
                         variant="outline"
                         size="sm"

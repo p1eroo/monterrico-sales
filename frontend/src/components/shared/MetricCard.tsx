@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import { TrendingDown, TrendingUp } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
 interface MetricCardProps {
@@ -10,6 +11,7 @@ interface MetricCardProps {
   changeType?: 'positive' | 'negative' | 'neutral' | 'warning';
   icon: LucideIcon;
   description?: string;
+  loading?: boolean;
 }
 
 export function MetricCard({
@@ -19,7 +21,25 @@ export function MetricCard({
   changeType = 'neutral',
   icon: Icon,
   description,
+  loading,
 }: MetricCardProps) {
+  if (loading) {
+    return (
+      <Card className="relative overflow-hidden py-0">
+        <CardContent className="px-4 py-3">
+          <div className="flex items-start justify-between">
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-8 w-16" />
+              <Skeleton className="h-3 w-20" />
+            </div>
+            <Skeleton className="size-10 rounded-lg" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="relative overflow-hidden py-0">
       <CardContent className="px-4 py-3">

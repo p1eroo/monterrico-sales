@@ -3079,19 +3079,25 @@ export class ImportExportService {
         where: { id: companyId },
         select: { name: true },
       });
-      const opportunityTitle = effectiveCompanyName.trim()
-        ? formatImportedCompanyName(effectiveCompanyName.trim())
-        : companyForOpportunity?.name?.trim() || 'Oportunidad';
-      const opportunityId = await this.entitySync.ensureOpportunityForCompany(
-        companyId,
-        {
-          title: opportunityTitle,
-          amount: facturacionEstimada,
-          etapa: etapaSlug,
-          assignedTo,
-          expectedCloseDate: null,
-        },
-      );
+      const existingOpportunityId = await this.prisma.companyOpportunity.findFirst({
+        where: { companyId },
+        orderBy: { opportunity: { createdAt: 'asc' } },
+        select: { opportunityId: true },
+      });
+      const opportunityId = existingOpportunityId
+        ? existingOpportunityId.opportunityId
+        : await this.entitySync.ensureOpportunityForCompany(
+            companyId,
+            {
+              title: effectiveCompanyName.trim()
+                ? formatImportedCompanyName(effectiveCompanyName.trim())
+                : companyForOpportunity?.name?.trim() || 'Oportunidad',
+              amount: facturacionEstimada,
+              etapa: etapaSlug,
+              assignedTo,
+              expectedCloseDate: null,
+            },
+          );
 
       const contactoNombreCsv = this.rowGetImportText(row, headerIndex, [
         'contacto_nombre',
@@ -3204,7 +3210,7 @@ export class ImportExportService {
             existingContactId,
           );
         } else {
-          await this.contactsService.create(
+          const createdContact = await this.contactsService.create(
             {
               name: mergedContact.name.trim(),
               telefono: mergedContact.telefono,
@@ -3227,6 +3233,10 @@ export class ImportExportService {
             },
             undefined,
             scope,
+          );
+          await this.entitySync.ensureContactLinkedToOpportunity(
+            createdContact.id,
+            opportunityId,
           );
         }
         if (shouldRefreshExactCompanyFromImport) {

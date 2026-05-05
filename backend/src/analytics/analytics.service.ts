@@ -102,6 +102,14 @@ type CompanyWeeklyProgressRow = {
   sinCambios: number;
 };
 
+type OpportunityWeeklyProgressRow = {
+  name: string;
+  avance: number;
+  nuevoIngreso: number;
+  atraso: number;
+  sinCambios: number;
+};
+
 function startOfUtcMonth(d: Date): Date {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1, 0, 0, 0, 0));
 }
@@ -308,6 +316,204 @@ export class AnalyticsService {
       weekStart.setUTCDate(weekStart.getUTCDate() + 7);
     }
 
+    return rows;
+  }
+
+  private opportunityPortfolioBaseWhere(
+    advisorId: string | undefined,
+    sourceSlug: string | undefined,
+    _unrestricted: boolean,
+  ): Prisma.OpportunityWhereInput {
+    const w: Prisma.OpportunityWhereInput = {};
+    if (advisorId?.trim()) {
+      w.assignedTo = advisorId.trim();
+    }
+    if (sourceSlug && sourceSlug !== 'all') {
+      w.fuente = { equals: sourceSlug.trim(), mode: 'insensitive' };
+    }
+    return w;
+  }
+
+  private async buildOpportunitiesWeeklyProgress(
+    from: Date,
+    to: Date,
+    advisorId: string | undefined,
+    source: string | undefined,
+    unrestricted: boolean,
+    crmScope: CrmDataScope,
+  ): Promise<OpportunityWeeklyProgressRow[]> {
+    console.log('[DEBUG] buildOpportunitiesWeeklyProgress called:', { from: from.toISOString(), to: to.toISOString() });
+    const portfolioWhere: Prisma.OpportunityWhereInput = {
+      ...this.opportunityPortfolioBaseWhere(advisorId, source, unrestricted),
+      // Solo oportunidades relevantes (no perdidas, no inactivas)
+      status: { in: ['abierta', 'ganada', 'cerrada'] },
+    };
+
+    const [stages, portfolioOpportunities] = await Promise.all([
+      this.prisma.crmStage.findMany({
+        where: { enabled: true },
+        select: { slug: true, probability: true, sortOrder: true },
+      }),
+      this.prisma.opportunity.findMany({
+        where: portfolioWhere,
+        select: { id: true, createdAt: true, assignedTo: true },
+      }),
+    ]);
+
+    // Obtener IDs de oportunidades del portfolio
+    const portfolioOppIds = new Set(portfolioOpportunities.map((o) => o.id));
+
+    // Traer auditoría solo de las oportunidades en el portfolio
+    const auditRows = await this.prisma.auditChangeSet.findMany({
+      where: {
+        module: 'oportunidades',
+        entityType: 'Oportunidad',
+        entityId: { in: [...portfolioOppIds] },
+        entries: { some: { fieldKey: 'etapa' } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 10000,
+      include: {
+        entries: {
+          where: { fieldKey: 'etapa' },
+          select: { oldValue: true, newValue: true },
+        },
+      },
+    });
+
+    console.log('[DEBUG] Found:', {
+      stagesCount: stages.length,
+      opportunitiesCount: portfolioOpportunities.length,
+      auditRowsCount: auditRows.length,
+    });
+
+    // Debug: muestra algunos IDs de auditoría
+    if (auditRows.length > 0) {
+      console.log('[DEBUG] Sample audit entityIds:', auditRows.slice(0, 3).map((r) => r.entityId));
+      console.log('[DEBUG] Sample opportunity IDs:', portfolioOpportunities.slice(0, 3).map((o) => o.id));
+    }
+
+    const stageInfo = new Map<string, { probability: number; sortOrder: number }>();
+    for (const s of stages) {
+      stageInfo.set(s.slug, { probability: s.probability, sortOrder: s.sortOrder });
+    }
+
+    const getStageProbability = (slug: string): number => {
+      const info = stageInfo.get(slug.trim());
+      return info?.probability ?? 0;
+    };
+
+    const portfolioIds = new Set(portfolioOpportunities.map((o) => o.id));
+
+    type AuditEv = { at: Date; oldSlug: string; newSlug: string };
+    const auditsByOpp = new Map<string, AuditEv[]>();
+    for (const row of auditRows) {
+      const id = row.entityId;
+      if (!id) continue;
+      const et = row.entries[0];
+      if (!et) continue;
+      const oldSlug = et.oldValue.trim();
+      const newSlug = et.newValue.trim();
+      if (!oldSlug && !newSlug) continue;
+      console.log('[DEBUG] Audit entry:', { entityId: id, oldSlug, newSlug, date: row.createdAt });
+      const list = auditsByOpp.get(id) ?? [];
+      list.push({ at: row.createdAt, oldSlug, newSlug });
+      auditsByOpp.set(id, list);
+    }
+    for (const [, list] of auditsByOpp) {
+      list.sort((a, b) => a.at.getTime() - b.at.getTime());
+    }
+
+    console.log('[DEBUG] auditsByOpp:', auditsByOpp.size);
+
+    const rows: OpportunityWeeklyProgressRow[] = [];
+    let weekStart = startOfUtcWeekMonday(from);
+
+    while (weekStart <= to) {
+      const weekEnd = endOfUtcWeekSunday(weekStart);
+      const clipStart = maxUtcDate(weekStart, from);
+      const clipEnd = minUtcDate(weekEnd, to);
+
+      // Nuevo ingreso: oportunidades creadas en esta semana
+      const nuevoIds = new Set(
+        portfolioOpportunities
+          .filter((o) => o.createdAt >= clipStart && o.createdAt <= clipEnd)
+          .map((o) => o.id),
+      );
+      const nuevoIngreso = nuevoIds.size;
+
+      // Busca TODOS los cambios de etapa en esta semana
+      let avance = 0;
+      let atraso = 0;
+      let neutralMoves = 0;
+      let cambiosEnSemana = 0;
+
+      for (const [oid, evs] of auditsByOpp) {
+        const inWeek = evs.filter((e) => e.at >= clipStart && e.at <= clipEnd);
+        if (inWeek.length === 0) continue;
+
+        cambiosEnSemana += inWeek.length;
+
+        if (inWeek.length === 1) {
+          // Un solo cambio
+          const ev = inWeek[0]!;
+          const ro = getStageProbability(ev.oldSlug);
+          const rn = getStageProbability(ev.newSlug);
+          if (rn > ro) avance += 1;
+          else if (rn < ro) atraso += 1;
+          else neutralMoves += 1;
+        } else {
+          // Múltiples cambios: comparar primer y último
+          const firstEv = inWeek[0]!;
+          const lastEv = inWeek[inWeek.length - 1]!;
+          const firstProb = getStageProbability(firstEv.oldSlug);
+          const lastProb = getStageProbability(lastEv.newSlug);
+          if (lastProb > firstProb) {
+            // Sumar los avances intermedios también
+            for (let i = 0; i < inWeek.length - 1; i++) {
+              const curr = getStageProbability(inWeek[i]!.newSlug);
+              const next = getStageProbability(inWeek[i + 1]!.newSlug);
+              if (next > curr) avance += 1;
+              else if (next < curr) atraso += 1;
+              else neutralMoves += 1;
+            }
+          } else if (lastProb < firstProb) {
+            for (let i = 0; i < inWeek.length - 1; i++) {
+              const curr = getStageProbability(inWeek[i]!.newSlug);
+              const next = getStageProbability(inWeek[i + 1]!.newSlug);
+              if (next > curr) avance += 1;
+              else if (next < curr) atraso += 1;
+              else neutralMoves += 1;
+            }
+          } else {
+            // Mismo nivel final que inicial = no cuenta
+            neutralMoves += 1;
+          }
+        }
+      }
+
+      console.log('[DEBUG] Semana:', isoWeekNumberUtc(weekStart), { nuevoIngreso, avance, atraso, neutralMoves, cambiosEnSemana });
+
+      // Sin cambios: total portfolio menos nuevas y demás
+      const totalPortfolio = portfolioOpportunities.length;
+      const sinCambios = Math.max(
+        0,
+        totalPortfolio - nuevoIngreso - avance - atraso - neutralMoves,
+      );
+
+      rows.push({
+        name: String(isoWeekNumberUtc(weekStart)),
+        avance: avance,
+        nuevoIngreso,
+        atraso,
+        sinCambios,
+      });
+
+      weekStart = new Date(weekStart);
+      weekStart.setUTCDate(weekStart.getUTCDate() + 7);
+    }
+
+    console.log('[DEBUG] buildOpportunitiesWeeklyProgress result:', rows);
     return rows;
   }
 
@@ -850,6 +1056,15 @@ export class AnalyticsService {
       opts.crmScope,
     );
 
+    const opportunitiesWeeklyProgress = await this.buildOpportunitiesWeeklyProgress(
+      from,
+      to,
+      advisorId,
+      source,
+      unrestricted,
+      opts.crmScope,
+    );
+
     return {
       range: {
         from: from.toISOString(),
@@ -877,6 +1092,7 @@ export class AnalyticsService {
       funnelByStage,
       companiesByStage,
       companiesWeeklyProgress,
+      opportunitiesWeeklyProgress,
       performanceByAdvisor,
       pendingActivities: pendingActivitiesDto,
       contactsByPeriod,
@@ -954,6 +1170,127 @@ export class AnalyticsService {
       teamMonthlyClosed: teamMonth._sum.amount ?? 0,
       myWeeklyClosed: myWeek._sum.amount ?? 0,
       myMonthlyClosed: myMonth._sum.amount ?? 0,
+    };
+  }
+
+  /** KPIs rápidos (sin charts) para carga priorizada. */
+  async getKPIs(opts: {
+    from?: string;
+    to?: string;
+    advisorId?: string;
+    source?: string;
+    crmScope: CrmDataScope;
+  }) {
+    const { from, to } = this.resolveRange(opts.from, opts.to);
+    const unrestricted = opts.crmScope.unrestricted;
+    const advisorId = unrestricted
+      ? opts.advisorId?.trim() || undefined
+      : opts.crmScope.viewerUserId;
+
+    let source: string | undefined = opts.source?.trim();
+    if (!source || source === 'all') {
+      source = undefined;
+    } else {
+      try {
+        source = await this.crmConfig.normalizeLeadSource(source);
+      } catch {
+        /* filtro legacy */
+      }
+    }
+
+    const prevLen = to.getTime() - from.getTime();
+    const prevFrom = new Date(from.getTime() - prevLen);
+    const prevTo = new Date(from.getTime() - 1);
+
+    const cw = this.contactWhere(from, to, advisorId, source, unrestricted);
+    const pw = this.contactWhere(prevFrom, prevTo, advisorId, source, unrestricted);
+
+    const [
+      totalContacts,
+      totalContactsPrev,
+      newContactsInRange,
+      activeOpportunities,
+      closedAgg,
+      closedAggPrev,
+      pipelineAgg,
+      pendingActivitiesCount,
+      overdueActivitiesCount,
+      activitiesCompletedCount,
+    ] = await Promise.all([
+      this.prisma.contact.count({ where: cw }),
+      this.prisma.contact.count({ where: pw }),
+      this.prisma.contact.count({ where: cw }),
+      this.prisma.opportunity.count({
+        where: this.opportunityWhereOpen(advisorId, unrestricted),
+      }),
+      this.prisma.opportunity.aggregate({
+        where: this.opportunityWhereWonInRange(from, to, advisorId, unrestricted),
+        _sum: { amount: true },
+        _count: true,
+      }),
+      this.prisma.opportunity.aggregate({
+        where: this.opportunityWhereWonInRange(prevFrom, prevTo, advisorId, unrestricted),
+        _sum: { amount: true },
+      }),
+      this.prisma.opportunity.aggregate({
+        where: this.opportunityWhereOpen(advisorId, unrestricted),
+        _sum: { amount: true },
+      }),
+      this.prisma.activity.count({
+        where: this.activityWhereForAnalytics(
+          { ...TASK_ACTIVITY_FILTER, status: 'pendiente' },
+          advisorId,
+          unrestricted,
+        ),
+      }),
+      this.prisma.activity.count({
+        where: this.activityWhereForAnalytics(
+          { ...TASK_ACTIVITY_FILTER, status: 'pendiente', dueDate: { lt: new Date() } },
+          advisorId,
+          unrestricted,
+        ),
+      }),
+      this.prisma.activity.count({
+        where: this.activityWhereForAnalytics(
+          { ...TASK_ACTIVITY_FILTER, completedAt: { gte: from, lte: to } },
+          advisorId,
+          unrestricted,
+        ),
+      }),
+    ]);
+
+    const closedSalesAmount = closedAgg._sum.amount ?? 0;
+    const closedSalesPrev = closedAggPrev._sum.amount ?? 0;
+    const pipelineValue = pipelineAgg._sum.amount ?? 0;
+
+    const conversionPct =
+      totalContacts > 0
+        ? Math.round(((closedAgg._count ?? 0) / totalContacts) * 1000) / 10
+        : 0;
+
+    const pctChange = (cur: number, prev: number): string => {
+      if (prev <= 0) return cur > 0 ? '+100%' : '0%';
+      const p = Math.round(((cur - prev) / prev) * 1000) / 10;
+      return `${p >= 0 ? '+' : ''}${p}%`;
+    };
+
+    return {
+      range: { from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) },
+      totalContacts,
+      totalContactsPrev,
+      newContactsInRange,
+      activeOpportunities,
+      closedSalesAmount,
+      closedSalesPrev,
+      conversionPct,
+      pendingActivities: pendingActivitiesCount,
+      overdueFollowUps: overdueActivitiesCount,
+      pipelineValue,
+      activitiesCompleted: activitiesCompletedCount,
+      changes: {
+        contacts: pctChange(totalContacts, totalContactsPrev),
+        sales: pctChange(closedSalesAmount, closedSalesPrev),
+      },
     };
   }
 }

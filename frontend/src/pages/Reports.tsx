@@ -36,8 +36,10 @@ import { useCrmTeamAdvisorFilter } from '@/hooks/useCrmTeamAdvisorFilter';
 import { contactSourceLabels } from '@/data/mock';
 import {
   fetchAnalyticsSummary,
+  fetchAnalyticsKPIs,
   analyticsRangeFromPreset,
   type AnalyticsSummary,
+  type AnalyticsKPIs,
 } from '@/lib/analyticsApi';
 import {
   downloadReport,
@@ -63,6 +65,13 @@ const WEEKLY_COMPANY_COLORS = {
   avance: '#3b82f6',
   nuevoIngreso: '#13944C',
   retroceso: '#f59e0b',
+  sinCambios: '#ef4444',
+} as const;
+
+const WEEKLY_OPPORTUNITY_COLORS = {
+  avance: '#3b82f6',
+  nuevoIngreso: '#8b5cf6',
+  atrasoo: '#f59e0b',
   sinCambios: '#ef4444',
 } as const;
 
@@ -175,13 +184,17 @@ export default function Reports() {
   }, [canSeeAllAdvisors, currentUserId, currentUser, activeAdvisors]);
   const [sourceFilter, setSourceFilter] = useState('all');
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
+  const [kpis, setKpis] = useState<AnalyticsKPIs | null>(null);
   const [loading, setLoading] = useState(false);
+  const [kpisLoading, setKpisLoading] = useState(false);
   /** Lunes UTC (ms) de la última semana visible en el gráfico de avance semanal. */
   const [weeklyProgressCapMs, setWeeklyProgressCapMs] = useState<number | null>(null);
+  const [weeklyOppsProgressCapMs, setWeeklyOppsProgressCapMs] = useState<number | null>(null);
   const [companiesFunnelModalOpen, setCompaniesFunnelModalOpen] = useState(false);
   const [periodModalOpen, setPeriodModalOpen] = useState(false);
   const [sourceModalOpen, setSourceModalOpen] = useState(false);
   const [weeklyCompaniesModalOpen, setWeeklyCompaniesModalOpen] = useState(false);
+  const [weeklyOpportunitiesModalOpen, setWeeklyOpportunitiesModalOpen] = useState(false);
   const [conversionModalOpen, setConversionModalOpen] = useState(false);
   const [advisorPerfModalOpen, setAdvisorPerfModalOpen] = useState(false);
   const [salesByMonthModalOpen, setSalesByMonthModalOpen] = useState(false);
@@ -197,12 +210,28 @@ export default function Reports() {
   useEffect(() => {
     if (dateRange === 'custom' && (!customRange?.from || !customRange?.to)) {
       setSummary(null);
+      setKpis(null);
       return;
     }
     const { from, to } = analyticsRangeFromPreset(dateRange, customRange);
     const advisorId = advisorFilter !== 'all' ? advisorFilter : undefined;
     const source = sourceFilter !== 'all' ? sourceFilter : undefined;
     let cancelled = false;
+
+    // Cargar KPIs primero (rápido)
+    setKpisLoading(true);
+    void fetchAnalyticsKPIs({ from, to, advisorId, source })
+      .then((data) => {
+        if (!cancelled) setKpis(data);
+      })
+      .catch(() => {
+        if (!cancelled) setKpis(null);
+      })
+      .finally(() => {
+        if (!cancelled) setKpisLoading(false);
+      });
+
+    // Cargar charts después (más pesado)
     setLoading(true);
     void fetchAnalyticsSummary({ from, to, advisorId, source })
       .then((data) => {
@@ -214,6 +243,7 @@ export default function Reports() {
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
+
     return () => {
       cancelled = true;
     };
@@ -253,6 +283,11 @@ export default function Reports() {
   const companiesWeeklyProgressData = useMemo(
     () => summary?.companiesWeeklyProgress ?? [],
     [summary?.companiesWeeklyProgress],
+  );
+
+  const opportunitiesWeeklyProgressData = useMemo(
+    () => summary?.opportunitiesWeeklyProgress ?? [],
+    [summary?.opportunitiesWeeklyProgress],
   );
 
   /** Semanas desde el inicio del rango del reporte hasta la semana ISO actual (UTC); rellena ceros tras el `to` del API. */
@@ -360,7 +395,116 @@ export default function Reports() {
 
   const weeklyProgressChartData = weeklyProgressChartSlice.chartData;
 
-  const kpis = summary?.kpis;
+  /** Semanas desde el inicio del rango del reporte hasta la semana ISO actual (UTC); rellena ceros tras el `to` del API para oportunidades. */
+  const weeklyOppsProgressExtended = useMemo(() => {
+    if (!summary?.range?.from || !summary?.range?.to) return [];
+    const apiRows = summary.opportunitiesWeeklyProgress ?? [];
+    const fromD = parseAnalyticsRangeDateUtc(summary.range.from, false);
+    const toD = parseAnalyticsRangeDateUtc(summary.range.to, true);
+    const fromMon = startOfUtcWeekMonday(fromD);
+    const todayMon = startOfUtcWeekMonday(new Date());
+    let apiIdx = 0;
+    type RowOpp = {
+      name: string;
+      avance: number;
+      nuevoIngreso: number;
+      atraso: number;
+      sinCambios: number;
+      weekStartMs: number;
+    };
+    const out: RowOpp[] = [];
+    for (let cur = new Date(fromMon.getTime()); cur.getTime() <= todayMon.getTime(); ) {
+      const axisName = weekAxisLabelUtc(cur);
+      let row: Omit<RowOpp, 'weekStartMs'>;
+      if (cur.getTime() <= toD.getTime()) {
+        if (apiIdx < apiRows.length) {
+          const api = apiRows[apiIdx]!;
+          apiIdx += 1;
+          row = { avance: api.avance, nuevoIngreso: api.nuevoIngreso, atraso: api.atraso, sinCambios: api.sinCambios, name: axisName };
+        } else {
+          row = {
+            name: axisName,
+            avance: 0,
+            nuevoIngreso: 0,
+            atraso: 0,
+            sinCambios: 0,
+          };
+        }
+      } else {
+        row = {
+          name: axisName,
+          avance: 0,
+          nuevoIngreso: 0,
+          atraso: 0,
+          sinCambios: 0,
+        };
+      }
+      out.push({ ...row, weekStartMs: cur.getTime() });
+      const next = new Date(cur.getTime());
+      next.setUTCDate(next.getUTCDate() + 7);
+      cur = next;
+    }
+    return out;
+  }, [summary]);
+
+  const weeklyOppsProgressChartEmpty = useMemo(
+    () => !weeklyOppsProgressExtended.some((r) => r.avance || r.nuevoIngreso || r.atraso || r.sinCambios),
+    [weeklyOppsProgressExtended],
+  );
+
+  const weeklyOppsProgressWeekOptions = useMemo(
+    () =>
+      weeklyOppsProgressExtended.map((r) => ({
+        value: String(r.weekStartMs),
+        label: `Hasta ${r.name}`,
+      })),
+    [weeklyOppsProgressExtended],
+  );
+
+  const weeklyOppsProgressDefaultCapMs = useMemo(() => {
+    if (!weeklyOppsProgressExtended.length) return null;
+    return weeklyOppsProgressExtended[weeklyOppsProgressExtended.length - 1]!.weekStartMs;
+  }, [weeklyOppsProgressExtended]);
+
+  useEffect(() => {
+    if (weeklyOppsProgressDefaultCapMs != null) {
+      setWeeklyOppsProgressCapMs(weeklyOppsProgressDefaultCapMs);
+    } else {
+      setWeeklyOppsProgressCapMs(null);
+    }
+  }, [weeklyOppsProgressDefaultCapMs]);
+
+  const weeklyOppsProgressChartSlice = useMemo(() => {
+    const cap = weeklyOppsProgressCapMs ?? weeklyOppsProgressDefaultCapMs;
+    if (cap == null) {
+      return {
+        chartData: [] as {
+          name: string;
+          advance: number;
+          nuevoIngreso: number;
+          atraso: number;
+          sinCambios: number;
+        }[],
+        truncated: false,
+        omittedWeeks: 0,
+      };
+    }
+    const rows = weeklyOppsProgressExtended
+      .filter((r) => r.weekStartMs <= cap)
+      .map(({ weekStartMs: _w, ...rest }) => rest);
+    const max = WEEKLY_COMPANY_CHART_MAX_WEEKS;
+    if (rows.length <= max) {
+      return { chartData: rows, truncated: false, omittedWeeks: 0 };
+    }
+    return {
+      chartData: rows.slice(-max),
+      truncated: true,
+      omittedWeeks: rows.length - max,
+    };
+  }, [weeklyOppsProgressExtended, weeklyOppsProgressCapMs, weeklyOppsProgressDefaultCapMs]);
+
+  const weeklyOppsProgressChartData = weeklyOppsProgressChartSlice.chartData;
+
   const leadsByPeriodData = summary?.contactsByPeriod ?? [];
   const conversionData = summary?.conversionByMonth ?? [];
   const activitiesByTypeData = summary?.activitiesByTypeData ?? [];
@@ -671,7 +815,7 @@ export default function Reports() {
 
       {/* Summary Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {loading
+        {loading || kpisLoading
           ? Array.from({ length: 4 }, (_, i) => (
               <Card key={`sk-${i}`} className="py-0">
                 <CardContent className="space-y-3 px-4 py-3">
@@ -1442,6 +1586,214 @@ export default function Reports() {
                 </BarChart>
               </ResponsiveContainer>
             </ChartCardBody>
+          </CardContent>
+        </Card>
+
+        <Dialog open={weeklyOpportunitiesModalOpen} onOpenChange={setWeeklyOpportunitiesModalOpen}>
+          <DialogContent className={dialogContentClass} showCloseButton>
+            <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
+              <DialogTitle className="pr-8 text-base">Avance semanal · Oportunidades</DialogTitle>
+            </DialogHeader>
+            <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 sm:px-6 sm:pb-6">
+              {!weeklyOppsProgressChartEmpty ? (
+                <div className="h-[560px] min-h-[360px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={weeklyOppsProgressChartData}
+                      layout="vertical"
+                      margin={{ left: 4, right: 12, top: 8, bottom: 16 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" horizontal stroke={chartTheme.gridStroke} />
+                      <XAxis type="number" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
+                      <YAxis
+                        type="category"
+                        dataKey="name"
+                        width={76}
+                        tick={{ fontSize: 10 }}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          borderRadius: '8px',
+                          border: `1px solid ${chartTheme.tooltipBorder}`,
+                          backgroundColor: chartTheme.tooltipBg,
+                          color: chartTheme.tooltipText,
+                          fontSize: '13px',
+                        }}
+                        itemStyle={{ color: chartTheme.tooltipText }}
+                        labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
+                      />
+                      <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: 8 }} />
+                      <Bar
+                        dataKey="avance"
+                        name="Avance"
+                        stackId="weeklyOpps"
+                        fill={WEEKLY_OPPORTUNITY_COLORS.avance}
+                        radius={[0, 0, 0, 0]}
+                        barSize={18}
+                      />
+                      <Bar
+                        dataKey="nuevoIngreso"
+                        name="Nuevo"
+                        stackId="weeklyOpps"
+                        fill={WEEKLY_OPPORTUNITY_COLORS.nuevoIngreso}
+                        barSize={18}
+                      />
+                      <Bar
+                        dataKey="atraso"
+                        name="Atraso"
+                        stackId="weeklyOpps"
+                        fill={WEEKLY_OPPORTUNITY_COLORS.atrasoo}
+                        barSize={18}
+                      />
+                      <Bar
+                        dataKey="sinCambios"
+                        name="Sin cambios"
+                        stackId="weeklyOpps"
+                        fill={WEEKLY_OPPORTUNITY_COLORS.sinCambios}
+                        radius={[0, 4, 4, 0]}
+                        barSize={18}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
+                  No hay datos de oportunidades
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* 2. Avance semanal - Oportunidades */}
+        <Card>
+          <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0 space-y-2">
+              <CardTitle className="text-base">Avance semanal · Oportunidades</CardTitle>
+              <CardDescription className="text-sm leading-tight">
+                Cambios de etapa por semana
+                {weeklyOppsProgressChartSlice.truncated && (
+                  <span className="mt-1 block text-xs text-muted-foreground">
+                    Mostrando las últimas {WEEKLY_COMPANY_CHART_MAX_WEEKS} semanas; se omiten{' '}
+                    {weeklyOppsProgressChartSlice.omittedWeeks} semana
+                    {weeklyOppsProgressChartSlice.omittedWeeks === 1 ? '' : 's'} anteriores para
+                    mantener el gráfico legible.
+                  </span>
+                )}
+              </CardDescription>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              {weeklyOppsProgressWeekOptions.length > 0 && (
+                <>
+                  <Select
+                    value={
+                      weeklyOppsProgressCapMs != null
+                        ? String(weeklyOppsProgressCapMs)
+                        : String(weeklyOppsProgressWeekOptions[weeklyOppsProgressWeekOptions.length - 1]!.value)
+                    }
+                    onValueChange={(v) => setWeeklyOppsProgressCapMs(Number(v))}
+                    disabled={loading || weeklyOppsProgressChartEmpty}
+                  >
+                    <SelectTrigger
+                      className="h-9 min-w-[160px] sm:min-w-[200px]"
+                      aria-label="Mostrar datos hasta esta semana (ISO, UTC)"
+                    >
+                      <SelectValue placeholder="Semana" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {weeklyOppsProgressWeekOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0 text-muted-foreground"
+                    onClick={() => setWeeklyOpportunitiesModalOpen(true)}
+                    disabled={loading || weeklyOppsProgressChartEmpty}
+                    aria-label="Ampliar gráfico"
+                  >
+                    <Maximize2 className="size-4" />
+                  </Button>
+                </>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <ChartCardBody
+              loading={loading}
+              isEmpty={weeklyOppsProgressChartEmpty || weeklyOppsProgressChartData.length === 0}
+              variant="bar"
+              emptyMessage="No hay datos de oportunidades."
+              className="h-[300px]"
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={weeklyOppsProgressChartData}
+                  layout="vertical"
+                  margin={{ left: 4, right: 12, top: 8, bottom: 16 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" horizontal stroke={chartTheme.gridStroke} />
+                  <XAxis type="number" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    width={76}
+                    tick={{ fontSize: 10 }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                    <Tooltip
+                      contentStyle={{
+                        borderRadius: '8px',
+                        border: `1px solid ${chartTheme.tooltipBorder}`,
+                        backgroundColor: chartTheme.tooltipBg,
+                        color: chartTheme.tooltipText,
+                        fontSize: '13px',
+                      }}
+                      itemStyle={{ color: chartTheme.tooltipText }}
+                      labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
+                    />
+                    <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: 8 }} />
+                    <Bar
+                      dataKey="avance"
+                      name="Avance"
+                      stackId="weeklyOpps"
+                      fill={WEEKLY_OPPORTUNITY_COLORS.avance}
+                      radius={[0, 0, 0, 0]}
+                      barSize={18}
+                    />
+                    <Bar
+                      dataKey="nuevoIngreso"
+                      name="Nuevo"
+                      stackId="weeklyOpps"
+                      fill={WEEKLY_OPPORTUNITY_COLORS.nuevoIngreso}
+                      barSize={18}
+                    />
+                    <Bar
+                      dataKey="atraso"
+                      name="Atraso"
+                      stackId="weeklyOpps"
+                      fill={WEEKLY_OPPORTUNITY_COLORS.atrasoo}
+                      barSize={18}
+                    />
+                    <Bar
+                      dataKey="sinCambios"
+                      name="Sin cambios"
+                      stackId="weeklyOpps"
+                      fill={WEEKLY_OPPORTUNITY_COLORS.sinCambios}
+                      radius={[0, 4, 4, 0]}
+                      barSize={18}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartCardBody>
           </CardContent>
         </Card>
 

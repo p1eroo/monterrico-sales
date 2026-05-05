@@ -62,8 +62,10 @@ import { formatCurrency, formatDateShort } from '@/lib/formatters';
 import { usePermissions } from '@/hooks/usePermissions';
 import {
   fetchAnalyticsSummary,
+  fetchAnalyticsKPIs,
   analyticsRangeFromPreset,
   type AnalyticsSummary,
+  type AnalyticsKPIs,
 } from '@/lib/analyticsApi';
 import {
   downloadReport,
@@ -105,6 +107,8 @@ export default function Dashboard() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
+  const [kpis, setKpis] = useState<AnalyticsKPIs | null>(null);
+  const [kpisLoading, setKpisLoading] = useState(false);
   const [salesChartModalOpen, setSalesChartModalOpen] = useState(false);
   const [sourceChartModalOpen, setSourceChartModalOpen] = useState(false);
   const [funnelChartModalOpen, setFunnelChartModalOpen] = useState(false);
@@ -127,10 +131,26 @@ export default function Dashboard() {
   useEffect(() => {
     if (dateRange === 'custom' && (!customRange?.from || !customRange?.to)) {
       setSummary(null);
+      setKpis(null);
       return;
     }
     const { from, to } = analyticsRangeFromPreset(dateRange, customRange);
     let cancelled = false;
+
+    // Cargar KPIs primero (rápido)
+    setKpisLoading(true);
+    void fetchAnalyticsKPIs({ from, to })
+      .then((data) => {
+        if (!cancelled) setKpis(data);
+      })
+      .catch(() => {
+        if (!cancelled) setKpis(null);
+      })
+      .finally(() => {
+        if (!cancelled) setKpisLoading(false);
+      });
+
+    // Cargar charts después (más pesado)
     setSummaryLoading(true);
     void fetchAnalyticsSummary({ from, to })
       .then((data) => {
@@ -142,6 +162,7 @@ export default function Dashboard() {
       .finally(() => {
         if (!cancelled) setSummaryLoading(false);
       });
+
     return () => {
       cancelled = true;
     };
@@ -199,8 +220,6 @@ export default function Dashboard() {
 
   const performanceByAdvisor = summary?.performanceByAdvisor ?? [];
   const salesByMonthData = summary?.salesByMonth ?? [];
-
-  const kpis = summary?.kpis;
 
   const salesChartEmpty =
     !summaryLoading &&
@@ -340,12 +359,14 @@ export default function Dashboard() {
           change={kpis ? `${kpis.changes.contacts} vs periodo anterior` : undefined}
           changeType={kpis ? changeTone(kpis.changes.contacts) : 'neutral'}
           icon={Users}
+          loading={kpisLoading}
         />
         <MetricCard
           title="Oportunidades Activas"
           value={kpis?.activeOpportunities ?? '—'}
           changeType="neutral"
           icon={Target}
+          loading={kpisLoading}
         />
         <MetricCard
           title="Ventas Cerradas"
@@ -353,12 +374,14 @@ export default function Dashboard() {
           change={kpis ? `${kpis.changes.sales} vs periodo anterior` : undefined}
           changeType={kpis ? changeTone(kpis.changes.sales) : 'neutral'}
           icon={TrendingUp}
+          loading={kpisLoading}
         />
         <MetricCard
           title="Tasa de Conversión"
           value={kpis ? `${kpis.conversionPct}%` : '—'}
           changeType="neutral"
           icon={Percent}
+          loading={kpisLoading}
         />
       </div>
 
@@ -369,12 +392,14 @@ export default function Dashboard() {
           value={kpis?.newContactsInRange ?? '—'}
           changeType="neutral"
           icon={UserPlus}
+          loading={kpisLoading}
         />
         <MetricCard
           title="Tareas pendientes"
           value={kpis?.pendingActivities ?? '—'}
           changeType="neutral"
           icon={CalendarCheck}
+          loading={kpisLoading}
         />
         <MetricCard
           title="Tareas vencidas"
@@ -386,12 +411,14 @@ export default function Dashboard() {
             kpis && kpis.overdueFollowUps > 0 ? 'warning' : 'neutral'
           }
           icon={AlertTriangle}
+          loading={kpisLoading}
         />
         <MetricCard
           title="Valor Pipeline"
           value={kpis ? formatCurrency(kpis.pipelineValue) : '—'}
           changeType="neutral"
           icon={DollarSign}
+          loading={kpisLoading}
         />
       </div>
 

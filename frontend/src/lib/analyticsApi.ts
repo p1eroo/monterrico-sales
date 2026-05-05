@@ -32,13 +32,21 @@ export type AnalyticsSummary = {
   contactsBySource: { name: string; value: number }[];
   funnelByStage: { name: string; value: number }[];
   /** Empresas creadas en el rango, agrupadas por `etapa` (mismos filtros que contactos). */
-  companiesByStage: { name: string; value: number }[];
+companiesByStage: { name: string; value: number }[];
   /** Por semana ISO (UTC): avance / nuevo / retroceso / sin cambios en cartera. */
   companiesWeeklyProgress: {
     name: string;
     avance: number;
     nuevoIngreso: number;
     retroceso: number;
+    sinCambios: number;
+  }[];
+  /** Por semana ISO (UTC): avance / nuevo / atraso / sin cambios en oportunidades. */
+  opportunitiesWeeklyProgress: {
+    name: string;
+    avance: number;
+    nuevoIngreso: number;
+    atraso: number;
     sinCambios: number;
   }[];
   performanceByAdvisor: { name: string; empresas: number; ventas: number }[];
@@ -113,6 +121,37 @@ export function analyticsRangeFromPreset(
       break;
   }
   return { from: formatLocalISODate(from), to: toStr };
+}
+
+export type AnalyticsKPIs = {
+  range: { from: string; to: string };
+  totalContacts: number;
+  totalContactsPrev: number;
+  newContactsInRange: number;
+  activeOpportunities: number;
+  closedSalesAmount: number;
+  closedSalesPrev: number;
+  conversionPct: number;
+  pendingActivities: number;
+  overdueFollowUps: number;
+  pipelineValue: number;
+  activitiesCompleted: number;
+  changes: { contacts: string; sales: string };
+};
+
+export async function fetchAnalyticsKPIs(params: {
+  from?: string;
+  to?: string;
+  advisorId?: string;
+  source?: string;
+}): Promise<AnalyticsKPIs> {
+  const q = new URLSearchParams();
+  if (params.from) q.set('from', params.from);
+  if (params.to) q.set('to', params.to);
+  if (params.advisorId) q.set('advisorId', params.advisorId);
+  if (params.source) q.set('source', params.source);
+  const qs = q.toString();
+  return api<AnalyticsKPIs>(`/analytics/kpis${qs ? `?${qs}` : ''}`);
 }
 
 export async function fetchAnalyticsSummary(params: {

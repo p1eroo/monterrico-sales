@@ -8,7 +8,6 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { EntitySyncService } from '../sync/entity-sync.service';
-import { ClientsService } from '../clients/clients.service';
 import { slugifyForUrl } from '../common/url-slug.util';
 import { CrmConfigService } from '../crm-config/crm-config.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
@@ -112,7 +111,6 @@ export class CompaniesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly entitySync: EntitySyncService,
-    private readonly clientsService: ClientsService,
     private readonly crmConfig: CrmConfigService,
     private readonly activityLogs: ActivityLogsService,
     private readonly auditDetail: AuditDetailService,
@@ -354,7 +352,6 @@ export class CompaniesService {
       if (existing) {
         await this.mergeCompanyOnDuplicateRuc(existing.id, dto);
         await this.entitySync.propagateFromCompany(existing.id);
-        await this.clientsService.ensureClientForCierreGanado(existing.id);
         await this.activityLogs.record(actor ?? null, {
           action: 'actualizar',
           module: 'empresas',
@@ -413,7 +410,6 @@ export class CompaniesService {
     });
 
     await this.entitySync.propagateFromCompany(company.id);
-    await this.clientsService.ensureClientForCierreGanado(company.id);
 
     await this.activityLogs.record(actor ?? null, {
       action: 'crear',
@@ -1019,8 +1015,6 @@ export class CompaniesService {
     if (touchedCommercial) {
       await this.entitySync.propagateFromCompany(id);
     }
-
-    await this.clientsService.ensureClientForCierreGanado(id);
 
     const etapaChanged =
       dto.etapa !== undefined && dto.etapa.trim() !== snapshot.etapa;

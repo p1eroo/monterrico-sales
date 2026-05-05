@@ -317,7 +317,8 @@ export interface DashboardMetrics {
 export interface PipelineColumn {
   id: Etapa;
   title: string;
-  contacts: Contact[];
+  contacts?: Contact[];
+  opportunities?: Opportunity[];
   totalValue: number;
 }
 

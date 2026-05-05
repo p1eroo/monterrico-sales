@@ -203,6 +203,17 @@ export async function opportunityUnlinkCompany(
   );
 }
 
+/** Actualizar oportunidad: PATCH /opportunities/:id */
+export async function opportunityUpdate(
+  opportunityId: string,
+  updates: { etapa?: string; assignedTo?: string; [key: string]: unknown },
+): Promise<ApiOpportunityDetail> {
+  return api<ApiOpportunityDetail>(`/opportunities/${opportunityId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(updates),
+  });
+}
+
 export function mapApiContactToContact(c: ApiContactFromOpportunity): Contact {
   const assignedTo = c.assignedTo ?? '';
   return {
