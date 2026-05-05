@@ -363,16 +363,15 @@ export class AnalyticsService {
     // Obtener IDs de oportunidades del portfolio
     const portfolioOppIds = new Set(portfolioOpportunities.map((o) => o.id));
 
-    // Traer auditoría solo de las oportunidades en el portfolio
+    // Traer auditoría solo de las oportunidades en el portfolio, dentro del rango de fechas
     const auditRows = await this.prisma.auditChangeSet.findMany({
       where: {
         module: 'oportunidades',
         entityType: 'Oportunidad',
         entityId: { in: [...portfolioOppIds] },
+        createdAt: { gte: from, lte: to },
         entries: { some: { fieldKey: 'etapa' } },
       },
-      orderBy: { createdAt: 'desc' },
-      take: 10000,
       include: {
         entries: {
           where: { fieldKey: 'etapa' },
@@ -494,20 +493,22 @@ export class AnalyticsService {
 
       console.log('[DEBUG] Semana:', isoWeekNumberUtc(weekStart), { nuevoIngreso, avance, atraso, neutralMoves, cambiosEnSemana });
 
-      // Sin cambios: total portfolio menos nuevas y demás
+      // Sin cambios solo si hubo actividad (movimientos) pero ninguna cambió el estado de la oportunidad
       const totalPortfolio = portfolioOpportunities.length;
-      const sinCambios = Math.max(
-        0,
-        totalPortfolio - nuevoIngreso - avance - atraso - neutralMoves,
-      );
+      const sinCambios = neutralMoves > 0
+        ? Math.max(0, totalPortfolio - nuevoIngreso - avance - atraso - neutralMoves)
+        : 0;
 
-      rows.push({
-        name: String(isoWeekNumberUtc(weekStart)),
-        avance: avance,
-        nuevoIngreso,
-        atraso,
-        sinCambios,
-      });
+      // Solo agregar semana si hubo alguna actividad real
+      if (nuevoIngreso > 0 || avance > 0 || atraso > 0 || neutralMoves > 0) {
+        rows.push({
+          name: String(isoWeekNumberUtc(weekStart)),
+          avance: avance,
+          nuevoIngreso,
+          atraso,
+          sinCambios,
+        });
+      }
 
       weekStart = new Date(weekStart);
       weekStart.setUTCDate(weekStart.getUTCDate() + 7);
@@ -564,6 +565,7 @@ export class AnalyticsService {
     crmScope: CrmDataScope;
   }) {
     const { from, to } = this.resolveRange(opts.from, opts.to);
+    console.log('[DEBUG-BACKEND] getSummary range:', { from: from.toISOString(), to: to.toISOString() });
     const unrestricted = opts.crmScope.unrestricted;
     const advisorId = unrestricted
       ? opts.advisorId?.trim() || undefined

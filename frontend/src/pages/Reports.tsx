@@ -298,7 +298,8 @@ export default function Reports() {
     const toD = parseAnalyticsRangeDateUtc(summary.range.to, true);
     const fromMon = startOfUtcWeekMonday(fromD);
     const todayMon = startOfUtcWeekMonday(new Date());
-    let apiIdx = 0;
+    // Index API rows by ISO week number so each row lands on the correct axis position.
+    const apiByWeek = new Map(apiRows.map((r) => [Number(r.name), r]));
     type Row = {
       name: string;
       avance: number;
@@ -310,30 +311,11 @@ export default function Reports() {
     const out: Row[] = [];
     for (let cur = new Date(fromMon.getTime()); cur.getTime() <= todayMon.getTime(); ) {
       const axisName = weekAxisLabelUtc(cur);
-      let row: Omit<Row, 'weekStartMs'>;
-      if (cur.getTime() <= toD.getTime()) {
-        if (apiIdx < apiRows.length) {
-          const api = apiRows[apiIdx]!;
-          apiIdx += 1;
-          row = { ...api, name: axisName };
-        } else {
-          row = {
-            name: axisName,
-            avance: 0,
-            nuevoIngreso: 0,
-            retroceso: 0,
-            sinCambios: 0,
-          };
-        }
-      } else {
-        row = {
-          name: axisName,
-          avance: 0,
-          nuevoIngreso: 0,
-          retroceso: 0,
-          sinCambios: 0,
-        };
-      }
+      const weekNum = isoWeekNumberUtc(cur);
+      const api = cur.getTime() <= toD.getTime() ? apiByWeek.get(weekNum) : undefined;
+      const row: Omit<Row, 'weekStartMs'> = api
+        ? { ...api, name: axisName }
+        : { name: axisName, avance: 0, nuevoIngreso: 0, retroceso: 0, sinCambios: 0 };
       out.push({ ...row, weekStartMs: cur.getTime() });
       const next = new Date(cur.getTime());
       next.setUTCDate(next.getUTCDate() + 7);
@@ -403,7 +385,8 @@ export default function Reports() {
     const toD = parseAnalyticsRangeDateUtc(summary.range.to, true);
     const fromMon = startOfUtcWeekMonday(fromD);
     const todayMon = startOfUtcWeekMonday(new Date());
-    let apiIdx = 0;
+    // Index API rows by ISO week number so each row lands on the correct axis position.
+    const apiByWeek = new Map(apiRows.map((r) => [Number(r.name), r]));
     type RowOpp = {
       name: string;
       avance: number;
@@ -415,30 +398,11 @@ export default function Reports() {
     const out: RowOpp[] = [];
     for (let cur = new Date(fromMon.getTime()); cur.getTime() <= todayMon.getTime(); ) {
       const axisName = weekAxisLabelUtc(cur);
-      let row: Omit<RowOpp, 'weekStartMs'>;
-      if (cur.getTime() <= toD.getTime()) {
-        if (apiIdx < apiRows.length) {
-          const api = apiRows[apiIdx]!;
-          apiIdx += 1;
-          row = { avance: api.avance, nuevoIngreso: api.nuevoIngreso, atraso: api.atraso, sinCambios: api.sinCambios, name: axisName };
-        } else {
-          row = {
-            name: axisName,
-            avance: 0,
-            nuevoIngreso: 0,
-            atraso: 0,
-            sinCambios: 0,
-          };
-        }
-      } else {
-        row = {
-          name: axisName,
-          avance: 0,
-          nuevoIngreso: 0,
-          atraso: 0,
-          sinCambios: 0,
-        };
-      }
+      const weekNum = isoWeekNumberUtc(cur);
+      const api = cur.getTime() <= toD.getTime() ? apiByWeek.get(weekNum) : undefined;
+      const row: Omit<RowOpp, 'weekStartMs'> = api
+        ? { avance: api.avance, nuevoIngreso: api.nuevoIngreso, atraso: api.atraso, sinCambios: api.sinCambios, name: axisName }
+        : { name: axisName, avance: 0, nuevoIngreso: 0, atraso: 0, sinCambios: 0 };
       out.push({ ...row, weekStartMs: cur.getTime() });
       const next = new Date(cur.getTime());
       next.setUTCDate(next.getUTCDate() + 7);
@@ -491,6 +455,7 @@ export default function Reports() {
     }
     const rows = weeklyOppsProgressExtended
       .filter((r) => r.weekStartMs <= cap)
+      .filter((r) => r.avance || r.nuevoIngreso || r.atraso || r.sinCambios)
       .map(({ weekStartMs: _w, ...rest }) => rest);
     const max = WEEKLY_COMPANY_CHART_MAX_WEEKS;
     if (rows.length <= max) {

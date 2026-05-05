@@ -134,7 +134,6 @@ export default function Clients() {
     'all',
   );
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  const [isChangeStatusOpen, setIsChangeStatusOpen] = useState(false);
 
   const { currentUser } = useAppStore();
 
@@ -256,23 +255,6 @@ export default function Clients() {
         : undefined,
     [selectedClient, users],
   );
-
-  async function handleStatusChange(newStatus: ClientStatus) {
-    if (!selectedClient) return;
-    try {
-      const updated = await updateClientApi(selectedClient.id, { status: newStatus });
-      setClientList((prev) =>
-        prev.map((c) => (c.id === selectedClient.id ? updated : c)),
-      );
-      setSelectedClient(updated);
-      setIsChangeStatusOpen(false);
-      toast.success('Estado actualizado', {
-        description: `${selectedClient.company} ahora está ${clientStatusConfig[newStatus].label.toLowerCase()}.`,
-      });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'No se pudo actualizar el estado');
-    }
-  }
 
   const statsCards = [
     { label: 'Total Clientes', value: stats.total, icon: Building2, color: 'text-[#13944C]', bg: 'bg-[#13944C]/10' },
@@ -747,32 +729,6 @@ export default function Clients() {
           )}
         </SheetContent>
       </Sheet>
-
-      <Dialog open={isChangeStatusOpen} onOpenChange={setIsChangeStatusOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Cambiar estado</DialogTitle>
-            <DialogDescription>
-              Selecciona el nuevo estado para {selectedClient?.company}.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Select
-              value={selectedClient?.status ?? ''}
-              onValueChange={(v) => void handleStatusChange(v as ClientStatus)}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Estado" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="activo">Activo</SelectItem>
-                <SelectItem value="inactivo">Inactivo</SelectItem>
-                <SelectItem value="potencial">Potencial</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
