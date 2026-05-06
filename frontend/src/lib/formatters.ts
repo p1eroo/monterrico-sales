@@ -39,6 +39,16 @@ export function formatDate(dateStr: string): string {
   });
 }
 
+/** Formatea una fecha en formato DD/MM/YYYY */
+export function formatDateDMY(dateStr: string): string {
+  if (!dateStr) return '—';
+  const d = parseDateForDisplay(dateStr);
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
 /** Formato muy corto: "15 mar" (sin año, para listas) */
 export function formatDateShort(dateStr: string): string {
   if (!dateStr) return '—';

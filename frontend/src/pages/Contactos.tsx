@@ -1,50 +1,86 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import {
-  Plus, Search, Grid3X3, List, MoreHorizontal,
-  Eye, Pencil, Trash2, X, ArrowUpDown,
-  Phone, Mail, Building2, Users, ChevronLeft, ChevronRight,
-  Upload, Download, FileSpreadsheet, Loader2,
-  Globe, Tag, User,
-} from 'lucide-react';
-import { contactSourceLabels, etapaLabels } from '@/data/mock';
-import { useUsers } from '@/hooks/useUsers';
-import { useAppStore } from '@/store';
-import { canReassignCommercialAdvisor } from '@/data/rbac';
-import { NewContactWizard, type NewContactData } from '@/components/shared/NewContactWizard';
-import { isLikelyOpportunityCuid } from '@/lib/opportunityApi';
-import { getPrimaryCompany } from '@/lib/utils';
+  Plus,
+  Search,
+  Grid3X3,
+  List,
+  MoreHorizontal,
+  Eye,
+  Pencil,
+  Trash2,
+  X,
+  ArrowUpDown,
+  Phone,
+  Mail,
+  Building2,
+  Users,
+  ChevronLeft,
+  ChevronRight,
+  Upload,
+  Download,
+  FileSpreadsheet,
+  Loader2,
+  Globe,
+  Tag,
+  User,
+} from "lucide-react";
+import { contactSourceLabels, etapaLabels } from "@/data/mock";
+import { useUsers } from "@/hooks/useUsers";
+import { useAppStore } from "@/store";
+import { canReassignCommercialAdvisor } from "@/data/rbac";
+import {
+  NewContactWizard,
+  type NewContactData,
+} from "@/components/shared/NewContactWizard";
+import { isLikelyOpportunityCuid } from "@/lib/opportunityApi";
+import { getPrimaryCompany } from "@/lib/utils";
 
-import { PageHeader } from '@/components/shared/PageHeader';
-import { ContactEditDialog, type ContactEditSavePayload } from '@/components/shared/ContactEditDialog';
-import { ContactPreviewSheet } from '@/components/shared/ContactPreviewSheet';
-import { StatusBadge } from '@/components/shared/StatusBadge';
-import { EmptyState } from '@/components/shared/EmptyState';
-import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
-import { ImportInProgressDialog } from '@/components/shared/ImportInProgressDialog';
+import { PageHeader } from "@/components/shared/PageHeader";
+import {
+  ContactEditDialog,
+  type ContactEditSavePayload,
+} from "@/components/shared/ContactEditDialog";
+import { ContactPreviewSheet } from "@/components/shared/ContactPreviewSheet";
+import { StatusBadge } from "@/components/shared/StatusBadge";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { ImportInProgressDialog } from "@/components/shared/ImportInProgressDialog";
 
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Badge } from '@/components/ui/badge';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '@/components/ui/table';
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuSeparator, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { cn } from '@/lib/utils';
-import { api } from '@/lib/api';
-import { contactDetailHref } from '@/lib/detailRoutes';
-import type { Contact } from '@/types';
-import { companyListAll } from '@/lib/companyApi';
-import { newCompanyDataToPatchBody } from '@/lib/companyWizardMap';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
+import { api } from "@/lib/api";
+import { contactDetailHref } from "@/lib/detailRoutes";
+import type { Contact } from "@/types";
+import { companyListAll } from "@/lib/companyApi";
+import { newCompanyDataToPatchBody } from "@/lib/companyWizardMap";
 import {
   type ApiContactDetail,
   type ApiContactListRow,
@@ -53,21 +89,21 @@ import {
   contactListPaginated,
   contactListEtapaCounts,
   primaryCompanyIdFromApiContact,
-} from '@/lib/contactApi';
-import { buildOptimisticContact } from '@/lib/optimisticEntities';
+} from "@/lib/contactApi";
+import { buildOptimisticContact } from "@/lib/optimisticEntities";
 import {
   generateOptimisticId,
   useOptimisticCrmStore,
-} from '@/store/optimisticCrmStore';
-import { usePermissions } from '@/hooks/usePermissions';
-import { useCrmTeamAdvisorFilter } from '@/hooks/useCrmTeamAdvisorFilter';
+} from "@/store/optimisticCrmStore";
+import { usePermissions } from "@/hooks/usePermissions";
+import { useCrmTeamAdvisorFilter } from "@/hooks/useCrmTeamAdvisorFilter";
 import {
   downloadImportExportCsv,
   previewContactsImportCsv,
   startImportJob,
   type ContactImportPreviewResult,
-} from '@/lib/importExportApi';
-import { IMPORT_SPREADSHEET_ACCEPT } from '@/lib/importSpreadsheet';
+} from "@/lib/importExportApi";
+import { IMPORT_SPREADSHEET_ACCEPT } from "@/lib/importSpreadsheet";
 import {
   Dialog,
   DialogContent,
@@ -75,12 +111,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { useImportJobsStore } from '@/store/importJobsStore';
+} from "@/components/ui/dialog";
+import { useImportJobsStore } from "@/store/importJobsStore";
 import {
   CrmDataTableSkeleton,
   CrmEntityCardGridSkeleton,
-} from '@/components/shared/CrmListPageSkeleton';
+} from "@/components/shared/CrmListPageSkeleton";
 
 const ITEMS_PER_PAGE = 25;
 
@@ -89,14 +125,16 @@ async function linkNewContactToOpportunities(
   contactId: string,
   opportunityIds: string[] | undefined,
 ): Promise<{ linked: number; hadError: boolean }> {
-  const unique = [...new Set(opportunityIds ?? [])].filter((id) => isLikelyOpportunityCuid(id));
+  const unique = [...new Set(opportunityIds ?? [])].filter((id) =>
+    isLikelyOpportunityCuid(id),
+  );
   if (unique.length === 0) return { linked: 0, hadError: false };
   let linked = 0;
   let hadError = false;
   for (const oppId of unique) {
     try {
       await api(`/opportunities/${oppId}`, {
-        method: 'PATCH',
+        method: "PATCH",
         body: JSON.stringify({ contactId }),
       });
       linked += 1;
@@ -108,22 +146,22 @@ async function linkNewContactToOpportunities(
 }
 
 const CONTACTOS_TABLE_SKELETON_COLUMNS = [
-  { label: '', className: 'w-10', skeletonCell: 'checkbox' as const },
-  { label: 'Nombre', className: 'min-w-0 max-w-[20rem]' },
-  { label: 'Empresa', className: 'hidden min-w-0 max-w-[16rem] md:table-cell' },
-  { label: 'Teléfono', className: 'hidden lg:table-cell' },
-  { label: 'Email', className: 'hidden min-w-0 max-w-[14rem] xl:table-cell' },
-  { label: 'Fuente', className: 'hidden lg:table-cell' },
-  { label: 'Cliente Recuperado', className: 'hidden lg:table-cell' },
-  { label: 'Etapa' },
-  { label: 'Asesor', className: 'hidden xl:table-cell' },
-  { label: 'Fecha', className: 'hidden md:table-cell' },
-  { label: '', className: 'w-10' },
+  { label: "", className: "w-10", skeletonCell: "checkbox" as const },
+  { label: "Nombre", className: "min-w-0 max-w-[20rem]" },
+  { label: "Empresa", className: "hidden min-w-0 max-w-[16rem] md:table-cell" },
+  { label: "Teléfono", className: "hidden lg:table-cell" },
+  { label: "Email", className: "hidden min-w-0 max-w-[14rem] xl:table-cell" },
+  { label: "Fuente", className: "hidden lg:table-cell" },
+  { label: "Cliente Recuperado", className: "hidden lg:table-cell" },
+  { label: "Etapa" },
+  { label: "Asesor", className: "hidden xl:table-cell" },
+  { label: "Fecha", className: "hidden md:table-cell" },
+  { label: "", className: "w-10" },
 ];
 
 function importPreviewCell(v: string | undefined) {
-  const t = (v ?? '').trim();
-  if (!t) return '—';
+  const t = (v ?? "").trim();
+  if (!t) return "—";
   return (
     <span className="block truncate" title={t}>
       {t}
@@ -134,31 +172,34 @@ function importPreviewCell(v: string | undefined) {
 export default function ContactosPage() {
   const navigate = useNavigate();
   const { activeAdvisors } = useUsers();
-  const currentUserRole = useAppStore((s) => s.currentUser.role ?? '');
+  const currentUserRole = useAppStore((s) => s.currentUser.role ?? "");
   const canEditAssignee = canReassignCommercialAdvisor(currentUserRole);
   const { hasPermission } = usePermissions();
   const pendingContacts = useOptimisticCrmStore((s) => s.pendingContacts);
   const addPendingContact = useOptimisticCrmStore((s) => s.addPendingContact);
-  const removePendingContact = useOptimisticCrmStore((s) => s.removePendingContact);
+  const removePendingContact = useOptimisticCrmStore(
+    (s) => s.removePendingContact,
+  );
   const isPendingContactId = useOptimisticCrmStore((s) => s.isPendingContactId);
   const [apiRows, setApiRows] = useState<ApiContactListRow[]>([]);
   const [totalContacts, setTotalContacts] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
 
-  const [search, setSearch] = useState('');
-  const [searchDebounced, setSearchDebounced] = useState('');
-  const [etapaFilter, setEtapaFilter] = useState<string>('todos');
-  const [sourceFilter, setSourceFilter] = useState<string>('todos');
-  const [advisorFilter, setAdvisorFilter] = useState<string>('todos');
+  const [search, setSearch] = useState("");
+  const [searchDebounced, setSearchDebounced] = useState("");
+  const [etapaFilter, setEtapaFilter] = useState<string>("todos");
+  const [sourceFilter, setSourceFilter] = useState<string>("todos");
+  const [advisorFilter, setAdvisorFilter] = useState<string>("todos");
   const { canSeeAllAdvisors, currentUserId } = useCrmTeamAdvisorFilter(
     advisorFilter,
     setAdvisorFilter,
-    'todos',
+    "todos",
   );
-  const [viewMode, setViewMode] = useState<'table' | 'cards'>(() => {
-    if (typeof window !== 'undefined' && window.innerWidth < 768) return 'cards';
-    return 'table';
+  const [viewMode, setViewMode] = useState<"table" | "cards">(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 768)
+      return "cards";
+    return "table";
   });
   const [page, setPage] = useState(1);
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
@@ -172,9 +213,7 @@ export default function ContactosPage() {
   const [importPreviewOpen, setImportPreviewOpen] = useState(false);
   const [importPreviewData, setImportPreviewData] =
     useState<ContactImportPreviewResult | null>(null);
-  const [pendingImportFile, setPendingImportFile] = useState<File | null>(
-    null,
-  );
+  const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
   const [previewContact, setPreviewContact] = useState<Contact | null>(null);
   const [editContact, setEditContact] = useState<Contact | null>(null);
   const [etapaTabCounts, setEtapaTabCounts] = useState<Record<
@@ -205,9 +244,9 @@ export default function ContactosPage() {
         page,
         limit: ITEMS_PER_PAGE,
         search: searchDebounced || undefined,
-        etapa: etapaFilter === 'todos' ? undefined : etapaFilter,
-        fuente: sourceFilter === 'todos' ? undefined : sourceFilter,
-        assignedTo: advisorFilter === 'todos' ? undefined : advisorFilter,
+        etapa: etapaFilter === "todos" ? undefined : etapaFilter,
+        fuente: sourceFilter === "todos" ? undefined : sourceFilter,
+        assignedTo: advisorFilter === "todos" ? undefined : advisorFilter,
       });
       setApiRows(res.data);
       setTotalContacts(res.total);
@@ -229,8 +268,8 @@ export default function ContactosPage() {
     try {
       const { counts } = await contactListEtapaCounts({
         search: searchDebounced || undefined,
-        fuente: sourceFilter === 'todos' ? undefined : sourceFilter,
-        assignedTo: advisorFilter === 'todos' ? undefined : advisorFilter,
+        fuente: sourceFilter === "todos" ? undefined : sourceFilter,
+        assignedTo: advisorFilter === "todos" ? undefined : advisorFilter,
       });
       setEtapaTabCounts(counts);
     } catch {
@@ -271,15 +310,15 @@ export default function ContactosPage() {
 
   useEffect(() => {
     if (etapaTabCounts == null) return;
-    if (etapaFilter === 'todos') return;
+    if (etapaFilter === "todos") return;
     if ((effectiveEtapaTabCounts[etapaFilter] ?? 0) > 0) return;
-    setEtapaFilter('todos');
+    setEtapaFilter("todos");
     setPage(1);
   }, [etapaTabCounts, etapaFilter, effectiveEtapaTabCounts]);
 
   function openContactDetail(contact: Contact) {
     if (isPendingContactId(contact.id)) {
-      toast.info('Guardando contacto en el servidor…');
+      toast.info("Guardando contacto en el servidor…");
       return;
     }
     navigate(contactDetailHref(contact));
@@ -291,11 +330,11 @@ export default function ContactosPage() {
 
   function openContactEdit(contact: Contact) {
     if (isPendingContactId(contact.id)) {
-      toast.info('Guardando contacto en el servidor…');
+      toast.info("Guardando contacto en el servidor…");
       return;
     }
     if (!isLikelyContactCuid(contact.id)) {
-      toast.error('Solo se pueden editar contactos guardados en el servidor');
+      toast.error("Solo se pueden editar contactos guardados en el servidor");
       return;
     }
     setEditContact(contact);
@@ -313,19 +352,21 @@ export default function ContactosPage() {
       };
       if (payload.assignedTo !== undefined && canEditAssignee) {
         if (!isLikelyContactCuid(payload.assignedTo)) {
-          toast.error('El asesor debe ser un usuario del servidor (id válido en PostgreSQL).');
-          throw new Error('invalid_assignee');
+          toast.error(
+            "El asesor debe ser un usuario del servidor (id válido en PostgreSQL).",
+          );
+          throw new Error("invalid_assignee");
         }
         body.assignedTo = payload.assignedTo;
       }
       await api<ApiContactDetail>(`/contacts/${editContact.id}`, {
-        method: 'PATCH',
+        method: "PATCH",
         body: JSON.stringify(body),
       });
       await loadApiContacts();
-      toast.success('Contacto actualizado correctamente');
+      toast.success("Contacto actualizado correctamente");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'No se pudo guardar');
+      toast.error(e instanceof Error ? e.message : "No se pudo guardar");
       throw e;
     }
   }
@@ -333,19 +374,19 @@ export default function ContactosPage() {
   const endIndex = Math.min(page * ITEMS_PER_PAGE, totalContacts);
 
   const advisorFilterIsActive = canSeeAllAdvisors
-    ? advisorFilter !== 'todos'
+    ? advisorFilter !== "todos"
     : false;
   const hasActiveFilters =
-    etapaFilter !== 'todos' ||
-    sourceFilter !== 'todos' ||
+    etapaFilter !== "todos" ||
+    sourceFilter !== "todos" ||
     advisorFilterIsActive ||
-    search !== '';
+    search !== "";
 
   function clearFilters() {
-    setSearch('');
-    setEtapaFilter('todos');
-    setSourceFilter('todos');
-    setAdvisorFilter(canSeeAllAdvisors ? 'todos' : currentUserId);
+    setSearch("");
+    setEtapaFilter("todos");
+    setSourceFilter("todos");
+    setAdvisorFilter(canSeeAllAdvisors ? "todos" : currentUserId);
     setPage(1);
   }
 
@@ -366,32 +407,34 @@ export default function ContactosPage() {
   async function handleDelete() {
     if (!contactToDelete) return;
     if (isPendingContactId(contactToDelete)) {
-      toast.error('Espera a que termine de guardarse el contacto');
+      toast.error("Espera a que termine de guardarse el contacto");
       setContactToDelete(null);
       return;
     }
     if (!isLikelyContactCuid(contactToDelete)) {
-      toast.error('Solo se pueden eliminar contactos guardados en el servidor');
+      toast.error("Solo se pueden eliminar contactos guardados en el servidor");
       setContactToDelete(null);
       return;
     }
     try {
-      await api(`/contacts/${contactToDelete}`, { method: 'DELETE' });
+      await api(`/contacts/${contactToDelete}`, { method: "DELETE" });
       await loadApiContacts();
-      toast.success('Contacto eliminado correctamente');
+      toast.success("Contacto eliminado correctamente");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'No se pudo eliminar en el servidor');
+      toast.error(
+        e instanceof Error ? e.message : "No se pudo eliminar en el servidor",
+      );
     }
     setContactToDelete(null);
   }
 
   async function onSubmitNewContact(data: NewContactData) {
     if (!data.phone?.trim()) {
-      toast.error('El teléfono es obligatorio');
+      toast.error("El teléfono es obligatorio");
       return;
     }
     if (!data.email?.trim()) {
-      toast.error('El correo es obligatorio');
+      toast.error("El correo es obligatorio");
       return;
     }
     if (data.newCompanyWizardData) {
@@ -400,17 +443,17 @@ export default function ContactosPage() {
 
       if (existingCoId) {
         if (!w.origenLead) {
-          toast.error('Selecciona la fuente del lead en el wizard de empresa');
+          toast.error("Selecciona la fuente del lead en el wizard de empresa");
           return;
         }
         try {
           await api(`/companies/${existingCoId}`, {
-            method: 'PATCH',
+            method: "PATCH",
             body: JSON.stringify(newCompanyDataToPatchBody(w)),
           });
         } catch (e) {
           toast.error(
-            e instanceof Error ? e.message : 'No se pudo actualizar la empresa',
+            e instanceof Error ? e.message : "No se pudo actualizar la empresa",
           );
           return;
         }
@@ -436,7 +479,7 @@ export default function ContactosPage() {
           body.assignedTo = data.assignedTo;
         }
 
-        const optId = generateOptimisticId('c');
+        const optId = generateOptimisticId("c");
         addPendingContact(
           buildOptimisticContact(optId, data, {
             companyDisplayName: w.nombreComercial.trim(),
@@ -446,17 +489,22 @@ export default function ContactosPage() {
         let linkedOpps = 0;
         let hadOppLinkError = false;
         try {
-          const created = await api<ApiContactDetail>('/contacts', {
-            method: 'POST',
+          const created = await api<ApiContactDetail>("/contacts", {
+            method: "POST",
             body: JSON.stringify(body),
           });
-          const r = await linkNewContactToOpportunities(created.id, data.selectedOpportunityIds);
+          const r = await linkNewContactToOpportunities(
+            created.id,
+            data.selectedOpportunityIds,
+          );
           linkedOpps = r.linked;
           hadOppLinkError = r.hadError;
         } catch (e) {
           removePendingContact(optId);
           toast.error(
-            e instanceof Error ? e.message : 'No se pudo crear el contacto en el servidor',
+            e instanceof Error
+              ? e.message
+              : "No se pudo crear el contacto en el servidor",
           );
           return;
         }
@@ -465,8 +513,9 @@ export default function ContactosPage() {
         await loadApiContacts();
         let successMsg = `Contacto "${data.name}" creado · empresa "${w.nombreComercial.trim()}" actualizada`;
         if (linkedOpps > 0) {
-          successMsg += ` · ${linkedOpps} oportunidad${linkedOpps > 1 ? 'es' : ''} vinculada${linkedOpps > 1 ? 's' : ''}`;
-          if (hadOppLinkError) successMsg += ' (algunas oportunidades no se pudieron vincular)';
+          successMsg += ` · ${linkedOpps} oportunidad${linkedOpps > 1 ? "es" : ""} vinculada${linkedOpps > 1 ? "s" : ""}`;
+          if (hadOppLinkError)
+            successMsg += " (algunas oportunidades no se pudieron vincular)";
         }
         toast.success(successMsg);
         setNewContactOpen(false);
@@ -479,11 +528,13 @@ export default function ContactosPage() {
         return 0;
       })();
       if (factEmpresa <= 0) {
-        toast.error('Indica facturación estimada de la empresa en el asistente (paso comercial u oportunidad).');
+        toast.error(
+          "Indica facturación estimada de la empresa en el asistente (paso comercial u oportunidad).",
+        );
         return;
       }
       if (!w.origenLead) {
-        toast.error('Selecciona la fuente del lead en el wizard de empresa');
+        toast.error("Selecciona la fuente del lead en el wizard de empresa");
         return;
       }
 
@@ -531,7 +582,7 @@ export default function ContactosPage() {
         body.assignedTo = data.assignedTo;
       }
 
-      const optId = generateOptimisticId('c');
+      const optId = generateOptimisticId("c");
       addPendingContact(
         buildOptimisticContact(optId, data, {
           companyDisplayName: w.nombreComercial.trim(),
@@ -543,26 +594,33 @@ export default function ContactosPage() {
       let linkedExistingOpps = 0;
       let hadExistingOppErr = false;
       try {
-        const created = await api<ApiContactDetail>('/contacts', {
-          method: 'POST',
+        const created = await api<ApiContactDetail>("/contacts", {
+          method: "POST",
           body: JSON.stringify(body),
         });
         contactId = created.id;
         companyId = primaryCompanyIdFromApiContact(created);
-        const r = await linkNewContactToOpportunities(contactId, data.selectedOpportunityIds);
+        const r = await linkNewContactToOpportunities(
+          contactId,
+          data.selectedOpportunityIds,
+        );
         linkedExistingOpps = r.linked;
         hadExistingOppErr = r.hadError;
       } catch (e) {
         removePendingContact(optId);
         toast.error(
-          e instanceof Error ? e.message : 'No se pudo crear el contacto en el servidor',
+          e instanceof Error
+            ? e.message
+            : "No se pudo crear el contacto en el servidor",
         );
         return;
       }
 
       if (!companyId) {
         removePendingContact(optId);
-        toast.error('No se pudo obtener la empresa vinculada al contacto creado');
+        toast.error(
+          "No se pudo obtener la empresa vinculada al contacto creado",
+        );
         return;
       }
 
@@ -573,11 +631,13 @@ export default function ContactosPage() {
           amount: monto,
           etapa: w.etapa,
           fuente: w.origenLead,
-          status: 'abierta',
-          priority: 'media',
+          status: "abierta",
+          priority: "media",
           expectedCloseDate:
             w.fechaCierre.trim() ||
-            new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+            new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+              .toISOString()
+              .slice(0, 10),
           contactId,
           companyId,
         };
@@ -585,29 +645,33 @@ export default function ContactosPage() {
           oppBody.assignedTo = w.propietario;
         }
         try {
-          await api('/opportunities', {
-            method: 'POST',
+          await api("/opportunities", {
+            method: "POST",
             body: JSON.stringify(oppBody),
           });
         } catch (e) {
           toast.error(
             e instanceof Error
               ? `${e.message} (contacto y empresa ya creados)`
-              : 'No se pudo crear la oportunidad; el contacto y la empresa ya están registrados',
+              : "No se pudo crear la oportunidad; el contacto y la empresa ya están registrados",
           );
         }
       }
 
       removePendingContact(optId);
       await loadApiContacts();
-      const msgParts = [`Contacto "${data.name}"`, `empresa "${w.nombreComercial.trim()}"`];
-      if (w.nombreNegocio.trim()) msgParts.push('oportunidad nueva desde el asistente');
+      const msgParts = [
+        `Contacto "${data.name}"`,
+        `empresa "${w.nombreComercial.trim()}"`,
+      ];
+      if (w.nombreNegocio.trim())
+        msgParts.push("oportunidad nueva desde el asistente");
       if (linkedExistingOpps > 0) {
         msgParts.push(
-          `${linkedExistingOpps} oportunidad existente vinculada${hadExistingOppErr ? ' (algunas no se pudieron vincular)' : ''}`,
+          `${linkedExistingOpps} oportunidad existente vinculada${hadExistingOppErr ? " (algunas no se pudieron vincular)" : ""}`,
         );
       }
-      toast.success(`${msgParts.join(' · ')} — creados correctamente`);
+      toast.success(`${msgParts.join(" · ")} — creados correctamente`);
       setNewContactOpen(false);
       return;
     }
@@ -624,13 +688,15 @@ export default function ContactosPage() {
           companyId = found.id;
         } else {
           toast.error(
-            'No existe una empresa con ese nombre. Usa «Crear empresa» en el campo Empresa o elige una existente.',
+            "No existe una empresa con ese nombre. Usa «Crear empresa» en el campo Empresa o elige una existente.",
           );
           return;
         }
       } catch (e) {
         toast.error(
-          e instanceof Error ? e.message : 'No se pudo resolver la empresa en el servidor',
+          e instanceof Error
+            ? e.message
+            : "No se pudo resolver la empresa en el servidor",
         );
         return;
       }
@@ -659,7 +725,7 @@ export default function ContactosPage() {
       body.companyId = companyId;
     }
 
-    const optIdSimple = generateOptimisticId('c');
+    const optIdSimple = generateOptimisticId("c");
     addPendingContact(
       buildOptimisticContact(optIdSimple, data, {
         companyDisplayName: data.company.trim() || undefined,
@@ -669,17 +735,22 @@ export default function ContactosPage() {
     let linkedListOpps = 0;
     let hadListOppErr = false;
     try {
-      const created = await api<ApiContactDetail>('/contacts', {
-        method: 'POST',
+      const created = await api<ApiContactDetail>("/contacts", {
+        method: "POST",
         body: JSON.stringify(body),
       });
-      const r = await linkNewContactToOpportunities(created.id, data.selectedOpportunityIds);
+      const r = await linkNewContactToOpportunities(
+        created.id,
+        data.selectedOpportunityIds,
+      );
       linkedListOpps = r.linked;
       hadListOppErr = r.hadError;
     } catch (e) {
       removePendingContact(optIdSimple);
       toast.error(
-        e instanceof Error ? e.message : 'No se pudo crear el contacto en el servidor',
+        e instanceof Error
+          ? e.message
+          : "No se pudo crear el contacto en el servidor",
       );
       return;
     }
@@ -688,8 +759,9 @@ export default function ContactosPage() {
     await loadApiContacts();
     let doneMsg = `Contacto "${data.name}" creado exitosamente`;
     if (linkedListOpps > 0) {
-      doneMsg += ` · ${linkedListOpps} oportunidad${linkedListOpps > 1 ? 'es' : ''} vinculada${linkedListOpps > 1 ? 's' : ''}`;
-      if (hadListOppErr) doneMsg += ' (algunas oportunidades no se pudieron vincular)';
+      doneMsg += ` · ${linkedListOpps} oportunidad${linkedListOpps > 1 ? "es" : ""} vinculada${linkedListOpps > 1 ? "s" : ""}`;
+      if (hadListOppErr)
+        doneMsg += " (algunas oportunidades no se pudieron vincular)";
     }
     toast.success(doneMsg);
     setNewContactOpen(false);
@@ -698,10 +770,12 @@ export default function ContactosPage() {
   async function handleContactTemplate() {
     try {
       setExportBusy(true);
-      await downloadImportExportCsv('contacts', 'template');
-      toast.success('Plantilla descargada');
+      await downloadImportExportCsv("contacts", "template");
+      toast.success("Plantilla descargada");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'No se pudo descargar la plantilla');
+      toast.error(
+        e instanceof Error ? e.message : "No se pudo descargar la plantilla",
+      );
     } finally {
       setExportBusy(false);
     }
@@ -710,10 +784,10 @@ export default function ContactosPage() {
   async function handleContactExport() {
     try {
       setExportBusy(true);
-      await downloadImportExportCsv('contacts', 'export');
-      toast.success('Exportación descargada');
+      await downloadImportExportCsv("contacts", "export");
+      toast.success("Exportación descargada");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'No se pudo exportar');
+      toast.error(e instanceof Error ? e.message : "No se pudo exportar");
     } finally {
       setExportBusy(false);
     }
@@ -725,7 +799,7 @@ export default function ContactosPage() {
 
   async function onContactImportChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    e.target.value = '';
+    e.target.value = "";
     if (!file) return;
     setImportPreviewInProgress(true);
     setImportBusy(true);
@@ -736,7 +810,7 @@ export default function ContactosPage() {
       setImportPreviewOpen(true);
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : 'Error al generar vista previa',
+        err instanceof Error ? err.message : "Error al generar vista previa",
       );
     } finally {
       setImportPreviewInProgress(false);
@@ -753,22 +827,17 @@ export default function ContactosPage() {
   async function confirmContactImport() {
     const file = pendingImportFile;
     const preview = importPreviewData;
-    if (
-      !file ||
-      !preview ||
-      preview.okCount === 0 ||
-      preview.errorCount > 0
-    ) {
+    if (!file || !preview || preview.okCount === 0 || preview.errorCount > 0) {
       closeImportPreview();
       return;
     }
     closeImportPreview();
     setImportBusy(true);
     try {
-      const job = await startImportJob('contacts', file);
+      const job = await startImportJob("contacts", file);
       enqueueImportJob(job);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Error al importar');
+      toast.error(err instanceof Error ? err.message : "Error al importar");
     } finally {
       setImportBusy(false);
     }
@@ -795,17 +864,19 @@ export default function ContactosPage() {
               {importPreviewData ? (
                 <>
                   <span className="block">
-                    {importPreviewData.okCount} fila(s) lista(s) ·{' '}
+                    {importPreviewData.okCount} fila(s) lista(s) ·{" "}
                     {importPreviewData.errorCount} con error
                     {importPreviewData.skipped
                       ? ` · ${importPreviewData.skipped} vacía(s) omitida(s)`
-                      : ''}
-                    . Teléfono, correo y fuente pueden ir en blanco. En Empresa se muestra el RUC si viene en el archivo; si no, el nombre.
+                      : ""}
+                    . Teléfono, correo y fuente pueden ir en blanco. En Empresa
+                    se muestra el RUC si viene en el archivo; si no, el nombre.
                   </span>
                   {importPreviewData.errorCount > 0 ? (
                     <span className="mt-2 block text-destructive">
-                      Corrige o elimina las filas con error en el archivo y vuelve a elegirlo. No se importará nada
-                      hasta que no queden errores en la vista previa.
+                      Corrige o elimina las filas con error en el archivo y
+                      vuelve a elegirlo. No se importará nada hasta que no
+                      queden errores en la vista previa.
                     </span>
                   ) : null}
                 </>
@@ -850,14 +921,14 @@ export default function ContactosPage() {
                         <TableRow key={row.row}>
                           <TableCell
                             className={cn(
-                              'sticky left-0 z-10 bg-background px-2 align-top tabular-nums text-muted-foreground shadow-[2px_0_6px_-4px_rgba(0,0,0,0.2)]',
+                              "sticky left-0 z-10 bg-background px-2 align-top tabular-nums text-muted-foreground shadow-[2px_0_6px_-4px_rgba(0,0,0,0.2)]",
                             )}
                           >
                             {row.row}
                           </TableCell>
                           <TableCell
                             className={cn(
-                              'sticky left-12 z-10 bg-background px-2 align-top shadow-[2px_0_6px_-4px_rgba(0,0,0,0.2)]',
+                              "sticky left-12 z-10 bg-background px-2 align-top shadow-[2px_0_6px_-4px_rgba(0,0,0,0.2)]",
                             )}
                           >
                             {row.ok ? (
@@ -868,7 +939,10 @@ export default function ContactosPage() {
                                 OK
                               </Badge>
                             ) : (
-                              <Badge variant="destructive" className="font-normal">
+                              <Badge
+                                variant="destructive"
+                                className="font-normal"
+                              >
                                 Error
                               </Badge>
                             )}
@@ -888,7 +962,7 @@ export default function ContactosPage() {
                             >
                               {row.ok
                                 ? importPreviewCell(undefined)
-                                : (row.error ?? '—')}
+                                : (row.error ?? "—")}
                             </span>
                           </TableCell>
                         </TableRow>
@@ -905,7 +979,11 @@ export default function ContactosPage() {
             )}
           </div>
           <DialogFooter className="shrink-0 border-t px-6 py-4">
-            <Button type="button" variant="outline" onClick={closeImportPreview}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={closeImportPreview}
+            >
               Cancelar
             </Button>
             <Button
@@ -917,7 +995,8 @@ export default function ContactosPage() {
               }
               onClick={() => void confirmContactImport()}
             >
-              Importar {importPreviewData ? `(${importPreviewData.okCount})` : ''}
+              Importar{" "}
+              {importPreviewData ? `(${importPreviewData.okCount})` : ""}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -929,9 +1008,14 @@ export default function ContactosPage() {
         className="hidden"
         onChange={onContactImportChange}
       />
-      <PageHeader title="Contactos" description="Gestiona y da seguimiento a tus prospectos de venta">
-        <span className="mr-2 text-sm text-muted-foreground">Total: {totalContacts}</span>
-        {hasPermission('contactos.exportar') && (
+      <PageHeader
+        title="Contactos"
+        description="Gestiona y da seguimiento a tus prospectos de venta"
+      >
+        <span className="mr-2 text-sm text-muted-foreground">
+          Total: {totalContacts}
+        </span>
+        {hasPermission("contactos.exportar") && (
           <Button
             variant="outline"
             disabled={exportBusy}
@@ -939,11 +1023,15 @@ export default function ContactosPage() {
             onClick={() => void handleContactTemplate()}
             className="bg-card"
           >
-            {exportBusy ? <Loader2 className="size-4 animate-spin" /> : <FileSpreadsheet className="size-4" />}{' '}
+            {exportBusy ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <FileSpreadsheet className="size-4" />
+            )}{" "}
             Plantilla
           </Button>
         )}
-        {hasPermission('contactos.crear') && (
+        {hasPermission("contactos.crear") && (
           <Button
             variant="outline"
             disabled={importBusy}
@@ -951,18 +1039,26 @@ export default function ContactosPage() {
             onClick={openContactImport}
             className="bg-card"
           >
-            {importBusy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}{' '}
+            {importBusy ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Upload className="size-4" />
+            )}{" "}
             Importar
           </Button>
         )}
-        {hasPermission('contactos.exportar') && (
+        {hasPermission("contactos.exportar") && (
           <Button
             variant="outline"
             disabled={exportBusy}
             onClick={() => void handleContactExport()}
             className="bg-card"
           >
-            {exportBusy ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}{' '}
+            {exportBusy ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Download className="size-4" />
+            )}{" "}
             Exportar
           </Button>
         )}
@@ -978,12 +1074,21 @@ export default function ContactosPage() {
           <Input
             placeholder="Buscar por nombre, empresa, email o teléfono..."
             value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             className="pl-9 bg-card"
           />
         </div>
         <div className="flex flex-wrap items-center gap-2 flex-1">
-          <Select value={sourceFilter} onValueChange={(v) => { setSourceFilter(v); setPage(1); }}>
+          <Select
+            value={sourceFilter}
+            onValueChange={(v) => {
+              setSourceFilter(v);
+              setPage(1);
+            }}
+          >
             <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card shadow-none">
               <div className="flex items-center gap-1.5">
                 <Globe className="size-3.5" />
@@ -993,12 +1098,20 @@ export default function ContactosPage() {
             <SelectContent>
               <SelectItem value="todos">Fuentes</SelectItem>
               {Object.entries(contactSourceLabels).map(([key, label]) => (
-                <SelectItem key={key} value={key}>{label}</SelectItem>
+                <SelectItem key={key} value={key}>
+                  {label}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
 
-          <Select value={etapaFilter} onValueChange={(v) => { setEtapaFilter(v); setPage(1); }}>
+          <Select
+            value={etapaFilter}
+            onValueChange={(v) => {
+              setEtapaFilter(v);
+              setPage(1);
+            }}
+          >
             <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card shadow-none">
               <div className="flex items-center gap-1.5">
                 <Tag className="size-3.5" />
@@ -1008,14 +1121,19 @@ export default function ContactosPage() {
             <SelectContent>
               <SelectItem value="todos">Etapas</SelectItem>
               {Object.entries(etapaLabels).map(([key, label]) => (
-                <SelectItem key={key} value={key}>{label}</SelectItem>
+                <SelectItem key={key} value={key}>
+                  {label}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
 
           <Select
             value={advisorFilter}
-            onValueChange={(v) => { setAdvisorFilter(v); setPage(1); }}
+            onValueChange={(v) => {
+              setAdvisorFilter(v);
+              setPage(1);
+            }}
             disabled={!canSeeAllAdvisors}
           >
             <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card shadow-none">
@@ -1027,7 +1145,9 @@ export default function ContactosPage() {
             <SelectContent>
               <SelectItem value="todos">Asesores</SelectItem>
               {activeAdvisors.map((u) => (
-                <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                <SelectItem key={u.id} value={u.id}>
+                  {u.name}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -1038,31 +1158,31 @@ export default function ContactosPage() {
             </Button>
           )}
 
-<div className="ml-auto hidden md:flex items-center rounded-md border bg-card">
-  <Button
-    variant={viewMode === 'table' ? 'secondary' : 'ghost'}
-    size="icon-sm"
-    onClick={() => setViewMode('table')}
-    className="rounded-r-none"
-  >
-    <List className="size-4" />
-  </Button>
-  <Button
-    variant={viewMode === 'cards' ? 'secondary' : 'ghost'}
-    size="icon-sm"
-    onClick={() => setViewMode('cards')}
-    className="rounded-l-none"
-  >
-    <Grid3X3 className="size-4" />
-  </Button>
-</div>
+          <div className="ml-auto hidden md:flex items-center rounded-md border bg-card">
+            <Button
+              variant={viewMode === "table" ? "secondary" : "ghost"}
+              size="icon-sm"
+              onClick={() => setViewMode("table")}
+              className="rounded-r-none"
+            >
+              <List className="size-4" />
+            </Button>
+            <Button
+              variant={viewMode === "cards" ? "secondary" : "ghost"}
+              size="icon-sm"
+              onClick={() => setViewMode("cards")}
+              className="rounded-l-none"
+            >
+              <Grid3X3 className="size-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
       {/* Content */}
       <div className="mt-4">
         {loading ? (
-          viewMode === 'table' ? (
+          viewMode === "table" ? (
             <CrmDataTableSkeleton
               columns={CONTACTOS_TABLE_SKELETON_COLUMNS}
               rows={10}
@@ -1070,9 +1190,14 @@ export default function ContactosPage() {
               className="bg-card"
             />
           ) : (
-            <CrmEntityCardGridSkeleton count={8} aria-label="Cargando contactos" />
+            <CrmEntityCardGridSkeleton
+              count={8}
+              aria-label="Cargando contactos"
+            />
           )
-        ) : totalContacts === 0 && apiRows.length === 0 && pendingContacts.length === 0 ? (
+        ) : totalContacts === 0 &&
+          apiRows.length === 0 &&
+          pendingContacts.length === 0 ? (
           <EmptyState
             icon={Users}
             title="No se encontraron contactos"
@@ -1080,20 +1205,24 @@ export default function ContactosPage() {
             actionLabel="Nuevo Contacto"
             onAction={() => setNewContactOpen(true)}
           />
-        ) : viewMode === 'table' ? (
+        ) : viewMode === "table" ? (
           <ContactsTable
             contacts={displayedContacts}
             selectedContacts={selectedContacts}
             onToggleSelectAll={toggleSelectAll}
             onToggleSelect={toggleSelectContact}
             allSelected={
-              selectedContacts.length === displayedContacts.length && displayedContacts.length > 0
+              selectedContacts.length === displayedContacts.length &&
+              displayedContacts.length > 0
             }
             isPendingContactId={isPendingContactId}
             onView={openContactDetail}
             onPreview={openContactPreview}
             onEdit={openContactEdit}
-            onDelete={(id) => { setContactToDelete(id); setDeleteDialogOpen(true); }}
+            onDelete={(id) => {
+              setContactToDelete(id);
+              setDeleteDialogOpen(true);
+            }}
           />
         ) : (
           <ContactsGrid
@@ -1102,7 +1231,10 @@ export default function ContactosPage() {
             onView={openContactDetail}
             onPreview={openContactPreview}
             onEdit={openContactEdit}
-            onDelete={(id) => { setContactToDelete(id); setDeleteDialogOpen(true); }}
+            onDelete={(id) => {
+              setContactToDelete(id);
+              setDeleteDialogOpen(true);
+            }}
           />
         )}
       </div>
@@ -1115,11 +1247,15 @@ export default function ContactosPage() {
               <>
                 Mostrando {startIndex}-{endIndex} de {totalContacts} contactos
                 {pendingContacts.length > 0 && (
-                  <span className="ml-1">· {pendingContacts.length} guardándose</span>
+                  <span className="ml-1">
+                    · {pendingContacts.length} guardándose
+                  </span>
                 )}
               </>
             ) : (
-              <>Contactos nuevos aparecerán aquí al sincronizar con el servidor.</>
+              <>
+                Contactos nuevos aparecerán aquí al sincronizar con el servidor.
+              </>
             )}
           </p>
           {totalContacts > 0 && (
@@ -1249,7 +1385,9 @@ function ContactsTable({
               Email
             </TableHead>
             <TableHead className="hidden lg:table-cell">Fuente</TableHead>
-            <TableHead className="hidden lg:table-cell">Cliente Recuperado</TableHead>
+            <TableHead className="hidden lg:table-cell">
+              Cliente Recuperado
+            </TableHead>
             <TableHead>Etapa</TableHead>
             <TableHead className="hidden xl:table-cell">Asesor</TableHead>
             <TableHead className="hidden md:table-cell">
@@ -1263,100 +1401,116 @@ function ContactsTable({
         <TableBody>
           {data.map((contact) => {
             const pending = isPendingContactId(contact.id);
-            const companyName = getPrimaryCompany(contact)?.name ?? '—';
+            const companyName = getPrimaryCompany(contact)?.name ?? "—";
             return (
-            <TableRow
-              key={contact.id}
-              className={pending ? 'bg-muted/40' : 'cursor-pointer'}
-              onClick={() => onView(contact)}
-            >
-              <TableCell onClick={(e) => e.stopPropagation()}>
-                <Checkbox
-                  checked={selectedContacts.includes(contact.id)}
-                  onCheckedChange={() => onToggleSelect(contact.id)}
-                />
-              </TableCell>
-              <TableCell className="min-w-0 max-w-[20rem] whitespace-normal align-top">
-                <div className="min-w-0">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <p
-                      className="min-w-0 flex-1 truncate font-medium"
-                      title={contact.name}
-                    >
-                      {contact.name}
-                    </p>
-                    {pending && (
-                      <Badge
-                        variant="secondary"
-                        className="shrink-0 gap-1 font-normal"
+              <TableRow
+                key={contact.id}
+                className={pending ? "bg-muted/40" : "cursor-pointer"}
+                onClick={() => onView(contact)}
+              >
+                <TableCell onClick={(e) => e.stopPropagation()}>
+                  <Checkbox
+                    checked={selectedContacts.includes(contact.id)}
+                    onCheckedChange={() => onToggleSelect(contact.id)}
+                  />
+                </TableCell>
+                <TableCell className="min-w-0 max-w-[20rem] whitespace-normal align-top">
+                  <div className="min-w-0">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <p
+                        className="min-w-0 flex-1 truncate font-medium"
+                        title={contact.name}
                       >
-                        <Loader2 className="size-3 animate-spin" />
-                        Guardando…
-                      </Badge>
+                        {contact.name}
+                      </p>
+                      {pending && (
+                        <Badge
+                          variant="secondary"
+                          className="shrink-0 gap-1 font-normal"
+                        >
+                          <Loader2 className="size-3 animate-spin" />
+                          Guardando…
+                        </Badge>
+                      )}
+                    </div>
+                    {contact.cargo && (
+                      <p
+                        className="truncate text-xs text-muted-foreground"
+                        title={contact.cargo}
+                      >
+                        {contact.cargo}
+                      </p>
                     )}
                   </div>
-                  {contact.cargo && (
-                    <p
-                      className="truncate text-xs text-muted-foreground"
-                      title={contact.cargo}
-                    >
-                      {contact.cargo}
-                    </p>
-                  )}
-                </div>
-              </TableCell>
-              <TableCell className="hidden min-w-0 max-w-[16rem] whitespace-normal md:table-cell align-top text-muted-foreground">
-                <span
-                  className="block truncate"
-                  title={companyName !== '—' ? companyName : undefined}
-                >
-                  {companyName}
-                </span>
-              </TableCell>
-              <TableCell className="hidden lg:table-cell text-muted-foreground">
-                {contact.telefono}
-              </TableCell>
-              <TableCell className="hidden min-w-0 max-w-[14rem] whitespace-normal xl:table-cell align-top text-muted-foreground">
-                <span className="block truncate" title={contact.correo}>
-                  {contact.correo}
-                </span>
-              </TableCell>
-              <TableCell className="hidden lg:table-cell">
-                <Badge variant="outline" className="text-xs">{contactSourceLabels[contact.fuente]}</Badge>
-              </TableCell>
-              <TableCell className="hidden lg:table-cell text-muted-foreground">
-                {contact.clienteRecuperado === 'si' ? 'Sí' : contact.clienteRecuperado === 'no' ? 'No' : '—'}
-              </TableCell>
-              <TableCell><StatusBadge status={contact.etapa} /></TableCell>
-              <TableCell className="hidden xl:table-cell text-muted-foreground">{contact.assignedToName}</TableCell>
-              <TableCell className="hidden md:table-cell text-muted-foreground">
-                {new Date(contact.createdAt).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}
-              </TableCell>
-              <TableCell onClick={(e) => e.stopPropagation()}>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon-sm">
-                      <MoreHorizontal className="size-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => onPreview(contact)}>
-                      <Eye /> Vista previa
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onEdit(contact)}>
-                      <Pencil /> Editar
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    {hasPermission('contactos.eliminar') && (
-                      <DropdownMenuItem variant="destructive" onClick={() => onDelete(contact.id)}>
-                        <Trash2 /> Eliminar
+                </TableCell>
+                <TableCell className="hidden min-w-0 max-w-[16rem] whitespace-normal md:table-cell align-top text-muted-foreground">
+                  <span
+                    className="block truncate"
+                    title={companyName !== "—" ? companyName : undefined}
+                  >
+                    {companyName}
+                  </span>
+                </TableCell>
+                <TableCell className="hidden lg:table-cell text-muted-foreground">
+                  {contact.telefono}
+                </TableCell>
+                <TableCell className="hidden min-w-0 max-w-[14rem] whitespace-normal xl:table-cell align-top text-muted-foreground">
+                  <span className="block truncate" title={contact.correo}>
+                    {contact.correo}
+                  </span>
+                </TableCell>
+                <TableCell className="hidden lg:table-cell">
+                  <Badge variant="outline" className="text-xs">
+                    {contactSourceLabels[contact.fuente]}
+                  </Badge>
+                </TableCell>
+                <TableCell className="hidden lg:table-cell text-muted-foreground">
+                  {contact.clienteRecuperado === "si"
+                    ? "Sí"
+                    : contact.clienteRecuperado === "no"
+                      ? "No"
+                      : "—"}
+                </TableCell>
+                <TableCell>
+                  <StatusBadge status={contact.etapa} />
+                </TableCell>
+                <TableCell className="hidden xl:table-cell text-muted-foreground">
+                  {contact.assignedToName}
+                </TableCell>
+                <TableCell className="hidden md:table-cell text-muted-foreground">
+                  {new Date(contact.createdAt).toLocaleDateString("es-PE", {
+                    day: "2-digit",
+                    month: "short",
+                  })}
+                </TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon-sm">
+                        <MoreHorizontal className="size-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => onPreview(contact)}>
+                        <Eye /> Vista previa
                       </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
-          );
+                      <DropdownMenuItem onClick={() => onEdit(contact)}>
+                        <Pencil /> Editar
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      {hasPermission("contactos.eliminar") && (
+                        <DropdownMenuItem
+                          variant="destructive"
+                          onClick={() => onDelete(contact.id)}
+                        >
+                          <Trash2 /> Eliminar
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            );
           })}
         </TableBody>
       </Table>
@@ -1388,107 +1542,122 @@ function ContactsGrid({
     <div className="grid w-full grid-cols-1 gap-3 px-0 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {data.map((contact) => {
         const pending = isPendingContactId(contact.id);
-        const tel = contact.telefono?.trim() ?? '';
-        const mail = contact.correo?.trim() ?? '';
-        const showTel = !!tel && tel !== '-';
+        const tel = contact.telefono?.trim() ?? "";
+        const mail = contact.correo?.trim() ?? "";
+        const showTel = !!tel && tel !== "-";
         const showMail = !!mail;
         return (
-<Card
-              key={contact.id}
-              className={
-                pending
-                  ? 'gap-0 max-w-full overflow-hidden border-dashed bg-muted/30 py-0'
-                  : 'cursor-pointer gap-0 max-w-full overflow-hidden py-0 transition-shadow hover:shadow-md'
-              }
-              onClick={() => onView(contact)}
-            >
-          <CardContent className="p-4">
-            <div className="flex items-start justify-between">
-              <div className="flex-1 min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="font-semibold truncate">{contact.name}</h3>
-                  {pending && (
-                    <Badge variant="secondary" className="shrink-0 gap-1 text-[10px] font-normal">
-                      <Loader2 className="size-3 animate-spin" />
-                      Guardando…
-                    </Badge>
+          <Card
+            key={contact.id}
+            className={
+              pending
+                ? "gap-0 max-w-full overflow-hidden border-dashed bg-muted/30 py-0"
+                : "cursor-pointer gap-0 max-w-full overflow-hidden py-0 transition-shadow hover:shadow-md"
+            }
+            onClick={() => onView(contact)}
+          >
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-semibold truncate">{contact.name}</h3>
+                    {pending && (
+                      <Badge
+                        variant="secondary"
+                        className="shrink-0 gap-1 text-[10px] font-normal"
+                      >
+                        <Loader2 className="size-3 animate-spin" />
+                        Guardando…
+                      </Badge>
+                    )}
+                  </div>
+                  {contact.cargo && (
+                    <p className="text-xs text-muted-foreground truncate">
+                      {contact.cargo}
+                    </p>
                   )}
+                  <p className="mt-0.5 flex items-center gap-1 text-sm text-muted-foreground truncate">
+                    <Building2 className="size-3 shrink-0" />{" "}
+                    {getPrimaryCompany(contact)?.name ?? "—"}
+                  </p>
                 </div>
-                {contact.cargo && <p className="text-xs text-muted-foreground truncate">{contact.cargo}</p>}
-                <p className="mt-0.5 flex items-center gap-1 text-sm text-muted-foreground truncate">
-                  <Building2 className="size-3 shrink-0" /> {getPrimaryCompany(contact)?.name ?? '—'}
-                </p>
-              </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                  <Button variant="ghost" size="icon-xs">
-                    <MoreHorizontal className="size-3.5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onPreview(contact);
-                    }}
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    asChild
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    <Eye /> Vista previa
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEdit(contact);
-                    }}
+                    <Button variant="ghost" size="icon-xs">
+                      <MoreHorizontal className="size-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="end"
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    <Pencil /> Editar
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  {hasPermission('contactos.eliminar') && (
                     <DropdownMenuItem
-                      variant="destructive"
                       onClick={(e) => {
                         e.stopPropagation();
-                        onDelete(contact.id);
+                        onPreview(contact);
                       }}
                     >
-                      <Trash2 /> Eliminar
+                      <Eye /> Vista previa
                     </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEdit(contact);
+                      }}
+                    >
+                      <Pencil /> Editar
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    {hasPermission("contactos.eliminar") && (
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete(contact.id);
+                        }}
+                      >
+                        <Trash2 /> Eliminar
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
 
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              <StatusBadge status={contact.etapa} />
-              {contact.clienteRecuperado === 'si' && (
-                <Badge variant="secondary" className="text-xs">Cliente Recuperado</Badge>
-              )}
-            </div>
-
-            {(showTel || showMail) && (
-              <div className="mt-3 space-y-1.5 text-sm text-muted-foreground">
-                {showTel && (
-                  <p className="flex items-center gap-2 truncate">
-                    <Phone className="size-3 shrink-0" /> {tel}
-                  </p>
-                )}
-                {showMail && (
-                  <p className="flex items-center gap-2 truncate">
-                    <Mail className="size-3 shrink-0" /> {mail}
-                  </p>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                <StatusBadge status={contact.etapa} />
+                {contact.clienteRecuperado === "si" && (
+                  <Badge variant="secondary" className="text-xs">
+                    Cliente Recuperado
+                  </Badge>
                 )}
               </div>
-            )}
 
-            <div className="mt-3 flex items-center justify-end border-t pt-3">
-              <span className="text-xs text-muted-foreground">{contact.assignedToName}</span>
-            </div>
-          </CardContent>
-        </Card>
-      );
+              {(showTel || showMail) && (
+                <div className="mt-3 space-y-1.5 text-sm text-muted-foreground">
+                  {showTel && (
+                    <p className="flex items-center gap-2 truncate">
+                      <Phone className="size-3 shrink-0" /> {tel}
+                    </p>
+                  )}
+                  {showMail && (
+                    <p className="flex items-center gap-2 truncate">
+                      <Mail className="size-3 shrink-0" /> {mail}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="mt-3 flex items-center justify-end border-t pt-3">
+                <span className="text-xs text-muted-foreground">
+                  {contact.assignedToName}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        );
       })}
     </div>
   );
