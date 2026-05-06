@@ -491,19 +491,20 @@ export class AnalyticsService {
         }
       }
 
-      console.log('[DEBUG] Semana:', isoWeekNumberUtc(weekStart), { nuevoIngreso, avance, atraso, neutralMoves, cambiosEnSemana });
+      // Oportunidades que ya existían en la cartera al final de esta semana
+      const portfolioThisWeek = portfolioOpportunities.filter(
+        (o) => o.createdAt <= clipEnd,
+      ).length;
 
-      // Sin cambios solo si hubo actividad (movimientos) pero ninguna cambió el estado de la oportunidad
-      const totalPortfolio = portfolioOpportunities.length;
-      const sinCambios = neutralMoves > 0
-        ? Math.max(0, totalPortfolio - nuevoIngreso - avance - atraso - neutralMoves)
-        : 0;
+      // Sin cambios = oportunidades que existían esta semana y no tuvieron ningún movimiento
+      const movedThisWeek = nuevoIngreso + avance + atraso + neutralMoves;
+      const sinCambios = Math.max(0, portfolioThisWeek - movedThisWeek);
 
-      // Solo agregar semana si hubo alguna actividad real
-      if (nuevoIngreso > 0 || avance > 0 || atraso > 0 || neutralMoves > 0) {
+      // Incluir la semana si hay alguna oportunidad en cartera (aunque todo sea sinCambios)
+      if (portfolioThisWeek > 0) {
         rows.push({
           name: String(isoWeekNumberUtc(weekStart)),
-          avance: avance,
+          avance,
           nuevoIngreso,
           atraso,
           sinCambios,

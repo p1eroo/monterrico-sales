@@ -1425,7 +1425,7 @@ export default function Reports() {
             </div>
           </DialogContent>
         </Dialog>
-        <Card>
+        {/*<Card>
           <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0 space-y-2">
               <CardTitle className="text-base">Avance semanal · Empresas</CardTitle>
@@ -1552,7 +1552,7 @@ export default function Reports() {
               </ResponsiveContainer>
             </ChartCardBody>
           </CardContent>
-        </Card>
+        </Card>*/}
 
         <Dialog open={weeklyOpportunitiesModalOpen} onOpenChange={setWeeklyOpportunitiesModalOpen}>
           <DialogContent className={dialogContentClass} showCloseButton>
@@ -1696,7 +1696,7 @@ export default function Reports() {
               isEmpty={weeklyOppsProgressChartEmpty || weeklyOppsProgressChartData.length === 0}
               variant="bar"
               emptyMessage="No hay datos de oportunidades."
-              className="h-[300px]"
+              className="h-[min(58vh,560px)] min-h-[300px] w-full"
             >
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart

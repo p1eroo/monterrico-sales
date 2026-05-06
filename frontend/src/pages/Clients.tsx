@@ -15,12 +15,9 @@ import {
 } from '@/components/ui/select';
 import {
   Building2, Users, UserX, DollarSign, Search, Eye,
-  Phone, Mail, FileText, Clock, User, RefreshCw, Download, ExternalLink,
+  Phone, Mail, FileText, Clock, User, Download, ExternalLink,
   Globe, ChevronLeft, ChevronRight,
 } from 'lucide-react';
-import {
-  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog';
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from '@/components/ui/sheet';
@@ -267,7 +264,6 @@ export default function Clients() {
     <div className="space-y-6">
       <PageHeader
         title="Clientes"
-        description="Se registran automáticamente cuando una empresa alcanza la etapa Activo o una etapa con probabilidad 100 %."
       >
         <span className="mr-2 text-sm text-muted-foreground">Total: {filteredClients.length}</span>
         {hasPermission('clientes.exportar') && (
@@ -569,18 +565,6 @@ export default function Clients() {
                     <SheetTitle className="truncate">{selectedClient.company}</SheetTitle>
                     <SheetDescription className="flex flex-wrap items-center gap-2 pt-1">
                       <ClientStatusBadge status={selectedClient.status} />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-6 px-2 text-xs"
-                        onClick={() => {
-                          navigate(empresaPath(selectedClient));
-                          setSelectedClient(null);
-                        }}
-                      >
-                        <ExternalLink className="size-3.5 mr-1" />
-                        Ver empresa
-                      </Button>
                       {selectedClient.companyRubro && (
                         <Badge variant="outline" className="text-xs">{companyRubroLabels[selectedClient.companyRubro]}</Badge>
                       )}
