@@ -14,8 +14,7 @@ import { ThemeToggle } from "@/components/shared/ThemeToggle";
 
 import imgLogin from "@/assets/imglogin.png";
 
-const API_BASE =
-  import.meta.env.VITE_API_URL ?? "http://localhost:3000";
+const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Usuario requerido"),
@@ -77,7 +76,8 @@ export default function LoginPage() {
             name: user.name ?? data.username.trim(),
             role: user.role ?? "Usuario",
             roleId: typeof user.roleId === "string" ? user.roleId : undefined,
-            roleName: typeof user.roleName === "string" ? user.roleName : undefined,
+            roleName:
+              typeof user.roleName === "string" ? user.roleName : undefined,
             phone: typeof user.phone === "string" ? user.phone : undefined,
             avatar: typeof user.avatar === "string" ? user.avatar : undefined,
             createdAt:
@@ -85,7 +85,9 @@ export default function LoginPage() {
                 ? user.joinedAt.slice(0, 10)
                 : undefined,
             lastActivity:
-              typeof user.lastActivity === "string" ? user.lastActivity : undefined,
+              typeof user.lastActivity === "string"
+                ? user.lastActivity
+                : undefined,
           });
           setPermissionKeys(
             Array.isArray(user.permissions) ? user.permissions : null,
@@ -110,14 +112,14 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-screen w-full flex-row overflow-hidden bg-background">
       {/* Left: Branding / Visual - estilo glassmorphic/claymorphic */}
       <div
         className={cn(
-          "relative hidden flex-col overflow-visible",
+          "relative hidden flex-col overflow-hidden",
           "bg-gradient-to-b from-[#f8f8f9] via-[#f0f0f2] to-[#e8e8ec]",
           "dark:from-[#0f172a] dark:via-[#1e293b] dark:to-[#0f172a]",
-          "lg:flex lg:w-[26%]",
+          "lg:flex lg:w-[50%] xl:w-[55%]",
         )}
         style={{
           boxShadow: "inset 0 -40px 60px -20px rgba(19, 148, 76, 0.06)",
@@ -139,9 +141,9 @@ export default function LoginPage() {
           }}
         />
 
-        <div className="relative z-10 flex flex-1 flex-col">
+        <div className="relative z-10 flex h-full flex-col">
           {/* Logo - esquina superior izquierda */}
-          <div className="shrink-0 px-4 pt-4 xl:px-5 xl:pt-5">
+          <div className="shrink-0 px-6 pt-6">
             <img
               src="/logo_tm.png"
               alt="Taxi Monterrico"
@@ -150,9 +152,9 @@ export default function LoginPage() {
           </div>
 
           {/* Contenido centrado */}
-          <div className="flex flex-1 flex-col items-center justify-center overflow-visible px-4 py-12 xl:px-6 xl:py-16">
+          <div className="flex flex-1 flex-col items-center justify-center overflow-hidden px-8 py-6">
             {/* Título centrado - "una sola plataforma" en verde */}
-            <h1 className="text-center text-2xl font-bold leading-tight tracking-tight xl:text-3xl">
+            <h1 className="text-center text-2xl font-bold leading-tight tracking-tight xl:text-4xl">
               <span className="text-[#333] dark:text-[#f1f5f9]">
                 Todo tu equipo,
               </span>
@@ -160,54 +162,59 @@ export default function LoginPage() {
               <span className="text-[#13944C]">una sola plataforma</span>
             </h1>
 
-            {/* Ilustración centrada - scale para que se vea más grande en columna estrecha */}
-            <div className="mt-12 w-full overflow-visible xl:mt-16">
+            {/* Ilustración centrada - scale ajustado */}
+            <div className="mt-4 flex w-full max-w-[450px] items-center justify-center overflow-visible xl:max-w-[550px] 2xl:mt-8 2xl:max-w-[700px]">
               <img
                 src={imgLogin}
                 alt="CRM Dashboard"
-                className="w-full origin-center scale-110 object-contain xl:scale-[1.2]"
+                className="max-h-full w-full origin-center scale-110 object-contain xl:scale-120"
               />
             </div>
 
             {/* Subtítulo centrado - parte inferior */}
-            <p className="mt-12 max-w-md text-center text-sm leading-relaxed text-[#64748b] dark:text-[#94a3b8] xl:mt-16 xl:text-base">
+            <p className="mt-4 max-w-md text-center text-sm leading-relaxed text-[#64748b] dark:text-[#94a3b8] xl:mt-6 xl:text-base">
               Centraliza contactos, oportunidades y tareas. Accede desde
               cualquier lugar y mantén tu equipo alineado.
             </p>
           </div>
 
           {/* Footer */}
-          <div className="shrink-0 px-12 pb-8 text-center text-sm text-[#94a3b8] dark:text-[#64748b] xl:px-16 xl:pb-10">
+          <div className="shrink-0 px-12 pb-8 text-center text-xs text-[#94a3b8] dark:text-[#64748b] xl:text-sm">
             © Taxi Monterrico · CRM Qatuna
           </div>
         </div>
       </div>
 
       {/* Right: Login Form */}
-      <div className="flex w-full flex-1 flex-col justify-center bg-background px-6 py-12 lg:px-16 xl:px-24">
-        <div className="relative mx-auto w-full max-w-sm">
+      <div className="flex flex-1 flex-col overflow-y-auto bg-background px-6 py-8 sm:px-12 md:px-16 lg:px-12 xl:px-24">
+        <div className="my-auto relative mx-auto w-full max-w-sm py-4">
           <div className="absolute right-0 top-0">
             <ThemeToggle />
           </div>
           {/* Mobile logo */}
-          <div className="mb-8 flex justify-center lg:hidden">
+          <div className="mb-6 flex justify-center lg:hidden">
             <img
               src="/logo_tm.png"
               alt="Taxi Monterrico"
-              className="h-9 w-auto object-contain"
+              className="h-10 w-auto object-contain"
             />
           </div>
 
-          <h2 className="text-center text-2xl font-bold tracking-tight text-foreground">
-            Iniciar sesión
+          <h2 className="text-center text-2xl font-bold tracking-tight text-foreground sm:text-2xl">
+            Bienvenido
           </h2>
-          <p className="mt-1 text-center text-muted-foreground">
-            Accede a tu CRM de Taxi Monterrico
-          </p>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-5">
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="mt-6 space-y-4 sm:mt-8 sm:space-y-5"
+          >
             <div className="space-y-2">
-              <Label htmlFor="username">Usuario</Label>
+              <Label
+                htmlFor="username"
+                className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground sm:text-[11px]"
+              >
+                USUARIO
+              </Label>
               <Input
                 id="username"
                 type="text"
@@ -215,7 +222,7 @@ export default function LoginPage() {
                 {...register("username")}
                 aria-invalid={!!errors.username}
                 className={cn(
-                  "h-11 rounded-lg transition-all duration-200",
+                  "h-10 rounded-lg transition-all duration-200 sm:h-11",
                   errors.username && "border-destructive",
                 )}
                 autoComplete="username"
@@ -228,7 +235,12 @@ export default function LoginPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Contraseña</Label>
+              <Label
+                htmlFor="password"
+                className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground sm:text-[11px]"
+              >
+                CONTRASEÑA
+              </Label>
               <div className="relative">
                 <Input
                   id="password"
@@ -237,7 +249,7 @@ export default function LoginPage() {
                   {...register("password")}
                   aria-invalid={!!errors.password}
                   className={cn(
-                    "h-11 rounded-lg pr-10 transition-all duration-200",
+                    "h-10 rounded-lg pr-10 transition-all duration-200 sm:h-11",
                     errors.password && "border-destructive",
                   )}
                   autoComplete="current-password"
@@ -281,19 +293,13 @@ export default function LoginPage() {
                   </label>
                 )}
               />
-              <button
-                type="button"
-                className="text-sm font-medium text-[#13944C] transition-colors hover:text-[#0f7a3d] hover:underline"
-              >
-                ¿Olvidaste tu contraseña?
-              </button>
             </div>
 
             <Button
               type="submit"
               disabled={!isFormValid || isLoading}
               className={cn(
-                "h-11 w-full rounded-lg bg-[#13944C] font-medium transition-all duration-200",
+                "h-10 w-full rounded-lg bg-[#13944C] font-medium transition-all duration-200 sm:h-11",
                 "hover:bg-[#0f7a3d] hover:shadow-lg hover:shadow-[#13944C]/25",
                 "active:scale-[0.99]",
                 "disabled:opacity-50 disabled:hover:scale-100",
@@ -307,16 +313,6 @@ export default function LoginPage() {
             </Button>
             {error && <p className="text-sm text-destructive">{error}</p>}
           </form>
-
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            ¿Primera vez en el entorno?{" "}
-            <Link
-              to="/register"
-              className="font-medium text-[#13944C] hover:underline"
-            >
-              Crear cuenta
-            </Link>
-          </p>
         </div>
       </div>
     </div>
