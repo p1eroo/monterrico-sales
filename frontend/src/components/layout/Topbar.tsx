@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { User, Settings, LogOut } from 'lucide-react';
+import { User, Settings, LogOut, Car, LayoutDashboard } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -20,6 +20,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useAppStore } from '@/store';
 import { initialsFromName } from '@/lib/utils';
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
@@ -49,7 +56,8 @@ const routeLabels: Record<string, string> = {
 export function Topbar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { currentUser, logout } = useAppStore();
+  const { currentUser, logout, area, setArea } = useAppStore();
+  const isAdmin = currentUser.role === 'Administrador' || currentUser.role === 'admin';
 
   const currentRoute = Object.keys(routeLabels).find((route) =>
     location.pathname.startsWith(route),
@@ -81,6 +89,39 @@ export function Topbar() {
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
+
+      {isAdmin && (
+        <Select
+          value={area}
+        onValueChange={(v) => {
+          const newArea = v as 'comercial' | 'flota';
+          setArea(newArea);
+          if (newArea === 'flota') {
+            navigate('/flota');
+          } else {
+            navigate('/dashboard');
+          }
+        }}
+      >
+        <SelectTrigger className="h-8 w-32 gap-1 border-primary/20 bg-primary/5 text-xs font-medium text-primary hover:bg-primary/10">
+          <SelectValue placeholder="Área" />
+        </SelectTrigger>
+        <SelectContent align="start">
+          <SelectItem value="comercial" className="text-xs">
+            <div className="flex items-center gap-2">
+              <LayoutDashboard className="size-3.5" />
+              Comercial
+            </div>
+          </SelectItem>
+          <SelectItem value="flota" className="text-xs">
+            <div className="flex items-center gap-2">
+              <Car className="size-3.5" />
+              Flota
+            </div>
+          </SelectItem>
+        </SelectContent>
+      </Select>
+      )}
 
       <div className="ml-auto flex items-center gap-2">
         <NotificationCenter />

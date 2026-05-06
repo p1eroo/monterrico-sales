@@ -7,6 +7,9 @@ interface AppState {
   sidebarMobileOpen: boolean;
   toggleSidebar: () => void;
   setSidebarMobileOpen: (open: boolean) => void;
+  /** Área actual: comercial o flota */
+  area: 'comercial' | 'flota';
+  setArea: (area: 'comercial' | 'flota') => void;
   /** `null` = usar plantilla por slug hasta tener respuesta API; `[]` = rol sin permisos en BD. */
   permissionKeys: string[] | null;
   setPermissionKeys: (keys: string[] | null) => void;
@@ -58,6 +61,8 @@ export const useAppStore = create<AppState>()(
   sidebarMobileOpen: false,
   toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
   setSidebarMobileOpen: (open) => set({ sidebarMobileOpen: open }),
+  area: 'comercial',
+  setArea: (area) => set({ area }),
   permissionKeys: null,
   setPermissionKeys: (keys) =>
     set({ permissionKeys: keys === null ? null : [...keys] }),
@@ -65,7 +70,7 @@ export const useAppStore = create<AppState>()(
     id: 'u1',
     username: 'cmendoza',
     name: 'Carlos Mendoza',
-    role: 'Administrador',
+    role: 'admin',
     phone: '+51 999 111 222',
     cargo: 'Gerente Comercial',
     empresa: 'Taxi Monterrico',
@@ -116,6 +121,7 @@ export const useAppStore = create<AppState>()(
         preferences: s.preferences,
         gmailConnected: s.gmailConnected,
         isAuthenticated: s.isAuthenticated,
+        area: s.area,
       }),
     }
   )

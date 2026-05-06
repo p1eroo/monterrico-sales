@@ -1,5 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { lazy, Suspense } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, Outlet } from 'react-router-dom';
+import { lazy, Suspense, useEffect } from 'react';
 import { useAppStore } from '@/store';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 import { ModuleGate } from '@/components/layout/ModuleGate';
@@ -34,6 +34,11 @@ const Settings = lazy(() => import('@/pages/Settings'));
 const Files = lazy(() => import('@/pages/Files'));
 const AgentesIa = lazy(() => import('@/pages/AgentesIa'));
 const AgentesIaWorkflow = lazy(() => import('@/pages/AgentesIaWorkflow'));
+const FlotaDashboard = lazy(() => import('@/pages/flota/FlotaDashboard'));
+const FlotaProspectos = lazy(() => import('@/pages/flota/FlotaProspectos'));
+const FlotaProspectoDetail = lazy(() => import('@/pages/flota/FlotaProspectoDetail'));
+const FlotaConductores = lazy(() => import('@/pages/flota/FlotaConductores'));
+const FlotaReportes = lazy(() => import('@/pages/flota/FlotaReportes'));
 
 function LoadingFallback() {
   return (
@@ -60,75 +65,82 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function MainRoutes() {
+  const location = useLocation();
+  const setArea = useAppStore((s) => s.setArea);
+
+  useEffect(() => {
+    if (location.pathname.startsWith('/flota')) {
+      setArea('flota');
+    } else {
+      setArea('comercial');
+    }
+  }, [location.pathname, setArea]);
+
+  return (
+    <Routes>
+      <Route
+        path="/login"
+        element={
+          <PublicRoute>
+            <Login />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/register"
+        element={
+          <PublicRoute>
+            <Register />
+          </PublicRoute>
+        }
+      />
+      <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/contactos" element={<Contactos />} />
+        <Route path="/contactos/:id" element={<ContactoDetail />} />
+        <Route path="/empresas" element={<Empresas />} />
+        <Route path="/empresas/:id" element={<EmpresaDetail />} />
+        <Route path="/pipeline" element={<Pipeline />} />
+        <Route path="/tareas" element={<Tareas />} />
+        <Route path="/calendario" element={<Calendario />} />
+        <Route path="/opportunities" element={<Opportunities />} />
+        <Route path="/opportunities/:id" element={<OportunidadDetail />} />
+        <Route path="/clients" element={<Clients />} />
+        <Route path="/reports" element={<Reports />} />
+        <Route path="/team" element={<Team />} />
+        <Route path="/users" element={<Users />} />
+        <Route path="/users/:id" element={<UserDetail />} />
+        <Route path="/audit" element={<Audit />} />
+        <Route path="/inbox" element={<Inbox />} />
+        <Route path="/campaigns" element={<CampaignHistory />} />
+        <Route path="/campaigns/new" element={<CampaignBuilder />} />
+        <Route path="/campaigns/:id/results" element={<CampaignResults />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/archivos" element={<Files />} />
+        <Route path="/agentes-ia" element={<AgentesIa />} />
+        <Route path="/flota" element={<FlotaDashboard />} />
+        <Route path="/flota/prospectos" element={<FlotaProspectos />} />
+        <Route path="/flota/prospectos/:id" element={<FlotaProspectoDetail />} />
+        <Route path="/flota/conductores" element={<FlotaConductores />} />
+        <Route path="/flota/reportes" element={<FlotaReportes />} />
+      </Route>
+      <Route element={<ProtectedRoute><ModuleGate /></ProtectedRoute>}>
+        <Route path="/agentes-ia/workflow/:agentId" element={<AgentesIaWorkflow />} />
+      </Route>
+      <Route path="*" element={<Navigate to="/login" replace />} />
+    </Routes>
+  );
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
       <BrowserRouter>
         <AppUpdateBanner />
         <Suspense fallback={<LoadingFallback />}>
-          <Routes>
-            <Route
-              path="/login"
-              element={
-                <PublicRoute>
-                  <Login />
-                </PublicRoute>
-              }
-            />
-            <Route
-              path="/register"
-              element={
-                <PublicRoute>
-                  <Register />
-                </PublicRoute>
-              }
-            />
-            <Route
-              element={
-                <ProtectedRoute>
-                  <MainLayout />
-                </ProtectedRoute>
-              }
-            >
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/contactos" element={<Contactos />} />
-              <Route path="/contactos/:id" element={<ContactoDetail />} />
-              <Route path="/empresas" element={<Empresas />} />
-              <Route path="/empresas/:id" element={<EmpresaDetail />} />
-              <Route path="/pipeline" element={<Pipeline />} />
-              <Route path="/tareas" element={<Tareas />} />
-              <Route path="/calendario" element={<Calendario />} />
-              <Route path="/opportunities" element={<Opportunities />} />
-              <Route path="/opportunities/:id" element={<OportunidadDetail />} />
-              <Route path="/clients" element={<Clients />} />
-              <Route path="/reports" element={<Reports />} />
-              <Route path="/team" element={<Team />} />
-              <Route path="/users" element={<Users />} />
-              <Route path="/users/:id" element={<UserDetail />} />
-              <Route path="/audit" element={<Audit />} />
-              <Route path="/inbox" element={<Inbox />} />
-              <Route path="/campaigns" element={<CampaignHistory />} />
-              <Route path="/campaigns/new" element={<CampaignBuilder />} />
-              <Route path="/campaigns/:id/results" element={<CampaignResults />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/archivos" element={<Files />} />
-              <Route path="/agentes-ia" element={<AgentesIa />} />
-            </Route>
-            <Route
-              element={
-                <ProtectedRoute>
-                  <ModuleGate />
-                </ProtectedRoute>
-              }
-            >
-              <Route
-                path="/agentes-ia/workflow/:agentId"
-                element={<AgentesIaWorkflow />}
-              />
-            </Route>
-            <Route path="*" element={<Navigate to="/login" replace />} />
-          </Routes>
+          <MainRoutes />
         </Suspense>
       </BrowserRouter>
     </ErrorBoundary>

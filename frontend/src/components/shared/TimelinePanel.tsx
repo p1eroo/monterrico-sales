@@ -111,8 +111,9 @@ export function TimelinePanel({ events }: TimelinePanelProps) {
       <CardContent className="p-0">
         <div className="space-y-1">
           {events.map((event) => {
-            const Icon = timelineIconMap[event.type];
-            const { wrap, icon } = timelineStyles[event.type];
+            const Icon = timelineIconMap[event.type] || Settings;
+            const style = timelineStyles[event.type] || timelineStyles['sistema'];
+            const { wrap, icon } = style;
             const tintedCircle = activityTypeIconCircleClass(event.type);
             const author = event.user?.trim() || 'Sistema';
             const detail =

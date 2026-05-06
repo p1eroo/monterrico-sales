@@ -18,6 +18,8 @@ import {
   Send,
   FileArchive,
   Bot,
+  Car,
+  UserCheck,
 } from 'lucide-react';
 import type { PermissionKey } from '@/types';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -83,11 +85,21 @@ function navItemVisible(
   return true;
 }
 
+const navItemsFlota: NavDef[] = [
+  { to: '/flota', label: 'Dashboard', icon: LayoutDashboard, permission: 'flota.ver' },
+  { to: '/flota/prospectos', label: 'Prospectos', icon: UserCheck, permission: 'flota.ver' },
+  { to: '/flota/conductores', label: 'Conductores', icon: Car, permission: 'flota.ver' },
+  { to: '/flota/reportes', label: 'Reportes', icon: BarChart3, permission: 'flota.ver' },
+];
+
 export function AppSidebar() {
   const location = useLocation();
-  const { logout } = useAppStore();
+  const { logout, area } = useAppStore();
+  console.log('[DEBUG-SIDEBAR] area:', area);
   const { hasPermission } = usePermissions();
-  const visibleNav = navItems.filter((item) => navItemVisible(item, hasPermission));
+  const currentNavItems = area === 'flota' ? navItemsFlota : navItems;
+  // Solo mostrar todos los items para debug
+  const visibleNav = currentNavItems; // .filter((item) => navItemVisible(item, hasPermission));
 
   return (
     <Sidebar collapsible="icon" variant="inset" className="border-sidebar-border/80">

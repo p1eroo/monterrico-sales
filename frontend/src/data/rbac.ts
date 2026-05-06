@@ -24,6 +24,7 @@ export const PERMISSION_MODULES: { id: PermissionModule; label: string }[] = [
   { id: 'auditoria', label: 'Auditoría' },
   { id: 'configuracion', label: 'Configuración' },
   { id: 'agentes_ia', label: 'Agentes IA (copiloto)' },
+  { id: 'flota', label: 'Flota' },
 ];
 
 /**
@@ -51,6 +52,7 @@ export const MODULE_ALLOWED_ACTIONS: Record<
   auditoria: ['ver'],
   configuracion: ['ver', 'editar'],
   agentes_ia: ['ver', 'editar'],
+  flota: ['ver', 'crear', 'editar', 'eliminar', 'exportar'],
 };
 
 export function moduleAllowsAction(
