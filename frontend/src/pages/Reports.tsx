@@ -526,6 +526,9 @@ export default function Reports() {
           };
           const chartImages: ReportsExportInput['charts'] = {};
 
+          // Dar tiempo a que los charts se rendericen sin animaciones tras setExportingPdf(true)
+          await new Promise((resolve) => setTimeout(resolve, 500));
+
           for (const [key, id] of Object.entries(chartIds)) {
             const el = document.getElementById(id);
             if (el) {
@@ -876,6 +879,7 @@ export default function Reports() {
                   />
                   <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
                   <Area
+                    isAnimationActive={!exportingPdf}
                     type="monotone"
                     dataKey="leads"
                     name="Total Contactos"
@@ -884,6 +888,7 @@ export default function Reports() {
                     fill="url(#colorLeads)"
                   />
                   <Area
+                    isAnimationActive={!exportingPdf}
                     type="monotone"
                     dataKey="nuevos"
                     name="Nuevos"
@@ -927,6 +932,7 @@ export default function Reports() {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
+                    isAnimationActive={!exportingPdf}
                     data={leadsBySourceData}
                     cx="50%"
                     cy="50%"
@@ -1080,6 +1086,7 @@ export default function Reports() {
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
+                        isAnimationActive={!exportingPdf}
                         data={leadsBySourceData}
                         cx="50%"
                         cy="50%"
@@ -1152,6 +1159,7 @@ export default function Reports() {
                       />
                       <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: 8 }} />
                       <Bar
+                        isAnimationActive={!exportingPdf}
                         dataKey="avance"
                         name="Avance"
                         stackId="weeklyCompanies"
@@ -1160,6 +1168,7 @@ export default function Reports() {
                         barSize={18}
                       />
                       <Bar
+                        isAnimationActive={!exportingPdf}
                         dataKey="nuevoIngreso"
                         name="Nuevo ingreso"
                         stackId="weeklyCompanies"
@@ -1167,6 +1176,7 @@ export default function Reports() {
                         barSize={18}
                       />
                       <Bar
+                        isAnimationActive={!exportingPdf}
                         dataKey="retroceso"
                         name="Retroceso"
                         stackId="weeklyCompanies"
@@ -1174,6 +1184,7 @@ export default function Reports() {
                         barSize={18}
                       />
                       <Bar
+                        isAnimationActive={!exportingPdf}
                         dataKey="sinCambios"
                         name="Sin cambios"
                         stackId="weeklyCompanies"
@@ -1220,6 +1231,7 @@ export default function Reports() {
                         formatter={(value?: number) => [`${(value ?? 0)}%`, 'Conversión']}
                       />
                       <Line
+                        isAnimationActive={!exportingPdf}
                         type="monotone"
                         dataKey="tasa"
                         name="Tasa de Conversión"
@@ -1268,8 +1280,8 @@ export default function Reports() {
                         labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
                       />
                       <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
-                      <Bar dataKey="empresas" name="Empresas" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={16} />
-                      <Bar dataKey="ventas" name="Ventas" fill="#13944C" radius={[0, 4, 4, 0]} barSize={16} />
+                      <Bar isAnimationActive={!exportingPdf} dataKey="empresas" name="Empresas" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={16} />
+                      <Bar isAnimationActive={!exportingPdf} dataKey="ventas" name="Ventas" fill="#13944C" radius={[0, 4, 4, 0]} barSize={16} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -1286,7 +1298,7 @@ export default function Reports() {
             <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 sm:px-6 sm:pb-6">
               {!salesChartEmpty ? (
                 <div className="h-[520px] w-full">
-                  <SalesByMonthBarChart data={salesByMonthData} variant="reports" barSize={32} />
+                  <SalesByMonthBarChart data={salesByMonthData} variant="reports" barSize={32} isAnimationActive={!exportingPdf} />
                 </div>
               ) : null}
             </div>
@@ -1326,7 +1338,7 @@ export default function Reports() {
                           name === 'value' ? 'Valor' : 'Oportunidades',
                         ]}
                       />
-                      <Bar dataKey="value" name="Valor" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={42}>
+                      <Bar isAnimationActive={!exportingPdf} dataKey="value" name="Valor" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={42}>
                         {opportunitiesByStageData.map((_entry, index) => (
                           <Cell key={`cell-pipeline-modal-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
@@ -1364,9 +1376,9 @@ export default function Reports() {
                         labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
                       />
                       <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
-                      <Bar dataKey="llamadas" name="Llamadas" stackId="a" fill="#13944C" />
-                      <Bar dataKey="reuniones" name="Reuniones" stackId="a" fill="#3b82f6" />
-                      <Bar dataKey="correos" name="Correos" stackId="a" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                      <Bar isAnimationActive={!exportingPdf} dataKey="llamadas" name="Llamadas" stackId="a" fill="#13944C" />
+                      <Bar isAnimationActive={!exportingPdf} dataKey="reuniones" name="Reuniones" stackId="a" fill="#3b82f6" />
+                      <Bar isAnimationActive={!exportingPdf} dataKey="correos" name="Correos" stackId="a" fill="#f59e0b" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -1401,6 +1413,7 @@ export default function Reports() {
                       />
                       <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
                       <Line
+                        isAnimationActive={!exportingPdf}
                         type="monotone"
                         dataKey="completados"
                         name="Completadas"
@@ -1410,6 +1423,7 @@ export default function Reports() {
                         activeDot={{ r: 6 }}
                       />
                       <Line
+                        isAnimationActive={!exportingPdf}
                         type="monotone"
                         dataKey="pendientes"
                         name="Pendientes"

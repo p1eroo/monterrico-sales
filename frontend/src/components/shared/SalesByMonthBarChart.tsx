@@ -20,6 +20,7 @@ type SalesByMonthBarChartProps = {
   variant: Variant;
   /** grosor de barra (reportes suele usar 28) */
   barSize?: number;
+  isAnimationActive?: boolean;
 };
 
 function payloadFromClick(data: unknown): SalesByMonthTooltipRow | null {
@@ -34,7 +35,7 @@ function payloadFromClick(data: unknown): SalesByMonthTooltipRow | null {
   return null;
 }
 
-export function SalesByMonthBarChart({ data, variant, barSize }: SalesByMonthBarChartProps) {
+export function SalesByMonthBarChart({ data, variant, barSize, isAnimationActive = true }: SalesByMonthBarChartProps) {
   const chartTheme = useChartTheme();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selected, setSelected] = useState<SalesByMonthTooltipRow | null>(null);
@@ -80,6 +81,7 @@ export function SalesByMonthBarChart({ data, variant, barSize }: SalesByMonthBar
             <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
           ) : null}
           <Bar
+            isAnimationActive={isAnimationActive}
             dataKey="ventas"
             fill="#13944C"
             radius={[4, 4, 0, 0]}
@@ -89,6 +91,7 @@ export function SalesByMonthBarChart({ data, variant, barSize }: SalesByMonthBar
             className="cursor-pointer outline-none"
           />
           <Bar
+            isAnimationActive={isAnimationActive}
             dataKey="meta"
             fill={variant === 'dashboard' ? '#3b82f6' : chartTheme.metaBar}
             radius={[4, 4, 0, 0]}
