@@ -339,18 +339,19 @@ if (params.mes) {
       // Detectar duplicado
       let esDuplicado = false;
       if (celularNorm) {
-        if (existingPhones.has(celularNorm)) {
-          esDuplicado = true;
-        } else if (batchPhones.has(celularNorm)) {
+        if (existingPhones.has(celularNorm) || batchPhones.has(celularNorm)) {
           esDuplicado = true;
         }
         batchPhones.set(celularNorm, i);
-        if (esDuplicado) {
-          result.duplicates++;
-        }
+      }
+
+      if (esDuplicado) {
+        result.duplicates++;
+        continue; // NO crear el prospecto si ya existe
       }
 
       const estadoRaw = col.ESTADO !== -1 ? cell(row, col.ESTADO) : '';
+
       const estado = estadoRaw || 'Nuevo';
 
       records.push({
