@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { google, sheets_v4 } from 'googleapis';
-import * as path from 'path';
+import { JWT } from 'google-auth-library';
 
 @Injectable()
 export class GoogleSheetsService {
@@ -10,21 +10,24 @@ export class GoogleSheetsService {
   private spreadsheetId: string;
 
   constructor(private config: ConfigService) {
-    const credentialsPath = this.config.get<string>(
-      'GOOGLE_SHEETS_CREDENTIALS_PATH',
-      'credentials/service-account.json',
+    const serviceAccountEmail = this.config.get<string>(
+      'GOOGLE_SERVICE_ACCOUNT_EMAIL',
     );
+    const privateKey = this.config.get<string>('GOOGLE_PRIVATE_KEY');
     this.spreadsheetId = this.config.get<string>(
       'GOOGLE_SHEETS_SPREADSHEET_ID',
       '',
     );
 
-    const absPath = path.isAbsolute(credentialsPath)
-      ? credentialsPath
-      : path.resolve(process.cwd(), credentialsPath);
+    if (!serviceAccountEmail || !privateKey) {
+      this.logger.warn(
+        'Google Sheets credentials not configured. Set GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_PRIVATE_KEY in .env',
+      );
+    }
 
-    const auth = new google.auth.GoogleAuth({
-      keyFile: absPath,
+    const auth = new JWT({
+      email: serviceAccountEmail,
+      key: privateKey?.replace(/\\n/g, '\n'),
       scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
     });
 
