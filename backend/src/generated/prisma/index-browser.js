@@ -563,6 +563,28 @@ exports.Prisma.CrmFileScalarFieldEnum = {
   createdAt: 'createdAt'
 };
 
+exports.Prisma.FlotaProspectoScalarFieldEnum = {
+  id: 'id',
+  fechaRegistro: 'fechaRegistro',
+  redSocial: 'redSocial',
+  celular: 'celular',
+  nombreCompleto: 'nombreCompleto',
+  edad: 'edad',
+  operador: 'operador',
+  estado: 'estado',
+  modalidad: 'modalidad',
+  anioVehiculo: 'anioVehiculo',
+  distrito: 'distrito',
+  fechaCita: 'fechaCita',
+  asistencia: 'asistencia',
+  fechaAfiliacion: 'fechaAfiliacion',
+  movil: 'movil',
+  observaciones: 'observaciones',
+  esDuplicado: 'esDuplicado',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -630,7 +652,8 @@ exports.Prisma.ModelName = {
   OpportunityActivity: 'OpportunityActivity',
   CampaignEmailSendLog: 'CampaignEmailSendLog',
   Campaign: 'Campaign',
-  CrmFile: 'CrmFile'
+  CrmFile: 'CrmFile',
+  FlotaProspecto: 'FlotaProspecto'
 };
 
 /**

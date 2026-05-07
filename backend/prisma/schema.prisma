@@ -682,3 +682,33 @@ model CrmFile {
   @@index([uploadedBy])
   @@index([createdAt])
 }
+
+// ─── Flota: Prospectos importados desde Google Sheets ───
+
+model FlotaProspecto {
+  id              String    @id @default(cuid())
+  fechaRegistro   DateTime? @db.Date
+  redSocial       String?
+  celular         String?
+  nombreCompleto  String
+  edad            Int?
+  operador        String?
+  estado          String    @default("Nuevo")
+  modalidad       String?
+  anioVehiculo    Int?
+  distrito        String?
+  fechaCita       DateTime? @db.Date
+  asistencia      String?
+  fechaAfiliacion DateTime? @db.Date
+  movil           String?
+  observaciones   String?   @db.Text
+  /** true cuando el celular ya existía en la BD al momento de importar */
+  esDuplicado     Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([celular])
+  @@index([estado])
+  @@index([esDuplicado])
+  @@index([createdAt])
+}

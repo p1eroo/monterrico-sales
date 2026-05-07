@@ -20,14 +20,21 @@ export function formatCurrencyShort(amount: number): string {
 
 const DATE_ONLY_YMD = /^\d{4}-\d{2}-\d{2}$/;
 
-/** Fecha local para mostrar; `YYYY-MM-DD` se interpreta como día civil (evita desfase UTC). */
+/** Fecha local para mostrar; evita desfase UTC en campos de "solo fecha". */
 function parseDateForDisplay(dateStr: string): Date {
   const t = dateStr.trim();
+  // Si es YYYY-MM-DD
   if (DATE_ONLY_YMD.test(t)) {
     return new Date(`${t}T00:00:00`);
   }
+  // Si viene del backend como ISO con medianoche UTC (ej: 2026-01-29T00:00:00.000Z)
+  // lo tratamos como fecha local para que no salte al día anterior en zonas horarias negativas (Perú).
+  if (t.includes('T00:00:00')) {
+    return new Date(t.split('T')[0] + 'T00:00:00');
+  }
   return new Date(dateStr);
 }
+
 
 /** Formatea una fecha en formato corto: "15 mar 2026" */
 export function formatDate(dateStr: string): string {

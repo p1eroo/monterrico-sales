@@ -1,14 +1,12 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import {
   Phone,
-  Mail,
   MapPin,
   Calendar,
   User,
   FileArchive,
-  ChevronLeft,
   MoreVertical,
   Edit,
   Globe,
@@ -16,6 +14,8 @@ import {
   Car,
   ClipboardList,
   MessageSquare,
+  AlertTriangle,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -34,75 +34,43 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-
-const PROSPECTO_MOCK = {
-  id: '1',
-  nombres: 'Juan',
-  apellidos: 'Pérez López',
-  dni: '12345678',
-  telefono: '+51 999 111 222',
-  email: 'juan@example.com',
-  estado: 'Nuevo',
-  fuente: 'Web',
-  zona: 'Lima Centro',
-  fechaNacimiento: '1985-03-15',
-  tieneVehiculo: true,
-  tipoVehiculo: 'Sedan',
-  placa: 'ABC-123',
-  experienciaAnios: 3,
-  observaciones: 'Interesado en trabajar en la zona de Lima Centro. Tiene vehículo propio marca Toyota.',
-  createdAt: '2026-05-05T10:00:00Z',
-  updatedAt: '2026-05-05T10:00:00Z',
-};
-
-type ProspectoForWhatsApp = {
-  id: string;
-  name: string;
-  telefono: string;
-  urlSlug?: string;
-};
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { flotaProspectoDetail, type FlotaProspectoRow } from '@/lib/flotaProspectosApi';
 
 const TIMELINE_MOCK = [
   {
     id: '1',
     type: 'crear',
     title: 'Prospecto creado',
-    description: 'El prospecto fue registrado a través del formulario web.',
-    timestamp: '2026-05-05T10:00:00Z',
+    description: 'El prospecto fue registrado en el sistema.',
+    timestamp: new Date().toISOString(),
     userName: 'Sistema',
-  },
-  {
-    id: '2',
-    type: 'whatsapp',
-    title: 'Mensaje de WhatsApp enviado',
-    description: 'Se envió el primer mensaje de bienvenida.',
-    timestamp: '2026-05-05T10:30:00Z',
-    userName: 'Carlos Mendoza',
   },
 ];
 
 const estadoColors: Record<string, string> = {
   Nuevo: 'bg-blue-100 text-blue-700 border-blue-200',
   Contactado: 'bg-amber-100 text-amber-700 border-amber-200',
-  Conversión: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  Afiliado: 'bg-emerald-100 text-emerald-700 border-emerald-200',
   NoInteresado: 'bg-red-100 text-red-700 border-red-200',
 };
 
-function ProspectoInformacionAside({ prospecto }: { prospecto: typeof PROSPECTO_MOCK }) {
+function ProspectoInformacionAside({ prospecto }: { prospecto: FlotaProspectoRow }) {
   return (
     <EntityInfoCard
       title="INFORMACIÓN"
       collapsible
       fields={[
-        { icon: User, value: `${prospecto.nombres} ${prospecto.apellidos}` },
-        { icon: Phone, value: prospecto.telefono, href: `tel:${prospecto.telefono}` },
-        { icon: Mail, value: prospecto.email, href: `mailto:${prospecto.email}` },
-        { icon: Globe, value: prospecto.fuente },
-        { icon: MapPin, value: prospecto.zona },
-        { icon: CalendarDays, value: `Creado: ${formatDate(prospecto.createdAt)}` },
-        { icon: Car, value: prospecto.tieneVehiculo ? `Vehículo: ${prospecto.tipoVehiculo || 'Sí'}` : 'Sin vehículo propio' },
-        ...(prospecto.placa ? [{ icon: ClipboardList, value: `Placa: ${prospecto.placa}` }] : []),
-        { icon: Calendar, value: `${prospecto.experienciaAnios} años de experiencia` },
+        { icon: User, value: prospecto.nombreCompleto },
+        { icon: Phone, value: prospecto.celular || 'Sin teléfono', href: prospecto.celular ? `tel:${prospecto.celular}` : undefined },
+        { icon: Globe, value: prospecto.redSocial || 'Sin fuente' },
+        { icon: MapPin, value: prospecto.distrito || 'Sin distrito' },
+        { icon: CalendarDays, value: `Registrado: ${prospecto.fechaRegistro ? formatDate(prospecto.fechaRegistro) : '—'}` },
+        { icon: User, value: `Operador: ${prospecto.operador || '—'}` },
+        { icon: Car, value: `Año Veh.: ${prospecto.anioVehiculo || '—'}` },
+        { icon: MessageSquare, value: `Modalidad: ${prospecto.modalidad || '—'}` },
+        { icon: ClipboardList, value: `Móvil: ${prospecto.movil || '—'}` },
+        ...(prospecto.fechaAfiliacion ? [{ icon: Calendar, value: `Afiliación: ${formatDate(prospecto.fechaAfiliacion)}` }] : []),
       ]}
     />
   );
@@ -132,13 +100,43 @@ export default function FlotaProspectoDetail() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('historial');
   const [whatsappDrawerOpen, setWhatsappDrawerOpen] = useState(false);
-  const prospecto = PROSPECTO_MOCK;
+  const [prospecto, setProspecto] = useState<FlotaProspectoRow | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const prospectoForWhatsApp: ProspectoForWhatsApp = {
-    id: prospecto.id,
-    name: `${prospecto.nombres} ${prospecto.apellidos}`,
-    telefono: prospecto.telefono,
-  };
+  const fetchDetail = useCallback(async () => {
+    if (!id) return;
+    setLoading(true);
+    try {
+      const data = await flotaProspectoDetail(id);
+      setProspecto(data);
+    } catch (e) {
+      toast.error('No se pudo cargar el detalle del prospecto');
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    void fetchDetail();
+  }, [fetchDetail]);
+
+  const prospectoForWhatsApp = useMemo(() => {
+    if (!prospecto) return null;
+    return {
+      id: prospecto.id,
+      name: prospecto.nombreCompleto,
+      telefono: prospecto.celular || '',
+    };
+  }, [prospecto]);
+
+  if (loading) {
+    return (
+      <div className="flex h-[50vh] items-center justify-center">
+        <Loader2 className="size-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   if (!prospecto) {
     return (
@@ -159,7 +157,7 @@ export default function FlotaProspectoDetail() {
   const headerActions = (
     <div className="flex items-center gap-2">
       <QuickActionsWithDialogs
-        entityName={`${prospecto.nombres} ${prospecto.apellidos}`}
+        entityName={prospecto.nombreCompleto}
         onActivityCreated={handleQuickActivityCreated}
         onTaskCreated={handleTaskCreated}
         inline
@@ -197,13 +195,23 @@ export default function FlotaProspectoDetail() {
   return (
     <DetailLayout
       backPath="/flota/prospectos"
-      title={`${prospecto.nombres} ${prospecto.apellidos}`}
-      subtitle={`DNI: ${prospecto.dni}`}
+      title={prospecto.nombreCompleto}
+      subtitle={`Celular: ${prospecto.celular || '—'}`}
       headerActions={headerActions}
       leftAside={<ProspectoInformacionAside prospecto={prospecto} />}
       sidebar={<ProspectoArchivosAside />}
     >
       <div className="space-y-6">
+        {prospecto.esDuplicado && (
+          <Alert variant="destructive" className="border-red-200 bg-red-50">
+            <AlertTriangle className="size-4 text-red-600" />
+            <AlertTitle className="text-red-800">Prospecto Duplicado</AlertTitle>
+            <AlertDescription className="text-red-700">
+              Este número de celular ya existe en la base de datos de prospectos.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <div className="mb-6 flex items-center justify-between">
             <TabsList className="bg-surface-elevated p-1 border border-border/50">
@@ -261,13 +269,17 @@ export default function FlotaProspectoDetail() {
           <TabsContent value="notas" className="mt-0">
             <Card className="border-border/50 bg-surface-elevated/50">
               <CardContent className="py-6">
-                <div className="mb-4 rounded-lg bg-background p-4 border border-border/50">
-                  <p className="text-sm italic text-muted-foreground">"{prospecto.observaciones}"</p>
-                  <div className="mt-3 flex items-center justify-between border-t border-border/30 pt-3">
-                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Nota inicial de registro</span>
-                    <span className="text-[10px] text-muted-foreground">{formatDate(prospecto.createdAt)}</span>
+                {prospecto.observaciones ? (
+                  <div className="mb-4 rounded-lg bg-background p-4 border border-border/50">
+                    <p className="text-sm italic text-muted-foreground">"{prospecto.observaciones}"</p>
+                    <div className="mt-3 flex items-center justify-between border-t border-border/30 pt-3">
+                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Nota inicial de registro</span>
+                      <span className="text-[10px] text-muted-foreground">{formatDate(prospecto.createdAt)}</span>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <p className="text-center py-6 text-sm text-muted-foreground">Sin notas registradas</p>
+                )}
                 <Button variant="outline" size="sm" className="w-full">Agregar nueva nota</Button>
               </CardContent>
             </Card>
@@ -288,11 +300,13 @@ export default function FlotaProspectoDetail() {
         </Tabs>
       </div>
 
-      <WhatsappContactDrawer
-        contact={prospectoForWhatsApp as any}
-        open={whatsappDrawerOpen}
-        onOpenChange={setWhatsappDrawerOpen}
-      />
+      {prospectoForWhatsApp && (
+        <WhatsappContactDrawer
+          contact={prospectoForWhatsApp as any}
+          open={whatsappDrawerOpen}
+          onOpenChange={setWhatsappDrawerOpen}
+        />
+      )}
     </DetailLayout>
   );
 }

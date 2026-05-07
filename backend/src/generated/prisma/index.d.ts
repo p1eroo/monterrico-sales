@@ -213,6 +213,11 @@ export type Campaign = $Result.DefaultSelection<Prisma.$CampaignPayload>
  * * Adjuntos del CRM: metadatos en BD; binario en S3/MinIO o URL pública (CDN) vía proxy de medios.
  */
 export type CrmFile = $Result.DefaultSelection<Prisma.$CrmFilePayload>
+/**
+ * Model FlotaProspecto
+ * 
+ */
+export type FlotaProspecto = $Result.DefaultSelection<Prisma.$FlotaProspectoPayload>
 
 /**
  * ##  Prisma Client ʲˢ
@@ -734,6 +739,16 @@ export class PrismaClient<
     * ```
     */
   get crmFile(): Prisma.CrmFileDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.flotaProspecto`: Exposes CRUD operations for the **FlotaProspecto** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more FlotaProspectos
+    * const flotaProspectos = await prisma.flotaProspecto.findMany()
+    * ```
+    */
+  get flotaProspecto(): Prisma.FlotaProspectoDelegate<ExtArgs, ClientOptions>;
 }
 
 export namespace Prisma {
@@ -1207,7 +1222,8 @@ export namespace Prisma {
     OpportunityActivity: 'OpportunityActivity',
     CampaignEmailSendLog: 'CampaignEmailSendLog',
     Campaign: 'Campaign',
-    CrmFile: 'CrmFile'
+    CrmFile: 'CrmFile',
+    FlotaProspecto: 'FlotaProspecto'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -1223,7 +1239,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "role" | "authority" | "account" | "user" | "whatsappInstance" | "crmNotification" | "activityLog" | "auditChangeSet" | "auditChangeEntry" | "aiConversation" | "aiMessage" | "aiKnowledgeBase" | "aiKnowledgeChunk" | "aiAssistantInstruction" | "crmOrganizationProfile" | "crmMonthlySalesTarget" | "crmLeadSource" | "crmStage" | "crmPriority" | "crmActivityType" | "crmUserSalesGoal" | "crmUserMonthlySalesTarget" | "contact" | "crmWhatsappMessage" | "company" | "client" | "opportunity" | "activity" | "companyContact" | "contactContact" | "contactOpportunity" | "companyCompany" | "companyOpportunity" | "opportunityOpportunity" | "contactActivity" | "companyActivity" | "opportunityActivity" | "campaignEmailSendLog" | "campaign" | "crmFile"
+      modelProps: "role" | "authority" | "account" | "user" | "whatsappInstance" | "crmNotification" | "activityLog" | "auditChangeSet" | "auditChangeEntry" | "aiConversation" | "aiMessage" | "aiKnowledgeBase" | "aiKnowledgeChunk" | "aiAssistantInstruction" | "crmOrganizationProfile" | "crmMonthlySalesTarget" | "crmLeadSource" | "crmStage" | "crmPriority" | "crmActivityType" | "crmUserSalesGoal" | "crmUserMonthlySalesTarget" | "contact" | "crmWhatsappMessage" | "company" | "client" | "opportunity" | "activity" | "companyContact" | "contactContact" | "contactOpportunity" | "companyCompany" | "companyOpportunity" | "opportunityOpportunity" | "contactActivity" | "companyActivity" | "opportunityActivity" | "campaignEmailSendLog" | "campaign" | "crmFile" | "flotaProspecto"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -4187,6 +4203,80 @@ export namespace Prisma {
           }
         }
       }
+      FlotaProspecto: {
+        payload: Prisma.$FlotaProspectoPayload<ExtArgs>
+        fields: Prisma.FlotaProspectoFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.FlotaProspectoFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlotaProspectoPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.FlotaProspectoFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlotaProspectoPayload>
+          }
+          findFirst: {
+            args: Prisma.FlotaProspectoFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlotaProspectoPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.FlotaProspectoFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlotaProspectoPayload>
+          }
+          findMany: {
+            args: Prisma.FlotaProspectoFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlotaProspectoPayload>[]
+          }
+          create: {
+            args: Prisma.FlotaProspectoCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlotaProspectoPayload>
+          }
+          createMany: {
+            args: Prisma.FlotaProspectoCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.FlotaProspectoCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlotaProspectoPayload>[]
+          }
+          delete: {
+            args: Prisma.FlotaProspectoDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlotaProspectoPayload>
+          }
+          update: {
+            args: Prisma.FlotaProspectoUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlotaProspectoPayload>
+          }
+          deleteMany: {
+            args: Prisma.FlotaProspectoDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.FlotaProspectoUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.FlotaProspectoUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlotaProspectoPayload>[]
+          }
+          upsert: {
+            args: Prisma.FlotaProspectoUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlotaProspectoPayload>
+          }
+          aggregate: {
+            args: Prisma.FlotaProspectoAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateFlotaProspecto>
+          }
+          groupBy: {
+            args: Prisma.FlotaProspectoGroupByArgs<ExtArgs>
+            result: $Utils.Optional<FlotaProspectoGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.FlotaProspectoCountArgs<ExtArgs>
+            result: $Utils.Optional<FlotaProspectoCountAggregateOutputType> | number
+          }
+        }
+      }
     }
   } & {
     other: {
@@ -4335,6 +4425,7 @@ export namespace Prisma {
     campaignEmailSendLog?: CampaignEmailSendLogOmit
     campaign?: CampaignOmit
     crmFile?: CrmFileOmit
+    flotaProspecto?: FlotaProspectoOmit
   }
 
   /* Types for Logging */
@@ -50815,6 +50906,1229 @@ export namespace Prisma {
 
 
   /**
+   * Model FlotaProspecto
+   */
+
+  export type AggregateFlotaProspecto = {
+    _count: FlotaProspectoCountAggregateOutputType | null
+    _avg: FlotaProspectoAvgAggregateOutputType | null
+    _sum: FlotaProspectoSumAggregateOutputType | null
+    _min: FlotaProspectoMinAggregateOutputType | null
+    _max: FlotaProspectoMaxAggregateOutputType | null
+  }
+
+  export type FlotaProspectoAvgAggregateOutputType = {
+    edad: number | null
+    anioVehiculo: number | null
+  }
+
+  export type FlotaProspectoSumAggregateOutputType = {
+    edad: number | null
+    anioVehiculo: number | null
+  }
+
+  export type FlotaProspectoMinAggregateOutputType = {
+    id: string | null
+    fechaRegistro: Date | null
+    redSocial: string | null
+    celular: string | null
+    nombreCompleto: string | null
+    edad: number | null
+    operador: string | null
+    estado: string | null
+    modalidad: string | null
+    anioVehiculo: number | null
+    distrito: string | null
+    fechaCita: Date | null
+    asistencia: string | null
+    fechaAfiliacion: Date | null
+    movil: string | null
+    observaciones: string | null
+    esDuplicado: boolean | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type FlotaProspectoMaxAggregateOutputType = {
+    id: string | null
+    fechaRegistro: Date | null
+    redSocial: string | null
+    celular: string | null
+    nombreCompleto: string | null
+    edad: number | null
+    operador: string | null
+    estado: string | null
+    modalidad: string | null
+    anioVehiculo: number | null
+    distrito: string | null
+    fechaCita: Date | null
+    asistencia: string | null
+    fechaAfiliacion: Date | null
+    movil: string | null
+    observaciones: string | null
+    esDuplicado: boolean | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type FlotaProspectoCountAggregateOutputType = {
+    id: number
+    fechaRegistro: number
+    redSocial: number
+    celular: number
+    nombreCompleto: number
+    edad: number
+    operador: number
+    estado: number
+    modalidad: number
+    anioVehiculo: number
+    distrito: number
+    fechaCita: number
+    asistencia: number
+    fechaAfiliacion: number
+    movil: number
+    observaciones: number
+    esDuplicado: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type FlotaProspectoAvgAggregateInputType = {
+    edad?: true
+    anioVehiculo?: true
+  }
+
+  export type FlotaProspectoSumAggregateInputType = {
+    edad?: true
+    anioVehiculo?: true
+  }
+
+  export type FlotaProspectoMinAggregateInputType = {
+    id?: true
+    fechaRegistro?: true
+    redSocial?: true
+    celular?: true
+    nombreCompleto?: true
+    edad?: true
+    operador?: true
+    estado?: true
+    modalidad?: true
+    anioVehiculo?: true
+    distrito?: true
+    fechaCita?: true
+    asistencia?: true
+    fechaAfiliacion?: true
+    movil?: true
+    observaciones?: true
+    esDuplicado?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type FlotaProspectoMaxAggregateInputType = {
+    id?: true
+    fechaRegistro?: true
+    redSocial?: true
+    celular?: true
+    nombreCompleto?: true
+    edad?: true
+    operador?: true
+    estado?: true
+    modalidad?: true
+    anioVehiculo?: true
+    distrito?: true
+    fechaCita?: true
+    asistencia?: true
+    fechaAfiliacion?: true
+    movil?: true
+    observaciones?: true
+    esDuplicado?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type FlotaProspectoCountAggregateInputType = {
+    id?: true
+    fechaRegistro?: true
+    redSocial?: true
+    celular?: true
+    nombreCompleto?: true
+    edad?: true
+    operador?: true
+    estado?: true
+    modalidad?: true
+    anioVehiculo?: true
+    distrito?: true
+    fechaCita?: true
+    asistencia?: true
+    fechaAfiliacion?: true
+    movil?: true
+    observaciones?: true
+    esDuplicado?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type FlotaProspectoAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which FlotaProspecto to aggregate.
+     */
+    where?: FlotaProspectoWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of FlotaProspectos to fetch.
+     */
+    orderBy?: FlotaProspectoOrderByWithRelationInput | FlotaProspectoOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: FlotaProspectoWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` FlotaProspectos from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` FlotaProspectos.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned FlotaProspectos
+    **/
+    _count?: true | FlotaProspectoCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: FlotaProspectoAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: FlotaProspectoSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: FlotaProspectoMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: FlotaProspectoMaxAggregateInputType
+  }
+
+  export type GetFlotaProspectoAggregateType<T extends FlotaProspectoAggregateArgs> = {
+        [P in keyof T & keyof AggregateFlotaProspecto]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateFlotaProspecto[P]>
+      : GetScalarType<T[P], AggregateFlotaProspecto[P]>
+  }
+
+
+
+
+  export type FlotaProspectoGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: FlotaProspectoWhereInput
+    orderBy?: FlotaProspectoOrderByWithAggregationInput | FlotaProspectoOrderByWithAggregationInput[]
+    by: FlotaProspectoScalarFieldEnum[] | FlotaProspectoScalarFieldEnum
+    having?: FlotaProspectoScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: FlotaProspectoCountAggregateInputType | true
+    _avg?: FlotaProspectoAvgAggregateInputType
+    _sum?: FlotaProspectoSumAggregateInputType
+    _min?: FlotaProspectoMinAggregateInputType
+    _max?: FlotaProspectoMaxAggregateInputType
+  }
+
+  export type FlotaProspectoGroupByOutputType = {
+    id: string
+    fechaRegistro: Date | null
+    redSocial: string | null
+    celular: string | null
+    nombreCompleto: string
+    edad: number | null
+    operador: string | null
+    estado: string
+    modalidad: string | null
+    anioVehiculo: number | null
+    distrito: string | null
+    fechaCita: Date | null
+    asistencia: string | null
+    fechaAfiliacion: Date | null
+    movil: string | null
+    observaciones: string | null
+    esDuplicado: boolean
+    createdAt: Date
+    updatedAt: Date
+    _count: FlotaProspectoCountAggregateOutputType | null
+    _avg: FlotaProspectoAvgAggregateOutputType | null
+    _sum: FlotaProspectoSumAggregateOutputType | null
+    _min: FlotaProspectoMinAggregateOutputType | null
+    _max: FlotaProspectoMaxAggregateOutputType | null
+  }
+
+  type GetFlotaProspectoGroupByPayload<T extends FlotaProspectoGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<FlotaProspectoGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof FlotaProspectoGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], FlotaProspectoGroupByOutputType[P]>
+            : GetScalarType<T[P], FlotaProspectoGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type FlotaProspectoSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    fechaRegistro?: boolean
+    redSocial?: boolean
+    celular?: boolean
+    nombreCompleto?: boolean
+    edad?: boolean
+    operador?: boolean
+    estado?: boolean
+    modalidad?: boolean
+    anioVehiculo?: boolean
+    distrito?: boolean
+    fechaCita?: boolean
+    asistencia?: boolean
+    fechaAfiliacion?: boolean
+    movil?: boolean
+    observaciones?: boolean
+    esDuplicado?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["flotaProspecto"]>
+
+  export type FlotaProspectoSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    fechaRegistro?: boolean
+    redSocial?: boolean
+    celular?: boolean
+    nombreCompleto?: boolean
+    edad?: boolean
+    operador?: boolean
+    estado?: boolean
+    modalidad?: boolean
+    anioVehiculo?: boolean
+    distrito?: boolean
+    fechaCita?: boolean
+    asistencia?: boolean
+    fechaAfiliacion?: boolean
+    movil?: boolean
+    observaciones?: boolean
+    esDuplicado?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["flotaProspecto"]>
+
+  export type FlotaProspectoSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    fechaRegistro?: boolean
+    redSocial?: boolean
+    celular?: boolean
+    nombreCompleto?: boolean
+    edad?: boolean
+    operador?: boolean
+    estado?: boolean
+    modalidad?: boolean
+    anioVehiculo?: boolean
+    distrito?: boolean
+    fechaCita?: boolean
+    asistencia?: boolean
+    fechaAfiliacion?: boolean
+    movil?: boolean
+    observaciones?: boolean
+    esDuplicado?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["flotaProspecto"]>
+
+  export type FlotaProspectoSelectScalar = {
+    id?: boolean
+    fechaRegistro?: boolean
+    redSocial?: boolean
+    celular?: boolean
+    nombreCompleto?: boolean
+    edad?: boolean
+    operador?: boolean
+    estado?: boolean
+    modalidad?: boolean
+    anioVehiculo?: boolean
+    distrito?: boolean
+    fechaCita?: boolean
+    asistencia?: boolean
+    fechaAfiliacion?: boolean
+    movil?: boolean
+    observaciones?: boolean
+    esDuplicado?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type FlotaProspectoOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "fechaRegistro" | "redSocial" | "celular" | "nombreCompleto" | "edad" | "operador" | "estado" | "modalidad" | "anioVehiculo" | "distrito" | "fechaCita" | "asistencia" | "fechaAfiliacion" | "movil" | "observaciones" | "esDuplicado" | "createdAt" | "updatedAt", ExtArgs["result"]["flotaProspecto"]>
+
+  export type $FlotaProspectoPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "FlotaProspecto"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      fechaRegistro: Date | null
+      redSocial: string | null
+      celular: string | null
+      nombreCompleto: string
+      edad: number | null
+      operador: string | null
+      estado: string
+      modalidad: string | null
+      anioVehiculo: number | null
+      distrito: string | null
+      fechaCita: Date | null
+      asistencia: string | null
+      fechaAfiliacion: Date | null
+      movil: string | null
+      observaciones: string | null
+      /**
+       * * true cuando el celular ya existía en la BD al momento de importar
+       */
+      esDuplicado: boolean
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["flotaProspecto"]>
+    composites: {}
+  }
+
+  type FlotaProspectoGetPayload<S extends boolean | null | undefined | FlotaProspectoDefaultArgs> = $Result.GetResult<Prisma.$FlotaProspectoPayload, S>
+
+  type FlotaProspectoCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<FlotaProspectoFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: FlotaProspectoCountAggregateInputType | true
+    }
+
+  export interface FlotaProspectoDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['FlotaProspecto'], meta: { name: 'FlotaProspecto' } }
+    /**
+     * Find zero or one FlotaProspecto that matches the filter.
+     * @param {FlotaProspectoFindUniqueArgs} args - Arguments to find a FlotaProspecto
+     * @example
+     * // Get one FlotaProspecto
+     * const flotaProspecto = await prisma.flotaProspecto.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends FlotaProspectoFindUniqueArgs>(args: SelectSubset<T, FlotaProspectoFindUniqueArgs<ExtArgs>>): Prisma__FlotaProspectoClient<$Result.GetResult<Prisma.$FlotaProspectoPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one FlotaProspecto that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {FlotaProspectoFindUniqueOrThrowArgs} args - Arguments to find a FlotaProspecto
+     * @example
+     * // Get one FlotaProspecto
+     * const flotaProspecto = await prisma.flotaProspecto.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends FlotaProspectoFindUniqueOrThrowArgs>(args: SelectSubset<T, FlotaProspectoFindUniqueOrThrowArgs<ExtArgs>>): Prisma__FlotaProspectoClient<$Result.GetResult<Prisma.$FlotaProspectoPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first FlotaProspecto that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlotaProspectoFindFirstArgs} args - Arguments to find a FlotaProspecto
+     * @example
+     * // Get one FlotaProspecto
+     * const flotaProspecto = await prisma.flotaProspecto.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends FlotaProspectoFindFirstArgs>(args?: SelectSubset<T, FlotaProspectoFindFirstArgs<ExtArgs>>): Prisma__FlotaProspectoClient<$Result.GetResult<Prisma.$FlotaProspectoPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first FlotaProspecto that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlotaProspectoFindFirstOrThrowArgs} args - Arguments to find a FlotaProspecto
+     * @example
+     * // Get one FlotaProspecto
+     * const flotaProspecto = await prisma.flotaProspecto.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends FlotaProspectoFindFirstOrThrowArgs>(args?: SelectSubset<T, FlotaProspectoFindFirstOrThrowArgs<ExtArgs>>): Prisma__FlotaProspectoClient<$Result.GetResult<Prisma.$FlotaProspectoPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more FlotaProspectos that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlotaProspectoFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all FlotaProspectos
+     * const flotaProspectos = await prisma.flotaProspecto.findMany()
+     * 
+     * // Get first 10 FlotaProspectos
+     * const flotaProspectos = await prisma.flotaProspecto.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const flotaProspectoWithIdOnly = await prisma.flotaProspecto.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends FlotaProspectoFindManyArgs>(args?: SelectSubset<T, FlotaProspectoFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FlotaProspectoPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a FlotaProspecto.
+     * @param {FlotaProspectoCreateArgs} args - Arguments to create a FlotaProspecto.
+     * @example
+     * // Create one FlotaProspecto
+     * const FlotaProspecto = await prisma.flotaProspecto.create({
+     *   data: {
+     *     // ... data to create a FlotaProspecto
+     *   }
+     * })
+     * 
+     */
+    create<T extends FlotaProspectoCreateArgs>(args: SelectSubset<T, FlotaProspectoCreateArgs<ExtArgs>>): Prisma__FlotaProspectoClient<$Result.GetResult<Prisma.$FlotaProspectoPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many FlotaProspectos.
+     * @param {FlotaProspectoCreateManyArgs} args - Arguments to create many FlotaProspectos.
+     * @example
+     * // Create many FlotaProspectos
+     * const flotaProspecto = await prisma.flotaProspecto.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends FlotaProspectoCreateManyArgs>(args?: SelectSubset<T, FlotaProspectoCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many FlotaProspectos and returns the data saved in the database.
+     * @param {FlotaProspectoCreateManyAndReturnArgs} args - Arguments to create many FlotaProspectos.
+     * @example
+     * // Create many FlotaProspectos
+     * const flotaProspecto = await prisma.flotaProspecto.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many FlotaProspectos and only return the `id`
+     * const flotaProspectoWithIdOnly = await prisma.flotaProspecto.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends FlotaProspectoCreateManyAndReturnArgs>(args?: SelectSubset<T, FlotaProspectoCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FlotaProspectoPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a FlotaProspecto.
+     * @param {FlotaProspectoDeleteArgs} args - Arguments to delete one FlotaProspecto.
+     * @example
+     * // Delete one FlotaProspecto
+     * const FlotaProspecto = await prisma.flotaProspecto.delete({
+     *   where: {
+     *     // ... filter to delete one FlotaProspecto
+     *   }
+     * })
+     * 
+     */
+    delete<T extends FlotaProspectoDeleteArgs>(args: SelectSubset<T, FlotaProspectoDeleteArgs<ExtArgs>>): Prisma__FlotaProspectoClient<$Result.GetResult<Prisma.$FlotaProspectoPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one FlotaProspecto.
+     * @param {FlotaProspectoUpdateArgs} args - Arguments to update one FlotaProspecto.
+     * @example
+     * // Update one FlotaProspecto
+     * const flotaProspecto = await prisma.flotaProspecto.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends FlotaProspectoUpdateArgs>(args: SelectSubset<T, FlotaProspectoUpdateArgs<ExtArgs>>): Prisma__FlotaProspectoClient<$Result.GetResult<Prisma.$FlotaProspectoPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more FlotaProspectos.
+     * @param {FlotaProspectoDeleteManyArgs} args - Arguments to filter FlotaProspectos to delete.
+     * @example
+     * // Delete a few FlotaProspectos
+     * const { count } = await prisma.flotaProspecto.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends FlotaProspectoDeleteManyArgs>(args?: SelectSubset<T, FlotaProspectoDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more FlotaProspectos.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlotaProspectoUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many FlotaProspectos
+     * const flotaProspecto = await prisma.flotaProspecto.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends FlotaProspectoUpdateManyArgs>(args: SelectSubset<T, FlotaProspectoUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more FlotaProspectos and returns the data updated in the database.
+     * @param {FlotaProspectoUpdateManyAndReturnArgs} args - Arguments to update many FlotaProspectos.
+     * @example
+     * // Update many FlotaProspectos
+     * const flotaProspecto = await prisma.flotaProspecto.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more FlotaProspectos and only return the `id`
+     * const flotaProspectoWithIdOnly = await prisma.flotaProspecto.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends FlotaProspectoUpdateManyAndReturnArgs>(args: SelectSubset<T, FlotaProspectoUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FlotaProspectoPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one FlotaProspecto.
+     * @param {FlotaProspectoUpsertArgs} args - Arguments to update or create a FlotaProspecto.
+     * @example
+     * // Update or create a FlotaProspecto
+     * const flotaProspecto = await prisma.flotaProspecto.upsert({
+     *   create: {
+     *     // ... data to create a FlotaProspecto
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the FlotaProspecto we want to update
+     *   }
+     * })
+     */
+    upsert<T extends FlotaProspectoUpsertArgs>(args: SelectSubset<T, FlotaProspectoUpsertArgs<ExtArgs>>): Prisma__FlotaProspectoClient<$Result.GetResult<Prisma.$FlotaProspectoPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of FlotaProspectos.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlotaProspectoCountArgs} args - Arguments to filter FlotaProspectos to count.
+     * @example
+     * // Count the number of FlotaProspectos
+     * const count = await prisma.flotaProspecto.count({
+     *   where: {
+     *     // ... the filter for the FlotaProspectos we want to count
+     *   }
+     * })
+    **/
+    count<T extends FlotaProspectoCountArgs>(
+      args?: Subset<T, FlotaProspectoCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], FlotaProspectoCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a FlotaProspecto.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlotaProspectoAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends FlotaProspectoAggregateArgs>(args: Subset<T, FlotaProspectoAggregateArgs>): Prisma.PrismaPromise<GetFlotaProspectoAggregateType<T>>
+
+    /**
+     * Group by FlotaProspecto.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlotaProspectoGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends FlotaProspectoGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: FlotaProspectoGroupByArgs['orderBy'] }
+        : { orderBy?: FlotaProspectoGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, FlotaProspectoGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetFlotaProspectoGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the FlotaProspecto model
+   */
+  readonly fields: FlotaProspectoFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for FlotaProspecto.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__FlotaProspectoClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the FlotaProspecto model
+   */
+  interface FlotaProspectoFieldRefs {
+    readonly id: FieldRef<"FlotaProspecto", 'String'>
+    readonly fechaRegistro: FieldRef<"FlotaProspecto", 'DateTime'>
+    readonly redSocial: FieldRef<"FlotaProspecto", 'String'>
+    readonly celular: FieldRef<"FlotaProspecto", 'String'>
+    readonly nombreCompleto: FieldRef<"FlotaProspecto", 'String'>
+    readonly edad: FieldRef<"FlotaProspecto", 'Int'>
+    readonly operador: FieldRef<"FlotaProspecto", 'String'>
+    readonly estado: FieldRef<"FlotaProspecto", 'String'>
+    readonly modalidad: FieldRef<"FlotaProspecto", 'String'>
+    readonly anioVehiculo: FieldRef<"FlotaProspecto", 'Int'>
+    readonly distrito: FieldRef<"FlotaProspecto", 'String'>
+    readonly fechaCita: FieldRef<"FlotaProspecto", 'DateTime'>
+    readonly asistencia: FieldRef<"FlotaProspecto", 'String'>
+    readonly fechaAfiliacion: FieldRef<"FlotaProspecto", 'DateTime'>
+    readonly movil: FieldRef<"FlotaProspecto", 'String'>
+    readonly observaciones: FieldRef<"FlotaProspecto", 'String'>
+    readonly esDuplicado: FieldRef<"FlotaProspecto", 'Boolean'>
+    readonly createdAt: FieldRef<"FlotaProspecto", 'DateTime'>
+    readonly updatedAt: FieldRef<"FlotaProspecto", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * FlotaProspecto findUnique
+   */
+  export type FlotaProspectoFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlotaProspecto
+     */
+    select?: FlotaProspectoSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlotaProspecto
+     */
+    omit?: FlotaProspectoOmit<ExtArgs> | null
+    /**
+     * Filter, which FlotaProspecto to fetch.
+     */
+    where: FlotaProspectoWhereUniqueInput
+  }
+
+  /**
+   * FlotaProspecto findUniqueOrThrow
+   */
+  export type FlotaProspectoFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlotaProspecto
+     */
+    select?: FlotaProspectoSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlotaProspecto
+     */
+    omit?: FlotaProspectoOmit<ExtArgs> | null
+    /**
+     * Filter, which FlotaProspecto to fetch.
+     */
+    where: FlotaProspectoWhereUniqueInput
+  }
+
+  /**
+   * FlotaProspecto findFirst
+   */
+  export type FlotaProspectoFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlotaProspecto
+     */
+    select?: FlotaProspectoSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlotaProspecto
+     */
+    omit?: FlotaProspectoOmit<ExtArgs> | null
+    /**
+     * Filter, which FlotaProspecto to fetch.
+     */
+    where?: FlotaProspectoWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of FlotaProspectos to fetch.
+     */
+    orderBy?: FlotaProspectoOrderByWithRelationInput | FlotaProspectoOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for FlotaProspectos.
+     */
+    cursor?: FlotaProspectoWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` FlotaProspectos from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` FlotaProspectos.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of FlotaProspectos.
+     */
+    distinct?: FlotaProspectoScalarFieldEnum | FlotaProspectoScalarFieldEnum[]
+  }
+
+  /**
+   * FlotaProspecto findFirstOrThrow
+   */
+  export type FlotaProspectoFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlotaProspecto
+     */
+    select?: FlotaProspectoSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlotaProspecto
+     */
+    omit?: FlotaProspectoOmit<ExtArgs> | null
+    /**
+     * Filter, which FlotaProspecto to fetch.
+     */
+    where?: FlotaProspectoWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of FlotaProspectos to fetch.
+     */
+    orderBy?: FlotaProspectoOrderByWithRelationInput | FlotaProspectoOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for FlotaProspectos.
+     */
+    cursor?: FlotaProspectoWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` FlotaProspectos from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` FlotaProspectos.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of FlotaProspectos.
+     */
+    distinct?: FlotaProspectoScalarFieldEnum | FlotaProspectoScalarFieldEnum[]
+  }
+
+  /**
+   * FlotaProspecto findMany
+   */
+  export type FlotaProspectoFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlotaProspecto
+     */
+    select?: FlotaProspectoSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlotaProspecto
+     */
+    omit?: FlotaProspectoOmit<ExtArgs> | null
+    /**
+     * Filter, which FlotaProspectos to fetch.
+     */
+    where?: FlotaProspectoWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of FlotaProspectos to fetch.
+     */
+    orderBy?: FlotaProspectoOrderByWithRelationInput | FlotaProspectoOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing FlotaProspectos.
+     */
+    cursor?: FlotaProspectoWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` FlotaProspectos from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` FlotaProspectos.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of FlotaProspectos.
+     */
+    distinct?: FlotaProspectoScalarFieldEnum | FlotaProspectoScalarFieldEnum[]
+  }
+
+  /**
+   * FlotaProspecto create
+   */
+  export type FlotaProspectoCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlotaProspecto
+     */
+    select?: FlotaProspectoSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlotaProspecto
+     */
+    omit?: FlotaProspectoOmit<ExtArgs> | null
+    /**
+     * The data needed to create a FlotaProspecto.
+     */
+    data: XOR<FlotaProspectoCreateInput, FlotaProspectoUncheckedCreateInput>
+  }
+
+  /**
+   * FlotaProspecto createMany
+   */
+  export type FlotaProspectoCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many FlotaProspectos.
+     */
+    data: FlotaProspectoCreateManyInput | FlotaProspectoCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * FlotaProspecto createManyAndReturn
+   */
+  export type FlotaProspectoCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlotaProspecto
+     */
+    select?: FlotaProspectoSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlotaProspecto
+     */
+    omit?: FlotaProspectoOmit<ExtArgs> | null
+    /**
+     * The data used to create many FlotaProspectos.
+     */
+    data: FlotaProspectoCreateManyInput | FlotaProspectoCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * FlotaProspecto update
+   */
+  export type FlotaProspectoUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlotaProspecto
+     */
+    select?: FlotaProspectoSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlotaProspecto
+     */
+    omit?: FlotaProspectoOmit<ExtArgs> | null
+    /**
+     * The data needed to update a FlotaProspecto.
+     */
+    data: XOR<FlotaProspectoUpdateInput, FlotaProspectoUncheckedUpdateInput>
+    /**
+     * Choose, which FlotaProspecto to update.
+     */
+    where: FlotaProspectoWhereUniqueInput
+  }
+
+  /**
+   * FlotaProspecto updateMany
+   */
+  export type FlotaProspectoUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update FlotaProspectos.
+     */
+    data: XOR<FlotaProspectoUpdateManyMutationInput, FlotaProspectoUncheckedUpdateManyInput>
+    /**
+     * Filter which FlotaProspectos to update
+     */
+    where?: FlotaProspectoWhereInput
+    /**
+     * Limit how many FlotaProspectos to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * FlotaProspecto updateManyAndReturn
+   */
+  export type FlotaProspectoUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlotaProspecto
+     */
+    select?: FlotaProspectoSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlotaProspecto
+     */
+    omit?: FlotaProspectoOmit<ExtArgs> | null
+    /**
+     * The data used to update FlotaProspectos.
+     */
+    data: XOR<FlotaProspectoUpdateManyMutationInput, FlotaProspectoUncheckedUpdateManyInput>
+    /**
+     * Filter which FlotaProspectos to update
+     */
+    where?: FlotaProspectoWhereInput
+    /**
+     * Limit how many FlotaProspectos to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * FlotaProspecto upsert
+   */
+  export type FlotaProspectoUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlotaProspecto
+     */
+    select?: FlotaProspectoSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlotaProspecto
+     */
+    omit?: FlotaProspectoOmit<ExtArgs> | null
+    /**
+     * The filter to search for the FlotaProspecto to update in case it exists.
+     */
+    where: FlotaProspectoWhereUniqueInput
+    /**
+     * In case the FlotaProspecto found by the `where` argument doesn't exist, create a new FlotaProspecto with this data.
+     */
+    create: XOR<FlotaProspectoCreateInput, FlotaProspectoUncheckedCreateInput>
+    /**
+     * In case the FlotaProspecto was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<FlotaProspectoUpdateInput, FlotaProspectoUncheckedUpdateInput>
+  }
+
+  /**
+   * FlotaProspecto delete
+   */
+  export type FlotaProspectoDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlotaProspecto
+     */
+    select?: FlotaProspectoSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlotaProspecto
+     */
+    omit?: FlotaProspectoOmit<ExtArgs> | null
+    /**
+     * Filter which FlotaProspecto to delete.
+     */
+    where: FlotaProspectoWhereUniqueInput
+  }
+
+  /**
+   * FlotaProspecto deleteMany
+   */
+  export type FlotaProspectoDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which FlotaProspectos to delete
+     */
+    where?: FlotaProspectoWhereInput
+    /**
+     * Limit how many FlotaProspectos to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * FlotaProspecto without action
+   */
+  export type FlotaProspectoDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlotaProspecto
+     */
+    select?: FlotaProspectoSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlotaProspecto
+     */
+    omit?: FlotaProspectoOmit<ExtArgs> | null
+  }
+
+
+  /**
    * Enums
    */
 
@@ -51389,6 +52703,31 @@ export namespace Prisma {
   };
 
   export type CrmFileScalarFieldEnum = (typeof CrmFileScalarFieldEnum)[keyof typeof CrmFileScalarFieldEnum]
+
+
+  export const FlotaProspectoScalarFieldEnum: {
+    id: 'id',
+    fechaRegistro: 'fechaRegistro',
+    redSocial: 'redSocial',
+    celular: 'celular',
+    nombreCompleto: 'nombreCompleto',
+    edad: 'edad',
+    operador: 'operador',
+    estado: 'estado',
+    modalidad: 'modalidad',
+    anioVehiculo: 'anioVehiculo',
+    distrito: 'distrito',
+    fechaCita: 'fechaCita',
+    asistencia: 'asistencia',
+    fechaAfiliacion: 'fechaAfiliacion',
+    movil: 'movil',
+    observaciones: 'observaciones',
+    esDuplicado: 'esDuplicado',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type FlotaProspectoScalarFieldEnum = (typeof FlotaProspectoScalarFieldEnum)[keyof typeof FlotaProspectoScalarFieldEnum]
 
 
   export const SortOrder: {
@@ -54514,6 +55853,130 @@ export namespace Prisma {
     relatedEntityName?: StringNullableWithAggregatesFilter<"CrmFile"> | string | null
     uploadedBy?: StringWithAggregatesFilter<"CrmFile"> | string
     createdAt?: DateTimeWithAggregatesFilter<"CrmFile"> | Date | string
+  }
+
+  export type FlotaProspectoWhereInput = {
+    AND?: FlotaProspectoWhereInput | FlotaProspectoWhereInput[]
+    OR?: FlotaProspectoWhereInput[]
+    NOT?: FlotaProspectoWhereInput | FlotaProspectoWhereInput[]
+    id?: StringFilter<"FlotaProspecto"> | string
+    fechaRegistro?: DateTimeNullableFilter<"FlotaProspecto"> | Date | string | null
+    redSocial?: StringNullableFilter<"FlotaProspecto"> | string | null
+    celular?: StringNullableFilter<"FlotaProspecto"> | string | null
+    nombreCompleto?: StringFilter<"FlotaProspecto"> | string
+    edad?: IntNullableFilter<"FlotaProspecto"> | number | null
+    operador?: StringNullableFilter<"FlotaProspecto"> | string | null
+    estado?: StringFilter<"FlotaProspecto"> | string
+    modalidad?: StringNullableFilter<"FlotaProspecto"> | string | null
+    anioVehiculo?: IntNullableFilter<"FlotaProspecto"> | number | null
+    distrito?: StringNullableFilter<"FlotaProspecto"> | string | null
+    fechaCita?: DateTimeNullableFilter<"FlotaProspecto"> | Date | string | null
+    asistencia?: StringNullableFilter<"FlotaProspecto"> | string | null
+    fechaAfiliacion?: DateTimeNullableFilter<"FlotaProspecto"> | Date | string | null
+    movil?: StringNullableFilter<"FlotaProspecto"> | string | null
+    observaciones?: StringNullableFilter<"FlotaProspecto"> | string | null
+    esDuplicado?: BoolFilter<"FlotaProspecto"> | boolean
+    createdAt?: DateTimeFilter<"FlotaProspecto"> | Date | string
+    updatedAt?: DateTimeFilter<"FlotaProspecto"> | Date | string
+  }
+
+  export type FlotaProspectoOrderByWithRelationInput = {
+    id?: SortOrder
+    fechaRegistro?: SortOrderInput | SortOrder
+    redSocial?: SortOrderInput | SortOrder
+    celular?: SortOrderInput | SortOrder
+    nombreCompleto?: SortOrder
+    edad?: SortOrderInput | SortOrder
+    operador?: SortOrderInput | SortOrder
+    estado?: SortOrder
+    modalidad?: SortOrderInput | SortOrder
+    anioVehiculo?: SortOrderInput | SortOrder
+    distrito?: SortOrderInput | SortOrder
+    fechaCita?: SortOrderInput | SortOrder
+    asistencia?: SortOrderInput | SortOrder
+    fechaAfiliacion?: SortOrderInput | SortOrder
+    movil?: SortOrderInput | SortOrder
+    observaciones?: SortOrderInput | SortOrder
+    esDuplicado?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type FlotaProspectoWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: FlotaProspectoWhereInput | FlotaProspectoWhereInput[]
+    OR?: FlotaProspectoWhereInput[]
+    NOT?: FlotaProspectoWhereInput | FlotaProspectoWhereInput[]
+    fechaRegistro?: DateTimeNullableFilter<"FlotaProspecto"> | Date | string | null
+    redSocial?: StringNullableFilter<"FlotaProspecto"> | string | null
+    celular?: StringNullableFilter<"FlotaProspecto"> | string | null
+    nombreCompleto?: StringFilter<"FlotaProspecto"> | string
+    edad?: IntNullableFilter<"FlotaProspecto"> | number | null
+    operador?: StringNullableFilter<"FlotaProspecto"> | string | null
+    estado?: StringFilter<"FlotaProspecto"> | string
+    modalidad?: StringNullableFilter<"FlotaProspecto"> | string | null
+    anioVehiculo?: IntNullableFilter<"FlotaProspecto"> | number | null
+    distrito?: StringNullableFilter<"FlotaProspecto"> | string | null
+    fechaCita?: DateTimeNullableFilter<"FlotaProspecto"> | Date | string | null
+    asistencia?: StringNullableFilter<"FlotaProspecto"> | string | null
+    fechaAfiliacion?: DateTimeNullableFilter<"FlotaProspecto"> | Date | string | null
+    movil?: StringNullableFilter<"FlotaProspecto"> | string | null
+    observaciones?: StringNullableFilter<"FlotaProspecto"> | string | null
+    esDuplicado?: BoolFilter<"FlotaProspecto"> | boolean
+    createdAt?: DateTimeFilter<"FlotaProspecto"> | Date | string
+    updatedAt?: DateTimeFilter<"FlotaProspecto"> | Date | string
+  }, "id">
+
+  export type FlotaProspectoOrderByWithAggregationInput = {
+    id?: SortOrder
+    fechaRegistro?: SortOrderInput | SortOrder
+    redSocial?: SortOrderInput | SortOrder
+    celular?: SortOrderInput | SortOrder
+    nombreCompleto?: SortOrder
+    edad?: SortOrderInput | SortOrder
+    operador?: SortOrderInput | SortOrder
+    estado?: SortOrder
+    modalidad?: SortOrderInput | SortOrder
+    anioVehiculo?: SortOrderInput | SortOrder
+    distrito?: SortOrderInput | SortOrder
+    fechaCita?: SortOrderInput | SortOrder
+    asistencia?: SortOrderInput | SortOrder
+    fechaAfiliacion?: SortOrderInput | SortOrder
+    movil?: SortOrderInput | SortOrder
+    observaciones?: SortOrderInput | SortOrder
+    esDuplicado?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: FlotaProspectoCountOrderByAggregateInput
+    _avg?: FlotaProspectoAvgOrderByAggregateInput
+    _max?: FlotaProspectoMaxOrderByAggregateInput
+    _min?: FlotaProspectoMinOrderByAggregateInput
+    _sum?: FlotaProspectoSumOrderByAggregateInput
+  }
+
+  export type FlotaProspectoScalarWhereWithAggregatesInput = {
+    AND?: FlotaProspectoScalarWhereWithAggregatesInput | FlotaProspectoScalarWhereWithAggregatesInput[]
+    OR?: FlotaProspectoScalarWhereWithAggregatesInput[]
+    NOT?: FlotaProspectoScalarWhereWithAggregatesInput | FlotaProspectoScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"FlotaProspecto"> | string
+    fechaRegistro?: DateTimeNullableWithAggregatesFilter<"FlotaProspecto"> | Date | string | null
+    redSocial?: StringNullableWithAggregatesFilter<"FlotaProspecto"> | string | null
+    celular?: StringNullableWithAggregatesFilter<"FlotaProspecto"> | string | null
+    nombreCompleto?: StringWithAggregatesFilter<"FlotaProspecto"> | string
+    edad?: IntNullableWithAggregatesFilter<"FlotaProspecto"> | number | null
+    operador?: StringNullableWithAggregatesFilter<"FlotaProspecto"> | string | null
+    estado?: StringWithAggregatesFilter<"FlotaProspecto"> | string
+    modalidad?: StringNullableWithAggregatesFilter<"FlotaProspecto"> | string | null
+    anioVehiculo?: IntNullableWithAggregatesFilter<"FlotaProspecto"> | number | null
+    distrito?: StringNullableWithAggregatesFilter<"FlotaProspecto"> | string | null
+    fechaCita?: DateTimeNullableWithAggregatesFilter<"FlotaProspecto"> | Date | string | null
+    asistencia?: StringNullableWithAggregatesFilter<"FlotaProspecto"> | string | null
+    fechaAfiliacion?: DateTimeNullableWithAggregatesFilter<"FlotaProspecto"> | Date | string | null
+    movil?: StringNullableWithAggregatesFilter<"FlotaProspecto"> | string | null
+    observaciones?: StringNullableWithAggregatesFilter<"FlotaProspecto"> | string | null
+    esDuplicado?: BoolWithAggregatesFilter<"FlotaProspecto"> | boolean
+    createdAt?: DateTimeWithAggregatesFilter<"FlotaProspecto"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"FlotaProspecto"> | Date | string
   }
 
   export type RoleCreateInput = {
@@ -57746,6 +59209,160 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type FlotaProspectoCreateInput = {
+    id?: string
+    fechaRegistro?: Date | string | null
+    redSocial?: string | null
+    celular?: string | null
+    nombreCompleto: string
+    edad?: number | null
+    operador?: string | null
+    estado?: string
+    modalidad?: string | null
+    anioVehiculo?: number | null
+    distrito?: string | null
+    fechaCita?: Date | string | null
+    asistencia?: string | null
+    fechaAfiliacion?: Date | string | null
+    movil?: string | null
+    observaciones?: string | null
+    esDuplicado?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type FlotaProspectoUncheckedCreateInput = {
+    id?: string
+    fechaRegistro?: Date | string | null
+    redSocial?: string | null
+    celular?: string | null
+    nombreCompleto: string
+    edad?: number | null
+    operador?: string | null
+    estado?: string
+    modalidad?: string | null
+    anioVehiculo?: number | null
+    distrito?: string | null
+    fechaCita?: Date | string | null
+    asistencia?: string | null
+    fechaAfiliacion?: Date | string | null
+    movil?: string | null
+    observaciones?: string | null
+    esDuplicado?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type FlotaProspectoUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    fechaRegistro?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    redSocial?: NullableStringFieldUpdateOperationsInput | string | null
+    celular?: NullableStringFieldUpdateOperationsInput | string | null
+    nombreCompleto?: StringFieldUpdateOperationsInput | string
+    edad?: NullableIntFieldUpdateOperationsInput | number | null
+    operador?: NullableStringFieldUpdateOperationsInput | string | null
+    estado?: StringFieldUpdateOperationsInput | string
+    modalidad?: NullableStringFieldUpdateOperationsInput | string | null
+    anioVehiculo?: NullableIntFieldUpdateOperationsInput | number | null
+    distrito?: NullableStringFieldUpdateOperationsInput | string | null
+    fechaCita?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    asistencia?: NullableStringFieldUpdateOperationsInput | string | null
+    fechaAfiliacion?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    movil?: NullableStringFieldUpdateOperationsInput | string | null
+    observaciones?: NullableStringFieldUpdateOperationsInput | string | null
+    esDuplicado?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type FlotaProspectoUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    fechaRegistro?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    redSocial?: NullableStringFieldUpdateOperationsInput | string | null
+    celular?: NullableStringFieldUpdateOperationsInput | string | null
+    nombreCompleto?: StringFieldUpdateOperationsInput | string
+    edad?: NullableIntFieldUpdateOperationsInput | number | null
+    operador?: NullableStringFieldUpdateOperationsInput | string | null
+    estado?: StringFieldUpdateOperationsInput | string
+    modalidad?: NullableStringFieldUpdateOperationsInput | string | null
+    anioVehiculo?: NullableIntFieldUpdateOperationsInput | number | null
+    distrito?: NullableStringFieldUpdateOperationsInput | string | null
+    fechaCita?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    asistencia?: NullableStringFieldUpdateOperationsInput | string | null
+    fechaAfiliacion?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    movil?: NullableStringFieldUpdateOperationsInput | string | null
+    observaciones?: NullableStringFieldUpdateOperationsInput | string | null
+    esDuplicado?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type FlotaProspectoCreateManyInput = {
+    id?: string
+    fechaRegistro?: Date | string | null
+    redSocial?: string | null
+    celular?: string | null
+    nombreCompleto: string
+    edad?: number | null
+    operador?: string | null
+    estado?: string
+    modalidad?: string | null
+    anioVehiculo?: number | null
+    distrito?: string | null
+    fechaCita?: Date | string | null
+    asistencia?: string | null
+    fechaAfiliacion?: Date | string | null
+    movil?: string | null
+    observaciones?: string | null
+    esDuplicado?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type FlotaProspectoUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    fechaRegistro?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    redSocial?: NullableStringFieldUpdateOperationsInput | string | null
+    celular?: NullableStringFieldUpdateOperationsInput | string | null
+    nombreCompleto?: StringFieldUpdateOperationsInput | string
+    edad?: NullableIntFieldUpdateOperationsInput | number | null
+    operador?: NullableStringFieldUpdateOperationsInput | string | null
+    estado?: StringFieldUpdateOperationsInput | string
+    modalidad?: NullableStringFieldUpdateOperationsInput | string | null
+    anioVehiculo?: NullableIntFieldUpdateOperationsInput | number | null
+    distrito?: NullableStringFieldUpdateOperationsInput | string | null
+    fechaCita?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    asistencia?: NullableStringFieldUpdateOperationsInput | string | null
+    fechaAfiliacion?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    movil?: NullableStringFieldUpdateOperationsInput | string | null
+    observaciones?: NullableStringFieldUpdateOperationsInput | string | null
+    esDuplicado?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type FlotaProspectoUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    fechaRegistro?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    redSocial?: NullableStringFieldUpdateOperationsInput | string | null
+    celular?: NullableStringFieldUpdateOperationsInput | string | null
+    nombreCompleto?: StringFieldUpdateOperationsInput | string
+    edad?: NullableIntFieldUpdateOperationsInput | number | null
+    operador?: NullableStringFieldUpdateOperationsInput | string | null
+    estado?: StringFieldUpdateOperationsInput | string
+    modalidad?: NullableStringFieldUpdateOperationsInput | string | null
+    anioVehiculo?: NullableIntFieldUpdateOperationsInput | number | null
+    distrito?: NullableStringFieldUpdateOperationsInput | string | null
+    fechaCita?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    asistencia?: NullableStringFieldUpdateOperationsInput | string | null
+    fechaAfiliacion?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    movil?: NullableStringFieldUpdateOperationsInput | string | null
+    observaciones?: NullableStringFieldUpdateOperationsInput | string | null
+    esDuplicado?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type StringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[] | ListStringFieldRefInput<$PrismaModel>
@@ -59885,6 +61502,109 @@ export namespace Prisma {
 
   export type CrmFileSumOrderByAggregateInput = {
     size?: SortOrder
+  }
+
+  export type IntNullableFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntNullableFilter<$PrismaModel> | number | null
+  }
+
+  export type FlotaProspectoCountOrderByAggregateInput = {
+    id?: SortOrder
+    fechaRegistro?: SortOrder
+    redSocial?: SortOrder
+    celular?: SortOrder
+    nombreCompleto?: SortOrder
+    edad?: SortOrder
+    operador?: SortOrder
+    estado?: SortOrder
+    modalidad?: SortOrder
+    anioVehiculo?: SortOrder
+    distrito?: SortOrder
+    fechaCita?: SortOrder
+    asistencia?: SortOrder
+    fechaAfiliacion?: SortOrder
+    movil?: SortOrder
+    observaciones?: SortOrder
+    esDuplicado?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type FlotaProspectoAvgOrderByAggregateInput = {
+    edad?: SortOrder
+    anioVehiculo?: SortOrder
+  }
+
+  export type FlotaProspectoMaxOrderByAggregateInput = {
+    id?: SortOrder
+    fechaRegistro?: SortOrder
+    redSocial?: SortOrder
+    celular?: SortOrder
+    nombreCompleto?: SortOrder
+    edad?: SortOrder
+    operador?: SortOrder
+    estado?: SortOrder
+    modalidad?: SortOrder
+    anioVehiculo?: SortOrder
+    distrito?: SortOrder
+    fechaCita?: SortOrder
+    asistencia?: SortOrder
+    fechaAfiliacion?: SortOrder
+    movil?: SortOrder
+    observaciones?: SortOrder
+    esDuplicado?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type FlotaProspectoMinOrderByAggregateInput = {
+    id?: SortOrder
+    fechaRegistro?: SortOrder
+    redSocial?: SortOrder
+    celular?: SortOrder
+    nombreCompleto?: SortOrder
+    edad?: SortOrder
+    operador?: SortOrder
+    estado?: SortOrder
+    modalidad?: SortOrder
+    anioVehiculo?: SortOrder
+    distrito?: SortOrder
+    fechaCita?: SortOrder
+    asistencia?: SortOrder
+    fechaAfiliacion?: SortOrder
+    movil?: SortOrder
+    observaciones?: SortOrder
+    esDuplicado?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type FlotaProspectoSumOrderByAggregateInput = {
+    edad?: SortOrder
+    anioVehiculo?: SortOrder
+  }
+
+  export type IntNullableWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntNullableWithAggregatesFilter<$PrismaModel> | number | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _avg?: NestedFloatNullableFilter<$PrismaModel>
+    _sum?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedIntNullableFilter<$PrismaModel>
+    _max?: NestedIntNullableFilter<$PrismaModel>
   }
 
   export type AuthorityCreateNestedManyWithoutRoleInput = {
@@ -62326,6 +64046,14 @@ export namespace Prisma {
     update?: XOR<XOR<UserUpdateToOneWithWhereWithoutCrmFilesUploadedInput, UserUpdateWithoutCrmFilesUploadedInput>, UserUncheckedUpdateWithoutCrmFilesUploadedInput>
   }
 
+  export type NullableIntFieldUpdateOperationsInput = {
+    set?: number | null
+    increment?: number
+    decrement?: number
+    multiply?: number
+    divide?: number
+  }
+
   export type NestedStringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[] | ListStringFieldRefInput<$PrismaModel>
@@ -62537,6 +64265,33 @@ export namespace Prisma {
     _sum?: NestedFloatFilter<$PrismaModel>
     _min?: NestedFloatFilter<$PrismaModel>
     _max?: NestedFloatFilter<$PrismaModel>
+  }
+
+  export type NestedIntNullableWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntNullableWithAggregatesFilter<$PrismaModel> | number | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _avg?: NestedFloatNullableFilter<$PrismaModel>
+    _sum?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedIntNullableFilter<$PrismaModel>
+    _max?: NestedIntNullableFilter<$PrismaModel>
+  }
+
+  export type NestedFloatNullableFilter<$PrismaModel = never> = {
+    equals?: number | FloatFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListFloatFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListFloatFieldRefInput<$PrismaModel> | null
+    lt?: number | FloatFieldRefInput<$PrismaModel>
+    lte?: number | FloatFieldRefInput<$PrismaModel>
+    gt?: number | FloatFieldRefInput<$PrismaModel>
+    gte?: number | FloatFieldRefInput<$PrismaModel>
+    not?: NestedFloatNullableFilter<$PrismaModel> | number | null
   }
 
   export type AuthorityCreateWithoutRoleInput = {
