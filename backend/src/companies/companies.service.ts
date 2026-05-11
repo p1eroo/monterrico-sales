@@ -153,13 +153,15 @@ export class CompaniesService {
   /** Primera empresa con ese RUC (formato guardado o solo dígitos), la más antigua por id. */
   private async findFirstCompanyByRucDigits(
     digits: string,
-  ): Promise<{ id: string; name: string } | null> {
-    const grouped = await this.prisma.$queryRaw<{ id: string; name: string }[]>(
+  ): Promise<{ id: string; name: string; ownerName: string | null } | null> {
+    const grouped = await this.prisma.$queryRaw<{ id: string; name: string; ownerName: string | null }[]>(
       Prisma.sql`
-        SELECT id, name FROM "Company"
-        WHERE "ruc" IS NOT NULL
-          AND regexp_replace("ruc", '[^0-9]', '', 'g') = ${digits}
-        ORDER BY id ASC
+        SELECT c.id, c.name, u.name as "ownerName"
+        FROM "Company" c
+        LEFT JOIN "User" u ON c."assignedTo" = u.id
+        WHERE c."ruc" IS NOT NULL
+          AND regexp_replace(c."ruc", '[^0-9]', '', 'g') = ${digits}
+        ORDER BY c.id ASC
         LIMIT 1
       `,
     );
@@ -350,17 +352,10 @@ export class CompaniesService {
     if (rucDigits) {
       const existing = await this.findFirstCompanyByRucDigits(rucDigits);
       if (existing) {
-        await this.mergeCompanyOnDuplicateRuc(existing.id, dto);
-        await this.entitySync.propagateFromCompany(existing.id);
-        await this.activityLogs.record(actor ?? null, {
-          action: 'actualizar',
-          module: 'empresas',
-          entityType: 'Empresa',
-          entityId: existing.id,
-          entityName: existing.name,
-          description: `Empresa unificada por RUC: datos actualizados (sin crear duplicado)`,
-        });
-        return this.findOne(existing.id, scope);
+        throw new BadRequestException(
+          `La empresa ya se encuentra registrada. 
+          Por: ${existing.ownerName ?? 'Sistema (Sin asignar)'}`,
+        );
       }
     }
 
@@ -371,10 +366,11 @@ export class CompaniesService {
           { razonSocial: { equals: name, mode: 'insensitive' } },
         ],
       },
+      include: { user: { select: { name: true } } },
     });
     if (dupName) {
       throw new BadRequestException(
-        'Ya existe una empresa con el mismo nombre. Revisa o elige otro nombre.',
+        `Ya existe una empresa con el mismo nombre. Por: ${dupName.user?.name ?? 'Sistema (Sin asignar)'}`,
       );
     }
 
@@ -872,6 +868,20 @@ export class CompaniesService {
 
     if (!row) {
       throw new NotFoundException('No hay empresa con ese RUC');
+    }
+
+    // Verificar si el usuario tiene acceso o si pertenece a alguien más
+    const companyWithOwner = await this.prisma.company.findUnique({
+      where: { id: row.id },
+      include: { user: { select: { id: true, name: true } } },
+    });
+
+    if (companyWithOwner && scope && !scope.unrestricted) {
+      if (companyWithOwner.assignedTo !== scope.viewerUserId) {
+        throw new BadRequestException(
+          `La empresa ya se encuentra registrada. \n Por: ${companyWithOwner.user?.name ?? 'Sistema (Sin asignar)'}`,
+        );
+      }
     }
 
     return this.findOne(row.id, scope);

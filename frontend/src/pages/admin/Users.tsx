@@ -14,6 +14,9 @@ import {
   ChevronRight,
   Users,
   Filter,
+  Briefcase,
+  Car,
+  Shield as ShieldIcon,
 } from 'lucide-react';
 import type { User } from '@/types';
 import { useRoles, type ApiRole } from '@/hooks/useRoles';
@@ -27,6 +30,7 @@ import type { RBACRole, PermissionKey } from '@/types';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -144,6 +148,7 @@ export default function UsersPage() {
   const [roleEditDraft, setRoleEditDraft] = useState<Record<PermissionKey, boolean> | null>(null);
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
+  const [selectedArea, setSelectedArea] = useState<'comercial' | 'flota' | 'general'>('comercial');
 
   const roleFilterOptions = useMemo(() => {
     if (roles.length > 0) {
@@ -226,6 +231,7 @@ export default function UsersPage() {
             name: data.name.trim(),
             roleId: data.roleId,
             status: data.status,
+            allowedAreas: data.allowedAreas,
           }),
         });
         await loadUsers();
@@ -249,6 +255,7 @@ export default function UsersPage() {
           password: data.password,
           roleId: data.roleId,
           status: data.status,
+          allowedAreas: data.allowedAreas,
         }),
       });
       await loadUsers();
@@ -504,7 +511,7 @@ export default function UsersPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
-                              onClick={() => navigate(`/users/${u.id}`)}
+                              onClick={() => navigate(`/admin/users/${u.id}`)}
                             >
                               <Eye className="size-4" />
                               Ver perfil
@@ -609,7 +616,7 @@ export default function UsersPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem
-                            onClick={() => navigate(`/users/${u.id}`)}
+                            onClick={() => navigate(`/admin/users/${u.id}`)}
                           >
                             <Eye className="size-4" />
                             Ver perfil
@@ -684,8 +691,43 @@ export default function UsersPage() {
                         : 'Modifica los permisos de este rol. Los cambios afectarán a todos los usuarios con este rol.'}
                     </DialogDescription>
                   </DialogHeader>
+
+                  <div className="mb-4 space-y-2">
+                    <Label>Área de Permisos</Label>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant={selectedArea === 'comercial' ? 'default' : 'outline'}
+                        size="sm"
+                        className="gap-2"
+                        onClick={() => setSelectedArea('comercial')}
+                      >
+                        <Briefcase className="size-4" /> Comercial
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={selectedArea === 'flota' ? 'default' : 'outline'}
+                        size="sm"
+                        className="gap-2"
+                        onClick={() => setSelectedArea('flota')}
+                      >
+                        <Car className="size-4" /> Flota
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={selectedArea === 'general' ? 'default' : 'outline'}
+                        size="sm"
+                        className="gap-2"
+                        onClick={() => setSelectedArea('general')}
+                      >
+                        <ShieldIcon className="size-4" /> General
+                      </Button>
+                    </div>
+                  </div>
+
                   <PermissionMatrix
                     permissions={effectivePermissions}
+                    filterArea={selectedArea}
                     onChange={(key, value) =>
                       handleRolePermissionsChange(currentRole.id, key, value)
                     }

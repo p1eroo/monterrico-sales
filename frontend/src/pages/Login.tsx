@@ -88,13 +88,14 @@ export default function LoginPage() {
               typeof user.lastActivity === "string"
                 ? user.lastActivity
                 : undefined,
+            allowedAreas: Array.isArray(user.allowedAreas) ? user.allowedAreas : [],
           });
           setPermissionKeys(
             Array.isArray(user.permissions) ? user.permissions : null,
           );
         }
         login();
-        navigate("/dashboard");
+        navigate("/area-select");
       } else {
         const msg =
           typeof json.message === "string"

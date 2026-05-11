@@ -138,4 +138,17 @@ export class FlotaProspectosController {
       );
     }
   }
+
+  /** POST /flota-prospectos — Crear nuevo prospecto */
+  @Post('flota-prospectos')
+  async create(@Body() body: Record<string, unknown>) {
+    try {
+      return await this.service.createOne(body);
+    } catch (err) {
+      throw new HttpException(
+        err instanceof Error ? err.message : 'No se pudo crear el prospecto',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
 }

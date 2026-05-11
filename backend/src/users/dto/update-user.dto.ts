@@ -7,4 +7,5 @@ export class UpdateUserDto {
   roleId?: string;
   /** true = activo, false = inactivo */
   status?: boolean;
+  allowedAreas?: string[];
 }

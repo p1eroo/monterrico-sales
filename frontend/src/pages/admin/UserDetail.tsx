@@ -86,7 +86,7 @@ export default function UserDetailPage() {
   if (!user || loadError) {
     return (
       <div className="space-y-6">
-        <Button variant="ghost" onClick={() => navigate('/users')}>
+        <Button variant="ghost" onClick={() => navigate('/admin/users')}>
           <ArrowLeft className="size-4" />
           Volver
         </Button>
@@ -112,6 +112,7 @@ export default function UserDetailPage() {
           name: data.name.trim(),
           roleId: data.roleId,
           status: data.status,
+          allowedAreas: data.allowedAreas,
         }),
       });
       await loadUser();
@@ -147,7 +148,7 @@ export default function UserDetailPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/users')}>
+        <Button variant="ghost" size="icon" onClick={() => navigate('/admin/users')}>
           <ArrowLeft className="size-4" />
         </Button>
         <PageHeader

@@ -16,6 +16,11 @@ import {
   MessageSquare,
   AlertTriangle,
   Loader2,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Info,
+  Ban,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -32,10 +37,17 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { flotaProspectoDetail, type FlotaProspectoRow } from '@/lib/flotaProspectosApi';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { flotaProspectoDetail, flotaProspectoUpdate, type FlotaProspectoRow } from '@/lib/flotaProspectosApi';
+
+const ESTADOS = ['AFILIADO', 'CITADO', 'SEGUIMIENTO', 'INFORMACION', 'SIN REQUISITOS', 'NO RESPONDE'] as const;
 
 const TIMELINE_MOCK = [
   {
@@ -49,10 +61,12 @@ const TIMELINE_MOCK = [
 ];
 
 const estadoColors: Record<string, string> = {
-  Nuevo: 'bg-blue-100 text-blue-700 border-blue-200',
-  Contactado: 'bg-amber-100 text-amber-700 border-amber-200',
-  Afiliado: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-  NoInteresado: 'bg-red-100 text-red-700 border-red-200',
+  AFILIADO: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  CITADO: 'bg-blue-100 text-blue-700 border-blue-200',
+  SEGUIMIENTO: 'bg-purple-100 text-purple-700 border-purple-200',
+  INFORMACION: 'bg-cyan-100 text-cyan-700 border-cyan-200',
+  SIN_REQUISITOS: 'bg-orange-100 text-orange-700 border-orange-200',
+  NO_RESPONDE: 'bg-red-100 text-red-700 border-red-200',
 };
 
 function ProspectoInformacionAside({ prospecto }: { prospecto: FlotaProspectoRow }) {
@@ -102,6 +116,10 @@ export default function FlotaProspectoDetail() {
   const [whatsappDrawerOpen, setWhatsappDrawerOpen] = useState(false);
   const [prospecto, setProspecto] = useState<FlotaProspectoRow | null>(null);
   const [loading, setLoading] = useState(true);
+  const [updatingEstado, setUpdatingEstado] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editData, setEditData] = useState<Partial<FlotaProspectoRow>>({});
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const fetchDetail = useCallback(async () => {
     if (!id) return;
@@ -117,6 +135,21 @@ export default function FlotaProspectoDetail() {
     }
   }, [id]);
 
+  const handleCambiarEstado = useCallback(async (nuevoEstado: string) => {
+    if (!prospecto || updatingEstado) return;
+    setUpdatingEstado(true);
+    try {
+      const updated = await flotaProspectoUpdate(prospecto.id, { estado: nuevoEstado });
+      setProspecto(updated);
+      toast.success(`Estado cambiado a ${nuevoEstado}`);
+    } catch (e) {
+      toast.error('No se pudo cambiar el estado');
+      console.error(e);
+    } finally {
+      setUpdatingEstado(false);
+    }
+  }, [prospecto, updatingEstado]);
+
   useEffect(() => {
     void fetchDetail();
   }, [fetchDetail]);
@@ -127,6 +160,14 @@ export default function FlotaProspectoDetail() {
       id: prospecto.id,
       name: prospecto.nombreCompleto,
       telefono: prospecto.celular || '',
+      companies: [],
+      correo: '',
+      fuente: 'Flota' as const,
+      etapa: prospecto.estado as any,
+      assignedTo: '',
+      assignedToName: '',
+      estimatedValue: 0,
+      createdAt: prospecto.createdAt,
     };
   }, [prospecto]);
 
@@ -156,6 +197,34 @@ export default function FlotaProspectoDetail() {
 
   const headerActions = (
     <div className="flex items-center gap-2">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="outline"
+            className="gap-1.5 h-9"
+            disabled={updatingEstado}
+          >
+            {updatingEstado ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <CheckCircle className="size-4" />
+            )}
+            {prospecto.estado}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-40">
+          {ESTADOS.filter(e => e !== prospecto.estado).map(estado => (
+            <DropdownMenuItem
+              key={estado}
+              onClick={() => handleCambiarEstado(estado)}
+              className="cursor-pointer"
+            >
+              {estado}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
       <QuickActionsWithDialogs
         entityName={prospecto.nombreCompleto}
         onActivityCreated={handleQuickActivityCreated}
@@ -173,24 +242,30 @@ export default function FlotaProspectoDetail() {
         variant="ghost"
         size="icon"
         className="h-9 w-9 shrink-0 rounded-lg text-text-secondary hover:bg-accent hover:text-accent-foreground"
-        onClick={() => toast.info('Editando prospecto...')}
+        onClick={() => {
+          setEditData(prospecto);
+          setEditModalOpen(true);
+        }}
       >
         <Edit className="size-4" />
       </Button>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg border border-border bg-surface-elevated text-text-secondary hover:bg-surface-hover hover:text-text-primary">
-            <MoreVertical className="size-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuItem className="text-destructive focus:text-destructive">
-            Eliminar Prospecto
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
     </div>
   );
+
+  const handleSaveEdit = async () => {
+    if (!prospecto) return;
+    setSavingEdit(true);
+    try {
+      const updated = await flotaProspectoUpdate(prospecto.id, editData);
+      setProspecto(updated);
+      setEditModalOpen(false);
+      toast.success('Prospecto actualizado');
+    } catch (e) {
+      toast.error('No se pudo actualizar');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
 
   return (
     <DetailLayout
@@ -216,15 +291,9 @@ export default function FlotaProspectoDetail() {
           <div className="mb-6 flex items-center justify-between">
             <TabsList className="bg-surface-elevated p-1 border border-border/50">
               <TabsTrigger value="historial" className="px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm">Historial</TabsTrigger>
-              <TabsTrigger value="actividades" className="px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm">Actividades</TabsTrigger>
-              <TabsTrigger value="tareas" className="px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm">Tareas</TabsTrigger>
               <TabsTrigger value="notas" className="px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm">Notas</TabsTrigger>
               <TabsTrigger value="archivos" className="px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm">Archivos</TabsTrigger>
             </TabsList>
-            
-            <Badge variant="outline" className={cn("px-3 py-1 text-xs font-medium", estadoColors[prospecto.estado])}>
-              {prospecto.estado}
-            </Badge>
           </div>
 
           <TabsContent value="historial" className="mt-0 focus-visible:outline-none">
@@ -238,32 +307,6 @@ export default function FlotaProspectoDetail() {
                 user: e.userName,
               }))}
             />
-          </TabsContent>
-
-          <TabsContent value="actividades" className="mt-0">
-            <Card className="border-border/50 bg-surface-elevated/50">
-              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                <Calendar className="mb-4 size-12 text-muted-foreground/20" />
-                <h3 className="text-lg font-medium">Sin actividades programadas</h3>
-                <p className="max-w-xs text-sm text-muted-foreground">
-                  No hay llamadas o reuniones próximas registradas para este prospecto.
-                </p>
-                <Button className="mt-4" variant="outline">Programar actividad</Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="tareas" className="mt-0">
-            <Card className="border-border/50 bg-surface-elevated/50">
-              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                <ClipboardList className="mb-4 size-12 text-muted-foreground/20" />
-                <h3 className="text-lg font-medium">Sin tareas pendientes</h3>
-                <p className="max-w-xs text-sm text-muted-foreground">
-                  Todas las tareas para este prospecto han sido completadas.
-                </p>
-                <Button className="mt-4" variant="outline">Añadir tarea</Button>
-              </CardContent>
-            </Card>
           </TabsContent>
 
           <TabsContent value="notas" className="mt-0">
@@ -307,6 +350,116 @@ export default function FlotaProspectoDetail() {
           onOpenChange={setWhatsappDrawerOpen}
         />
       )}
+
+      <Dialog open={editModalOpen} onOpenChange={(open) => setEditModalOpen(open)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Editar Prospecto</DialogTitle>
+            <DialogDescription>
+              Actualiza los datos del prospecto.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Nombre completo</Label>
+              <Input
+                value={editData.nombreCompleto || ''}
+                onChange={(e) => setEditData({ ...editData, nombreCompleto: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Celular</Label>
+              <Input
+                value={editData.celular || ''}
+                onChange={(e) => setEditData({ ...editData, celular: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Edad</Label>
+                <Input
+                  type="number"
+                  value={editData.edad ?? ''}
+                  onChange={(e) => setEditData({ ...editData, edad: e.target.value ? parseInt(e.target.value) : null })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Año Vehículo</Label>
+                <Input
+                  type="number"
+                  value={editData.anioVehiculo ?? ''}
+                  onChange={(e) => setEditData({ ...editData, anioVehiculo: e.target.value ? parseInt(e.target.value) : null })}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Red Social</Label>
+                <Input
+                  value={editData.redSocial || ''}
+                  onChange={(e) => setEditData({ ...editData, redSocial: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Operador</Label>
+                <Input
+                  value={editData.operador || ''}
+                  onChange={(e) => setEditData({ ...editData, operador: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Modalidad</Label>
+                <Input
+                  value={editData.modalidad || ''}
+                  onChange={(e) => setEditData({ ...editData, modalidad: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Distrito</Label>
+                <Input
+                  value={editData.distrito || ''}
+                  onChange={(e) => setEditData({ ...editData, distrito: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label>Estado</Label>
+              <Select
+                value={editData.estado || ''}
+                onValueChange={(v) => setEditData({ ...editData, estado: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar estado" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Nuevo">Nuevo</SelectItem>
+                  <SelectItem value="Contactado">Contactado</SelectItem>
+                  <SelectItem value="Afiliado">Afiliado</SelectItem>
+                  <SelectItem value="NoInteresado">No Interesado</SelectItem>
+                  <SelectItem value="NO RESPONDE">No Responde</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Observaciones</Label>
+              <Input
+                value={editData.observaciones || ''}
+                onChange={(e) => setEditData({ ...editData, observaciones: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveEdit} disabled={savingEdit}>
+              {savingEdit ? 'Guardando...' : 'Guardar cambios'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DetailLayout>
   );
 }

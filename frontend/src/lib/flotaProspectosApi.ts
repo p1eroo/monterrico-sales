@@ -97,11 +97,30 @@ export async function flotaProspectoDetail(
   return api<FlotaProspectoRow>(`/flota-prospectos/${id}`);
 }
 
+export async function flotaProspectoUpdate(
+  id: string,
+  data: Partial<FlotaProspectoRow>,
+): Promise<FlotaProspectoRow> {
+  return api<FlotaProspectoRow>(`/flota-prospectos/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
 export async function flotaProspectosDeleteMany(
   ids: string[],
 ): Promise<{ deleted: number }> {
   return api<{ deleted: number }>('/flota-prospectos/delete-many', {
     method: 'POST',
     body: JSON.stringify(ids),
+  });
+}
+
+export async function flotaProspectoCreate(
+  data: Partial<FlotaProspectoRow>,
+): Promise<FlotaProspectoRow> {
+  return api<FlotaProspectoRow>('/flota-prospectos', {
+    method: 'POST',
+    body: JSON.stringify(data),
   });
 }

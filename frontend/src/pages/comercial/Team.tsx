@@ -293,8 +293,10 @@ export default function TeamPage() {
   }, [summary]);
 
   const teamUsers = [...users, ...newUsersCreated];
-  /** Solo cartera comercial (`asesor`); gerentes/supervisores no se listan aquí. */
-  const salesTeamUsers = teamUsers.filter((u) => u.role === 'asesor');
+  /** Solo cartera comercial (`asesor`) asignada al área comercial; gerentes/supervisores no se listan aquí. */
+  const salesTeamUsers = teamUsers.filter(
+    (u) => u.role === 'asesor' && u.allowedAreas?.includes('comercial')
+  );
   const filteredUsers = salesTeamUsers.filter(
     (u) =>
       !search ||
@@ -318,6 +320,7 @@ export default function TeamPage() {
           password: data.password,
           roleId: data.roleId,
           status: data.status,
+          allowedAreas: data.allowedAreas,
         }),
       });
 
@@ -334,6 +337,7 @@ export default function TeamPage() {
         conversionRate: 0,
         joinedAt: joinedAtToDateString(created.joinedAt),
         lastActivity: created.lastActivity ?? undefined,
+        allowedAreas: (created.allowedAreas as User['allowedAreas']) || [],
       };
       setNewUsersCreated((prev) => [...prev, newUser]);
       toast.success(`Usuario "${data.name}" creado correctamente`);

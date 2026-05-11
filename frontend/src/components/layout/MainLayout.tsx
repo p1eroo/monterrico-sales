@@ -85,6 +85,7 @@ export default function MainLayout() {
           roleName: me.roleName,
           createdAt: me.joinedAt?.slice(0, 10),
           lastActivity: me.lastActivity ?? undefined,
+          allowedAreas: me.allowedAreas || [],
         });
         setPermissionKeys(me.permissions);
         const crm = await fetchCrmConfig();

@@ -90,39 +90,6 @@ export function Topbar() {
         </BreadcrumbList>
       </Breadcrumb>
 
-      {isAdmin && (
-        <Select
-          value={area}
-        onValueChange={(v) => {
-          const newArea = v as 'comercial' | 'flota';
-          setArea(newArea);
-          if (newArea === 'flota') {
-            navigate('/flota');
-          } else {
-            navigate('/dashboard');
-          }
-        }}
-      >
-        <SelectTrigger className="h-8 w-32 gap-1 border-primary/20 bg-primary/5 text-xs font-medium text-primary hover:bg-primary/10">
-          <SelectValue placeholder="Área" />
-        </SelectTrigger>
-        <SelectContent align="start">
-          <SelectItem value="comercial" className="text-xs">
-            <div className="flex items-center gap-2">
-              <LayoutDashboard className="size-3.5" />
-              Comercial
-            </div>
-          </SelectItem>
-          <SelectItem value="flota" className="text-xs">
-            <div className="flex items-center gap-2">
-              <Car className="size-3.5" />
-              Flota
-            </div>
-          </SelectItem>
-        </SelectContent>
-      </Select>
-      )}
-
       <div className="ml-auto flex items-center gap-2">
         <NotificationCenter />
 

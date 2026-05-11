@@ -9,4 +9,5 @@ export class CreateUserDto {
   roleId!: string;
   /** Si es false, usuario inactivo (no puede iniciar sesión) */
   status?: boolean;
+  allowedAreas?: string[];
 }

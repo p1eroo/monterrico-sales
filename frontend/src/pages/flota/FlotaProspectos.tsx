@@ -47,20 +47,20 @@ import {
   flotaProspectosSheetNames,
   flotaProspectosSheetPreview,
   flotaProspectosDeleteMany,
+  flotaProspectoCreate,
   type FlotaProspectoRow,
   type FlotaProspectosCounts,
   type SheetPreviewResponse,
 } from "@/lib/flotaProspectosApi";
+import { getConductorTelefonos } from "@/lib/flotaConductoresApi";
 
 const estadoColors: Record<string, string> = {
-  Nuevo: "bg-blue-100 text-blue-700 border-blue-200",
-  Contactado: "bg-amber-100 text-amber-700 border-amber-200",
-  Afiliado: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  NoInteresado: "bg-red-100 text-red-700 border-red-200",
-  "NO RESPONDE": "bg-gray-100 text-gray-700 border-gray-200",
-  "SIN REQUISITOS": "bg-orange-100 text-orange-700 border-orange-200",
-  REQUIMIENTO: "bg-purple-100 text-purple-700 border-purple-200",
-  EQUIMIENTO: "bg-purple-100 text-purple-700 border-purple-200",
+  "AFILIADO": "bg-purple-200 text-purple-700 border-purple-200",
+  "CITADO": "bg-blue-100 text-blue-700 border-blue-200",
+  "SEGUIMIENTO": "bg-green-100 text-green-700 border-green-200",
+  "INFORMACIÓN": "bg-cyan-100 text-cyan-700 border-cyan-200",
+  "SIN REQUISITOS": "bg-red-100 text-red-700 border-red-200",
+  "NO RESPONDE": "bg-yellow-200 text-yellow-700 border-yellow-200",
 };
 
 const PAGE_SIZE = 25;
@@ -86,6 +86,20 @@ export default function FlotaProspectos() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewData, setPreviewData] = useState<SheetPreviewResponse | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [conductorTelefonos, setConductorTelefonos] = useState<Set<string>>(new Set());
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newProspecto, setNewProspecto] = useState({
+    nombreCompleto: "",
+    celular: "",
+    redSocial: "",
+    distrito: "",
+    operador: "",
+    edad: "",
+    modalidad: "",
+    anioVehiculo: "",
+    observaciones: "",
+  });
 
   const loadSheetNames = useCallback(async () => {
     try {
@@ -106,6 +120,19 @@ export default function FlotaProspectos() {
   useEffect(() => {
     void loadSheetNames();
   }, [loadSheetNames]);
+
+  // Load conductor telefonos for cross-reference
+  useEffect(() => {
+    async function loadConductorTelefonos() {
+      try {
+        const telefonos = await getConductorTelefonos();
+        setConductorTelefonos(new Set(telefonos));
+      } catch (e) {
+        console.error("Error loading conductor telefonos:", e);
+      }
+    }
+    void loadConductorTelefonos();
+  }, []);
 
   // Debounce search
   useEffect(() => {
@@ -160,6 +187,19 @@ export default function FlotaProspectos() {
   }, [searchDebounced, estadoFilter, duplicadosFilter, mesFilter]);
 
   const totalPages = Math.ceil(totalProspectos / PAGE_SIZE);
+
+  const isConductor = (celular: string | null): boolean => {
+    if (!celular) return false;
+    const normalized = celular.replace(/\D/g, '').replace(/^51/, '');
+    return conductorTelefonos.has(normalized);
+  };
+
+  const getRowClass = (prospecto: FlotaProspectoRow): string => {
+    if (isConductor(prospecto.celular)) {
+      return "bg-green-50/50 border-l-4 border-l-green-500 cursor-pointer hover:bg-green-100/50";
+    }
+    return "cursor-pointer hover:bg-muted/50";
+  };
 
   const toggleSelectAll = () => {
     if (selectedIds.size === prospectos.length) {
@@ -219,6 +259,46 @@ export default function FlotaProspectos() {
     }
   }
 
+  async function handleCreateProspecto() {
+    if (!newProspecto.nombreCompleto.trim() || !newProspecto.celular.trim()) {
+      toast.error("Nombre y celular son requeridos");
+      return;
+    }
+    setCreating(true);
+    try {
+      await flotaProspectoCreate({
+        nombreCompleto: newProspecto.nombreCompleto.trim(),
+        celular: newProspecto.celular.trim(),
+        redSocial: newProspecto.redSocial.trim() || null,
+        operador: newProspecto.operador.trim() || null,
+        modalidad: newProspecto.modalidad.trim() || null,
+        distrito: newProspecto.distrito.trim() || null,
+        edad: newProspecto.edad ? parseInt(newProspecto.edad, 10) : null,
+        anioVehiculo: newProspecto.anioVehiculo ? parseInt(newProspecto.anioVehiculo, 10) : null,
+        observaciones: newProspecto.observaciones.trim() || null,
+        estado: "Nuevo",
+      });
+      toast.success("Prospecto creado exitosamente");
+      setCreateModalOpen(false);
+      setNewProspecto({
+        nombreCompleto: "",
+        celular: "",
+        redSocial: "",
+        distrito: "",
+        operador: "",
+        edad: "",
+        modalidad: "",
+        anioVehiculo: "",
+        observaciones: "",
+      });
+      await Promise.all([loadProspectos(), loadCounts()]);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error al crear prospecto");
+    } finally {
+      setCreating(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -272,7 +352,7 @@ export default function FlotaProspectos() {
                 ? "Importando…"
                 : "Importar Sheets"}
           </Button>
-          <Button className="gap-1.5">
+          <Button className="gap-1.5" onClick={() => setCreateModalOpen(true)}>
             <UserPlus className="size-4" />
             Nuevo Prospecto
           </Button>
@@ -298,10 +378,12 @@ export default function FlotaProspectos() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="Nuevo">Nuevo</SelectItem>
-            <SelectItem value="Contactado">Contactado</SelectItem>
-            <SelectItem value="Afiliado">Afiliado</SelectItem>
-            <SelectItem value="NoInteresado">No Interesado</SelectItem>
+            <SelectItem value="AFILIADO">Afiliado</SelectItem>
+            <SelectItem value="CITADO">Citado</SelectItem>
+            <SelectItem value="SEGUIMIENTO">Seguimiento</SelectItem>
+            <SelectItem value="INFORMACIÓN">Información</SelectItem>
+            <SelectItem value="SIN REQUISITOS">Sin Requisitos</SelectItem>
+            <SelectItem value="NO RESPONDE">No Responde</SelectItem>
           </SelectContent>
         </Select>
 
@@ -442,7 +524,7 @@ export default function FlotaProspectos() {
                   prospectos.map((prospecto) => (
                     <TableRow
                       key={prospecto.id}
-                      className="cursor-pointer hover:bg-muted/50"
+                      className={getRowClass(prospecto)}
                       onClick={() =>
                         navigate(`/flota/prospectos/${prospecto.id}`)
                       }
@@ -541,9 +623,10 @@ export default function FlotaProspectos() {
             </Table>
           </div>
         )}
+      </Card>
 
-        {!loading && totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t">
+      {!loading && totalPages > 1 && (
+          <div className="flex items-center justify-between px-0">
             <p className="text-sm text-muted-foreground">
               Mostrando {prospectos.length} de {totalProspectos} prospectos
               {selectedIds.size > 0 && ` (${selectedIds.size} seleccionados)`}
@@ -571,7 +654,6 @@ export default function FlotaProspectos() {
             </div>
           </div>
         )}
-      </Card>
 
       <Dialog open={previewOpen} onOpenChange={(open) => !open && closePreview()}>
         <DialogContent className="flex h-[min(92vh,880px)] max-h-[92vh] w-[min(96vw,calc(100vw-2rem))] max-w-[min(96vw,87.5rem)] flex-col gap-0 p-0 sm:max-w-[min(96vw,87.5rem)]">
@@ -647,6 +729,114 @@ export default function FlotaProspectos() {
                 </>
               ) : (
                 "Confirmar importación"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={createModalOpen} onOpenChange={(open) => !open && setCreateModalOpen(open)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Nuevo Prospecto</DialogTitle>
+            <DialogDescription>
+              Agregar un nuevo prospecto a la base de datos.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">Nombre completo *</label>
+              <Input
+                value={newProspecto.nombreCompleto}
+                onChange={(e) => setNewProspecto({ ...newProspecto, nombreCompleto: e.target.value })}
+                placeholder="Nombres y Apellidos"
+              />
+            </div>
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">Celular *</label>
+              <Input
+                value={newProspecto.celular}
+                onChange={(e) => setNewProspecto({ ...newProspecto, celular: e.target.value })}
+                placeholder="999999999"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Edad</label>
+                <Input
+                  type="number"
+                  value={newProspecto.edad}
+                  onChange={(e) => setNewProspecto({ ...newProspecto, edad: e.target.value })}
+                  placeholder="18"
+                />
+              </div>
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Año Vehículo</label>
+                <Input
+                  type="number"
+                  value={newProspecto.anioVehiculo}
+                  onChange={(e) => setNewProspecto({ ...newProspecto, anioVehiculo: e.target.value })}
+                  placeholder="2024"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Red Social</label>
+                <Input
+                  value={newProspecto.redSocial}
+                  onChange={(e) => setNewProspecto({ ...newProspecto, redSocial: e.target.value })}
+                  placeholder="Facebook, Instagram..."
+                />
+              </div>
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Operador</label>
+                <Input
+                  value={newProspecto.operador}
+                  onChange={(e) => setNewProspecto({ ...newProspecto, operador: e.target.value })}
+                  placeholder="Nombre del operador"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Modalidad</label>
+                <Input
+                  value={newProspecto.modalidad}
+                  onChange={(e) => setNewProspecto({ ...newProspecto, modalidad: e.target.value })}
+                  placeholder="Flota propia"
+                />
+              </div>
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Distrito</label>
+                <Input
+                  value={newProspecto.distrito}
+                  onChange={(e) => setNewProspecto({ ...newProspecto, distrito: e.target.value })}
+                  placeholder="Lima, Callao..."
+                />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">Observaciones</label>
+              <Input
+                value={newProspecto.observaciones}
+                onChange={(e) => setNewProspecto({ ...newProspecto, observaciones: e.target.value })}
+                placeholder="Notas adicionales..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={() => handleCreateProspecto()} disabled={creating}>
+              {creating ? (
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  Creando...
+                </>
+              ) : (
+                "Crear Prospecto"
               )}
             </Button>
           </DialogFooter>

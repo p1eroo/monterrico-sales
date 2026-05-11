@@ -81,6 +81,7 @@ model User {
   crmNotifications           CrmNotification[]
   whatsappInstance           WhatsappInstance?
   whatsappMessagesSent       CrmWhatsappMessage[]        @relation("CrmWhatsappMessageAuthor")
+  allowedAreas               String[]                    @default([])
 }
 
 /**

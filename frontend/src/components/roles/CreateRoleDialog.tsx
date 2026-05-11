@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Briefcase, Car, Shield as ShieldIcon } from 'lucide-react';
 import type { RBACRole, PermissionKey } from '@/types';
 import {
   ROLE_TEMPLATES,
@@ -34,6 +34,7 @@ export function CreateRoleDialog({
   const [templateId, setTemplateId] = useState<string>('');
   const [roleName, setRoleName] = useState('');
   const [roleDescription, setRoleDescription] = useState('');
+  const [selectedArea, setSelectedArea] = useState<'comercial' | 'flota' | 'general'>('comercial');
   const [permissions, setPermissions] = useState<Record<PermissionKey, boolean>>(
     () => getTemplatePermissions('personalizado')
   );
@@ -147,11 +148,44 @@ export function CreateRoleDialog({
                   placeholder="Breve descripción del rol"
                 />
               </div>
+              <div className="space-y-2">
+                <Label>Área de Permisos</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={selectedArea === 'comercial' ? 'default' : 'outline'}
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => setSelectedArea('comercial')}
+                  >
+                    <Briefcase className="size-4" /> Comercial
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={selectedArea === 'flota' ? 'default' : 'outline'}
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => setSelectedArea('flota')}
+                  >
+                    <Car className="size-4" /> Flota
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={selectedArea === 'general' ? 'default' : 'outline'}
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => setSelectedArea('general')}
+                  >
+                    <ShieldIcon className="size-4" /> General
+                  </Button>
+                </div>
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Permisos por módulo</Label>
               <PermissionMatrix
                 permissions={permissions}
+                filterArea={selectedArea}
                 onChange={(key, value) =>
                   setPermissions((p) => ({ ...p, [key]: value }))
                 }

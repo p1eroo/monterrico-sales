@@ -2,9 +2,10 @@ import { Module } from '@nestjs/common';
 import { FactilizaController } from './factiliza.controller';
 import { FactilizaService } from './factiliza.service';
 import { AuthModule } from '../auth/auth.module';
+import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, PrismaModule],
   controllers: [FactilizaController],
   providers: [FactilizaService],
   exports: [FactilizaService],

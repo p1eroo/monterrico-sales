@@ -163,12 +163,17 @@ export function NewCompanyWizard({
       }
       return null;
     } catch (err) {
-      if (!opts?.silent) {
+      const message = err instanceof Error ? err.message : 'No se pudo buscar empresas por nombre o razón social';
+      if (message.includes('\n')) {
         toast.error(
-          err instanceof Error
-            ? err.message
-            : 'No se pudo buscar empresas por nombre o razón social',
+          <div className="flex flex-col gap-0.5">
+            {message.split('\n').map((line, i) => (
+              <span key={i}>{line.trim()}</span>
+            ))}
+          </div>
         );
+      } else {
+        toast.error(message);
       }
       return null;
     } finally {
@@ -195,9 +200,18 @@ export function NewCompanyWizard({
       } catch (err) {
         const st = (err as Error & { status?: number }).status;
         if (st !== 404) {
-          toast.error(
-            err instanceof Error ? err.message : 'No se pudo buscar la empresa por RUC',
-          );
+          const message = err instanceof Error ? err.message : 'No se pudo buscar la empresa por RUC';
+          if (message.includes('\n')) {
+            toast.error(
+              <div className="flex flex-col gap-0.5">
+                {message.split('\n').map((line, i) => (
+                  <span key={i}>{line.trim()}</span>
+                ))}
+              </div>
+            );
+          } else {
+            toast.error(message);
+          }
           return;
         }
       }
@@ -219,7 +233,18 @@ export function NewCompanyWizard({
         toast.success('Datos de SUNAT cargados correctamente');
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'No se pudo consultar el RUC');
+      const message = err instanceof Error ? err.message : 'No se pudo consultar el RUC';
+      if (message.includes('\n')) {
+        toast.error(
+          <div className="flex flex-col gap-0.5">
+            {message.split('\n').map((line, i) => (
+              <span key={i}>{line.trim()}</span>
+            ))}
+          </div>
+        );
+      } else {
+        toast.error(message);
+      }
     } finally {
       setRucLookupLoading(false);
     }
@@ -360,8 +385,19 @@ export function NewCompanyWizard({
       setLoadedRucDigits(null);
       resetCompanyNameLookup();
       onOpenChange(false);
-    } catch {
-      /* el padre ya mostró el error */
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Error al crear o resolver empresa';
+      if (message.includes('\n')) {
+        toast.error(
+          <div className="flex flex-col gap-0.5">
+            {message.split('\n').map((line, i) => (
+              <span key={i}>{line.trim()}</span>
+            ))}
+          </div>
+        );
+      } else {
+        toast.error(message);
+      }
     } finally {
       setSubmitting(false);
     }

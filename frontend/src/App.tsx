@@ -3,42 +3,45 @@ import { lazy, Suspense, useEffect } from 'react';
 import { useAppStore } from '@/store';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 import { ModuleGate } from '@/components/layout/ModuleGate';
+import { AreaGate } from '@/components/layout/AreaGate';
 import { AppUpdateBanner } from '@/components/system/AppUpdateBanner';
 
 const MainLayout = lazy(() => import('@/components/layout/MainLayout'));
 const Login = lazy(() => import('@/pages/Login'));
 const Register = lazy(() => import('@/pages/Register'));
-const Dashboard = lazy(() => import('@/pages/Dashboard'));
-const Contactos = lazy(() => import('@/pages/Contactos'));
-const ContactoDetail = lazy(() => import('@/pages/ContactoDetail'));
-const Empresas = lazy(() => import('@/pages/Empresas'));
-const EmpresaDetail = lazy(() => import('@/pages/EmpresaDetail'));
-const Pipeline = lazy(() => import('@/pages/Pipeline'));
+const Dashboard = lazy(() => import('@/pages/comercial/Dashboard'));
+const Contactos = lazy(() => import('@/pages/comercial/Contactos'));
+const ContactoDetail = lazy(() => import('@/pages/comercial/ContactoDetail'));
+const Empresas = lazy(() => import('@/pages/comercial/Empresas'));
+const EmpresaDetail = lazy(() => import('@/pages/comercial/EmpresaDetail'));
+const Pipeline = lazy(() => import('@/pages/comercial/Pipeline'));
 
-const Tareas = lazy(() => import('@/pages/Tareas'));
-const Calendario = lazy(() => import('@/pages/Calendario'));
-const Opportunities = lazy(() => import('@/pages/Opportunities'));
-const OportunidadDetail = lazy(() => import('@/pages/OportunidadDetail'));
-const Clients = lazy(() => import('@/pages/Clients'));
-const Reports = lazy(() => import('@/pages/Reports'));
-const Team = lazy(() => import('@/pages/Team'));
-const Users = lazy(() => import('@/pages/Users'));
-const UserDetail = lazy(() => import('@/pages/UserDetail'));
-const Audit = lazy(() => import('@/pages/Audit'));
-const Inbox = lazy(() => import('@/pages/Inbox'));
-const CampaignHistory = lazy(() => import('@/pages/CampaignHistory'));
-const CampaignBuilder = lazy(() => import('@/pages/CampaignBuilder'));
-const CampaignResults = lazy(() => import('@/pages/CampaignResults'));
-const Profile = lazy(() => import('@/pages/Profile'));
-const Settings = lazy(() => import('@/pages/Settings'));
-const Files = lazy(() => import('@/pages/Files'));
-const AgentesIa = lazy(() => import('@/pages/AgentesIa'));
-const AgentesIaWorkflow = lazy(() => import('@/pages/AgentesIaWorkflow'));
+const Tareas = lazy(() => import('@/pages/comercial/Tareas'));
+const Calendario = lazy(() => import('@/pages/comercial/Calendario'));
+const Opportunities = lazy(() => import('@/pages/comercial/Opportunities'));
+const OportunidadDetail = lazy(() => import('@/pages/comercial/OportunidadDetail'));
+const Clients = lazy(() => import('@/pages/comercial/Clients'));
+const Reports = lazy(() => import('@/pages/comercial/Reports'));
+const Team = lazy(() => import('@/pages/comercial/Team'));
+const AdminDashboard = lazy(() => import('@/pages/admin/AdminDashboard'));
+const Users = lazy(() => import('@/pages/admin/Users'));
+const UserDetail = lazy(() => import('@/pages/admin/UserDetail'));
+const Audit = lazy(() => import('@/pages/admin/Audit'));
+const Inbox = lazy(() => import('@/pages/comercial/Inbox'));
+const CampaignHistory = lazy(() => import('@/pages/comercial/CampaignHistory'));
+const CampaignBuilder = lazy(() => import('@/pages/comercial/CampaignBuilder'));
+const CampaignResults = lazy(() => import('@/pages/comercial/CampaignResults'));
+const Profile = lazy(() => import('@/pages/comercial/Profile'));
+const Settings = lazy(() => import('@/pages/comercial/Settings'));
+const Files = lazy(() => import('@/pages/comercial/Files'));
+const AgentesIa = lazy(() => import('@/pages/comercial/AgentesIa'));
+const AgentesIaWorkflow = lazy(() => import('@/pages/comercial/AgentesIaWorkflow'));
 const FlotaDashboard = lazy(() => import('@/pages/flota/FlotaDashboard'));
 const FlotaProspectos = lazy(() => import('@/pages/flota/FlotaProspectos'));
 const FlotaProspectoDetail = lazy(() => import('@/pages/flota/FlotaProspectoDetail'));
 const FlotaConductores = lazy(() => import('@/pages/flota/FlotaConductores'));
 const FlotaReportes = lazy(() => import('@/pages/flota/FlotaReportes'));
+const AreaSelect = lazy(() => import('@/pages/AreaSelect'));
 
 function LoadingFallback() {
   return (
@@ -61,7 +64,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAppStore((s) => s.isAuthenticated);
-  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
+  if (isAuthenticated) return <Navigate to="/area-select" replace />;
   return <>{children}</>;
 }
 
@@ -72,6 +75,8 @@ function MainRoutes() {
   useEffect(() => {
     if (location.pathname.startsWith('/flota')) {
       setArea('flota');
+    } else if (location.pathname.startsWith('/admin')) {
+      setArea('admin');
     } else {
       setArea('comercial');
     }
@@ -95,8 +100,17 @@ function MainRoutes() {
           </PublicRoute>
         }
       />
-      <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
-        <Route path="/dashboard" element={<Dashboard />} />
+      <Route
+        path="/area-select"
+        element={
+          <ProtectedRoute>
+            <AreaSelect />
+          </ProtectedRoute>
+        }
+      />
+      <Route element={<ProtectedRoute><AreaGate /></ProtectedRoute>}>
+        <Route element={<MainLayout />}>
+          <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/contactos" element={<Contactos />} />
         <Route path="/contactos/:id" element={<ContactoDetail />} />
         <Route path="/empresas" element={<Empresas />} />
@@ -109,9 +123,13 @@ function MainRoutes() {
         <Route path="/clients" element={<Clients />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/team" element={<Team />} />
-        <Route path="/users" element={<Users />} />
-        <Route path="/users/:id" element={<UserDetail />} />
-        <Route path="/audit" element={<Audit />} />
+        
+        {/* Rutas de Administración */}
+        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin/users" element={<Users />} />
+        <Route path="/admin/users/:id" element={<UserDetail />} />
+        <Route path="/admin/audit" element={<Audit />} />
+
         <Route path="/inbox" element={<Inbox />} />
         <Route path="/campaigns" element={<CampaignHistory />} />
         <Route path="/campaigns/new" element={<CampaignBuilder />} />
@@ -126,7 +144,8 @@ function MainRoutes() {
         <Route path="/flota/conductores" element={<FlotaConductores />} />
         <Route path="/flota/reportes" element={<FlotaReportes />} />
       </Route>
-      <Route element={<ProtectedRoute><ModuleGate /></ProtectedRoute>}>
+    </Route>
+    <Route element={<ProtectedRoute><ModuleGate /></ProtectedRoute>}>
         <Route path="/agentes-ia/workflow/:agentId" element={<AgentesIaWorkflow />} />
       </Route>
       <Route path="*" element={<Navigate to="/login" replace />} />

@@ -20,6 +20,7 @@ interface PermissionMatrixProps {
   onChange: (key: PermissionKey, value: boolean) => void;
   disabled?: boolean;
   compact?: boolean;
+  filterArea?: 'comercial' | 'flota' | 'general';
 }
 
 export function PermissionMatrix({
@@ -27,7 +28,12 @@ export function PermissionMatrix({
   onChange,
   disabled = false,
   compact = false,
+  filterArea = 'comercial',
 }: PermissionMatrixProps) {
+  const filteredModules = PERMISSION_MODULES.filter(
+    (mod) => mod.area === filterArea
+  );
+
   return (
     <TooltipProvider>
       <div className="overflow-x-auto rounded-lg border bg-card">
@@ -60,7 +66,7 @@ export function PermissionMatrix({
             </tr>
           </thead>
           <tbody>
-            {PERMISSION_MODULES.map((mod) => {
+            {filteredModules.map((mod) => {
               const modId = mod.id as PermissionModule;
               const modKeys = PERMISSION_ACTIONS.filter((a) =>
                 moduleAllowsAction(modId, a.id as PermissionAction),

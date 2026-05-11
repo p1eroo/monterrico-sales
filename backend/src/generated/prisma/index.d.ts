@@ -8422,6 +8422,7 @@ export namespace Prisma {
     lastActivity: number
     createdAt: number
     updatedAt: number
+    allowedAreas: number
     _all: number
   }
 
@@ -8474,6 +8475,7 @@ export namespace Prisma {
     lastActivity?: true
     createdAt?: true
     updatedAt?: true
+    allowedAreas?: true
     _all?: true
   }
 
@@ -8575,6 +8577,7 @@ export namespace Prisma {
     lastActivity: Date | null
     createdAt: Date
     updatedAt: Date
+    allowedAreas: string[]
     _count: UserCountAggregateOutputType | null
     _avg: UserAvgAggregateOutputType | null
     _sum: UserSumAggregateOutputType | null
@@ -8608,6 +8611,7 @@ export namespace Prisma {
     lastActivity?: boolean
     createdAt?: boolean
     updatedAt?: boolean
+    allowedAreas?: boolean
     role?: boolean | RoleDefaultArgs<ExtArgs>
     accounts?: boolean | User$accountsArgs<ExtArgs>
     contactsAssigned?: boolean | User$contactsAssignedArgs<ExtArgs>
@@ -8640,6 +8644,7 @@ export namespace Prisma {
     lastActivity?: boolean
     createdAt?: boolean
     updatedAt?: boolean
+    allowedAreas?: boolean
     role?: boolean | RoleDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["user"]>
 
@@ -8655,6 +8660,7 @@ export namespace Prisma {
     lastActivity?: boolean
     createdAt?: boolean
     updatedAt?: boolean
+    allowedAreas?: boolean
     role?: boolean | RoleDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["user"]>
 
@@ -8670,9 +8676,10 @@ export namespace Prisma {
     lastActivity?: boolean
     createdAt?: boolean
     updatedAt?: boolean
+    allowedAreas?: boolean
   }
 
-  export type UserOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "roleId" | "sessionVersion" | "phone" | "avatar" | "status" | "joinedAt" | "lastActivity" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
+  export type UserOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "roleId" | "sessionVersion" | "phone" | "avatar" | "status" | "joinedAt" | "lastActivity" | "createdAt" | "updatedAt" | "allowedAreas", ExtArgs["result"]["user"]>
   export type UserInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     role?: boolean | RoleDefaultArgs<ExtArgs>
     accounts?: boolean | User$accountsArgs<ExtArgs>
@@ -8733,6 +8740,7 @@ export namespace Prisma {
       lastActivity: Date | null
       createdAt: Date
       updatedAt: Date
+      allowedAreas: string[]
     }, ExtArgs["result"]["user"]>
     composites: {}
   }
@@ -9184,6 +9192,7 @@ export namespace Prisma {
     readonly lastActivity: FieldRef<"User", 'DateTime'>
     readonly createdAt: FieldRef<"User", 'DateTime'>
     readonly updatedAt: FieldRef<"User", 'DateTime'>
+    readonly allowedAreas: FieldRef<"User", 'String[]'>
   }
     
 
@@ -52188,7 +52197,8 @@ export namespace Prisma {
     joinedAt: 'joinedAt',
     lastActivity: 'lastActivity',
     createdAt: 'createdAt',
-    updatedAt: 'updatedAt'
+    updatedAt: 'updatedAt',
+    allowedAreas: 'allowedAreas'
   };
 
   export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
@@ -53051,6 +53061,7 @@ export namespace Prisma {
     lastActivity?: DateTimeNullableFilter<"User"> | Date | string | null
     createdAt?: DateTimeFilter<"User"> | Date | string
     updatedAt?: DateTimeFilter<"User"> | Date | string
+    allowedAreas?: StringNullableListFilter<"User">
     role?: XOR<RoleScalarRelationFilter, RoleWhereInput>
     accounts?: AccountListRelationFilter
     contactsAssigned?: ContactListRelationFilter
@@ -53082,6 +53093,7 @@ export namespace Prisma {
     lastActivity?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
+    allowedAreas?: SortOrder
     role?: RoleOrderByWithRelationInput
     accounts?: AccountOrderByRelationAggregateInput
     contactsAssigned?: ContactOrderByRelationAggregateInput
@@ -53116,6 +53128,7 @@ export namespace Prisma {
     lastActivity?: DateTimeNullableFilter<"User"> | Date | string | null
     createdAt?: DateTimeFilter<"User"> | Date | string
     updatedAt?: DateTimeFilter<"User"> | Date | string
+    allowedAreas?: StringNullableListFilter<"User">
     role?: XOR<RoleScalarRelationFilter, RoleWhereInput>
     accounts?: AccountListRelationFilter
     contactsAssigned?: ContactListRelationFilter
@@ -53147,6 +53160,7 @@ export namespace Prisma {
     lastActivity?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
+    allowedAreas?: SortOrder
     _count?: UserCountOrderByAggregateInput
     _avg?: UserAvgOrderByAggregateInput
     _max?: UserMaxOrderByAggregateInput
@@ -53169,6 +53183,7 @@ export namespace Prisma {
     lastActivity?: DateTimeNullableWithAggregatesFilter<"User"> | Date | string | null
     createdAt?: DateTimeWithAggregatesFilter<"User"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"User"> | Date | string
+    allowedAreas?: StringNullableListFilter<"User">
   }
 
   export type WhatsappInstanceWhereInput = {
@@ -56178,6 +56193,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
     role: RoleCreateNestedOneWithoutUsersInput
     accounts?: AccountCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactCreateNestedManyWithoutUserInput
@@ -56209,6 +56225,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
     accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactUncheckedCreateNestedManyWithoutUserInput
     opportunitiesAssigned?: OpportunityUncheckedCreateNestedManyWithoutUserInput
@@ -56238,6 +56255,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
     role?: RoleUpdateOneRequiredWithoutUsersNestedInput
     accounts?: AccountUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUpdateManyWithoutUserNestedInput
@@ -56269,6 +56287,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
     accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUncheckedUpdateManyWithoutUserNestedInput
     opportunitiesAssigned?: OpportunityUncheckedUpdateManyWithoutUserNestedInput
@@ -56299,6 +56318,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
   }
 
   export type UserUpdateManyMutationInput = {
@@ -56312,6 +56332,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
   }
 
   export type UserUncheckedUpdateManyInput = {
@@ -56326,6 +56347,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
   }
 
   export type WhatsappInstanceCreateInput = {
@@ -59612,6 +59634,14 @@ export namespace Prisma {
     not?: NestedDateTimeNullableFilter<$PrismaModel> | Date | string | null
   }
 
+  export type StringNullableListFilter<$PrismaModel = never> = {
+    equals?: string[] | ListStringFieldRefInput<$PrismaModel> | null
+    has?: string | StringFieldRefInput<$PrismaModel> | null
+    hasEvery?: string[] | ListStringFieldRefInput<$PrismaModel>
+    hasSome?: string[] | ListStringFieldRefInput<$PrismaModel>
+    isEmpty?: boolean
+  }
+
   export type AccountListRelationFilter = {
     every?: AccountWhereInput
     some?: AccountWhereInput
@@ -59774,6 +59804,7 @@ export namespace Prisma {
     lastActivity?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
+    allowedAreas?: SortOrder
   }
 
   export type UserAvgOrderByAggregateInput = {
@@ -61359,14 +61390,6 @@ export namespace Prisma {
     sentAt?: SortOrder
   }
 
-  export type StringNullableListFilter<$PrismaModel = never> = {
-    equals?: string[] | ListStringFieldRefInput<$PrismaModel> | null
-    has?: string | StringFieldRefInput<$PrismaModel> | null
-    hasEvery?: string[] | ListStringFieldRefInput<$PrismaModel>
-    hasSome?: string[] | ListStringFieldRefInput<$PrismaModel>
-    isEmpty?: boolean
-  }
-
   export type CampaignCountOrderByAggregateInput = {
     id?: SortOrder
     name?: SortOrder
@@ -61735,6 +61758,10 @@ export namespace Prisma {
     update?: XOR<XOR<UserUpdateToOneWithWhereWithoutAccountsInput, UserUpdateWithoutAccountsInput>, UserUncheckedUpdateWithoutAccountsInput>
   }
 
+  export type UserCreateallowedAreasInput = {
+    set: string[]
+  }
+
   export type RoleCreateNestedOneWithoutUsersInput = {
     create?: XOR<RoleCreateWithoutUsersInput, RoleUncheckedCreateWithoutUsersInput>
     connectOrCreate?: RoleCreateOrConnectWithoutUsersInput
@@ -61971,6 +61998,11 @@ export namespace Prisma {
 
   export type NullableDateTimeFieldUpdateOperationsInput = {
     set?: Date | string | null
+  }
+
+  export type UserUpdateallowedAreasInput = {
+    set?: string[]
+    push?: string | string[]
   }
 
   export type RoleUpdateOneRequiredWithoutUsersNestedInput = {
@@ -64325,6 +64357,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
     accounts?: AccountCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactCreateNestedManyWithoutUserInput
     opportunitiesAssigned?: OpportunityCreateNestedManyWithoutUserInput
@@ -64354,6 +64387,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
     accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactUncheckedCreateNestedManyWithoutUserInput
     opportunitiesAssigned?: OpportunityUncheckedCreateNestedManyWithoutUserInput
@@ -64438,6 +64472,7 @@ export namespace Prisma {
     lastActivity?: DateTimeNullableFilter<"User"> | Date | string | null
     createdAt?: DateTimeFilter<"User"> | Date | string
     updatedAt?: DateTimeFilter<"User"> | Date | string
+    allowedAreas?: StringNullableListFilter<"User">
   }
 
   export type RoleCreateWithoutAuthoritiesInput = {
@@ -64511,6 +64546,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
     role: RoleCreateNestedOneWithoutUsersInput
     contactsAssigned?: ContactCreateNestedManyWithoutUserInput
     opportunitiesAssigned?: OpportunityCreateNestedManyWithoutUserInput
@@ -64541,6 +64577,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
     contactsAssigned?: ContactUncheckedCreateNestedManyWithoutUserInput
     opportunitiesAssigned?: OpportunityUncheckedCreateNestedManyWithoutUserInput
     companiesAssigned?: CompanyUncheckedCreateNestedManyWithoutUserInput
@@ -64585,6 +64622,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
     role?: RoleUpdateOneRequiredWithoutUsersNestedInput
     contactsAssigned?: ContactUpdateManyWithoutUserNestedInput
     opportunitiesAssigned?: OpportunityUpdateManyWithoutUserNestedInput
@@ -64615,6 +64653,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
     contactsAssigned?: ContactUncheckedUpdateManyWithoutUserNestedInput
     opportunitiesAssigned?: OpportunityUncheckedUpdateManyWithoutUserNestedInput
     companiesAssigned?: CompanyUncheckedUpdateManyWithoutUserNestedInput
@@ -65937,6 +65976,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
     role: RoleCreateNestedOneWithoutUsersInput
     accounts?: AccountCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactCreateNestedManyWithoutUserInput
@@ -65967,6 +66007,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
     accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactUncheckedCreateNestedManyWithoutUserInput
     opportunitiesAssigned?: OpportunityUncheckedCreateNestedManyWithoutUserInput
@@ -66053,6 +66094,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
     role?: RoleUpdateOneRequiredWithoutUsersNestedInput
     accounts?: AccountUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUpdateManyWithoutUserNestedInput
@@ -66083,6 +66125,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
     accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUncheckedUpdateManyWithoutUserNestedInput
     opportunitiesAssigned?: OpportunityUncheckedUpdateManyWithoutUserNestedInput
@@ -66127,6 +66170,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
     role: RoleCreateNestedOneWithoutUsersInput
     accounts?: AccountCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactCreateNestedManyWithoutUserInput
@@ -66157,6 +66201,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
     accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactUncheckedCreateNestedManyWithoutUserInput
     opportunitiesAssigned?: OpportunityUncheckedCreateNestedManyWithoutUserInput
@@ -66201,6 +66246,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
     role?: RoleUpdateOneRequiredWithoutUsersNestedInput
     accounts?: AccountUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUpdateManyWithoutUserNestedInput
@@ -66231,6 +66277,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
     accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUncheckedUpdateManyWithoutUserNestedInput
     opportunitiesAssigned?: OpportunityUncheckedUpdateManyWithoutUserNestedInput
@@ -66259,6 +66306,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
     role: RoleCreateNestedOneWithoutUsersInput
     accounts?: AccountCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactCreateNestedManyWithoutUserInput
@@ -66289,6 +66337,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
     accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactUncheckedCreateNestedManyWithoutUserInput
     opportunitiesAssigned?: OpportunityUncheckedCreateNestedManyWithoutUserInput
@@ -66333,6 +66382,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
     role?: RoleUpdateOneRequiredWithoutUsersNestedInput
     accounts?: AccountUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUpdateManyWithoutUserNestedInput
@@ -66363,6 +66413,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
     accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUncheckedUpdateManyWithoutUserNestedInput
     opportunitiesAssigned?: OpportunityUncheckedUpdateManyWithoutUserNestedInput
@@ -66391,6 +66442,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
     role: RoleCreateNestedOneWithoutUsersInput
     accounts?: AccountCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactCreateNestedManyWithoutUserInput
@@ -66421,6 +66473,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
     accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactUncheckedCreateNestedManyWithoutUserInput
     opportunitiesAssigned?: OpportunityUncheckedCreateNestedManyWithoutUserInput
@@ -66491,6 +66544,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
     role?: RoleUpdateOneRequiredWithoutUsersNestedInput
     accounts?: AccountUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUpdateManyWithoutUserNestedInput
@@ -66521,6 +66575,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
     accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUncheckedUpdateManyWithoutUserNestedInput
     opportunitiesAssigned?: OpportunityUncheckedUpdateManyWithoutUserNestedInput
@@ -66641,6 +66696,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
     role: RoleCreateNestedOneWithoutUsersInput
     accounts?: AccountCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactCreateNestedManyWithoutUserInput
@@ -66671,6 +66727,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
     accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactUncheckedCreateNestedManyWithoutUserInput
     opportunitiesAssigned?: OpportunityUncheckedCreateNestedManyWithoutUserInput
@@ -66741,6 +66798,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
     role?: RoleUpdateOneRequiredWithoutUsersNestedInput
     accounts?: AccountUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUpdateManyWithoutUserNestedInput
@@ -66771,6 +66829,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
     accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUncheckedUpdateManyWithoutUserNestedInput
     opportunitiesAssigned?: OpportunityUncheckedUpdateManyWithoutUserNestedInput
@@ -66875,6 +66934,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
     role: RoleCreateNestedOneWithoutUsersInput
     accounts?: AccountCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactCreateNestedManyWithoutUserInput
@@ -66905,6 +66965,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
     accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactUncheckedCreateNestedManyWithoutUserInput
     opportunitiesAssigned?: OpportunityUncheckedCreateNestedManyWithoutUserInput
@@ -66973,6 +67034,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
     role?: RoleUpdateOneRequiredWithoutUsersNestedInput
     accounts?: AccountUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUpdateManyWithoutUserNestedInput
@@ -67003,6 +67065,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
     accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUncheckedUpdateManyWithoutUserNestedInput
     opportunitiesAssigned?: OpportunityUncheckedUpdateManyWithoutUserNestedInput
@@ -67268,6 +67331,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
     role: RoleCreateNestedOneWithoutUsersInput
     accounts?: AccountCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactCreateNestedManyWithoutUserInput
@@ -67298,6 +67362,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
     accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactUncheckedCreateNestedManyWithoutUserInput
     opportunitiesAssigned?: OpportunityUncheckedCreateNestedManyWithoutUserInput
@@ -67342,6 +67407,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
     role?: RoleUpdateOneRequiredWithoutUsersNestedInput
     accounts?: AccountUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUpdateManyWithoutUserNestedInput
@@ -67372,6 +67438,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
     accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUncheckedUpdateManyWithoutUserNestedInput
     opportunitiesAssigned?: OpportunityUncheckedUpdateManyWithoutUserNestedInput
@@ -67400,6 +67467,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
     role: RoleCreateNestedOneWithoutUsersInput
     accounts?: AccountCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactCreateNestedManyWithoutUserInput
@@ -67430,6 +67498,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
     accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactUncheckedCreateNestedManyWithoutUserInput
     opportunitiesAssigned?: OpportunityUncheckedCreateNestedManyWithoutUserInput
@@ -67474,6 +67543,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
     role?: RoleUpdateOneRequiredWithoutUsersNestedInput
     accounts?: AccountUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUpdateManyWithoutUserNestedInput
@@ -67504,6 +67574,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
     accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUncheckedUpdateManyWithoutUserNestedInput
     opportunitiesAssigned?: OpportunityUncheckedUpdateManyWithoutUserNestedInput
@@ -67532,6 +67603,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
     role: RoleCreateNestedOneWithoutUsersInput
     accounts?: AccountCreateNestedManyWithoutUserInput
     opportunitiesAssigned?: OpportunityCreateNestedManyWithoutUserInput
@@ -67562,6 +67634,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
     accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
     opportunitiesAssigned?: OpportunityUncheckedCreateNestedManyWithoutUserInput
     companiesAssigned?: CompanyUncheckedCreateNestedManyWithoutUserInput
@@ -67750,6 +67823,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
     role?: RoleUpdateOneRequiredWithoutUsersNestedInput
     accounts?: AccountUpdateManyWithoutUserNestedInput
     opportunitiesAssigned?: OpportunityUpdateManyWithoutUserNestedInput
@@ -67780,6 +67854,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
     accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
     opportunitiesAssigned?: OpportunityUncheckedUpdateManyWithoutUserNestedInput
     companiesAssigned?: CompanyUncheckedUpdateManyWithoutUserNestedInput
@@ -68047,6 +68122,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
     role: RoleCreateNestedOneWithoutUsersInput
     accounts?: AccountCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactCreateNestedManyWithoutUserInput
@@ -68077,6 +68153,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
     accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactUncheckedCreateNestedManyWithoutUserInput
     opportunitiesAssigned?: OpportunityUncheckedCreateNestedManyWithoutUserInput
@@ -68239,6 +68316,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
     role?: RoleUpdateOneRequiredWithoutUsersNestedInput
     accounts?: AccountUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUpdateManyWithoutUserNestedInput
@@ -68269,6 +68347,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
     accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUncheckedUpdateManyWithoutUserNestedInput
     opportunitiesAssigned?: OpportunityUncheckedUpdateManyWithoutUserNestedInput
@@ -68297,6 +68376,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
     role: RoleCreateNestedOneWithoutUsersInput
     accounts?: AccountCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactCreateNestedManyWithoutUserInput
@@ -68327,6 +68407,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
     accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactUncheckedCreateNestedManyWithoutUserInput
     opportunitiesAssigned?: OpportunityUncheckedCreateNestedManyWithoutUserInput
@@ -68494,6 +68575,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
     role?: RoleUpdateOneRequiredWithoutUsersNestedInput
     accounts?: AccountUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUpdateManyWithoutUserNestedInput
@@ -68524,6 +68606,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
     accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUncheckedUpdateManyWithoutUserNestedInput
     opportunitiesAssigned?: OpportunityUncheckedUpdateManyWithoutUserNestedInput
@@ -68822,6 +68905,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
     role: RoleCreateNestedOneWithoutUsersInput
     accounts?: AccountCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactCreateNestedManyWithoutUserInput
@@ -68852,6 +68936,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
     accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactUncheckedCreateNestedManyWithoutUserInput
     companiesAssigned?: CompanyUncheckedCreateNestedManyWithoutUserInput
@@ -68996,6 +69081,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
     role?: RoleUpdateOneRequiredWithoutUsersNestedInput
     accounts?: AccountUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUpdateManyWithoutUserNestedInput
@@ -69026,6 +69112,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
     accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUncheckedUpdateManyWithoutUserNestedInput
     companiesAssigned?: CompanyUncheckedUpdateManyWithoutUserNestedInput
@@ -69152,6 +69239,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
     role: RoleCreateNestedOneWithoutUsersInput
     accounts?: AccountCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactCreateNestedManyWithoutUserInput
@@ -69182,6 +69270,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
     accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactUncheckedCreateNestedManyWithoutUserInput
     opportunitiesAssigned?: OpportunityUncheckedCreateNestedManyWithoutUserInput
@@ -69286,6 +69375,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
     role?: RoleUpdateOneRequiredWithoutUsersNestedInput
     accounts?: AccountUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUpdateManyWithoutUserNestedInput
@@ -69316,6 +69406,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
     accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUncheckedUpdateManyWithoutUserNestedInput
     opportunitiesAssigned?: OpportunityUncheckedUpdateManyWithoutUserNestedInput
@@ -71468,6 +71559,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
     role: RoleCreateNestedOneWithoutUsersInput
     accounts?: AccountCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactCreateNestedManyWithoutUserInput
@@ -71498,6 +71590,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
     accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactUncheckedCreateNestedManyWithoutUserInput
     opportunitiesAssigned?: OpportunityUncheckedCreateNestedManyWithoutUserInput
@@ -71542,6 +71635,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
     role?: RoleUpdateOneRequiredWithoutUsersNestedInput
     accounts?: AccountUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUpdateManyWithoutUserNestedInput
@@ -71572,6 +71666,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
     accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUncheckedUpdateManyWithoutUserNestedInput
     opportunitiesAssigned?: OpportunityUncheckedUpdateManyWithoutUserNestedInput
@@ -71600,6 +71695,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
     role: RoleCreateNestedOneWithoutUsersInput
     accounts?: AccountCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactCreateNestedManyWithoutUserInput
@@ -71630,6 +71726,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
     accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
     contactsAssigned?: ContactUncheckedCreateNestedManyWithoutUserInput
     opportunitiesAssigned?: OpportunityUncheckedCreateNestedManyWithoutUserInput
@@ -71674,6 +71771,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
     role?: RoleUpdateOneRequiredWithoutUsersNestedInput
     accounts?: AccountUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUpdateManyWithoutUserNestedInput
@@ -71704,6 +71802,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
     accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUncheckedUpdateManyWithoutUserNestedInput
     opportunitiesAssigned?: OpportunityUncheckedUpdateManyWithoutUserNestedInput
@@ -71737,6 +71836,7 @@ export namespace Prisma {
     lastActivity?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    allowedAreas?: UserCreateallowedAreasInput | string[]
   }
 
   export type AuthorityUpdateWithoutRoleInput = {
@@ -71765,6 +71865,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
     accounts?: AccountUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUpdateManyWithoutUserNestedInput
     opportunitiesAssigned?: OpportunityUpdateManyWithoutUserNestedInput
@@ -71794,6 +71895,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
     accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
     contactsAssigned?: ContactUncheckedUpdateManyWithoutUserNestedInput
     opportunitiesAssigned?: OpportunityUncheckedUpdateManyWithoutUserNestedInput
@@ -71823,6 +71925,7 @@ export namespace Prisma {
     lastActivity?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    allowedAreas?: UserUpdateallowedAreasInput | string[]
   }
 
   export type AccountCreateManyUserInput = {

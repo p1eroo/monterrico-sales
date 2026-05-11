@@ -6,25 +6,28 @@ import type {
 } from '@/types';
 
 /** Módulos y acciones para construir la matriz de permisos */
-export const PERMISSION_MODULES: { id: PermissionModule; label: string }[] = [
-  { id: 'dashboard', label: 'Dashboard' },
-  { id: 'contactos', label: 'Contactos' },
-  { id: 'empresas', label: 'Empresas' },
-  { id: 'oportunidades', label: 'Oportunidades' },
-  { id: 'pipeline', label: 'Pipeline' },
-  { id: 'actividades', label: 'Tareas' },
-  { id: 'reportes', label: 'Reportes' },
-  { id: 'clientes', label: 'Clientes' },
-  { id: 'correo', label: 'Correo' },
-  { id: 'campanas', label: 'Campañas' },
-  { id: 'archivos', label: 'Archivos' },
-  { id: 'equipo', label: 'Equipo' },
-  { id: 'usuarios', label: 'Usuarios' },
-  { id: 'roles', label: 'Roles' },
-  { id: 'auditoria', label: 'Auditoría' },
-  { id: 'configuracion', label: 'Configuración' },
-  { id: 'agentes_ia', label: 'Agentes IA (copiloto)' },
-  { id: 'flota', label: 'Flota' },
+export const PERMISSION_MODULES: { id: PermissionModule; label: string; area: 'comercial' | 'flota' | 'general' }[] = [
+  { id: 'dashboard', label: 'Dashboard', area: 'comercial' },
+  { id: 'contactos', label: 'Contactos', area: 'comercial' },
+  { id: 'empresas', label: 'Empresas', area: 'comercial' },
+  { id: 'oportunidades', label: 'Oportunidades', area: 'comercial' },
+  { id: 'pipeline', label: 'Pipeline', area: 'comercial' },
+  { id: 'actividades', label: 'Tareas', area: 'comercial' },
+  { id: 'reportes', label: 'Reportes', area: 'comercial' },
+  { id: 'clientes', label: 'Clientes', area: 'comercial' },
+  { id: 'correo', label: 'Correo', area: 'comercial' },
+  { id: 'campanas', label: 'Campañas', area: 'comercial' },
+  { id: 'archivos', label: 'Archivos', area: 'comercial' },
+  { id: 'equipo', label: 'Equipo', area: 'comercial' },
+  { id: 'flota_dashboard', label: 'Flota: Dashboard', area: 'flota' },
+  { id: 'flota_prospectos', label: 'Flota: Prospectos', area: 'flota' },
+  { id: 'flota_conductores', label: 'Flota: Conductores', area: 'flota' },
+  { id: 'flota_reportes', label: 'Flota: Reportes', area: 'flota' },
+  { id: 'usuarios', label: 'Usuarios', area: 'general' },
+  { id: 'roles', label: 'Roles', area: 'general' },
+  { id: 'auditoria', label: 'Auditoría', area: 'general' },
+  { id: 'configuracion', label: 'Configuración', area: 'general' },
+  { id: 'agentes_ia', label: 'Agentes IA (copiloto)', area: 'general' },
 ];
 
 /**
@@ -52,7 +55,10 @@ export const MODULE_ALLOWED_ACTIONS: Record<
   auditoria: ['ver'],
   configuracion: ['ver', 'editar'],
   agentes_ia: ['ver', 'editar'],
-  flota: ['ver', 'crear', 'editar', 'eliminar', 'exportar'],
+  flota_dashboard: ['ver', 'exportar'],
+  flota_prospectos: ['ver', 'crear', 'editar', 'eliminar', 'asignar', 'exportar'],
+  flota_conductores: ['ver', 'crear', 'editar', 'eliminar', 'exportar'],
+  flota_reportes: ['ver', 'exportar'],
 };
 
 export function moduleAllowsAction(

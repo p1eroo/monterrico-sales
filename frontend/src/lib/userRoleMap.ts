@@ -11,6 +11,7 @@ export type ApiUserRecord = {
   phone?: string | null;
   lastActivity?: string | null;
   joinedAt?: string | null;
+  allowedAreas?: string[] | null;
 };
 
 /** Mapea roleId del RBAC (r1–r4) al campo `role` del modelo User en el CRM. */
@@ -84,5 +85,6 @@ export function apiUserRecordToUser(row: ApiUserRecord): User {
     conversionRate: 0,
     joinedAt: joinedAtToDateString(row.joinedAt),
     lastActivity: row.lastActivity ?? undefined,
+    allowedAreas: (row.allowedAreas as User['allowedAreas']) || [],
   };
 }

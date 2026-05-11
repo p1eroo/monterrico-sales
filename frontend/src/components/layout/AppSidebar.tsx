@@ -1,4 +1,4 @@
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   UserPlus,
@@ -20,6 +20,7 @@ import {
   Bot,
   Car,
   UserCheck,
+  ArrowRightLeft,
 } from 'lucide-react';
 import type { PermissionKey } from '@/types';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -62,13 +63,6 @@ const navItems: NavDef[] = [
   { to: '/archivos', label: 'Archivos', icon: FileArchive, permission: 'archivos.ver' },
   { to: '/agentes-ia', label: 'Agentes IA', icon: Bot },
   { to: '/team', label: 'Equipo', icon: Users, permission: 'equipo.ver' },
-  {
-    to: '/users',
-    label: 'Usuarios y Roles',
-    icon: Shield,
-    anyOf: ['usuarios.ver', 'roles.ver'],
-  },
-  { to: '/audit', label: 'Auditoría', icon: FileSearch, permission: 'auditoria.ver' },
   { to: '/settings', label: 'Configuración', icon: Settings, permission: 'configuracion.ver' },
 ];
 
@@ -86,18 +80,34 @@ function navItemVisible(
 }
 
 const navItemsFlota: NavDef[] = [
-  { to: '/flota', label: 'Dashboard', icon: LayoutDashboard, permission: 'flota.ver' },
-  { to: '/flota/prospectos', label: 'Prospectos', icon: UserCheck, permission: 'flota.ver' },
-  { to: '/flota/conductores', label: 'Conductores', icon: Car, permission: 'flota.ver' },
-  { to: '/flota/reportes', label: 'Reportes', icon: BarChart3, permission: 'flota.ver' },
+  { to: '/flota', label: 'Dashboard', icon: LayoutDashboard, permission: 'flota_dashboard.ver' },
+  { to: '/flota/prospectos', label: 'Prospectos', icon: UserCheck, permission: 'flota_prospectos.ver' },
+  { to: '/flota/conductores', label: 'Conductores', icon: Car, permission: 'flota_conductores.ver' },
+  { to: '/flota/reportes', label: 'Reportes', icon: BarChart3, permission: 'flota_reportes.ver' },
+];
+
+const navItemsAdmin: NavDef[] = [
+  { to: '/admin', label: 'Panel Control', icon: LayoutDashboard },
+  {
+    to: '/admin/users',
+    label: 'Usuarios y Roles',
+    icon: Shield,
+    anyOf: ['usuarios.ver', 'roles.ver'],
+  },
+  { to: '/admin/audit', label: 'Auditoría', icon: FileSearch, permission: 'auditoria.ver' },
+  { to: '/settings', label: 'Configuración', icon: Settings, permission: 'configuracion.ver' },
 ];
 
 export function AppSidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { logout, area } = useAppStore();
   console.log('[DEBUG-SIDEBAR] area:', area);
   const { hasPermission } = usePermissions();
-  const currentNavItems = area === 'flota' ? navItemsFlota : navItems;
+  const currentNavItems = 
+    area === 'flota' ? navItemsFlota : 
+    area === 'admin' ? navItemsAdmin : 
+    navItems;
   // Solo mostrar todos los items para debug
   const visibleNav = currentNavItems; // .filter((item) => navItemVisible(item, hasPermission));
 
@@ -164,8 +174,21 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
+              tooltip="Cambiar área"
+              onClick={() => navigate('/area-select')}
+              className="text-sidebar-foreground/60 hover:bg-accent"
+            >
+              <ArrowRightLeft />
+              <span>Cambiar área</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
               tooltip="Cerrar sesión"
-              onClick={logout}
+              onClick={() => {
+                logout();
+                navigate('/login');
+              }}
               className="text-sidebar-foreground/60 hover:bg-destructive/10 hover:text-destructive"
             >
               <LogOut />

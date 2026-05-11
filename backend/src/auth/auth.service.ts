@@ -80,6 +80,7 @@ export class AuthService {
         name: dto.name.trim(),
         roleId: roleToUse.id,
         status: 'activo',
+        allowedAreas: ['comercial'],
         accounts: {
           create: {
             provider: 'credentials',
@@ -121,6 +122,7 @@ export class AuthService {
       joinedAt: Date;
       lastActivity: Date | null;
       role: { slug: string; name: string };
+      allowedAreas: string[];
     },
     username: string,
   ) {
@@ -137,6 +139,7 @@ export class AuthService {
       permissions,
       joinedAt: user.joinedAt.toISOString(),
       lastActivity: user.lastActivity?.toISOString() ?? null,
+      allowedAreas: user.allowedAreas,
     };
   }
 
@@ -376,6 +379,7 @@ export class AuthService {
       joinedAt: Date;
       lastActivity: Date | null;
       role: { slug: string; name: string };
+      allowedAreas: string[];
     },
     username: string,
   ) {
@@ -405,6 +409,7 @@ export class AuthService {
         joinedAt: user.joinedAt.toISOString(),
         lastActivity: user.lastActivity?.toISOString() ?? null,
         permissions,
+        allowedAreas: user.allowedAreas,
       },
     };
   }

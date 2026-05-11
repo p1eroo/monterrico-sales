@@ -34,6 +34,7 @@ function toApiUser(
     lastActivity?: Date | null;
     joinedAt?: Date | null;
     accounts?: { provider: string; providerId: string }[];
+    allowedAreas: string[];
   },
 ) {
   return {
@@ -46,6 +47,7 @@ function toApiUser(
     status: row.status,
     lastActivity: row.lastActivity,
     joinedAt: row.joinedAt,
+    allowedAreas: row.allowedAreas,
   };
 }
 
@@ -139,6 +141,7 @@ export class UsersService {
             passwordHash,
           },
         },
+        allowedAreas: dto.allowedAreas ?? [],
       },
       include: { role: true, accounts: true },
     });
@@ -156,6 +159,7 @@ export class UsersService {
       name?: string;
       roleId?: string;
       status?: string;
+      allowedAreas?: string[];
     } = {};
 
     if (dto.name !== undefined) {
@@ -181,6 +185,10 @@ export class UsersService {
 
     if (dto.status !== undefined) {
       data.status = dto.status === false ? 'inactivo' : 'activo';
+    }
+
+    if (dto.allowedAreas !== undefined) {
+      data.allowedAreas = dto.allowedAreas;
     }
 
     if (Object.keys(data).length === 0) {

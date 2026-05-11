@@ -120,7 +120,10 @@ export type PermissionModule =
   | 'auditoria'
   | 'configuracion'
   | 'agentes_ia'
-  | 'flota';
+  | 'flota_dashboard'
+  | 'flota_prospectos'
+  | 'flota_conductores'
+  | 'flota_reportes';
 
 /** RBAC: Tipos de permiso por módulo */
 export type PermissionAction =
@@ -168,6 +171,7 @@ export interface User {
   joinedAt: string;
   /** Última actividad (mock) */
   lastActivity?: string;
+  allowedAreas: ('comercial' | 'flota')[];
 }
 
 export interface Contact {

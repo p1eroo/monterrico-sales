@@ -157,7 +157,8 @@ exports.Prisma.UserScalarFieldEnum = {
   joinedAt: 'joinedAt',
   lastActivity: 'lastActivity',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  allowedAreas: 'allowedAreas'
 };
 
 exports.Prisma.WhatsappInstanceScalarFieldEnum = {

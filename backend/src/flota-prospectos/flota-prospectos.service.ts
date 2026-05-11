@@ -157,6 +157,18 @@ if (params.mes) {
     });
   }
 
+  /** Crear un nuevo prospecto */
+  async createOne(data: Record<string, unknown>) {
+    return this.prisma.flotaProspecto.create({
+      data: {
+        ...data as any,
+        fechaRegistro: data.fechaRegistro ? new Date(data.fechaRegistro as string) : null,
+        fechaCita: data.fechaCita ? new Date(data.fechaCita as string) : null,
+        fechaAfiliacion: data.fechaAfiliacion ? new Date(data.fechaAfiliacion as string) : null,
+      },
+    });
+  }
+
   /** Eliminar un prospecto */
   async remove(id: string) {
     const existing = await this.prisma.flotaProspecto.findUnique({ where: { id } });

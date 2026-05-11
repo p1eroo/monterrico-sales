@@ -39,6 +39,7 @@ export function buildUserFormSchema(isEdit: boolean) {
       password: z.string().optional(),
       roleId: z.string().min(1, 'Selecciona un rol'),
       status: z.boolean(),
+      allowedAreas: z.array(z.enum(['comercial', 'flota'])).min(1, 'Selecciona al menos un área'),
     })
     .superRefine((data, ctx) => {
       if (!isEdit) {
@@ -104,6 +105,7 @@ export function UserFormModal({
       password: '',
       roleId: defaultRoleId,
       status: true,
+      allowedAreas: ['comercial'],
     },
   });
 
@@ -126,6 +128,7 @@ export function UserFormModal({
         roleId: user.roleId?.trim() || fallbackRole,
         status: user.status === 'activo',
         password: '',
+        allowedAreas: user.allowedAreas || ['comercial'],
       });
     } else {
       form.reset({
@@ -134,6 +137,7 @@ export function UserFormModal({
         password: '',
         roleId: fallbackRole,
         status: true,
+        allowedAreas: ['comercial'],
       });
     }
     // Solo al abrir o al cambiar el usuario editado; no al cargar `roles` (evita borrar lo tipeado en “crear”).
@@ -157,6 +161,7 @@ export function UserFormModal({
         password: '',
         roleId: defaultRoleId || selectableRoles[0]?.id || '',
         status: true,
+        allowedAreas: ['comercial'],
       });
     }
     onOpenChange(next);
@@ -264,6 +269,48 @@ export function UserFormModal({
               onCheckedChange={(v) => form.setValue('status', v)}
             />
           </div>
+
+          <div className="space-y-3 rounded-lg border p-4">
+            <Label>Áreas Permitidas *</Label>
+            <div className="grid grid-cols-2 gap-4 pt-1">
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="area-comercial"
+                  checked={form.watch('allowedAreas').includes('comercial')}
+                  onCheckedChange={(checked) => {
+                    const current = form.getValues('allowedAreas');
+                    if (checked) {
+                      form.setValue('allowedAreas', [...current, 'comercial']);
+                    } else {
+                      form.setValue('allowedAreas', current.filter(a => a !== 'comercial'));
+                    }
+                  }}
+                />
+                <Label htmlFor="area-comercial" className="font-normal cursor-pointer">Comercial</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="area-flota"
+                  checked={form.watch('allowedAreas').includes('flota')}
+                  onCheckedChange={(checked) => {
+                    const current = form.getValues('allowedAreas');
+                    if (checked) {
+                      form.setValue('allowedAreas', [...current, 'flota']);
+                    } else {
+                      form.setValue('allowedAreas', current.filter(a => a !== 'flota'));
+                    }
+                  }}
+                />
+                <Label htmlFor="area-flota" className="font-normal cursor-pointer">Flota</Label>
+              </div>
+            </div>
+            {form.formState.errors.allowedAreas && (
+              <p className="text-xs text-destructive">
+                {form.formState.errors.allowedAreas.message}
+              </p>
+            )}
+          </div>
+
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
               Cancelar

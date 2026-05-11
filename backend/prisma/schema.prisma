@@ -79,6 +79,7 @@ model User {
   crmNotifications     CrmNotification[]
   whatsappInstance     WhatsappInstance?
   whatsappMessagesSent CrmWhatsappMessage[] @relation("CrmWhatsappMessageAuthor")
+  allowedAreas         String[] @default([])
 }
 
 /** Instancia/línea personal de WhatsApp conectada por cada asesor. */

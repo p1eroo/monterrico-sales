@@ -34,6 +34,10 @@ export const ACCESSIBLE_PATH_ORDER: PathRule[] = [
     path: '/agentes-ia',
     anyOf: ['dashboard.ver', 'configuracion.ver', 'agentes_ia.ver'],
   },
+  { path: '/flota', permission: 'flota_dashboard.ver' },
+  { path: '/flota/prospectos', permission: 'flota_prospectos.ver' },
+  { path: '/flota/conductores', permission: 'flota_conductores.ver' },
+  { path: '/flota/reportes', permission: 'flota_reportes.ver' },
 ];
 
 /**
@@ -67,6 +71,12 @@ export function getRequiredPermissionForPath(
   if (pathname === '/dashboard' || pathname.startsWith('/dashboard')) {
     return 'dashboard.ver';
   }
+  
+  if (pathname === '/flota' || pathname === '/flota/') return 'flota_dashboard.ver';
+  if (pathname.startsWith('/flota/prospectos')) return 'flota_prospectos.ver';
+  if (pathname.startsWith('/flota/conductores')) return 'flota_conductores.ver';
+  if (pathname.startsWith('/flota/reportes')) return 'flota_reportes.ver';
+
   return null;
 }
 

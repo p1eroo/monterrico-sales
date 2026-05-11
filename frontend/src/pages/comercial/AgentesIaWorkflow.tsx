@@ -1,4 +1,4 @@
-import { AgentWorkflowEditor } from '@/modules/agentes-ia/workflow/AgentWorkflowEditor';
+import { AgentWorkflowEditor } from '@/modules/comercial/agentes-ia/workflow/AgentWorkflowEditor';
 import { Toaster } from '@/components/ui/sonner';
 
 /** Shell sin MainLayout: lienzo del builder ocupa todo el viewport. */
