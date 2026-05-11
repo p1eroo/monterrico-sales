@@ -1,21 +1,31 @@
-import { useNavigate } from 'react-router-dom';
-import { useAppStore } from '@/store';
-import { Briefcase, Car, ArrowRight, Loader2, Shield, Lock } from 'lucide-react';
-import { useState } from 'react';
-import { toast } from 'sonner';
+import { useNavigate } from "react-router-dom";
+import { useAppStore } from "@/store";
+import {
+  Briefcase,
+  Car,
+  ArrowRight,
+  Loader2,
+  Shield,
+  Lock,
+} from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
+import { useTheme } from "next-themes";
+import bgClaro from "@/assets/select_claro.png";
+import bgOscuro from "@/assets/select_oscuro.png";
 
 const areas = [
   {
-    id: 'comercial' as const,
-    name: 'Comercial',
-    description: 'Gestión de clientes, oportunidades y pipeline de ventas',
-    icon: Briefcase,
+    id: "comercial" as const,
+    name: "Comercial",
+    imageDark: "/assets/comercial_bg_dark.png",
+    imageLight: "/assets/comercial_bg_light.png",
   },
   {
-    id: 'flota' as const,
-    name: 'Flota',
-    description: 'Gestión de prospectos, conductores y flota vehicular',
-    icon: Car,
+    id: "flota" as const,
+    name: "Flota",
+    imageDark: "/assets/flota_bg_dark.png",
+    imageLight: "/assets/flota_bg_light.png",
   },
 ];
 
@@ -25,64 +35,89 @@ export default function AreaSelect() {
   const currentUser = useAppStore((s) => s.currentUser);
   const [selecting, setSelecting] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const { resolvedTheme } = useTheme();
 
-  const isAdmin = currentUser.role === 'admin';
+  const isDark = resolvedTheme === "dark";
+  const backgroundStyle = {
+    backgroundImage: `url(${resolvedTheme === "light" ? bgClaro : bgOscuro})`,
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    backgroundRepeat: "no-repeat",
+  };
 
+  const isAdmin = currentUser.role === "admin";
   const userAllowedAreas = currentUser.allowedAreas || [];
-  
-  const handleSelect = (areaId: 'comercial' | 'flota' | 'admin') => {
-    // Verificar si tiene permiso para esta área (excepto admin que se controla por rol)
-    if (areaId !== 'admin' && !isAdmin && !userAllowedAreas.includes(areaId)) {
-      toast.error('Acceso restringido: No tienes permisos para esta área.');
+
+  const handleSelect = (areaId: "comercial" | "flota" | "admin") => {
+    if (areaId !== "admin" && !isAdmin && !userAllowedAreas.includes(areaId)) {
+      toast.error("Acceso restringido: No tienes permisos para esta área.");
       return;
     }
 
     setSelecting(true);
     setSelectedId(areaId);
     setArea(areaId);
-    // Redirigir según el área seleccionada
-    if (areaId === 'admin') {
-      navigate('/admin');
+    if (areaId === "admin") {
+      navigate("/admin");
     } else {
-      navigate(areaId === 'flota' ? '/flota' : '/dashboard');
+      navigate(areaId === "flota" ? "/flota" : "/dashboard");
     }
   };
 
   return (
-    <div 
-      className="flex min-h-screen flex-col items-center justify-center p-4"
+    <div
+      className="flex min-h-screen flex-col items-center justify-center p-4 transition-all duration-500"
       style={{
-        background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)',
+        ...backgroundStyle,
+        fontFamily: "'Inter', sans-serif",
       }}
     >
       {/* Botón de Administrador arriba a la derecha */}
       {isAdmin && (
-        <div style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', zIndex: 50 }}>
+        <div
+          style={{
+            position: "absolute",
+            top: "1.5rem",
+            right: "1.5rem",
+            zIndex: 50,
+          }}
+        >
           <button
-            onClick={() => handleSelect('admin')}
+            onClick={() => handleSelect("admin")}
             disabled={selecting}
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.75rem',
-              padding: '0.75rem 1.25rem',
-              borderRadius: '0.75rem',
-              background: 'rgba(255, 255, 255, 0.05)',
-              backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              color: 'white',
-              fontSize: '0.875rem',
-              fontWeight: '500',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
+              display: "flex",
+              alignItems: "center",
+              gap: "0.75rem",
+              padding: "0.75rem 1.25rem",
+              borderRadius: "0.75rem",
+              background: isDark
+                ? "rgba(255, 255, 255, 0.05)"
+                : "rgba(0, 0, 0, 0.05)",
+              backdropFilter: "blur(10px)",
+              border: `1px solid ${isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)"}`,
+              color: isDark ? "white" : "#1e293b",
+              fontSize: "0.875rem",
+              fontWeight: "500",
+              cursor: "pointer",
+              transition: "all 0.2s ease",
             }}
             onMouseOver={(e) => {
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+              e.currentTarget.style.background = isDark
+                ? "rgba(255, 255, 255, 0.1)"
+                : "rgba(0, 0, 0, 0.1)";
+              e.currentTarget.style.borderColor = isDark
+                ? "rgba(255, 255, 255, 0.2)"
+                : "rgba(0, 0, 0, 0.2)";
             }}
             onMouseOut={(e) => {
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+              e.currentTarget.style.background = isDark
+                ? "rgba(255, 255, 255, 0.05)"
+                : "rgba(0, 0, 0, 0.05)";
+              e.currentTarget.style.borderColor = isDark
+                ? "rgba(255, 255, 255, 0.1)"
+                : "rgba(0, 0, 0, 0.1)";
             }}
           >
             <Shield size={18} />
@@ -91,99 +126,196 @@ export default function AreaSelect() {
         </div>
       )}
 
-      <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', top: '-10rem', right: '-10rem', width: '20rem', height: '20rem', borderRadius: '50%', background: 'rgba(255,255,255,0.03)', filter: 'blur(60px)' }} />
-        <div style={{ position: 'absolute', bottom: '-10rem', left: '-10rem', width: '20rem', height: '20rem', borderRadius: '50%', background: 'rgba(255,255,255,0.03)', filter: 'blur(60px)' }} />
-      </div>
-
-      <div style={{ position: 'relative', zIndex: 10, width: '100%', maxWidth: '600px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '4rem', height: '4rem', borderRadius: '1rem', background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', marginBottom: '1rem' }}>
-            <span style={{ fontSize: '1.875rem', fontWeight: 'bold', color: 'white' }}>TM</span>
-          </div>
-          <h1 style={{ fontSize: '1.875rem', fontWeight: 'bold', color: 'white', marginBottom: '0.5rem' }}>
-            Selecciona tu área de trabajo
-          </h1>
-          <p style={{ color: '#94a3b8' }}>
-            Elige el módulo al que deseas acceder durante esta sesión
-          </p>
-        </div>
-
-        <div style={{ display: 'grid', gap: '1.5rem', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))' }}>
+      <div
+        style={{
+          position: "relative",
+          zIndex: 10,
+          width: "100%",
+          maxWidth: "800px",
+        }}
+      >
+        <div
+          style={{
+            display: "grid",
+            gap: "2rem",
+            gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
+          }}
+        >
           {areas.map((area) => {
-            const Icon = area.icon;
             const isSelected = selectedId === area.id;
-            const isFlota = area.id === 'flota';
+            const isHovered = hoveredId === area.id;
             const isAllowed = isAdmin || userAllowedAreas.includes(area.id);
-            
-            const bgGradient = isAllowed
-              ? (isFlota 
-                ? 'linear-gradient(135deg, #059669 0%, #047857 50%, #065f46 100%)'
-                : 'linear-gradient(135deg, #475569 0%, #334155 50%, #1e293b 100%)')
-              : 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)';
+            const areaImage = isDark ? area.imageDark : area.imageLight;
 
             return (
               <button
                 key={area.id}
                 onClick={() => handleSelect(area.id)}
-                disabled={selecting}
+                onMouseEnter={() => setHoveredId(area.id)}
+                onMouseLeave={() => setHoveredId(null)}
+                disabled={selecting || !isAllowed}
                 style={{
-                  position: 'relative',
-                  overflow: 'hidden',
-                  borderRadius: '1rem',
-                  border: isSelected ? '1px solid rgba(255,255,255,0.3)' : '1px solid rgba(255,255,255,0.1)',
-                  background: bgGradient,
-                  padding: '2rem',
-                  textAlign: 'left',
-                  cursor: selecting ? 'not-allowed' : 'pointer',
-                  opacity: (!isAllowed) ? 0.6 : (selecting && !isSelected ? 0.5 : 1),
-                  transition: 'all 0.3s ease',
-                  transform: isSelected ? 'scale(1.02)' : 'scale(1)',
+                  position: "relative",
+                  height: "420px",
+                  borderRadius: "1.5rem",
+                  overflow: "hidden",
+                  border: isSelected
+                    ? "2px solid #13944C"
+                    : `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`,
+                  background: isDark ? "#1e293b" : "#f8fafc",
+                  cursor: isAllowed && !selecting ? "pointer" : "not-allowed",
+                  transition: "all 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
+                  transform:
+                    isHovered && isAllowed
+                      ? "translateY(-8px) scale(1.02)"
+                      : "scale(1)",
+                  boxShadow:
+                    isHovered && isAllowed
+                      ? isDark
+                        ? "0 20px 40px rgba(0,0,0,0.4)"
+                        : "0 20px 40px rgba(0,0,0,0.1)"
+                      : isDark
+                        ? "0 10px 20px rgba(0,0,0,0.2)"
+                        : "0 10px 20px rgba(0,0,0,0.05)",
+                  opacity: isAllowed ? 1 : 0.4,
                 }}
               >
+                {/* Background Image */}
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    backgroundImage: `url(${areaImage})`,
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
+                    transition: "transform 0.7s ease",
+                    transform:
+                      isHovered && isAllowed ? "scale(1.1)" : "scale(1)",
+                  }}
+                />
+
+                {/* Overlays */}
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    background: isAllowed
+                      ? isDark
+                        ? "linear-gradient(to top, rgba(10, 15, 29, 0.95) 0%, rgba(10, 15, 29, 0.4) 50%, rgba(10, 15, 29, 0.2) 100%)"
+                        : "linear-gradient(to top, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.3) 50%, rgba(255, 255, 255, 0.1) 100%)"
+                      : isDark
+                        ? "rgba(10, 15, 29, 0.8)"
+                        : "rgba(255, 255, 255, 0.8)",
+                  }}
+                />
+
                 {!isAllowed && (
-                  <div style={{ position: 'absolute', top: '1rem', right: '1rem', zIndex: 20 }}>
-                    <Lock size={16} color="rgba(255,255,255,0.5)" />
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      zIndex: 30,
+                      color: isDark ? "white" : "#1e293b",
+                      gap: "1rem",
+                    }}
+                  >
+                    <Lock size={32} />
+                    <span
+                      style={{
+                        fontWeight: "600",
+                        fontSize: "1rem",
+                        opacity: 0.8,
+                      }}
+                    >
+                      Acceso Restringido
+                    </span>
                   </div>
                 )}
-                <div style={{ position: 'absolute', right: '-2rem', top: '-2rem', width: '8rem', height: '8rem', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', filter: 'blur(40px)' }} />
-                
-                <div style={{ position: 'relative', zIndex: 10 }}>
-                  <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '3.5rem', height: '3.5rem', borderRadius: '0.75rem', background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', marginBottom: '1rem' }}>
-                    <Icon size={28} color="white" />
-                  </div>
 
-                  <h2 style={{ fontSize: '1.25rem', fontWeight: '600', color: 'white', marginBottom: '0.5rem' }}>
+                <div
+                  style={{
+                    position: "absolute",
+                    bottom: "2rem",
+                    left: "2rem",
+                    right: "2rem",
+                    zIndex: 20,
+                    textAlign: "left",
+                  }}
+                >
+                  <h2
+                    style={{
+                      fontSize: "2rem",
+                      fontWeight: "800",
+                      color: isDark ? "white" : "#1e293b",
+                      marginBottom: "0.75rem",
+                      letterSpacing: "-0.02em",
+                    }}
+                  >
                     {area.name}
                   </h2>
-                  <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.7)', marginBottom: '1.5rem' }}>
-                    {area.description}
-                  </p>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: 'white' }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.5rem",
+                      fontSize: "1rem",
+                      fontWeight: "600",
+                      color: isHovered
+                        ? "#13944C"
+                        : isDark
+                          ? "white"
+                          : "#1e293b",
+                      transition: "color 0.3s ease",
+                    }}
+                  >
                     {isSelected && selecting ? (
                       <>
-                        <Loader2 size={16} style={{ animation: 'spin 1s linear infinite', display: 'inline' }} />
+                        <Loader2
+                          size={20}
+                          style={{ animation: "spin 1s linear infinite" }}
+                        />
                         <span>Entrando...</span>
                       </>
                     ) : isAllowed ? (
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                        Continuar
-                        <ArrowRight size={16} />
-                      </span>
+                      <>
+                        <span>Acceder al área</span>
+                        <ArrowRight
+                          size={20}
+                          style={{
+                            transform: isHovered
+                              ? "translateX(4px)"
+                              : "translateX(0)",
+                            transition: "transform 0.3s ease",
+                          }}
+                        />
+                      </>
                     ) : (
-                      <span style={{ color: 'rgba(255,255,255,0.5)' }}>Acceso no permitido</span>
+                      <span style={{ opacity: 0.5 }}>No disponible</span>
                     )}
                   </div>
                 </div>
+
+                {/* Decorative border glow on hover */}
+                {isHovered && isAllowed && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      border: "2px solid rgba(19, 148, 76, 0.5)",
+                      borderRadius: "1.5rem",
+                      pointerEvents: "none",
+                    }}
+                  />
+                )}
               </button>
             );
           })}
         </div>
-
-        <p style={{ marginTop: '2.5rem', textAlign: 'center', fontSize: '0.875rem', color: '#64748b' }}>
-          Podrás cambiar de área en cualquier momento desde el sidebar
-        </p>
       </div>
 
       <style>{`

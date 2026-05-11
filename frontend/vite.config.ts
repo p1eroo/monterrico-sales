@@ -65,6 +65,17 @@ export default defineConfig(({ command }) => {
         include: [/node_modules/],
         transformMixedEsModules: true,
       },
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+            'vendor-charts': ['recharts'],
+            'vendor-reports': ['xlsx', 'exceljs', 'jspdf', 'html2canvas'],
+            'vendor-ui': ['lucide-react', '@xyflow/react'],
+          },
+        },
+      },
+      chunkSizeWarningLimit: 1500,
     },
   }
 })

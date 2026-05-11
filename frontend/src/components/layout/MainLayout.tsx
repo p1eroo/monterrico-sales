@@ -21,6 +21,9 @@ import { fetchAnalyticsGoalProgress } from '@/lib/analyticsApi';
 import { useAnalyticsGoalStore } from '@/store/analyticsGoalStore';
 import { AiAssistantDrawer } from '@/components/assistant/AiAssistantDrawer';
 import { ImportJobsPanel } from './ImportJobsPanel';
+import { useTheme } from 'next-themes';
+import bgClaro from '@/assets/select_claro.png';
+import bgOscuro from '@/assets/select_oscuro.png';
 
 /** Toggle en la costura sidebar / contenido (solo desktop; fuera del topbar). */
 function SidebarDividerToggle() {
@@ -52,6 +55,8 @@ function SidebarDividerToggle() {
 export default function MainLayout() {
   const { pathname } = useLocation();
   const compactMainTop = isCrmEntityDetailPath(pathname);
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
 
   useUsers(); // Precarga usuarios de la API para selects de asignación
   const [showBriefing, setShowBriefing] = useState(false);
@@ -113,14 +118,22 @@ export default function MainLayout() {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset className="min-w-0 max-w-full bg-background md:z-20">
+      <SidebarInset
+        className="min-w-0 max-w-full md:z-20"
+        style={{
+          backgroundImage: `url(${isDark ? bgOscuro : bgClaro})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          backgroundAttachment: 'fixed',
+        }}
+      >
         {/* overflow aquí recorta el card; el toggle es hermano para no cortarlo */}
         <div className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-hidden md:rounded-xl">
           <Topbar />
           <div
             className={cn(
-              /* min-h-0 + min-w-0: el inset flex no crece más que el viewport (Kanban, grillas). */
-              'min-h-0 min-w-0 max-w-full flex-1 overflow-y-auto overflow-x-hidden bg-background px-4 md:px-6',
+              'min-h-0 min-w-0 max-w-full flex-1 flex-1 overflow-y-auto overflow-x-hidden px-4 md:px-6',
               compactMainTop
                 ? 'pt-0 pb-4 md:pt-0.5 md:pb-5'
                 : 'pt-5 pb-5 md:pt-6 md:pb-6',
