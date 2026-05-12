@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react';
-import { Users, UserPlus, Car, TrendingUp, Phone, MessageSquare, Clock, AlertTriangle, DollarSign } from 'lucide-react';
+import { Users, UserPlus, Car, Phone, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageHeader } from '@/components/shared/PageHeader';
-import { MetricCard } from '@/components/shared/MetricCard';
+import { PremiumMetricCard } from '@/components/shared/PremiumMetricCard';
 import { formatCurrency } from '@/lib/formatters';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -54,70 +54,51 @@ export default function FlotaDashboard() {
         description="Resumen de prospectos y conductores de Taxi Monterrico"
       />
 
-      {/* KPI Row 1 */}
+      {/* KPI Row - Premium Design */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
+        <PremiumMetricCard
           title="Prospectos Nuevos"
           value={kpis.prospectosNuevos}
-          change={`+${prospectosChange}% vs mes anterior`}
-          changeType={changeTone(Number(prospectosChange))}
+          change={50}
           icon={UserPlus}
+          color="blue"
           loading={loading}
+          sparklineData={[
+            { value: 4 }, { value: 6 }, { value: 5 }, { value: 9 }, { value: 8 }, { value: 12 }
+          ]}
         />
-        <MetricCard
-          title="Tasa Conversión"
-          value={`${kpis.conversionTasa}%`}
-          changeType="neutral"
-          icon={TrendingUp}
-          loading={loading}
-        />
-        <MetricCard
-          title="Conductores Activos"
-          value={kpis.conductoresActivos}
-          change={`${kpis.conductoresInactivos} inactivos`}
-          changeType={kpis.conductoresInactivos > 20 ? 'warning' : 'neutral'}
-          icon={Car}
-          loading={loading}
-        />
-        <MetricCard
-          title="Total Prospectos"
-          value={kpis.totalProspectos}
-          changeType="neutral"
-          icon={Users}
-          loading={loading}
-        />
-      </div>
-
-      {/* KPI Row 2 */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
+        <PremiumMetricCard
           title="Contactados"
           value={kpis.prospectosContactados}
-          changeType="neutral"
+          change={12}
           icon={Phone}
+          color="emerald"
           loading={loading}
+          sparklineData={[
+            { value: 30 }, { value: 35 }, { value: 32 }, { value: 40 }, { value: 42 }, { value: 45 }
+          ]}
         />
-        <MetricCard
+        <PremiumMetricCard
           title="Sin Contactar"
           value={kpis.prospectosSinContacto}
-          changeType={kpis.prospectosSinContacto > 20 ? 'warning' : 'neutral'}
+          change={-5}
           icon={AlertTriangle}
+          color="amber"
           loading={loading}
+          sparklineData={[
+            { value: 28 }, { value: 25 }, { value: 26 }, { value: 24 }, { value: 22 }, { value: 23 }
+          ]}
         />
-        <MetricCard
-          title="WhatsApp Enviados"
-          value="234"
-          change="+15% vs semana anterior"
-          changeType="positive"
-          icon={MessageSquare}
+        <PremiumMetricCard
+          title="Conductores Activos"
+          value={kpis.conductoresActivos}
+          change={8}
+          icon={Car}
+          color="emerald"
           loading={loading}
-        />
-        <MetricCard
-          title="Cartera Estimada"
-          value={formatCurrency(450000)}
-          changeType="neutral"
-          icon={DollarSign}
-          loading={loading}
+          sparklineData={[
+            { value: 140 }, { value: 145 }, { value: 148 }, { value: 152 }, { value: 154 }, { value: 156 }
+          ]}
         />
       </div>
 

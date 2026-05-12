@@ -94,6 +94,7 @@ export class FlotaProspectosService {
     estado?: string;
     duplicados?: boolean;
     mes?: string;
+    redSocial?: string;
   }) {
     const page = params.page ?? 1;
     const limit = params.limit ?? 25;
@@ -107,6 +108,10 @@ export class FlotaProspectosService {
 
     if (params.duplicados) {
       where.esDuplicado = true;
+    }
+
+    if (params.redSocial) {
+      where.redSocial = params.redSocial;
     }
 
 if (params.mes) {
@@ -345,6 +350,7 @@ if (params.mes) {
       // Skip if both celular and nombre are empty
       if (!celularNorm && !nombre) {
         result.skipped++;
+        result.errors.push(`Fila ${i + 1}: Omitida por falta de nombre y celular.`);
         continue;
       }
 
@@ -359,6 +365,7 @@ if (params.mes) {
 
       if (esDuplicado) {
         result.duplicates++;
+        result.errors.push(`Fila ${i + 1}: Omitida por duplicado (Celular: ${celularNorm || celular}).`);
         continue; // NO crear el prospecto si ya existe
       }
 
@@ -424,12 +431,17 @@ if (params.mes) {
 
   /** Contar prospectos por estado y duplicados */
   async getCounts() {
-    const [total, duplicados, estados] = await Promise.all([
+    const [total, duplicados, estados, redes] = await Promise.all([
       this.prisma.flotaProspecto.count(),
       this.prisma.flotaProspecto.count({ where: { esDuplicado: true } }),
       this.prisma.$queryRawUnsafe<Array<{ estado: string; count: bigint }>>(
         `SELECT estado, COUNT(*)::int as count FROM "FlotaProspecto" GROUP BY estado`,
       ),
+      this.prisma.flotaProspecto.findMany({
+        where: { redSocial: { not: null } },
+        select: { redSocial: true },
+        distinct: ['redSocial'],
+      }),
     ]);
 
     const estadoCounts: Record<string, number> = {};
@@ -437,6 +449,8 @@ if (params.mes) {
       estadoCounts[row.estado] = Number(row.count);
     }
 
-    return { total, duplicados, estadoCounts };
+    const redesSociales = redes.map(r => r.redSocial).filter(Boolean).sort();
+
+    return { total, duplicados, estadoCounts, redesSociales };
   }
 }

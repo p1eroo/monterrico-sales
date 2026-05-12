@@ -33,7 +33,7 @@ export function buildUserFormSchema(isEdit: boolean) {
         .min(2, 'El usuario debe tener al menos 2 caracteres')
         .max(64, 'Máximo 64 caracteres')
         .regex(
-          /^[a-zA-Z0-9._-]+$/,
+          /^[\p{L}0-9._-]+$/u,
           'Solo letras, números, punto, guion y guion bajo',
         ),
       password: z.string().optional(),

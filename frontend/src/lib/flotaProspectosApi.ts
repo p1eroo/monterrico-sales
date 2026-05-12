@@ -33,6 +33,7 @@ export interface FlotaProspectosCounts {
   total: number;
   duplicados: number;
   estadoCounts: Record<string, number>;
+  redesSociales: string[];
 }
 
 export interface ImportSheetsResult {
@@ -50,6 +51,7 @@ export async function flotaProspectosList(params: {
   estado?: string;
   duplicados?: boolean;
   mes?: string;
+  redSocial?: string;
 }): Promise<FlotaProspectosListResponse> {
   const qs = new URLSearchParams();
   if (params.page) qs.set('page', String(params.page));
@@ -58,6 +60,7 @@ export async function flotaProspectosList(params: {
   if (params.estado) qs.set('estado', params.estado);
   if (params.duplicados) qs.set('duplicados', 'true');
   if (params.mes) qs.set('mes', params.mes);
+  if (params.redSocial) qs.set('redSocial', params.redSocial);
   return api<FlotaProspectosListResponse>(
     `/flota-prospectos?${qs.toString()}`,
   );

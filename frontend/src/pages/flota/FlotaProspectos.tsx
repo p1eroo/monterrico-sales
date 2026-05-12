@@ -8,6 +8,8 @@ import {
   Loader2,
   AlertTriangle,
   Trash2,
+  XCircle,
+  Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,6 +53,7 @@ import {
   type FlotaProspectoRow,
   type FlotaProspectosCounts,
   type SheetPreviewResponse,
+  type ImportSheetsResult,
 } from "@/lib/flotaProspectosApi";
 import { getConductorTelefonos } from "@/lib/flotaConductoresApi";
 
@@ -72,11 +75,14 @@ export default function FlotaProspectos() {
   const [counts, setCounts] = useState<FlotaProspectosCounts | null>(null);
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<ImportSheetsResult | null>(null);
+  const [errorsModalOpen, setErrorsModalOpen] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [searchDebounced, setSearchDebounced] = useState("");
   const [estadoFilter, setEstadoFilter] = useState("all");
   const [mesFilter, setMesFilter] = useState("all");
+  const [redSocialFilter, setRedSocialFilter] = useState("all");
   const [duplicadosFilter, setDuplicadosFilter] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
@@ -151,6 +157,7 @@ export default function FlotaProspectos() {
         estado: estadoFilter === "all" ? undefined : estadoFilter,
         duplicados: duplicadosFilter || undefined,
         mes: mesFilter === "all" ? undefined : mesFilter,
+        redSocial: redSocialFilter === "all" ? undefined : redSocialFilter,
       });
       
       setProspectos(res.data);
@@ -162,7 +169,7 @@ export default function FlotaProspectos() {
     } finally {
       setLoading(false);
     }
-  }, [page, searchDebounced, estadoFilter, duplicadosFilter, mesFilter]);
+  }, [page, searchDebounced, estadoFilter, duplicadosFilter, mesFilter, redSocialFilter]);
 
   const loadCounts = useCallback(async () => {
     try {
@@ -184,7 +191,7 @@ export default function FlotaProspectos() {
   // Reset page on filter change
   useEffect(() => {
     setPage(1);
-  }, [searchDebounced, estadoFilter, duplicadosFilter, mesFilter]);
+  }, [searchDebounced, estadoFilter, duplicadosFilter, mesFilter, redSocialFilter]);
 
   const totalPages = Math.ceil(totalProspectos / PAGE_SIZE);
 
@@ -246,9 +253,25 @@ export default function FlotaProspectos() {
     setImporting(true);
     try {
       const result = await flotaProspectosImportSheets(selectedSheet);
+      setImportResult(result);
+      
+      const hasErrors = result.errors && result.errors.length > 0;
+      
       toast.success(
         `Importación completada: ${result.imported} importados, ${result.skipped} omitidos`,
+        {
+          duration: hasErrors ? 10000 : 5000,
+          action: hasErrors ? {
+            label: "Ver detalles",
+            onClick: () => setErrorsModalOpen(true)
+          } : undefined
+        }
       );
+      
+      if (hasErrors) {
+        setErrorsModalOpen(true);
+      }
+
       await Promise.all([loadProspectos(), loadCounts()]);
     } catch (e) {
       toast.error(
@@ -384,6 +407,23 @@ export default function FlotaProspectos() {
             <SelectItem value="INFORMACIÓN">Información</SelectItem>
             <SelectItem value="SIN REQUISITOS">Sin Requisitos</SelectItem>
             <SelectItem value="NO RESPONDE">No Responde</SelectItem>
+          </SelectContent>
+        </Select>
+        
+        <Select
+          value={redSocialFilter}
+          onValueChange={(v) => setRedSocialFilter(v)}
+        >
+          <SelectTrigger className="w-36 bg-card shadow-none">
+            <SelectValue placeholder="Red Social" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas RRSS</SelectItem>
+            {counts?.redesSociales.map((rs) => (
+              <SelectItem key={rs} value={rs}>
+                {rs}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
 
@@ -842,6 +882,65 @@ export default function FlotaProspectos() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <Dialog open={errorsModalOpen} onOpenChange={setErrorsModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <XCircle className="size-5" />
+              Detalles de la Importación
+            </DialogTitle>
+            <DialogDescription>
+              Se encontraron {importResult?.errors.length || 0} avisos o errores durante el proceso.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-100">
+                <p className="text-xs text-emerald-600 font-medium uppercase">Importados</p>
+                <p className="text-2xl font-bold text-emerald-700">{importResult?.imported || 0}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-amber-50 border border-amber-100">
+                <p className="text-xs text-amber-600 font-medium uppercase">Omitidos/Duplicados</p>
+                <p className="text-2xl font-bold text-amber-700">{(importResult?.skipped || 0) + (importResult?.duplicates || 0)}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-red-50 border border-red-100">
+                <p className="text-xs text-red-600 font-medium uppercase">Errores</p>
+                <p className="text-2xl font-bold text-red-700">{importResult?.errors.length || 0}</p>
+              </div>
+            </div>
+
+            <h4 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
+              <Info className="size-4 text-muted-foreground" />
+              Lista de errores y advertencias:
+            </h4>
+            
+            <div className="max-h-[350px] overflow-y-auto rounded-md border bg-muted/30 p-2">
+              {importResult?.errors && importResult.errors.length > 0 ? (
+                <ul className="space-y-2">
+                  {importResult.errors.map((error, i) => (
+                    <li key={i} className="text-sm py-2 px-3 bg-card rounded border border-border flex items-start gap-2">
+                      <span className="shrink-0 mt-0.5 text-red-500 font-bold">•</span>
+                      <span>{error}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-muted-foreground py-8 text-center">
+                  No hay detalles de errores disponibles.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button onClick={() => setErrorsModalOpen(false)}>
+              Entendido
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
