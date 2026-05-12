@@ -367,16 +367,7 @@ export default function FlotaReportes() {
                           <Cell key={index} fill={PIE_COLORS_FUENTE[index % PIE_COLORS_FUENTE.length]} />
                         ))}
                       </Pie>
-                      <Tooltip
-                        formatter={(value?: number) => [`${value ?? 0} prospectos`, '']}
-                        contentStyle={{
-                          borderRadius: '8px',
-                          border: `1px solid ${chartTheme.tooltipBorder}`,
-                          backgroundColor: chartTheme.tooltipBg,
-                          color: chartTheme.tooltipText,
-                          fontSize: '13px',
-                        }}
-                      />
+                      <Tooltip />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
@@ -425,16 +416,7 @@ export default function FlotaReportes() {
                         <Cell key={index} fill={PIE_COLORS_ZONA[index % PIE_COLORS_ZONA.length]} />
                       ))}
                     </Pie>
-                    <Tooltip
-                      formatter={(value?: number) => [`${value ?? 0}%`, '']}
-                      contentStyle={{
-                        borderRadius: '8px',
-                        border: `1px solid ${chartTheme.tooltipBorder}`,
-                        backgroundColor: chartTheme.tooltipBg,
-                        color: chartTheme.tooltipText,
-                        fontSize: '13px',
-                      }}
-                    />
+                    <Tooltip />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
