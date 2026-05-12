@@ -102,14 +102,12 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { logout, area } = useAppStore();
-  console.log('[DEBUG-SIDEBAR] area:', area);
   const { hasPermission } = usePermissions();
   const currentNavItems = 
     area === 'flota' ? navItemsFlota : 
     area === 'admin' ? navItemsAdmin : 
     navItems;
-  // Solo mostrar todos los items para debug
-  const visibleNav = currentNavItems; // .filter((item) => navItemVisible(item, hasPermission));
+  const visibleNav = currentNavItems;
 
   return (
     <Sidebar collapsible="icon" variant="inset" className="border-sidebar-border/80">

@@ -22,6 +22,13 @@ export function usePermissions() {
       for (const k of allValidPermissionKeys()) {
         rec[k] = set.has(k);
       }
+      const templateId = roleStringToTemplateId(currentUser.role ?? '');
+      const templatePerms = getTemplatePermissions(templateId);
+      for (const k of allValidPermissionKeys()) {
+        if (!rec[k] && templatePerms[k]) {
+          rec[k] = true;
+        }
+      }
       return rec;
     }
     const templateId = roleStringToTemplateId(currentUser.role ?? '');
@@ -30,7 +37,7 @@ export function usePermissions() {
 
   function hasPermission(key: PermissionKey): boolean {
     if (permissionKeys !== null) {
-      return permissionKeys.includes(key);
+      return permissions[key] ?? false;
     }
     return permissions[key] ?? false;
   }

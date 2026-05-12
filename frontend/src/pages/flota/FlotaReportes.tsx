@@ -1,10 +1,14 @@
-import { useState, useMemo } from 'react';
-import { BarChart3, TrendingUp, Users, Car, UserPlus, Download } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { BarChart3, TrendingUp, Users, Car, UserPlus, Download, Loader2 } from 'lucide-react';
+import type { DateRange } from 'react-day-picker';
+import { subMonths } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { MetricCard } from '@/components/shared/MetricCard';
 import { formatCurrency } from '@/lib/formatters';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
+import { getConductores, type Conductor } from '@/lib/flotaConductoresApi';
 
 const REPORTES_MOCK = {
   prospectosMes: 45,
@@ -45,9 +49,46 @@ const ZONA_DATA = [
 ];
 
 export default function FlotaReportes() {
-  const [dateRange] = useState('1m');
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: subMonths(new Date(), 6),
+    to: new Date(),
+  });
+  const [conductores, setConductores] = useState<Conductor[]>([]);
+  const [loadingSunat, setLoadingSunat] = useState(true);
 
   const data = useMemo(() => REPORTES_MOCK, []);
+
+  useEffect(() => {
+    async function load() {
+      setLoadingSunat(true);
+      try {
+        const all = await getConductores();
+        setConductores(Array.isArray(all) ? all : []);
+      } catch {
+        setConductores([]);
+      } finally {
+        setLoadingSunat(false);
+      }
+    }
+    void load();
+  }, []);
+
+  const sunatAutorizados = useMemo(() => {
+    return conductores.filter(
+      (c) => c.codigo?.startsWith('1S') && c.estado !== 'RETIRADO'
+    );
+  }, [conductores]);
+
+  const sunatByEstado = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const c of sunatAutorizados) {
+      const estado = c.estado || '(Vacío)';
+      map[estado] = (map[estado] || 0) + 1;
+    }
+    return Object.entries(map)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [sunatAutorizados]);
 
   const changeTone = (change: number) => {
     if (change > 0) return 'positive';
@@ -67,7 +108,11 @@ export default function FlotaReportes() {
         description="Métricas de prospectos y conductores"
       >
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Últimos 6 meses</span>
+          <DateRangePicker 
+            value={dateRange} 
+            onChange={setDateRange} 
+            className="w-[260px]"
+          />
           <Button variant="outline" size="sm" className="gap-1.5">
             <Download className="size-4" />
             Exportar
@@ -186,40 +231,91 @@ export default function FlotaReportes() {
         </Card>
       </div>
 
-      {/* Conversion Trend */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Conversión Mensual</CardTitle>
-          <CardDescription>Prospectos convertidos a conductors por mes</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-end gap-2 h-32">
-            {PROSPECTOS_BY_MONTH.map((item) => (
-              <div key={item.name} className="flex-1 flex flex-col items-center gap-2">
-                <div className="w-full flex flex-col items-center gap-1">
-                  <div
-                    className="w-8 rounded-t bg-primary"
-                    style={{ height: `${item.conversion * 4}px` }}
-                    title={`${item.conversion} conversiones`}
-                  />
-                  <span className="text-[10px] text-muted-foreground">{item.nuevos}</span>
+      {/* Bottom Row: 2 columns */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {/* Conversion Trend */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Conversión Mensual</CardTitle>
+            <CardDescription>Prospectos convertidos a conductores por mes</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-end gap-2 h-32">
+              {PROSPECTOS_BY_MONTH.map((item) => (
+                <div key={item.name} className="flex-1 flex flex-col items-center gap-2">
+                  <div className="w-full flex flex-col items-center gap-1">
+                    <div
+                      className="w-8 rounded-t bg-primary"
+                      style={{ height: `${item.conversion * 4}px` }}
+                      title={`${item.conversion} conversiones`}
+                    />
+                    <span className="text-[10px] text-muted-foreground">{item.nuevos}</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground">{item.name}</span>
                 </div>
-                <span className="text-xs text-muted-foreground">{item.name}</span>
+              ))}
+            </div>
+            <div className="mt-4 flex items-center justify-center gap-6 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <div className="size-3 rounded bg-primary" />
+                Prospectos nuevos
               </div>
-            ))}
-          </div>
-          <div className="mt-4 flex items-center justify-center gap-6 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <div className="size-3 rounded bg-primary" />
-              Prospectos nuevos
+              <div className="flex items-center gap-1">
+                <div className="size-3 rounded bg-muted-foreground/30" />
+                Conversiones
+              </div>
             </div>
-            <div className="flex items-center gap-1">
-              <div className="size-3 rounded bg-muted-foreground/30" />
-              Conversiones
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+        {/* SUNAT - Conductores Autorizados */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">SUNAT - Cond. Autorizados</CardTitle>
+            <CardDescription>
+              Conductores con código 1S (excluyendo RETIRADO)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loadingSunat ? (
+              <div className="flex items-center justify-center h-32">
+                <Loader2 className="size-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <>
+                <div className="mb-4 flex items-baseline gap-2">
+                  <span className="text-3xl font-bold">{sunatAutorizados.length}</span>
+                  <span className="text-sm text-muted-foreground">conductores autorizados</span>
+                </div>
+                <div className="space-y-2.5">
+                  {sunatByEstado.map((item) => {
+                    const pct = sunatAutorizados.length > 0
+                      ? Math.round((item.count / sunatAutorizados.length) * 100)
+                      : 0;
+                    return (
+                      <div key={item.name} className="space-y-1">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground truncate max-w-[160px]">{item.name}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium tabular-nums">{item.count}</span>
+                            <span className="text-xs text-muted-foreground w-8 text-right">{pct}%</span>
+                          </div>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-primary/15 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

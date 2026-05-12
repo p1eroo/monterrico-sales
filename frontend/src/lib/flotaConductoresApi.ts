@@ -1,5 +1,6 @@
 export interface Conductor {
   id: string;
+  codigo: string;
   nombres: string;
   apellidos: string;
   tipodocumento: string;
@@ -29,7 +30,7 @@ function normalizeEstado(estado: string): string {
 const API_URL = 'https://api.taximonterrico.com/api/WAsociados/registrados';
 
 export async function getConductores(): Promise<Conductor[]> {
-  const res = await fetch(`${API_URL}?idestado=-98`);
+  const res = await fetch(`${API_URL}?idestado=0`);
   if (!res.ok) {
     throw new Error(`Error fetching conductores: ${res.statusText}`);
   }

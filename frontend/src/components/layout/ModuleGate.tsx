@@ -10,6 +10,7 @@ export function ModuleGate() {
   const location = useLocation();
   const { hasPermission } = usePermissions();
   const req = getRequiredPermissionForPath(location.pathname);
+
   if (req === null) {
     return <Outlet />;
   }
