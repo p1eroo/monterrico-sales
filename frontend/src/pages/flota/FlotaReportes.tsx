@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { BarChart3, TrendingUp, Users, Car, UserPlus, Download, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { BarChart3, TrendingUp, Users, Car, UserPlus, Download, Loader2, ChevronLeft, ChevronRight, CheckCircle, XCircle, AlertTriangle, ClipboardList, Hash, CheckCircle2 } from 'lucide-react';
 import type { DateRange } from 'react-day-picker';
 import {
   subMonths,
@@ -13,7 +13,8 @@ import {
   startOfMonth,
   endOfMonth,
   eachMonthOfInterval,
-  isSameMonth
+  isSameMonth,
+  eachDayOfInterval
 } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -24,14 +25,34 @@ import { formatCurrency } from '@/lib/formatters';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { getConductores, type Conductor } from '@/lib/flotaConductoresApi';
 import { flotaProspectosList, type FlotaProspectoRow } from '@/lib/flotaProspectosApi';
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend } from 'recharts';
+import { getSunatHistorial, type SunatHistorialItem } from '@/lib/flotaSunatApi';
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area, ComposedChart, Line, Tooltip } from 'recharts';
 import { useChartTheme } from '@/hooks/useChartTheme';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
+  Tooltip as UITooltip,
+  TooltipContent as UITooltipContent,
+  TooltipProvider as UITooltipProvider,
+  TooltipTrigger as UITooltipTrigger,
 } from '@/components/ui/tooltip';
+
+const SUNAT_MOCK = {
+  autorizados: 73,
+  noAutorizados: 12,
+  serviciosPenalizados: 4,
+  totalAutorizados: 85,
+  cantidadServicios: 1240,
+  autosPorAutorizar: 8,
+  nuevosIngresos: 15,
+  history: [
+    { name: 'Lun', autorizados: 65, servicios: 180 },
+    { name: 'Mar', autorizados: 68, servicios: 210 },
+    { name: 'Mie', autorizados: 70, servicios: 195 },
+    { name: 'Jue', autorizados: 72, servicios: 230 },
+    { name: 'Vie', autorizados: 73, servicios: 250 },
+    { name: 'Sab', autorizados: 73, servicios: 190 },
+    { name: 'Dom', autorizados: 73, servicios: 120 },
+  ]
+};
 
 const REPORTES_MOCK = {
   prospectosMes: 45,
@@ -82,6 +103,36 @@ const FLAOTA_MOCK_ZONA_DATA = [
 const PIE_COLORS_FUENTE = ['#13944C', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];
 const PIE_COLORS_ZONA = ['#13944C', '#22c55e', '#3b82f6', '#06b6d4', '#8b5cf6'];
 
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-background/95 backdrop-blur-md border border-border p-4 rounded-xl shadow-2xl min-w-[180px] ring-1 ring-black/5">
+        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3 border-b border-border/50 pb-2 flex items-center justify-between">
+          <span>{label}</span>
+          <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+        </p>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <div className="size-2 rounded-full bg-emerald-600" />
+              <span className="text-xs font-medium text-foreground/80">Servicios</span>
+            </div>
+            <span className="text-sm font-bold tabular-nums">{payload[0].value}</span>
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <div className="size-2 rounded-full bg-blue-500" />
+              <span className="text-xs font-medium text-foreground/80">Autorizados</span>
+            </div>
+            <span className="text-sm font-bold tabular-nums">{payload[1].value}</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
 export default function FlotaReportes() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: subMonths(new Date(), 6),
@@ -97,6 +148,13 @@ export default function FlotaReportes() {
 
   const data = useMemo(() => REPORTES_MOCK, []);
 
+  const [sunatDateRange, setSunatDateRange] = useState<DateRange | undefined>({
+    from: startOfWeek(new Date(), { weekStartsOn: 1 }),
+    to: endOfWeek(new Date(), { weekStartsOn: 1 }),
+  });
+  const [sunatHistory, setSunatHistory] = useState<any[]>([]);
+  const [loadingSunatReal, setLoadingSunatReal] = useState(false);
+
   useEffect(() => {
     async function load() {
       setLoadingSunat(true);
@@ -104,7 +162,7 @@ export default function FlotaReportes() {
       try {
         const [conds, pros] = await Promise.all([
           getConductores(),
-          flotaProspectosList({ limit: 5000 }) // Load a large chunk for reporting
+          flotaProspectosList({ limit: 5000 })
         ]);
         setConductores(Array.isArray(conds) ? conds : []);
         setProspectos(Array.isArray(pros.data) ? pros.data : []);
@@ -120,11 +178,23 @@ export default function FlotaReportes() {
     void load();
   }, []);
 
-  const sunatAutorizados = useMemo(() => {
-    return conductores.filter(
-      (c) => c.codigo?.startsWith('1S') && c.estado !== 'RETIRADO'
-    );
-  }, [conductores]);
+  useEffect(() => {
+    async function loadSunatHistory() {
+      if (!sunatDateRange?.from || !sunatDateRange?.to) return;
+      setLoadingSunatReal(true);
+      try {
+        const fecini = format(sunatDateRange.from, 'yyyy-MM-dd');
+        const fecfin = format(sunatDateRange.to, 'yyyy-MM-dd');
+        const history = await getSunatHistorial(fecini, fecfin);
+        setSunatHistory(history);
+      } catch (err) {
+        console.error("Error loading SUNAT history:", err);
+      } finally {
+        setLoadingSunatReal(false);
+      }
+    }
+    void loadSunatHistory();
+  }, [sunatDateRange]);
 
   const weeklyData = useMemo(() => {
     if (!conductores.length) return [];
@@ -172,16 +242,95 @@ export default function FlotaReportes() {
     }
   }, [weeklyData, weekPage, weeksPerPage]);
 
-  const sunatByEstado = useMemo(() => {
-    const map: Record<string, number> = {};
-    for (const c of sunatAutorizados) {
-      const estado = c.estado || '(Vacío)';
-      map[estado] = (map[estado] || 0) + 1;
+  const sunatFiltered = useMemo(() => {
+    return sunatHistory.filter((s: any) => 
+      s.cliente === "SUNAT" || s.cliente === "SUNAT INTENDENCIA LIMA"
+    );
+  }, [sunatHistory]);
+
+  const sunatMetrics = useMemo(() => {
+    if (sunatFiltered.length === 0 && !loadingSunatReal) {
+      return {
+        servicios: 0,
+        autorizados: 0,
+        noAutorizados: 0,
+        penalizados: 0,
+        porAutorizar: 0,
+        nuevosIngresos: 0
+      };
     }
-    return Object.entries(map)
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count);
-  }, [sunatAutorizados]);
+    
+    const authorizedPrefixes = ['0S', '1S', '3S', '5S', '9S'];
+    const uniqueMobiles = new Set(sunatFiltered.map((s: any) => s.movil).filter(Boolean));
+    let autorizadosCount = 0;
+    let noAutorizadosCount = 0;
+    
+    uniqueMobiles.forEach(m => {
+      if (authorizedPrefixes.some(p => m.startsWith(p))) {
+        autorizadosCount++;
+      } else {
+        noAutorizadosCount++;
+      }
+    });
+
+    const penalizados = sunatFiltered.filter((s: any) => (s.tiempopuntualidad || 0) > 15).length;
+    
+    // For Nuevos Ingresos, let's count drivers created in the selected range
+    const rangeStart = sunatDateRange?.from;
+    const rangeEnd = sunatDateRange?.to;
+    const nuevosIngresos = conductores.filter(c => {
+      if (!rangeStart || !rangeEnd || !c.fechorregistro) return false;
+      const regDate = new Date(c.fechorregistro);
+      return regDate >= rangeStart && regDate <= rangeEnd;
+    }).length;
+
+    return {
+      servicios: sunatFiltered.length,
+      autorizados: autorizadosCount,
+      noAutorizados: noAutorizadosCount,
+      penalizados,
+      porAutorizar: conductores.filter(c => c.sunat && c.estado !== 'ACTIVO').length,
+      nuevosIngresos
+    };
+  }, [sunatFiltered, conductores, loadingSunatReal, sunatDateRange]);
+
+  const sunatChartData = useMemo(() => {
+    if (!sunatDateRange?.from || !sunatDateRange?.to) {
+      return [];
+    }
+
+    const interval = eachDayOfInterval({
+      start: sunatDateRange.from,
+      end: sunatDateRange.to
+    });
+
+    const authorizedPrefixes = ['0S', '1S', '3S', '5S', '9S'];
+    const historyMap = new Map<string, { servicios: number; autorizados: Set<string> }>();
+    for (const item of sunatFiltered) {
+      const d = item.fechareserva || item.fechorregistro;
+      if (d) {
+        const dateKey = d.split('T')[0];
+        const current = historyMap.get(dateKey) || { servicios: 0, autorizados: new Set<string>() };
+        current.servicios += 1;
+        
+        if (item.movil && authorizedPrefixes.some(p => item.movil.startsWith(p))) {
+          current.autorizados.add(item.movil);
+        }
+        
+        historyMap.set(dateKey, current);
+      }
+    }
+
+    return interval.map(date => {
+      const dateKey = format(date, 'yyyy-MM-dd');
+      const dataPoint = historyMap.get(dateKey);
+      return {
+        name: format(date, 'EEE dd', { locale: es }),
+        servicios: dataPoint?.servicios || 0,
+        autorizados: dataPoint?.autorizados.size || 0
+      };
+    });
+  }, [sunatFiltered, sunatDateRange, conductores]);
 
   const monthlyProspectsData = useMemo(() => {
     if (!dateRange?.from || !dateRange?.to) return [];
@@ -285,7 +434,7 @@ export default function FlotaReportes() {
   const ingresosChange = ((data.ingresosMes - data.ingresosMesPrev) / data.ingresosMesPrev * 100).toFixed(0);
 
   return (
-    <TooltipProvider delayDuration={0}>
+    <UITooltipProvider delayDuration={0}>
       <div className="space-y-6">
       <PageHeader
         title="Reportes Flota"
@@ -461,8 +610,8 @@ export default function FlotaReportes() {
                   {monthlyProspectsData.map((item) => {
                     const maxVal = Math.max(...monthlyProspectsData.map(d => d.nuevos + d.conversion), 1);
                     return (
-                      <Tooltip key={item.name}>
-                        <TooltipTrigger asChild>
+                      <UITooltip key={item.name}>
+                        <UITooltipTrigger asChild>
                           <div className="flex-1 flex flex-col items-center gap-3 group/item cursor-pointer hover:bg-emerald-50/50 rounded-lg p-2 transition-colors">
                             <div className="flex items-end gap-1 w-full justify-center h-44">
                               <div
@@ -476,8 +625,8 @@ export default function FlotaReportes() {
                             </div>
                             <span className="text-xs font-medium text-muted-foreground uppercase">{item.name}</span>
                           </div>
-                        </TooltipTrigger>
-                        <TooltipContent className="flex flex-col gap-1 p-3">
+                        </UITooltipTrigger>
+                        <UITooltipContent className="flex flex-col gap-1 p-3">
                           <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1 border-b pb-1">{item.name}</p>
                           <div className="flex items-center gap-2">
                             <div className="size-2 rounded-full bg-emerald-100" />
@@ -487,8 +636,8 @@ export default function FlotaReportes() {
                             <div className="size-2 rounded-full bg-emerald-600" />
                             <span className="text-xs font-semibold">{item.conversion} Conversiones</span>
                           </div>
-                        </TooltipContent>
-                      </Tooltip>
+                        </UITooltipContent>
+                      </UITooltip>
                     );
                   })}
                 </div>
@@ -556,8 +705,8 @@ export default function FlotaReportes() {
                 <>
                   <div className="flex items-end gap-2 h-56">
                     {visibleWeeks.map((week) => (
-                      <Tooltip key={week.semana}>
-                        <TooltipTrigger asChild>
+                      <UITooltip key={week.semana}>
+                        <UITooltipTrigger asChild>
                           <div className="flex-1 flex flex-col items-center gap-1 group/week cursor-pointer hover:bg-blue-50/50 rounded-lg p-1.5 transition-colors">
                             <div className="flex items-end gap-1.5 w-full justify-center h-48">
                               <div
@@ -571,8 +720,8 @@ export default function FlotaReportes() {
                             </div>
                             <span className="text-[9px] text-muted-foreground font-medium">{week.semana}</span>
                           </div>
-                        </TooltipTrigger>
-                        <TooltipContent className="flex flex-col gap-1 p-3">
+                        </UITooltipTrigger>
+                        <UITooltipContent className="flex flex-col gap-1 p-3">
                           <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1 border-b pb-1">{week.semana}</p>
                           <div className="flex items-center gap-2">
                             <div className="size-2 rounded-full bg-blue-500" />
@@ -582,8 +731,8 @@ export default function FlotaReportes() {
                             <div className="size-2 rounded-full bg-emerald-500" />
                             <span className="text-xs font-semibold">{week.nuevosActivos} Nuevos activos</span>
                           </div>
-                        </TooltipContent>
-                      </Tooltip>
+                        </UITooltipContent>
+                      </UITooltip>
                     ))}
                   </div>
                   <div className="mt-4 flex items-center justify-between text-[10px] text-muted-foreground">
@@ -607,48 +756,109 @@ export default function FlotaReportes() {
 
       {/* Row 3: SUNAT & Estado (Cumplimiento) */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card>
+        <Card className="lg:col-span-2">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">SUNAT - Cond. Autorizados</CardTitle>
-            <CardDescription>Conductores con código 1S (excluyendo RETIRADO)</CardDescription>
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <CheckCircle className="size-4 text-emerald-500" />
+                  SUNAT - Gestión de Flota
+                </CardTitle>
+                <CardDescription>Cumplimiento y métricas de autorización</CardDescription>
+              </div>
+              <DateRangePicker 
+                value={sunatDateRange} 
+                onChange={setSunatDateRange} 
+                className="w-[260px]"
+              />
+            </div>
           </CardHeader>
           <CardContent>
-            {loadingSunat ? (
-              <div className="flex items-center justify-center h-32">
-                <Loader2 className="size-6 animate-spin text-muted-foreground" />
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-8 pt-4">
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground uppercase flex items-center gap-1.5 font-semibold tracking-tight">
+                  <CheckCircle2 className="size-3 text-emerald-500" /> Autorizados
+                </p>
+                <p className="text-3xl font-bold tracking-tighter tabular-nums">{sunatMetrics?.autorizados ?? 0}</p>
               </div>
-            ) : (
-              <>
-                <div className="mb-4 flex items-baseline gap-2">
-                  <span className="text-3xl font-bold">{sunatAutorizados.length}</span>
-                  <span className="text-sm text-muted-foreground">conductores autorizados</span>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground uppercase flex items-center gap-1.5 font-semibold tracking-tight">
+                  <XCircle className="size-3 text-red-500" /> No Autorizados
+                </p>
+                <p className="text-3xl font-bold tracking-tighter tabular-nums text-red-500">{sunatMetrics?.noAutorizados ?? 0}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground uppercase flex items-center gap-1.5 font-semibold tracking-tight">
+                  <AlertTriangle className="size-3 text-amber-500" /> Penalizados
+                </p>
+                <p className="text-3xl font-bold tracking-tighter tabular-nums text-amber-500">{sunatMetrics?.penalizados ?? 0}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground uppercase flex items-center gap-1.5 font-semibold tracking-tight">
+                  <Hash className="size-3 text-blue-500" /> Servicios
+                </p>
+                <p className="text-3xl font-bold tracking-tighter tabular-nums">{sunatMetrics?.servicios ?? 0}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground uppercase flex items-center gap-1.5 font-semibold tracking-tight">
+                  <Car className="size-3 text-zinc-500" /> Por Autorizar
+                </p>
+                <p className="text-3xl font-bold tracking-tighter tabular-nums">{sunatMetrics?.porAutorizar ?? 0}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground uppercase flex items-center gap-1.5 font-semibold tracking-tight">
+                  <UserPlus className="size-3 text-emerald-600" /> Nuevos Ing.
+                </p>
+                <p className="text-3xl font-bold tracking-tighter tabular-nums text-emerald-600">{sunatMetrics?.nuevosIngresos ?? 0}</p>
+              </div>
+            </div>
+
+            <div className="h-72 mt-6 relative">
+              {loadingSunatReal && (
+                <div className="absolute inset-0 bg-background/50 backdrop-blur-[1px] z-10 flex items-center justify-center rounded-xl">
+                  <Loader2 className="size-8 animate-spin text-primary" />
                 </div>
-                <div className="space-y-2.5">
-                  {sunatByEstado.map((item) => {
-                    const pct = sunatAutorizados.length > 0
-                      ? Math.round((item.count / sunatAutorizados.length) * 100)
-                      : 0;
-                    return (
-                      <div key={item.name} className="space-y-1">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground truncate max-w-[160px]">{item.name}</span>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium tabular-nums">{item.count}</span>
-                            <span className="text-xs text-muted-foreground w-8 text-right">{pct}%</span>
-                          </div>
-                        </div>
-                        <div className="h-1.5 rounded-full bg-primary/15 overflow-hidden">
-                          <div
-                            className="h-full rounded-full bg-emerald-500 transition-all duration-500"
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
-            )}
+              )}
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={sunatChartData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartTheme.gridStroke} opacity={0.4} />
+                  <XAxis 
+                    dataKey="name" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: chartTheme.axisColor, fontSize: 12, fontWeight: 500 }}
+                    dy={10}
+                  />
+                  <YAxis 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: chartTheme.axisColor, fontSize: 12 }}
+                    dx={-10}
+                  />
+                  <Tooltip 
+                    content={<CustomTooltip />}
+                    cursor={{ fill: 'rgba(0,0,0,0.04)', strokeWidth: 2 }}
+                  />
+                  <Legend verticalAlign="top" align="right" height={36} iconType="circle" />
+                  <Bar 
+                    dataKey="servicios" 
+                    fill="#13944C" 
+                    radius={[4, 4, 0, 0]} 
+                    barSize={40}
+                    name="Servicios Totales"
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="autorizados" 
+                    stroke="#3b82f6" 
+                    strokeWidth={3} 
+                    dot={{ r: 4, fill: '#3b82f6', strokeWidth: 2, stroke: '#fff' }}
+                    activeDot={{ r: 6, strokeWidth: 0 }}
+                    name="Conductores Autorizados"
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
 
@@ -690,6 +900,6 @@ export default function FlotaReportes() {
         </Card>
       </div>
     </div>
-    </TooltipProvider>
+    </UITooltipProvider>
   );
 }

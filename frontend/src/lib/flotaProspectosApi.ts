@@ -34,6 +34,8 @@ export interface FlotaProspectosCounts {
   duplicados: number;
   estadoCounts: Record<string, number>;
   redesSociales: string[];
+  nuevosEsteMes: number;
+  nuevosMesPasado: number;
 }
 
 export interface ImportSheetsResult {

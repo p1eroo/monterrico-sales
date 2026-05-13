@@ -431,7 +431,12 @@ if (params.mes) {
 
   /** Contar prospectos por estado y duplicados */
   async getCounts() {
-    const [total, duplicados, estados, redes] = await Promise.all([
+    const now = new Date();
+    const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const endOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+
+    const [total, duplicados, estados, redes, nuevosEsteMes, nuevosMesPasado] = await Promise.all([
       this.prisma.flotaProspecto.count(),
       this.prisma.flotaProspecto.count({ where: { esDuplicado: true } }),
       this.prisma.$queryRawUnsafe<Array<{ estado: string; count: bigint }>>(
@@ -442,6 +447,21 @@ if (params.mes) {
         select: { redSocial: true },
         distinct: ['redSocial'],
       }),
+      this.prisma.flotaProspecto.count({
+        where: {
+          createdAt: {
+            gte: startOfCurrentMonth,
+          },
+        },
+      }),
+      this.prisma.flotaProspecto.count({
+        where: {
+          createdAt: {
+            gte: startOfPrevMonth,
+            lte: endOfPrevMonth,
+          },
+        },
+      }),
     ]);
 
     const estadoCounts: Record<string, number> = {};
@@ -449,8 +469,15 @@ if (params.mes) {
       estadoCounts[row.estado] = Number(row.count);
     }
 
-    const redesSociales = redes.map(r => r.redSocial).filter(Boolean).sort();
+    const redesSociales = redes.map((r) => r.redSocial).filter(Boolean).sort();
 
-    return { total, duplicados, estadoCounts, redesSociales };
+    return {
+      total,
+      duplicados,
+      estadoCounts,
+      redesSociales,
+      nuevosEsteMes,
+      nuevosMesPasado,
+    };
   }
 }

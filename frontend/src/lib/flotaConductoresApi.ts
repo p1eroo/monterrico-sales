@@ -1,5 +1,6 @@
 export interface Conductor {
   id: string;
+  idasociado: number;
   codigo: string;
   nombres: string;
   apellidos: string;
@@ -12,6 +13,7 @@ export interface Conductor {
   estado: string;
   agente: string;
   fechorregistro: string;
+  sunat?: boolean;
 }
 
 function normalizeEstado(estado: string): string {

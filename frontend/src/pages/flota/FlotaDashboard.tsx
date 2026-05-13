@@ -1,51 +1,77 @@
-import { useState, useMemo } from 'react';
-import { Users, UserPlus, Car, Phone, AlertTriangle } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { UserPlus, Car, Phone, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { PremiumMetricCard } from '@/components/shared/PremiumMetricCard';
-import { formatCurrency } from '@/lib/formatters';
 import { Skeleton } from '@/components/ui/skeleton';
-
-const FLAOTA_MOCK_KPIS = {
-  prospectosNuevos: 12,
-  prospectosNuevosPrev: 8,
-  conversionTasa: 15,
-  conductoresActivos: 156,
-  conductoresInactivos: 24,
-  prospectosContactados: 45,
-  prospectosSinContacto: 23,
-  totalProspectos: 80,
-};
-
-const FLAOTA_WEEKLY_DATA = [
-  { name: 'Ene', nuevos: 5, conversion: 2 },
-  { name: 'Feb', nuevos: 8, conversion: 1 },
-  { name: 'Mar', nuevos: 12, conversion: 3 },
-  { name: 'Abr', nuevos: 6, conversion: 1 },
-];
-
-const RECENT_PROSPECTS = [
-  { id: '1', name: 'Juan Pérez López', telefono: '+51 999 111 222', estado: 'Nuevo', fecha: '2026-05-05' },
-  { id: '2', name: 'María García Torres', telefono: '+51 999 333 444', estado: 'Contactado', fecha: '2026-05-04' },
-  { id: '3', name: 'Carlos Mendoza Soto', telefono: '+51 999 555 666', estado: 'Conversión', fecha: '2026-05-03' },
-  { id: '4', name: 'Ana López Rivera', telefono: '+51 999 777 888', estado: 'Nuevo', fecha: '2026-05-02' },
-  { id: '5', name: 'Pedro Castro Ruiz', telefono: '+51 999 000 111', estado: 'NoInteresado', fecha: '2026-05-01' },
-];
+import { 
+  flotaProspectosList, 
+  flotaProspectosCounts, 
+  type FlotaProspectoRow, 
+  type FlotaProspectosCounts 
+} from '@/lib/flotaProspectosApi';
+import { getConductores } from '@/lib/flotaConductoresApi';
 
 export default function FlotaDashboard() {
-  const [loading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [counts, setCounts] = useState<FlotaProspectosCounts | null>(null);
+  const [activeConductores, setActiveConductores] = useState<number>(0);
+  const [recentProspects, setRecentProspects] = useState<FlotaProspectoRow[]>([]);
 
-  const kpis = useMemo(() => FLAOTA_MOCK_KPIS, []);
-  const weeklyData = useMemo(() => FLAOTA_WEEKLY_DATA, []);
-  const recentProspects = useMemo(() => RECENT_PROSPECTS, []);
+  useEffect(() => {
+    async function loadDashboardData() {
+      setLoading(true);
+      try {
+        const [c, conductors, recent] = await Promise.all([
+          flotaProspectosCounts(),
+          getConductores(),
+          flotaProspectosList({ limit: 5 })
+        ]);
+        setCounts(c);
+        setActiveConductores(conductors.filter(c => c.estado === 'ACTIVO' || c.estado === 'DISPONIBLE').length);
+        setRecentProspects(recent.data);
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    void loadDashboardData();
+  }, []);
 
-  const changeTone = (change: number) => {
-    if (change > 0) return 'positive';
-    if (change < 0) return 'negative';
-    return 'neutral';
-  };
+  const kpis = useMemo(() => {
+    if (!counts) return {
+      contactados: 0,
+      sinContactar: 0,
+      convertidos: 0,
+      total: 0,
+      nuevosEsteMes: 0,
+      nuevosMesPasado: 0,
+      nuevosChange: 0
+    };
 
-  const prospectosChange = ((kpis.prospectosNuevos - kpis.prospectosNuevosPrev) / kpis.prospectosNuevosPrev * 100).toFixed(0);
+    const sinContactar = counts.estadoCounts['Nuevo'] || counts.estadoCounts['NUEVO'] || 0;
+    const convertidos = (counts.estadoCounts['AFILIADO'] || 0) + (counts.estadoCounts['Afiliado'] || 0);
+    const total = counts.total;
+    const contactados = total - sinContactar - convertidos;
+    
+    let nuevosChange = 0;
+    if (counts.nuevosMesPasado > 0) {
+      nuevosChange = ((counts.nuevosEsteMes - counts.nuevosMesPasado) / counts.nuevosMesPasado) * 100;
+    } else if (counts.nuevosEsteMes > 0) {
+      nuevosChange = 100;
+    }
+
+    return {
+      contactados,
+      sinContactar,
+      convertidos,
+      total,
+      nuevosEsteMes: counts.nuevosEsteMes,
+      nuevosMesPasado: counts.nuevosMesPasado,
+      nuevosChange
+    };
+  }, [counts]);
 
   return (
     <div className="space-y-6">
@@ -58,46 +84,46 @@ export default function FlotaDashboard() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <PremiumMetricCard
           title="Prospectos Nuevos"
-          value={kpis.prospectosNuevos}
-          change={50}
+          value={kpis.nuevosEsteMes}
+          change={Number(kpis.nuevosChange.toFixed(0))}
           icon={UserPlus}
           color="blue"
           loading={loading}
           sparklineData={[
-            { value: 4 }, { value: 6 }, { value: 5 }, { value: 9 }, { value: 8 }, { value: 12 }
+            { value: 4 }, { value: 6 }, { value: 5 }, { value: 9 }, { value: 8 }, { value: kpis.nuevosEsteMes }
           ]}
         />
         <PremiumMetricCard
           title="Contactados"
-          value={kpis.prospectosContactados}
-          change={12}
+          value={kpis.contactados}
+          change={0}
           icon={Phone}
           color="emerald"
           loading={loading}
           sparklineData={[
-            { value: 30 }, { value: 35 }, { value: 32 }, { value: 40 }, { value: 42 }, { value: 45 }
+            { value: 30 }, { value: 35 }, { value: 32 }, { value: 40 }, { value: 42 }, { value: kpis.contactados }
           ]}
         />
         <PremiumMetricCard
           title="Sin Contactar"
-          value={kpis.prospectosSinContacto}
-          change={-5}
+          value={kpis.sinContactar}
+          change={0}
           icon={AlertTriangle}
           color="amber"
           loading={loading}
           sparklineData={[
-            { value: 28 }, { value: 25 }, { value: 26 }, { value: 24 }, { value: 22 }, { value: 23 }
+            { value: 28 }, { value: 25 }, { value: 26 }, { value: 24 }, { value: 22 }, { value: kpis.sinContactar }
           ]}
         />
         <PremiumMetricCard
           title="Conductores Activos"
-          value={kpis.conductoresActivos}
-          change={8}
+          value={activeConductores}
+          change={0}
           icon={Car}
           color="emerald"
           loading={loading}
           sparklineData={[
-            { value: 140 }, { value: 145 }, { value: 148 }, { value: 152 }, { value: 154 }, { value: 156 }
+            { value: 140 }, { value: 145 }, { value: 148 }, { value: 152 }, { value: 154 }, { value: activeConductores }
           ]}
         />
       </div>
@@ -127,23 +153,24 @@ export default function FlotaDashboard() {
                   <div key={prospect.id} className="flex items-center justify-between py-3">
                     <div className="flex items-center gap-3">
                       <div className="flex size-9 items-center justify-center rounded-full bg-primary/10 text-primary font-medium text-sm">
-                        {prospect.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                        {prospect.nombreCompleto.split(' ').map(n => n[0]).join('').slice(0, 2)}
                       </div>
                       <div>
-                        <p className="font-medium text-sm">{prospect.name}</p>
-                        <p className="text-xs text-muted-foreground">{prospect.telefono}</p>
+                        <p className="font-medium text-sm">{prospect.nombreCompleto}</p>
+                        <p className="text-xs text-muted-foreground">{prospect.celular || '—'}</p>
                       </div>
                     </div>
                     <div className="text-right">
                       <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
                         prospect.estado === 'Nuevo' ? 'bg-blue-100 text-blue-700' :
-                        prospect.estado === 'Contactado' ? 'bg-amber-100 text-amber-700' :
-                        prospect.estado === 'Conversión' ? 'bg-emerald-100 text-emerald-700' :
-                        'bg-red-100 text-red-700'
+                        prospect.estado === 'AFILIADO' ? 'bg-emerald-100 text-emerald-700' :
+                        'bg-amber-100 text-amber-700'
                       }`}>
                         {prospect.estado}
                       </span>
-                      <p className="text-xs text-muted-foreground mt-1">{prospect.fecha}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {prospect.createdAt ? new Date(prospect.createdAt).toLocaleDateString() : '—'}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -160,29 +187,43 @@ export default function FlotaDashboard() {
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Contactados</span>
-                <span className="font-medium">{kpis.prospectosContactados}</span>
+                <span className="font-medium">{kpis.contactados}</span>
               </div>
               <div className="h-2 rounded-full bg-muted overflow-hidden">
-                <div className="h-full bg-primary" style={{ width: `${(kpis.prospectosContactados / kpis.totalProspectos) * 100}%` }} />
+                <div 
+                  className="h-full bg-primary transition-all duration-500" 
+                  style={{ width: `${kpis.total > 0 ? (kpis.contactados / kpis.total) * 100 : 0}%` }} 
+                />
               </div>
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Sin contactar</span>
-                <span className="font-medium">{kpis.prospectosSinContacto}</span>
+                <span className="font-medium">{kpis.sinContactar}</span>
               </div>
               <div className="h-2 rounded-full bg-muted overflow-hidden">
-                <div className="h-full bg-amber-500" style={{ width: `${(kpis.prospectosSinContacto / kpis.totalProspectos) * 100}%` }} />
+                <div 
+                  className="h-full bg-amber-500 transition-all duration-500" 
+                  style={{ width: `${kpis.total > 0 ? (kpis.sinContactar / kpis.total) * 100 : 0}%` }} 
+                />
               </div>
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Convertidos</span>
-                <span className="font-medium">12</span>
+                <span className="font-medium">{kpis.convertidos}</span>
               </div>
               <div className="h-2 rounded-full bg-muted overflow-hidden">
-                <div className="h-full bg-emerald-500" style={{ width: '15%' }} />
+                <div 
+                  className="h-full bg-emerald-500 transition-all duration-500" 
+                  style={{ width: `${kpis.total > 0 ? (kpis.convertidos / kpis.total) * 100 : 0}%` }} 
+                />
               </div>
+            </div>
+            <div className="pt-4 border-t border-border/50">
+              <p className="text-xs text-muted-foreground text-center">
+                Total de prospectos: <span className="font-semibold text-foreground">{kpis.total}</span>
+              </p>
             </div>
           </CardContent>
         </Card>
