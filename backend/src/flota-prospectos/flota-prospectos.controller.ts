@@ -9,6 +9,7 @@ import {
   Body,
   HttpException,
   HttpStatus,
+  Req,
 } from '@nestjs/common';
 import { FlotaProspectosService } from './flota-prospectos.service';
 import { Public } from '../auth/decorators/public.decorator';
@@ -101,9 +102,14 @@ export class FlotaProspectosController {
 
   /** PATCH /flota-prospectos/:id — Actualizar un prospecto */
   @Patch('flota-prospectos/:id')
-  async update(@Param('id') id: string, @Body() body: Record<string, unknown>) {
+  async update(
+    @Param('id') id: string, 
+    @Body() body: Record<string, unknown>,
+    @Req() req: any
+  ) {
     try {
-      return await this.service.update(id, body);
+      const actor = { userId: req.user?.id, userName: req.user?.name };
+      return await this.service.update(id, body, actor);
     } catch {
       throw new HttpException(
         'No se pudo actualizar el prospecto',

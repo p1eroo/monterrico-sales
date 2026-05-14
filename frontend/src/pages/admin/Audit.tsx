@@ -328,7 +328,7 @@ export default function AuditPage() {
 
           {viewMode === 'table' ? (
             <Card>
-              <Table>
+              <Table className="min-w-[1200px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-10" />
@@ -524,7 +524,7 @@ export default function AuditPage() {
             </p>
           ) : null}
           <Card>
-            <Table>
+            <Table className="min-w-[1200px]">
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-10" />

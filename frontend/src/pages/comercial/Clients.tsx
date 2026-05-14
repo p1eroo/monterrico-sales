@@ -365,8 +365,8 @@ export default function Clients() {
           className="bg-card"
         />
       ) : (
-      <div className="overflow-x-auto rounded-lg border bg-card">
-        <Table>
+      <Card>
+        <Table className="min-w-[1100px]">
           <TableHeader>
             <TableRow>
               <TableHead>Empresa</TableHead>
@@ -489,7 +489,7 @@ export default function Clients() {
             )}
           </TableBody>
         </Table>
-      </div>
+      </Card>
       )}
 
       {!loading && totalPages > 1 && (

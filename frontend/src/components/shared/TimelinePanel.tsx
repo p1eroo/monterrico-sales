@@ -103,9 +103,10 @@ const timelineStyles: Record<
 
 interface TimelinePanelProps {
   events: TimelineEvent[];
+  onEventClick?: (event: TimelineEvent) => void;
 }
 
-export function TimelinePanel({ events }: TimelinePanelProps) {
+export function TimelinePanel({ events, onEventClick }: TimelinePanelProps) {
   return (
     <Card className="border-0 bg-transparent pt-0 shadow-none">
       <CardContent className="p-0">
@@ -122,7 +123,11 @@ export function TimelinePanel({ events }: TimelinePanelProps) {
             return (
               <div
                 key={event.id}
-                className="group flex gap-3 rounded-md py-2.5 pl-0 pr-1 transition-colors hover:bg-surface-hover/60"
+                onClick={() => onEventClick?.(event)}
+                className={cn(
+                  "group flex gap-3 rounded-md py-2.5 pl-0 pr-1 transition-colors",
+                  onEventClick && event.type === 'cambio_estado' ? "cursor-pointer hover:bg-surface-hover/60" : "cursor-default"
+                )}
               >
                 <Tooltip>
                   <TooltipTrigger asChild>

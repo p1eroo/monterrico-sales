@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { GoogleSheetsService } from './google-sheets.service';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
+import { ActivityActor } from '../activity-logs/activity-logs.types';
 
 /** Mapeo de columnas del Google Sheet (basado en la captura del usuario). */
 // Columnas: N° | F. REGISTRO | RED SOCIAL | CELULAR | APELLIDOS Y NOMBRES | EDAD | OPERADOR | ESTADO | MODALIDAD | AÑO VEH. | DISTRITO | F. CITA | ASISTENCIA | F AFILIACION | MOVIL | OBSERVACIONES
@@ -70,6 +72,7 @@ export class FlotaProspectosService {
   constructor(
     private prisma: PrismaService,
     private googleSheets: GoogleSheetsService,
+    private activityLogs: ActivityLogsService,
   ) {}
 
   private normalizeCelular(celular?: string | null): string | null {
@@ -155,11 +158,38 @@ if (params.mes) {
   }
 
   /** Actualizar un prospecto */
-  async update(id: string, data: Record<string, unknown>) {
-    return this.prisma.flotaProspecto.update({
+  async update(id: string, data: Record<string, unknown>, actor?: ActivityActor) {
+    const existing = await this.prisma.flotaProspecto.findUnique({ where: { id } });
+    if (!existing) throw new Error('Prospecto no encontrado');
+
+    const updated = await this.prisma.flotaProspecto.update({
       where: { id },
       data: data as any,
     });
+
+    // Registrar cambio de estado en el historial
+    if (data.estado && data.estado !== existing.estado) {
+      await this.activityLogs.record(actor || null, {
+        action: 'cambiar_etapa',
+        module: 'flota',
+        entityType: 'flota-prospecto',
+        entityId: id,
+        entityName: updated.nombreCompleto,
+        description: `Cambio de estado: ${existing.estado} -> ${data.estado}. Comentario: ${data.observaciones || 'Sin comentarios'}`,
+      });
+    } else if (data.observaciones && data.observaciones !== existing.observaciones) {
+      // Si solo cambian observaciones sin cambiar estado
+      await this.activityLogs.record(actor || null, {
+        action: 'actualizar',
+        module: 'flota',
+        entityType: 'flota-prospecto',
+        entityId: id,
+        entityName: updated.nombreCompleto,
+        description: `Actualización de observaciones: ${data.observaciones}`,
+      });
+    }
+
+    return updated;
   }
 
   /** Crear un nuevo prospecto */

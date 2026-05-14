@@ -558,8 +558,7 @@ const stats = useMemo(() => {
             aria-label="Cargando conductores"
           />
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
+            <Table className="min-w-[1200px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Conductor</TableHead>
@@ -651,7 +650,6 @@ const stats = useMemo(() => {
                 )}
               </TableBody>
             </Table>
-          </div>
         )}
 
         {!loading && totalPages > 1 && (

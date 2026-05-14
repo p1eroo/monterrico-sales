@@ -61,18 +61,23 @@ const TIMELINE_MOCK = [
 ];
 
 const estadoColors: Record<string, string> = {
-  AFILIADO: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-  CITADO: 'bg-blue-100 text-blue-700 border-blue-200',
-  SEGUIMIENTO: 'bg-purple-100 text-purple-700 border-purple-200',
-  INFORMACION: 'bg-cyan-100 text-cyan-700 border-cyan-200',
-  SIN_REQUISITOS: 'bg-orange-100 text-orange-700 border-orange-200',
-  NO_RESPONDE: 'bg-red-100 text-red-700 border-red-200',
+  AFILIADO: 'shadow-none bg-purple-100 text-purple-700 border-purple-300 hover:bg-purple-200',
+  CITADO: 'shadow-none bg-blue-100 text-blue-700 border-blue-300 hover:bg-blue-200',
+  SEGUIMIENTO: 'shadow-none bg-green-100 text-green-700 border-green-300 hover:bg-green-200',
+  INFORMACION: 'shadow-none bg-cyan-100 text-cyan-700 border-cyan-300 hover:bg-cyan-200',
+  'SIN REQUISITOS': 'shadow-none bg-red-100 text-red-700 border-red-300 hover:bg-red-200',
+  'NO RESPONDE': 'shadow-none bg-yellow-100 text-yellow-700 border-yellow-300 hover:bg-yellow-200',
 };
+
+function formatStatus(status: string) {
+  if (!status) return '';
+  return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+}
 
 function ProspectoInformacionAside({ prospecto }: { prospecto: FlotaProspectoRow }) {
   return (
     <EntityInfoCard
-      title="INFORMACIÓN"
+      title="INFORMACION"
       collapsible
       fields={[
         { icon: User, value: prospecto.nombreCompleto },
@@ -121,6 +126,52 @@ export default function FlotaProspectoDetail() {
   const [editData, setEditData] = useState<Partial<FlotaProspectoRow>>({});
   const [savingEdit, setSavingEdit] = useState(false);
 
+  // Historial real
+  const [historyEvents, setHistoryEvents] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  // Modal para cambio de estado / ver detalle de historial
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [targetStatus, setTargetStatus] = useState<string | null>(null);
+  const [statusDate, setStatusDate] = useState('');
+  const [statusTime, setStatusTime] = useState('');
+  const [statusComment, setStatusComment] = useState('');
+  const [isReadOnly, setIsReadOnly] = useState(false);
+
+  const fetchHistory = useCallback(async () => {
+    if (!id || !prospecto) return;
+    setLoadingHistory(true);
+    try {
+      const { fetchActivityLogs, activityLogToTimelineEvent } = await import('@/lib/activityLogsApi');
+      const res = await fetchActivityLogs({ 
+        entityType: 'flota-prospecto', 
+        entityId: id,
+        limit: 50 
+      });
+      
+      const logs = res.data.map(activityLogToTimelineEvent);
+      
+      // Si no hay evento de creación en los logs, lo agregamos manualmente usando createdAt
+      const hasCreation = logs.some(l => l.type === 'crear');
+      if (!hasCreation && prospecto.createdAt) {
+        logs.push({
+          id: 'initial-creation',
+          type: 'crear',
+          title: 'Sistema',
+          description: 'El prospecto fue registrado en el sistema.',
+          date: new Date(prospecto.createdAt).toLocaleString(),
+          user: 'Sistema'
+        });
+      }
+
+      setHistoryEvents(logs);
+    } catch (e) {
+      console.error('Error cargando historial:', e);
+    } finally {
+      setLoadingHistory(false);
+    }
+  }, [id, prospecto]);
+
   const fetchDetail = useCallback(async () => {
     if (!id) return;
     setLoading(true);
@@ -135,20 +186,43 @@ export default function FlotaProspectoDetail() {
     }
   }, [id]);
 
-  const handleCambiarEstado = useCallback(async (nuevoEstado: string) => {
+  useEffect(() => {
+    if (prospecto) {
+      void fetchHistory();
+    }
+  }, [prospecto, fetchHistory]);
+
+  const handleCambiarEstado = useCallback((nuevoEstado: string) => {
     if (!prospecto || updatingEstado) return;
+    
+    const now = new Date();
+    setTargetStatus(nuevoEstado);
+    setStatusDate(now.toISOString().split('T')[0]);
+    setStatusTime(now.toTimeString().split(' ')[0].substring(0, 5));
+    setStatusComment('');
+    setIsReadOnly(false);
+    setStatusModalOpen(true);
+  }, [prospecto, updatingEstado]);
+
+  const handleConfirmStatusChange = async () => {
+    if (!prospecto || !targetStatus) return;
     setUpdatingEstado(true);
     try {
-      const updated = await flotaProspectoUpdate(prospecto.id, { estado: nuevoEstado });
+      const updated = await flotaProspectoUpdate(prospecto.id, { 
+        estado: targetStatus,
+        observaciones: statusComment || prospecto.observaciones
+      });
       setProspecto(updated);
-      toast.success(`Estado cambiado a ${nuevoEstado}`);
+      setStatusModalOpen(false);
+      toast.success(`Estado cambiado a ${formatStatus(targetStatus)}`);
+      void fetchHistory(); // Refrescar historial
     } catch (e) {
       toast.error('No se pudo cambiar el estado');
       console.error(e);
     } finally {
       setUpdatingEstado(false);
     }
-  }, [prospecto, updatingEstado]);
+  };
 
   useEffect(() => {
     void fetchDetail();
@@ -171,6 +245,26 @@ export default function FlotaProspectoDetail() {
     };
   }, [prospecto]);
 
+  const handleEventClick = useCallback((event: any) => {
+    if (event.type !== 'cambio_estado') return;
+
+    const desc = event.description || '';
+      // Intentar extraer info del string: "Cambio de estado: AFILIADO -> CITADO. Comentario: ..."
+      const matchStatus = desc.match(/->\s+(.+?)\./);
+      const matchComment = desc.match(/Comentario:\s+(.+)$/);
+      
+      setTargetStatus(matchStatus?.[1] || null);
+      // La fecha/hora la tomamos del evento mismo
+      const eventDate = new Date(event.date);
+      if (!isNaN(eventDate.getTime())) {
+        setStatusDate(eventDate.toISOString().split('T')[0]);
+        setStatusTime(eventDate.toTimeString().split(' ')[0].substring(0, 5));
+      }
+      setStatusComment(matchComment?.[1] || '');
+      setIsReadOnly(true);
+      setStatusModalOpen(true);
+  }, []);
+
   if (loading) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
@@ -187,6 +281,8 @@ export default function FlotaProspectoDetail() {
     );
   }
 
+
+
   const handleQuickActivityCreated = (draft: any) => {
     toast.success(`Actividad "${draft.title}" creada (Mock)`);
   };
@@ -201,15 +297,13 @@ export default function FlotaProspectoDetail() {
         <DropdownMenuTrigger asChild>
           <Button
             variant="outline"
-            className="gap-1.5 h-9"
+            className={cn(
+              "h-9 transition-colors",
+              estadoColors[prospecto.estado]
+            )}
             disabled={updatingEstado}
           >
-            {updatingEstado ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <CheckCircle className="size-4" />
-            )}
-            {prospecto.estado}
+            {formatStatus(prospecto.estado)}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-40">
@@ -217,20 +311,17 @@ export default function FlotaProspectoDetail() {
             <DropdownMenuItem
               key={estado}
               onClick={() => handleCambiarEstado(estado)}
-              className="cursor-pointer"
+              className={cn(
+                "cursor-pointer mt-1 first:mt-0"
+              )}
             >
-              {estado}
+              {formatStatus(estado)}
             </DropdownMenuItem>
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <QuickActionsWithDialogs
-        entityName={prospecto.nombreCompleto}
-        onActivityCreated={handleQuickActivityCreated}
-        onTaskCreated={handleTaskCreated}
-        inline
-      />
+      {/* QuickActionsWithDialogs eliminado por petición (botón Crear) */}
       <Button 
         className="gap-1.5 bg-whatsapp px-3 text-whatsapp-foreground hover:bg-whatsapp/90 h-9"
         onClick={() => setWhatsappDrawerOpen(true)}
@@ -297,16 +388,19 @@ export default function FlotaProspectoDetail() {
           </div>
 
           <TabsContent value="historial" className="mt-0 focus-visible:outline-none">
-            <TimelinePanel
-              events={TIMELINE_MOCK.map(e => ({
-                id: e.id,
-                type: e.type as any,
-                title: e.title,
-                description: e.description,
-                date: e.timestamp,
-                user: e.userName,
-              }))}
-            />
+            {loadingHistory ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">Cargando historial...</div>
+            ) : historyEvents.length > 0 ? (
+              <TimelinePanel
+                events={historyEvents}
+                onEventClick={handleEventClick}
+              />
+            ) : (
+              <div className="py-12 text-center">
+                <Clock className="mx-auto mb-2 size-8 text-muted-foreground/20" />
+                <p className="text-sm text-muted-foreground">No hay actividad registrada aún.</p>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="notas" className="mt-0">
@@ -434,11 +528,11 @@ export default function FlotaProspectoDetail() {
                   <SelectValue placeholder="Seleccionar estado" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Nuevo">Nuevo</SelectItem>
-                  <SelectItem value="Contactado">Contactado</SelectItem>
-                  <SelectItem value="Afiliado">Afiliado</SelectItem>
-                  <SelectItem value="NoInteresado">No Interesado</SelectItem>
-                  <SelectItem value="NO RESPONDE">No Responde</SelectItem>
+                  {ESTADOS.map(estado => (
+                    <SelectItem key={estado} value={estado}>
+                      {formatStatus(estado)}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -457,6 +551,70 @@ export default function FlotaProspectoDetail() {
             <Button onClick={handleSaveEdit} disabled={savingEdit}>
               {savingEdit ? 'Guardando...' : 'Guardar cambios'}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={statusModalOpen} onOpenChange={setStatusModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {isReadOnly ? 'Detalle de Registro' : `Cambiar Estado: ${targetStatus ? formatStatus(targetStatus) : ''}`}
+            </DialogTitle>
+            <DialogDescription>
+              {isReadOnly 
+                ? 'Información registrada para este cambio de estado.' 
+                : 'Registra la fecha y hora de este cambio de estado.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="statusDate">Fecha de registro</Label>
+                <Input
+                  id="statusDate"
+                  type="date"
+                  value={statusDate}
+                  readOnly={isReadOnly}
+                  onChange={(e) => setStatusDate(e.target.value)}
+                  className={cn(isReadOnly && "bg-muted cursor-default border-transparent focus-visible:ring-0")}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="statusTime">Hora de registro</Label>
+                <Input
+                  id="statusTime"
+                  type="time"
+                  value={statusTime}
+                  readOnly={isReadOnly}
+                  onChange={(e) => setStatusTime(e.target.value)}
+                  className={cn(isReadOnly && "bg-muted cursor-default border-transparent focus-visible:ring-0")}
+                />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="statusComment">Comentarios</Label>
+              <textarea
+                id="statusComment"
+                className={cn(
+                  "flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+                  isReadOnly && "bg-muted cursor-default border-transparent focus-visible:ring-0"
+                )}
+                placeholder={isReadOnly ? '' : "Escribe un comentario sobre este cambio..."}
+                value={statusComment}
+                readOnly={isReadOnly}
+                onChange={(e) => setStatusComment(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant={isReadOnly ? 'secondary' : 'outline'} onClick={() => setStatusModalOpen(false)}>
+              {isReadOnly ? 'Cerrar' : 'Cancelar'}
+            </Button>
+            {!isReadOnly && (
+              <Button onClick={handleConfirmStatusChange} disabled={updatingEstado}>
+                {updatingEstado ? 'Guardando...' : 'Confirmar cambio'}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

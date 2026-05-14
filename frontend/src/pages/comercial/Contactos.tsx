@@ -1362,8 +1362,7 @@ function ContactsTable({
 }: ContactsTableProps) {
   const { hasPermission } = usePermissions();
   return (
-    <div className="rounded-md border bg-card">
-      <Table>
+    <Table className="min-w-[1200px]">
         <TableHeader>
           <TableRow>
             <TableHead className="w-10">
@@ -1514,7 +1513,6 @@ function ContactsTable({
           })}
         </TableBody>
       </Table>
-    </div>
   );
 }
 

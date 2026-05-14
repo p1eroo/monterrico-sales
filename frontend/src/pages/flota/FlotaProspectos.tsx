@@ -61,7 +61,7 @@ const estadoColors: Record<string, string> = {
   "AFILIADO": "bg-purple-200 text-purple-700 border-purple-200",
   "CITADO": "bg-blue-100 text-blue-700 border-blue-200",
   "SEGUIMIENTO": "bg-green-100 text-green-700 border-green-200",
-  "INFORMACIÓN": "bg-cyan-100 text-cyan-700 border-cyan-200",
+  "INFORMACION": "bg-cyan-100 text-cyan-700 border-cyan-200",
   "SIN REQUISITOS": "bg-red-100 text-red-700 border-red-200",
   "NO RESPONDE": "bg-yellow-200 text-yellow-700 border-yellow-200",
 };
@@ -404,7 +404,7 @@ export default function FlotaProspectos() {
             <SelectItem value="AFILIADO">Afiliado</SelectItem>
             <SelectItem value="CITADO">Citado</SelectItem>
             <SelectItem value="SEGUIMIENTO">Seguimiento</SelectItem>
-            <SelectItem value="INFORMACIÓN">Información</SelectItem>
+            <SelectItem value="INFORMACION">Información</SelectItem>
             <SelectItem value="SIN REQUISITOS">Sin Requisitos</SelectItem>
             <SelectItem value="NO RESPONDE">No Responde</SelectItem>
           </SelectContent>
@@ -516,8 +516,7 @@ export default function FlotaProspectos() {
             aria-label="Cargando prospectos"
           />
         ) : (
-          <div className="overflow-x-auto">
-            <Table className="[&_td]:py-3 [&_th]:py-2">
+            <Table className="min-w-[1300px] [&_td]:py-3 [&_th]:py-2">
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-10">
@@ -661,7 +660,6 @@ export default function FlotaProspectos() {
                 )}
               </TableBody>
             </Table>
-          </div>
         )}
       </Card>
 

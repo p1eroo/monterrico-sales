@@ -16,7 +16,7 @@ function Table({
     <div
       data-slot="table-container"
       className={cn(
-        "relative w-full overflow-x-auto rounded-xl border border-border/60 bg-background/40 backdrop-blur-md",
+        "relative w-full overflow-x-auto scrollbar-thin",
         containerClassName
       )}
     >

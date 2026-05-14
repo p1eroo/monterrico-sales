@@ -459,7 +459,7 @@ export default function UsersPage() {
           ) : (
             <>
             <Card className="hidden md:block">
-              <Table>
+              <Table className="min-w-[1000px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-12">Usuario</TableHead>
