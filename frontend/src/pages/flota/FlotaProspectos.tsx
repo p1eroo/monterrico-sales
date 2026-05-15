@@ -83,6 +83,7 @@ export default function FlotaProspectos() {
   const [estadoFilter, setEstadoFilter] = useState("all");
   const [mesFilter, setMesFilter] = useState("all");
   const [redSocialFilter, setRedSocialFilter] = useState("all");
+  const [operadorFilter, setOperadorFilter] = useState("all");
   const [duplicadosFilter, setDuplicadosFilter] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
@@ -158,6 +159,7 @@ export default function FlotaProspectos() {
         duplicados: duplicadosFilter || undefined,
         mes: mesFilter === "all" ? undefined : mesFilter,
         redSocial: redSocialFilter === "all" ? undefined : redSocialFilter,
+        operador: operadorFilter === "all" ? undefined : operadorFilter,
       });
       
       setProspectos(res.data);
@@ -169,7 +171,7 @@ export default function FlotaProspectos() {
     } finally {
       setLoading(false);
     }
-  }, [page, searchDebounced, estadoFilter, duplicadosFilter, mesFilter, redSocialFilter]);
+  }, [page, searchDebounced, estadoFilter, duplicadosFilter, mesFilter, redSocialFilter, operadorFilter]);
 
   const loadCounts = useCallback(async () => {
     try {
@@ -191,7 +193,7 @@ export default function FlotaProspectos() {
   // Reset page on filter change
   useEffect(() => {
     setPage(1);
-  }, [searchDebounced, estadoFilter, duplicadosFilter, mesFilter, redSocialFilter]);
+  }, [searchDebounced, estadoFilter, duplicadosFilter, mesFilter, redSocialFilter, operadorFilter]);
 
   const totalPages = Math.ceil(totalProspectos / PAGE_SIZE);
 
@@ -427,6 +429,23 @@ export default function FlotaProspectos() {
           </SelectContent>
         </Select>
 
+        <Select
+          value={operadorFilter}
+          onValueChange={(v) => setOperadorFilter(v)}
+        >
+          <SelectTrigger className="w-36 bg-card shadow-none">
+            <SelectValue placeholder="Operador" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            {(counts?.operadores ?? []).map((op) => (
+              <SelectItem key={op} value={op}>
+                {op}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         <Select value={mesFilter} onValueChange={(v) => setMesFilter(v)}>
           <SelectTrigger className="w-28 bg-card shadow-none">
             <SelectValue placeholder="Mes" />
@@ -491,33 +510,35 @@ export default function FlotaProspectos() {
         )}
       </div>
 
-      <Card>
+      <div className="min-w-0 w-full overflow-x-auto rounded-none border-t border-b bg-transparent">
         {loading ? (
-          <CrmDataTableSkeleton
-            columns={[
-              { label: "" },
-              { label: "F.Registro" },
-              { label: "Red Social" },
-              { label: "Celular" },
-              { label: "Nombres y Apellidos" },
-              { label: "Edad" },
-              { label: "Operador" },
-              { label: "Estado" },
-              { label: "Modalidad" },
-              { label: "Año Veh." },
-              { label: "Distrito" },
-              { label: "F. Cita" },
-              { label: "Asistencia" },
-              { label: "F. Afiliacion" },
-              { label: "Movil" },
-              { label: "Observaciones" },
-            ]}
-            rows={5}
-            aria-label="Cargando prospectos"
-          />
+            <CrmDataTableSkeleton
+              columns={[
+                { label: "" },
+                { label: "F.Registro" },
+                { label: "Red Social" },
+                { label: "Celular" },
+                { label: "Nombres y Apellidos" },
+                { label: "Edad" },
+                { label: "Operador" },
+                { label: "Estado" },
+                { label: "Modalidad" },
+                { label: "Año Veh." },
+                { label: "Distrito" },
+                { label: "F. Cita" },
+                { label: "Asistencia" },
+                { label: "F. Afiliacion" },
+                { label: "Movil" },
+                { label: "Observaciones" },
+              ]}
+              rows={5}
+              aria-label="Cargando prospectos"
+              className="bg-card"
+            />
         ) : (
-            <Table className="min-w-[1300px] [&_td]:py-3 [&_th]:py-2">
-              <TableHeader>
+      <Card>
+            <Table containerClassName="overflow-visible" className="min-w-[1300px] [&_td]:py-3 [&_th]:py-2 bg-transparent">
+              <TableHeader className="bg-muted/30">
                 <TableRow>
                   <TableHead className="w-10">
                     <Checkbox
@@ -660,8 +681,9 @@ export default function FlotaProspectos() {
                 )}
               </TableBody>
             </Table>
-        )}
       </Card>
+        )}
+      </div>
 
       {!loading && totalPages > 1 && (
           <div className="flex items-center justify-between px-0">

@@ -123,7 +123,8 @@ export type PermissionModule =
   | 'flota_dashboard'
   | 'flota_prospectos'
   | 'flota_conductores'
-  | 'flota_reportes';
+  | 'flota_reportes'
+  | 'flota_mensajes';
 
 /** RBAC: Tipos de permiso por módulo */
 export type PermissionAction =

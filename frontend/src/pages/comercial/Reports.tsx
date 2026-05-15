@@ -220,7 +220,7 @@ export default function Reports() {
 
     // Cargar KPIs primero (rápido)
     setKpisLoading(true);
-    void fetchAnalyticsKPIs({ from, to, advisorId, source })
+    void fetchAnalyticsKPIs({ from, to, advisorId, source, area: 'comercial' })
       .then((data) => {
         if (!cancelled) setKpis(data);
       })
@@ -233,7 +233,7 @@ export default function Reports() {
 
     // Cargar charts después (más pesado)
     setLoading(true);
-    void fetchAnalyticsSummary({ from, to, advisorId, source })
+    void fetchAnalyticsSummary({ from, to, advisorId, source, area: 'comercial' })
       .then((data) => {
         if (!cancelled) setSummary(data);
       })
@@ -444,7 +444,7 @@ export default function Reports() {
       return {
         chartData: [] as {
           name: string;
-          advance: number;
+          avance: number;
           nuevoIngreso: number;
           atraso: number;
           sinCambios: number;
@@ -509,6 +509,8 @@ export default function Reports() {
         opportunitiesByStage: opportunitiesByStageData,
         activitiesByType: activitiesByTypeData,
         followUpsByMonth: followUpsData,
+        companiesByStage: companiesFunnelStages,
+        weeklyOppsData: weeklyOppsProgressChartData,
       };
 
       if (format === 'PDF') {
@@ -517,6 +519,8 @@ export default function Reports() {
           const chartIds = {
             contacts: 'chart-contacts',
             sources: 'chart-sources',
+            funnel: 'chart-funnel',
+            weeklyOpps: 'chart-weekly-opps',
             conversion: 'chart-conversion',
             performance: 'chart-performance',
             sales: 'chart-sales',
@@ -526,23 +530,66 @@ export default function Reports() {
           };
           const chartImages: ReportsExportInput['charts'] = {};
 
-          // Dar tiempo a que los charts se rendericen sin animaciones tras setExportingPdf(true)
-          await new Promise((resolve) => setTimeout(resolve, 500));
+          // Esperar a que las animaciones terminen
+          await new Promise((resolve) => setTimeout(resolve, 1000));
 
           for (const [key, id] of Object.entries(chartIds)) {
-            const el = document.getElementById(id);
-            if (el) {
-              try {
-                const canvas = await html2canvas(el, {
-                  scale: 2, // Mayor calidad
-                  logging: false,
-                  useCORS: true,
-                  backgroundColor: null,
-                });
-                chartImages[key as keyof typeof chartIds] = canvas.toDataURL('image/png');
-              } catch (e) {
-                console.error(`Error capturando gráfico ${id}:`, e);
+            const cardEl = document.getElementById(id);
+            if (!cardEl) continue;
+
+            try {
+              // Senior Strategy: En lugar de confiar en un selector, buscamos todos los SVGs 
+              // y nos quedamos con el que tenga mayor altura (el gráfico principal).
+              // Esto ignora automáticamente iconos de leyenda, botones y decoraciones.
+              const allSvgs = Array.from(cardEl.querySelectorAll('svg'));
+              if (allSvgs.length === 0) continue;
+
+              const svgEl = allSvgs.reduce((prev, current) => {
+                return (current.clientHeight > prev.clientHeight) ? current : prev;
+              });
+
+              if (!svgEl || svgEl.clientHeight < 50) { // Si es muy pequeño, probablemente no es el gráfico
+                console.warn(`No se encontró un SVG válido para el gráfico en ${id}`);
+                continue;
               }
+
+              // Clonamos el SVG para manipularlo sin afectar la UI
+              const clonedSvg = svgEl.cloneNode(true) as SVGElement;
+              
+              // Paso Senior: Aseguramos que el SVG tenga dimensiones explícitas
+              const width = svgEl.clientWidth || 800;
+              const height = svgEl.clientHeight || 400;
+              clonedSvg.setAttribute('width', width.toString());
+              clonedSvg.setAttribute('height', height.toString());
+
+              // Serializar SVG a XML
+              const svgData = new XMLSerializer().serializeToString(clonedSvg);
+              const canvas = document.createElement('canvas');
+              const ctx = canvas.getContext('2d');
+              const img = new Image();
+              
+              canvas.width = width * 2; // Alta resolución
+              canvas.height = height * 2;
+              
+              const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+              const url = URL.createObjectURL(svgBlob);
+
+              await new Promise((resolve, reject) => {
+                img.onload = () => {
+                  if (ctx) {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    chartImages[key as keyof typeof chartIds] = canvas.toDataURL('image/png');
+                  }
+                  URL.revokeObjectURL(url);
+                  resolve(true);
+                };
+                img.onerror = reject;
+                img.src = url;
+              });
+            } catch (e) {
+              console.error(`Error capturando gráfico ${id} vía SVG:`, e);
             }
           }
           return chartImages;
@@ -967,7 +1014,7 @@ export default function Reports() {
         </Card>
 
         {/* Embudo empresas por etapa (izquierda); derecha reservada */}
-        <Card>
+        <Card id="chart-funnel">
           <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2 max-md:pb-1.5">
             <div className="min-w-0 space-y-1">
               <CardTitle className="text-base">Empresas por etapa</CardTitle>
@@ -1647,7 +1694,7 @@ export default function Reports() {
         </Dialog>
 
         {/* 2. Avance semanal - Oportunidades */}
-        <Card>
+        <Card id="chart-weekly-opps">
           <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0 space-y-2">
               <CardTitle className="text-base">Avance semanal · Oportunidades</CardTitle>
@@ -1741,6 +1788,7 @@ export default function Reports() {
                     />
                     <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: 8 }} />
                     <Bar
+                      isAnimationActive={!exportingPdf}
                       dataKey="avance"
                       name="Avance"
                       stackId="weeklyOpps"
@@ -1749,6 +1797,7 @@ export default function Reports() {
                       barSize={18}
                     />
                     <Bar
+                      isAnimationActive={!exportingPdf}
                       dataKey="nuevoIngreso"
                       name="Nuevo"
                       stackId="weeklyOpps"
@@ -1756,6 +1805,7 @@ export default function Reports() {
                       barSize={18}
                     />
                     <Bar
+                      isAnimationActive={!exportingPdf}
                       dataKey="atraso"
                       name="Atraso"
                       stackId="weeklyOpps"
@@ -1763,6 +1813,7 @@ export default function Reports() {
                       barSize={18}
                     />
                     <Bar
+                      isAnimationActive={!exportingPdf}
                       dataKey="sinCambios"
                       name="Sin cambios"
                       stackId="weeklyOpps"

@@ -38,6 +38,7 @@ export const ACCESSIBLE_PATH_ORDER: PathRule[] = [
   { path: '/flota/prospectos', permission: 'flota_prospectos.ver' },
   { path: '/flota/conductores', permission: 'flota_conductores.ver' },
   { path: '/flota/reportes', permission: 'flota_reportes.ver' },
+  { path: '/flota/mensajes', permission: 'flota_mensajes.ver' },
 ];
 
 /**
@@ -76,6 +77,7 @@ export function getRequiredPermissionForPath(
   if (pathname.startsWith('/flota/prospectos')) return 'flota_prospectos.ver';
   if (pathname.startsWith('/flota/conductores')) return 'flota_conductores.ver';
   if (pathname.startsWith('/flota/reportes')) return 'flota_reportes.ver';
+  if (pathname.startsWith('/flota/mensajes')) return 'flota_mensajes.ver';
 
   return null;
 }

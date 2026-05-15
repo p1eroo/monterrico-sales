@@ -139,7 +139,7 @@ export default function Dashboard() {
 
     // Cargar KPIs primero (rápido)
     setKpisLoading(true);
-    void fetchAnalyticsKPIs({ from, to })
+    void fetchAnalyticsKPIs({ from, to, area: 'comercial' })
       .then((data) => {
         if (!cancelled) setKpis(data);
       })
@@ -152,7 +152,7 @@ export default function Dashboard() {
 
     // Cargar charts después (más pesado)
     setSummaryLoading(true);
-    void fetchAnalyticsSummary({ from, to })
+    void fetchAnalyticsSummary({ from, to, area: 'comercial' })
       .then((data) => {
         if (!cancelled) setSummary(data);
       })

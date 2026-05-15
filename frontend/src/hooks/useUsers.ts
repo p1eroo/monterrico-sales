@@ -18,11 +18,17 @@ export function useUsers() {
     [users],
   );
 
-  /** Usuarios activos con rol asesor (filtros y asignaciones comerciales). */
-  const activeAdvisors = useMemo(
-    () => activeUsers.filter((u) => u.role === 'asesor'),
-    [activeUsers],
-  );
+  const currentArea = useAppStore((s) => s.area);
+  /** Usuarios activos con rol asesor (filtros y asignaciones por área). */
+  const activeAdvisors = useMemo(() => {
+    return activeUsers.filter((u) => {
+      if (u.role !== 'asesor') return false;
+      // En Admin mostramos todos para gestión; en módulos específicos filtramos.
+      if (currentArea === 'admin') return true;
+      if (!currentArea) return true; // Fallback
+      return u.allowedAreas.includes(currentArea as any);
+    });
+  }, [activeUsers, currentArea]);
 
   return {
     users,

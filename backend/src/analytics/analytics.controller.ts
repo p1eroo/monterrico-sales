@@ -23,6 +23,7 @@ export class AnalyticsController {
     @Query('to') to?: string,
     @Query('advisorId') advisorId?: string,
     @Query('source') source?: string,
+    @Query('area') area?: string,
   ) {
     const crmScope = await this.crmDataScope.buildScope(
       req.user.userId,
@@ -33,6 +34,7 @@ export class AnalyticsController {
       to,
       advisorId,
       source,
+      area,
       crmScope,
     });
   }
@@ -46,6 +48,7 @@ export class AnalyticsController {
     @Query('to') to?: string,
     @Query('advisorId') advisorId?: string,
     @Query('source') source?: string,
+    @Query('area') area?: string,
   ) {
     const crmScope = await this.crmDataScope.buildScope(
       req.user.userId,
@@ -56,6 +59,7 @@ export class AnalyticsController {
       to,
       advisorId,
       source,
+      area,
       crmScope,
     });
   }
@@ -66,6 +70,7 @@ export class AnalyticsController {
   async getGoalProgress(
     @Req() req: AuthedReq,
     @Query('advisorId') advisorId?: string,
+    @Query('area') area?: string,
   ) {
     const crmScope = await this.crmDataScope.buildScope(
       req.user.userId,
@@ -75,6 +80,7 @@ export class AnalyticsController {
       req.user.userId,
       advisorId,
       crmScope,
+      area,
     );
   }
 }

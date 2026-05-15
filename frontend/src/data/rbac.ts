@@ -23,6 +23,7 @@ export const PERMISSION_MODULES: { id: PermissionModule; label: string; area: 'c
   { id: 'flota_prospectos', label: 'Flota: Prospectos', area: 'flota' },
   { id: 'flota_conductores', label: 'Flota: Conductores', area: 'flota' },
   { id: 'flota_reportes', label: 'Flota: Reportes', area: 'flota' },
+  { id: 'flota_mensajes', label: 'Flota: Mensajes', area: 'flota' },
   { id: 'usuarios', label: 'Usuarios', area: 'general' },
   { id: 'roles', label: 'Roles', area: 'general' },
   { id: 'auditoria', label: 'Auditoría', area: 'general' },
@@ -59,6 +60,7 @@ export const MODULE_ALLOWED_ACTIONS: Record<
   flota_prospectos: ['ver', 'crear', 'editar', 'eliminar', 'asignar', 'exportar'],
   flota_conductores: ['ver', 'crear', 'editar', 'eliminar', 'exportar'],
   flota_reportes: ['ver', 'exportar'],
+  flota_mensajes: ['ver', 'crear', 'editar', 'eliminar', 'exportar'],
 };
 
 export function moduleAllowsAction(

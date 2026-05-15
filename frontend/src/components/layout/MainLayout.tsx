@@ -92,13 +92,19 @@ export default function MainLayout() {
           lastActivity: me.lastActivity ?? undefined,
           allowedAreas: me.allowedAreas || [],
         });
+        const allowed = me.allowedAreas || [];
+        const { area: currentArea, setArea } = useAppStore.getState();
+        if (allowed.length === 1 && currentArea !== allowed[0]) {
+          setArea(allowed[0]);
+        }
         setPermissionKeys(me.permissions);
         const crm = await fetchCrmConfig();
         if (cancelled) return;
         useCrmConfigStore.getState().setBundle(crm);
         hydrateGoalsFromBundle(crm, me.id);
         try {
-          const gp = await fetchAnalyticsGoalProgress();
+          const area = useAppStore.getState().area;
+          const gp = await fetchAnalyticsGoalProgress(undefined, area === 'admin' ? undefined : area);
           if (!cancelled) useAnalyticsGoalStore.getState().setProgress(gp);
         } catch {
           /* sin permiso analytics o red: las tarjetas de meta usan 0 en ventas */

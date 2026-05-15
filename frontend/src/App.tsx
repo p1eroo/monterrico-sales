@@ -41,6 +41,7 @@ const FlotaProspectos = lazy(() => import('@/pages/flota/FlotaProspectos'));
 const FlotaProspectoDetail = lazy(() => import('@/pages/flota/FlotaProspectoDetail'));
 const FlotaConductores = lazy(() => import('@/pages/flota/FlotaConductores'));
 const FlotaReportes = lazy(() => import('@/pages/flota/FlotaReportes'));
+const FlotaMensajes = lazy(() => import('@/pages/flota/FlotaMensajes'));
 const AreaSelect = lazy(() => import('@/pages/AreaSelect'));
 
 function LoadingFallback() {
@@ -143,6 +144,7 @@ function MainRoutes() {
         <Route path="/flota/prospectos/:id" element={<FlotaProspectoDetail />} />
         <Route path="/flota/conductores" element={<FlotaConductores />} />
         <Route path="/flota/reportes" element={<FlotaReportes />} />
+        <Route path="/flota/mensajes" element={<FlotaMensajes />} />
       </Route>
     </Route>
     <Route element={<ProtectedRoute><ModuleGate /></ProtectedRoute>}>

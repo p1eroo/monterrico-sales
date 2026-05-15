@@ -98,6 +98,7 @@ export class FlotaProspectosService {
     duplicados?: boolean;
     mes?: string;
     redSocial?: string;
+    operador?: string;
   }) {
     const page = params.page ?? 1;
     const limit = params.limit ?? 25;
@@ -115,6 +116,10 @@ export class FlotaProspectosService {
 
     if (params.redSocial) {
       where.redSocial = params.redSocial;
+    }
+
+    if (params.operador) {
+      where.operador = params.operador;
     }
 
 if (params.mes) {
@@ -466,7 +471,7 @@ if (params.mes) {
     const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const endOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0);
 
-    const [total, duplicados, estados, redes, nuevosEsteMes, nuevosMesPasado] = await Promise.all([
+    const [total, duplicados, estados, redes, operadores, nuevosEsteMes, nuevosMesPasado] = await Promise.all([
       this.prisma.flotaProspecto.count(),
       this.prisma.flotaProspecto.count({ where: { esDuplicado: true } }),
       this.prisma.$queryRawUnsafe<Array<{ estado: string; count: bigint }>>(
@@ -476,6 +481,11 @@ if (params.mes) {
         where: { redSocial: { not: null } },
         select: { redSocial: true },
         distinct: ['redSocial'],
+      }),
+      this.prisma.flotaProspecto.findMany({
+        where: { operador: { not: null } },
+        select: { operador: true },
+        distinct: ['operador'],
       }),
       this.prisma.flotaProspecto.count({
         where: {
@@ -500,12 +510,14 @@ if (params.mes) {
     }
 
     const redesSociales = redes.map((r) => r.redSocial).filter(Boolean).sort();
+    const operadoresList = operadores.map((r) => r.operador).filter(Boolean).sort();
 
     return {
       total,
       duplicados,
       estadoCounts,
       redesSociales,
+      operadores: operadoresList,
       nuevosEsteMes,
       nuevosMesPasado,
     };

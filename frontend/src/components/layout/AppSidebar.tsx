@@ -21,6 +21,7 @@ import {
   Car,
   UserCheck,
   ArrowRightLeft,
+  MessageCircle,
 } from 'lucide-react';
 import type { PermissionKey } from '@/types';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -84,6 +85,7 @@ const navItemsFlota: NavDef[] = [
   { to: '/flota/prospectos', label: 'Prospectos', icon: UserCheck, permission: 'flota_prospectos.ver' },
   { to: '/flota/conductores', label: 'Conductores', icon: Car, permission: 'flota_conductores.ver' },
   { to: '/flota/reportes', label: 'Reportes', icon: BarChart3, permission: 'flota_reportes.ver' },
+  { to: '/flota/mensajes', label: 'Mensajes', icon: MessageCircle, permission: 'flota_mensajes.ver' },
 ];
 
 const navItemsAdmin: NavDef[] = [
@@ -101,11 +103,13 @@ const navItemsAdmin: NavDef[] = [
 export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { logout, area } = useAppStore();
+  const { logout, area, currentUser } = useAppStore();
   const { hasPermission } = usePermissions();
+  const allowedAreas = currentUser.allowedAreas || [];
+  const effectiveArea = allowedAreas.length === 1 ? allowedAreas[0] : area;
   const currentNavItems = 
-    area === 'flota' ? navItemsFlota : 
-    area === 'admin' ? navItemsAdmin : 
+    effectiveArea === 'flota' ? navItemsFlota : 
+    effectiveArea === 'admin' ? navItemsAdmin : 
     navItems;
   const visibleNav = currentNavItems;
 

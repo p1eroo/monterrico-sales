@@ -799,7 +799,7 @@ function OpportunitiesTable({
   canDelete: boolean;
 }) {
   return (
-    <div className="rounded-lg border bg-card">
+    <Card>
       <Table>
         <TableHeader>
           <TableRow>
@@ -934,7 +934,7 @@ function OpportunitiesTable({
           })}
         </TableBody>
       </Table>
-    </div>
+    </Card>
   );
 }
 

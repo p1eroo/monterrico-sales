@@ -135,8 +135,9 @@ export class EvogoClient {
   async createInstance(params: {
     instanceName: string;
     webhook: EvogoWebhookConfig;
+    token?: string;
   }): Promise<EvogoInstanceCreateResult> {
-    const instanceToken = randomUUID();
+    const instanceToken = params.token?.trim() || randomUUID();
     const res = await this.requestJson('/instance/create', {
       method: 'POST',
       body: JSON.stringify({

@@ -41,10 +41,15 @@ export type ReportsExportInput = {
     correos: number;
   }[];
   followUpsByMonth: { name: string; completados: number; pendientes: number }[];
+  /** Datos para tablas de nuevas secciones */
+  companiesByStage?: { label: string; value: number }[];
+  weeklyOppsData?: { name: string; avance: number; nuevoIngreso: number; atraso: number; sinCambios: number }[];
   /** Imágenes de los gráficos (base64) capturadas desde el DOM */
   charts?: {
     contacts?: string;
     sources?: string;
+    funnel?: string;
+    weeklyOpps?: string;
     conversion?: string;
     performance?: string;
     sales?: string;
@@ -334,7 +339,7 @@ export function downloadReportsPdf(data: ReportsExportInput, baseName: string) {
   });
   y = (doc as JsPdfWithAutoTable).lastAutoTable.finalY + 12;
 
-  const sections: { title: string; head: string[][]; body: (string | number)[][], chartKey: keyof NonNullable<ReportsExportInput['charts']> }[] =
+  const sections: { title: string; head?: string[][]; body?: (string | number)[][], chartKey: keyof NonNullable<ReportsExportInput['charts']> }[] =
     [
       {
         title: 'Contactos por periodo',
@@ -347,6 +352,18 @@ export function downloadReportsPdf(data: ReportsExportInput, baseName: string) {
         head: [['Fuente', 'Cantidad']],
         body: data.contactsBySource.map((x) => [x.name, x.value]),
         chartKey: 'sources',
+      },
+      {
+        title: 'Empresas por etapa',
+        head: [['Etapa', 'Cantidad']],
+        body: data.companiesByStage?.map((x) => [x.label, x.value]),
+        chartKey: 'funnel',
+      },
+      {
+        title: 'Avance semanal · Oportunidades',
+        head: [['Semana', 'Avance', 'Nuevos', 'Atraso', 'Sin Cambios']],
+        body: data.weeklyOppsData?.map((x) => [x.name, x.avance, x.nuevoIngreso, x.atraso, x.sinCambios]),
+        chartKey: 'weeklyOpps',
       },
       {
         title: 'Tasa de conversión por mes',
@@ -411,53 +428,39 @@ export function downloadReportsPdf(data: ReportsExportInput, baseName: string) {
   const contentWidth = 182; // 210 - 14*2
 
   for (const sec of sections) {
-    if (!sec.body.length && !data.charts?.[sec.chartKey]) continue;
+    if (!sec.body?.length && !data.charts?.[sec.chartKey]) continue;
 
-    // Título de la sección
-    if (y > pageMaxY - 30) {
-      doc.addPage();
-      y = 14;
-    }
-    doc.setFontSize(11);
+    // Empezar cada sección en una página nueva
+    doc.addPage();
+    y = 20;
+
+    doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.text(sec.title, 14, y);
     doc.setFont('helvetica', 'normal');
-    y += 6;
+    y += 10;
 
     // 1. Gráfico (si existe)
     const chartImg = data.charts?.[sec.chartKey];
     if (chartImg) {
-      // Intentamos ajustar el gráfico al ancho de la página
-      // Usualmente los gráficos tienen un aspect ratio de 2:1 o similar
       const imgProps = doc.getImageProperties(chartImg);
       const imgHeight = (imgProps.height * contentWidth) / imgProps.width;
+      const maxH = 110;
+      const h = Math.min(imgHeight, maxH);
 
-      if (y + imgHeight > pageMaxY) {
-        doc.addPage();
-        y = 14;
-        // Repetir título en nueva página si el gráfico no cabía
-        doc.setFont('helvetica', 'bold');
-        doc.text(`${sec.title} (Cont.)`, 14, y);
-        doc.setFont('helvetica', 'normal');
-        y += 6;
-      }
-
-      doc.addImage(chartImg, 'PNG', 14, y, contentWidth, imgHeight);
-      y += imgHeight + 8;
+      doc.addImage(chartImg, 'PNG', 14, y, contentWidth, h);
+      y += h + 10;
     }
 
     // 2. Tabla
-    if (sec.body.length) {
-      if (y > pageMaxY - 20) {
-        doc.addPage();
-        y = 14;
-      }
+    if (sec.body?.length && sec.head) {
       autoTable(doc, {
         startY: y,
         head: sec.head,
         body: sec.body,
+        theme: 'striped',
         styles: { fontSize: 8 },
-        headStyles: { fillColor: [59, 130, 246] },
+        headStyles: { fillColor: [19, 148, 76] },
         margin: { left: 14, right: 14 },
       });
       y = (doc as JsPdfWithAutoTable).lastAutoTable.finalY + 12;

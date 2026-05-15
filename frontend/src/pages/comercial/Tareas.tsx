@@ -859,7 +859,7 @@ export default function TareasPage() {
                   }}
                 />
               ) : (
-                <Card className="min-w-0 overflow-hidden">
+                <Card className="min-w-0">
                   <Table
                     className="table-fixed w-full min-w-[1040px]"
                     containerClassName="min-w-0 overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]"

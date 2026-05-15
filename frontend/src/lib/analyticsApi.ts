@@ -144,12 +144,14 @@ export async function fetchAnalyticsKPIs(params: {
   to?: string;
   advisorId?: string;
   source?: string;
+  area?: string;
 }): Promise<AnalyticsKPIs> {
   const q = new URLSearchParams();
   if (params.from) q.set('from', params.from);
   if (params.to) q.set('to', params.to);
   if (params.advisorId) q.set('advisorId', params.advisorId);
   if (params.source) q.set('source', params.source);
+  if (params.area) q.set('area', params.area);
   const qs = q.toString();
   return api<AnalyticsKPIs>(`/analytics/kpis${qs ? `?${qs}` : ''}`);
 }
@@ -159,19 +161,25 @@ export async function fetchAnalyticsSummary(params: {
   to?: string;
   advisorId?: string;
   source?: string;
+  area?: string;
 }): Promise<AnalyticsSummary> {
   const q = new URLSearchParams();
   if (params.from) q.set('from', params.from);
   if (params.to) q.set('to', params.to);
   if (params.advisorId) q.set('advisorId', params.advisorId);
   if (params.source) q.set('source', params.source);
+  if (params.area) q.set('area', params.area);
   const qs = q.toString();
   return api<AnalyticsSummary>(`/analytics/summary${qs ? `?${qs}` : ''}`);
 }
 
 export async function fetchAnalyticsGoalProgress(
   advisorId?: string,
+  area?: string,
 ): Promise<AnalyticsGoalProgress> {
-  const q = advisorId ? `?advisorId=${encodeURIComponent(advisorId)}` : '';
-  return api<AnalyticsGoalProgress>(`/analytics/goal-progress${q}`);
+  const q = new URLSearchParams();
+  if (advisorId) q.set('advisorId', advisorId);
+  if (area) q.set('area', area);
+  const qs = q.toString();
+  return api<AnalyticsGoalProgress>(`/analytics/goal-progress${qs ? `?${qs}` : ''}`);
 }

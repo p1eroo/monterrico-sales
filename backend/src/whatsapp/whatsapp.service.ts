@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   Logger,
   ServiceUnavailableException,
@@ -25,6 +26,7 @@ import {
   stripHeavyPayload,
 } from './evolution-webhook.util';
 import { WhatsappGateway } from './whatsapp.gateway';
+import XLSX from 'xlsx';
 
 type JsonRecord = Record<string, unknown>;
 type WhatsappMessageAttachmentDto = {
@@ -660,6 +662,8 @@ export class WhatsappService {
   }> {
     const override = overrideInstanceApiKey?.trim();
     const personal = await this.findUserInstance(userId);
+
+    // Si el usuario tiene instancia personal (comercial), usarla
     if (personal && (!override || override === personal.instanceApiKey)) {
       return {
         instanceApiKey: personal.instanceApiKey,
@@ -669,6 +673,19 @@ export class WhatsappService {
         whatsappInstanceId: personal.id,
       };
     }
+
+    // Si la instancia compartida de flota está conectada, usarla (cubre envíos desde inbox/masivo)
+    if (this.sharedInstanceCache?.instanceApiKey && this.sharedInstanceCache.status === 'open') {
+      return {
+        instanceApiKey: this.sharedInstanceCache.instanceApiKey,
+        evoInstanceId: this.sharedInstanceCache.evoInstanceId || this.defaultInstanceId(),
+        evoInstanceName: this.sharedInstanceCache.instanceName,
+        displayLineId: this.sharedInstanceCache.instanceName,
+        whatsappInstanceId: null,
+      };
+    }
+
+    // Fallback al default global (env vars)
     return {
       instanceApiKey: override || this.defaultInstanceKey(),
       evoInstanceId: this.defaultInstanceId(),
@@ -1086,6 +1103,28 @@ export class WhatsappService {
       evLower === 'qrcode_updated' ||
       evLower === 'qrcode.updated'
     ) {
+      // Verificar si es la instancia compartida de flota
+      if (this.sharedInstanceCache && base.instanceName === this.sharedInstanceCache.instanceName) {
+        const data = asRecord(base.data);
+        const qrcode = asRecord(data?.['qrcode']) ?? asRecord(data?.['Qrcode']) ?? data;
+        const qrCode = typeof qrcode?.['base64'] === 'string' ? qrcode['base64']
+          : typeof qrcode?.['Base64'] === 'string' ? qrcode['Base64'] : null;
+        const qrText = typeof qrcode?.['code'] === 'string' ? qrcode['code']
+          : typeof qrcode?.['Code'] === 'string' ? qrcode['Code'] : null;
+        const pairingCode = typeof qrcode?.['pairingCode'] === 'string' ? qrcode['pairingCode']
+          : typeof qrcode?.['PairingCode'] === 'string' ? qrcode['PairingCode'] : null;
+        const now = new Date();
+        this.sharedInstanceCache.status = 'qr_ready';
+        this.sharedInstanceCache.evoInstanceId = base.instanceId || this.sharedInstanceCache.evoInstanceId;
+        this.sharedInstanceCache.qrCode = qrCode;
+        this.sharedInstanceCache.qrText = qrText;
+        this.sharedInstanceCache.pairingCode = pairingCode;
+        this.sharedInstanceCache.qrGeneratedAt = now;
+        this.sharedInstanceCache.qrExpiresAt = this.qrExpiryDate(now);
+        this.sharedInstanceCache.lastError = null;
+        return { ok: true };
+      }
+
       const instance = await this.findInstanceByEvent(base);
       if (!instance) {
         return { ok: true, ignored: 'qr_unknown_instance' };
@@ -1129,6 +1168,28 @@ export class WhatsappService {
       evLower === 'connection_update' ||
       evLower === 'connection.update'
     ) {
+      // Verificar si es la instancia compartida de flota (en memoria, no en BD)
+      if (this.sharedInstanceCache && base.instanceName === this.sharedInstanceCache.instanceName) {
+        const data = asRecord(base.data);
+        const nextStatus = this.normalizeConnectionState(
+          this.readConnectionStateFromPayload(data),
+        );
+        const now = new Date();
+        this.sharedInstanceCache.status = nextStatus;
+        this.sharedInstanceCache.evoInstanceId = base.instanceId || this.sharedInstanceCache.evoInstanceId;
+        if (nextStatus === 'open') {
+          this.sharedInstanceCache.qrCode = null;
+          this.sharedInstanceCache.qrText = null;
+          this.sharedInstanceCache.pairingCode = null;
+          this.sharedInstanceCache.qrGeneratedAt = null;
+          this.sharedInstanceCache.qrExpiresAt = null;
+          this.sharedInstanceCache.lastError = null;
+        } else if (nextStatus === 'close') {
+          this.sharedInstanceCache.status = 'close';
+        }
+        return { ok: true };
+      }
+
       const instance = await this.findInstanceByEvent(base);
       if (!instance) {
         return { ok: true, ignored: 'connection_unknown_instance' };
@@ -1379,5 +1440,548 @@ export class WhatsappService {
       LIMIT 1
     `;
     return rows[0] ?? null;
+  }
+
+  // ─── Instancia compartida de Flota (sin BD, estado en memoria) ───
+
+  private sharedInstanceCache: {
+    instanceName: string;
+    instanceApiKey: string;
+    evoInstanceId: string | null;
+    status: string;
+    qrCode: string | null;
+    qrText: string | null;
+    pairingCode: string | null;
+    qrGeneratedAt: Date | null;
+    qrExpiresAt: Date | null;
+    lastError: string | null;
+  } | null = null;
+
+  private sharedInstanceName(): string {
+    const env = this.config.get<string>('EVOGO_INSTANCE_NAME')?.trim();
+    return env ? `${env}-flota` : 'crm-flota';
+  }
+
+  private serializeSharedInstance() {
+    if (!this.sharedInstanceCache) return null;
+    const i = this.sharedInstanceCache;
+    return {
+      instanceName: i.instanceName,
+      evoInstanceId: i.evoInstanceId,
+      status: i.status,
+      isConnected: i.status === 'open',
+      qrCode: i.qrCode,
+      qrText: i.qrText,
+      pairingCode: i.pairingCode,
+      qrGeneratedAt: i.qrGeneratedAt?.toISOString() ?? null,
+      qrExpiresAt: i.qrExpiresAt?.toISOString() ?? null,
+      lastError: i.lastError,
+    };
+  }
+
+  async getSharedConnection() {
+    if (this.sharedInstanceCache && this.sharedInstanceCache.instanceApiKey) {
+      try {
+        const remote = await this.evogo.connectionState({
+          instanceName: this.sharedInstanceCache.instanceName,
+          instanceApiKey: this.sharedInstanceCache.instanceApiKey,
+        });
+        const newStatus = this.normalizeConnectionState(remote.state);
+        this.sharedInstanceCache.status = newStatus;
+        if (newStatus === 'open') {
+          this.sharedInstanceCache.qrCode = null;
+          this.sharedInstanceCache.qrText = null;
+          this.sharedInstanceCache.pairingCode = null;
+          this.sharedInstanceCache.qrGeneratedAt = null;
+          this.sharedInstanceCache.qrExpiresAt = null;
+          this.sharedInstanceCache.lastError = null;
+        }
+      } catch {
+        // swallow — devolvemos lo que tengamos en caché
+      }
+    }
+
+    // Sin caché (tras reinicio del servidor): reconstruir desde env vars consultando Evolution GO
+    if (!this.sharedInstanceCache) {
+      const name = this.sharedInstanceName();
+      const key = this.defaultInstanceKey();
+      try {
+        const remote = await this.evogo.connectionState({
+          instanceName: name,
+          instanceApiKey: key,
+        });
+        const status = this.normalizeConnectionState(remote.state);
+        this.sharedInstanceCache = {
+          instanceName: name,
+          instanceApiKey: key,
+          evoInstanceId: this.defaultInstanceId(),
+          status,
+          qrCode: null,
+          qrText: null,
+          pairingCode: null,
+          qrGeneratedAt: null,
+          qrExpiresAt: null,
+          lastError: null,
+        };
+      } catch {
+        // No se pudo contactar Evolution GO — se muestra como desconectado
+      }
+    }
+
+    return {
+      canManage: this.personalConnectionsEnabled(),
+      instance: this.serializeSharedInstance(),
+    };
+  }
+
+  async connectSharedWhatsapp() {
+    if (!this.personalConnectionsEnabled()) {
+      throw new ServiceUnavailableException(
+        'Faltan EVOGO_MANAGER_API_KEY o EVOGO_WEBHOOK_URL para conectar el WhatsApp compartido de Flota',
+      );
+    }
+
+    const webhookUrl = this.webhookUrl();
+
+    // Si ya hay instancia en caché, intentar reconectar la existente
+    if (this.sharedInstanceCache?.instanceApiKey && this.sharedInstanceCache.status !== 'close') {
+      const cached = this.sharedInstanceCache;
+      try {
+        const remote = await this.evogo.connectionState({
+          instanceName: cached.instanceName,
+          instanceApiKey: cached.instanceApiKey,
+        });
+        const newStatus = this.normalizeConnectionState(remote.state);
+        cached.status = newStatus;
+        if (newStatus === 'open') {
+          cached.qrCode = null;
+          cached.qrText = null;
+          cached.pairingCode = null;
+          cached.qrGeneratedAt = null;
+          cached.qrExpiresAt = null;
+          cached.lastError = null;
+          return { canManage: true, instance: this.serializeSharedInstance() };
+        }
+        if (newStatus === 'close') {
+          // La instancia fue desconectada desde fuera → crear una nueva
+          this.sharedInstanceCache = null;
+        }
+      } catch {
+        // instancia no encontrada en Evolution → crear una nueva
+        this.sharedInstanceCache = null;
+      }
+
+      // Si la caché aún existe (status no es 'close'), intentar regenerar QR
+      if (this.sharedInstanceCache) {
+        try {
+          const qr = await this.evogo.connectInstance({
+            instanceName: cached.instanceName,
+            instanceApiKey: cached.instanceApiKey,
+            webhookUrl,
+          });
+          const now = new Date();
+          const hasQr = Boolean(qr.qrCode || qr.qrText);
+          cached.status = hasQr ? 'qr_ready' : 'pending';
+          cached.qrCode = qr.qrCode ?? null;
+          cached.qrText = qr.qrText ?? null;
+          cached.pairingCode = qr.pairingCode;
+          cached.qrGeneratedAt = hasQr ? now : null;
+          cached.qrExpiresAt = hasQr ? this.qrExpiryDate(now) : null;
+          cached.lastError = hasQr ? null : 'Evolution GO no devolvió el QR todavía. Intenta nuevamente.';
+          return { canManage: true, instance: this.serializeSharedInstance() };
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : 'No se pudo regenerar el QR';
+          this.logger.warn(`connectInstance falló para instancia compartida, se creará una nueva: ${msg}`);
+          this.sharedInstanceCache = null;
+        }
+      }
+    }
+
+    // Primera vez: crear instancia nueva (usando token fijo de env vars para persistir tras reinicio)
+    const name = this.sharedInstanceName();
+    const token = this.defaultInstanceKey();
+    let created;
+    try {
+      created = await this.evogo.createInstance({
+        instanceName: name,
+        webhook: { url: webhookUrl },
+        token,
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Error al crear instancia compartida';
+      throw new ServiceUnavailableException(msg);
+    }
+
+    const now = new Date();
+    const hasQr = Boolean(created.qrCode || created.qrText);
+
+    this.sharedInstanceCache = {
+      instanceName: created.instanceName,
+      instanceApiKey: created.instanceApiKey,
+      evoInstanceId: created.instanceId,
+      status: hasQr ? 'qr_ready' : this.normalizeConnectionState(created.status),
+      qrCode: created.qrCode,
+      qrText: created.qrText,
+      pairingCode: created.pairingCode,
+      qrGeneratedAt: hasQr ? now : null,
+      qrExpiresAt: hasQr ? this.qrExpiryDate(now) : null,
+      lastError: null,
+    };
+
+    if (this.sharedInstanceCache.status === 'open') {
+      return {
+        canManage: true,
+        instance: this.serializeSharedInstance(),
+      };
+    }
+
+    try {
+      const qr = await this.evogo.connectInstance({
+        instanceName: this.sharedInstanceCache.instanceName,
+        instanceApiKey: this.sharedInstanceCache.instanceApiKey,
+        webhookUrl,
+      });
+      const qrNow = new Date();
+      const hasConnectQr = Boolean(qr.qrCode || qr.qrText);
+      this.sharedInstanceCache.status = hasConnectQr ? 'qr_ready' : 'pending';
+      this.sharedInstanceCache.qrCode = qr.qrCode ?? null;
+      this.sharedInstanceCache.qrText = qr.qrText ?? null;
+      this.sharedInstanceCache.pairingCode = qr.pairingCode;
+      this.sharedInstanceCache.qrGeneratedAt = hasConnectQr ? qrNow : null;
+      this.sharedInstanceCache.qrExpiresAt = hasConnectQr ? this.qrExpiryDate(qrNow) : null;
+      this.sharedInstanceCache.lastError = hasConnectQr
+        ? null
+        : 'Evolution GO no devolvió el QR todavía. Intenta nuevamente en unos segundos.';
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'No se pudo generar el QR';
+      this.sharedInstanceCache.lastError = msg;
+      throw new ServiceUnavailableException(msg);
+    }
+
+    return {
+      canManage: true,
+      instance: this.serializeSharedInstance(),
+    };
+  }
+
+  async disconnectSharedWhatsapp() {
+    if (!this.sharedInstanceCache?.instanceApiKey) {
+      return { canManage: this.personalConnectionsEnabled(), instance: null };
+    }
+    try {
+      await this.evogo.logoutInstance({
+        instanceName: this.sharedInstanceCache.instanceName,
+        instanceApiKey: this.sharedInstanceCache.instanceApiKey,
+      });
+    } catch {
+      // Si Evolution GO no responde al logout, marcamos como desconectado igual
+    }
+    this.sharedInstanceCache.status = 'close';
+    this.sharedInstanceCache.qrCode = null;
+    this.sharedInstanceCache.qrText = null;
+    this.sharedInstanceCache.pairingCode = null;
+    this.sharedInstanceCache.qrGeneratedAt = null;
+    this.sharedInstanceCache.qrExpiresAt = null;
+    this.sharedInstanceCache.lastError = null;
+    return {
+      canManage: this.personalConnectionsEnabled(),
+      instance: this.serializeSharedInstance(),
+    };
+  }
+
+  async sendSharedTestMessage(dto: { number: string; text: string }) {
+    if (!this.sharedInstanceCache?.instanceApiKey) {
+      throw new ServiceUnavailableException(
+        'Primero conecta el WhatsApp compartido de Flota para enviar un mensaje de prueba',
+      );
+    }
+
+    if (this.sharedInstanceCache.status !== 'open') {
+      await this.getSharedConnection();
+    }
+
+    if (this.sharedInstanceCache.status !== 'open') {
+      throw new ServiceUnavailableException(
+        'El WhatsApp compartido de Flota aún no está conectado. Escanea el QR antes de enviar.',
+      );
+    }
+
+    const to = normalizePeWaNumber(dto.number);
+    if (to.length < 8) {
+      throw new ServiceUnavailableException(
+        'Ingresa un número de WhatsApp válido con código de país, sin signos ni espacios',
+      );
+    }
+
+    const text = dto.text.trim();
+    if (!text) {
+      throw new ServiceUnavailableException('El mensaje de prueba no puede estar vacío');
+    }
+
+    const sent = await this.evogo.sendText({
+      instanceApiKey: this.sharedInstanceCache.instanceApiKey,
+      number: to,
+      text,
+    });
+
+    if (!sent.ok) {
+      const msg =
+        typeof sent.raw === 'object' &&
+        sent.raw !== null &&
+        'error' in sent.raw
+          ? String((sent.raw as { error?: unknown }).error)
+          : `Evolution GO respondió ${sent.status}`;
+      throw new ServiceUnavailableException(`No se pudo enviar el mensaje: ${msg}`);
+    }
+
+    return { ok: true, to, waMessageId: sent.waMessageId ?? null };
+  }
+
+  private sharedEvoInstanceName(): string {
+    return this.sharedInstanceCache?.instanceName ?? this.sharedInstanceName();
+  }
+
+  async getConversations(query?: string) {
+    const instanceName = this.sharedEvoInstanceName();
+    const rows = await this.prisma.crmWhatsappMessage.findMany({
+      where: {
+        evoInstanceName: instanceName,
+        contactId: { not: null },
+      },
+      select: {
+        id: true,
+        direction: true,
+        body: true,
+        fromWaId: true,
+        toWaId: true,
+        createdAt: true,
+        waOutboundStatus: true,
+        contactId: true,
+        contact: {
+          select: { id: true, name: true, telefono: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 1000,
+    });
+
+    const grouped = new Map<string, {
+      contactId: string;
+      name: string;
+      phone: string;
+      lastMessage: string;
+      lastTime: Date;
+      lastDirection: string;
+      unread: number;
+    }>();
+
+    for (const row of rows) {
+      if (!row.contactId) continue;
+      const existing = grouped.get(row.contactId);
+      if (!existing) {
+        grouped.set(row.contactId, {
+          contactId: row.contactId,
+          name: row.contact?.name ?? row.fromWaId,
+          phone: row.contact?.telefono ?? row.fromWaId,
+          lastMessage: row.body.slice(0, 100),
+          lastTime: row.createdAt,
+          lastDirection: row.direction,
+          unread: row.direction === 'inbound' ? 1 : 0,
+        });
+      } else if (row.direction === 'inbound') {
+        existing.unread++;
+      }
+    }
+
+    let conversations = Array.from(grouped.values())
+      .sort((a, b) => b.lastTime.getTime() - a.lastTime.getTime());
+
+    if (query?.trim()) {
+      const q = query.trim().toLowerCase();
+      conversations = conversations.filter(
+        (c) =>
+          c.name.toLowerCase().includes(q) ||
+          c.phone.toLowerCase().includes(q) ||
+          c.lastMessage.toLowerCase().includes(q),
+      );
+    }
+
+    return conversations.map((c) => ({
+      id: c.contactId,
+      name: c.name,
+      phone: c.phone,
+      preview: c.lastMessage,
+      time: c.lastTime.toISOString(),
+      direction: c.lastDirection,
+      unread: Math.min(c.unread, 99),
+    }));
+  }
+
+  async sendBulk(dto: {
+    contactIds: string[];
+    text: string;
+  }, scope: any, userId: string) {
+    if (!this.sharedInstanceCache?.instanceApiKey) {
+      throw new ServiceUnavailableException(
+        'El WhatsApp compartido de Flota no está configurado. Conéctalo primero.',
+      );
+    }
+
+    if (this.sharedInstanceCache.status !== 'open') {
+      await this.getSharedConnection();
+    }
+
+    if (this.sharedInstanceCache.status !== 'open') {
+      throw new ServiceUnavailableException(
+        'La instancia compartida de WhatsApp no está conectada.',
+      );
+    }
+
+    const text = dto.text.trim();
+    if (!text) {
+      throw new BadRequestException('El mensaje no puede estar vacío');
+    }
+    if (!dto.contactIds?.length) {
+      throw new BadRequestException('Selecciona al menos un destinatario');
+    }
+
+    const sender = {
+      instanceApiKey: this.sharedInstanceCache.instanceApiKey,
+      evoInstanceId: this.sharedInstanceCache.evoInstanceId || this.defaultInstanceId(),
+      evoInstanceName: this.sharedInstanceCache.instanceName,
+      displayLineId: this.sharedInstanceCache.instanceName,
+    };
+
+    const results: Array<{ contactId: string; status: string; error?: string; messageId?: string }> = [];
+
+    for (const contactId of dto.contactIds) {
+      try {
+        const contact = await this.contactsService.findOne(contactId, scope);
+        const to = normalizePeWaNumber(contact.telefono);
+        if (to.length < 8) {
+          results.push({ contactId, status: 'fallido', error: 'Sin teléfono válido' });
+          continue;
+        }
+
+        const sent = await this.evogo.sendText({
+          instanceApiKey: sender.instanceApiKey,
+          number: to,
+          text,
+        });
+
+        if (!sent.ok) {
+          const errMsg = typeof sent.raw === 'object' && sent.raw !== null && 'error' in sent.raw
+            ? String((sent.raw as { error?: unknown }).error)
+            : `HTTP ${sent.status}`;
+          results.push({ contactId, status: 'fallido', error: errMsg });
+          continue;
+        }
+
+        const personalizedText = text
+          .replaceAll('{{nombre}}', contact.name ?? '')
+          .replaceAll('{{empresa}}', '')
+          .replaceAll('{{celular}}', contact.telefono ?? '');
+
+        const finalBody = personalizedText || text;
+
+        const row = await this.prisma.crmWhatsappMessage.create({
+          data: {
+            direction: 'outbound',
+            evoInstanceId: sender.evoInstanceId,
+            evoInstanceName: sender.evoInstanceName,
+            waMessageId: sent.waMessageId ?? null,
+            fromWaId: sender.displayLineId,
+            toWaId: to,
+            body: finalBody,
+            payloadJson: stripHeavyPayload(sent.raw) as Prisma.InputJsonValue,
+            contactId: contact.id,
+            createdByUserId: userId,
+            waOutboundStatus: 'sent',
+          },
+        });
+
+        await this.emitListItemById(contact.id, row.id);
+        results.push({ contactId, status: 'enviado', messageId: row.id });
+      } catch (e) {
+        results.push({
+          contactId,
+          status: 'fallido',
+          error: e instanceof Error ? e.message : 'Error desconocido',
+        });
+      }
+    }
+
+    return {
+      total: dto.contactIds.length,
+      enviados: results.filter((r) => r.status === 'enviado').length,
+      fallidos: results.filter((r) => r.status === 'fallido').length,
+      results,
+    };
+  }
+
+  async importExcelPreview(fileBuffer: Buffer) {
+    let workbook: XLSX.WorkBook;
+    try {
+      workbook = XLSX.read(fileBuffer, { type: 'buffer' });
+    } catch {
+      throw new BadRequestException('No se pudo leer el archivo. Asegúrate de que sea un .xlsx válido.');
+    }
+
+    const sheetName = workbook.SheetNames[0];
+    if (!sheetName) {
+      throw new BadRequestException('El archivo no contiene hojas.');
+    }
+
+    const sheet = workbook.Sheets[sheetName];
+    if (!sheet) {
+      throw new BadRequestException('No se pudo leer la hoja del archivo.');
+    }
+
+    const rows: Record<string, string>[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+    if (rows.length === 0) {
+      throw new BadRequestException('El archivo está vacío.');
+    }
+
+    const columns = Object.keys(rows[0]!);
+
+    const nameKey = columns.find((k) => {
+      const lower = k.trim().toLowerCase();
+      return lower === 'nombre' || lower === 'name' || lower === 'nombres' || lower === 'nombre completo';
+    }) ?? null;
+
+    const phoneKey = columns.find((k) => {
+      const lower = k.trim().toLowerCase();
+      return lower === 'telefono' || lower === 'celular' || lower === 'phone' || lower === 'teléfono' || lower === 'tel';
+    }) ?? null;
+
+    if (!phoneKey) {
+      throw new BadRequestException(
+        'No se encontró la columna de teléfono. El archivo debe tener una columna: telefono, celular, phone o tel.',
+      );
+    }
+
+    const items: Array<{ name: string; phone: string; contactId: string | null }> = [];
+    const phoneCache = new Map<string, string | null>();
+
+    for (const row of rows) {
+      const phone = digitsOnly(String(row[phoneKey] ?? ''));
+      if (!phone || phone.length < 8) continue;
+
+      let contactId: string | null = null;
+      if (phoneCache.has(phone)) {
+        contactId = phoneCache.get(phone) ?? null;
+      } else {
+        const contact = await this.findContactByLoosePhone(phone);
+        contactId = contact?.id ?? null;
+        phoneCache.set(phone, contactId);
+      }
+
+      const name = String(row[nameKey ?? ''] ?? '').trim() || phone;
+
+      items.push({ name, phone, contactId });
+    }
+
+    return { items, total: items.length };
   }
 }

@@ -1,8 +1,7 @@
-import { Users, Shield } from 'lucide-react';
+import { Users, Shield, Pencil, Trash2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Pencil } from 'lucide-react';
 import type { RBACRole, PermissionKey } from '@/types';
 import { allValidPermissionKeys } from '@/data/rbac';
 import { cn } from '@/lib/utils';
@@ -10,10 +9,11 @@ import { cn } from '@/lib/utils';
 interface RoleCardProps {
   role: RBACRole;
   onEdit?: (role: RBACRole) => void;
+  onDelete?: (role: RBACRole) => void;
   isDefault?: boolean;
 }
 
-export function RoleCard({ role, onEdit, isDefault }: RoleCardProps) {
+export function RoleCard({ role, onEdit, onDelete, isDefault }: RoleCardProps) {
   const validKeys = allValidPermissionKeys();
   const grantedCount = validKeys.filter(
     (k) => role.permissions[k as PermissionKey],
@@ -55,16 +55,27 @@ export function RoleCard({ role, onEdit, isDefault }: RoleCardProps) {
               </div>
             </div>
           </div>
-          {onEdit && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="shrink-0"
-              onClick={() => onEdit(role)}
-            >
-              <Pencil className="size-4" />
-            </Button>
-          )}
+          <div className="flex shrink-0 items-center gap-1">
+            {onEdit && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onEdit(role)}
+              >
+                <Pencil className="size-4" />
+              </Button>
+            )}
+            {onDelete && !isDefault && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-destructive hover:text-destructive"
+                onClick={() => onDelete(role)}
+              >
+                <Trash2 className="size-4" />
+              </Button>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>

@@ -1206,24 +1206,26 @@ export default function ContactosPage() {
             onAction={() => setNewContactOpen(true)}
           />
         ) : viewMode === "table" ? (
-          <ContactsTable
-            contacts={displayedContacts}
-            selectedContacts={selectedContacts}
-            onToggleSelectAll={toggleSelectAll}
-            onToggleSelect={toggleSelectContact}
-            allSelected={
-              selectedContacts.length === displayedContacts.length &&
-              displayedContacts.length > 0
-            }
-            isPendingContactId={isPendingContactId}
-            onView={openContactDetail}
-            onPreview={openContactPreview}
-            onEdit={openContactEdit}
-            onDelete={(id) => {
-              setContactToDelete(id);
-              setDeleteDialogOpen(true);
-            }}
-          />
+          <Card>
+            <ContactsTable
+              contacts={displayedContacts}
+              selectedContacts={selectedContacts}
+              onToggleSelectAll={toggleSelectAll}
+              onToggleSelect={toggleSelectContact}
+              allSelected={
+                selectedContacts.length === displayedContacts.length &&
+                displayedContacts.length > 0
+              }
+              isPendingContactId={isPendingContactId}
+              onView={openContactDetail}
+              onPreview={openContactPreview}
+              onEdit={openContactEdit}
+              onDelete={(id) => {
+                setContactToDelete(id);
+                setDeleteDialogOpen(true);
+              }}
+            />
+          </Card>
         ) : (
           <ContactsGrid
             contacts={displayedContacts}

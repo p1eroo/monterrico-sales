@@ -131,6 +131,7 @@ export default function UsersPage() {
   const canEditUser = hasPermission('usuarios.editar');
   const canCreateRole = hasPermission('roles.crear');
   const canEditRole = hasPermission('roles.editar');
+  const canDeleteRole = hasPermission('roles.eliminar');
 
   const { roles: apiRoles, loadRoles } = useRoles({ enabled: canViewRoles });
   const roles = useMemo(() => apiRoles.map(apiRoleToRBACRole), [apiRoles]);
@@ -149,6 +150,7 @@ export default function UsersPage() {
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
   const [selectedArea, setSelectedArea] = useState<'comercial' | 'flota' | 'general'>('comercial');
+  const [roleToDelete, setRoleToDelete] = useState<(RBACRole & { isSystem?: boolean }) | null>(null);
 
   const roleFilterOptions = useMemo(() => {
     if (roles.length > 0) {
@@ -345,6 +347,19 @@ export default function UsersPage() {
       toast.success('Permisos actualizados');
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'No se pudieron actualizar los permisos';
+      toast.error(msg);
+    }
+  }
+
+  async function handleDeleteRole() {
+    if (!roleToDelete) return;
+    try {
+      await api(`/roles/${roleToDelete.id}`, { method: 'DELETE' });
+      await loadRoles();
+      toast.success(`Rol "${roleToDelete.name}" eliminado`);
+      setRoleToDelete(null);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'No se pudo eliminar el rol';
       toast.error(msg);
     }
   }
@@ -663,6 +678,7 @@ export default function UsersPage() {
                 key={role.id}
                 role={role}
                 onEdit={canEditRole ? (r) => handleOpenEditRole(r) : undefined}
+                onDelete={canDeleteRole ? (r) => setRoleToDelete(r as RBACRole & { isSystem?: boolean }) : undefined}
                 isDefault={!!(role as RBACRole & { isSystem?: boolean }).isSystem}
               />
             ))}
@@ -765,6 +781,28 @@ export default function UsersPage() {
         onOpenChange={setCreateRoleOpen}
         onSave={handleCreateRole}
       />
+
+      <Dialog open={!!roleToDelete} onOpenChange={(open) => !open && setRoleToDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Eliminar rol</DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro de eliminar el rol "{roleToDelete?.name}"? Esta acción no se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRoleToDelete(null)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => void handleDeleteRole()}
+            >
+              Eliminar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

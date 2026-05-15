@@ -563,6 +563,7 @@ export class AnalyticsService {
     to?: string;
     advisorId?: string;
     source?: string;
+    area?: string;
     crmScope: CrmDataScope;
   }) {
     const { from, to } = this.resolveRange(opts.from, opts.to);
@@ -672,7 +673,10 @@ export class AnalyticsService {
       }),
       opts.crmScope.unrestricted
         ? this.prisma.user.findMany({
-            where: { role: { slug: ADVISOR_ROLE_SLUG } },
+            where: {
+              role: { slug: ADVISOR_ROLE_SLUG },
+              ...(opts.area ? { allowedAreas: { has: opts.area } } : {}),
+            },
             select: { id: true, name: true },
             orderBy: { name: 'asc' },
             take: 200,
@@ -1108,24 +1112,35 @@ export class AnalyticsService {
 
   /** Montos cerrados (ganadas) para metas: semana ISO actual y mes calendario UTC. */
   async getGoalProgress(
-    userId: string,
-    advisorFilter: string | undefined,
+    viewerUserId: string,
+    advisorId: string | undefined,
     crmScope: CrmDataScope,
+    area?: string,
   ) {
+    const isUnrestricted = crmScope.unrestricted;
+    const targetAdvisorId = isUnrestricted
+      ? advisorId?.trim() || undefined
+      : viewerUserId;
+
+    // Listado de asesores para dropdown (si es unrestricted)
+    const advisors = isUnrestricted
+      ? await this.prisma.user.findMany({
+          where: {
+            role: { slug: ADVISOR_ROLE_SLUG },
+            ...(area ? { allowedAreas: { has: area } } : {}),
+          },
+          select: { id: true, name: true },
+          orderBy: { name: 'asc' },
+        })
+      : [];
     const now = new Date();
     const weekStart = startOfUtcWeekMonday(now);
     const weekEnd = endOfUtcWeekSunday(now);
     const monthStart = startOfUtcMonth(now);
     const monthEnd = endOfUtcMonth(now);
 
-    const restrictTeam = !crmScope.unrestricted;
-    const targetUserId = restrictTeam
-      ? userId
-      : advisorFilter?.trim() || userId;
-
-    const portfolio = restrictTeam ? ({ assignedTo: userId } as const) : ({} as const);
-
-    const myPortfolio = {} as const;
+    const portfolio = isUnrestricted ? {} : { assignedTo: viewerUserId };
+    const myPortfolio = {};
 
     const [teamWeek, teamMonth, myWeek, myMonth] = await Promise.all([
       this.prisma.opportunity.aggregate({
@@ -1148,7 +1163,7 @@ export class AnalyticsService {
         where: {
           status: 'ganada',
           updatedAt: { gte: weekStart, lte: weekEnd },
-          assignedTo: targetUserId,
+          assignedTo: targetAdvisorId,
           ...myPortfolio,
         },
         _sum: { amount: true },
@@ -1157,7 +1172,7 @@ export class AnalyticsService {
         where: {
           status: 'ganada',
           updatedAt: { gte: monthStart, lte: monthEnd },
-          assignedTo: targetUserId,
+          assignedTo: targetAdvisorId,
           ...myPortfolio,
         },
         _sum: { amount: true },
@@ -1182,6 +1197,7 @@ export class AnalyticsService {
     to?: string;
     advisorId?: string;
     source?: string;
+    area?: string;
     crmScope: CrmDataScope;
   }) {
     const { from, to } = this.resolveRange(opts.from, opts.to);

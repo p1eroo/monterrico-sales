@@ -54,7 +54,7 @@ import {
 import { PageHeader } from "@/components/shared/PageHeader";
 import { CrmDataTableSkeleton } from "@/components/shared/CrmListPageSkeleton";
 import { getConductores, type Conductor } from "@/lib/flotaConductoresApi";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { formatCurrency, formatDate, formatDateDMY } from "@/lib/formatters";
 import { toast } from "sonner";
 
 const CONDUCTORES_MOCK = [
@@ -541,25 +541,28 @@ const stats = useMemo(() => {
         </Popover>
       </div>
 
-      <Card>
+      
+      <div className="min-w-0 w-full overflow-x-auto rounded-none border-t border-b bg-transparent">
         {loading ? (
-          <CrmDataTableSkeleton
-            columns={[
-              { label: "Conductor" },
-              { label: "DNI" },
-              { label: "Teléfono" },
-              { label: "Placa" },
-              { label: "Zona" },
-              { label: "Estado" },
-              { label: "Ingresos" },
-              { label: "" },
-            ]}
-            rows={5}
-            aria-label="Cargando conductores"
-          />
+            <CrmDataTableSkeleton
+              columns={[
+                { label: "Conductor" },
+                { label: "DNI" },
+                { label: "Teléfono" },
+                { label: "Placa" },
+                { label: "Zona" },
+                { label: "Estado" },
+                { label: "Ingresos" },
+                { label: "" },
+              ]}
+              rows={5}
+              aria-label="Cargando conductores"
+              className="bg-card"
+            />
         ) : (
-            <Table className="min-w-[1200px]">
-              <TableHeader>
+      <Card>
+            <Table containerClassName="overflow-visible" className="min-w-[1200px] bg-transparent">
+              <TableHeader className="bg-muted/30">
                 <TableRow>
                   <TableHead>Conductor</TableHead>
                   <TableHead>Código</TableHead>
@@ -577,7 +580,7 @@ const stats = useMemo(() => {
                 {paginatedConductores.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={8}
+                      colSpan={10}
                       className="py-12 text-center text-muted-foreground"
                     >
                       No se encontraron conductores con los filtros aplicados.
@@ -593,38 +596,51 @@ const stats = useMemo(() => {
                         <div className="flex items-center gap-3">
                           <div className="flex size-9 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-medium">
                             {conductor.nombres
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")}
+                              ? conductor.nombres
+                                .split(" ")
+                                .map((n) => n[0])
+                                .join("")
+                              : "—"}
                           </div>
                           <p className="font-medium">
                             {conductor.nombres} {conductor.apellidos}
                           </p>
                         </div>
                       </TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {conductor.codigo || "—"}
+                      </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {conductor.codigo}
+                        {conductor.tipodocumento || "—"}
                       </TableCell>
-                      <TableCell>{conductor.tipodocumento}</TableCell>
-                      <TableCell>{conductor.ndni}</TableCell>
+                      <TableCell>{conductor.ndni || "—"}</TableCell>
                       <TableCell>
-                        {conductor.telefonop} - {conductor.telefonos}
+                        {conductor.telefonop} {conductor.telefonos ? `/ ${conductor.telefonos}` : ""}
                       </TableCell>
-                      <TableCell className="font-medium">
-                        {conductor.nplaca}
+                      <TableCell>
+                        <Badge variant="outline" className="font-mono bg-zinc-50">
+                          {conductor.nplaca || "—"}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <Badge
                           variant="outline"
-                          className={`text-xs ${
-                            estadoColors[conductor.estado] || ""
-                          }`}
+                          className={cn(
+                            "text-xs",
+                            conductor.estado === "Activo" || conductor.estado === "ACTIVO"
+                              ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+                              : "bg-red-100 text-red-700 border-red-200"
+                          )}
                         >
                           {conductor.estado}
                         </Badge>
                       </TableCell>
-                      <TableCell>{conductor.agente}</TableCell>
-                      <TableCell>{formatDate(conductor.fechorregistro)}</TableCell>
+                      <TableCell className="text-muted-foreground text-xs">
+                        {conductor.agente || "—"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-xs">
+                        {conductor.fechorregistro ? formatDateDMY(conductor.fechorregistro) : "—"}
+                      </TableCell>
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -650,6 +666,7 @@ const stats = useMemo(() => {
                 )}
               </TableBody>
             </Table>
+      </Card>
         )}
 
         {!loading && totalPages > 1 && (
@@ -681,7 +698,7 @@ const stats = useMemo(() => {
             </div>
           </div>
         )}
-      </Card>
+      </div>
     </div>
   );
 }

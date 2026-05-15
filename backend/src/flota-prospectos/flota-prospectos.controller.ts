@@ -28,6 +28,7 @@ export class FlotaProspectosController {
     @Query('duplicados') duplicados?: string,
     @Query('mes') mes?: string,
     @Query('redSocial') redSocial?: string,
+    @Query('operador') operador?: string,
   ) {
     return this.service.findAll({
       page: page ? parseInt(page, 10) : 1,
@@ -37,6 +38,7 @@ export class FlotaProspectosController {
       duplicados: duplicados === 'true',
       mes: mes || undefined,
       redSocial: redSocial || undefined,
+      operador: operador || undefined,
     });
   }
 
