@@ -85,12 +85,13 @@ model User {
 }
 
 /**
- * Instancia/línea personal de WhatsApp conectada por cada asesor.
+ * Instancia/línea de WhatsApp conectada (personal por asesor, o compartida de flota).
  */
 model WhatsappInstance {
   id                 String               @id @default(cuid())
-  userId             String               @unique
-  user               User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId             String?              @unique
+  user               User?                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  instanceType       String               @default("personal")
   instanceName       String               @unique
   instanceApiKey     String
   evoInstanceId      String?              @unique
@@ -109,6 +110,7 @@ model WhatsappInstance {
   messages           CrmWhatsappMessage[]
 
   @@index([status])
+  @@index([instanceType])
 }
 
 /**

@@ -61,7 +61,7 @@ export class WhatsappController {
   }
 
   @Get('messages')
-  @RequirePermissions('contactos.ver')
+  @RequireAnyPermission('contactos.ver', 'flota_mensajes.ver', 'flota_prospectos.ver')
   async list(
     @Req() req: AuthedReq,
     @Query('contactId') contactId: string,
@@ -84,12 +84,12 @@ export class WhatsappController {
   }
 
   @Post('send')
-  @RequireAnyPermission('contactos.editar', 'campanas.editar')
+  @RequireAnyPermission('contactos.editar', 'campanas.editar', 'flota_mensajes.editar', 'flota_prospectos.editar')
   async send(@Req() req: AuthedReq, @Body() body: SendWhatsappDto) {
     const contactId = body.contactId?.trim();
     const text = body.text?.trim();
-    if (!contactId || !text) {
-      throw new BadRequestException('contactId y text son obligatorios');
+    if ((!contactId && !body.phone?.trim()) || !text) {
+      throw new BadRequestException('contactId (o phone) y text son obligatorios');
     }
     const scope = await this.crmDataScope.buildScope(
       req.user.userId,
@@ -99,6 +99,8 @@ export class WhatsappController {
       {
         contactId,
         text,
+        phone: body.phone?.trim(),
+        name: body.name?.trim(),
         instanceApiKey: body.instanceApiKey?.trim(),
       },
       scope,

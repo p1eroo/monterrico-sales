@@ -164,6 +164,7 @@ exports.Prisma.UserScalarFieldEnum = {
 exports.Prisma.WhatsappInstanceScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
+  instanceType: 'instanceType',
   instanceName: 'instanceName',
   instanceApiKey: 'instanceApiKey',
   evoInstanceId: 'evoInstanceId',

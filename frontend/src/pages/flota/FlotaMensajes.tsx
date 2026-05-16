@@ -29,6 +29,7 @@ import {
   Upload,
   StopCircle,
   Download,
+  Edit2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,10 +40,19 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui/dropdown-menu';
+import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { cn } from '@/lib/utils';
+import { api } from '@/lib/api';
 import { toast } from 'sonner';
 import {
   fetchSharedConnection,
@@ -537,7 +547,7 @@ function InboxView() {
       </aside>
 
       {activeId ? (
-        <ChatPanel contactId={activeId} conversations={conversations} />
+        <ChatPanel contactId={activeId} conversations={conversations} onContactUpdated={loadConversations} />
       ) : (
         <div className="flex items-center justify-center rounded-lg border border-border bg-card text-sm text-muted-foreground shadow-sm">
           Selecciona una conversación
@@ -547,12 +557,21 @@ function InboxView() {
   );
 }
 
-function ChatPanel({ contactId, conversations }: { contactId: string; conversations: FlotaConversation[] }) {
+function ChatPanel({ contactId, conversations, onContactUpdated }: { contactId: string; conversations: FlotaConversation[]; onContactUpdated: () => void }) {
   const [messages, setMessages] = useState<WhatsappMessageItem[]>([]);
   const [draft, setDraft] = useState('');
   const [loading, setLoading] = useState(true);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [savingName, setSavingName] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const convo = conversations.find((c) => c.id === contactId);
+
+  useEffect(() => {
+    if (editModalOpen) {
+      setEditName(convo?.name ?? '');
+    }
+  }, [editModalOpen, convo?.name]);
 
   useEffect(() => {
     void loadMessages();
@@ -585,6 +604,24 @@ function ChatPanel({ contactId, conversations }: { contactId: string; conversati
     }
   }
 
+  async function handleSaveName() {
+    if (!editName.trim()) return;
+    setSavingName(true);
+    try {
+      await api(`/contacts/${contactId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ name: editName.trim() }),
+      });
+      toast.success('Nombre actualizado');
+      setEditModalOpen(false);
+      onContactUpdated();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'No se pudo actualizar el nombre');
+    } finally {
+      setSavingName(false);
+    }
+  }
+
   return (
     <section className="flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm">
       <div className="flex items-center justify-between border-b px-5 py-3">
@@ -600,7 +637,16 @@ function ChatPanel({ contactId, conversations }: { contactId: string; conversati
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="icon"><Phone className="h-4 w-4" /></Button>
           <Button variant="ghost" size="icon"><Video className="h-4 w-4" /></Button>
-          <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setEditModalOpen(true)}>
+                <Edit2 className="mr-2 h-4 w-4" /> Editar contacto
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -665,6 +711,37 @@ function ChatPanel({ contactId, conversations }: { contactId: string; conversati
           </Button>
         </div>
       </div>
+
+      <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Contacto</DialogTitle>
+            <DialogDescription>
+              Modifica el nombre de este contacto. Se actualizará en el CRM.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Nombre</Label>
+              <Input 
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="Nombre del contacto"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void handleSaveName();
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditModalOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSaveName} disabled={savingName || !editName.trim()}>
+              {savingName && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Guardar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }
@@ -758,15 +835,15 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
       .replaceAll('{{celular}}', phoneVal);
   }
 
-  function effectiveContactsToSend(): Array<{ contactId: string; name: string; phone: string }> {
+  function effectiveContactsToSend(): Array<{ contactId: string | undefined; name: string; phone: string }> {
     if (source === 'crm') {
       return (contacts as FlotaConversation[])
         .filter((c) => selectedIds.has(c.id!))
-        .map((c) => ({ contactId: c.id!, name: c.name, phone: c.phone }));
+        .map((c) => ({ contactId: c.id ?? undefined, name: c.name, phone: c.phone }));
     }
     return (excelContacts as FlotaExcelContact[])
-      .filter((c) => selectedIds.has(c.phone) && c.contactId)
-      .map((c) => ({ contactId: c.contactId!, name: c.name, phone: c.phone }));
+      .filter((c) => selectedIds.has(c.phone))
+      .map((c) => ({ contactId: c.contactId ?? undefined, name: c.name, phone: c.phone }));
   }
 
   async function handleSend() {
@@ -815,7 +892,7 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
       });
 
       try {
-        await sendWhatsappMessage(t.contactId, finalText);
+        await sendWhatsappMessage(t.contactId, finalText, t.phone, t.name);
         results.push({ name: t.name, phone: t.phone, ok: true });
         setBulkProgress({
           total: targets.length,

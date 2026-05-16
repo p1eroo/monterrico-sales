@@ -67,18 +67,14 @@ export async function fetchWhatsappMessages(
 }
 
 export async function sendWhatsappMessage(
-  contactId: string,
+  contactId: string | undefined,
   text: string,
-): Promise<{
-  id: string;
-  direction: string;
-  toWaId: string;
-  waMessageId: string | null;
-  waOutboundStatus?: string | null;
-}> {
-  return api(`/api/whatsapp/send`, {
+  phone?: string,
+  name?: string,
+): Promise<{ ok: boolean; waMessageId: string | null }> {
+  return api<{ ok: boolean; waMessageId: string | null }>('/api/whatsapp/send', {
     method: 'POST',
-    body: JSON.stringify({ contactId, text }),
+    body: JSON.stringify({ contactId, text, phone, name }),
   });
 }
 

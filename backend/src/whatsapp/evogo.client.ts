@@ -451,34 +451,22 @@ export class EvogoClient {
     number: string;
     text: string;
   }): Promise<EvogoSendTextResult> {
-    const url = `${this.baseUrl()}/send/text`;
-    const res = await fetch(url, {
+    const res = await this.requestJsonWithManagerFallback('/send/text', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: params.instanceApiKey,
-      },
+      apiKey: params.instanceApiKey,
       body: JSON.stringify({
         number: params.number,
         text: params.text,
       }),
     });
 
-    let raw: unknown = null;
-    const textBody = await res.text();
-    try {
-      raw = textBody ? JSON.parse(textBody) : null;
-    } catch {
-      raw = { rawBody: textBody };
-    }
-
     if (!res.ok) {
-      this.logger.warn(`Evogo sendText HTTP ${res.status}: ${textBody.slice(0, 500)}`);
-      return { ok: false, status: res.status, raw };
+      this.logger.warn(`Evogo sendText HTTP ${res.status}: ${JSON.stringify(res.raw)?.slice(0, 500)}`);
+      return { ok: false, status: res.status, raw: res.raw };
     }
 
-    const waMessageId = this.tryExtractMessageId(raw);
-    return { ok: true, status: res.status, raw, waMessageId };
+    const waMessageId = this.tryExtractMessageId(res.raw);
+    return { ok: true, status: res.status, raw: res.raw, waMessageId };
   }
 
   private tryExtractMessageId(raw: unknown): string | undefined {

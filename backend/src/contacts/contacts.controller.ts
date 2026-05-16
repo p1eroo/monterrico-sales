@@ -17,6 +17,7 @@ import { LinkCompanyDto } from './dto/link-company.dto';
 import { LinkContactDto } from './dto/link-contact.dto';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
+import { RequireAnyPermission } from '../auth/decorators/require-any-permission.decorator';
 import { CrmDataScopeService } from '../auth/crm-data-scope.service';
 
 type AuthedReq = {
@@ -183,7 +184,7 @@ export class ContactsController {
   }
 
   @Get(':id')
-  @RequirePermissions('contactos.ver')
+  @RequireAnyPermission('contactos.ver', 'flota_prospectos.ver', 'flota_mensajes.ver')
   findOne(@Param('id') id: string, @Req() req: AuthedReq) {
     return this.crmDataScope
       .buildScope(req.user.userId, req.user.roleId)
@@ -191,7 +192,7 @@ export class ContactsController {
   }
 
   @Patch(':id')
-  @RequirePermissions('contactos.editar')
+  @RequireAnyPermission('contactos.editar', 'flota_prospectos.editar', 'flota_mensajes.editar')
   update(
     @Param('id') id: string,
     @Body() updateContactDto: UpdateContactDto,

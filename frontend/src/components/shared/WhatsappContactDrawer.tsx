@@ -248,7 +248,7 @@ export function WhatsappContactDrawer({
 }: WhatsappContactDrawerProps) {
   const { hasPermission } = usePermissions();
   const canSend =
-    hasPermission('contactos.editar') || hasPermission('campanas.editar');
+    hasPermission('contactos.editar') || hasPermission('campanas.editar') || hasPermission('flota_mensajes.editar') || hasPermission('flota_prospectos.editar');
 
   const [items, setItems] = useState<WhatsappMessageItem[]>([]);
   const [loading, setLoading] = useState(false);

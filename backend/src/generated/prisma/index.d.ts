@@ -35,7 +35,7 @@ export type Account = $Result.DefaultSelection<Prisma.$AccountPayload>
 export type User = $Result.DefaultSelection<Prisma.$UserPayload>
 /**
  * Model WhatsappInstance
- * * Instancia/línea personal de WhatsApp conectada por cada asesor.
+ * * Instancia/línea de WhatsApp conectada (personal por asesor, o compartida de flota).
  */
 export type WhatsappInstance = $Result.DefaultSelection<Prisma.$WhatsappInstancePayload>
 /**
@@ -9999,6 +9999,7 @@ export namespace Prisma {
   export type WhatsappInstanceMinAggregateOutputType = {
     id: string | null
     userId: string | null
+    instanceType: string | null
     instanceName: string | null
     instanceApiKey: string | null
     evoInstanceId: string | null
@@ -10019,6 +10020,7 @@ export namespace Prisma {
   export type WhatsappInstanceMaxAggregateOutputType = {
     id: string | null
     userId: string | null
+    instanceType: string | null
     instanceName: string | null
     instanceApiKey: string | null
     evoInstanceId: string | null
@@ -10039,6 +10041,7 @@ export namespace Prisma {
   export type WhatsappInstanceCountAggregateOutputType = {
     id: number
     userId: number
+    instanceType: number
     instanceName: number
     instanceApiKey: number
     evoInstanceId: number
@@ -10061,6 +10064,7 @@ export namespace Prisma {
   export type WhatsappInstanceMinAggregateInputType = {
     id?: true
     userId?: true
+    instanceType?: true
     instanceName?: true
     instanceApiKey?: true
     evoInstanceId?: true
@@ -10081,6 +10085,7 @@ export namespace Prisma {
   export type WhatsappInstanceMaxAggregateInputType = {
     id?: true
     userId?: true
+    instanceType?: true
     instanceName?: true
     instanceApiKey?: true
     evoInstanceId?: true
@@ -10101,6 +10106,7 @@ export namespace Prisma {
   export type WhatsappInstanceCountAggregateInputType = {
     id?: true
     userId?: true
+    instanceType?: true
     instanceName?: true
     instanceApiKey?: true
     evoInstanceId?: true
@@ -10193,7 +10199,8 @@ export namespace Prisma {
 
   export type WhatsappInstanceGroupByOutputType = {
     id: string
-    userId: string
+    userId: string | null
+    instanceType: string
     instanceName: string
     instanceApiKey: string
     evoInstanceId: string | null
@@ -10231,6 +10238,7 @@ export namespace Prisma {
   export type WhatsappInstanceSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
     userId?: boolean
+    instanceType?: boolean
     instanceName?: boolean
     instanceApiKey?: boolean
     evoInstanceId?: boolean
@@ -10246,7 +10254,7 @@ export namespace Prisma {
     lastError?: boolean
     createdAt?: boolean
     updatedAt?: boolean
-    user?: boolean | UserDefaultArgs<ExtArgs>
+    user?: boolean | WhatsappInstance$userArgs<ExtArgs>
     messages?: boolean | WhatsappInstance$messagesArgs<ExtArgs>
     _count?: boolean | WhatsappInstanceCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["whatsappInstance"]>
@@ -10254,6 +10262,7 @@ export namespace Prisma {
   export type WhatsappInstanceSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
     userId?: boolean
+    instanceType?: boolean
     instanceName?: boolean
     instanceApiKey?: boolean
     evoInstanceId?: boolean
@@ -10269,12 +10278,13 @@ export namespace Prisma {
     lastError?: boolean
     createdAt?: boolean
     updatedAt?: boolean
-    user?: boolean | UserDefaultArgs<ExtArgs>
+    user?: boolean | WhatsappInstance$userArgs<ExtArgs>
   }, ExtArgs["result"]["whatsappInstance"]>
 
   export type WhatsappInstanceSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
     userId?: boolean
+    instanceType?: boolean
     instanceName?: boolean
     instanceApiKey?: boolean
     evoInstanceId?: boolean
@@ -10290,12 +10300,13 @@ export namespace Prisma {
     lastError?: boolean
     createdAt?: boolean
     updatedAt?: boolean
-    user?: boolean | UserDefaultArgs<ExtArgs>
+    user?: boolean | WhatsappInstance$userArgs<ExtArgs>
   }, ExtArgs["result"]["whatsappInstance"]>
 
   export type WhatsappInstanceSelectScalar = {
     id?: boolean
     userId?: boolean
+    instanceType?: boolean
     instanceName?: boolean
     instanceApiKey?: boolean
     evoInstanceId?: boolean
@@ -10313,28 +10324,29 @@ export namespace Prisma {
     updatedAt?: boolean
   }
 
-  export type WhatsappInstanceOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "userId" | "instanceName" | "instanceApiKey" | "evoInstanceId" | "displayLineId" | "status" | "qrCode" | "qrText" | "pairingCode" | "qrGeneratedAt" | "qrExpiresAt" | "lastConnectedAt" | "lastDisconnectedAt" | "lastError" | "createdAt" | "updatedAt", ExtArgs["result"]["whatsappInstance"]>
+  export type WhatsappInstanceOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "userId" | "instanceType" | "instanceName" | "instanceApiKey" | "evoInstanceId" | "displayLineId" | "status" | "qrCode" | "qrText" | "pairingCode" | "qrGeneratedAt" | "qrExpiresAt" | "lastConnectedAt" | "lastDisconnectedAt" | "lastError" | "createdAt" | "updatedAt", ExtArgs["result"]["whatsappInstance"]>
   export type WhatsappInstanceInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    user?: boolean | UserDefaultArgs<ExtArgs>
+    user?: boolean | WhatsappInstance$userArgs<ExtArgs>
     messages?: boolean | WhatsappInstance$messagesArgs<ExtArgs>
     _count?: boolean | WhatsappInstanceCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type WhatsappInstanceIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    user?: boolean | UserDefaultArgs<ExtArgs>
+    user?: boolean | WhatsappInstance$userArgs<ExtArgs>
   }
   export type WhatsappInstanceIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    user?: boolean | UserDefaultArgs<ExtArgs>
+    user?: boolean | WhatsappInstance$userArgs<ExtArgs>
   }
 
   export type $WhatsappInstancePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "WhatsappInstance"
     objects: {
-      user: Prisma.$UserPayload<ExtArgs>
+      user: Prisma.$UserPayload<ExtArgs> | null
       messages: Prisma.$CrmWhatsappMessagePayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
-      userId: string
+      userId: string | null
+      instanceType: string
       instanceName: string
       instanceApiKey: string
       evoInstanceId: string | null
@@ -10744,7 +10756,7 @@ export namespace Prisma {
    */
   export interface Prisma__WhatsappInstanceClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
-    user<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    user<T extends WhatsappInstance$userArgs<ExtArgs> = {}>(args?: Subset<T, WhatsappInstance$userArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     messages<T extends WhatsappInstance$messagesArgs<ExtArgs> = {}>(args?: Subset<T, WhatsappInstance$messagesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmWhatsappMessagePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
@@ -10777,6 +10789,7 @@ export namespace Prisma {
   interface WhatsappInstanceFieldRefs {
     readonly id: FieldRef<"WhatsappInstance", 'String'>
     readonly userId: FieldRef<"WhatsappInstance", 'String'>
+    readonly instanceType: FieldRef<"WhatsappInstance", 'String'>
     readonly instanceName: FieldRef<"WhatsappInstance", 'String'>
     readonly instanceApiKey: FieldRef<"WhatsappInstance", 'String'>
     readonly evoInstanceId: FieldRef<"WhatsappInstance", 'String'>
@@ -11190,6 +11203,25 @@ export namespace Prisma {
      * Limit how many WhatsappInstances to delete.
      */
     limit?: number
+  }
+
+  /**
+   * WhatsappInstance.user
+   */
+  export type WhatsappInstance$userArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the User
+     */
+    select?: UserSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the User
+     */
+    omit?: UserOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserInclude<ExtArgs> | null
+    where?: UserWhereInput
   }
 
   /**
@@ -52207,6 +52239,7 @@ export namespace Prisma {
   export const WhatsappInstanceScalarFieldEnum: {
     id: 'id',
     userId: 'userId',
+    instanceType: 'instanceType',
     instanceName: 'instanceName',
     instanceApiKey: 'instanceApiKey',
     evoInstanceId: 'evoInstanceId',
@@ -53191,7 +53224,8 @@ export namespace Prisma {
     OR?: WhatsappInstanceWhereInput[]
     NOT?: WhatsappInstanceWhereInput | WhatsappInstanceWhereInput[]
     id?: StringFilter<"WhatsappInstance"> | string
-    userId?: StringFilter<"WhatsappInstance"> | string
+    userId?: StringNullableFilter<"WhatsappInstance"> | string | null
+    instanceType?: StringFilter<"WhatsappInstance"> | string
     instanceName?: StringFilter<"WhatsappInstance"> | string
     instanceApiKey?: StringFilter<"WhatsappInstance"> | string
     evoInstanceId?: StringNullableFilter<"WhatsappInstance"> | string | null
@@ -53207,13 +53241,14 @@ export namespace Prisma {
     lastError?: StringNullableFilter<"WhatsappInstance"> | string | null
     createdAt?: DateTimeFilter<"WhatsappInstance"> | Date | string
     updatedAt?: DateTimeFilter<"WhatsappInstance"> | Date | string
-    user?: XOR<UserScalarRelationFilter, UserWhereInput>
+    user?: XOR<UserNullableScalarRelationFilter, UserWhereInput> | null
     messages?: CrmWhatsappMessageListRelationFilter
   }
 
   export type WhatsappInstanceOrderByWithRelationInput = {
     id?: SortOrder
-    userId?: SortOrder
+    userId?: SortOrderInput | SortOrder
+    instanceType?: SortOrder
     instanceName?: SortOrder
     instanceApiKey?: SortOrder
     evoInstanceId?: SortOrderInput | SortOrder
@@ -53241,6 +53276,7 @@ export namespace Prisma {
     AND?: WhatsappInstanceWhereInput | WhatsappInstanceWhereInput[]
     OR?: WhatsappInstanceWhereInput[]
     NOT?: WhatsappInstanceWhereInput | WhatsappInstanceWhereInput[]
+    instanceType?: StringFilter<"WhatsappInstance"> | string
     instanceApiKey?: StringFilter<"WhatsappInstance"> | string
     displayLineId?: StringNullableFilter<"WhatsappInstance"> | string | null
     status?: StringFilter<"WhatsappInstance"> | string
@@ -53254,13 +53290,14 @@ export namespace Prisma {
     lastError?: StringNullableFilter<"WhatsappInstance"> | string | null
     createdAt?: DateTimeFilter<"WhatsappInstance"> | Date | string
     updatedAt?: DateTimeFilter<"WhatsappInstance"> | Date | string
-    user?: XOR<UserScalarRelationFilter, UserWhereInput>
+    user?: XOR<UserNullableScalarRelationFilter, UserWhereInput> | null
     messages?: CrmWhatsappMessageListRelationFilter
   }, "id" | "userId" | "instanceName" | "evoInstanceId">
 
   export type WhatsappInstanceOrderByWithAggregationInput = {
     id?: SortOrder
-    userId?: SortOrder
+    userId?: SortOrderInput | SortOrder
+    instanceType?: SortOrder
     instanceName?: SortOrder
     instanceApiKey?: SortOrder
     evoInstanceId?: SortOrderInput | SortOrder
@@ -53286,7 +53323,8 @@ export namespace Prisma {
     OR?: WhatsappInstanceScalarWhereWithAggregatesInput[]
     NOT?: WhatsappInstanceScalarWhereWithAggregatesInput | WhatsappInstanceScalarWhereWithAggregatesInput[]
     id?: StringWithAggregatesFilter<"WhatsappInstance"> | string
-    userId?: StringWithAggregatesFilter<"WhatsappInstance"> | string
+    userId?: StringNullableWithAggregatesFilter<"WhatsappInstance"> | string | null
+    instanceType?: StringWithAggregatesFilter<"WhatsappInstance"> | string
     instanceName?: StringWithAggregatesFilter<"WhatsappInstance"> | string
     instanceApiKey?: StringWithAggregatesFilter<"WhatsappInstance"> | string
     evoInstanceId?: StringNullableWithAggregatesFilter<"WhatsappInstance"> | string | null
@@ -56352,6 +56390,7 @@ export namespace Prisma {
 
   export type WhatsappInstanceCreateInput = {
     id?: string
+    instanceType?: string
     instanceName: string
     instanceApiKey: string
     evoInstanceId?: string | null
@@ -56367,13 +56406,14 @@ export namespace Prisma {
     lastError?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
-    user: UserCreateNestedOneWithoutWhatsappInstanceInput
+    user?: UserCreateNestedOneWithoutWhatsappInstanceInput
     messages?: CrmWhatsappMessageCreateNestedManyWithoutWhatsappInstanceInput
   }
 
   export type WhatsappInstanceUncheckedCreateInput = {
     id?: string
-    userId: string
+    userId?: string | null
+    instanceType?: string
     instanceName: string
     instanceApiKey: string
     evoInstanceId?: string | null
@@ -56394,6 +56434,7 @@ export namespace Prisma {
 
   export type WhatsappInstanceUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
+    instanceType?: StringFieldUpdateOperationsInput | string
     instanceName?: StringFieldUpdateOperationsInput | string
     instanceApiKey?: StringFieldUpdateOperationsInput | string
     evoInstanceId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -56409,13 +56450,14 @@ export namespace Prisma {
     lastError?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    user?: UserUpdateOneRequiredWithoutWhatsappInstanceNestedInput
+    user?: UserUpdateOneWithoutWhatsappInstanceNestedInput
     messages?: CrmWhatsappMessageUpdateManyWithoutWhatsappInstanceNestedInput
   }
 
   export type WhatsappInstanceUncheckedUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
-    userId?: StringFieldUpdateOperationsInput | string
+    userId?: NullableStringFieldUpdateOperationsInput | string | null
+    instanceType?: StringFieldUpdateOperationsInput | string
     instanceName?: StringFieldUpdateOperationsInput | string
     instanceApiKey?: StringFieldUpdateOperationsInput | string
     evoInstanceId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -56436,7 +56478,8 @@ export namespace Prisma {
 
   export type WhatsappInstanceCreateManyInput = {
     id?: string
-    userId: string
+    userId?: string | null
+    instanceType?: string
     instanceName: string
     instanceApiKey: string
     evoInstanceId?: string | null
@@ -56456,6 +56499,7 @@ export namespace Prisma {
 
   export type WhatsappInstanceUpdateManyMutationInput = {
     id?: StringFieldUpdateOperationsInput | string
+    instanceType?: StringFieldUpdateOperationsInput | string
     instanceName?: StringFieldUpdateOperationsInput | string
     instanceApiKey?: StringFieldUpdateOperationsInput | string
     evoInstanceId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -56475,7 +56519,8 @@ export namespace Prisma {
 
   export type WhatsappInstanceUncheckedUpdateManyInput = {
     id?: StringFieldUpdateOperationsInput | string
-    userId?: StringFieldUpdateOperationsInput | string
+    userId?: NullableStringFieldUpdateOperationsInput | string | null
+    instanceType?: StringFieldUpdateOperationsInput | string
     instanceName?: StringFieldUpdateOperationsInput | string
     instanceApiKey?: StringFieldUpdateOperationsInput | string
     evoInstanceId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -59873,9 +59918,15 @@ export namespace Prisma {
     _max?: NestedDateTimeNullableFilter<$PrismaModel>
   }
 
+  export type UserNullableScalarRelationFilter = {
+    is?: UserWhereInput | null
+    isNot?: UserWhereInput | null
+  }
+
   export type WhatsappInstanceCountOrderByAggregateInput = {
     id?: SortOrder
     userId?: SortOrder
+    instanceType?: SortOrder
     instanceName?: SortOrder
     instanceApiKey?: SortOrder
     evoInstanceId?: SortOrder
@@ -59896,6 +59947,7 @@ export namespace Prisma {
   export type WhatsappInstanceMaxOrderByAggregateInput = {
     id?: SortOrder
     userId?: SortOrder
+    instanceType?: SortOrder
     instanceName?: SortOrder
     instanceApiKey?: SortOrder
     evoInstanceId?: SortOrder
@@ -59916,6 +59968,7 @@ export namespace Prisma {
   export type WhatsappInstanceMinOrderByAggregateInput = {
     id?: SortOrder
     userId?: SortOrder
+    instanceType?: SortOrder
     instanceName?: SortOrder
     instanceApiKey?: SortOrder
     evoInstanceId?: SortOrder
@@ -60028,11 +60081,6 @@ export namespace Prisma {
     _count?: NestedIntNullableFilter<$PrismaModel>
     _min?: NestedJsonNullableFilter<$PrismaModel>
     _max?: NestedJsonNullableFilter<$PrismaModel>
-  }
-
-  export type UserNullableScalarRelationFilter = {
-    is?: UserWhereInput | null
-    isNot?: UserWhereInput | null
   }
 
   export type ActivityLogCountOrderByAggregateInput = {
@@ -62465,10 +62513,12 @@ export namespace Prisma {
     connect?: CrmWhatsappMessageWhereUniqueInput | CrmWhatsappMessageWhereUniqueInput[]
   }
 
-  export type UserUpdateOneRequiredWithoutWhatsappInstanceNestedInput = {
+  export type UserUpdateOneWithoutWhatsappInstanceNestedInput = {
     create?: XOR<UserCreateWithoutWhatsappInstanceInput, UserUncheckedCreateWithoutWhatsappInstanceInput>
     connectOrCreate?: UserCreateOrConnectWithoutWhatsappInstanceInput
     upsert?: UserUpsertWithoutWhatsappInstanceInput
+    disconnect?: UserWhereInput | boolean
+    delete?: UserWhereInput | boolean
     connect?: UserWhereUniqueInput
     update?: XOR<XOR<UserUpdateToOneWithWhereWithoutWhatsappInstanceInput, UserUpdateWithoutWhatsappInstanceInput>, UserUncheckedUpdateWithoutWhatsappInstanceInput>
   }
@@ -65283,6 +65333,7 @@ export namespace Prisma {
 
   export type WhatsappInstanceCreateWithoutUserInput = {
     id?: string
+    instanceType?: string
     instanceName: string
     instanceApiKey: string
     evoInstanceId?: string | null
@@ -65303,6 +65354,7 @@ export namespace Prisma {
 
   export type WhatsappInstanceUncheckedCreateWithoutUserInput = {
     id?: string
+    instanceType?: string
     instanceName: string
     instanceApiKey: string
     evoInstanceId?: string | null
@@ -65891,6 +65943,7 @@ export namespace Prisma {
 
   export type WhatsappInstanceUpdateWithoutUserInput = {
     id?: StringFieldUpdateOperationsInput | string
+    instanceType?: StringFieldUpdateOperationsInput | string
     instanceName?: StringFieldUpdateOperationsInput | string
     instanceApiKey?: StringFieldUpdateOperationsInput | string
     evoInstanceId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -65911,6 +65964,7 @@ export namespace Prisma {
 
   export type WhatsappInstanceUncheckedUpdateWithoutUserInput = {
     id?: StringFieldUpdateOperationsInput | string
+    instanceType?: StringFieldUpdateOperationsInput | string
     instanceName?: StringFieldUpdateOperationsInput | string
     instanceApiKey?: StringFieldUpdateOperationsInput | string
     evoInstanceId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -68068,6 +68122,7 @@ export namespace Prisma {
 
   export type WhatsappInstanceCreateWithoutMessagesInput = {
     id?: string
+    instanceType?: string
     instanceName: string
     instanceApiKey: string
     evoInstanceId?: string | null
@@ -68083,12 +68138,13 @@ export namespace Prisma {
     lastError?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
-    user: UserCreateNestedOneWithoutWhatsappInstanceInput
+    user?: UserCreateNestedOneWithoutWhatsappInstanceInput
   }
 
   export type WhatsappInstanceUncheckedCreateWithoutMessagesInput = {
     id?: string
-    userId: string
+    userId?: string | null
+    instanceType?: string
     instanceName: string
     instanceApiKey: string
     evoInstanceId?: string | null
@@ -68256,6 +68312,7 @@ export namespace Prisma {
 
   export type WhatsappInstanceUpdateWithoutMessagesInput = {
     id?: StringFieldUpdateOperationsInput | string
+    instanceType?: StringFieldUpdateOperationsInput | string
     instanceName?: StringFieldUpdateOperationsInput | string
     instanceApiKey?: StringFieldUpdateOperationsInput | string
     evoInstanceId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -68271,12 +68328,13 @@ export namespace Prisma {
     lastError?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    user?: UserUpdateOneRequiredWithoutWhatsappInstanceNestedInput
+    user?: UserUpdateOneWithoutWhatsappInstanceNestedInput
   }
 
   export type WhatsappInstanceUncheckedUpdateWithoutMessagesInput = {
     id?: StringFieldUpdateOperationsInput | string
-    userId?: StringFieldUpdateOperationsInput | string
+    userId?: NullableStringFieldUpdateOperationsInput | string | null
+    instanceType?: StringFieldUpdateOperationsInput | string
     instanceName?: StringFieldUpdateOperationsInput | string
     instanceApiKey?: StringFieldUpdateOperationsInput | string
     evoInstanceId?: NullableStringFieldUpdateOperationsInput | string | null
