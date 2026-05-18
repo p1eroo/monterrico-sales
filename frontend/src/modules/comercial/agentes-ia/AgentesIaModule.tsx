@@ -56,6 +56,7 @@ import {
   LayoutGrid,
   Sparkles,
   Eye,
+  Plus,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useAgentesIaStore } from './store';
@@ -148,6 +149,7 @@ export function AgentesIaModule() {
   const [newRuleOpen, setNewRuleOpen] = useState(false);
   const [logDetail, setLogDetail] = useState<MockLog | null>(null);
   const [logSheetOpen, setLogSheetOpen] = useState(false);
+  const [filterChannel, setFilterChannel] = useState('todos');
 
   const [logType, setLogType] = useState<string>('all');
   const [logMode, setLogMode] = useState<string>('all');
@@ -358,8 +360,8 @@ export function AgentesIaModule() {
             >
               Nueva base de conocimiento
             </Button>
-          </div>
-          <Card>
+            </div>
+          <div className="overflow-x-auto rounded-xl bg-background">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -412,7 +414,7 @@ export function AgentesIaModule() {
                 )}
               </TableBody>
             </Table>
-          </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="router" className="mt-0 space-y-4">
@@ -426,8 +428,8 @@ export function AgentesIaModule() {
             >
               Nueva regla
             </Button>
-          </div>
-          <Card>
+            </div>
+          <div className="overflow-x-auto rounded-xl bg-background">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -456,19 +458,36 @@ export function AgentesIaModule() {
                 ))}
               </TableBody>
             </Table>
-          </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="contactos" className="mt-0 space-y-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Contactos enlazados</CardTitle>
-              <CardDescription>
-                Conversaciones atendidas o co-atendidas por agentes.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Table>
+            <div className="grid gap-2">
+              <Label className="text-xs">Canal</Label>
+              <Select value={filterChannel} onValueChange={setFilterChannel}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos</SelectItem>
+                  <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                  <SelectItem value="web">Web</SelectItem>
+                  <SelectItem value="facebook">Facebook</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setNewRuleOpen(true)}
+              >
+                <Plus className="mr-1 size-4" />
+                Nueva regla
+              </Button>
+            </div>
+          <div className="overflow-x-auto rounded-xl bg-background">
+            <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Ref. externa</TableHead>
@@ -500,8 +519,7 @@ export function AgentesIaModule() {
                   ))}
                 </TableBody>
               </Table>
-            </CardContent>
-          </Card>
+            </div>
         </TabsContent>
 
         <TabsContent value="supervision" className="mt-0 space-y-4">

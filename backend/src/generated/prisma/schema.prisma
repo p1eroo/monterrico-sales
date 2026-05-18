@@ -463,6 +463,11 @@ model CrmWhatsappMessage {
   payloadJson        Json?
   contactId          String?
   contact            Contact?          @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  /**
+   * ID del prospecto de Flota asociado a este mensaje (normalizado por teléfono).
+   */
+  flotaProspectoId   String?
+  flotaProspecto     FlotaProspecto?   @relation(fields: [flotaProspectoId], references: [id], onDelete: SetNull)
   whatsappInstanceId String?
   whatsappInstance   WhatsappInstance? @relation(fields: [whatsappInstanceId], references: [id], onDelete: SetNull)
   createdByUserId    String?
@@ -476,6 +481,7 @@ model CrmWhatsappMessage {
   @@index([contactId, createdAt])
   @@index([evoInstanceId, waMessageId])
   @@index([whatsappInstanceId, createdAt])
+  @@index([flotaProspectoId, createdAt])
 }
 
 model Company {
@@ -798,6 +804,8 @@ model FlotaProspecto {
   esDuplicado     Boolean   @default(false)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+
+  whatsappMessages CrmWhatsappMessage[]
 
   @@index([celular])
   @@index([estado])

@@ -1181,7 +1181,7 @@ export default function EmpresasPage() {
             onAction={() => setNewEmpresaOpen(true)}
           />
         ) : viewMode === 'table' ? (
-          <Card>
+          <div className="overflow-x-auto rounded-xl bg-background">
             <Table className="min-w-[1200px]">
               <TableHeader>
                 <TableRow>
@@ -1298,7 +1298,7 @@ export default function EmpresasPage() {
                 })}
               </TableBody>
             </Table>
-          </Card>
+          </div>
         ) : (
           <div className="grid w-full grid-cols-1 gap-3 px-0 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {displayRows.map((emp) => {

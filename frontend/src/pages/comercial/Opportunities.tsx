@@ -799,7 +799,7 @@ function OpportunitiesTable({
   canDelete: boolean;
 }) {
   return (
-    <Card>
+    <div className="overflow-x-auto rounded-xl bg-background">
       <Table>
         <TableHeader>
           <TableRow>
@@ -934,7 +934,7 @@ function OpportunitiesTable({
           })}
         </TableBody>
       </Table>
-    </Card>
+    </div>
   );
 }
 

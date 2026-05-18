@@ -1206,7 +1206,7 @@ export default function ContactosPage() {
             onAction={() => setNewContactOpen(true)}
           />
         ) : viewMode === "table" ? (
-          <Card>
+          <div className="overflow-x-auto rounded-xl bg-background">
             <ContactsTable
               contacts={displayedContacts}
               selectedContacts={selectedContacts}
@@ -1225,7 +1225,7 @@ export default function ContactosPage() {
                 setDeleteDialogOpen(true);
               }}
             />
-          </Card>
+          </div>
         ) : (
           <ContactsGrid
             contacts={displayedContacts}

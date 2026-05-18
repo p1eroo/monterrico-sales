@@ -11,8 +11,8 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 import { useTheme } from "next-themes";
-import bgClaro from "@/assets/select_claro.png";
-import bgOscuro from "@/assets/select_oscuro.png";
+import bgClaro from "@/assets/select_claro.webp";
+import bgOscuro from "@/assets/select_oscuro.webp";
 
 const areas = [
   {
@@ -70,7 +70,7 @@ export default function AreaSelect() {
       className="flex min-h-screen flex-col items-center justify-center p-4 transition-all duration-500"
       style={{
         ...backgroundStyle,
-        fontFamily: "'Inter', sans-serif",
+        fontFamily: "'Poppins', sans-serif",
       }}
     >
       {/* Botón de Administrador arriba a la derecha */}

@@ -542,7 +542,7 @@ const stats = useMemo(() => {
       </div>
 
       
-      <div className="min-w-0 w-full overflow-x-auto rounded-none border-t border-b bg-transparent">
+      <div className="overflow-x-auto rounded-xl bg-background">
         {loading ? (
             <CrmDataTableSkeleton
               columns={[
@@ -560,9 +560,8 @@ const stats = useMemo(() => {
               className="bg-card"
             />
         ) : (
-      <Card>
             <Table containerClassName="overflow-visible" className="min-w-[1200px] bg-transparent">
-              <TableHeader className="bg-muted/30">
+              <TableHeader>
                 <TableRow>
                   <TableHead>Conductor</TableHead>
                   <TableHead>Código</TableHead>
@@ -590,7 +589,7 @@ const stats = useMemo(() => {
                   paginatedConductores.map((conductor) => (
                     <TableRow
                       key={conductor.id}
-                      className="cursor-pointer hover:bg-muted/50"
+                      className="cursor-pointer hover:bg-[#f8faf9]"
                     >
                       <TableCell>
                         <div className="flex items-center gap-3">
@@ -666,7 +665,6 @@ const stats = useMemo(() => {
                 )}
               </TableBody>
             </Table>
-      </Card>
         )}
 
         {!loading && totalPages > 1 && (

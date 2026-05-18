@@ -22,8 +22,8 @@ import { useAnalyticsGoalStore } from '@/store/analyticsGoalStore';
 import { AiAssistantDrawer } from '@/components/assistant/AiAssistantDrawer';
 import { ImportJobsPanel } from './ImportJobsPanel';
 import { useTheme } from 'next-themes';
-import bgClaro from '@/assets/select_claro.png';
-import bgOscuro from '@/assets/select_oscuro.png';
+import bgClaro from '@/assets/select_claro.webp';
+import bgOscuro from '@/assets/select_oscuro.webp';
 
 /** Toggle en la costura sidebar / contenido (solo desktop; fuera del topbar). */
 function SidebarDividerToggle() {

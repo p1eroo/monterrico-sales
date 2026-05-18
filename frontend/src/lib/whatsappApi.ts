@@ -71,10 +71,12 @@ export async function sendWhatsappMessage(
   text: string,
   phone?: string,
   name?: string,
+  imageUrl?: string,
+  flotaProspectoId?: string,
 ): Promise<{ ok: boolean; waMessageId: string | null }> {
   return api<{ ok: boolean; waMessageId: string | null }>('/api/whatsapp/send', {
     method: 'POST',
-    body: JSON.stringify({ contactId, text, phone, name }),
+    body: JSON.stringify({ contactId, text, phone, name, imageUrl, flotaProspectoId }),
   });
 }
 

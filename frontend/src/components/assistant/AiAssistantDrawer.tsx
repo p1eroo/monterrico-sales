@@ -1106,7 +1106,7 @@ export function AssistantLauncherButton({
           aria-expanded={isOpen}
         >
           <Sparkles className="size-4 shrink-0" />
-          <span className="hidden text-xs font-medium sm:inline">Asistente</span>
+          <span className="hidden text-sm sm:inline">Asistente</span>
         </Button>
       </TooltipTrigger>
       <TooltipContent side="bottom">

@@ -469,6 +469,40 @@ export class EvogoClient {
     return { ok: true, status: res.status, raw: res.raw, waMessageId };
   }
 
+  async sendMedia(params: {
+    instanceApiKey: string;
+    number: string;
+    mediaUrl: string;
+    mediatype?: string;
+    caption?: string;
+    mimeType?: string;
+  }): Promise<EvogoSendTextResult> {
+    const body: Record<string, unknown> = {
+      number: params.number,
+      type: params.mediatype || 'image',
+      url: params.mediaUrl,
+    };
+    if (params.caption) {
+      body.caption = params.caption;
+    }
+    if (params.mimeType) {
+      body.mimeType = params.mimeType;
+    }
+    const res = await this.requestJsonWithManagerFallback('/send/media', {
+      method: 'POST',
+      apiKey: params.instanceApiKey,
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      this.logger.warn(`Evogo sendMedia HTTP ${res.status}: ${JSON.stringify(res.raw)?.slice(0, 500)}`);
+      return { ok: false, status: res.status, raw: res.raw };
+    }
+
+    const waMessageId = this.tryExtractMessageId(res.raw);
+    return { ok: true, status: res.status, raw: res.raw, waMessageId };
+  }
+
   private tryExtractMessageId(raw: unknown): string | undefined {
     const o = raw as Record<string, unknown> | null;
     const data = o?.['data'];

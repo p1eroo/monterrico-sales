@@ -1,4 +1,5 @@
 import { api } from '@/lib/api';
+import type { WhatsappMessageItem } from '@/lib/whatsappApi';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
 
@@ -43,6 +44,7 @@ export type FlotaConversation = {
   time: string;
   direction: string;
   unread: number;
+  estado?: string;
 };
 
 export type FlotaBulkResult = {
@@ -83,6 +85,44 @@ export async function sendSharedTestMessage(params: {
 export async function fetchConversations(q?: string): Promise<FlotaConversation[]> {
   const params = q?.trim() ? `?q=${encodeURIComponent(q.trim())}` : '';
   return api(`/api/whatsapp/conversations${params}`);
+}
+
+export async function fetchFlotaProspectoMessages(
+  prospectoId: string,
+  limit = 50,
+): Promise<WhatsappMessageItem[]> {
+  const res = await api<{ items: WhatsappMessageItem[] }>(
+    `/api/whatsapp/flota/prospectos/${prospectoId}/messages?limit=${limit}`,
+  );
+  return res.items ?? [];
+}
+
+export async function sendFlotaWhatsappMessage(
+  prospectoId: string,
+  text: string,
+): Promise<{ ok: boolean; waMessageId: string | null }> {
+  return api<{ ok: boolean; waMessageId: string | null }>('/api/whatsapp/flota/send', {
+    method: 'POST',
+    body: JSON.stringify({ prospectoId, text }),
+  });
+}
+
+export async function uploadFlotaImage(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const token = getAccessToken();
+  const res = await fetch(`${API_BASE}/api/whatsapp/flota/upload-image`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Error subiendo imagen: ${text}`);
+  }
+  const data = await res.json() as { url?: string };
+  if (!data.url) throw new Error('No se recibió URL de la imagen');
+  return data.url;
 }
 
 export async function sendBulkWhatsapp(params: {

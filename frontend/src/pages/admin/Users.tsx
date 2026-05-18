@@ -473,7 +473,7 @@ export default function UsersPage() {
             </Card>
           ) : (
             <>
-            <Card className="hidden md:block">
+            <div className="hidden overflow-x-auto rounded-xl bg-background md:block">
               <Table className="min-w-[1000px]">
                 <TableHeader>
                   <TableRow>
@@ -596,7 +596,7 @@ export default function UsersPage() {
                   </div>
                 </div>
               )}
-            </Card>
+            </div>
             <div className="grid gap-3 sm:grid-cols-2 md:hidden">
               {paginatedUsers.map((u) => (
                 <Card key={u.id} className="overflow-hidden">
@@ -651,7 +651,7 @@ export default function UsersPage() {
                       </DropdownMenu>
                     </div>
                   </CardContent>
-                </Card>
+              </Card>
               ))}
             </div>
             </>

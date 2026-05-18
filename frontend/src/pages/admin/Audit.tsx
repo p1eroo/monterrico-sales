@@ -327,7 +327,7 @@ export default function AuditPage() {
           </div>
 
           {viewMode === 'table' ? (
-            <Card>
+            <div className="overflow-x-auto rounded-xl bg-background">
               <Table className="min-w-[1200px]">
                 <TableHeader>
                   <TableRow>
@@ -425,13 +425,13 @@ export default function AuditPage() {
                 </TableBody>
               </Table>
               {!activityLoading && activityTotal === 0 && (
-                <CardContent className="py-12">
+                <div className="py-12">
                   <EmptyState
                     icon={Activity}
                     title="Sin registros"
                     description="No hay actividad que coincida con los filtros."
                   />
-                </CardContent>
+                </div>
               )}
               {!activityLoading && activityTotalPages > 1 && (
                 <div className="flex items-center justify-between border-t px-4 py-3">
@@ -458,7 +458,7 @@ export default function AuditPage() {
                   </div>
                 </div>
               )}
-            </Card>
+            </div>
           ) : (
             <div className="space-y-6">
               {activityLoading ? (
@@ -523,7 +523,7 @@ export default function AuditPage() {
               {auditError}
             </p>
           ) : null}
-          <Card>
+          <div className="overflow-x-auto rounded-xl bg-background">
             <Table className="min-w-[1200px]">
               <TableHeader>
                 <TableRow>
@@ -633,13 +633,13 @@ export default function AuditPage() {
               </TableBody>
             </Table>
             {!auditLoading && auditTotal === 0 && (
-              <CardContent className="py-12">
+              <div className="py-12">
                 <EmptyState
                   icon={History}
                   title="Sin registros de auditoría detallada"
                   description="Aún no hay cambios campo a campo registrados o no coinciden con los filtros. Edita un contacto, empresa u oportunidad para generar entradas."
                 />
-              </CardContent>
+              </div>
             )}
             {!auditLoading && auditTotalPages > 1 && (
               <div className="flex items-center justify-between border-t px-4 py-3">
@@ -670,7 +670,7 @@ export default function AuditPage() {
                 </div>
               </div>
             )}
-          </Card>
+          </div>
         </TabsContent>
       </Tabs>
 

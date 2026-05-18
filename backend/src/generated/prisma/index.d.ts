@@ -5104,6 +5104,37 @@ export namespace Prisma {
 
 
   /**
+   * Count Type FlotaProspectoCountOutputType
+   */
+
+  export type FlotaProspectoCountOutputType = {
+    whatsappMessages: number
+  }
+
+  export type FlotaProspectoCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    whatsappMessages?: boolean | FlotaProspectoCountOutputTypeCountWhatsappMessagesArgs
+  }
+
+  // Custom InputTypes
+  /**
+   * FlotaProspectoCountOutputType without action
+   */
+  export type FlotaProspectoCountOutputTypeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlotaProspectoCountOutputType
+     */
+    select?: FlotaProspectoCountOutputTypeSelect<ExtArgs> | null
+  }
+
+  /**
+   * FlotaProspectoCountOutputType without action
+   */
+  export type FlotaProspectoCountOutputTypeCountWhatsappMessagesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: CrmWhatsappMessageWhereInput
+  }
+
+
+  /**
    * Models
    */
 
@@ -31569,6 +31600,7 @@ export namespace Prisma {
     toWaId: string | null
     body: string | null
     contactId: string | null
+    flotaProspectoId: string | null
     whatsappInstanceId: string | null
     createdByUserId: string | null
     createdAt: Date | null
@@ -31585,6 +31617,7 @@ export namespace Prisma {
     toWaId: string | null
     body: string | null
     contactId: string | null
+    flotaProspectoId: string | null
     whatsappInstanceId: string | null
     createdByUserId: string | null
     createdAt: Date | null
@@ -31602,6 +31635,7 @@ export namespace Prisma {
     body: number
     payloadJson: number
     contactId: number
+    flotaProspectoId: number
     whatsappInstanceId: number
     createdByUserId: number
     createdAt: number
@@ -31620,6 +31654,7 @@ export namespace Prisma {
     toWaId?: true
     body?: true
     contactId?: true
+    flotaProspectoId?: true
     whatsappInstanceId?: true
     createdByUserId?: true
     createdAt?: true
@@ -31636,6 +31671,7 @@ export namespace Prisma {
     toWaId?: true
     body?: true
     contactId?: true
+    flotaProspectoId?: true
     whatsappInstanceId?: true
     createdByUserId?: true
     createdAt?: true
@@ -31653,6 +31689,7 @@ export namespace Prisma {
     body?: true
     payloadJson?: true
     contactId?: true
+    flotaProspectoId?: true
     whatsappInstanceId?: true
     createdByUserId?: true
     createdAt?: true
@@ -31743,6 +31780,7 @@ export namespace Prisma {
     body: string
     payloadJson: JsonValue | null
     contactId: string | null
+    flotaProspectoId: string | null
     whatsappInstanceId: string | null
     createdByUserId: string | null
     createdAt: Date
@@ -31777,11 +31815,13 @@ export namespace Prisma {
     body?: boolean
     payloadJson?: boolean
     contactId?: boolean
+    flotaProspectoId?: boolean
     whatsappInstanceId?: boolean
     createdByUserId?: boolean
     createdAt?: boolean
     waOutboundStatus?: boolean
     contact?: boolean | CrmWhatsappMessage$contactArgs<ExtArgs>
+    flotaProspecto?: boolean | CrmWhatsappMessage$flotaProspectoArgs<ExtArgs>
     whatsappInstance?: boolean | CrmWhatsappMessage$whatsappInstanceArgs<ExtArgs>
     createdBy?: boolean | CrmWhatsappMessage$createdByArgs<ExtArgs>
   }, ExtArgs["result"]["crmWhatsappMessage"]>
@@ -31797,11 +31837,13 @@ export namespace Prisma {
     body?: boolean
     payloadJson?: boolean
     contactId?: boolean
+    flotaProspectoId?: boolean
     whatsappInstanceId?: boolean
     createdByUserId?: boolean
     createdAt?: boolean
     waOutboundStatus?: boolean
     contact?: boolean | CrmWhatsappMessage$contactArgs<ExtArgs>
+    flotaProspecto?: boolean | CrmWhatsappMessage$flotaProspectoArgs<ExtArgs>
     whatsappInstance?: boolean | CrmWhatsappMessage$whatsappInstanceArgs<ExtArgs>
     createdBy?: boolean | CrmWhatsappMessage$createdByArgs<ExtArgs>
   }, ExtArgs["result"]["crmWhatsappMessage"]>
@@ -31817,11 +31859,13 @@ export namespace Prisma {
     body?: boolean
     payloadJson?: boolean
     contactId?: boolean
+    flotaProspectoId?: boolean
     whatsappInstanceId?: boolean
     createdByUserId?: boolean
     createdAt?: boolean
     waOutboundStatus?: boolean
     contact?: boolean | CrmWhatsappMessage$contactArgs<ExtArgs>
+    flotaProspecto?: boolean | CrmWhatsappMessage$flotaProspectoArgs<ExtArgs>
     whatsappInstance?: boolean | CrmWhatsappMessage$whatsappInstanceArgs<ExtArgs>
     createdBy?: boolean | CrmWhatsappMessage$createdByArgs<ExtArgs>
   }, ExtArgs["result"]["crmWhatsappMessage"]>
@@ -31837,25 +31881,29 @@ export namespace Prisma {
     body?: boolean
     payloadJson?: boolean
     contactId?: boolean
+    flotaProspectoId?: boolean
     whatsappInstanceId?: boolean
     createdByUserId?: boolean
     createdAt?: boolean
     waOutboundStatus?: boolean
   }
 
-  export type CrmWhatsappMessageOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "direction" | "evoInstanceId" | "evoInstanceName" | "waMessageId" | "fromWaId" | "toWaId" | "body" | "payloadJson" | "contactId" | "whatsappInstanceId" | "createdByUserId" | "createdAt" | "waOutboundStatus", ExtArgs["result"]["crmWhatsappMessage"]>
+  export type CrmWhatsappMessageOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "direction" | "evoInstanceId" | "evoInstanceName" | "waMessageId" | "fromWaId" | "toWaId" | "body" | "payloadJson" | "contactId" | "flotaProspectoId" | "whatsappInstanceId" | "createdByUserId" | "createdAt" | "waOutboundStatus", ExtArgs["result"]["crmWhatsappMessage"]>
   export type CrmWhatsappMessageInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     contact?: boolean | CrmWhatsappMessage$contactArgs<ExtArgs>
+    flotaProspecto?: boolean | CrmWhatsappMessage$flotaProspectoArgs<ExtArgs>
     whatsappInstance?: boolean | CrmWhatsappMessage$whatsappInstanceArgs<ExtArgs>
     createdBy?: boolean | CrmWhatsappMessage$createdByArgs<ExtArgs>
   }
   export type CrmWhatsappMessageIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     contact?: boolean | CrmWhatsappMessage$contactArgs<ExtArgs>
+    flotaProspecto?: boolean | CrmWhatsappMessage$flotaProspectoArgs<ExtArgs>
     whatsappInstance?: boolean | CrmWhatsappMessage$whatsappInstanceArgs<ExtArgs>
     createdBy?: boolean | CrmWhatsappMessage$createdByArgs<ExtArgs>
   }
   export type CrmWhatsappMessageIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     contact?: boolean | CrmWhatsappMessage$contactArgs<ExtArgs>
+    flotaProspecto?: boolean | CrmWhatsappMessage$flotaProspectoArgs<ExtArgs>
     whatsappInstance?: boolean | CrmWhatsappMessage$whatsappInstanceArgs<ExtArgs>
     createdBy?: boolean | CrmWhatsappMessage$createdByArgs<ExtArgs>
   }
@@ -31864,6 +31912,7 @@ export namespace Prisma {
     name: "CrmWhatsappMessage"
     objects: {
       contact: Prisma.$ContactPayload<ExtArgs> | null
+      flotaProspecto: Prisma.$FlotaProspectoPayload<ExtArgs> | null
       whatsappInstance: Prisma.$WhatsappInstancePayload<ExtArgs> | null
       createdBy: Prisma.$UserPayload<ExtArgs> | null
     }
@@ -31884,6 +31933,10 @@ export namespace Prisma {
       body: string
       payloadJson: Prisma.JsonValue | null
       contactId: string | null
+      /**
+       * * ID del prospecto de Flota asociado a este mensaje (normalizado por teléfono).
+       */
+      flotaProspectoId: string | null
       whatsappInstanceId: string | null
       createdByUserId: string | null
       createdAt: Date
@@ -32286,6 +32339,7 @@ export namespace Prisma {
   export interface Prisma__CrmWhatsappMessageClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
     contact<T extends CrmWhatsappMessage$contactArgs<ExtArgs> = {}>(args?: Subset<T, CrmWhatsappMessage$contactArgs<ExtArgs>>): Prisma__ContactClient<$Result.GetResult<Prisma.$ContactPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    flotaProspecto<T extends CrmWhatsappMessage$flotaProspectoArgs<ExtArgs> = {}>(args?: Subset<T, CrmWhatsappMessage$flotaProspectoArgs<ExtArgs>>): Prisma__FlotaProspectoClient<$Result.GetResult<Prisma.$FlotaProspectoPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     whatsappInstance<T extends CrmWhatsappMessage$whatsappInstanceArgs<ExtArgs> = {}>(args?: Subset<T, CrmWhatsappMessage$whatsappInstanceArgs<ExtArgs>>): Prisma__WhatsappInstanceClient<$Result.GetResult<Prisma.$WhatsappInstancePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     createdBy<T extends CrmWhatsappMessage$createdByArgs<ExtArgs> = {}>(args?: Subset<T, CrmWhatsappMessage$createdByArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     /**
@@ -32327,6 +32381,7 @@ export namespace Prisma {
     readonly body: FieldRef<"CrmWhatsappMessage", 'String'>
     readonly payloadJson: FieldRef<"CrmWhatsappMessage", 'Json'>
     readonly contactId: FieldRef<"CrmWhatsappMessage", 'String'>
+    readonly flotaProspectoId: FieldRef<"CrmWhatsappMessage", 'String'>
     readonly whatsappInstanceId: FieldRef<"CrmWhatsappMessage", 'String'>
     readonly createdByUserId: FieldRef<"CrmWhatsappMessage", 'String'>
     readonly createdAt: FieldRef<"CrmWhatsappMessage", 'DateTime'>
@@ -32748,6 +32803,25 @@ export namespace Prisma {
      */
     include?: ContactInclude<ExtArgs> | null
     where?: ContactWhereInput
+  }
+
+  /**
+   * CrmWhatsappMessage.flotaProspecto
+   */
+  export type CrmWhatsappMessage$flotaProspectoArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlotaProspecto
+     */
+    select?: FlotaProspectoSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlotaProspecto
+     */
+    omit?: FlotaProspectoOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlotaProspectoInclude<ExtArgs> | null
+    where?: FlotaProspectoWhereInput
   }
 
   /**
@@ -51260,6 +51334,8 @@ export namespace Prisma {
     esDuplicado?: boolean
     createdAt?: boolean
     updatedAt?: boolean
+    whatsappMessages?: boolean | FlotaProspecto$whatsappMessagesArgs<ExtArgs>
+    _count?: boolean | FlotaProspectoCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["flotaProspecto"]>
 
   export type FlotaProspectoSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
@@ -51329,10 +51405,18 @@ export namespace Prisma {
   }
 
   export type FlotaProspectoOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "fechaRegistro" | "redSocial" | "celular" | "nombreCompleto" | "edad" | "operador" | "estado" | "modalidad" | "anioVehiculo" | "distrito" | "fechaCita" | "asistencia" | "fechaAfiliacion" | "movil" | "observaciones" | "esDuplicado" | "createdAt" | "updatedAt", ExtArgs["result"]["flotaProspecto"]>
+  export type FlotaProspectoInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    whatsappMessages?: boolean | FlotaProspecto$whatsappMessagesArgs<ExtArgs>
+    _count?: boolean | FlotaProspectoCountOutputTypeDefaultArgs<ExtArgs>
+  }
+  export type FlotaProspectoIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
+  export type FlotaProspectoIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
 
   export type $FlotaProspectoPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "FlotaProspecto"
-    objects: {}
+    objects: {
+      whatsappMessages: Prisma.$CrmWhatsappMessagePayload<ExtArgs>[]
+    }
     scalars: $Extensions.GetPayloadResult<{
       id: string
       fechaRegistro: Date | null
@@ -51750,6 +51834,7 @@ export namespace Prisma {
    */
   export interface Prisma__FlotaProspectoClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
+    whatsappMessages<T extends FlotaProspecto$whatsappMessagesArgs<ExtArgs> = {}>(args?: Subset<T, FlotaProspecto$whatsappMessagesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CrmWhatsappMessagePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -51815,6 +51900,10 @@ export namespace Prisma {
      */
     omit?: FlotaProspectoOmit<ExtArgs> | null
     /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlotaProspectoInclude<ExtArgs> | null
+    /**
      * Filter, which FlotaProspecto to fetch.
      */
     where: FlotaProspectoWhereUniqueInput
@@ -51833,6 +51922,10 @@ export namespace Prisma {
      */
     omit?: FlotaProspectoOmit<ExtArgs> | null
     /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlotaProspectoInclude<ExtArgs> | null
+    /**
      * Filter, which FlotaProspecto to fetch.
      */
     where: FlotaProspectoWhereUniqueInput
@@ -51850,6 +51943,10 @@ export namespace Prisma {
      * Omit specific fields from the FlotaProspecto
      */
     omit?: FlotaProspectoOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlotaProspectoInclude<ExtArgs> | null
     /**
      * Filter, which FlotaProspecto to fetch.
      */
@@ -51899,6 +51996,10 @@ export namespace Prisma {
      */
     omit?: FlotaProspectoOmit<ExtArgs> | null
     /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlotaProspectoInclude<ExtArgs> | null
+    /**
      * Filter, which FlotaProspecto to fetch.
      */
     where?: FlotaProspectoWhereInput
@@ -51946,6 +52047,10 @@ export namespace Prisma {
      * Omit specific fields from the FlotaProspecto
      */
     omit?: FlotaProspectoOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlotaProspectoInclude<ExtArgs> | null
     /**
      * Filter, which FlotaProspectos to fetch.
      */
@@ -51995,6 +52100,10 @@ export namespace Prisma {
      */
     omit?: FlotaProspectoOmit<ExtArgs> | null
     /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlotaProspectoInclude<ExtArgs> | null
+    /**
      * The data needed to create a FlotaProspecto.
      */
     data: XOR<FlotaProspectoCreateInput, FlotaProspectoUncheckedCreateInput>
@@ -52042,6 +52151,10 @@ export namespace Prisma {
      * Omit specific fields from the FlotaProspecto
      */
     omit?: FlotaProspectoOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlotaProspectoInclude<ExtArgs> | null
     /**
      * The data needed to update a FlotaProspecto.
      */
@@ -52109,6 +52222,10 @@ export namespace Prisma {
      */
     omit?: FlotaProspectoOmit<ExtArgs> | null
     /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlotaProspectoInclude<ExtArgs> | null
+    /**
      * The filter to search for the FlotaProspecto to update in case it exists.
      */
     where: FlotaProspectoWhereUniqueInput
@@ -52135,6 +52252,10 @@ export namespace Prisma {
      */
     omit?: FlotaProspectoOmit<ExtArgs> | null
     /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlotaProspectoInclude<ExtArgs> | null
+    /**
      * Filter which FlotaProspecto to delete.
      */
     where: FlotaProspectoWhereUniqueInput
@@ -52155,6 +52276,30 @@ export namespace Prisma {
   }
 
   /**
+   * FlotaProspecto.whatsappMessages
+   */
+  export type FlotaProspecto$whatsappMessagesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CrmWhatsappMessage
+     */
+    select?: CrmWhatsappMessageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CrmWhatsappMessage
+     */
+    omit?: CrmWhatsappMessageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CrmWhatsappMessageInclude<ExtArgs> | null
+    where?: CrmWhatsappMessageWhereInput
+    orderBy?: CrmWhatsappMessageOrderByWithRelationInput | CrmWhatsappMessageOrderByWithRelationInput[]
+    cursor?: CrmWhatsappMessageWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: CrmWhatsappMessageScalarFieldEnum | CrmWhatsappMessageScalarFieldEnum[]
+  }
+
+  /**
    * FlotaProspecto without action
    */
   export type FlotaProspectoDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -52166,6 +52311,10 @@ export namespace Prisma {
      * Omit specific fields from the FlotaProspecto
      */
     omit?: FlotaProspectoOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlotaProspectoInclude<ExtArgs> | null
   }
 
 
@@ -52524,6 +52673,7 @@ export namespace Prisma {
     body: 'body',
     payloadJson: 'payloadJson',
     contactId: 'contactId',
+    flotaProspectoId: 'flotaProspectoId',
     whatsappInstanceId: 'whatsappInstanceId',
     createdByUserId: 'createdByUserId',
     createdAt: 'createdAt',
@@ -54658,11 +54808,13 @@ export namespace Prisma {
     body?: StringFilter<"CrmWhatsappMessage"> | string
     payloadJson?: JsonNullableFilter<"CrmWhatsappMessage">
     contactId?: StringNullableFilter<"CrmWhatsappMessage"> | string | null
+    flotaProspectoId?: StringNullableFilter<"CrmWhatsappMessage"> | string | null
     whatsappInstanceId?: StringNullableFilter<"CrmWhatsappMessage"> | string | null
     createdByUserId?: StringNullableFilter<"CrmWhatsappMessage"> | string | null
     createdAt?: DateTimeFilter<"CrmWhatsappMessage"> | Date | string
     waOutboundStatus?: StringNullableFilter<"CrmWhatsappMessage"> | string | null
     contact?: XOR<ContactNullableScalarRelationFilter, ContactWhereInput> | null
+    flotaProspecto?: XOR<FlotaProspectoNullableScalarRelationFilter, FlotaProspectoWhereInput> | null
     whatsappInstance?: XOR<WhatsappInstanceNullableScalarRelationFilter, WhatsappInstanceWhereInput> | null
     createdBy?: XOR<UserNullableScalarRelationFilter, UserWhereInput> | null
   }
@@ -54678,11 +54830,13 @@ export namespace Prisma {
     body?: SortOrder
     payloadJson?: SortOrderInput | SortOrder
     contactId?: SortOrderInput | SortOrder
+    flotaProspectoId?: SortOrderInput | SortOrder
     whatsappInstanceId?: SortOrderInput | SortOrder
     createdByUserId?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     waOutboundStatus?: SortOrderInput | SortOrder
     contact?: ContactOrderByWithRelationInput
+    flotaProspecto?: FlotaProspectoOrderByWithRelationInput
     whatsappInstance?: WhatsappInstanceOrderByWithRelationInput
     createdBy?: UserOrderByWithRelationInput
   }
@@ -54701,11 +54855,13 @@ export namespace Prisma {
     body?: StringFilter<"CrmWhatsappMessage"> | string
     payloadJson?: JsonNullableFilter<"CrmWhatsappMessage">
     contactId?: StringNullableFilter<"CrmWhatsappMessage"> | string | null
+    flotaProspectoId?: StringNullableFilter<"CrmWhatsappMessage"> | string | null
     whatsappInstanceId?: StringNullableFilter<"CrmWhatsappMessage"> | string | null
     createdByUserId?: StringNullableFilter<"CrmWhatsappMessage"> | string | null
     createdAt?: DateTimeFilter<"CrmWhatsappMessage"> | Date | string
     waOutboundStatus?: StringNullableFilter<"CrmWhatsappMessage"> | string | null
     contact?: XOR<ContactNullableScalarRelationFilter, ContactWhereInput> | null
+    flotaProspecto?: XOR<FlotaProspectoNullableScalarRelationFilter, FlotaProspectoWhereInput> | null
     whatsappInstance?: XOR<WhatsappInstanceNullableScalarRelationFilter, WhatsappInstanceWhereInput> | null
     createdBy?: XOR<UserNullableScalarRelationFilter, UserWhereInput> | null
   }, "id">
@@ -54721,6 +54877,7 @@ export namespace Prisma {
     body?: SortOrder
     payloadJson?: SortOrderInput | SortOrder
     contactId?: SortOrderInput | SortOrder
+    flotaProspectoId?: SortOrderInput | SortOrder
     whatsappInstanceId?: SortOrderInput | SortOrder
     createdByUserId?: SortOrderInput | SortOrder
     createdAt?: SortOrder
@@ -54744,6 +54901,7 @@ export namespace Prisma {
     body?: StringWithAggregatesFilter<"CrmWhatsappMessage"> | string
     payloadJson?: JsonNullableWithAggregatesFilter<"CrmWhatsappMessage">
     contactId?: StringNullableWithAggregatesFilter<"CrmWhatsappMessage"> | string | null
+    flotaProspectoId?: StringNullableWithAggregatesFilter<"CrmWhatsappMessage"> | string | null
     whatsappInstanceId?: StringNullableWithAggregatesFilter<"CrmWhatsappMessage"> | string | null
     createdByUserId?: StringNullableWithAggregatesFilter<"CrmWhatsappMessage"> | string | null
     createdAt?: DateTimeWithAggregatesFilter<"CrmWhatsappMessage"> | Date | string
@@ -55931,6 +56089,7 @@ export namespace Prisma {
     esDuplicado?: BoolFilter<"FlotaProspecto"> | boolean
     createdAt?: DateTimeFilter<"FlotaProspecto"> | Date | string
     updatedAt?: DateTimeFilter<"FlotaProspecto"> | Date | string
+    whatsappMessages?: CrmWhatsappMessageListRelationFilter
   }
 
   export type FlotaProspectoOrderByWithRelationInput = {
@@ -55953,6 +56112,7 @@ export namespace Prisma {
     esDuplicado?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
+    whatsappMessages?: CrmWhatsappMessageOrderByRelationAggregateInput
   }
 
   export type FlotaProspectoWhereUniqueInput = Prisma.AtLeast<{
@@ -55978,6 +56138,7 @@ export namespace Prisma {
     esDuplicado?: BoolFilter<"FlotaProspecto"> | boolean
     createdAt?: DateTimeFilter<"FlotaProspecto"> | Date | string
     updatedAt?: DateTimeFilter<"FlotaProspecto"> | Date | string
+    whatsappMessages?: CrmWhatsappMessageListRelationFilter
   }, "id">
 
   export type FlotaProspectoOrderByWithAggregationInput = {
@@ -57972,6 +58133,7 @@ export namespace Prisma {
     createdAt?: Date | string
     waOutboundStatus?: string | null
     contact?: ContactCreateNestedOneWithoutWhatsappMessagesInput
+    flotaProspecto?: FlotaProspectoCreateNestedOneWithoutWhatsappMessagesInput
     whatsappInstance?: WhatsappInstanceCreateNestedOneWithoutMessagesInput
     createdBy?: UserCreateNestedOneWithoutWhatsappMessagesSentInput
   }
@@ -57987,6 +58149,7 @@ export namespace Prisma {
     body: string
     payloadJson?: NullableJsonNullValueInput | InputJsonValue
     contactId?: string | null
+    flotaProspectoId?: string | null
     whatsappInstanceId?: string | null
     createdByUserId?: string | null
     createdAt?: Date | string
@@ -58006,6 +58169,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     waOutboundStatus?: NullableStringFieldUpdateOperationsInput | string | null
     contact?: ContactUpdateOneWithoutWhatsappMessagesNestedInput
+    flotaProspecto?: FlotaProspectoUpdateOneWithoutWhatsappMessagesNestedInput
     whatsappInstance?: WhatsappInstanceUpdateOneWithoutMessagesNestedInput
     createdBy?: UserUpdateOneWithoutWhatsappMessagesSentNestedInput
   }
@@ -58021,6 +58185,7 @@ export namespace Prisma {
     body?: StringFieldUpdateOperationsInput | string
     payloadJson?: NullableJsonNullValueInput | InputJsonValue
     contactId?: NullableStringFieldUpdateOperationsInput | string | null
+    flotaProspectoId?: NullableStringFieldUpdateOperationsInput | string | null
     whatsappInstanceId?: NullableStringFieldUpdateOperationsInput | string | null
     createdByUserId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -58038,6 +58203,7 @@ export namespace Prisma {
     body: string
     payloadJson?: NullableJsonNullValueInput | InputJsonValue
     contactId?: string | null
+    flotaProspectoId?: string | null
     whatsappInstanceId?: string | null
     createdByUserId?: string | null
     createdAt?: Date | string
@@ -58069,6 +58235,7 @@ export namespace Prisma {
     body?: StringFieldUpdateOperationsInput | string
     payloadJson?: NullableJsonNullValueInput | InputJsonValue
     contactId?: NullableStringFieldUpdateOperationsInput | string | null
+    flotaProspectoId?: NullableStringFieldUpdateOperationsInput | string | null
     whatsappInstanceId?: NullableStringFieldUpdateOperationsInput | string | null
     createdByUserId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -59296,6 +59463,7 @@ export namespace Prisma {
     esDuplicado?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
+    whatsappMessages?: CrmWhatsappMessageCreateNestedManyWithoutFlotaProspectoInput
   }
 
   export type FlotaProspectoUncheckedCreateInput = {
@@ -59318,6 +59486,7 @@ export namespace Prisma {
     esDuplicado?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
+    whatsappMessages?: CrmWhatsappMessageUncheckedCreateNestedManyWithoutFlotaProspectoInput
   }
 
   export type FlotaProspectoUpdateInput = {
@@ -59340,6 +59509,7 @@ export namespace Prisma {
     esDuplicado?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    whatsappMessages?: CrmWhatsappMessageUpdateManyWithoutFlotaProspectoNestedInput
   }
 
   export type FlotaProspectoUncheckedUpdateInput = {
@@ -59362,6 +59532,7 @@ export namespace Prisma {
     esDuplicado?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    whatsappMessages?: CrmWhatsappMessageUncheckedUpdateManyWithoutFlotaProspectoNestedInput
   }
 
   export type FlotaProspectoCreateManyInput = {
@@ -60867,6 +61038,11 @@ export namespace Prisma {
     isNot?: ContactWhereInput | null
   }
 
+  export type FlotaProspectoNullableScalarRelationFilter = {
+    is?: FlotaProspectoWhereInput | null
+    isNot?: FlotaProspectoWhereInput | null
+  }
+
   export type CrmWhatsappMessageCountOrderByAggregateInput = {
     id?: SortOrder
     direction?: SortOrder
@@ -60878,6 +61054,7 @@ export namespace Prisma {
     body?: SortOrder
     payloadJson?: SortOrder
     contactId?: SortOrder
+    flotaProspectoId?: SortOrder
     whatsappInstanceId?: SortOrder
     createdByUserId?: SortOrder
     createdAt?: SortOrder
@@ -60894,6 +61071,7 @@ export namespace Prisma {
     toWaId?: SortOrder
     body?: SortOrder
     contactId?: SortOrder
+    flotaProspectoId?: SortOrder
     whatsappInstanceId?: SortOrder
     createdByUserId?: SortOrder
     createdAt?: SortOrder
@@ -60910,6 +61088,7 @@ export namespace Prisma {
     toWaId?: SortOrder
     body?: SortOrder
     contactId?: SortOrder
+    flotaProspectoId?: SortOrder
     whatsappInstanceId?: SortOrder
     createdByUserId?: SortOrder
     createdAt?: SortOrder
@@ -63159,6 +63338,12 @@ export namespace Prisma {
     connect?: ContactWhereUniqueInput
   }
 
+  export type FlotaProspectoCreateNestedOneWithoutWhatsappMessagesInput = {
+    create?: XOR<FlotaProspectoCreateWithoutWhatsappMessagesInput, FlotaProspectoUncheckedCreateWithoutWhatsappMessagesInput>
+    connectOrCreate?: FlotaProspectoCreateOrConnectWithoutWhatsappMessagesInput
+    connect?: FlotaProspectoWhereUniqueInput
+  }
+
   export type WhatsappInstanceCreateNestedOneWithoutMessagesInput = {
     create?: XOR<WhatsappInstanceCreateWithoutMessagesInput, WhatsappInstanceUncheckedCreateWithoutMessagesInput>
     connectOrCreate?: WhatsappInstanceCreateOrConnectWithoutMessagesInput
@@ -63179,6 +63364,16 @@ export namespace Prisma {
     delete?: ContactWhereInput | boolean
     connect?: ContactWhereUniqueInput
     update?: XOR<XOR<ContactUpdateToOneWithWhereWithoutWhatsappMessagesInput, ContactUpdateWithoutWhatsappMessagesInput>, ContactUncheckedUpdateWithoutWhatsappMessagesInput>
+  }
+
+  export type FlotaProspectoUpdateOneWithoutWhatsappMessagesNestedInput = {
+    create?: XOR<FlotaProspectoCreateWithoutWhatsappMessagesInput, FlotaProspectoUncheckedCreateWithoutWhatsappMessagesInput>
+    connectOrCreate?: FlotaProspectoCreateOrConnectWithoutWhatsappMessagesInput
+    upsert?: FlotaProspectoUpsertWithoutWhatsappMessagesInput
+    disconnect?: FlotaProspectoWhereInput | boolean
+    delete?: FlotaProspectoWhereInput | boolean
+    connect?: FlotaProspectoWhereUniqueInput
+    update?: XOR<XOR<FlotaProspectoUpdateToOneWithWhereWithoutWhatsappMessagesInput, FlotaProspectoUpdateWithoutWhatsappMessagesInput>, FlotaProspectoUncheckedUpdateWithoutWhatsappMessagesInput>
   }
 
   export type WhatsappInstanceUpdateOneWithoutMessagesNestedInput = {
@@ -64128,12 +64323,54 @@ export namespace Prisma {
     update?: XOR<XOR<UserUpdateToOneWithWhereWithoutCrmFilesUploadedInput, UserUpdateWithoutCrmFilesUploadedInput>, UserUncheckedUpdateWithoutCrmFilesUploadedInput>
   }
 
+  export type CrmWhatsappMessageCreateNestedManyWithoutFlotaProspectoInput = {
+    create?: XOR<CrmWhatsappMessageCreateWithoutFlotaProspectoInput, CrmWhatsappMessageUncheckedCreateWithoutFlotaProspectoInput> | CrmWhatsappMessageCreateWithoutFlotaProspectoInput[] | CrmWhatsappMessageUncheckedCreateWithoutFlotaProspectoInput[]
+    connectOrCreate?: CrmWhatsappMessageCreateOrConnectWithoutFlotaProspectoInput | CrmWhatsappMessageCreateOrConnectWithoutFlotaProspectoInput[]
+    createMany?: CrmWhatsappMessageCreateManyFlotaProspectoInputEnvelope
+    connect?: CrmWhatsappMessageWhereUniqueInput | CrmWhatsappMessageWhereUniqueInput[]
+  }
+
+  export type CrmWhatsappMessageUncheckedCreateNestedManyWithoutFlotaProspectoInput = {
+    create?: XOR<CrmWhatsappMessageCreateWithoutFlotaProspectoInput, CrmWhatsappMessageUncheckedCreateWithoutFlotaProspectoInput> | CrmWhatsappMessageCreateWithoutFlotaProspectoInput[] | CrmWhatsappMessageUncheckedCreateWithoutFlotaProspectoInput[]
+    connectOrCreate?: CrmWhatsappMessageCreateOrConnectWithoutFlotaProspectoInput | CrmWhatsappMessageCreateOrConnectWithoutFlotaProspectoInput[]
+    createMany?: CrmWhatsappMessageCreateManyFlotaProspectoInputEnvelope
+    connect?: CrmWhatsappMessageWhereUniqueInput | CrmWhatsappMessageWhereUniqueInput[]
+  }
+
   export type NullableIntFieldUpdateOperationsInput = {
     set?: number | null
     increment?: number
     decrement?: number
     multiply?: number
     divide?: number
+  }
+
+  export type CrmWhatsappMessageUpdateManyWithoutFlotaProspectoNestedInput = {
+    create?: XOR<CrmWhatsappMessageCreateWithoutFlotaProspectoInput, CrmWhatsappMessageUncheckedCreateWithoutFlotaProspectoInput> | CrmWhatsappMessageCreateWithoutFlotaProspectoInput[] | CrmWhatsappMessageUncheckedCreateWithoutFlotaProspectoInput[]
+    connectOrCreate?: CrmWhatsappMessageCreateOrConnectWithoutFlotaProspectoInput | CrmWhatsappMessageCreateOrConnectWithoutFlotaProspectoInput[]
+    upsert?: CrmWhatsappMessageUpsertWithWhereUniqueWithoutFlotaProspectoInput | CrmWhatsappMessageUpsertWithWhereUniqueWithoutFlotaProspectoInput[]
+    createMany?: CrmWhatsappMessageCreateManyFlotaProspectoInputEnvelope
+    set?: CrmWhatsappMessageWhereUniqueInput | CrmWhatsappMessageWhereUniqueInput[]
+    disconnect?: CrmWhatsappMessageWhereUniqueInput | CrmWhatsappMessageWhereUniqueInput[]
+    delete?: CrmWhatsappMessageWhereUniqueInput | CrmWhatsappMessageWhereUniqueInput[]
+    connect?: CrmWhatsappMessageWhereUniqueInput | CrmWhatsappMessageWhereUniqueInput[]
+    update?: CrmWhatsappMessageUpdateWithWhereUniqueWithoutFlotaProspectoInput | CrmWhatsappMessageUpdateWithWhereUniqueWithoutFlotaProspectoInput[]
+    updateMany?: CrmWhatsappMessageUpdateManyWithWhereWithoutFlotaProspectoInput | CrmWhatsappMessageUpdateManyWithWhereWithoutFlotaProspectoInput[]
+    deleteMany?: CrmWhatsappMessageScalarWhereInput | CrmWhatsappMessageScalarWhereInput[]
+  }
+
+  export type CrmWhatsappMessageUncheckedUpdateManyWithoutFlotaProspectoNestedInput = {
+    create?: XOR<CrmWhatsappMessageCreateWithoutFlotaProspectoInput, CrmWhatsappMessageUncheckedCreateWithoutFlotaProspectoInput> | CrmWhatsappMessageCreateWithoutFlotaProspectoInput[] | CrmWhatsappMessageUncheckedCreateWithoutFlotaProspectoInput[]
+    connectOrCreate?: CrmWhatsappMessageCreateOrConnectWithoutFlotaProspectoInput | CrmWhatsappMessageCreateOrConnectWithoutFlotaProspectoInput[]
+    upsert?: CrmWhatsappMessageUpsertWithWhereUniqueWithoutFlotaProspectoInput | CrmWhatsappMessageUpsertWithWhereUniqueWithoutFlotaProspectoInput[]
+    createMany?: CrmWhatsappMessageCreateManyFlotaProspectoInputEnvelope
+    set?: CrmWhatsappMessageWhereUniqueInput | CrmWhatsappMessageWhereUniqueInput[]
+    disconnect?: CrmWhatsappMessageWhereUniqueInput | CrmWhatsappMessageWhereUniqueInput[]
+    delete?: CrmWhatsappMessageWhereUniqueInput | CrmWhatsappMessageWhereUniqueInput[]
+    connect?: CrmWhatsappMessageWhereUniqueInput | CrmWhatsappMessageWhereUniqueInput[]
+    update?: CrmWhatsappMessageUpdateWithWhereUniqueWithoutFlotaProspectoInput | CrmWhatsappMessageUpdateWithWhereUniqueWithoutFlotaProspectoInput[]
+    updateMany?: CrmWhatsappMessageUpdateManyWithWhereWithoutFlotaProspectoInput | CrmWhatsappMessageUpdateManyWithWhereWithoutFlotaProspectoInput[]
+    deleteMany?: CrmWhatsappMessageScalarWhereInput | CrmWhatsappMessageScalarWhereInput[]
   }
 
   export type NestedStringFilter<$PrismaModel = never> = {
@@ -65391,6 +65628,7 @@ export namespace Prisma {
     createdAt?: Date | string
     waOutboundStatus?: string | null
     contact?: ContactCreateNestedOneWithoutWhatsappMessagesInput
+    flotaProspecto?: FlotaProspectoCreateNestedOneWithoutWhatsappMessagesInput
     whatsappInstance?: WhatsappInstanceCreateNestedOneWithoutMessagesInput
   }
 
@@ -65405,6 +65643,7 @@ export namespace Prisma {
     body: string
     payloadJson?: NullableJsonNullValueInput | InputJsonValue
     contactId?: string | null
+    flotaProspectoId?: string | null
     whatsappInstanceId?: string | null
     createdAt?: Date | string
     waOutboundStatus?: string | null
@@ -66013,6 +66252,7 @@ export namespace Prisma {
     body?: StringFilter<"CrmWhatsappMessage"> | string
     payloadJson?: JsonNullableFilter<"CrmWhatsappMessage">
     contactId?: StringNullableFilter<"CrmWhatsappMessage"> | string | null
+    flotaProspectoId?: StringNullableFilter<"CrmWhatsappMessage"> | string | null
     whatsappInstanceId?: StringNullableFilter<"CrmWhatsappMessage"> | string | null
     createdByUserId?: StringNullableFilter<"CrmWhatsappMessage"> | string | null
     createdAt?: DateTimeFilter<"CrmWhatsappMessage"> | Date | string
@@ -66097,6 +66337,7 @@ export namespace Prisma {
     createdAt?: Date | string
     waOutboundStatus?: string | null
     contact?: ContactCreateNestedOneWithoutWhatsappMessagesInput
+    flotaProspecto?: FlotaProspectoCreateNestedOneWithoutWhatsappMessagesInput
     createdBy?: UserCreateNestedOneWithoutWhatsappMessagesSentInput
   }
 
@@ -66111,6 +66352,7 @@ export namespace Prisma {
     body: string
     payloadJson?: NullableJsonNullValueInput | InputJsonValue
     contactId?: string | null
+    flotaProspectoId?: string | null
     createdByUserId?: string | null
     createdAt?: Date | string
     waOutboundStatus?: string | null
@@ -67825,6 +68067,7 @@ export namespace Prisma {
     payloadJson?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     waOutboundStatus?: string | null
+    flotaProspecto?: FlotaProspectoCreateNestedOneWithoutWhatsappMessagesInput
     whatsappInstance?: WhatsappInstanceCreateNestedOneWithoutMessagesInput
     createdBy?: UserCreateNestedOneWithoutWhatsappMessagesSentInput
   }
@@ -67839,6 +68082,7 @@ export namespace Prisma {
     toWaId: string
     body: string
     payloadJson?: NullableJsonNullValueInput | InputJsonValue
+    flotaProspectoId?: string | null
     whatsappInstanceId?: string | null
     createdByUserId?: string | null
     createdAt?: Date | string
@@ -68120,6 +68364,55 @@ export namespace Prisma {
     create: XOR<ContactCreateWithoutWhatsappMessagesInput, ContactUncheckedCreateWithoutWhatsappMessagesInput>
   }
 
+  export type FlotaProspectoCreateWithoutWhatsappMessagesInput = {
+    id?: string
+    fechaRegistro?: Date | string | null
+    redSocial?: string | null
+    celular?: string | null
+    nombreCompleto: string
+    edad?: number | null
+    operador?: string | null
+    estado?: string
+    modalidad?: string | null
+    anioVehiculo?: number | null
+    distrito?: string | null
+    fechaCita?: Date | string | null
+    asistencia?: string | null
+    fechaAfiliacion?: Date | string | null
+    movil?: string | null
+    observaciones?: string | null
+    esDuplicado?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type FlotaProspectoUncheckedCreateWithoutWhatsappMessagesInput = {
+    id?: string
+    fechaRegistro?: Date | string | null
+    redSocial?: string | null
+    celular?: string | null
+    nombreCompleto: string
+    edad?: number | null
+    operador?: string | null
+    estado?: string
+    modalidad?: string | null
+    anioVehiculo?: number | null
+    distrito?: string | null
+    fechaCita?: Date | string | null
+    asistencia?: string | null
+    fechaAfiliacion?: Date | string | null
+    movil?: string | null
+    observaciones?: string | null
+    esDuplicado?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type FlotaProspectoCreateOrConnectWithoutWhatsappMessagesInput = {
+    where: FlotaProspectoWhereUniqueInput
+    create: XOR<FlotaProspectoCreateWithoutWhatsappMessagesInput, FlotaProspectoUncheckedCreateWithoutWhatsappMessagesInput>
+  }
+
   export type WhatsappInstanceCreateWithoutMessagesInput = {
     id?: string
     instanceType?: string
@@ -68297,6 +68590,61 @@ export namespace Prisma {
     linkedBy?: ContactContactUncheckedUpdateManyWithoutLinkedNestedInput
     opportunities?: ContactOpportunityUncheckedUpdateManyWithoutContactNestedInput
     activities?: ContactActivityUncheckedUpdateManyWithoutContactNestedInput
+  }
+
+  export type FlotaProspectoUpsertWithoutWhatsappMessagesInput = {
+    update: XOR<FlotaProspectoUpdateWithoutWhatsappMessagesInput, FlotaProspectoUncheckedUpdateWithoutWhatsappMessagesInput>
+    create: XOR<FlotaProspectoCreateWithoutWhatsappMessagesInput, FlotaProspectoUncheckedCreateWithoutWhatsappMessagesInput>
+    where?: FlotaProspectoWhereInput
+  }
+
+  export type FlotaProspectoUpdateToOneWithWhereWithoutWhatsappMessagesInput = {
+    where?: FlotaProspectoWhereInput
+    data: XOR<FlotaProspectoUpdateWithoutWhatsappMessagesInput, FlotaProspectoUncheckedUpdateWithoutWhatsappMessagesInput>
+  }
+
+  export type FlotaProspectoUpdateWithoutWhatsappMessagesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    fechaRegistro?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    redSocial?: NullableStringFieldUpdateOperationsInput | string | null
+    celular?: NullableStringFieldUpdateOperationsInput | string | null
+    nombreCompleto?: StringFieldUpdateOperationsInput | string
+    edad?: NullableIntFieldUpdateOperationsInput | number | null
+    operador?: NullableStringFieldUpdateOperationsInput | string | null
+    estado?: StringFieldUpdateOperationsInput | string
+    modalidad?: NullableStringFieldUpdateOperationsInput | string | null
+    anioVehiculo?: NullableIntFieldUpdateOperationsInput | number | null
+    distrito?: NullableStringFieldUpdateOperationsInput | string | null
+    fechaCita?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    asistencia?: NullableStringFieldUpdateOperationsInput | string | null
+    fechaAfiliacion?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    movil?: NullableStringFieldUpdateOperationsInput | string | null
+    observaciones?: NullableStringFieldUpdateOperationsInput | string | null
+    esDuplicado?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type FlotaProspectoUncheckedUpdateWithoutWhatsappMessagesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    fechaRegistro?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    redSocial?: NullableStringFieldUpdateOperationsInput | string | null
+    celular?: NullableStringFieldUpdateOperationsInput | string | null
+    nombreCompleto?: StringFieldUpdateOperationsInput | string
+    edad?: NullableIntFieldUpdateOperationsInput | number | null
+    operador?: NullableStringFieldUpdateOperationsInput | string | null
+    estado?: StringFieldUpdateOperationsInput | string
+    modalidad?: NullableStringFieldUpdateOperationsInput | string | null
+    anioVehiculo?: NullableIntFieldUpdateOperationsInput | number | null
+    distrito?: NullableStringFieldUpdateOperationsInput | string | null
+    fechaCita?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    asistencia?: NullableStringFieldUpdateOperationsInput | string | null
+    fechaAfiliacion?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    movil?: NullableStringFieldUpdateOperationsInput | string | null
+    observaciones?: NullableStringFieldUpdateOperationsInput | string | null
+    esDuplicado?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type WhatsappInstanceUpsertWithoutMessagesInput = {
@@ -71878,6 +72226,66 @@ export namespace Prisma {
     whatsappMessagesSent?: CrmWhatsappMessageUncheckedUpdateManyWithoutCreatedByNestedInput
   }
 
+  export type CrmWhatsappMessageCreateWithoutFlotaProspectoInput = {
+    id?: string
+    direction: string
+    evoInstanceId: string
+    evoInstanceName?: string | null
+    waMessageId?: string | null
+    fromWaId: string
+    toWaId: string
+    body: string
+    payloadJson?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    waOutboundStatus?: string | null
+    contact?: ContactCreateNestedOneWithoutWhatsappMessagesInput
+    whatsappInstance?: WhatsappInstanceCreateNestedOneWithoutMessagesInput
+    createdBy?: UserCreateNestedOneWithoutWhatsappMessagesSentInput
+  }
+
+  export type CrmWhatsappMessageUncheckedCreateWithoutFlotaProspectoInput = {
+    id?: string
+    direction: string
+    evoInstanceId: string
+    evoInstanceName?: string | null
+    waMessageId?: string | null
+    fromWaId: string
+    toWaId: string
+    body: string
+    payloadJson?: NullableJsonNullValueInput | InputJsonValue
+    contactId?: string | null
+    whatsappInstanceId?: string | null
+    createdByUserId?: string | null
+    createdAt?: Date | string
+    waOutboundStatus?: string | null
+  }
+
+  export type CrmWhatsappMessageCreateOrConnectWithoutFlotaProspectoInput = {
+    where: CrmWhatsappMessageWhereUniqueInput
+    create: XOR<CrmWhatsappMessageCreateWithoutFlotaProspectoInput, CrmWhatsappMessageUncheckedCreateWithoutFlotaProspectoInput>
+  }
+
+  export type CrmWhatsappMessageCreateManyFlotaProspectoInputEnvelope = {
+    data: CrmWhatsappMessageCreateManyFlotaProspectoInput | CrmWhatsappMessageCreateManyFlotaProspectoInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type CrmWhatsappMessageUpsertWithWhereUniqueWithoutFlotaProspectoInput = {
+    where: CrmWhatsappMessageWhereUniqueInput
+    update: XOR<CrmWhatsappMessageUpdateWithoutFlotaProspectoInput, CrmWhatsappMessageUncheckedUpdateWithoutFlotaProspectoInput>
+    create: XOR<CrmWhatsappMessageCreateWithoutFlotaProspectoInput, CrmWhatsappMessageUncheckedCreateWithoutFlotaProspectoInput>
+  }
+
+  export type CrmWhatsappMessageUpdateWithWhereUniqueWithoutFlotaProspectoInput = {
+    where: CrmWhatsappMessageWhereUniqueInput
+    data: XOR<CrmWhatsappMessageUpdateWithoutFlotaProspectoInput, CrmWhatsappMessageUncheckedUpdateWithoutFlotaProspectoInput>
+  }
+
+  export type CrmWhatsappMessageUpdateManyWithWhereWithoutFlotaProspectoInput = {
+    where: CrmWhatsappMessageScalarWhereInput
+    data: XOR<CrmWhatsappMessageUpdateManyMutationInput, CrmWhatsappMessageUncheckedUpdateManyWithoutFlotaProspectoInput>
+  }
+
   export type AuthorityCreateManyRoleInput = {
     id?: string
     permission: string
@@ -72193,6 +72601,7 @@ export namespace Prisma {
     body: string
     payloadJson?: NullableJsonNullValueInput | InputJsonValue
     contactId?: string | null
+    flotaProspectoId?: string | null
     whatsappInstanceId?: string | null
     createdAt?: Date | string
     waOutboundStatus?: string | null
@@ -72845,6 +73254,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     waOutboundStatus?: NullableStringFieldUpdateOperationsInput | string | null
     contact?: ContactUpdateOneWithoutWhatsappMessagesNestedInput
+    flotaProspecto?: FlotaProspectoUpdateOneWithoutWhatsappMessagesNestedInput
     whatsappInstance?: WhatsappInstanceUpdateOneWithoutMessagesNestedInput
   }
 
@@ -72859,6 +73269,7 @@ export namespace Prisma {
     body?: StringFieldUpdateOperationsInput | string
     payloadJson?: NullableJsonNullValueInput | InputJsonValue
     contactId?: NullableStringFieldUpdateOperationsInput | string | null
+    flotaProspectoId?: NullableStringFieldUpdateOperationsInput | string | null
     whatsappInstanceId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     waOutboundStatus?: NullableStringFieldUpdateOperationsInput | string | null
@@ -72875,6 +73286,7 @@ export namespace Prisma {
     body?: StringFieldUpdateOperationsInput | string
     payloadJson?: NullableJsonNullValueInput | InputJsonValue
     contactId?: NullableStringFieldUpdateOperationsInput | string | null
+    flotaProspectoId?: NullableStringFieldUpdateOperationsInput | string | null
     whatsappInstanceId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     waOutboundStatus?: NullableStringFieldUpdateOperationsInput | string | null
@@ -72891,6 +73303,7 @@ export namespace Prisma {
     body: string
     payloadJson?: NullableJsonNullValueInput | InputJsonValue
     contactId?: string | null
+    flotaProspectoId?: string | null
     createdByUserId?: string | null
     createdAt?: Date | string
     waOutboundStatus?: string | null
@@ -72909,6 +73322,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     waOutboundStatus?: NullableStringFieldUpdateOperationsInput | string | null
     contact?: ContactUpdateOneWithoutWhatsappMessagesNestedInput
+    flotaProspecto?: FlotaProspectoUpdateOneWithoutWhatsappMessagesNestedInput
     createdBy?: UserUpdateOneWithoutWhatsappMessagesSentNestedInput
   }
 
@@ -72923,6 +73337,7 @@ export namespace Prisma {
     body?: StringFieldUpdateOperationsInput | string
     payloadJson?: NullableJsonNullValueInput | InputJsonValue
     contactId?: NullableStringFieldUpdateOperationsInput | string | null
+    flotaProspectoId?: NullableStringFieldUpdateOperationsInput | string | null
     createdByUserId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     waOutboundStatus?: NullableStringFieldUpdateOperationsInput | string | null
@@ -72939,6 +73354,7 @@ export namespace Prisma {
     body?: StringFieldUpdateOperationsInput | string
     payloadJson?: NullableJsonNullValueInput | InputJsonValue
     contactId?: NullableStringFieldUpdateOperationsInput | string | null
+    flotaProspectoId?: NullableStringFieldUpdateOperationsInput | string | null
     createdByUserId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     waOutboundStatus?: NullableStringFieldUpdateOperationsInput | string | null
@@ -73104,6 +73520,7 @@ export namespace Prisma {
     toWaId: string
     body: string
     payloadJson?: NullableJsonNullValueInput | InputJsonValue
+    flotaProspectoId?: string | null
     whatsappInstanceId?: string | null
     createdByUserId?: string | null
     createdAt?: Date | string
@@ -73200,6 +73617,7 @@ export namespace Prisma {
     payloadJson?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     waOutboundStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    flotaProspecto?: FlotaProspectoUpdateOneWithoutWhatsappMessagesNestedInput
     whatsappInstance?: WhatsappInstanceUpdateOneWithoutMessagesNestedInput
     createdBy?: UserUpdateOneWithoutWhatsappMessagesSentNestedInput
   }
@@ -73214,6 +73632,7 @@ export namespace Prisma {
     toWaId?: StringFieldUpdateOperationsInput | string
     body?: StringFieldUpdateOperationsInput | string
     payloadJson?: NullableJsonNullValueInput | InputJsonValue
+    flotaProspectoId?: NullableStringFieldUpdateOperationsInput | string | null
     whatsappInstanceId?: NullableStringFieldUpdateOperationsInput | string | null
     createdByUserId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -73230,6 +73649,7 @@ export namespace Prisma {
     toWaId?: StringFieldUpdateOperationsInput | string
     body?: StringFieldUpdateOperationsInput | string
     payloadJson?: NullableJsonNullValueInput | InputJsonValue
+    flotaProspectoId?: NullableStringFieldUpdateOperationsInput | string | null
     whatsappInstanceId?: NullableStringFieldUpdateOperationsInput | string | null
     createdByUserId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -73498,6 +73918,74 @@ export namespace Prisma {
   export type OpportunityActivityUncheckedUpdateManyWithoutActivityInput = {
     id?: StringFieldUpdateOperationsInput | string
     opportunityId?: StringFieldUpdateOperationsInput | string
+  }
+
+  export type CrmWhatsappMessageCreateManyFlotaProspectoInput = {
+    id?: string
+    direction: string
+    evoInstanceId: string
+    evoInstanceName?: string | null
+    waMessageId?: string | null
+    fromWaId: string
+    toWaId: string
+    body: string
+    payloadJson?: NullableJsonNullValueInput | InputJsonValue
+    contactId?: string | null
+    whatsappInstanceId?: string | null
+    createdByUserId?: string | null
+    createdAt?: Date | string
+    waOutboundStatus?: string | null
+  }
+
+  export type CrmWhatsappMessageUpdateWithoutFlotaProspectoInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    direction?: StringFieldUpdateOperationsInput | string
+    evoInstanceId?: StringFieldUpdateOperationsInput | string
+    evoInstanceName?: NullableStringFieldUpdateOperationsInput | string | null
+    waMessageId?: NullableStringFieldUpdateOperationsInput | string | null
+    fromWaId?: StringFieldUpdateOperationsInput | string
+    toWaId?: StringFieldUpdateOperationsInput | string
+    body?: StringFieldUpdateOperationsInput | string
+    payloadJson?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    waOutboundStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    contact?: ContactUpdateOneWithoutWhatsappMessagesNestedInput
+    whatsappInstance?: WhatsappInstanceUpdateOneWithoutMessagesNestedInput
+    createdBy?: UserUpdateOneWithoutWhatsappMessagesSentNestedInput
+  }
+
+  export type CrmWhatsappMessageUncheckedUpdateWithoutFlotaProspectoInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    direction?: StringFieldUpdateOperationsInput | string
+    evoInstanceId?: StringFieldUpdateOperationsInput | string
+    evoInstanceName?: NullableStringFieldUpdateOperationsInput | string | null
+    waMessageId?: NullableStringFieldUpdateOperationsInput | string | null
+    fromWaId?: StringFieldUpdateOperationsInput | string
+    toWaId?: StringFieldUpdateOperationsInput | string
+    body?: StringFieldUpdateOperationsInput | string
+    payloadJson?: NullableJsonNullValueInput | InputJsonValue
+    contactId?: NullableStringFieldUpdateOperationsInput | string | null
+    whatsappInstanceId?: NullableStringFieldUpdateOperationsInput | string | null
+    createdByUserId?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    waOutboundStatus?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
+  export type CrmWhatsappMessageUncheckedUpdateManyWithoutFlotaProspectoInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    direction?: StringFieldUpdateOperationsInput | string
+    evoInstanceId?: StringFieldUpdateOperationsInput | string
+    evoInstanceName?: NullableStringFieldUpdateOperationsInput | string | null
+    waMessageId?: NullableStringFieldUpdateOperationsInput | string | null
+    fromWaId?: StringFieldUpdateOperationsInput | string
+    toWaId?: StringFieldUpdateOperationsInput | string
+    body?: StringFieldUpdateOperationsInput | string
+    payloadJson?: NullableJsonNullValueInput | InputJsonValue
+    contactId?: NullableStringFieldUpdateOperationsInput | string | null
+    whatsappInstanceId?: NullableStringFieldUpdateOperationsInput | string | null
+    createdByUserId?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    waOutboundStatus?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
 

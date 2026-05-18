@@ -1,4 +1,17 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo, memo } from 'react';
+import {
+  DndContext,
+  closestCorners,
+  DragOverlay,
+  PointerSensor,
+  useSensors,
+  useSensor,
+  type DragStartEvent,
+  type DragEndEvent,
+  type DragOverEvent,
+  useDraggable,
+  useDroppable,
+} from '@dnd-kit/core';
 import {
   Inbox,
   Send,
@@ -27,10 +40,18 @@ import {
   SendHorizonal,
   Radio,
   Upload,
+  LayoutList,
   StopCircle,
   Download,
   Edit2,
+  Edit,
+  X,
+  ImageIcon,
+  GripVertical,
+  MessageCircle,
+  Info,
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -47,9 +68,26 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+} from '@/components/ui/table';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { EmojiGrid } from '@/components/EmojiGrid';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
@@ -60,40 +98,46 @@ import {
   disconnectSharedWhatsapp,
   sendSharedTestMessage,
   fetchConversations,
+  fetchFlotaProspectoMessages,
+  sendFlotaWhatsappMessage,
   importExcelPreview,
+  uploadFlotaImage,
   type FlotaConversation,
   type FlotaExcelContact,
   type FlotaWhatsappConnectionResponse,
   type FlotaWhatsappConnection,
 } from '@/lib/flotaWhatsappApi';
-import { fetchWhatsappMessages, sendWhatsappMessage, type WhatsappMessageItem } from '@/lib/whatsappApi';
+import { type WhatsappMessageItem, sendWhatsappMessage } from '@/lib/whatsappApi';
 import * as QRCode from 'qrcode';
 import * as XLSX from 'xlsx';
 
 /* ==================== TIPOS ==================== */
 
+const ESTADOS = ['NUEVO', 'AFILIADO', 'CITADO', 'SEGUIMIENTO', 'INFORMACION', 'SIN REQUISITOS', 'NO RESPONDE'] as const;
+
+function formatStatus(status: string) {
+  if (!status) return '';
+  return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+}
+
 const tagStyles: Record<string, string> = {
+  NUEVO: 'bg-slate-100 text-slate-700 border-slate-300',
   CITADO: 'bg-primary/10 text-primary border-primary/20',
   AFILIADO: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20',
   SEGUIMIENTO: 'bg-amber-500/10 text-amber-700 border-amber-500/20',
   INFORMACION: 'bg-sky-500/10 text-sky-700 border-sky-500/20',
   'SIN REQUISITOS': 'bg-rose-500/10 text-rose-700 border-rose-500/20',
+  'NO RESPONDE': 'bg-yellow-100 text-yellow-700 border-yellow-300',
 };
-
-const templates = [
-  { id: 't1', label: 'Bienvenida', text: 'Hola {{nombre}} 👋 Bienvenido a Taxi Monterrico. Estamos felices de tenerte con nosotros.' },
-  { id: 't2', label: 'Recordatorio de cita', text: 'Hola {{nombre}}, te recordamos tu cita programada. Te esperamos en nuestra oficina.' },
-  { id: 't3', label: 'Seguimiento', text: 'Hola {{nombre}}, queríamos saber si tienes alguna duda sobre {{empresa}}. Estamos para ayudarte.' },
-  { id: 't4', label: 'Afiliación completada', text: '¡Felicidades {{nombre}}! Tu afiliación se completó correctamente. Bienvenido a la flota.' },
-];
 
 /* ==================== MAIN ==================== */
 
 export default function FlotaMensajes() {
-  const [tab, setTab] = useState<'inbox' | 'masivo'>('inbox');
+  const [tab, setTab] = useState<'inbox' | 'masivo' | 'pipeline'>('inbox');
   const [connection, setConnection] = useState<FlotaWhatsappConnectionResponse | null>(null);
   const [evoModalOpen, setEvoModalOpen] = useState(false);
   const [loadingConn, setLoadingConn] = useState(true);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
 
   const instance = connection?.instance ?? null;
   const isConnected = instance?.isConnected ?? false;
@@ -148,6 +192,15 @@ export default function FlotaMensajes() {
             >
               <Send className="h-4 w-4" /> Masivo
             </button>
+            <button
+              onClick={() => setTab('pipeline')}
+              className={cn(
+                'inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors',
+                tab === 'pipeline' ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <LayoutList className="h-4 w-4" /> Pipeline
+            </button>
           </div>
           <button
             onClick={() => setEvoModalOpen(true)}
@@ -200,11 +253,12 @@ export default function FlotaMensajes() {
 
       {tab === 'inbox' ? (
         loadingConn ? <LoadingState /> :
-        isConnected ? <InboxView /> : <ConnectPrompt onClick={() => setEvoModalOpen(true)} />
-      ) : loadingConn ? (
-        <LoadingState />
-      ) : (
+        isConnected ? <InboxView activeId={activeConversationId} onActiveChange={setActiveConversationId} /> : <ConnectPrompt onClick={() => setEvoModalOpen(true)} />
+      ) : tab === 'masivo' ? (
+        loadingConn ? <LoadingState /> :
         <MasivoView isConnected={isConnected} onConnectClick={() => setEvoModalOpen(true)} />
+      ) : (
+        <FlotaPipelineView onSelect={(id) => { setActiveConversationId(id); setTab('inbox'); }} />
       )}
     </div>
   );
@@ -460,11 +514,19 @@ function ConnectPrompt({ onClick }: { onClick: () => void }) {
 
 /* ==================== INBOX ==================== */
 
-function InboxView() {
+function InboxView({ activeId: externalActiveId, onActiveChange }: { activeId: string | null; onActiveChange: (id: string | null) => void }) {
   const [conversations, setConversations] = useState<FlotaConversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [messagesCache, setMessagesCache] = useState<Record<string, WhatsappMessageItem[]>>({});
+
+  useEffect(() => {
+    if (externalActiveId && externalActiveId !== activeId) {
+      setActiveId(externalActiveId);
+      onActiveChange(null);
+    }
+  }, [externalActiveId]);
 
   useEffect(() => {
     void loadConversations();
@@ -475,7 +537,6 @@ function InboxView() {
     try {
       const data = await fetchConversations();
       setConversations(data);
-      if (data.length > 0 && !activeId) setActiveId(data[0].id);
     } catch {
       toast.error('No se pudieron cargar las conversaciones');
     } finally {
@@ -520,14 +581,24 @@ function InboxView() {
                   activeId === c.id && 'bg-primary/5',
                 )}
               >
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
                   {c.name.slice(0, 2).toUpperCase()}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="truncate font-semibold text-foreground">{c.name}</p>
+                    <p className="truncate text-sm font-medium text-foreground">{c.name}</p>
                     <span className="shrink-0 text-xs text-muted-foreground">
-                      {new Date(c.time).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}
+                      {(() => {
+                        const msgDate = new Date(c.time);
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const msgDay = new Date(msgDate);
+                        msgDay.setHours(0, 0, 0, 0);
+                        if (msgDay.getTime() === today.getTime()) {
+                          return msgDate.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
+                        }
+                        return msgDate.toLocaleDateString('es-PE', { day: 'numeric', month: 'numeric', year: 'numeric' });
+                      })()}
                     </span>
                   </div>
                   <p className="mt-0.5 line-clamp-1 text-sm text-muted-foreground">{c.preview}</p>
@@ -547,7 +618,13 @@ function InboxView() {
       </aside>
 
       {activeId ? (
-        <ChatPanel contactId={activeId} conversations={conversations} onContactUpdated={loadConversations} />
+        <ChatPanel
+          contactId={activeId}
+          conversations={conversations}
+          onContactUpdated={loadConversations}
+          messagesCache={messagesCache}
+          setMessagesCache={setMessagesCache}
+        />
       ) : (
         <div className="flex items-center justify-center rounded-lg border border-border bg-card text-sm text-muted-foreground shadow-sm">
           Selecciona una conversación
@@ -557,35 +634,57 @@ function InboxView() {
   );
 }
 
-function ChatPanel({ contactId, conversations, onContactUpdated }: { contactId: string; conversations: FlotaConversation[]; onContactUpdated: () => void }) {
-  const [messages, setMessages] = useState<WhatsappMessageItem[]>([]);
+function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, setMessagesCache }: {
+  contactId: string;
+  conversations: FlotaConversation[];
+  onContactUpdated: () => void;
+  messagesCache: Record<string, WhatsappMessageItem[]>;
+  setMessagesCache: React.Dispatch<React.SetStateAction<Record<string, WhatsappMessageItem[]>>>;
+}) {
   const [draft, setDraft] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
-  const [editName, setEditName] = useState('');
-  const [savingName, setSavingName] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editData, setEditData] = useState<Record<string, string>>({});
   const scrollRef = useRef<HTMLDivElement>(null);
   const convo = conversations.find((c) => c.id === contactId);
 
   useEffect(() => {
-    if (editModalOpen) {
-      setEditName(convo?.name ?? '');
+    if (editModalOpen && contactId) {
+      void loadProspectoDetail();
     }
-  }, [editModalOpen, convo?.name]);
+  }, [editModalOpen, contactId]);
+
+  async function loadProspectoDetail() {
+    try {
+      const data = await api<Record<string, unknown>>(`/flota-prospectos/${contactId}`);
+      const fields: Record<string, string> = {};
+      for (const [k, v] of Object.entries(data)) {
+        if (v != null) fields[k] = String(v);
+      }
+      setEditData(fields);
+    } catch {
+      toast.error('No se pudo cargar los datos del prospecto');
+      setEditModalOpen(false);
+    }
+  }
 
   useEffect(() => {
+    if (!contactId) return;
+    if (messagesCache[contactId]) return;
     void loadMessages();
-  }, [contactId]);
+  }, [contactId, messagesCache]);
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-  }, [messages]);
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'instant' });
+  }, [messagesCache[contactId]?.length]);
 
   async function loadMessages() {
+    if (!contactId) return;
     setLoading(true);
     try {
-      const items = await fetchWhatsappMessages(contactId);
-      setMessages(items);
+      const items = await fetchFlotaProspectoMessages(contactId);
+      setMessagesCache(prev => ({ ...prev, [contactId]: items }));
     } catch {
       toast.error('No se pudieron cargar los mensajes');
     } finally {
@@ -596,29 +695,55 @@ function ChatPanel({ contactId, conversations, onContactUpdated }: { contactId: 
   async function send() {
     if (!draft.trim()) return;
     try {
-      await sendWhatsappMessage(contactId, draft.trim());
+      await sendFlotaWhatsappMessage(contactId, draft.trim());
       setDraft('');
-      await loadMessages();
+      const items = await fetchFlotaProspectoMessages(contactId);
+      setMessagesCache(prev => ({ ...prev, [contactId]: items }));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'No se pudo enviar el mensaje');
     }
   }
 
-  async function handleSaveName() {
-    if (!editName.trim()) return;
-    setSavingName(true);
+  const messages = messagesCache[contactId] ?? [];
+
+  async function handleSaveProspecto() {
+    if (!editData.nombreCompleto?.trim()) {
+      toast.error('El nombre es obligatorio');
+      return;
+    }
+    setSaving(true);
+    const body: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(editData)) {
+      const trimmed = v?.trim();
+      if (trimmed) body[k] = trimmed;
+      else if (v === '' && k === 'observaciones') body[k] = ''; // permitir vaciar observaciones
+    }
     try {
-      await api(`/contacts/${contactId}`, {
+      await api(`/flota-prospectos/${contactId}`, {
         method: 'PATCH',
-        body: JSON.stringify({ name: editName.trim() }),
+        body: JSON.stringify(body),
       });
-      toast.success('Nombre actualizado');
+      toast.success('Prospecto actualizado');
       setEditModalOpen(false);
       onContactUpdated();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'No se pudo actualizar el nombre');
+      toast.error(e instanceof Error ? e.message : 'Error al actualizar');
     } finally {
-      setSavingName(false);
+      setSaving(false);
+    }
+  }
+
+  async function handleCambiarEstado(nuevoEstado: string) {
+    if (!contactId) return;
+    try {
+      await api(`/flota-prospectos/${contactId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ estado: nuevoEstado }),
+      });
+      toast.success(`Estado actualizado a ${formatStatus(nuevoEstado)}`);
+      onContactUpdated();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'No se pudo actualizar el estado');
     }
   }
 
@@ -634,17 +759,29 @@ function ChatPanel({ contactId, conversations, onContactUpdated }: { contactId: 
             <p className="text-xs text-muted-foreground">{convo?.phone ?? ''}</p>
           </div>
         </div>
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon"><Phone className="h-4 w-4" /></Button>
-          <Button variant="ghost" size="icon"><Video className="h-4 w-4" /></Button>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" onClick={() => setEditModalOpen(true)}>
+            <Edit2 className="h-4 w-4" />
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>
+              <button
+                className={cn(
+                  'rounded-md border px-3 py-1.5 text-xs font-medium transition-colors',
+                  convo?.estado && tagStyles[convo.estado]
+                    ? tagStyles[convo.estado]
+                    : 'border-input bg-background text-muted-foreground hover:bg-muted',
+                )}
+              >
+                {convo?.estado ? formatStatus(convo.estado) : 'Estado'}
+              </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setEditModalOpen(true)}>
-                <Edit2 className="mr-2 h-4 w-4" /> Editar contacto
-              </DropdownMenuItem>
+              {ESTADOS.map((est) => (
+                <DropdownMenuItem key={est} onClick={() => handleCambiarEstado(est)}>
+                  {formatStatus(est)}
+                </DropdownMenuItem>
+              ))}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -652,9 +789,9 @@ function ChatPanel({ contactId, conversations, onContactUpdated }: { contactId: 
 
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_1px_1px,theme(colors.muted.foreground/0.08)_1px,transparent_0)] [background-size:18px_18px] px-6 py-5"
+        className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_1px_1px,theme(colors.muted.foreground/0.08)_1px,transparent_0)] [background-size:18px_18px] px-4 py-5"
       >
-        <div className="mx-auto flex max-w-3xl flex-col gap-3">
+        <div className="flex flex-col gap-3">
           {loading ? (
             <div className="flex items-center justify-center py-16">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -664,27 +801,76 @@ function ChatPanel({ contactId, conversations, onContactUpdated }: { contactId: 
               No hay mensajes aún
             </div>
           ) : (
-            messages.map((m) => {
-              const mine = m.direction === 'outbound';
-              return (
-                <div key={m.id} className={cn('flex', mine ? 'justify-end' : 'justify-start')}>
-                  <div
-                    className={cn(
-                      'max-w-[75%] rounded-2xl px-4 py-2 text-sm shadow-sm',
-                      mine
-                        ? 'rounded-br-sm bg-primary text-primary-foreground'
-                        : 'rounded-bl-sm bg-muted text-foreground',
-                    )}
-                  >
-                    <p className="whitespace-pre-wrap">{m.body}</p>
-                    <div className={cn('mt-1 flex items-center justify-end gap-1 text-[10px]', mine ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
-                      <span>{new Date(m.createdAt).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}</span>
-                      {mine && <CheckCheck className={cn('h-3 w-3', m.waOutboundStatus === 'read' ? 'text-sky-300' : '')} />}
-                    </div>
+            (() => {
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const yesterday = new Date(today);
+              yesterday.setDate(yesterday.getDate() - 1);
+
+              const formatDateLabel = (date: Date) => {
+                if (date.getTime() === today.getTime()) return 'Hoy';
+                if (date.getTime() === yesterday.getTime()) return 'Ayer';
+                return date.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' });
+              };
+
+              const grouped: { date: Date; messages: typeof messages }[] = [];
+              let currentDate: Date | null = null;
+              let currentGroup: typeof messages = [];
+
+              messages.forEach((m) => {
+                const msgDate = new Date(m.createdAt);
+                msgDate.setHours(0, 0, 0, 0);
+                if (!currentDate || msgDate.getTime() !== currentDate.getTime()) {
+                  if (currentGroup.length > 0) grouped.push({ date: currentDate!, messages: currentGroup });
+                  currentDate = msgDate;
+                  currentGroup = [m];
+                } else {
+                  currentGroup.push(m);
+                }
+              });
+              if (currentGroup.length > 0) grouped.push({ date: currentDate!, messages: currentGroup });
+
+              return grouped.map((group, gi) => (
+                <div key={gi}>
+                  <div className="my-3 flex items-center gap-3">
+                    <div className="h-px flex-1 border-t border-border/40" />
+                    <span className="text-[11px] font-medium capitalize text-muted-foreground">
+                      {formatDateLabel(group.date)}
+                    </span>
+                    <div className="h-px flex-1 border-t border-border/40" />
                   </div>
+                  {group.messages.map((m) => {
+                    const mine = m.direction === 'outbound';
+                    return (
+                      <div key={m.id} className={cn('flex mb-2', mine ? 'justify-end' : 'justify-start')}>
+                        <div
+                          className={cn(
+                            'max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-sm',
+                            mine
+                              ? 'rounded-br-sm bg-primary text-primary-foreground'
+                              : 'rounded-bl-sm bg-muted text-foreground',
+                          )}
+                        >
+                          {m.attachments?.filter((a) => a.mediaType === 'image' || a.mimeType?.startsWith('image/')).map((img) => (
+                            <img
+                              key={img.id}
+                              src={img.url ?? img.downloadUrl ?? ''}
+                              alt={img.name}
+                              className="mb-2 max-h-60 rounded-lg object-cover"
+                            />
+                          ))}
+                          <p className="whitespace-pre-wrap">{m.body}</p>
+                          <div className={cn('mt-1 flex items-center justify-end gap-1 text-[10px]', mine ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
+                            <span>{new Date(m.createdAt).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}</span>
+                            {mine && <CheckCheck className={cn('h-3 w-3', m.waOutboundStatus === 'read' ? 'text-sky-300' : '')} />}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })
+              ));
+            })()
           )}
         </div>
       </div>
@@ -692,7 +878,14 @@ function ChatPanel({ contactId, conversations, onContactUpdated }: { contactId: 
       <div className="border-t bg-background/60 p-3">
         <div className="flex items-end gap-2">
           <Button variant="ghost" size="icon" className="shrink-0"><Paperclip className="h-5 w-5" /></Button>
-          <Button variant="ghost" size="icon" className="shrink-0"><Smile className="h-5 w-5" /></Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="icon" className="shrink-0"><Smile className="h-5 w-5" /></Button>
+            </PopoverTrigger>
+            <PopoverContent side="top" align="start" className="w-auto p-0 border-0">
+              <EmojiGrid onSelect={(emoji) => setDraft((prev) => prev + emoji)} />
+            </PopoverContent>
+          </Popover>
           <Textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -713,30 +906,102 @@ function ChatPanel({ contactId, conversations, onContactUpdated }: { contactId: 
       </div>
 
       <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Editar Contacto</DialogTitle>
+            <DialogTitle>Editar Prospecto</DialogTitle>
             <DialogDescription>
-              Modifica el nombre de este contacto. Se actualizará en el CRM.
+              Modifica los datos del prospecto. Solo se guardarán los campos con valor.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Nombre</Label>
-              <Input 
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                placeholder="Nombre del contacto"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') void handleSaveName();
-                }}
+          <div className="grid grid-cols-2 gap-3 py-4">
+            <div className="space-y-1 col-span-2">
+              <Label>Nombre completo *</Label>
+              <Input
+                value={editData.nombreCompleto ?? ''}
+                onChange={(e) => setEditData((prev) => ({ ...prev, nombreCompleto: e.target.value }))}
+                placeholder="Nombre completo"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Celular</Label>
+              <Input
+                value={editData.celular ?? ''}
+                onChange={(e) => setEditData((prev) => ({ ...prev, celular: e.target.value }))}
+                placeholder="Celular"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Móvil</Label>
+              <Input
+                value={editData.movil ?? ''}
+                onChange={(e) => setEditData((prev) => ({ ...prev, movil: e.target.value }))}
+                placeholder="Móvil"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Edad</Label>
+              <Input
+                type="number"
+                value={editData.edad ?? ''}
+                onChange={(e) => setEditData((prev) => ({ ...prev, edad: e.target.value }))}
+                placeholder="Edad"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Distrito</Label>
+              <Input
+                value={editData.distrito ?? ''}
+                onChange={(e) => setEditData((prev) => ({ ...prev, distrito: e.target.value }))}
+                placeholder="Distrito"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Operador</Label>
+              <Input
+                value={editData.operador ?? ''}
+                onChange={(e) => setEditData((prev) => ({ ...prev, operador: e.target.value }))}
+                placeholder="Operador"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Modalidad</Label>
+              <Input
+                value={editData.modalidad ?? ''}
+                onChange={(e) => setEditData((prev) => ({ ...prev, modalidad: e.target.value }))}
+                placeholder="Modalidad"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Red Social</Label>
+              <Input
+                value={editData.redSocial ?? ''}
+                onChange={(e) => setEditData((prev) => ({ ...prev, redSocial: e.target.value }))}
+                placeholder="Red social"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Año vehículo</Label>
+              <Input
+                type="number"
+                value={editData.anioVehiculo ?? ''}
+                onChange={(e) => setEditData((prev) => ({ ...prev, anioVehiculo: e.target.value }))}
+                placeholder="Año del vehículo"
+              />
+            </div>
+            <div className="space-y-1 col-span-2">
+              <Label>Observaciones</Label>
+              <Textarea
+                value={editData.observaciones ?? ''}
+                onChange={(e) => setEditData((prev) => ({ ...prev, observaciones: e.target.value }))}
+                placeholder="Observaciones"
+                className="min-h-[80px] resize-none"
               />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditModalOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSaveName} disabled={savingName || !editName.trim()}>
-              {savingName && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button onClick={handleSaveProspecto} disabled={saving || !editData.nombreCompleto?.trim()}>
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Guardar
             </Button>
           </DialogFooter>
@@ -756,10 +1021,14 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
   const [step, setStep] = useState(1);
   const [campaignName, setCampaignName] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [source, setSource] = useState<'crm' | 'excel'>('crm');
+  const [source, setSource] = useState<'crm' | 'excel' | null>(null);
   const [message, setMessage] = useState('');
   const [search, setSearch] = useState('');
   const [sending, setSending] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [bulkProgress, setBulkProgress] = useState<{
     total: number;
     sent: number;
@@ -810,12 +1079,18 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
     XLSX.writeFile(wb, 'plantilla-whatsapp.xlsx');
   }
 
-  const displayedContacts = source === 'excel' ? excelContacts : contacts;
-  const selected = displayedContacts.filter((c) => selectedIds.has(c.phone));
+  const displayedContacts = source === 'excel' ? excelContacts : source === 'crm' ? contacts : [];
+  const selected = source === 'crm'
+    ? contacts.filter((c) => selectedIds.has(c.id!))
+    : source === 'excel'
+    ? excelContacts.filter((c) => selectedIds.has(c.phone))
+    : [];
   const previewContact = selected[0] ?? displayedContacts[0];
   const filtered = source === 'excel'
     ? excelContacts.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()) || c.phone.includes(search))
-    : contacts.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()));
+    : source === 'crm'
+    ? contacts.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
+    : [];
 
   function toggle(phone: string) {
     setSelectedIds((s) => {
@@ -835,15 +1110,15 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
       .replaceAll('{{celular}}', phoneVal);
   }
 
-  function effectiveContactsToSend(): Array<{ contactId: string | undefined; name: string; phone: string }> {
+  function effectiveContactsToSend(): Array<{ contactId: string | undefined; flotaProspectoId: string | undefined; name: string; phone: string }> {
     if (source === 'crm') {
       return (contacts as FlotaConversation[])
         .filter((c) => selectedIds.has(c.id!))
-        .map((c) => ({ contactId: c.id ?? undefined, name: c.name, phone: c.phone }));
+        .map((c) => ({ contactId: c.id ?? undefined, flotaProspectoId: c.id ?? undefined, name: c.name, phone: c.phone }));
     }
     return (excelContacts as FlotaExcelContact[])
       .filter((c) => selectedIds.has(c.phone))
-      .map((c) => ({ contactId: c.contactId ?? undefined, name: c.name, phone: c.phone }));
+      .map((c) => ({ contactId: c.contactId ?? undefined, flotaProspectoId: undefined, name: c.name, phone: c.phone }));
   }
 
   async function handleSend() {
@@ -853,7 +1128,7 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
     }
     const targets = effectiveContactsToSend();
     if (targets.length === 0) {
-      toast.error(source === 'excel' ? 'Ningún contacto del Excel tiene coincidencia en el CRM.' : 'Selecciona al menos un contacto.');
+      toast.error(source === null ? 'Selecciona una fuente primero.' : source === 'excel' ? 'Ningún contacto del Excel tiene coincidencia en el CRM.' : 'Selecciona al menos un contacto.');
       return;
     }
 
@@ -892,7 +1167,7 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
       });
 
       try {
-        await sendWhatsappMessage(t.contactId, finalText, t.phone, t.name);
+        await sendWhatsappMessage(t.contactId, finalText, t.phone, t.name, imageUrl || undefined, t.flotaProspectoId);
         results.push({ name: t.name, phone: t.phone, ok: true });
         setBulkProgress({
           total: targets.length,
@@ -903,7 +1178,9 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
           nextDelay: BULK_DELAYS[(i + 1) % BULK_DELAYS.length]!,
         });
       } catch (e) {
-        results.push({ name: t.name, phone: t.phone, ok: false, error: e instanceof Error ? e.message : 'Error' });
+        const errorMsg = e instanceof Error ? e.message : 'Error';
+        console.error(`[FlotaBulk] Falló envío a ${t.name} (${t.phone}):`, errorMsg);
+        results.push({ name: t.name, phone: t.phone, ok: false, error: errorMsg });
       }
 
       if (i < targets.length - 1 && !cancelRef.current) {
@@ -913,11 +1190,18 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
 
     const sent = results.filter((r) => r.ok).length;
     const failed = results.filter((r) => !r.ok).length;
+    const failedResults = results.filter((r) => !r.ok);
 
     if (cancelRef.current) {
       toast.success(`Envío cancelado. Enviado: ${sent} · Pendientes: ${targets.length - results.length}`);
     } else {
       toast.success(`Envío completado. Enviado: ${sent} · Fallidos: ${failed}`);
+    }
+
+    if (failedResults.length > 0) {
+      console.error('[FlotaBulk] Fallidos:', failedResults);
+      const firstError = failedResults[0]!.error;
+      toast.error(`Primer fallo: ${firstError}`, { duration: 10000 });
     }
 
     setBulkProgress(null);
@@ -965,7 +1249,7 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
               <div>
                 <h3 className="font-semibold">Seleccionar audiencia</h3>
                 <p className="text-xs text-muted-foreground">
-                  {source === 'crm' ? 'Contactos desde las conversaciones de WhatsApp' : 'Importa contactos desde un archivo Excel'}
+                  {source === 'crm' ? 'Contactos desde las conversaciones de WhatsApp' : source === 'excel' ? 'Importa contactos desde un archivo Excel' : ''}
                 </p>
               </div>
 
@@ -1038,55 +1322,6 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
                     <Download className="h-3.5 w-3.5" />
                     Descargar plantilla
                   </button>
-
-                  {excelContacts.length > 0 && (
-                    <>
-                      <div className="space-y-2">
-                        <label className="text-xs font-medium text-muted-foreground">Buscar contacto</label>
-                        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nombre o teléfono..." />
-                      </div>
-
-                      <div className="rounded-lg border bg-muted/40 p-4">
-                        <p className="text-xs font-medium text-muted-foreground">Contactos importados</p>
-                        <p className="mt-1 text-3xl font-bold text-primary">{excelContacts.length}</p>
-                        <Button
-                          className="mt-3 w-full"
-                          onClick={() => setSelectedIds(new Set(excelContacts.map((c) => c.phone)))}
-                        >
-                          <Plus className="mr-1 h-4 w-4" /> Seleccionar todos
-                        </Button>
-                      </div>
-
-                      <div className="max-h-72 space-y-1 overflow-y-auto rounded-lg border p-2">
-                        {filtered.length === 0 ? (
-                          <p className="py-8 text-center text-sm text-muted-foreground">Sin resultados</p>
-                        ) : (
-                          (filtered as FlotaExcelContact[]).map((c) => {
-                            const on = selectedIds.has(c.phone);
-                            return (
-                              <button
-                                key={c.phone}
-                                onClick={() => toggle(c.phone)}
-                                className={cn(
-                                  'flex w-full items-center justify-between rounded-md px-3 py-2 text-sm transition-colors',
-                                  on ? 'bg-primary/10 text-primary' : 'hover:bg-muted',
-                                )}
-                              >
-                                <div className="text-left">
-                                  <span>{c.name}</span>
-                                  <p className="text-[11px] text-muted-foreground">
-                                    {c.phone}
-                                    {c.contactId ? '' : ' · Sin coincidencia en CRM'}
-                                  </p>
-                                </div>
-                                {on ? <CheckCircle2 className="h-4 w-4" /> : <Plus className="h-4 w-4 text-muted-foreground" />}
-                              </button>
-                            );
-                          })
-                        )}
-                      </div>
-                    </>
-                  )}
                 </div>
               ) : (
                 <>
@@ -1140,41 +1375,146 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
             </div>
 
             <div className="rounded-lg border">
-              <div className="flex items-center justify-between border-b p-4">
-                <div>
-                  <h3 className="font-semibold">Destinatarios seleccionados</h3>
-                  <p className="text-xs text-muted-foreground">{selected.length} contactos</p>
+              {source === 'excel' && excelContacts.length > 0 ? (
+                <>
+                  <div className="flex items-center justify-between border-b p-4">
+                    <div>
+                      <h3 className="font-semibold">Contactos importados</h3>
+                      <p className="text-xs text-muted-foreground">{selectedIds.size} de {excelContacts.length} seleccionados</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set(excelContacts.map((c) => c.phone)))}>
+                        Seleccionar todos
+                      </Button>
+                      {selectedIds.size > 0 && (
+                        <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>
+                          Limpiar
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="border-b px-4 py-3">
+                    <Input
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Buscar por nombre o teléfono..."
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                  <div className="max-h-96 overflow-y-auto">
+                    <Table>
+                      <TableHeader className="bg-muted/50 sticky top-0">
+                        <TableRow>
+                          <TableHead className="w-10">
+                            <Checkbox
+                              checked={
+                                excelContacts.length > 0 &&
+                                excelContacts.every((c) => selectedIds.has(c.phone))
+                              }
+                              onCheckedChange={() => {
+                                const allSelected = excelContacts.every((c) => selectedIds.has(c.phone));
+                                if (allSelected) {
+                                  setSelectedIds(new Set());
+                                } else {
+                                  setSelectedIds(new Set(excelContacts.map((c) => c.phone)));
+                                }
+                              }}
+                            />
+                          </TableHead>
+                          <TableHead>Nombre</TableHead>
+                          <TableHead>Teléfono</TableHead>
+                          <TableHead>CRM</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {(filtered as FlotaExcelContact[]).length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={4} className="py-12 text-center text-sm text-muted-foreground">
+                              Sin resultados
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          (filtered as FlotaExcelContact[]).map((c) => {
+                            const on = selectedIds.has(c.phone);
+                            return (
+                              <TableRow key={c.phone} className={cn(on && 'bg-primary/5')}>
+                                <TableCell>
+                                  <Checkbox
+                                    checked={on}
+                                    onCheckedChange={(checked) => {
+                                      if (checked) {
+                                        setSelectedIds((prev) => new Set([...prev, c.phone]));
+                                      } else {
+                                        setSelectedIds((prev) => {
+                                          const n = new Set(prev);
+                                          n.delete(c.phone);
+                                          return n;
+                                        });
+                                      }
+                                    }}
+                                  />
+                                </TableCell>
+                                <TableCell className="font-medium">{c.name}</TableCell>
+                                <TableCell>{c.phone}</TableCell>
+                                <TableCell>
+                                  {c.contactId ? (
+                                    <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-medium text-green-700">Coincide</span>
+                                  ) : (
+                                    <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">Sin CRM</span>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </>
+              ) : source === 'excel' ? (
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                  <FileSpreadsheet className="mb-3 h-10 w-10 text-muted-foreground/40" />
+                  <p className="text-sm text-muted-foreground">Importa un archivo Excel para ver los contactos</p>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>
-                  Eliminar seleccionados
-                </Button>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted/50 text-xs text-muted-foreground">
-                    <tr>
-                      <th className="px-4 py-2 text-left font-medium">Nombre</th>
-                      <th className="px-4 py-2 text-left font-medium">Teléfono</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selected.length === 0 ? (
-                      <tr>
-                        <td colSpan={2} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                          Selecciona contactos desde el panel izquierdo
-                        </td>
-                      </tr>
-                    ) : (
-                      selected.map((c) => (
-                        <tr key={'phone' in c ? c.phone : (c as FlotaConversation).id} className="border-t">
-                          <td className="px-4 py-3 font-medium">{c.name}</td>
-                          <td className="px-4 py-3 text-muted-foreground">{'phone' in c ? c.phone : (c as FlotaConversation).phone}</td>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between border-b p-4">
+                    <div>
+                      <h3 className="font-semibold">Destinatarios seleccionados</h3>
+                      <p className="text-xs text-muted-foreground">{selected.length} contactos</p>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>
+                      Eliminar seleccionados
+                    </Button>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50 text-xs text-muted-foreground">
+                        <tr>
+                          <th className="px-4 py-2 text-left font-medium">Nombre</th>
+                          <th className="px-4 py-2 text-left font-medium">Teléfono</th>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                      </thead>
+                      <tbody>
+                        {selected.length === 0 ? (
+                          <tr>
+                            <td colSpan={2} className="px-4 py-12 text-center text-sm text-muted-foreground">
+                              Selecciona contactos desde el panel izquierdo
+                            </td>
+                          </tr>
+                        ) : (
+                          selected.map((c) => (
+                            <tr key={'phone' in c ? c.phone : (c as FlotaConversation).id} className="border-t">
+                              <td className="px-4 py-3 font-medium">{c.name}</td>
+                              <td className="px-4 py-3 text-muted-foreground">{'phone' in c ? c.phone : (c as FlotaConversation).phone}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}
@@ -1190,48 +1530,92 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
                 </p>
               </div>
 
-              <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 text-primary">
-                  <Phone className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="font-medium">WhatsApp</p>
-                  <p className="text-xs text-muted-foreground">Envío masivo vía Evolution GO</p>
-                </div>
-              </div>
-
               <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground">Plantillas</label>
-                <div className="flex flex-wrap gap-2">
-                  {templates.map((t) => (
-                    <button
-                      key={t.id}
-                      onClick={() => setMessage(t.text)}
-                      className="rounded-md border bg-background px-3 py-1.5 text-xs font-medium transition-colors hover:border-primary hover:bg-primary/5 hover:text-primary"
-                    >
-                      {t.label}
-                    </button>
-                  ))}
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium text-muted-foreground">Mensaje</label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-7 w-7"><Smile className="h-4 w-4" /></Button>
+                    </PopoverTrigger>
+                    <PopoverContent side="bottom" align="end" className="w-auto p-0 border-0">
+                      <EmojiGrid onSelect={(emoji) => setMessage((prev) => prev + emoji)} />
+                    </PopoverContent>
+                  </Popover>
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground">Mensaje</label>
                 <Textarea
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="Escribe tu mensaje. Usa {{nombre}} para personalizar."
-                  className="min-h-[160px] resize-none font-mono text-sm"
+                  className="min-h-[120px] resize-none font-mono text-sm"
                 />
                 <p className="text-[11px] text-muted-foreground">{message.length} caracteres</p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground">Adjuntar imagen (opcional)</label>
+                {imagePreview ? (
+                  <div className="relative w-40">
+                    <img src={imagePreview} alt="Preview" className="h-32 w-32 rounded-lg object-cover border" />
+                    <button
+                      onClick={() => { setImageFile(null); setImagePreview(null); setImageUrl(null); }}
+                      className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileRef.current?.click()}
+                    disabled={uploadingImage}
+                  >
+                    {uploadingImage ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Subiendo...
+                      </>
+                    ) : (
+                      <>
+                        <ImageIcon className="mr-2 h-4 w-4" />
+                        Seleccionar imagen
+                      </>
+                    )}
+                  </Button>
+                )}
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setImageFile(file);
+                    setImagePreview(URL.createObjectURL(file));
+                    setUploadingImage(true);
+                    try {
+                      const url = await uploadFlotaImage(file);
+                      setImageUrl(url);
+                    } catch (err) {
+                      const msg = err instanceof Error ? err.message : 'Error subiendo imagen';
+                      toast.error(msg);
+                      setImageFile(null);
+                      setImagePreview(null);
+                    } finally {
+                      setUploadingImage(false);
+                    }
+                  }}
+                />
               </div>
             </div>
 
             <div className="space-y-3">
               <h3 className="font-semibold">Vista previa</h3>
-              <div className="rounded-2xl bg-slate-900 p-4 text-sm text-slate-100 shadow-inner">
-                {message.trim() ? (
+              <div className="rounded-2xl bg-card p-4 text-sm text-card-foreground shadow-inner">
+                {message.trim() || imagePreview ? (
                   <div className="rounded-2xl rounded-bl-sm bg-emerald-600/90 p-3 text-white">
+                    {imagePreview && <img src={imagePreview} alt="Adjunto" className="mb-2 max-h-48 rounded-lg object-cover" />}
                     <p className="whitespace-pre-wrap">{preview(message)}</p>
                     <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-white/80">
                       <span>ahora</span>
@@ -1239,7 +1623,7 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
                     </div>
                   </div>
                 ) : (
-                  <p className="py-8 text-center text-slate-400">Sin contenido</p>
+                  <p className="py-8 text-center text-muted-foreground">Sin contenido</p>
                 )}
               </div>
               <p className="text-xs text-muted-foreground">
@@ -1263,19 +1647,14 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
               <SummaryCard label="Enviado por" value="Flota" icon={<CheckCircle2 className="h-4 w-4" />} />
             </div>
 
-            <div className="rounded-lg border p-4">
-              <p className="text-xs font-medium text-muted-foreground">Vista previa del mensaje</p>
-              <p className="mt-2 whitespace-pre-wrap text-sm">{message ? preview(message) : '—'}</p>
-            </div>
-
             <Button
               size="lg"
               className="w-full"
               onClick={handleSend}
-              disabled={selected.length === 0 || !message.trim()}
+              disabled={selected.length === 0 || (!message.trim() && !imageUrl)}
             >
               <Send className="mr-2 h-4 w-4" />
-              Enviar campaña masiva
+              Enviar
             </Button>
           </div>
         )}
@@ -1397,6 +1776,269 @@ function Stepper({ step }: { step: number }) {
     </div>
   );
 }
+
+/* ==================== PIPELINE ==================== */
+
+const ESTADOS_PIPELINE = [
+  'Nuevo',
+  'Informacion',
+  'Citado',
+  'Seguimiento',
+  'Sin Requisitos',
+  'No Responde',
+  'Afiliado',
+];
+
+const estadoColorMap: Record<string, string> = {
+  'Nuevo': 'bg-gray-100 text-gray-700',
+  'Informacion': 'bg-cyan-100 text-cyan-700',
+  'Citado': 'bg-blue-100 text-blue-700',
+  'Seguimiento': 'bg-green-100 text-green-700',
+  'Sin Requisitos': 'bg-red-100 text-red-700',
+  'No Responde': 'bg-yellow-100 text-yellow-700',
+  'Afiliado': 'bg-purple-100 text-purple-700',
+};
+
+const ESTADO_LABELS: Record<string, string> = {
+  'Nuevo': 'Nuevo',
+  'Informacion': 'Info',
+  'Citado': 'Citado',
+  'Seguimiento': 'Seguimiento',
+  'Sin Requisitos': 'Sin Requisitos',
+  'No Responde': 'No Responde',
+  'Afiliado': 'Afiliado',
+};
+
+const ACCENT_COLORS: Record<string, string> = {
+  'Nuevo': '#6b7280',
+  'Informacion': '#0891b2',
+  'Citado': '#2563eb',
+  'Seguimiento': '#16a34a',
+  'Sin Requisitos': '#dc2626',
+  'No Responde': '#ca8a04',
+  'Afiliado': '#9333ea',
+};
+
+function FlotaPipelineView({ onSelect }: { onSelect: (contactId: string) => void }) {
+  const [conversations, setConversations] = useState<FlotaConversation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  useEffect(() => {
+    void loadConversations();
+  }, []);
+
+  async function loadConversations() {
+    setLoading(true);
+    try {
+      const data = await fetchConversations();
+      setConversations(data);
+    } catch {
+      toast.error('No se pudieron cargar los prospectos');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const grouped = useMemo(() => {
+    const map: Record<string, FlotaConversation[]> = {};
+    for (const s of ESTADOS_PIPELINE) map[s] = [];
+    for (const c of conversations) {
+      const estado = c.estado;
+      if (estado && map[estado]) {
+        map[estado].push(c);
+      } else {
+        map['Nuevo'].push(c);
+      }
+    }
+    return map;
+  }, [conversations]);
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveId(null);
+    if (!over) return;
+    const nuevoEstado = over.id as string;
+    if (!ESTADOS_PIPELINE.includes(nuevoEstado)) return;
+    const contactId = active.id as string;
+    const convo = conversations.find((c) => c.id === contactId);
+    if (!convo || convo.estado === nuevoEstado) return;
+    const idx = conversations.findIndex((c) => c.id === contactId);
+    setConversations((prev) => {
+      const next = [...prev];
+      next[idx] = { ...next[idx], estado: nuevoEstado };
+      return next;
+    });
+    try {
+      await api(`/flota-prospectos/${contactId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ estado: nuevoEstado }),
+      });
+      toast.success('Estado actualizado');
+    } catch {
+      setConversations((prev) => {
+        const next = [...prev];
+        const i = next.findIndex((c) => c.id === contactId);
+        if (i >= 0) next[i] = { ...next[i], estado: convo.estado };
+        return next;
+      });
+      toast.error('No se pudo actualizar el estado');
+    }
+  };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+  );
+
+  const activeConvo = activeId ? conversations.find((c) => c.id === activeId) : null;
+
+  if (loading) return <LoadingState />;
+
+  return (
+    <div className="rounded-lg border bg-card">
+      <div className="border-b px-4 py-3 flex items-center justify-between">
+        <div>
+          <h2 className="font-semibold">Pipeline de Prospectos Flota</h2>
+          <p className="text-sm text-muted-foreground">{conversations.length} prospectos</p>
+        </div>
+      </div>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCorners}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="scrollbar-thin flex gap-3 overflow-x-auto px-3 pb-3 pt-2" style={{ minHeight: 'calc(100vh - 14rem)' }}>
+          {ESTADOS_PIPELINE.map((estado) => (
+            <FlotaKanbanColumn
+              key={estado}
+              estado={estado}
+              conversations={grouped[estado]}
+              onSelect={onSelect}
+            />
+          ))}
+        </div>
+        <DragOverlay dropAnimation={null}>
+          {activeConvo ? (
+            <div className="w-[280px] rotate-2 shadow-xl border-primary/40 rounded-lg bg-card border p-3">
+              <p className="truncate text-sm font-semibold">{activeConvo.name}</p>
+              <p className="mt-0.5 truncate text-xs text-muted-foreground">{activeConvo.phone}</p>
+            </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
+    </div>
+  );
+}
+
+interface FlotaKanbanColumnProps {
+  estado: string;
+  conversations: FlotaConversation[];
+  onSelect: (contactId: string) => void;
+}
+
+const FlotaKanbanColumn = memo(function FlotaKanbanColumn({ estado, conversations, onSelect }: FlotaKanbanColumnProps) {
+  const { setNodeRef } = useDroppable({ id: estado });
+  const accentColor = ACCENT_COLORS[estado] ?? '#6b7280';
+
+  return (
+    <div className="flex h-full min-w-[280px] max-w-[300px] shrink-0 flex-col rounded-lg border bg-muted/20">
+      <div className="h-1 rounded-t-lg" style={{ backgroundColor: accentColor }} />
+      <div className="flex items-center justify-between border-x border-t px-3.5 py-3">
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold">{ESTADO_LABELS[estado] ?? estado}</h3>
+          <Badge variant="secondary" className="text-xs font-bold">{conversations.length}</Badge>
+        </div>
+      </div>
+      <div
+        ref={setNodeRef}
+        className="scrollbar-thin flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto border-x border-b border-dashed border-transparent p-2"
+        style={{ '--drop-active-bg': 'rgba(59,130,246,0.05)' } as React.CSSProperties}
+      >
+        {conversations.length === 0 ? (
+          <div className="flex flex-1 items-center justify-center rounded-md border border-dashed border-muted-foreground/20 py-8 text-xs text-muted-foreground">
+            Sin prospectos
+          </div>
+        ) : (
+          conversations.map((c) => (
+            <FlotaPipelineCard key={c.id} conversation={c} onSelect={onSelect} />
+          ))
+        )}
+      </div>
+    </div>
+  );
+});
+
+interface FlotaPipelineCardProps {
+  conversation: FlotaConversation;
+  onSelect: (contactId: string) => void;
+}
+
+const FlotaPipelineCard = memo(function FlotaPipelineCard({ conversation: c, onSelect }: FlotaPipelineCardProps) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: c.id });
+
+  const style: React.CSSProperties | undefined = transform
+    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
+    : undefined;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        'group relative select-none rounded-lg border border-border bg-card p-3.5 shadow-sm',
+        'transition-[box-shadow,border-color] duration-150',
+        'hover:border-primary/30 dark:hover:shadow-lg',
+        isDragging && 'opacity-40',
+      )}
+    >
+      <div {...listeners} {...attributes} className="absolute left-2 top-2 cursor-grab text-muted-foreground opacity-0 transition-opacity group-hover:opacity-60">
+        <GripVertical className="size-4" />
+      </div>
+      <button
+        type="button"
+        onClick={() => onSelect(c.id)}
+        className="ml-5 block w-full truncate text-left text-sm font-semibold text-foreground hover:underline hover:text-primary"
+      >
+        {c.name}
+      </button>
+      <div className="mt-2 space-y-1.5">
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Phone className="size-3 shrink-0" />
+          <span className="truncate">{c.phone}</span>
+        </div>
+        {c.preview && (
+          <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
+            <MessageCircle className="size-3 mt-0.5 shrink-0" />
+            <span className="line-clamp-2 break-words">{c.preview}</span>
+          </div>
+        )}
+      </div>
+      <div className="mt-3 flex items-center justify-between">
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onSelect(c.id); }}
+          className="inline-flex items-center gap-1.5 rounded-md bg-emerald-100 px-2.5 py-1.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-200"
+        >
+          <MessageCircle className="size-3.5" />
+          WhatsApp
+        </button>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onSelect(c.id); }}
+          className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          aria-label="Ver detalle"
+        >
+          <Info className="size-4" />
+        </button>
+      </div>
+    </div>
+  );
+});
 
 function SummaryCard({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
   return (

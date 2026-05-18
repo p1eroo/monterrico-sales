@@ -63,7 +63,7 @@ const TIMELINE_MOCK = [
 const estadoColors: Record<string, string> = {
   AFILIADO: 'shadow-none bg-purple-100 text-purple-700 border-purple-300 hover:bg-purple-200',
   CITADO: 'shadow-none bg-blue-100 text-blue-700 border-blue-300 hover:bg-blue-200',
-  SEGUIMIENTO: 'shadow-none bg-green-100 text-green-700 border-green-300 hover:bg-green-200',
+  SEGUIMIENTO: 'shadow-none bg-green-100 text-green-700 border-green-300 hover:bg-green-200 dark:bg-green-950/40 dark:text-green-300 dark:border-green-800 dark:hover:bg-green-950/60',
   INFORMACION: 'shadow-none bg-cyan-100 text-cyan-700 border-cyan-300 hover:bg-cyan-200',
   'SIN REQUISITOS': 'shadow-none bg-red-100 text-red-700 border-red-300 hover:bg-red-200',
   'NO RESPONDE': 'shadow-none bg-yellow-100 text-yellow-700 border-yellow-300 hover:bg-yellow-200',

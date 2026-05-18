@@ -60,7 +60,7 @@ import { getConductorTelefonos } from "@/lib/flotaConductoresApi";
 const estadoColors: Record<string, string> = {
   "AFILIADO": "bg-purple-200 text-purple-700 border-purple-200",
   "CITADO": "bg-blue-100 text-blue-700 border-blue-200",
-  "SEGUIMIENTO": "bg-green-100 text-green-700 border-green-200",
+  "SEGUIMIENTO": "bg-green-100 text-green-700 border-green-200 dark:bg-green-950/40 dark:text-green-300 dark:border-green-800",
   "INFORMACION": "bg-cyan-100 text-cyan-700 border-cyan-200",
   "SIN REQUISITOS": "bg-red-100 text-red-700 border-red-200",
   "NO RESPONDE": "bg-yellow-200 text-yellow-700 border-yellow-200",
@@ -205,7 +205,7 @@ export default function FlotaProspectos() {
 
   const getRowClass = (prospecto: FlotaProspectoRow): string => {
     if (isConductor(prospecto.celular)) {
-      return "bg-green-50/50 border-l-4 border-l-green-500 cursor-pointer hover:bg-green-100/50";
+      return "bg-green-50/50 border-l-4 border-l-green-500 cursor-pointer hover:bg-green-100/50 dark:bg-green-950/40 dark:border-l-green-400 dark:hover:bg-green-950/60";
     }
     return "cursor-pointer hover:bg-muted/50";
   };
@@ -510,7 +510,7 @@ export default function FlotaProspectos() {
         )}
       </div>
 
-      <div className="min-w-0 w-full overflow-x-auto rounded-none border-t border-b bg-transparent">
+      <div className="overflow-x-auto rounded-xl bg-background">
         {loading ? (
             <CrmDataTableSkeleton
               columns={[
@@ -536,7 +536,6 @@ export default function FlotaProspectos() {
               className="bg-card"
             />
         ) : (
-      <Card>
             <Table containerClassName="overflow-visible" className="min-w-[1300px] [&_td]:py-3 [&_th]:py-2 bg-transparent">
               <TableHeader className="bg-muted/30">
                 <TableRow>
@@ -681,7 +680,6 @@ export default function FlotaProspectos() {
                 )}
               </TableBody>
             </Table>
-      </Card>
         )}
       </div>
 

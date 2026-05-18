@@ -3,6 +3,8 @@ import {
   Body,
   Controller,
   Get,
+  Header,
+  Param,
   Post,
   Query,
   Req,
@@ -19,9 +21,12 @@ import { memoryStorage } from 'multer';
 import { WhatsappService } from './whatsapp.service';
 import { SendWhatsappDto } from './dto/send-whatsapp.dto';
 import { SendTestWhatsappDto } from './dto/send-test-whatsapp.dto';
+import { MediaUploadService } from '../media/media-upload.service';
+import sharp from 'sharp';
 
 type AuthedReq = {
   user: { userId: string; name: string; roleId?: string };
+  headers: { authorization?: string };
 };
 
 @Controller('api/whatsapp')
@@ -30,6 +35,7 @@ export class WhatsappController {
   constructor(
     private readonly whatsapp: WhatsappService,
     private readonly crmDataScope: CrmDataScopeService,
+    private readonly mediaUpload: MediaUploadService,
   ) {}
 
   @Get('connection/me')
@@ -88,8 +94,8 @@ export class WhatsappController {
   async send(@Req() req: AuthedReq, @Body() body: SendWhatsappDto) {
     const contactId = body.contactId?.trim();
     const text = body.text?.trim();
-    if ((!contactId && !body.phone?.trim()) || !text) {
-      throw new BadRequestException('contactId (o phone) y text son obligatorios');
+    if ((!contactId && !body.phone?.trim()) || (!text && !body.imageUrl)) {
+      throw new BadRequestException('contactId (o phone) y text o imageUrl son obligatorios');
     }
     const scope = await this.crmDataScope.buildScope(
       req.user.userId,
@@ -102,6 +108,8 @@ export class WhatsappController {
         phone: body.phone?.trim(),
         name: body.name?.trim(),
         instanceApiKey: body.instanceApiKey?.trim(),
+        imageUrl: body.imageUrl?.trim(),
+        flotaProspectoId: body.flotaProspectoId?.trim(),
       },
       scope,
       req.user.userId,
@@ -136,18 +144,43 @@ export class WhatsappController {
   }
 
   @Get('conversations')
+  @Header('Cache-Control', 'no-cache, no-store, must-revalidate')
   async conversations(@Query('q') q?: string) {
     return this.whatsapp.getConversations(q?.trim() || undefined);
+  }
+
+  @Get('flota/prospectos/:id/messages')
+  async flotaProspectoMessages(
+    @Param('id') id: string,
+    @Query('limit') limit?: string,
+  ) {
+    const lim = Number.isFinite(Number.parseInt(limit ?? '50', 10))
+      ? Number.parseInt(limit ?? '50', 10)
+      : 50;
+    return this.whatsapp.listForFlotaProspecto(id, lim);
+  }
+
+  @Post('flota/send')
+  async flotaSend(
+    @Req() req: AuthedReq,
+    @Body() body: { prospectoId: string; text: string },
+  ) {
+    const prospectoId = body.prospectoId?.trim();
+    const text = body.text?.trim();
+    if (!prospectoId || !text) {
+      throw new BadRequestException('prospectoId y text son obligatorios');
+    }
+    return this.whatsapp.sendFromFlotaProspecto(prospectoId, text, req.user.userId);
   }
 
   @Post('send-bulk')
   async sendBulk(
     @Req() req: AuthedReq,
-    @Body() body: { contactIds: string[]; text: string },
+    @Body() body: { contactIds: string[]; text: string; imageUrl?: string },
   ) {
     const text = body.text?.trim();
-    if (!text) {
-      throw new BadRequestException('text es obligatorio');
+    if (!text && !body.imageUrl?.trim()) {
+      throw new BadRequestException('text o imageUrl son obligatorios');
     }
     if (!body.contactIds?.length) {
       throw new BadRequestException('contactIds debe ser un array con al menos un ID');
@@ -157,10 +190,35 @@ export class WhatsappController {
       req.user.roleId,
     );
     return this.whatsapp.sendBulk(
-      { contactIds: body.contactIds, text },
+      { contactIds: body.contactIds, text: text || '', imageUrl: body.imageUrl?.trim() },
       scope,
       req.user.userId,
     );
+  }
+
+  @Post('flota/upload-image')
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }))
+  async uploadFlotaImage(
+    @Req() req: AuthedReq,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    if (!file?.buffer?.length) {
+      throw new BadRequestException('Adjunta una imagen (max 10MB)');
+    }
+    const allowed = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif', 'image/avif'];
+    if (!allowed.includes(file.mimetype)) {
+      throw new BadRequestException('Solo se permiten PNG, JPG, WEBP, GIF o AVIF');
+    }
+    const webpBuffer = await sharp(file.buffer).webp({ quality: 85 }).toBuffer();
+    const webpName = file.originalname.replace(/\.[^.]+$/, '') + '.webp';
+    const authHeader = req.headers['authorization'];
+    const url = await this.mediaUpload.uploadToMediaProxy(
+      webpBuffer,
+      webpName,
+      'image/webp',
+      { authorizationHeader: authHeader },
+    );
+    return { url };
   }
 
   @Post('import-excel')

@@ -72,13 +72,11 @@ export function Topbar() {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 min-w-0 shrink-0 items-center gap-3 border-b border-border/40 bg-background/50 px-4 backdrop-blur-xl backdrop-saturate-150 md:px-6">
+    <header className="sticky top-0 z-30 flex h-14 min-w-0 shrink-0 items-center gap-3 border-b border-border/40 px-4 md:px-6">
       <SidebarTrigger className="-ml-1 text-text-secondary hover:bg-surface-hover hover:text-foreground md:hidden" />
       <Separator orientation="vertical" className="h-5 bg-border/80 md:hidden" />
 
-      <Separator orientation="vertical" className="hidden h-5 bg-border/80 md:block" />
-
-      <Breadcrumb className="hidden min-w-0 flex-1 sm:flex">
+      <Breadcrumb className="hidden min-w-0 flex-1 text-base sm:flex">
         <BreadcrumbList>
           <BreadcrumbItem>
             <BreadcrumbPage className="text-text-secondary">Taxi Monterrico</BreadcrumbPage>
@@ -91,21 +89,24 @@ export function Topbar() {
       </Breadcrumb>
 
       <div className="ml-auto flex items-center gap-2">
-        <NotificationCenter />
-
-        <AssistantLauncherButton />
+        {area === 'comercial' && (
+          <>
+            <NotificationCenter />
+            <AssistantLauncherButton />
+          </>
+        )}
 
         <ThemeToggle />
 
-        <Separator orientation="vertical" className="mx-1 h-5 bg-border/80" />
+        <Separator orientation="vertical" className="-mx-0.5 h-5 bg-border/80" />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="h-8 gap-2 px-2 text-sm font-normal text-text-secondary hover:bg-surface-hover hover:text-foreground"
+              className="h-8 gap-2 px-2 text-base font-normal text-text-secondary hover:bg-surface-hover hover:text-foreground"
             >
-              <Avatar className="size-6">
+              <Avatar className="size-7">
                 <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">
                   {initials}
                 </AvatarFallback>
