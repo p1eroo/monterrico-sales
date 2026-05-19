@@ -530,6 +530,10 @@ function InboxView({ activeId: externalActiveId, onActiveChange }: { activeId: s
 
   useEffect(() => {
     void loadConversations();
+    const interval = setInterval(() => {
+      void loadConversations();
+    }, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   async function loadConversations() {
@@ -590,14 +594,21 @@ function InboxView({ activeId: externalActiveId, onActiveChange }: { activeId: s
                     <span className="shrink-0 text-xs text-muted-foreground">
                       {(() => {
                         const msgDate = new Date(c.time);
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        const msgDay = new Date(msgDate);
-                        msgDay.setHours(0, 0, 0, 0);
-                        if (msgDay.getTime() === today.getTime()) {
+                        const now = new Date();
+                        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                        const yesterday = new Date(today.getTime() - 86400000);
+                        const msgDay = new Date(msgDate.getFullYear(), msgDate.getMonth(), msgDate.getDate());
+                        const diffDays = Math.floor((today.getTime() - msgDay.getTime()) / 86400000);
+                        if (diffDays === 0) {
                           return msgDate.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
                         }
-                        return msgDate.toLocaleDateString('es-PE', { day: 'numeric', month: 'numeric', year: 'numeric' });
+                        if (diffDays === 1) {
+                          return 'Ayer';
+                        }
+                        if (diffDays < 7) {
+                          return msgDate.toLocaleDateString('es-PE', { weekday: 'short' });
+                        }
+                        return msgDate.toLocaleDateString('es-PE', { day: 'numeric', month: 'numeric' });
                       })()}
                     </span>
                   </div>

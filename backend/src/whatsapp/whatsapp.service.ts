@@ -1438,11 +1438,20 @@ export class WhatsappService {
     }
 
     const contact = await this.findContactByLoosePhone(peerDigits);
-    const flotaProspecto = contact?.id
+    let flotaProspecto = contact?.id
       ? null
       : await this.findFlotaProspectoByPhone(peerDigits);
     if (!contact?.id && !flotaProspecto?.id) {
-      return { ok: true, ignored: 'contact_not_found' };
+      const normalizedPhone = peerDigits.replace(/\D/g, '');
+      const formattedPhone = normalizedPhone.startsWith('51') ? normalizedPhone : `51${normalizedPhone}`;
+      const createdProspecto = await this.prisma.flotaProspecto.create({
+        data: {
+          nombreCompleto: `Contacto ${formattedPhone.slice(-9)}`,
+          celular: formattedPhone,
+          estado: 'Nuevo',
+        },
+      });
+      flotaProspecto = { id: createdProspecto.id, nombreCompleto: createdProspecto.nombreCompleto, celular: createdProspecto.celular };
     }
     const instance = await this.findInstanceByEvent(parsed);
     const ourLine =
@@ -1499,22 +1508,19 @@ export class WhatsappService {
   }
 
   private async findFlotaProspectoByPhone(peerDigits: string) {
+    const normalizedPeer = peerDigits.replace(/\D/g, '');
+    if (normalizedPeer.length < 8) return null;
     const candidates = this.waNumberCandidates(peerDigits);
     if (candidates.length === 0) return null;
-    const rows = await this.prisma.$queryRaw<{ id: string; nombreCompleto: string; celular: string | null }[]>`
-      SELECT id, "nombreCompleto", celular
+    const rows = await this.prisma.$queryRaw<{ id: string; nombreCompleto: string; celular: string | null; movil: string | null }[]>`
+      SELECT id, "nombreCompleto", celular, movil
       FROM "FlotaProspecto"
-      WHERE celular IS NOT NULL
-        AND regexp_replace(celular, '\D', '', 'g') = ANY(${candidates}::text[])
-      ORDER BY
-        CASE
-          WHEN regexp_replace(celular, '\D', '', 'g') = ${candidates[0]} THEN 0
-          ELSE 1
-        END,
-        "updatedAt" DESC
+      WHERE (celular IS NOT NULL AND regexp_replace(celular, '\D', '', 'g') = ${normalizedPeer})
+         OR (movil IS NOT NULL AND regexp_replace(movil, '\D', '', 'g') = ${normalizedPeer})
       LIMIT 1
     `;
-    return rows[0] ?? null;
+    if (rows[0]) return { id: rows[0].id, nombreCompleto: rows[0].nombreCompleto, celular: rows[0].celular };
+    return null;
   }
 
   private async findContactByLoosePhone(peerDigits: string) {
@@ -1543,8 +1549,7 @@ export class WhatsappService {
   // ─── Instancia compartida de Flota (BD, misma estructura que personales) ───
 
   private sharedInstanceName(): string {
-    const env = this.config.get<string>('EVOGO_INSTANCE_NAME')?.trim();
-    return env ? `${env}-flota` : 'crm-flota';
+    return this.config.get<string>('EVOGO_FLOTA_INSTANCE_NAME')?.trim() || 'crm-flota';
   }
 
   private async findSharedInstance(): Promise<WhatsappInstanceRow | null> {
@@ -1838,8 +1843,13 @@ export class WhatsappService {
           unread: row.direction === 'inbound' ? 1 : 0,
           estado: row.flotaProspecto?.estado ?? undefined,
         });
-      } else if (row.direction === 'inbound') {
-        existingEntry.unread++;
+      } else {
+        if (row.createdAt.getTime() > existingEntry.lastTime.getTime()) {
+          existingEntry.lastTime = row.createdAt;
+          existingEntry.lastMessage = row.body.slice(0, 100);
+          existingEntry.lastDirection = row.direction;
+        }
+        if (row.direction === 'inbound') existingEntry.unread++;
       }
     }
 

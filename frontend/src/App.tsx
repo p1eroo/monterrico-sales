@@ -139,7 +139,8 @@ function MainRoutes() {
         <Route path="/settings" element={<Settings />} />
         <Route path="/archivos" element={<Files />} />
         <Route path="/agentes-ia" element={<AgentesIa />} />
-        <Route path="/flota" element={<FlotaDashboard />} />
+        <Route path="/flota" element={<Navigate to="/flota/dashboard" replace />} />
+        <Route path="/flota/dashboard" element={<FlotaDashboard />} />
         <Route path="/flota/prospectos" element={<FlotaProspectos />} />
         <Route path="/flota/prospectos/:id" element={<FlotaProspectoDetail />} />
         <Route path="/flota/conductores" element={<FlotaConductores />} />
