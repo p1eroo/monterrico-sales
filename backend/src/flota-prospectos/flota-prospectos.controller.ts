@@ -48,6 +48,12 @@ export class FlotaProspectosController {
     return this.service.getCounts();
   }
 
+  /** GET /flota-prospectos/masivo-list — Lista ligera de prospectos para el envío masivo */
+  @Get('flota-prospectos/masivo-list')
+  async listForMasivo(@Query('search') search?: string) {
+    return this.service.listForMasivo(search);
+  }
+
   /** GET /flota/sheets — Hojas disponibles del spreadsheet */
   @Public()
   @Get('flota/sheets')
@@ -112,9 +118,10 @@ export class FlotaProspectosController {
     try {
       const actor = { userId: req.user?.id, userName: req.user?.name };
       return await this.service.update(id, body, actor);
-    } catch {
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
       throw new HttpException(
-        'No se pudo actualizar el prospecto',
+        `No se pudo actualizar el prospecto: ${msg}`,
         HttpStatus.BAD_REQUEST,
       );
     }

@@ -89,6 +89,25 @@ export class FlotaProspectosService {
   }
 
 
+  /** Lista ligera para el envío masivo desde CRM */
+  async listForMasivo(search?: string) {
+    const where: Record<string, unknown> = {};
+    if (search?.trim()) {
+      const s = search.trim();
+      where.OR = [
+        { nombreCompleto: { contains: s, mode: 'insensitive' } },
+        { celular: { contains: s, mode: 'insensitive' } },
+      ];
+    }
+    return this.prisma.flotaProspecto.findMany({
+      where: where as any,
+      select: { id: true, nombreCompleto: true, celular: true, movil: true },
+      orderBy: { nombreCompleto: 'asc' },
+      take: 500,
+    });
+  }
+
+
   /** Lista paginada con filtros */
   async findAll(params: {
     page?: number;

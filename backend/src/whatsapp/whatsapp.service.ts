@@ -1439,12 +1439,11 @@ export class WhatsappService {
 
     let flotaProspecto = await this.findFlotaProspectoByPhone(peerDigits);
     if (!flotaProspecto?.id) {
-      const normalizedPhone = peerDigits.replace(/\D/g, '');
-      const formattedPhone = normalizedPhone.startsWith('51') ? normalizedPhone : `51${normalizedPhone}`;
+      const normalizedPhone = peerDigits.replace(/\D/g, '').replace(/^51/, '').slice(-9);
       const createdProspecto = await this.prisma.flotaProspecto.create({
         data: {
-          nombreCompleto: `Contacto ${formattedPhone.slice(-9)}`,
-          celular: formattedPhone,
+          nombreCompleto: `Contacto ${normalizedPhone}`,
+          celular: normalizedPhone,
           estado: 'Nuevo',
         },
       });
@@ -1489,10 +1488,8 @@ export class WhatsappService {
   }
 
   private async findFlotaProspectoByPhone(peerDigits: string) {
-    const normalizedPeer = peerDigits.replace(/\D/g, '');
+    const normalizedPeer = peerDigits.replace(/\D/g, '').replace(/^51/, '').slice(-9);
     if (normalizedPeer.length < 8) return null;
-    const candidates = this.waNumberCandidates(peerDigits);
-    if (candidates.length === 0) return null;
     const rows = await this.prisma.$queryRaw<{ id: string; nombreCompleto: string; celular: string | null; movil: string | null }[]>`
       SELECT id, "nombreCompleto", celular, movil
       FROM "FlotaProspecto"

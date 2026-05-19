@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo, memo } from 'react';
+import { io } from 'socket.io-client';
 import {
   DndContext,
   closestCorners,
@@ -90,7 +91,7 @@ import {
 import { EmojiGrid } from '@/components/EmojiGrid';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { cn } from '@/lib/utils';
-import { api } from '@/lib/api';
+import { api, API_BASE } from '@/lib/api';
 import { toast } from 'sonner';
 import {
   fetchSharedConnection,
@@ -102,12 +103,13 @@ import {
   sendFlotaWhatsappMessage,
   importExcelPreview,
   uploadFlotaImage,
+  fetchMasivoProspectos,
   type FlotaConversation,
   type FlotaExcelContact,
   type FlotaWhatsappConnectionResponse,
   type FlotaWhatsappConnection,
 } from '@/lib/flotaWhatsappApi';
-import { type WhatsappMessageItem, sendWhatsappMessage } from '@/lib/whatsappApi';
+import { type WhatsappMessageItem, type WhatsappSocketPayload, sendWhatsappMessage } from '@/lib/whatsappApi';
 import * as QRCode from 'qrcode';
 import * as XLSX from 'xlsx';
 
@@ -686,6 +688,39 @@ function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, 
     void loadMessages();
   }, [contactId, messagesCache]);
 
+  // WebSocket para mensajes entrantes en tiempo real
+  useEffect(() => {
+    if (!contactId) return;
+    void loadMessages();
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+    if (!token) return;
+    const socket = io(`${API_BASE}/whatsapp`, {
+      auth: { token },
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+    });
+    socket.emit('join', { contactId });
+
+    const onPayload = (payload: WhatsappSocketPayload) => {
+      if (payload.contactId !== contactId) return;
+      if (payload.type === 'message') {
+        setMessagesCache((prev) => {
+          const existing = prev[contactId] ?? [];
+          const rest = existing.filter((x) => x.id !== payload.item.id);
+          const next = [...rest, payload.item];
+          next.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+          return { ...prev, [contactId]: next };
+        });
+      }
+    };
+
+    socket.on('whatsapp', onPayload);
+    return () => {
+      socket.off('whatsapp', onPayload);
+      socket.disconnect();
+    };
+  }, [contactId]);
+
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'instant' });
   }, [messagesCache[contactId]?.length]);
@@ -724,10 +759,19 @@ function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, 
     }
     setSaving(true);
     const body: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(editData)) {
-      const trimmed = v?.trim();
-      if (trimmed) body[k] = trimmed;
-      else if (v === '' && k === 'observaciones') body[k] = ''; // permitir vaciar observaciones
+    const allowedFields = ['nombreCompleto', 'celular', 'movil', 'edad', 'distrito', 'operador', 'modalidad', 'redSocial', 'anioVehiculo', 'observaciones', 'estado'];
+    for (const k of allowedFields) {
+      const v = editData[k];
+      if (k === 'edad' || k === 'anioVehiculo') {
+        const num = parseInt(v, 10);
+        if (!isNaN(num)) body[k] = num;
+      } else if (k === 'esDuplicado') {
+        body[k] = v === 'true' ? true : v === 'false' ? false : undefined;
+      } else if (v?.trim()) {
+        body[k] = v.trim();
+      } else if (k === 'observaciones' && v === '') {
+        body[k] = '';
+      }
     }
     try {
       await api(`/flota-prospectos/${contactId}`, {
@@ -1060,8 +1104,18 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
   async function loadContacts() {
     setLoadingContacts(true);
     try {
-      const data = await fetchConversations();
-      setContacts(data);
+      const data = await fetchMasivoProspectos();
+      const mapped: FlotaConversation[] = data.map((p) => ({
+        id: p.id,
+        name: p.nombreCompleto,
+        phone: p.celular ?? p.movil ?? '',
+        preview: '',
+        time: new Date().toISOString(),
+        direction: 'outbound',
+        unread: 0,
+        estado: undefined,
+      }));
+      setContacts(mapped);
     } catch {
       toast.error('No se pudieron cargar los contactos');
     } finally {

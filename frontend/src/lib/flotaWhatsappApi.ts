@@ -87,6 +87,11 @@ export async function fetchConversations(q?: string): Promise<FlotaConversation[
   return api(`/api/whatsapp/conversations${params}`);
 }
 
+export async function fetchMasivoProspectos(search?: string): Promise<{ id: string; nombreCompleto: string; celular: string | null; movil: string | null }[]> {
+  const params = search?.trim() ? `?search=${encodeURIComponent(search.trim())}` : '';
+  return api(`/flota-prospectos/masivo-list${params}`);
+}
+
 export async function fetchFlotaProspectoMessages(
   prospectoId: string,
   limit = 50,
