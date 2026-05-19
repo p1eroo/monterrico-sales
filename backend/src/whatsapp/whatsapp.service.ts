@@ -1437,11 +1437,8 @@ export class WhatsappService {
       }
     }
 
-    const contact = await this.findContactByLoosePhone(peerDigits);
-    let flotaProspecto = contact?.id
-      ? null
-      : await this.findFlotaProspectoByPhone(peerDigits);
-    if (!contact?.id && !flotaProspecto?.id) {
+    let flotaProspecto = await this.findFlotaProspectoByPhone(peerDigits);
+    if (!flotaProspecto?.id) {
       const normalizedPhone = peerDigits.replace(/\D/g, '');
       const formattedPhone = normalizedPhone.startsWith('51') ? normalizedPhone : `51${normalizedPhone}`;
       const createdProspecto = await this.prisma.flotaProspecto.create({
@@ -1469,7 +1466,7 @@ export class WhatsappService {
         toWaId: ourLine,
         body: textBody,
         payloadJson: stripHeavyPayload(parsed.data) as Prisma.InputJsonValue,
-        contactId: contact?.id ?? null,
+        contactId: null,
         flotaProspectoId: flotaProspecto?.id ?? null,
         whatsappInstanceId: instance?.id ?? null,
       },
@@ -1478,30 +1475,14 @@ export class WhatsappService {
     if (media) {
       await this.persistInboundMediaAttachment({
         messageId: created.id,
-        contact,
+        contact: null,
         instance,
         media,
       });
     }
 
-    if (contact?.id) {
-      await this.emitListItemById(contact.id, created.id);
-    }
-
-    if (contact?.assignedTo) {
-      try {
-        await this.notifications.notifyWhatsappInbound({
-          userId: contact.assignedTo,
-          contactId: contact.id,
-          contactName: contact.name,
-          preview: textBody.slice(0, 500),
-          evoInstanceName: parsed.instanceName,
-          waMessageId: msg.waMessageId,
-          evoInstanceId: parsed.instanceId || 'unknown',
-        });
-      } catch (e) {
-        this.logger.warn(`notifyWhatsappInbound: ${String(e)}`);
-      }
+    if (flotaProspecto?.id) {
+      await this.emitListItemById(flotaProspecto.id, created.id);
     }
 
     return { ok: true };
