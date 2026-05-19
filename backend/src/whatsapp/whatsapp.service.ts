@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   Logger,
   ServiceUnavailableException,
@@ -37,6 +38,7 @@ type WhatsappMessageAttachmentDto = {
   mediaType: 'image' | 'video' | 'audio' | 'document' | 'file';
   url: string | null;
   downloadUrl: string | null;
+  proxyUrl: string | null;
 };
 type WhatsappListItemRow = {
   id: string;
@@ -79,6 +81,8 @@ type WhatsappInstanceRow = {
   createdAt: Date;
   updatedAt: Date;
 };
+
+type FlotaProspectoMediaRef = { id: string; nombreCompleto: string };
 
 function asRecord(v: unknown): JsonRecord | null {
   return v !== null && typeof v === 'object' && !Array.isArray(v)
@@ -872,6 +876,7 @@ export class WhatsappService {
           mediaType: this.mediaTypeFromMime(file.mimeType),
           url,
           downloadUrl,
+          proxyUrl: null,
         };
         const list = attachmentsByMessage.get(file.relatedEntityId || '') ?? [];
         list.push(attachment);
@@ -893,6 +898,7 @@ export class WhatsappService {
         fallbackMedia?.url,
         this.evolutionBaseUrl(),
       );
+      const proxyUrl = `/api/whatsapp/media/proxy/${row.id}`;
       const fallbackAttachments: WhatsappMessageAttachmentDto[] =
         fallbackMedia && fallbackUrl
           ? [
@@ -911,6 +917,7 @@ export class WhatsappService {
                 mediaType: fallbackMedia.mediaType,
                 url: fallbackUrl,
                 downloadUrl: fallbackUrl,
+                proxyUrl: fallbackMedia.mediaType === 'image' ? proxyUrl : null,
               },
             ]
           : [];
@@ -945,12 +952,16 @@ export class WhatsappService {
           assignedTo: string | null;
         }
       | null;
+    flotaProspecto?: FlotaProspectoMediaRef | null;
     instance: WhatsappInstanceRow | null;
     media: NonNullable<ReturnType<typeof parseMessageMedia>>;
   }): Promise<void> {
-    const { messageId, contact, instance, media } = args;
-    if (!contact?.id) return;
-    const uploadedById = contact.assignedTo || instance?.userId;
+    const { messageId, contact, flotaProspecto, instance, media } = args;
+    const entityType = flotaProspecto?.id ? 'flota-prospecto' : 'contact';
+    const entityId = flotaProspecto?.id || contact?.id;
+    const entityName = flotaProspecto?.nombreCompleto || contact?.name || null;
+    if (!entityId) return;
+    const uploadedById = contact?.assignedTo || instance?.userId;
     if (!uploadedById) {
       this.logger.warn(`Adjunto WhatsApp ${messageId} omitido: no hay usuario dueño para CrmFile`);
       return;
@@ -984,9 +995,9 @@ export class WhatsappService {
         buffer: bytes,
         originalName,
         mimeType: media.mimeType || 'application/octet-stream',
-        entityType: 'contact',
-        entityId: contact.id,
-        entityName: contact.name,
+        entityType,
+        entityId,
+        entityName: entityName ?? undefined,
         relatedEntityType: 'whatsapp-message',
         relatedEntityId: messageId,
         relatedEntityName: `whatsapp-${media.mediaType}`,
@@ -1090,8 +1101,12 @@ export class WhatsappService {
           },
           select: { id: true },
         });
+        flotaProspectoId = prospecto.id;
+      } else {
+        throw new ConflictException(
+          `El prospecto con celular ${dto.phone} ya existe (${prospecto.id}). No se envió el mensaje.`,
+        );
       }
-      flotaProspectoId = prospecto.id;
       const shared = await this.findSharedInstance();
       if (shared && shared.status === 'open') {
         sender = {
@@ -1194,6 +1209,39 @@ export class WhatsappService {
     return {
       items: await this.buildMessageItems(rows.reverse() as WhatsappListItemRow[]),
     };
+  }
+
+  async downloadMediaFromEvolution(
+    messageId: string,
+  ): Promise<{ buffer: Buffer; mimeType: string } | null> {
+    const message = await this.prisma.crmWhatsappMessage.findUnique({
+      where: { id: messageId },
+      select: { id: true, evoInstanceName: true, waMessageId: true, payloadJson: true },
+    });
+    if (!message?.payloadJson) return null;
+
+    const payload = message.payloadJson as JsonRecord;
+    const instanceName = message.evoInstanceName ?? this.sharedInstanceName();
+    const instance = await this.prisma.whatsappInstance.findFirst({
+      where: { instanceName },
+      select: { instanceApiKey: true },
+    });
+    if (!instance?.instanceApiKey) return null;
+
+    const msgData = (payload as Record<string, unknown>)?.data as Record<string, unknown> | undefined;
+    const msgProto = msgData?.message as Record<string, unknown> | undefined;
+    if (!msgProto) return null;
+
+    const buffer = await this.evogo.downloadMedia({
+      instanceApiKey: instance.instanceApiKey,
+      message: msgProto,
+    });
+    if (!buffer?.length) return null;
+
+    const media = parseMessageMedia(payload);
+    const mimeType = media?.mimeType || 'image/jpeg';
+
+    return { buffer, mimeType };
   }
 
   /**
@@ -1475,6 +1523,7 @@ export class WhatsappService {
       await this.persistInboundMediaAttachment({
         messageId: created.id,
         contact: null,
+        flotaProspecto: flotaProspecto?.id ? flotaProspecto as FlotaProspectoMediaRef : undefined,
         instance,
         media,
       });
@@ -1893,7 +1942,7 @@ export class WhatsappService {
       throw new ServiceUnavailableException(`No se pudo enviar: ${msg}`);
     }
 
-    await this.prisma.crmWhatsappMessage.create({
+    const created = await this.prisma.crmWhatsappMessage.create({
       data: {
         direction: 'outbound',
         evoInstanceId: instance.evoInstanceId ?? instance.instanceName,
@@ -1909,6 +1958,8 @@ export class WhatsappService {
         waOutboundStatus: 'sent',
       },
     });
+
+    await this.emitListItemById(prospectoId, created.id);
 
     return { ok: true, waMessageId: sent.waMessageId ?? null };
   }

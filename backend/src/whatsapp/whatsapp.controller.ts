@@ -4,17 +4,21 @@ import {
   Controller,
   Get,
   Header,
+  NotFoundException,
   Param,
   Post,
   Query,
   Req,
+  Res,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { RequireAnyPermission } from '../auth/decorators/require-any-permission.decorator';
+import { Public } from '../auth/decorators/public.decorator';
 import { CrmDataScopeService } from '../auth/crm-data-scope.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
@@ -219,6 +223,24 @@ export class WhatsappController {
       { authorizationHeader: authHeader },
     );
     return { url };
+  }
+
+  @Public()
+  @Get('media/proxy/:messageId')
+  async proxyMedia(
+    @Param('messageId') messageId: string,
+    @Res({ passthrough: false }) res: Response,
+  ) {
+    const result = await this.whatsapp.downloadMediaFromEvolution(messageId);
+    if (!result) {
+      throw new NotFoundException('Imagen no encontrada o expirada');
+    }
+    res.set({
+      'Content-Type': result.mimeType,
+      'Content-Length': result.buffer.length,
+      'Cache-Control': 'public, max-age=86400',
+    });
+    res.send(result.buffer);
   }
 
   @Post('import-excel')

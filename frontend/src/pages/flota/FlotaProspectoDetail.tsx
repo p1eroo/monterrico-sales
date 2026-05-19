@@ -21,6 +21,11 @@ import {
   Clock,
   Info,
   Ban,
+  Upload,
+  Eye,
+  X,
+  Video,
+  FileText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -45,7 +50,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { flotaProspectoDetail, flotaProspectoUpdate, type FlotaProspectoRow } from '@/lib/flotaProspectosApi';
+import { flotaProspectoDetail, flotaProspectoUpdate, flotaProspectoFiles, flotaProspectoFileContentUrl, flotaProspectoUploadFile, type FlotaProspectoRow, type FlotaFile } from '@/lib/flotaProspectosApi';
 
 const ESTADOS = ['AFILIADO', 'CITADO', 'SEGUIMIENTO', 'INFORMACION', 'SIN REQUISITOS', 'NO RESPONDE'] as const;
 
@@ -126,17 +131,21 @@ export default function FlotaProspectoDetail() {
   const [editData, setEditData] = useState<Partial<FlotaProspectoRow>>({});
   const [savingEdit, setSavingEdit] = useState(false);
 
-  // Historial real
   const [historyEvents, setHistoryEvents] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
-  // Modal para cambio de estado / ver detalle de historial
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [targetStatus, setTargetStatus] = useState<string | null>(null);
   const [statusDate, setStatusDate] = useState('');
   const [statusTime, setStatusTime] = useState('');
   const [statusComment, setStatusComment] = useState('');
   const [isReadOnly, setIsReadOnly] = useState(false);
+
+  const [files, setFiles] = useState<FlotaFile[]>([]);
+  const [filesLoading, setFilesLoading] = useState(false);
+  const [uploadLoading, setUploadLoading] = useState(false);
+  const [fileLightboxUrl, setFileLightboxUrl] = useState<string | null>(null);
+  const [fileUrls, setFileUrls] = useState<Record<string, string>>({});
 
   const fetchHistory = useCallback(async () => {
     if (!id || !prospecto) return;
@@ -148,11 +157,8 @@ export default function FlotaProspectoDetail() {
         entityId: id,
         limit: 50 
       });
-      
       const logs = res.data.map(activityLogToTimelineEvent);
-      
-      // Si no hay evento de creación en los logs, lo agregamos manualmente usando createdAt
-      const hasCreation = logs.some(l => l.type === 'crear');
+      const hasCreation = logs.some((l: any) => l.type === 'crear');
       if (!hasCreation && prospecto.createdAt) {
         logs.push({
           id: 'initial-creation',
@@ -163,7 +169,6 @@ export default function FlotaProspectoDetail() {
           user: 'Sistema'
         });
       }
-
       setHistoryEvents(logs);
     } catch (e) {
       console.error('Error cargando historial:', e);
@@ -187,6 +192,10 @@ export default function FlotaProspectoDetail() {
   }, [id]);
 
   useEffect(() => {
+    void fetchDetail();
+  }, [fetchDetail]);
+
+  useEffect(() => {
     if (prospecto) {
       void fetchHistory();
     }
@@ -194,7 +203,6 @@ export default function FlotaProspectoDetail() {
 
   const handleCambiarEstado = useCallback((nuevoEstado: string) => {
     if (!prospecto || updatingEstado) return;
-    
     const now = new Date();
     setTargetStatus(nuevoEstado);
     setStatusDate(now.toISOString().split('T')[0]);
@@ -215,7 +223,7 @@ export default function FlotaProspectoDetail() {
       setProspecto(updated);
       setStatusModalOpen(false);
       toast.success(`Estado cambiado a ${formatStatus(targetStatus)}`);
-      void fetchHistory(); // Refrescar historial
+      void fetchHistory();
     } catch (e) {
       toast.error('No se pudo cambiar el estado');
       console.error(e);
@@ -224,9 +232,69 @@ export default function FlotaProspectoDetail() {
     }
   };
 
+  const fetchFiles = useCallback(async () => {
+    if (!prospecto?.id) return;
+    setFilesLoading(true);
+    try {
+      const data = await flotaProspectoFiles(prospecto.id);
+      setFiles(data);
+      const imageFiles = data.filter((f) => f.mimeType.startsWith('image/'));
+      const urls: Record<string, string> = {};
+      await Promise.all(
+        imageFiles.map(async (f) => {
+          try {
+            const { url } = await flotaProspectoFileContentUrl(f.id);
+            urls[f.id] = url;
+          } catch { /* silencioso */ }
+        }),
+      );
+      setFileUrls(urls);
+    } catch {
+      toast.error('No se pudieron cargar los archivos');
+    } finally {
+      setFilesLoading(false);
+    }
+  }, [prospecto?.id]);
+
   useEffect(() => {
-    void fetchDetail();
-  }, [fetchDetail]);
+    if (activeTab === 'archivos') {
+      void fetchFiles();
+    }
+  }, [activeTab, fetchFiles]);
+
+  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !prospecto?.id) return;
+    setUploadLoading(true);
+    try {
+      await flotaProspectoUploadFile(prospecto.id, file);
+      toast.success('Archivo subido');
+      void fetchFiles();
+    } catch {
+      toast.error('No se pudo subir el archivo');
+    } finally {
+      setUploadLoading(false);
+    }
+    e.target.value = '';
+  }, [prospecto?.id, fetchFiles]);
+
+  const openFilePreview = useCallback(async (file: FlotaFile) => {
+    if (file.mimeType.startsWith('image/')) {
+      try {
+        const { url } = await flotaProspectoFileContentUrl(file.id);
+        setFileLightboxUrl(url);
+      } catch {
+        toast.error('No se pudo obtener la vista previa');
+      }
+    } else {
+      try {
+        const { url } = await flotaProspectoFileContentUrl(file.id);
+        window.open(url, '_blank');
+      } catch {
+        toast.error('No se pudo abrir el archivo');
+      }
+    }
+  }, []);
 
   const prospectoForWhatsApp = useMemo(() => {
     if (!prospecto) return null;
@@ -423,16 +491,63 @@ export default function FlotaProspectoDetail() {
           </TabsContent>
 
           <TabsContent value="archivos" className="mt-0">
-            <Card className="border-border/50 bg-surface-elevated/50">
-              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                <FileArchive className="mb-4 size-12 text-muted-foreground/20" />
-                <h3 className="text-lg font-medium">Gestiona los documentos aquí</h3>
-                <p className="max-w-xs text-sm text-muted-foreground">
-                  Sube DNI, licencia de conducir u otros documentos necesarios para el proceso.
-                </p>
-                <Button className="mt-4" variant="outline">Subir archivos</Button>
-              </CardContent>
-            </Card>
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                {files.length > 0 ? `${files.length} archivo${files.length !== 1 ? 's' : ''}` : 'Sin archivos'}
+              </p>
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                <Upload className="h-4 w-4" />
+                Subir archivo
+                <input type="file" className="hidden" onChange={handleFileUpload} disabled={uploadLoading} />
+              </label>
+            </div>
+            {filesLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : files.length === 0 ? (
+              <Card className="border-border/50 bg-surface-elevated/50">
+                <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                  <FileArchive className="mb-4 size-12 text-muted-foreground/20" />
+                  <h3 className="text-lg font-medium">Sin archivos adjuntos</h3>
+                  <p className="max-w-xs text-sm text-muted-foreground">
+                    Sube DNI, licencia de conducir u otros documentos necesarios para el proceso.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                {files.map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => void openFilePreview(f)}
+                    className="group relative aspect-square overflow-hidden rounded-lg border border-border/50 bg-surface-elevated/50 transition-colors hover:bg-surface-elevated"
+                  >
+                    {f.mimeType.startsWith('image/') && fileUrls[f.id] ? (
+                      <img
+                        src={fileUrls[f.id]}
+                        alt={f.originalName}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : null}
+                    <div className={`${f.mimeType.startsWith('image/') && fileUrls[f.id] ? 'hidden' : ''} flex h-full w-full flex-col items-center justify-center gap-2 p-2`}>
+                      {f.mimeType.startsWith('video/') ? (
+                        <Video className="h-8 w-8 text-muted-foreground" />
+                      ) : f.mimeType.includes('pdf') ? (
+                        <FileText className="h-8 w-8 text-muted-foreground" />
+                      ) : (
+                        <FileArchive className="h-8 w-8 text-muted-foreground" />
+                      )}
+                      <span className="line-clamp-2 text-center text-xs text-muted-foreground">{f.originalName}</span>
+                    </div>
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+                      <Eye className="h-6 w-6 text-white" />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>
@@ -616,6 +731,25 @@ export default function FlotaProspectoDetail() {
               </Button>
             )}
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!fileLightboxUrl} onOpenChange={() => setFileLightboxUrl(null)}>
+        <DialogContent className="max-w-[90vw] max-h-[90vh] p-2 border-0 bg-black/95">
+          <button
+            type="button"
+            onClick={() => setFileLightboxUrl(null)}
+            className="absolute right-3 top-3 z-10 rounded-full bg-white/10 p-1.5 text-white hover:bg-white/20 transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          {fileLightboxUrl && (
+            <img
+              src={fileLightboxUrl}
+              alt="Vista ampliada"
+              className="max-h-[85vh] w-full object-contain"
+            />
+          )}
         </DialogContent>
       </Dialog>
     </DetailLayout>

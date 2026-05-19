@@ -132,3 +132,38 @@ export async function flotaProspectoCreate(
     body: JSON.stringify(data),
   });
 }
+
+export interface FlotaFile {
+  id: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  entityType: string;
+  entityId: string;
+  storageKey: string;
+  createdAt: string;
+  user?: { id: string; name: string };
+}
+
+export async function flotaProspectoFiles(prospectoId: string): Promise<FlotaFile[]> {
+  const qs = `entityType=flota-prospecto&entityId=${encodeURIComponent(prospectoId)}`;
+  return api<FlotaFile[]>(`/files?${qs}`);
+}
+
+export async function flotaProspectoFileContentUrl(fileId: string): Promise<{ url: string }> {
+  return api<{ url: string }>(`/files/${fileId}/url`);
+}
+
+export async function flotaProspectoUploadFile(
+  prospectoId: string,
+  file: File,
+): Promise<FlotaFile> {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('entityType', 'flota-prospecto');
+  formData.append('entityId', prospectoId);
+  return api<FlotaFile>('/files', {
+    method: 'POST',
+    body: formData,
+  });
+}

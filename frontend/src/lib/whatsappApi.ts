@@ -43,6 +43,7 @@ export type WhatsappMessageItem = {
     mediaType: 'image' | 'video' | 'audio' | 'document' | 'file';
     url: string | null;
     downloadUrl?: string | null;
+    proxyUrl?: string | null;
   }[];
 };
 

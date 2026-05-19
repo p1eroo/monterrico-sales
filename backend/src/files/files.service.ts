@@ -23,6 +23,7 @@ const ENTITY_TYPES = new Set([
   'activity',
   'email',
   'task',
+  'flota-prospecto',
 ]);
 
 function safeFilename(name: string): string {

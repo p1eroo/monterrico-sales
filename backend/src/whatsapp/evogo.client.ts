@@ -503,6 +503,24 @@ export class EvogoClient {
     return { ok: true, status: res.status, raw: res.raw, waMessageId };
   }
 
+  async downloadMedia(params: {
+    instanceApiKey: string;
+    message: Record<string, unknown>;
+  }): Promise<Buffer | null> {
+    const url = `${this.baseUrl}/message/downloadimage/${params.instanceApiKey}`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: params.instanceApiKey },
+      body: JSON.stringify({ message: params.message }),
+    });
+    if (!response.ok) {
+      this.logger.warn(`Evogo downloadMedia HTTP ${response.status}`);
+      return null;
+    }
+    const arrayBuffer = await response.arrayBuffer();
+    return Buffer.from(arrayBuffer);
+  }
+
   private tryExtractMessageId(raw: unknown): string | undefined {
     const o = raw as Record<string, unknown> | null;
     const data = o?.['data'];

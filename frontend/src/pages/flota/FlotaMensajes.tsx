@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, memo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback, memo } from 'react';
 import { io } from 'socket.io-client';
 import {
   DndContext,
@@ -522,6 +522,7 @@ function InboxView({ activeId: externalActiveId, onActiveChange }: { activeId: s
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [messagesCache, setMessagesCache] = useState<Record<string, WhatsappMessageItem[]>>({});
+  const firstLoad = useRef(true);
 
   useEffect(() => {
     if (externalActiveId && externalActiveId !== activeId) {
@@ -539,14 +540,21 @@ function InboxView({ activeId: externalActiveId, onActiveChange }: { activeId: s
   }, []);
 
   async function loadConversations() {
-    setLoading(true);
+    if (firstLoad.current) {
+      setLoading(true);
+    }
     try {
       const data = await fetchConversations();
       setConversations(data);
     } catch {
-      toast.error('No se pudieron cargar las conversaciones');
+      if (firstLoad.current) {
+        toast.error('No se pudieron cargar las conversaciones');
+      }
     } finally {
-      setLoading(false);
+      if (firstLoad.current) {
+        setLoading(false);
+        firstLoad.current = false;
+      }
     }
   }
 
@@ -655,12 +663,13 @@ function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, 
   setMessagesCache: React.Dispatch<React.SetStateAction<Record<string, WhatsappMessageItem[]>>>;
 }) {
   const [draft, setDraft] = useState('');
-  const [loading, setLoading] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [editData, setEditData] = useState<Record<string, string>>({});
   const scrollRef = useRef<HTMLDivElement>(null);
   const convo = conversations.find((c) => c.id === contactId);
+  const prevMsgCountRef = useRef(0);
 
   useEffect(() => {
     if (editModalOpen && contactId) {
@@ -682,23 +691,61 @@ function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, 
     }
   }
 
-  useEffect(() => {
-    if (!contactId) return;
-    if (messagesCache[contactId]) return;
-    void loadMessages();
-  }, [contactId, messagesCache]);
+  const loadMessages = useCallback(async (): Promise<number> => {
+    if (!contactId) return 0;
+    try {
+      const items = await fetchFlotaProspectoMessages(contactId);
+      setMessagesCache(prev => ({ ...prev, [contactId]: items }));
+      return items.length;
+    } catch {
+      toast.error('No se pudieron cargar los mensajes');
+      return 0;
+    }
+  }, [contactId, setMessagesCache]);
 
-  // WebSocket para mensajes entrantes en tiempo real
+  /** Carga inicial de mensajes al abrir una conversación */
   useEffect(() => {
     if (!contactId) return;
     void loadMessages();
+  }, [contactId, loadMessages]);
+
+  /** Polling ligero (~5,5 s) — solo si la pestaña está visible */
+  useEffect(() => {
+    if (!contactId) return;
+    const id = window.setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      void loadMessages();
+    }, 5500);
+    return () => window.clearInterval(id);
+  }, [contactId, loadMessages]);
+
+  /** Refetch al volver a la pestaña o al foco de la ventana */
+  useEffect(() => {
+    if (!contactId) return;
+    const onVis = () => {
+      if (document.visibilityState === 'visible') void loadMessages();
+    };
+    const onFocus = () => void loadMessages();
+    document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      document.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [contactId, loadMessages]);
+
+  /** Socket.IO: mensajes nuevos y actualización de estado de entrega */
+  useEffect(() => {
+    if (!contactId) return;
     const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
     if (!token) return;
+
     const socket = io(`${API_BASE}/whatsapp`, {
       auth: { token },
       transports: ['websocket', 'polling'],
       reconnection: true,
     });
+
     socket.emit('join', { contactId });
 
     const onPayload = (payload: WhatsappSocketPayload) => {
@@ -711,6 +758,16 @@ function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, 
           next.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
           return { ...prev, [contactId]: next };
         });
+      } else if (payload.type === 'status') {
+        setMessagesCache((prev) => {
+          const existing = prev[contactId] ?? [];
+          const updated = existing.map((m) =>
+            m.id === payload.id
+              ? { ...m, waOutboundStatus: payload.waOutboundStatus }
+              : m,
+          );
+          return { ...prev, [contactId]: updated };
+        });
       }
     };
 
@@ -719,35 +776,55 @@ function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, 
       socket.off('whatsapp', onPayload);
       socket.disconnect();
     };
-  }, [contactId]);
+  }, [contactId, setMessagesCache]);
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'instant' });
-  }, [messagesCache[contactId]?.length]);
-
-  async function loadMessages() {
-    if (!contactId) return;
-    setLoading(true);
-    try {
-      const items = await fetchFlotaProspectoMessages(contactId);
-      setMessagesCache(prev => ({ ...prev, [contactId]: items }));
-    } catch {
-      toast.error('No se pudieron cargar los mensajes');
-    } finally {
-      setLoading(false);
+    const count = messagesCache[contactId]?.length ?? 0;
+    if (count === 0) return;
+    const prev = prevMsgCountRef.current;
+    prevMsgCountRef.current = count;
+    if (prev > 0 && count > prev) {
+      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+    } else {
+      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'instant' });
     }
-  }
+  }, [messagesCache[contactId]?.length, contactId]);
 
   async function send() {
     if (!draft.trim()) return;
+    const body = draft.trim();
+    const optimisticId = `opt:${Date.now()}`;
+    setDraft('');
+    const optimistic: WhatsappMessageItem = {
+      id: optimisticId,
+      direction: 'outbound',
+      body,
+      fromWaId: '',
+      toWaId: convo?.phone ?? '',
+      createdAt: new Date().toISOString(),
+      waMessageId: null,
+      evoInstanceName: null,
+      waOutboundStatus: 'sent',
+      attachments: [],
+    };
+    setMessagesCache((prev) => {
+      const existing = prev[contactId] ?? [];
+      const next = [...existing, optimistic];
+      return { ...prev, [contactId]: next };
+    });
     try {
-      await sendFlotaWhatsappMessage(contactId, draft.trim());
-      setDraft('');
-      const items = await fetchFlotaProspectoMessages(contactId);
-      setMessagesCache(prev => ({ ...prev, [contactId]: items }));
+      await sendFlotaWhatsappMessage(contactId, body);
     } catch (e) {
+      setMessagesCache((prev) => {
+        const existing = prev[contactId] ?? [];
+        const withoutOpt = existing.filter((x) => x.id !== optimisticId);
+        return { ...prev, [contactId]: withoutOpt };
+      });
+      setDraft(body);
       toast.error(e instanceof Error ? e.message : 'No se pudo enviar el mensaje');
+      return;
     }
+    void loadMessages();
   }
 
   const messages = messagesCache[contactId] ?? [];
@@ -847,11 +924,7 @@ function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, 
         className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_1px_1px,theme(colors.muted.foreground/0.08)_1px,transparent_0)] [background-size:18px_18px] px-4 py-5"
       >
         <div className="flex flex-col gap-3">
-          {loading ? (
-            <div className="flex items-center justify-center py-16">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : messages.length === 0 ? (
+          {messages.length === 0 ? (
             <div className="py-16 text-center text-sm text-muted-foreground">
               No hay mensajes aún
             </div>
@@ -906,14 +979,31 @@ function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, 
                               : 'rounded-bl-sm bg-muted text-foreground',
                           )}
                         >
-                          {m.attachments?.filter((a) => a.mediaType === 'image' || a.mimeType?.startsWith('image/')).map((img) => (
-                            <img
-                              key={img.id}
-                              src={img.url ?? img.downloadUrl ?? ''}
-                              alt={img.name}
-                              className="mb-2 max-h-60 rounded-lg object-cover"
-                            />
-                          ))}
+                          {m.attachments?.filter((a) => a.mediaType === 'image' || a.mimeType?.startsWith('image/')).map((img) => {
+                            const src = (img.url ?? img.downloadUrl ?? img.proxyUrl ?? '').trim();
+                            if (!src) {
+                              return (
+                                <div key={img.id} className="mb-2 flex items-center gap-2 rounded-lg bg-black/5 px-3 py-2 text-xs text-muted-foreground">
+                                  <ImageIcon className="h-4 w-4 shrink-0" />
+                                  <span className="truncate">{img.name}</span>
+                                </div>
+                              );
+                            }
+                            return (
+                              <button
+                                type="button"
+                                key={img.id}
+                                onClick={() => setLightboxUrl(src)}
+                                className="block w-full"
+                              >
+                                <img
+                                  src={src}
+                                  alt={img.name}
+                                  className="mb-2 max-h-60 rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                />
+                              </button>
+                            );
+                          })}
                           <p className="whitespace-pre-wrap">{m.body}</p>
                           <div className={cn('mt-1 flex items-center justify-end gap-1 text-[10px]', mine ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
                             <span>{new Date(m.createdAt).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}</span>
@@ -1060,6 +1150,25 @@ function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, 
               Guardar
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!lightboxUrl} onOpenChange={() => setLightboxUrl(null)}>
+        <DialogContent className="max-w-[90vw] max-h-[90vh] p-2 border-0 bg-black/95">
+          <button
+            type="button"
+            onClick={() => setLightboxUrl(null)}
+            className="absolute right-3 top-3 z-10 rounded-full bg-white/10 p-1.5 text-white hover:bg-white/20 transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          {lightboxUrl && (
+            <img
+              src={lightboxUrl}
+              alt="Vista ampliada"
+              className="max-h-[85vh] w-full object-contain"
+            />
+          )}
         </DialogContent>
       </Dialog>
     </section>
@@ -1209,7 +1318,7 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
     setSending(true);
     setBulkProgress({ total: targets.length, sent: 0, failed: 0, currentName: '', currentIndex: 0, nextDelay: BULK_DELAYS[0]! });
 
-    const results: Array<{ name: string; phone: string; ok: boolean; error?: string }> = [];
+    const results: Array<{ name: string; phone: string; ok: boolean; error?: string; duplicate?: boolean }> = [];
 
     for (let i = 0; i < targets.length; i++) {
       if (cancelRef.current) break;
@@ -1245,7 +1354,12 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
       } catch (e) {
         const errorMsg = e instanceof Error ? e.message : 'Error';
         console.error(`[FlotaBulk] Falló envío a ${t.name} (${t.phone}):`, errorMsg);
-        results.push({ name: t.name, phone: t.phone, ok: false, error: errorMsg });
+        const isDuplicate = errorMsg.toLowerCase().includes('ya existe');
+        if (isDuplicate) {
+          results.push({ name: t.name, phone: t.phone, ok: false, error: errorMsg, duplicate: true });
+        } else {
+          results.push({ name: t.name, phone: t.phone, ok: false, error: errorMsg });
+        }
       }
 
       if (i < targets.length - 1 && !cancelRef.current) {
@@ -1254,16 +1368,23 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
     }
 
     const sent = results.filter((r) => r.ok).length;
-    const failed = results.filter((r) => !r.ok).length;
-    const failedResults = results.filter((r) => !r.ok);
+    const failed = results.filter((r) => !r.ok && !r.duplicate).length;
+    const duplicates = results.filter((r) => r.duplicate).length;
+    const failedResults = results.filter((r) => !r.ok && !r.duplicate);
+    const duplicateResults = results.filter((r) => r.duplicate);
 
     if (cancelRef.current) {
       toast.success(`Envío cancelado. Enviado: ${sent} · Pendientes: ${targets.length - results.length}`);
+    } else if (duplicates > 0) {
+      toast.success(`Envío completado. Enviado: ${sent} · Fallidos: ${failed} · Ya existentes: ${duplicates}`, { duration: 10000 });
     } else {
       toast.success(`Envío completado. Enviado: ${sent} · Fallidos: ${failed}`);
     }
 
-    if (failedResults.length > 0) {
+    if (duplicateResults.length > 0) {
+      const firstDup = duplicateResults[0]!;
+      toast.error(`No enviado por duplicado: ${firstDup.name} (${firstDup.phone})`, { duration: 10000 });
+    } else if (failedResults.length > 0) {
       console.error('[FlotaBulk] Fallidos:', failedResults);
       const firstError = failedResults[0]!.error;
       toast.error(`Primer fallo: ${firstError}`, { duration: 10000 });
