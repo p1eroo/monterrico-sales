@@ -13,7 +13,7 @@ import { ContactsService } from '../contacts/contacts.service';
 import type { CrmDataScope } from '../auth/crm-data-scope.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { FilesService } from '../files/files.service';
-import { EvogoClient } from './evogo.client';
+import { EvogoClient, type EvogoSendTextResult } from './evogo.client';
 import { SendWhatsappDto } from './dto/send-whatsapp.dto';
 import { digitsOnly, normalizePeWaNumber } from './wa-number.util';
 import {
@@ -915,7 +915,7 @@ export class WhatsappService {
                   fallbackMedia.mimeType || 'application/octet-stream',
                 size: fallbackMedia.size ?? 0,
                 mediaType: fallbackMedia.mediaType,
-                url: fallbackUrl,
+                url: fallbackMedia.mediaType === 'image' ? proxyUrl : fallbackUrl,
                 downloadUrl: fallbackUrl,
                 proxyUrl: fallbackMedia.mediaType === 'image' ? proxyUrl : null,
               },
@@ -1905,7 +1905,7 @@ export class WhatsappService {
     }));
   }
 
-  async sendFromFlotaProspecto(prospectoId: string, text: string, userId: string) {
+  async sendFromFlotaProspecto(prospectoId: string, text: string, imageUrl: string | undefined, userId: string) {
     const current = await this.findSharedInstance();
     if (!current) {
       throw new ServiceUnavailableException('El WhatsApp compartido de Flota no está configurado. Conéctalo primero.');
@@ -1930,17 +1930,31 @@ export class WhatsappService {
       throw new ServiceUnavailableException('El prospecto no tiene un teléfono válido para WhatsApp');
     }
 
-    const sent = await this.evogo.sendText({
-      instanceApiKey: instance.instanceApiKey,
-      number: to,
-      text: text.trim(),
-    });
+    let sent: EvogoSendTextResult;
+    const caption = text.trim() || undefined;
+    if (imageUrl) {
+      sent = await this.evogo.sendMedia({
+        instanceApiKey: instance.instanceApiKey,
+        number: to,
+        mediaUrl: imageUrl,
+        mediatype: 'image',
+        caption,
+      });
+    } else {
+      sent = await this.evogo.sendText({
+        instanceApiKey: instance.instanceApiKey,
+        number: to,
+        text: text.trim(),
+      });
+    }
     if (!sent.ok) {
       const msg = typeof sent.raw === 'object' && sent.raw !== null && 'error' in sent.raw
         ? String((sent.raw as { error?: unknown }).error)
         : `Evolution GO respondió ${sent.status}`;
       throw new ServiceUnavailableException(`No se pudo enviar: ${msg}`);
     }
+
+    const body = imageUrl ? (caption || '[Imagen]') : text.trim();
 
     const created = await this.prisma.crmWhatsappMessage.create({
       data: {
@@ -1950,7 +1964,7 @@ export class WhatsappService {
         waMessageId: sent.waMessageId ?? null,
         fromWaId: instance.displayLineId ?? instance.instanceName,
         toWaId: to,
-        body: text.trim(),
+        body,
         payloadJson: stripHeavyPayload(sent.raw) as Prisma.InputJsonValue,
         flotaProspectoId: prospectoId,
         whatsappInstanceId: instance.id,

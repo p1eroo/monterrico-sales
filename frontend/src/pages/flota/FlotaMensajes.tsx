@@ -663,6 +663,10 @@ function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, 
   setMessagesCache: React.Dispatch<React.SetStateAction<Record<string, WhatsappMessageItem[]>>>;
 }) {
   const [draft, setDraft] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
@@ -670,6 +674,32 @@ function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, 
   const scrollRef = useRef<HTMLDivElement>(null);
   const convo = conversations.find((c) => c.id === contactId);
   const prevMsgCountRef = useRef(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+    setUploadingImage(true);
+    try {
+      const url = await uploadFlotaImage(file);
+      setImageUrl(url);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al subir la imagen');
+      setImageFile(null);
+      setImagePreview(null);
+    } finally {
+      setUploadingImage(false);
+    }
+    e.target.value = '';
+  }
+
+  function handleRemoveImage() {
+    setImageFile(null);
+    setImagePreview(null);
+    setImageUrl(null);
+  }
 
   useEffect(() => {
     if (editModalOpen && contactId) {
@@ -791,21 +821,30 @@ function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, 
   }, [messagesCache[contactId]?.length, contactId]);
 
   async function send() {
-    if (!draft.trim()) return;
+    if (!draft.trim() && !imageUrl) return;
     const body = draft.trim();
     const optimisticId = `opt:${Date.now()}`;
     setDraft('');
+    const optimisticAttachments = imageUrl ? [{
+      id: `opt-att:${Date.now()}`,
+      name: imageFile?.name || 'imagen.jpg',
+      mimeType: imageFile?.type || 'image/jpeg',
+      size: imageFile?.size || 0,
+      mediaType: 'image' as const,
+      url: imagePreview || imageUrl,
+      downloadUrl: imageUrl,
+    }] : [];
     const optimistic: WhatsappMessageItem = {
       id: optimisticId,
       direction: 'outbound',
-      body,
+      body: body || '[Imagen]',
       fromWaId: '',
       toWaId: convo?.phone ?? '',
       createdAt: new Date().toISOString(),
       waMessageId: null,
       evoInstanceName: null,
       waOutboundStatus: 'sent',
-      attachments: [],
+      attachments: optimisticAttachments,
     };
     setMessagesCache((prev) => {
       const existing = prev[contactId] ?? [];
@@ -813,7 +852,7 @@ function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, 
       return { ...prev, [contactId]: next };
     });
     try {
-      await sendFlotaWhatsappMessage(contactId, body);
+      await sendFlotaWhatsappMessage(contactId, body || '', imageUrl || undefined);
     } catch (e) {
       setMessagesCache((prev) => {
         const existing = prev[contactId] ?? [];
@@ -824,6 +863,9 @@ function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, 
       toast.error(e instanceof Error ? e.message : 'No se pudo enviar el mensaje');
       return;
     }
+    setImageFile(null);
+    setImagePreview(null);
+    setImageUrl(null);
     void loadMessages();
   }
 
@@ -1021,8 +1063,34 @@ function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, 
       </div>
 
       <div className="border-t bg-background/60 p-3">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleImageSelect}
+        />
+        {imagePreview && (
+          <div className="mb-2 relative inline-block">
+            <img src={imagePreview} alt="Preview" className="max-h-24 rounded-lg object-cover" />
+            {uploadingImage && (
+              <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/40">
+                <Loader2 className="h-5 w-5 animate-spin text-white" />
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={handleRemoveImage}
+              className="absolute -right-1 -top-1 rounded-full bg-destructive p-0.5 text-white hover:bg-destructive/90"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        )}
         <div className="flex items-end gap-2">
-          <Button variant="ghost" size="icon" className="shrink-0"><Paperclip className="h-5 w-5" /></Button>
+          <Button variant="ghost" size="icon" className="shrink-0" onClick={() => fileInputRef.current?.click()} disabled={uploadingImage}>
+            <Paperclip className="h-5 w-5" />
+          </Button>
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="icon" className="shrink-0"><Smile className="h-5 w-5" /></Button>
@@ -1044,7 +1112,7 @@ function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, 
             className="min-h-[44px] max-h-32 resize-none"
             rows={1}
           />
-          <Button onClick={() => void send()} disabled={!draft.trim()} className="shrink-0">
+          <Button onClick={() => void send()} disabled={!draft.trim() && !imageUrl} className="shrink-0">
             <Send className="h-4 w-4" />
           </Button>
         </div>

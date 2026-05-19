@@ -167,14 +167,15 @@ export class WhatsappController {
   @Post('flota/send')
   async flotaSend(
     @Req() req: AuthedReq,
-    @Body() body: { prospectoId: string; text: string },
+    @Body() body: { prospectoId: string; text?: string; imageUrl?: string },
   ) {
     const prospectoId = body.prospectoId?.trim();
     const text = body.text?.trim();
-    if (!prospectoId || !text) {
-      throw new BadRequestException('prospectoId y text son obligatorios');
+    const imageUrl = body.imageUrl?.trim();
+    if (!prospectoId || (!text && !imageUrl)) {
+      throw new BadRequestException('prospectoId y text o imageUrl son obligatorios');
     }
-    return this.whatsapp.sendFromFlotaProspecto(prospectoId, text, req.user.userId);
+    return this.whatsapp.sendFromFlotaProspecto(prospectoId, text || '', imageUrl || undefined, req.user.userId);
   }
 
   @Post('send-bulk')

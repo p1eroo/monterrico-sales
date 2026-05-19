@@ -105,10 +105,11 @@ export async function fetchFlotaProspectoMessages(
 export async function sendFlotaWhatsappMessage(
   prospectoId: string,
   text: string,
+  imageUrl?: string,
 ): Promise<{ ok: boolean; waMessageId: string | null }> {
   return api<{ ok: boolean; waMessageId: string | null }>('/api/whatsapp/flota/send', {
     method: 'POST',
-    body: JSON.stringify({ prospectoId, text }),
+    body: JSON.stringify({ prospectoId, text: text || undefined, imageUrl: imageUrl || undefined }),
   });
 }
 
