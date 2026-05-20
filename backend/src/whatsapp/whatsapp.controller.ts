@@ -153,6 +153,14 @@ export class WhatsappController {
     return this.whatsapp.getConversations(q?.trim() || undefined);
   }
 
+  @Post('flota/read/:prospectoId')
+  async markFlotaProspectoAsRead(
+    @Param('prospectoId') prospectoId: string,
+  ) {
+    await this.whatsapp.markProspectoAsRead(prospectoId);
+    return { ok: true };
+  }
+
   @Get('flota/prospectos/:id/messages')
   async flotaProspectoMessages(
     @Param('id') id: string,

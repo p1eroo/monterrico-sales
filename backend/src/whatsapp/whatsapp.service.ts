@@ -322,7 +322,7 @@ export class WhatsappService {
   }
 
   private async findUserInstance(userId: string): Promise<WhatsappInstanceRow | null> {
-    return this.prisma.whatsappInstance.findUnique({
+    return this.prisma.whatsappInstance.findFirst({
       where: { userId },
       select: WHATSAPP_INSTANCE_SELECT,
     }) as Promise<WhatsappInstanceRow | null>;
@@ -966,9 +966,9 @@ export class WhatsappService {
       this.logger.warn(`Adjunto WhatsApp ${messageId} omitido: no hay entityId`);
       return;
     }
-    const uploadedById = contact?.assignedTo || instance?.userId || 'system-user';
+    const uploadedById = contact?.assignedTo || instance?.userId;
     if (!uploadedById) {
-      this.logger.warn(`Adjunto WhatsApp ${messageId} omitido: no hay usuario dueño para CrmFile (instance=${!!instance}, contact=${!!contact})`);
+      this.logger.warn(`Adjunto WhatsApp ${messageId} omitido: no hay usuario dueño para CrmFile (instance=${!!instance}, instance.userId=${instance?.userId || 'null'}, contact=${!!contact})`);
       return;
     }
     this.logger.log(`Adjunto WhatsApp ${messageId}: uploadedById=${uploadedById}, entityType=${entityType}, entityId=${entityId}`);
@@ -1539,18 +1539,26 @@ export class WhatsappService {
       },
     });
 
+    if (flotaProspecto?.id) {
+      await this.emitListItemById(flotaProspecto.id, created.id);
+    }
+
     if (media) {
-      await this.persistInboundMediaAttachment({
+      const prospectoId = flotaProspecto?.id;
+      const msgId = created.id;
+      this.persistInboundMediaAttachment({
         messageId: created.id,
         contact: null,
         flotaProspecto: flotaProspecto?.id ? flotaProspecto as FlotaProspectoMediaRef : undefined,
         instance: instanceToUse,
         media,
+      }).then(async () => {
+        if (prospectoId) {
+          await this.emitListItemById(prospectoId, msgId);
+        }
+      }).catch((backgroundErr) => {
+        this.logger.warn(`Error background persistInboundMediaAttachment msg=${msgId}: ${String(backgroundErr)}`);
       });
-    }
-
-    if (flotaProspecto?.id) {
-      await this.emitListItemById(flotaProspecto.id, created.id);
     }
 
     return { ok: true };
@@ -1854,7 +1862,7 @@ export class WhatsappService {
         waOutboundStatus: true,
         flotaProspectoId: true,
         flotaProspecto: {
-          select: { id: true, nombreCompleto: true, celular: true, estado: true },
+          select: { id: true, nombreCompleto: true, celular: true, estado: true, lastReadAt: true, operador: true },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -1869,7 +1877,9 @@ export class WhatsappService {
       lastTime: Date;
       lastDirection: string;
       unread: number;
+      lastReadAt: Date | null;
       estado?: string;
+      operador?: string | null;
     }>();
 
     for (const row of rows) {
@@ -1880,6 +1890,8 @@ export class WhatsappService {
         (e) => normalizePhone(e.phone) === normalized,
       );
       if (!existingEntry) {
+        const prospectLastReadAt = row.flotaProspecto?.lastReadAt ?? null;
+        const isUnread = row.direction === 'inbound' && (!prospectLastReadAt || row.createdAt > prospectLastReadAt);
         grouped.set(row.flotaProspectoId, {
           contactId: row.flotaProspectoId,
           name: row.flotaProspecto?.nombreCompleto ?? row.fromWaId,
@@ -1887,8 +1899,10 @@ export class WhatsappService {
           lastMessage: row.body.slice(0, 100),
           lastTime: row.createdAt,
           lastDirection: row.direction,
-          unread: row.direction === 'inbound' ? 1 : 0,
+          unread: isUnread ? 1 : 0,
+          lastReadAt: prospectLastReadAt,
           estado: row.flotaProspecto?.estado ?? undefined,
+          operador: row.flotaProspecto?.operador ?? null,
         });
       } else {
         if (row.createdAt.getTime() > existingEntry.lastTime.getTime()) {
@@ -1896,7 +1910,9 @@ export class WhatsappService {
           existingEntry.lastMessage = row.body.slice(0, 100);
           existingEntry.lastDirection = row.direction;
         }
-        if (row.direction === 'inbound') existingEntry.unread++;
+        if (row.direction === 'inbound' && (!existingEntry.lastReadAt || row.createdAt > existingEntry.lastReadAt)) {
+          existingEntry.unread++;
+        }
       }
     }
 
@@ -1922,7 +1938,15 @@ export class WhatsappService {
       direction: c.lastDirection,
       unread: Math.min(c.unread, 99),
       estado: c.estado,
+      operador: c.operador ?? undefined,
     }));
+  }
+
+  async markProspectoAsRead(prospectoId: string) {
+    await this.prisma.flotaProspecto.update({
+      where: { id: prospectoId },
+      data: { lastReadAt: new Date() },
+    });
   }
 
   async sendFromFlotaProspecto(prospectoId: string, text: string, imageUrl: string | undefined, userId: string) {
@@ -1974,7 +1998,7 @@ export class WhatsappService {
       throw new ServiceUnavailableException(`No se pudo enviar: ${msg}`);
     }
 
-    const body = imageUrl ? (caption || '[Imagen]') : text.trim();
+    const body = imageUrl ? (caption || '') : text.trim();
 
     const created = await this.prisma.crmWhatsappMessage.create({
       data: {

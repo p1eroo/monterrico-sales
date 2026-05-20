@@ -77,7 +77,7 @@ model User {
   activityLogs         ActivityLog[]
   auditChangeSets      AuditChangeSet[]
   crmNotifications     CrmNotification[]
-  whatsappInstance     WhatsappInstance?
+  whatsappInstances     WhatsappInstance[]
   whatsappMessagesSent CrmWhatsappMessage[] @relation("CrmWhatsappMessageAuthor")
   allowedAreas         String[] @default([])
 }
@@ -85,7 +85,7 @@ model User {
 /** Instancia/línea de WhatsApp conectada (personal por asesor, o compartida de flota). */
 model WhatsappInstance {
   id                 String               @id @default(cuid())
-  userId             String?              @unique
+  userId             String?
   user               User?                @relation(fields: [userId], references: [id], onDelete: Cascade)
   instanceType       String               @default("personal")
   instanceName       String               @unique
@@ -711,6 +711,7 @@ model FlotaProspecto {
   observaciones   String?   @db.Text
   /** true cuando el celular ya existía en la BD al momento de importar */
   esDuplicado     Boolean   @default(false)
+  lastReadAt      DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 

@@ -63,7 +63,8 @@ export default function MainLayout() {
   const [dontShowAgainToday, setDontShowAgainToday] = useState(false);
 
   useEffect(() => {
-    if (shouldShowDailyBriefing()) {
+    const area = useAppStore.getState().area;
+    if (area === 'comercial' && shouldShowDailyBriefing()) {
       setShowBriefing(true);
     }
   }, []);
@@ -142,7 +143,7 @@ export default function MainLayout() {
               'min-h-0 min-w-0 max-w-full flex-1 flex-1 overflow-y-auto overflow-x-hidden px-4 md:px-6',
               compactMainTop
                 ? 'pt-0 pb-4 md:pt-0.5 md:pb-5'
-                : 'pt-5 pb-5 md:pt-6 md:pb-6',
+                : 'pt-1 pb-5 md:pt-2 md:pb-6',
             )}
           >
             <ModuleGate />

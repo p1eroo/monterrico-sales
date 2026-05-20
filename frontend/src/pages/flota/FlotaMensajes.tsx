@@ -51,6 +51,10 @@ import {
   GripVertical,
   MessageCircle,
   Info,
+  FileText,
+  ExternalLink,
+  Music2,
+  PanelRight,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -101,6 +105,7 @@ import {
   fetchConversations,
   fetchFlotaProspectoMessages,
   sendFlotaWhatsappMessage,
+  markConversationAsRead,
   importExcelPreview,
   uploadFlotaImage,
   fetchMasivoProspectos,
@@ -109,7 +114,8 @@ import {
   type FlotaWhatsappConnectionResponse,
   type FlotaWhatsappConnection,
 } from '@/lib/flotaWhatsappApi';
-import { type WhatsappMessageItem, type WhatsappSocketPayload, sendWhatsappMessage } from '@/lib/whatsappApi';
+import { flotaProspectoCreate, flotaProspectosList, flotaProspectosCounts } from '@/lib/flotaProspectosApi';
+import { type WhatsappMessageItem, type WhatsappSocketPayload, sendWhatsappMessage, downloadWhatsappAttachment } from '@/lib/whatsappApi';
 import * as QRCode from 'qrcode';
 import * as XLSX from 'xlsx';
 
@@ -132,6 +138,132 @@ const tagStyles: Record<string, string> = {
   'NO RESPONDE': 'bg-yellow-100 text-yellow-700 border-yellow-300',
 };
 
+function formatBytes(size: number): string {
+  if (!Number.isFinite(size) || size <= 0) return '';
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function attachmentTypeLabel(name: string, mimeType: string): string {
+  const mime = mimeType.trim().toLowerCase();
+  const ext = name.includes('.') ? name.split('.').pop()?.trim().toUpperCase() || '' : '';
+  if (mime.includes('pdf') || ext === 'PDF') return 'PDF';
+  if (mime.includes('wordprocessingml') || ext === 'DOCX') return 'DOCX';
+  if (mime === 'application/msword' || ext === 'DOC') return 'DOC';
+  if (mime.includes('spreadsheetml') || ext === 'XLSX') return 'XLSX';
+  if (mime.includes('excel') || ext === 'XLS') return 'XLS';
+  if (mime.includes('presentationml') || ext === 'PPTX') return 'PPTX';
+  if (mime.includes('powerpoint') || ext === 'PPT') return 'PPT';
+  if (mime.startsWith('text/plain') || ext === 'TXT') return 'TXT';
+  if (mime.includes('csv') || ext === 'CSV') return 'CSV';
+  if (mime.includes('zip') || ext === 'ZIP') return 'ZIP';
+  if (mime.includes('rar') || ext === 'RAR') return 'RAR';
+  if (ext) return ext;
+  return 'Documento';
+}
+
+function attachmentMetaLine(name: string, mimeType: string, size: number): string {
+  const parts = [attachmentTypeLabel(name, mimeType)];
+  const prettySize = formatBytes(size);
+  if (prettySize) parts.push(prettySize);
+  return parts.join(' · ');
+}
+
+function MessageAttachment({
+  attachment,
+  mine,
+  setLightboxUrl,
+}: {
+  attachment: NonNullable<WhatsappMessageItem['attachments']>[number];
+  mine: boolean;
+  setLightboxUrl: (url: string) => void;
+}) {
+  const [downloading, setDownloading] = useState(false);
+  const src = (attachment.url ?? attachment.downloadUrl ?? attachment.proxyUrl ?? '').trim();
+
+  if (!src) {
+    return (
+      <div className={cn("mb-2 flex items-center gap-2 rounded-lg px-3 py-2 text-xs", mine ? "bg-black/10 text-primary-foreground/80" : "bg-black/5 text-muted-foreground")}>
+        <FileText className="h-4 w-4 shrink-0" />
+        <span className="truncate">{attachment.name || 'Archivo no disponible'}</span>
+      </div>
+    );
+  }
+
+  if (attachment.mediaType === 'image' || attachment.mimeType?.startsWith('image/')) {
+    return (
+      <button type="button" onClick={() => setLightboxUrl(src)} className="block w-full">
+        <img
+          src={src}
+          alt={attachment.name}
+          className="mb-2 max-h-60 w-full rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity"
+        />
+      </button>
+    );
+  }
+
+  if (attachment.mediaType === 'video' || attachment.mimeType?.startsWith('video/')) {
+    return (
+      <video controls preload="metadata" className="mb-2 max-h-60 w-full rounded-lg bg-black" src={src} />
+    );
+  }
+
+  if (attachment.mediaType === 'audio' || attachment.mimeType?.startsWith('audio/')) {
+    return (
+      <div className={cn("mb-2 rounded-lg px-3 py-2", mine ? "bg-black/10" : "bg-black/5")}>
+        <div className={cn("mb-2 flex items-center gap-2 text-xs", mine ? "text-primary-foreground/80" : "text-muted-foreground")}>
+          <Music2 className="h-4 w-4" />
+          <span className="truncate">{attachment.name}</span>
+        </div>
+        <audio controls preload="metadata" className="w-full max-w-[240px]" src={src} />
+      </div>
+    );
+  }
+
+  const Icon = attachment.mediaType === 'document' ? FileText : FileText;
+
+  async function onDownloadClick(e: React.MouseEvent<HTMLAnchorElement>) {
+    e.preventDefault();
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      await downloadWhatsappAttachment({ id: attachment.id, name: attachment.name, url: src });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Error al descargar');
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  return (
+    <a
+      href={src}
+      rel="noreferrer"
+      download={attachment.name}
+      onClick={onDownloadClick}
+      className={cn("mb-2 flex items-center gap-3 rounded-lg px-3 py-2 transition", mine ? "bg-black/10 text-primary-foreground hover:bg-black/20" : "bg-black/5 text-foreground hover:bg-black/10")}
+    >
+      <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full", mine ? "bg-white/20" : "bg-background")}>
+        <Icon className={cn("h-5 w-5", mine ? "text-primary-foreground" : "text-muted-foreground")} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium">{attachment.name}</p>
+        <p className={cn("text-xs", mine ? "text-primary-foreground/70" : "text-muted-foreground")}>
+          {attachmentMetaLine(attachment.name, attachment.mimeType || '', attachment.size || 0)}
+        </p>
+      </div>
+      {downloading ? (
+        <Loader2 className="h-4 w-4 shrink-0 animate-spin opacity-70" />
+      ) : attachment.downloadUrl ? (
+        <Download className="h-4 w-4 shrink-0 opacity-70" />
+      ) : (
+        <ExternalLink className="h-4 w-4 shrink-0 opacity-70" />
+      )}
+    </a>
+  );
+}
+
 /* ==================== MAIN ==================== */
 
 export default function FlotaMensajes() {
@@ -140,6 +272,11 @@ export default function FlotaMensajes() {
   const [evoModalOpen, setEvoModalOpen] = useState(false);
   const [loadingConn, setLoadingConn] = useState(true);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+
+  const pipelineSelect = useCallback((id: string) => {
+    setActiveConversationId(id);
+    setTab('inbox');
+  }, []);
 
   const instance = connection?.instance ?? null;
   const isConnected = instance?.isConnected ?? false;
@@ -173,7 +310,7 @@ export default function FlotaMensajes() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Mensajes" description="Chat WhatsApp · Evolution GO">
+      <PageHeader title="Mensajes">
         <div className="inline-flex items-center gap-2">
           <div className="inline-flex rounded-lg border bg-card p-1 shadow-sm">
             <button
@@ -260,7 +397,7 @@ export default function FlotaMensajes() {
         loadingConn ? <LoadingState /> :
         <MasivoView isConnected={isConnected} onConnectClick={() => setEvoModalOpen(true)} />
       ) : (
-        <FlotaPipelineView onSelect={(id) => { setActiveConversationId(id); setTab('inbox'); }} />
+        <FlotaPipelineView onSelect={pipelineSelect} />
       )}
     </div>
   );
@@ -522,7 +659,21 @@ function InboxView({ activeId: externalActiveId, onActiveChange }: { activeId: s
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [messagesCache, setMessagesCache] = useState<Record<string, WhatsappMessageItem[]>>({});
+  const [filter, setFilter] = useState<'all' | 'unread' | 'groups'>('all');
+  const [newChatOpen, setNewChatOpen] = useState(false);
+  const [newPhone, setNewPhone] = useState('');
+  const [newName, setNewName] = useState('');
+  const [creatingChat, setCreatingChat] = useState(false);
   const firstLoad = useRef(true);
+
+  useEffect(() => {
+    if (activeId) {
+      void markConversationAsRead(activeId);
+      setConversations(prev => prev.map(c =>
+        c.id === activeId ? { ...c, unread: 0 } : c
+      ));
+    }
+  }, [activeId]);
 
   useEffect(() => {
     if (externalActiveId && externalActiveId !== activeId) {
@@ -558,22 +709,87 @@ function InboxView({ activeId: externalActiveId, onActiveChange }: { activeId: s
     }
   }
 
-  const filtered = conversations.filter((c) =>
-    c.name.toLowerCase().includes(query.toLowerCase()) || c.phone.includes(query),
-  );
+  async function handleNewChat() {
+    const phone = newPhone.trim();
+    const name = newName.trim() || phone;
+    if (!phone) return;
+
+    const cleanPhone = (p: string) => p.replace(/\D/g, '').slice(-9);
+
+    const existing = conversations.find((c) => cleanPhone(c.phone) === cleanPhone(phone));
+    if (existing) {
+      setNewChatOpen(false);
+      setNewPhone('');
+      setNewName('');
+      setActiveId(existing.id);
+      return;
+    }
+
+    setCreatingChat(true);
+    try {
+      const created = await flotaProspectoCreate({ nombreCompleto: name, celular: phone });
+      toast.success('Contacto creado');
+      setNewChatOpen(false);
+      setNewPhone('');
+      setNewName('');
+      await loadConversations();
+      setActiveId(created.id);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'No se pudo crear el contacto');
+    } finally {
+      setCreatingChat(false);
+    }
+  }
+
+  const filtered = conversations
+    .filter((c) => {
+      if (filter === 'unread') return c.unread > 0;
+      if (filter === 'groups') return c.phone.includes('@g.us');
+      return true;
+    })
+    .filter((c) =>
+      c.name.toLowerCase().includes(query.toLowerCase()) || c.phone.includes(query),
+    );
 
   return (
-    <div className="grid h-[calc(100vh-11rem)] grid-cols-1 gap-4 lg:grid-cols-[360px_1fr]">
+    <div className="grid h-[calc(100vh-11rem)] grid-cols-1 gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
       <aside className="flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-        <div className="border-b p-3">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Buscar conversación..."
-              className="pl-9"
-            />
+        <div className="border-b px-3 pb-1 pt-3">
+          <div className="flex gap-1">
+            {([
+              ['all', 'Todos'],
+              ['unread', 'No leídos'],
+              ['groups', 'Grupos'],
+            ] as const).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setFilter(key)}
+                className={cn(
+                  'rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+                  filter === key
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="border-b px-3 py-2">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Buscar conversación..."
+                className="pl-9"
+              />
+            </div>
+            <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground" onClick={() => setNewChatOpen(true)}>
+              <Plus className="h-4 w-4" />
+            </Button>
           </div>
         </div>
         <div className="flex-1 overflow-y-auto">
@@ -595,12 +811,15 @@ function InboxView({ activeId: externalActiveId, onActiveChange }: { activeId: s
                   activeId === c.id && 'bg-primary/5',
                 )}
               >
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
+                <div className={cn(
+                  'flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary',
+                  c.unread > 0 && 'bg-primary text-primary-foreground',
+                )}>
                   {c.name.slice(0, 2).toUpperCase()}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="truncate text-sm font-medium text-foreground">{c.name}</p>
+                    <p className={cn('truncate text-sm text-foreground', c.unread > 0 && 'font-semibold')}>{c.name}</p>
                     <span className="shrink-0 text-xs text-muted-foreground">
                       {(() => {
                         const msgDate = new Date(c.time);
@@ -622,7 +841,7 @@ function InboxView({ activeId: externalActiveId, onActiveChange }: { activeId: s
                       })()}
                     </span>
                   </div>
-                  <p className="mt-0.5 line-clamp-1 text-sm text-muted-foreground">{c.preview}</p>
+                  <p className={cn('mt-0.5 line-clamp-1 text-sm', c.unread > 0 ? 'font-medium text-foreground' : 'text-muted-foreground')}>{c.preview}</p>
                   <div className="mt-1.5 flex items-center gap-2">
                     <span className="text-[11px] text-muted-foreground">{c.phone}</span>
                     {c.unread > 0 && (
@@ -651,6 +870,44 @@ function InboxView({ activeId: externalActiveId, onActiveChange }: { activeId: s
           Selecciona una conversación
         </div>
       )}
+
+      <Dialog open={newChatOpen} onOpenChange={setNewChatOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Nuevo mensaje</DialogTitle>
+            <DialogDescription>Ingresa el número y nombre del contacto</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="new-phone">Número de WhatsApp</Label>
+              <Input
+                id="new-phone"
+                value={newPhone}
+                onChange={(e) => setNewPhone(e.target.value)}
+                placeholder="51987654321"
+                autoFocus
+              />
+              <p className="text-xs text-muted-foreground">Con código de país, sin + ni espacios</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-name">Nombre</Label>
+              <Input
+                id="new-name"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="Nombre del contacto"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNewChatOpen(false)} disabled={creatingChat}>Cancelar</Button>
+            <Button onClick={handleNewChat} disabled={!newPhone.trim() || creatingChat}>
+              {creatingChat ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Iniciar chat
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -670,11 +927,16 @@ function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, 
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [mediaPanelOpen, setMediaPanelOpen] = useState(false);
   const [editData, setEditData] = useState<Record<string, string>>({});
   const scrollRef = useRef<HTMLDivElement>(null);
   const convo = conversations.find((c) => c.id === contactId);
-  const prevMsgCountRef = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [operadores, setOperadores] = useState<string[]>([]);
+
+  useEffect(() => {
+    flotaProspectosCounts().then((c) => setOperadores(c.operadores)).catch(() => {});
+  }, []);
 
   async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -812,13 +1074,7 @@ function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, 
   useEffect(() => {
     const count = messagesCache[contactId]?.length ?? 0;
     if (count === 0) return;
-    const prev = prevMsgCountRef.current;
-    prevMsgCountRef.current = count;
-    if (prev > 0 && count > prev) {
-      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-    } else {
-      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'instant' });
-    }
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'instant' });
   }, [messagesCache[contactId]?.length, contactId]);
 
   async function send() {
@@ -843,7 +1099,7 @@ function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, 
     const optimistic: WhatsappMessageItem = {
       id: optimisticId,
       direction: 'outbound',
-      body: body || '[Imagen]',
+      body: body || '',
       fromWaId: '',
       toWaId: convo?.phone ?? '',
       createdAt: new Date().toISOString(),
@@ -927,23 +1183,41 @@ function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, 
     }
   }
 
+  async function handleCambiarOperador(nuevoOperador: string) {
+    if (!contactId) return;
+    try {
+      await api(`/flota-prospectos/${contactId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ operador: nuevoOperador || null }),
+      });
+      toast.success(nuevoOperador ? `Operador asignado: ${nuevoOperador}` : 'Operador removido');
+      onContactUpdated();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'No se pudo asignar operador');
+    }
+  }
+
   return (
-    <section className="flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-      <div className="flex items-center justify-between border-b px-5 py-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary">
-            {convo?.name.slice(0, 2).toUpperCase() ?? '??'}
+    <div className="flex h-full min-h-0 min-w-0 gap-4">
+      <section className={cn("flex flex-col flex-1 min-w-0 overflow-hidden rounded-lg border border-border bg-card shadow-sm transition-all", mediaPanelOpen ? "hidden xl:flex" : "")}>
+        <div className="flex items-center justify-between border-b px-5 py-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary">
+              {convo?.name.slice(0, 2).toUpperCase() ?? '??'}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-semibold leading-tight">{convo?.name ?? 'Desconocido'}</p>
+              <p className="truncate text-xs text-muted-foreground">{convo?.phone ?? ''}</p>
+            </div>
           </div>
-          <div>
-            <p className="font-semibold leading-tight">{convo?.name ?? 'Desconocido'}</p>
-            <p className="text-xs text-muted-foreground">{convo?.phone ?? ''}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={() => setEditModalOpen(true)}>
-            <Edit2 className="h-4 w-4" />
-          </Button>
-          <DropdownMenu>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" onClick={() => setMediaPanelOpen(!mediaPanelOpen)} className={mediaPanelOpen ? 'bg-muted' : ''}>
+              <PanelRight className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => setEditModalOpen(true)}>
+              <Edit2 className="h-4 w-4" />
+            </Button>
+            <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 className={cn(
@@ -964,12 +1238,38 @@ function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, 
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className={cn(
+                  'rounded-md border px-3 py-1.5 text-xs font-medium transition-colors',
+                  convo?.operador
+                    ? 'border-sky-500/30 bg-sky-500/10 text-sky-700 hover:bg-sky-500/20'
+                    : 'border-input bg-background text-muted-foreground hover:bg-muted',
+                )}
+              >
+                {convo?.operador || 'Operador'}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {convo?.operador && (
+                <DropdownMenuItem onClick={() => handleCambiarOperador('')}>
+                  Sin operador
+                </DropdownMenuItem>
+              )}
+              {operadores.map((op) => (
+                <DropdownMenuItem key={op} onClick={() => handleCambiarOperador(op)}>
+                  {op}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_1px_1px,theme(colors.muted.foreground/0.08)_1px,transparent_0)] [background-size:18px_18px] px-4 py-5"
+        className="flex-1 overflow-y-auto overflow-x-hidden bg-[radial-gradient(circle_at_1px_1px,theme(colors.muted.foreground/0.08)_1px,transparent_0)] [background-size:18px_18px] px-4 py-5"
       >
         <div className="flex flex-col gap-3">
           {messages.length === 0 ? (
@@ -1018,41 +1318,26 @@ function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, 
                   {group.messages.map((m) => {
                     const mine = m.direction === 'outbound';
                     return (
-                      <div key={m.id} className={cn('flex mb-2', mine ? 'justify-end' : 'justify-start')}>
+                      <div key={m.id} className={cn('flex mb-2 w-full', mine ? 'justify-end' : 'justify-start')}>
                         <div
                           className={cn(
-                            'max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-sm',
+                            'max-w-[85%] min-w-0 rounded-2xl px-4 py-2.5 text-sm shadow-sm',
                             mine
                               ? 'rounded-br-sm bg-primary text-primary-foreground'
                               : 'rounded-bl-sm bg-muted text-foreground',
                           )}
                         >
-                          {m.attachments?.filter((a) => a.mediaType === 'image' || a.mimeType?.startsWith('image/')).map((img) => {
-                            const src = (img.url ?? img.downloadUrl ?? img.proxyUrl ?? '').trim();
-                            if (!src) {
-                              return (
-                                <div key={img.id} className="mb-2 flex items-center gap-2 rounded-lg bg-black/5 px-3 py-2 text-xs text-muted-foreground">
-                                  <ImageIcon className="h-4 w-4 shrink-0" />
-                                  <span className="truncate">{img.name}</span>
-                                </div>
-                              );
-                            }
-                            return (
-                              <button
-                                type="button"
-                                key={img.id}
-                                onClick={() => setLightboxUrl(src)}
-                                className="block w-full"
-                              >
-                                <img
-                                  src={src}
-                                  alt={img.name}
-                                  className="mb-2 max-h-60 rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity"
-                                />
-                              </button>
-                            );
-                          })}
-                          <p className="whitespace-pre-wrap">{m.body}</p>
+                          {m.attachments?.map((attachment) => (
+                            <MessageAttachment
+                              key={attachment.id}
+                              attachment={attachment}
+                              mine={mine}
+                              setLightboxUrl={setLightboxUrl}
+                            />
+                          ))}
+                          {m.body && (!m.attachments?.length || !['[Imagen]', '[Documento]', '[Video]', '[Audio]'].includes(m.body.trim())) && (
+                            <p className="whitespace-pre-wrap break-words">{m.body}</p>
+                          )}
                           <div className={cn('mt-1 flex items-center justify-end gap-1 text-[10px]', mine ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
                             <span>{new Date(m.createdAt).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}</span>
                             {mine && <CheckCheck className={cn('h-3 w-3', m.waOutboundStatus === 'read' ? 'text-sky-300' : '')} />}
@@ -1245,7 +1530,39 @@ function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, 
           )}
         </DialogContent>
       </Dialog>
-    </section>
+      </section>
+
+      {mediaPanelOpen && (
+        <aside className="w-full xl:w-[320px] shrink-0 flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm animate-in slide-in-from-right-4">
+          <div className="flex items-center justify-between border-b px-5 py-[13px]">
+            <h3 className="text-sm font-semibold">Archivos del chat</h3>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setMediaPanelOpen(false)}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="flex-1 overflow-y-auto bg-muted/20 p-4">
+             {(() => {
+                const allAttachments = messages.flatMap(m => m.attachments || []).filter(a => a.url || a.downloadUrl || a.proxyUrl);
+                if (allAttachments.length === 0) {
+                  return (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <ImageIcon className="mb-3 h-10 w-10 text-muted-foreground/30" />
+                      <p className="text-sm text-muted-foreground">No hay archivos en este chat</p>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="flex flex-col gap-2">
+                    {allAttachments.map(a => (
+                       <MessageAttachment key={a.id} attachment={a} mine={false} setLightboxUrl={setLightboxUrl} />
+                    ))}
+                  </div>
+                );
+             })()}
+          </div>
+        </aside>
+      )}
+    </div>
   );
 }
 
@@ -2091,8 +2408,25 @@ function FlotaPipelineView({ onSelect }: { onSelect: (contactId: string) => void
   async function loadConversations() {
     setLoading(true);
     try {
-      const data = await fetchConversations();
-      setConversations(data);
+      const [convs, prospectosRes] = await Promise.all([
+        fetchConversations(),
+        flotaProspectosList({ limit: 10000 }),
+      ]);
+      const convoMap = new Map(convs.map((c) => [c.id, c]));
+      const prospectos: FlotaConversation[] = prospectosRes.data
+        .filter((p) => !convoMap.has(p.id))
+        .map((p) => ({
+          id: p.id,
+          name: p.nombreCompleto || 'Sin nombre',
+          phone: p.celular || p.movil || '',
+          preview: '',
+          time: p.createdAt,
+          direction: 'inbound' as const,
+          unread: 0,
+          estado: p.estado || 'Nuevo',
+          operador: p.operador ?? undefined,
+        }));
+      setConversations([...convs, ...prospectos]);
     } catch {
       toast.error('No se pudieron cargar los prospectos');
     } finally {
@@ -2151,7 +2485,7 @@ function FlotaPipelineView({ onSelect }: { onSelect: (contactId: string) => void
   };
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
   );
 
   const activeConvo = activeId ? conversations.find((c) => c.id === activeId) : null;
@@ -2159,8 +2493,8 @@ function FlotaPipelineView({ onSelect }: { onSelect: (contactId: string) => void
   if (loading) return <LoadingState />;
 
   return (
-    <div className="rounded-lg border bg-card">
-      <div className="border-b px-4 py-3 flex items-center justify-between">
+    <div className="flex flex-col overflow-hidden rounded-lg border bg-card" style={{ height: 'calc(100vh - 13rem)' }}>
+      <div className="border-b px-4 py-3 shrink-0 flex items-center justify-between">
         <div>
           <h2 className="font-semibold">Pipeline de Prospectos Flota</h2>
           <p className="text-sm text-muted-foreground">{conversations.length} prospectos</p>
@@ -2172,7 +2506,7 @@ function FlotaPipelineView({ onSelect }: { onSelect: (contactId: string) => void
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="scrollbar-thin flex gap-3 overflow-x-auto px-3 pb-3 pt-2" style={{ minHeight: 'calc(100vh - 14rem)' }}>
+        <div className="scrollbar-thin flex min-h-0 flex-1 gap-3 overflow-x-auto px-3 pb-3 pt-2">
           {ESTADOS_PIPELINE.map((estado) => (
             <FlotaKanbanColumn
               key={estado}
@@ -2253,7 +2587,7 @@ const FlotaPipelineCard = memo(function FlotaPipelineCard({ conversation: c, onS
         'group relative select-none rounded-lg border border-border bg-card p-3.5 shadow-sm',
         'transition-[box-shadow,border-color] duration-150',
         'hover:border-primary/30 dark:hover:shadow-lg',
-        isDragging && 'opacity-40',
+        isDragging ? 'opacity-40 transition-none' : '',
       )}
     >
       <div {...listeners} {...attributes} className="absolute left-2 top-2 cursor-grab text-muted-foreground opacity-0 transition-opacity group-hover:opacity-60">
@@ -2271,6 +2605,12 @@ const FlotaPipelineCard = memo(function FlotaPipelineCard({ conversation: c, onS
           <Phone className="size-3 shrink-0" />
           <span className="truncate">{c.phone}</span>
         </div>
+        {c.operador && (
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Users className="size-3 shrink-0" />
+            <span className="truncate">{c.operador}</span>
+          </div>
+        )}
         {c.preview && (
           <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
             <MessageCircle className="size-3 mt-0.5 shrink-0" />

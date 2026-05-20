@@ -45,6 +45,7 @@ export type FlotaConversation = {
   direction: string;
   unread: number;
   estado?: string;
+  operador?: string;
 };
 
 export type FlotaBulkResult = {
@@ -85,6 +86,10 @@ export async function sendSharedTestMessage(params: {
 export async function fetchConversations(q?: string): Promise<FlotaConversation[]> {
   const params = q?.trim() ? `?q=${encodeURIComponent(q.trim())}` : '';
   return api(`/api/whatsapp/conversations${params}`);
+}
+
+export async function markConversationAsRead(prospectoId: string): Promise<void> {
+  return api(`/api/whatsapp/flota/read/${prospectoId}`, { method: 'POST' });
 }
 
 export async function fetchMasivoProspectos(search?: string): Promise<{ id: string; nombreCompleto: string; celular: string | null; movil: string | null }[]> {

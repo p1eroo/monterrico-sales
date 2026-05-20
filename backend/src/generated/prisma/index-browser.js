@@ -584,6 +584,7 @@ exports.Prisma.FlotaProspectoScalarFieldEnum = {
   movil: 'movil',
   observaciones: 'observaciones',
   esDuplicado: 'esDuplicado',
+  lastReadAt: 'lastReadAt',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
