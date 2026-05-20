@@ -507,18 +507,47 @@ export class EvogoClient {
     instanceApiKey: string;
     message: Record<string, unknown>;
   }): Promise<Buffer | null> {
+    const preferredApiKey = params.instanceApiKey.trim() || null;
+    const body = JSON.stringify({ message: params.message });
     const url = `${this.baseUrl}/message/downloadimage/${params.instanceApiKey}`;
-    const response = await fetch(url, {
+
+    let response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', apikey: params.instanceApiKey },
-      body: JSON.stringify({ message: params.message }),
+      headers: { 'Content-Type': 'application/json', apikey: preferredApiKey || '' },
+      body,
     });
+
+    if (response.status === 401) {
+      const managerApiKey = this.managerApiKeyOrNull();
+      if (managerApiKey && managerApiKey !== preferredApiKey) {
+        this.logger.warn('Evogo downloadMedia: reintentando con token manager');
+        response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: managerApiKey || '' },
+          body,
+        });
+      }
+    }
+
     if (!response.ok) {
       this.logger.warn(`Evogo downloadMedia HTTP ${response.status}`);
       return null;
     }
+
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      try {
+        const json = await response.json() as Record<string, unknown>;
+        const b64 = json['data'] ?? json['base64'] ?? json['media'];
+        if (typeof b64 === 'string' && b64.length > 0) {
+          return Buffer.from(b64, 'base64');
+        }
+      } catch { /* seguir con binario */ }
+    }
+
     const arrayBuffer = await response.arrayBuffer();
-    return Buffer.from(arrayBuffer);
+    if (arrayBuffer.byteLength > 0) return Buffer.from(arrayBuffer);
+    return null;
   }
 
   private tryExtractMessageId(raw: unknown): string | undefined {

@@ -42,6 +42,14 @@ export default defineConfig(({ command }) => {
   const embeddedBuildId = command === 'serve' ? 'development' : productionBuildId
 
   return {
+    server: {
+      allowedHosts: [
+        'localhost',
+        '127.0.0.1',
+        '.ngrok-free.dev',
+        '.ngrok-free.app',
+      ],
+    },
     define: {
       __APP_BUILD_ID__: JSON.stringify(embeddedBuildId),
     },

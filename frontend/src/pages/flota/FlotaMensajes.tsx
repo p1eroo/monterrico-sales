@@ -696,6 +696,7 @@ function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, 
   }
 
   function handleRemoveImage() {
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
     setImageFile(null);
     setImagePreview(null);
     setImageUrl(null);
@@ -783,7 +784,7 @@ function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, 
       if (payload.type === 'message') {
         setMessagesCache((prev) => {
           const existing = prev[contactId] ?? [];
-          const rest = existing.filter((x) => x.id !== payload.item.id);
+          const rest = existing.filter((x) => x.id !== payload.item.id && !x.id.startsWith('opt:'));
           const next = [...rest, payload.item];
           next.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
           return { ...prev, [contactId]: next };
@@ -825,14 +826,19 @@ function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, 
     const body = draft.trim();
     const optimisticId = `opt:${Date.now()}`;
     setDraft('');
-    const optimisticAttachments = imageUrl ? [{
+    const finalImageUrl = imageUrl;
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+    setImageFile(null);
+    setImagePreview(null);
+    setImageUrl(null);
+    const optimisticAttachments = finalImageUrl ? [{
       id: `opt-att:${Date.now()}`,
       name: imageFile?.name || 'imagen.jpg',
       mimeType: imageFile?.type || 'image/jpeg',
       size: imageFile?.size || 0,
       mediaType: 'image' as const,
-      url: imagePreview || imageUrl,
-      downloadUrl: imageUrl,
+      url: finalImageUrl,
+      downloadUrl: finalImageUrl,
     }] : [];
     const optimistic: WhatsappMessageItem = {
       id: optimisticId,
@@ -852,7 +858,7 @@ function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, 
       return { ...prev, [contactId]: next };
     });
     try {
-      await sendFlotaWhatsappMessage(contactId, body || '', imageUrl || undefined);
+      await sendFlotaWhatsappMessage(contactId, body || '', finalImageUrl || undefined);
     } catch (e) {
       setMessagesCache((prev) => {
         const existing = prev[contactId] ?? [];
@@ -860,13 +866,13 @@ function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, 
         return { ...prev, [contactId]: withoutOpt };
       });
       setDraft(body);
+      setImageUrl(finalImageUrl);
       toast.error(e instanceof Error ? e.message : 'No se pudo enviar el mensaje');
       return;
     }
-    setImageFile(null);
-    setImagePreview(null);
-    setImageUrl(null);
-    void loadMessages();
+    setTimeout(() => {
+      void loadMessages();
+    }, 30000);
   }
 
   const messages = messagesCache[contactId] ?? [];

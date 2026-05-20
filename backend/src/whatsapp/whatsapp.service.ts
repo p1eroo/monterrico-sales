@@ -899,6 +899,8 @@ export class WhatsappService {
         this.evolutionBaseUrl(),
       );
       const proxyUrl = `/api/whatsapp/media/proxy/${row.id}`;
+      const mediaType = fallbackMedia?.mediaType;
+      const useProxy = mediaType === 'image' || mediaType === 'video' || mediaType === 'document';
       const fallbackAttachments: WhatsappMessageAttachmentDto[] =
         fallbackMedia && fallbackUrl
           ? [
@@ -915,9 +917,9 @@ export class WhatsappService {
                   fallbackMedia.mimeType || 'application/octet-stream',
                 size: fallbackMedia.size ?? 0,
                 mediaType: fallbackMedia.mediaType,
-                url: fallbackMedia.mediaType === 'image' ? proxyUrl : fallbackUrl,
-                downloadUrl: fallbackUrl,
-                proxyUrl: fallbackMedia.mediaType === 'image' ? proxyUrl : null,
+                url: useProxy ? proxyUrl : fallbackUrl,
+                downloadUrl: useProxy ? proxyUrl : fallbackUrl,
+                proxyUrl: useProxy ? proxyUrl : null,
               },
             ]
           : [];
@@ -960,21 +962,27 @@ export class WhatsappService {
     const entityType = flotaProspecto?.id ? 'flota-prospecto' : 'contact';
     const entityId = flotaProspecto?.id || contact?.id;
     const entityName = flotaProspecto?.nombreCompleto || contact?.name || null;
-    if (!entityId) return;
-    const uploadedById = contact?.assignedTo || instance?.userId;
-    if (!uploadedById) {
-      this.logger.warn(`Adjunto WhatsApp ${messageId} omitido: no hay usuario dueño para CrmFile`);
+    if (!entityId) {
+      this.logger.warn(`Adjunto WhatsApp ${messageId} omitido: no hay entityId`);
       return;
     }
+    const uploadedById = contact?.assignedTo || instance?.userId || 'system-user';
+    if (!uploadedById) {
+      this.logger.warn(`Adjunto WhatsApp ${messageId} omitido: no hay usuario dueño para CrmFile (instance=${!!instance}, contact=${!!contact})`);
+      return;
+    }
+    this.logger.log(`Adjunto WhatsApp ${messageId}: uploadedById=${uploadedById}, entityType=${entityType}, entityId=${entityId}`);
     try {
       const resolvedUrl = resolveEvolutionMediaUrl(
         media.url,
         this.evolutionBaseUrl(),
       );
       let bytes = this.decodeWhatsappMediaBase64(media.base64);
+      this.logger.log(`Adjunto WhatsApp ${messageId}: base64=${!!bytes} (len=${media.base64?.length || 0}), url=${!!resolvedUrl}, mediaType=${media.mediaType}`);
       if (!bytes && resolvedUrl) {
         try {
           bytes = await this.downloadWhatsappMedia(resolvedUrl);
+          this.logger.log(`Adjunto WhatsApp ${messageId}: descargado por URL, size=${bytes?.length || 0}`);
         } catch (urlError) {
           this.logger.warn(
             `Adjunto WhatsApp ${messageId}: fallo descarga por URL ${resolvedUrl}: ${String(urlError)}`,
@@ -1002,6 +1010,7 @@ export class WhatsappService {
         relatedEntityId: messageId,
         relatedEntityName: `whatsapp-${media.mediaType}`,
       });
+      this.logger.log(`Adjunto WhatsApp ${messageId}: guardado OK (${bytes.length} bytes, tipo=${media.mimeType})`);
     } catch (e) {
       this.logger.warn(
         `No se pudo almacenar adjunto WhatsApp ${messageId} en crm-adjuntos: ${String(e)}`,
@@ -1228,8 +1237,13 @@ export class WhatsappService {
     });
     if (!instance?.instanceApiKey) return null;
 
-    const msgData = (payload as Record<string, unknown>)?.data as Record<string, unknown> | undefined;
-    const msgProto = msgData?.message as Record<string, unknown> | undefined;
+    const rawPayload = payload as Record<string, unknown>;
+    const msgProto: Record<string, unknown> | undefined =
+      (rawPayload?.['Message'] as Record<string, unknown>) ??
+      (rawPayload?.['message'] as Record<string, unknown>) ??
+      ((rawPayload?.['data'] as Record<string, unknown>)?.['Message'] as Record<string, unknown>) ??
+      ((rawPayload?.['data'] as Record<string, unknown>)?.['message'] as Record<string, unknown>) ??
+      undefined;
     if (!msgProto) return null;
 
     const buffer = await this.evogo.downloadMedia({
@@ -1450,6 +1464,11 @@ export class WhatsappService {
   ): Promise<{ ok: boolean; ignored?: string }> {
     const msg = parseMessageEventData(parsed.data);
     const media = parseMessageMedia(parsed.data);
+    if (media) {
+      this.logger.log(`Webhook media detectado: type=${media.mediaType}, base64=${!!media.base64} (len=${media.base64?.length || 0}), url=${!!media.url}, mime=${media.mimeType}`);
+    } else {
+      this.logger.log(`Webhook sin media, body=${msg.text?.slice(0, 100)}`);
+    }
 
     if (msg.isProtocolMessage) {
       return { ok: true, ignored: 'protocol_message' };
@@ -1498,8 +1517,9 @@ export class WhatsappService {
       flotaProspecto = { id: createdProspecto.id, nombreCompleto: createdProspecto.nombreCompleto, celular: createdProspecto.celular };
     }
     const instance = await this.findInstanceByEvent(parsed);
+    const instanceToUse = instance ?? (await this.findSharedInstance());
     const ourLine =
-      instance?.displayLineId || parsed.instanceName || this.displaySenderId();
+      instanceToUse?.displayLineId || parsed.instanceName || this.displaySenderId();
 
     const textBody = msg.text.trim() || '[Sin texto]';
 
@@ -1515,7 +1535,7 @@ export class WhatsappService {
         payloadJson: stripHeavyPayload(parsed.data) as Prisma.InputJsonValue,
         contactId: null,
         flotaProspectoId: flotaProspecto?.id ?? null,
-        whatsappInstanceId: instance?.id ?? null,
+        whatsappInstanceId: instanceToUse?.id ?? null,
       },
     });
 
@@ -1524,7 +1544,7 @@ export class WhatsappService {
         messageId: created.id,
         contact: null,
         flotaProspecto: flotaProspecto?.id ? flotaProspecto as FlotaProspectoMediaRef : undefined,
-        instance,
+        instance: instanceToUse,
         media,
       });
     }
@@ -1972,6 +1992,28 @@ export class WhatsappService {
         waOutboundStatus: 'sent',
       },
     });
+
+    if (imageUrl) {
+      try {
+        await this.prisma.crmFile.create({
+          data: {
+            storageKey: imageUrl,
+            originalName: 'imagen-enviada.jpg',
+            mimeType: 'image/jpeg',
+            size: 0,
+            entityType: 'flota-prospecto',
+            entityId: prospectoId,
+            entityName: prospecto.nombreCompleto?.trim() || null,
+            relatedEntityType: 'whatsapp-message',
+            relatedEntityId: created.id,
+            relatedEntityName: 'imagen-enviada',
+            uploadedBy: userId,
+          },
+        });
+      } catch (e) {
+        this.logger.warn(`No se pudo crear adjunto de imagen saliente ${created.id}: ${String(e)}`);
+      }
+    }
 
     await this.emitListItemById(prospectoId, created.id);
 
