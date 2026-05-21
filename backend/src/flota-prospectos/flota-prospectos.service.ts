@@ -60,6 +60,7 @@ function parseInt10(raw: string): number | null {
 export interface ImportSheetsResult {
   total: number;
   imported: number;
+  updated: number;
   duplicates: number;
   skipped: number;
   errors: string[];
@@ -352,6 +353,7 @@ if (params.mes) {
     const result: ImportSheetsResult = {
       total: 0,
       imported: 0,
+      updated: 0,
       duplicates: 0,
       skipped: 0,
       errors: [],
@@ -376,17 +378,17 @@ if (params.mes) {
     if (dataRows.length === 0) return result;
 
 
-    // 2. Obtener todos los celulares existentes en la BD
-    const existingPhones = new Set(
-      (
-        await this.prisma.flotaProspecto.findMany({
-          where: { celular: { not: null } },
-          select: { celular: true },
-        })
-      )
-        .map((r) => this.normalizeCelular(r.celular) ?? '')
-        .filter(Boolean),
-    );
+    // 2. Obtener todos los prospectos existentes con celular (para duplicados/actualización)
+    const existingProspectos = new Map<string, { id: string; estado: string }>();
+    (
+      await this.prisma.flotaProspecto.findMany({
+        where: { celular: { not: null } },
+        select: { id: true, celular: true, estado: true },
+      })
+    ).forEach((r) => {
+      const norm = this.normalizeCelular(r.celular);
+      if (norm) existingProspectos.set(norm, { id: r.id, estado: r.estado });
+    });
 
     const batchPhones = new Map<string, number>();
 
@@ -408,19 +410,92 @@ if (params.mes) {
         continue;
       }
 
-      // Detectar duplicado
+      // Detectar duplicado y actualizar datos si ya existe
       let esDuplicado = false;
       if (celularNorm) {
-        if (existingPhones.has(celularNorm) || batchPhones.has(celularNorm)) {
+        if (existingProspectos.has(celularNorm) || batchPhones.has(celularNorm)) {
           esDuplicado = true;
         }
-        batchPhones.set(celularNorm, i);
+        if (!esDuplicado) {
+          batchPhones.set(celularNorm, i);
+        }
       }
 
       if (esDuplicado) {
-        result.duplicates++;
-        result.errors.push(`Fila ${i + 1}: Omitida por duplicado (Celular: ${celularNorm || celular}).`);
-        continue; // NO crear el prospecto si ya existe
+        const existing = existingProspectos.get(celularNorm);
+        if (existing && celularNorm) {
+          const updateData: Record<string, unknown> = {};
+          if (nombre) updateData.nombreCompleto = nombre;
+          if (col.RED_SOCIAL !== -1) {
+            const val = cell(row, col.RED_SOCIAL);
+            if (val) updateData.redSocial = val;
+          }
+          if (col.EDAD !== -1) {
+            const val = parseInt10(cell(row, col.EDAD));
+            if (val !== null) updateData.edad = val;
+          }
+          if (col.OPERADOR !== -1) {
+            const val = cell(row, col.OPERADOR);
+            if (val) updateData.operador = val;
+          }
+          if (col.ESTADO !== -1) {
+            const val = cell(row, col.ESTADO);
+            if (val) updateData.estado = val;
+          }
+          if (col.MODALIDAD !== -1) {
+            const val = cell(row, col.MODALIDAD);
+            if (val) updateData.modalidad = val;
+          }
+          if (col.ANIO_VEHICULO !== -1) {
+            const val = parseInt10(cell(row, col.ANIO_VEHICULO));
+            if (val !== null) updateData.anioVehiculo = val;
+          }
+          if (col.DISTRITO !== -1) {
+            const val = cell(row, col.DISTRITO);
+            if (val) updateData.distrito = val;
+          }
+          if (col.FECHA_CITA !== -1) {
+            const val = parseDate(cell(row, col.FECHA_CITA));
+            if (val) updateData.fechaCita = val;
+          }
+          if (col.ASISTENCIA !== -1) {
+            const val = cell(row, col.ASISTENCIA);
+            if (val) updateData.asistencia = val;
+          }
+          if (col.FECHA_AFILIACION !== -1) {
+            const val = parseDate(cell(row, col.FECHA_AFILIACION));
+            if (val) updateData.fechaAfiliacion = val;
+          }
+          if (col.MOVIL !== -1) {
+            const val = cell(row, col.MOVIL);
+            if (val) updateData.movil = val;
+          }
+          if (col.OBSERVACIONES !== -1) {
+            const val = cell(row, col.OBSERVACIONES);
+            if (val) updateData.observaciones = val;
+          }
+          if (col.FECHA_REGISTRO !== -1) {
+            const val = parseDate(cell(row, col.FECHA_REGISTRO));
+            if (val) updateData.fechaRegistro = val;
+          }
+          if (Object.keys(updateData).length > 0) {
+            try {
+              await this.prisma.flotaProspecto.update({
+                where: { id: existing.id },
+                data: updateData as any,
+              });
+              result.updated++;
+            } catch (err) {
+              result.errors.push(`Fila ${i + 1}: Error actualizando prospecto existente: ${err instanceof Error ? err.message : String(err)}`);
+            }
+          } else {
+            result.duplicates++;
+          }
+        } else {
+          result.duplicates++;
+          result.errors.push(`Fila ${i + 1}: Omitida por duplicado (Celular: ${celularNorm || celular}).`);
+        }
+        continue;
       }
 
       const estadoRaw = col.ESTADO !== -1 ? cell(row, col.ESTADO) : '';
@@ -477,7 +552,7 @@ if (params.mes) {
     }
 
     this.logger.log(
-      `Importación completada: ${result.imported} importados, ${result.duplicates} duplicados marcados, ${result.skipped} omitidos`,
+      `Importación completada: ${result.imported} importados, ${result.updated} actualizados, ${result.duplicates} duplicados sin cambios, ${result.skipped} omitidos`,
     );
 
     return result;

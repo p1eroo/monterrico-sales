@@ -206,6 +206,8 @@ export default function ContactosPage() {
   const [newContactOpen, setNewContactOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [contactToDelete, setContactToDelete] = useState<string | null>(null);
+  const [batchDeleteDialogOpen, setBatchDeleteDialogOpen] = useState(false);
+  const [batchDeleting, setBatchDeleting] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
   const [importBusy, setImportBusy] = useState(false);
   const [importPreviewInProgress, setImportPreviewInProgress] = useState(false);
@@ -426,6 +428,41 @@ export default function ContactosPage() {
       );
     }
     setContactToDelete(null);
+  }
+
+  async function handleBatchDelete() {
+    if (selectedContacts.length === 0) return;
+    setBatchDeleting(true);
+    let deleted = 0;
+    let failed = 0;
+
+    for (const id of selectedContacts) {
+      if (isPendingContactId(id) || !isLikelyContactCuid(id)) {
+        failed++;
+        continue;
+      }
+      try {
+        await api(`/contacts/${id}`, { method: "DELETE" });
+        deleted++;
+      } catch {
+        failed++;
+      }
+    }
+
+    setBatchDeleting(false);
+    setBatchDeleteDialogOpen(false);
+    setSelectedContacts([]);
+    await loadApiContacts();
+
+    if (failed === 0) {
+      toast.success(`${deleted} contacto(s) eliminado(s) correctamente`);
+    } else if (deleted === 0) {
+      toast.error("No se pudo eliminar ningún contacto");
+    } else {
+      toast.warning(
+        `${deleted} eliminado(s), ${failed} no se pudieron eliminar`,
+      );
+    }
   }
 
   async function onSubmitNewContact(data: NewContactData) {
@@ -1062,6 +1099,20 @@ export default function ContactosPage() {
             Exportar
           </Button>
         )}
+        {hasPermission("contactos.eliminar") && selectedContacts.length > 0 && (
+          <Button
+            variant="destructive"
+            onClick={() => setBatchDeleteDialogOpen(true)}
+            disabled={batchDeleting}
+          >
+            {batchDeleting ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Trash2 className="size-4" />
+            )}{" "}
+            Eliminar ({selectedContacts.length})
+          </Button>
+        )}
         <Button onClick={() => setNewContactOpen(true)}>
           <Plus /> Nuevo Contacto
         </Button>
@@ -1302,6 +1353,17 @@ export default function ContactosPage() {
         description="¿Estás seguro que deseas eliminar este contacto? Esta acción no se puede deshacer."
         onConfirm={handleDelete}
         variant="destructive"
+      />
+
+      {/* Batch Delete Confirmation */}
+      <ConfirmDialog
+        open={batchDeleteDialogOpen}
+        onOpenChange={setBatchDeleteDialogOpen}
+        title="Eliminar Contactos Seleccionados"
+        description={`¿Estás seguro que deseas eliminar ${selectedContacts.length} contacto(s)? Esta acción no se puede deshacer.`}
+        onConfirm={handleBatchDelete}
+        variant="destructive"
+        confirmLabel={batchDeleting ? "Eliminando..." : `Eliminar ${selectedContacts.length}`}
       />
 
       <ContactPreviewSheet

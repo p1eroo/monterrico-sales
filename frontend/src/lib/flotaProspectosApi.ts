@@ -42,6 +42,7 @@ export interface FlotaProspectosCounts {
 export interface ImportSheetsResult {
   total: number;
   imported: number;
+  updated: number;
   duplicates: number;
   skipped: number;
   errors: string[];

@@ -260,7 +260,7 @@ export default function FlotaProspectos() {
       const hasErrors = result.errors && result.errors.length > 0;
       
       toast.success(
-        `Importación completada: ${result.imported} importados, ${result.skipped} omitidos`,
+        `Importación completada: ${result.imported} importados, ${result.updated} actualizados, ${result.skipped} omitidos`,
         {
           duration: hasErrors ? 10000 : 5000,
           action: hasErrors ? {
@@ -913,14 +913,18 @@ export default function FlotaProspectos() {
           </DialogHeader>
           
           <div className="py-4">
-            <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-4 gap-4 mb-6">
               <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-100">
                 <p className="text-xs text-emerald-600 font-medium uppercase">Importados</p>
                 <p className="text-2xl font-bold text-emerald-700">{importResult?.imported || 0}</p>
               </div>
+              <div className="p-3 rounded-lg bg-sky-50 border border-sky-100">
+                <p className="text-xs text-sky-600 font-medium uppercase">Actualizados</p>
+                <p className="text-2xl font-bold text-sky-700">{importResult?.updated || 0}</p>
+              </div>
               <div className="p-3 rounded-lg bg-amber-50 border border-amber-100">
-                <p className="text-xs text-amber-600 font-medium uppercase">Omitidos/Duplicados</p>
-                <p className="text-2xl font-bold text-amber-700">{(importResult?.skipped || 0) + (importResult?.duplicates || 0)}</p>
+                <p className="text-xs text-amber-600 font-medium uppercase">Omitidos</p>
+                <p className="text-2xl font-bold text-amber-700">{importResult?.skipped || 0}</p>
               </div>
               <div className="p-3 rounded-lg bg-red-50 border border-red-100">
                 <p className="text-xs text-red-600 font-medium uppercase">Errores</p>

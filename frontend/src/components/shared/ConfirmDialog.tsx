@@ -11,6 +11,7 @@ interface ConfirmDialogProps {
   description?: string;
   onConfirm: () => void;
   variant?: 'default' | 'destructive';
+  confirmLabel?: string;
 }
 
 export function ConfirmDialog({
@@ -20,6 +21,7 @@ export function ConfirmDialog({
   description,
   onConfirm,
   variant = 'default',
+  confirmLabel,
 }: ConfirmDialogProps) {
   function handleConfirm() {
     onConfirm();
@@ -41,7 +43,7 @@ export function ConfirmDialog({
             onClick={handleConfirm}
             className={cn(variant === 'destructive' && 'bg-destructive text-destructive-foreground hover:bg-destructive/90')}
           >
-            Confirmar
+            {confirmLabel ?? "Confirmar"}
           </Button>
         </DialogFooter>
       </DialogContent>
