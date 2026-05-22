@@ -56,12 +56,7 @@ type WhatsappListItemDto = Omit<WhatsappListItemRow, 'createdAt' | 'payloadJson'
   createdAt: string;
   attachments: WhatsappMessageAttachmentDto[];
 };
-type LooseContactMatchRow = {
-  id: string;
-  name: string;
-  telefono: string | null;
-  assignedTo: string | null;
-};
+
 type WhatsappInstanceRow = {
   id: string;
   userId: string;
@@ -81,6 +76,7 @@ type WhatsappInstanceRow = {
   createdAt: Date;
   updatedAt: Date;
 };
+
 
 type FlotaProspectoMediaRef = { id: string; nombreCompleto: string };
 
@@ -1207,16 +1203,22 @@ export class WhatsappService {
     };
   }
 
-  async listForFlotaProspecto(prospectoId: string, limit = 50) {
+  async listForFlotaProspecto(prospectoId: string, limit = 50, before?: string) {
     const take = Math.min(200, Math.max(1, limit));
+    const where: any = { flotaProspectoId: prospectoId };
+    if (before) {
+      where.createdAt = { lt: new Date(before) };
+    }
     const rows = await this.prisma.crmWhatsappMessage.findMany({
-      where: { flotaProspectoId: prospectoId },
+      where,
       orderBy: { createdAt: 'desc' },
       take,
       select: WHATSAPP_LIST_SELECT,
     });
+    const hasMore = rows.length === take;
     return {
       items: await this.buildMessageItems(rows.reverse() as WhatsappListItemRow[]),
+      hasMore,
     };
   }
 
@@ -1565,40 +1567,17 @@ export class WhatsappService {
   }
 
   private async findFlotaProspectoByPhone(peerDigits: string) {
-    const normalizedPeer = peerDigits.replace(/\D/g, '').replace(/^51/, '').slice(-9);
-    if (normalizedPeer.length < 8) return null;
+    const candidates = this.waNumberCandidates(peerDigits);
+    if (candidates.length === 0) return null;
     const rows = await this.prisma.$queryRaw<{ id: string; nombreCompleto: string; celular: string | null; movil: string | null }[]>`
       SELECT id, "nombreCompleto", celular, movil
       FROM "FlotaProspecto"
-      WHERE (celular IS NOT NULL AND regexp_replace(celular, '\D', '', 'g') = ${normalizedPeer})
-         OR (movil IS NOT NULL AND regexp_replace(movil, '\D', '', 'g') = ${normalizedPeer})
+      WHERE (celular IS NOT NULL AND regexp_replace(celular, '\D', '', 'g') = ANY(${candidates}::text[]))
+         OR (movil IS NOT NULL AND regexp_replace(movil, '\D', '', 'g') = ANY(${candidates}::text[]))
       LIMIT 1
     `;
     if (rows[0]) return { id: rows[0].id, nombreCompleto: rows[0].nombreCompleto, celular: rows[0].celular };
     return null;
-  }
-
-  private async findContactByLoosePhone(peerDigits: string) {
-    const candidates = this.waNumberCandidates(peerDigits);
-    if (candidates.length === 0) return null;
-    const rows = await this.prisma.$queryRaw<LooseContactMatchRow[]>`
-      SELECT
-        id,
-        name,
-        telefono,
-        "assignedTo"
-      FROM "Contact"
-      WHERE telefono IS NOT NULL
-        AND regexp_replace(telefono, '\D', '', 'g') = ANY(${candidates}::text[])
-      ORDER BY
-        CASE
-          WHEN regexp_replace(telefono, '\D', '', 'g') = ${candidates[0]} THEN 0
-          ELSE 1
-        END,
-        "updatedAt" DESC
-      LIMIT 1
-    `;
-    return rows[0] ?? null;
   }
 
   // ─── Instancia compartida de Flota (BD, misma estructura que personales) ───
@@ -2074,7 +2053,12 @@ export class WhatsappService {
 
     const results: Array<{ contactId: string; status: string; error?: string; messageId?: string }> = [];
 
-    for (const contactId of dto.contactIds) {
+    for (let i = 0; i < dto.contactIds.length; i++) {
+      const contactId = dto.contactIds[i]!;
+      if (i > 0) {
+        const delay = 5000 + Math.floor(Math.random() * 10000);
+        await new Promise((r) => setTimeout(r, delay));
+      }
       try {
         const contact = await this.contactsService.findOne(contactId, scope);
         const to = normalizePeWaNumber(contact.telefono);
@@ -2196,26 +2180,277 @@ export class WhatsappService {
     }
 
     const items: Array<{ name: string; phone: string; contactId: string | null }> = [];
-    const phoneCache = new Map<string, string | null>();
 
+    // Collect all unique phones from the Excel
+    const uniquePhones = new Set<string>();
+    for (const row of rows) {
+      const phone = digitsOnly(String(row[phoneKey] ?? ''));
+      if (phone && phone.length >= 8) uniquePhones.add(phone);
+    }
+
+    // Build all candidates for bulk query
+    const allCandidates: string[] = [];
+    const candidateToOriginal = new Map<string, string>();
+    for (const phone of uniquePhones) {
+      for (const cand of this.waNumberCandidates(phone)) {
+        allCandidates.push(cand);
+        candidateToOriginal.set(cand, phone);
+      }
+    }
+
+    // Single bulk query to resolve all phones at once
+    const phoneCache = new Map<string, string | null>();
+    if (allCandidates.length > 0) {
+      const contactRows = await this.prisma.$queryRaw<Array<{ id: string; telefono: string }>>`
+        SELECT id, telefono
+        FROM "Contact"
+        WHERE telefono IS NOT NULL
+          AND regexp_replace(telefono, '\D', '', 'g') = ANY(${allCandidates}::text[])
+      `;
+      for (const cr of contactRows) {
+        const clean = digitsOnly(cr.telefono);
+        if (clean) {
+          const original = candidateToOriginal.get(clean);
+          if (original && !phoneCache.has(original)) {
+            phoneCache.set(original, cr.id);
+          }
+        }
+      }
+    }
+
+    // Build items without any further DB queries
     for (const row of rows) {
       const phone = digitsOnly(String(row[phoneKey] ?? ''));
       if (!phone || phone.length < 8) continue;
 
-      let contactId: string | null = null;
-      if (phoneCache.has(phone)) {
-        contactId = phoneCache.get(phone) ?? null;
-      } else {
-        const contact = await this.findContactByLoosePhone(phone);
-        contactId = contact?.id ?? null;
-        phoneCache.set(phone, contactId);
-      }
-
+      const contactId = phoneCache.get(phone) ?? null;
       const name = String(row[nameKey ?? ''] ?? '').trim() || phone;
 
       items.push({ name, phone, contactId });
     }
 
     return { items, total: items.length };
+  }
+
+  // ======== Flota Bulk Send ========
+
+  private flotaBulkJobs = new Map<string, {
+    jobId: string;
+    total: number;
+    sent: number;
+    failed: number;
+    currentName: string;
+    currentIndex: number;
+    nextDelay: number;
+    finished: boolean;
+    cancelled: boolean;
+    results: Array<{ contactId: string; status: string; error?: string; messageId?: string }>;
+  }>();
+
+  async sendFlotaBulk(params: {
+    prospectoIds: string[];
+    text: string;
+    imageUrl?: string;
+    userId: string;
+  }): Promise<{ jobId: string }> {
+    const current = await this.findSharedInstance();
+    if (!current) {
+      throw new ServiceUnavailableException('El WhatsApp compartido de Flota no está configurado.');
+    }
+    const instance = await this.syncConnectionState(current, true);
+    if (instance.status !== 'open') {
+      throw new ServiceUnavailableException('La instancia compartida de WhatsApp no está conectada.');
+    }
+
+    const jobId = `flota-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const BULK_DELAYS = [35000, 45000, 55000, 65000];
+
+    const job = {
+      jobId,
+      total: params.prospectoIds.length,
+      sent: 0,
+      failed: 0,
+      currentName: '',
+      currentIndex: 0,
+      nextDelay: BULK_DELAYS[0]!,
+      finished: false,
+      cancelled: false,
+      results: [] as Array<{ contactId: string; status: string; error?: string; messageId?: string }>,
+    };
+    this.flotaBulkJobs.set(jobId, job);
+
+    const emit = () => {
+      this.gateway.emitFlotaBulkProgress({
+        type: 'flota-bulk-progress',
+        jobId,
+        total: job.total,
+        sent: job.sent,
+        failed: job.failed,
+        currentName: job.currentName,
+        currentIndex: job.currentIndex,
+        nextDelay: job.nextDelay,
+        finished: job.finished,
+        cancelled: job.cancelled,
+      });
+    };
+
+    // Process in background
+    void (async () => {
+      const sender = {
+        instanceApiKey: instance.instanceApiKey,
+        evoInstanceId: instance.evoInstanceId || this.defaultInstanceId(),
+        evoInstanceName: instance.instanceName,
+        displayLineId: instance.instanceName,
+      };
+
+      for (let i = 0; i < params.prospectoIds.length; i++) {
+        if (job.cancelled) break;
+
+        const prospectoId = params.prospectoIds[i]!;
+        const delayMs = BULK_DELAYS[i % BULK_DELAYS.length]!;
+
+        try {
+          const prospecto = await this.prisma.flotaProspecto.findUnique({
+            where: { id: prospectoId },
+            select: { id: true, nombreCompleto: true, celular: true, movil: true },
+          });
+
+          if (!prospecto) {
+            job.failed++;
+            job.results.push({ contactId: prospectoId, status: 'fallido', error: 'Prospecto no encontrado' });
+            emit();
+            continue;
+          }
+
+          const rawPhone = prospecto.celular ?? prospecto.movil;
+          if (!rawPhone) {
+            job.failed++;
+            job.results.push({ contactId: prospectoId, status: 'fallido', error: 'Sin teléfono' });
+            emit();
+            continue;
+          }
+
+          const to = normalizePeWaNumber(rawPhone);
+          if (to.length < 8) {
+            job.failed++;
+            job.results.push({ contactId: prospectoId, status: 'fallido', error: 'Teléfono inválido' });
+            emit();
+            continue;
+          }
+
+          job.currentName = prospecto.nombreCompleto || prospectoId;
+          job.currentIndex = i;
+          job.nextDelay = BULK_DELAYS[(i + 1) % BULK_DELAYS.length]!;
+          emit();
+
+          const personalized = params.text
+            .replaceAll('{{nombre}}', prospecto.nombreCompleto || '')
+            .replaceAll('{{celular}}', rawPhone)
+            .replaceAll('{{empresa}}', '');
+          const finalBody = personalized || params.text;
+
+          let sent;
+          if (params.imageUrl) {
+            sent = await this.evogo.sendMedia({
+              instanceApiKey: sender.instanceApiKey,
+              number: to,
+              mediaUrl: params.imageUrl,
+              mediatype: 'image',
+              caption: finalBody || undefined,
+            });
+          } else {
+            sent = await this.evogo.sendText({
+              instanceApiKey: sender.instanceApiKey,
+              number: to,
+              text: finalBody,
+            });
+          }
+
+          if (!sent.ok) {
+            const errMsg = typeof sent.raw === 'object' && sent.raw !== null && 'error' in sent.raw
+              ? String((sent.raw as { error?: unknown }).error)
+              : `HTTP ${sent.status}`;
+            job.failed++;
+            job.results.push({ contactId: prospectoId, status: 'fallido', error: errMsg });
+          } else {
+            const body = params.imageUrl ? (finalBody || '') : params.text.trim();
+            const created = await this.prisma.crmWhatsappMessage.create({
+              data: {
+                direction: 'outbound',
+                evoInstanceId: sender.evoInstanceId,
+                evoInstanceName: sender.evoInstanceName,
+                waMessageId: sent.waMessageId ?? null,
+                fromWaId: sender.displayLineId,
+                toWaId: to,
+                body,
+                payloadJson: stripHeavyPayload(sent.raw) as Prisma.InputJsonValue,
+                flotaProspectoId: prospectoId,
+                whatsappInstanceId: instance.id,
+                createdByUserId: params.userId,
+                waOutboundStatus: 'sent',
+              },
+            });
+            job.sent++;
+            job.results.push({ contactId: prospectoId, status: 'enviado', messageId: created.id });
+            await this.gateway.emitToContact(prospectoId, {
+              type: 'message',
+              contactId: prospectoId,
+              item: {
+                id: created.id,
+                direction: 'outbound',
+                body,
+                fromWaId: sender.displayLineId,
+                toWaId: to,
+                createdAt: created.createdAt.toISOString(),
+                waOutboundStatus: 'sent',
+                attachments: [],
+              } as Record<string, unknown>,
+            });
+          }
+        } catch (e) {
+          job.failed++;
+          job.results.push({
+            contactId: prospectoId,
+            status: 'fallido',
+            error: e instanceof Error ? e.message : 'Error desconocido',
+          });
+        }
+        emit();
+
+        if (i < params.prospectoIds.length - 1 && !job.cancelled) {
+          await new Promise((r) => setTimeout(r, delayMs));
+        }
+      }
+
+      job.finished = true;
+      emit();
+      // Clean up after 10 minutes
+      setTimeout(() => this.flotaBulkJobs.delete(jobId), 600000);
+    })();
+
+    return { jobId };
+  }
+
+  getFlotaBulkProgress(jobId: string) {
+    const job = this.flotaBulkJobs.get(jobId);
+    if (!job) return null;
+    return {
+      jobId: job.jobId,
+      total: job.total,
+      sent: job.sent,
+      failed: job.failed,
+      currentName: job.currentName,
+      currentIndex: job.currentIndex,
+      nextDelay: job.nextDelay,
+      finished: job.finished,
+      cancelled: job.cancelled,
+    };
+  }
+
+  cancelFlotaBulk(jobId: string) {
+    const job = this.flotaBulkJobs.get(jobId);
+    if (!job) return false;
+    job.cancelled = true;
+    return true;
   }
 }

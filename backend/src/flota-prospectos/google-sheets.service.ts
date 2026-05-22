@@ -40,24 +40,39 @@ export class GoogleSheetsService {
   /**
    * Lee todas las filas de la primera hoja del spreadsheet.
    * Devuelve un array de arrays de strings (sin la fila de cabecera).
+   * Para sheets grandes usa paginación por bloques para no exceder
+   * el límite de 10 MB de la Google Sheets API.
    */
   async readAllRows(sheetName?: string): Promise<string[][]> {
-    const range = sheetName ? `${sheetName}` : 'A:Z';
+    const MAX_ROWS_PER_CALL = 10000;
+    const rangePrefix = sheetName ? `${sheetName}!` : '';
+    let start = 1;
+    const allRows: string[][] = [];
 
-    const res = await this.sheets.spreadsheets.values.get({
-      spreadsheetId: this.spreadsheetId,
-      range,
-    });
+    while (true) {
+      const end = start + MAX_ROWS_PER_CALL - 1;
+      const range = `${rangePrefix}A${start}:Z${end}`;
 
-    const rows = res.data.values ?? [];
-    if (rows.length === 0) {
+      const res = await this.sheets.spreadsheets.values.get({
+        spreadsheetId: this.spreadsheetId,
+        range,
+      });
+
+      const values = res.data.values ?? [];
+      if (values.length === 0) break;
+
+      allRows.push(...values);
+
+      if (values.length < MAX_ROWS_PER_CALL) break;
+      start += MAX_ROWS_PER_CALL;
+    }
+
+    if (allRows.length === 0) {
       this.logger.warn('Sheet completamente vacío');
       return [];
     }
 
-    // Devolvemos todo bruto, la lógica de negocio (detección de cabeceras) 
-    // se maneja en el servicio de FlotaProspectos para evitar duplicidad.
-    return rows;
+    return allRows;
   }
 
 

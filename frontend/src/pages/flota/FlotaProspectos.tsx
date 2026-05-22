@@ -50,8 +50,10 @@ import {
   flotaProspectosSheetPreview,
   flotaProspectosDeleteMany,
   flotaProspectoCreate,
+  fetchOperadores,
   type FlotaProspectoRow,
   type FlotaProspectosCounts,
+  type OperadorUser,
   type SheetPreviewResponse,
   type ImportSheetsResult,
 } from "@/lib/flotaProspectosApi";
@@ -94,6 +96,7 @@ export default function FlotaProspectos() {
   const [previewData, setPreviewData] = useState<SheetPreviewResponse | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [conductorTelefonos, setConductorTelefonos] = useState<Set<string>>(new Set());
+  const [operadores, setOperadores] = useState<OperadorUser[]>([]);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [newProspecto, setNewProspecto] = useState({
@@ -139,6 +142,10 @@ export default function FlotaProspectos() {
       }
     }
     void loadConductorTelefonos();
+  }, []);
+
+  useEffect(() => {
+    fetchOperadores().then(setOperadores).catch(() => {});
   }, []);
 
   // Debounce search
@@ -438,9 +445,9 @@ export default function FlotaProspectos() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
-            {(counts?.operadores ?? []).map((op) => (
-              <SelectItem key={op} value={op}>
-                {op}
+            {operadores.map((op) => (
+              <SelectItem key={op.id} value={op.name}>
+                {op.name}
               </SelectItem>
             ))}
           </SelectContent>
@@ -849,11 +856,22 @@ export default function FlotaProspectos() {
               </div>
               <div className="grid gap-2">
                 <label className="text-sm font-medium">Operador</label>
-                <Input
-                  value={newProspecto.operador}
-                  onChange={(e) => setNewProspecto({ ...newProspecto, operador: e.target.value })}
-                  placeholder="Nombre del operador"
-                />
+                <Select
+                  value={newProspecto.operador || '__none__'}
+                  onValueChange={(v) => setNewProspecto({ ...newProspecto, operador: v === '__none__' ? '' : v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sin operador" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Sin operador</SelectItem>
+                    {operadores.map((op) => (
+                      <SelectItem key={op.id} value={op.name}>
+                        {op.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">

@@ -20,6 +20,19 @@ export type WhatsappSocketPayload =
       waOutboundStatus: string;
     };
 
+export type FlotaBulkProgressPayload = {
+  type: 'flota-bulk-progress';
+  jobId: string;
+  total: number;
+  sent: number;
+  failed: number;
+  currentName: string;
+  currentIndex: number;
+  nextDelay: number;
+  finished: boolean;
+  cancelled: boolean;
+};
+
 @WebSocketGateway({
   namespace: '/whatsapp',
   cors: { origin: true, credentials: true },
@@ -81,12 +94,39 @@ export class WhatsappGateway implements OnGatewayConnection {
     return { ok: true, room };
   }
 
+  @SubscribeMessage('join-bulk')
+  handleJoinBulk(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() body: { jobId?: string },
+  ) {
+    const userId = (client.data as { userId?: string }).userId;
+    if (!userId) {
+      return { ok: false, error: 'unauthorized' };
+    }
+    const jobId = body?.jobId?.trim();
+    if (!jobId) {
+      return { ok: false, error: 'jobId' };
+    }
+    const room = roomForBulk(jobId);
+    void client.join(room);
+    return { ok: true, room };
+  }
+
   emitToContact(contactId: string, payload: WhatsappSocketPayload) {
     if (!this.server) return;
-    this.server.to(roomForContact(contactId)).emit('whatsapp', payload);
+    this.server.emit('whatsapp', payload);
+  }
+
+  emitFlotaBulkProgress(payload: FlotaBulkProgressPayload) {
+    if (!this.server) return;
+    this.server.to(roomForBulk(payload.jobId)).emit('flota-bulk-progress', payload);
   }
 }
 
 export function roomForContact(contactId: string): string {
   return `whatsapp:contact:${contactId}`;
+}
+
+export function roomForBulk(jobId: string): string {
+  return `flota-bulk:${jobId}`;
 }

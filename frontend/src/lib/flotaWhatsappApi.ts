@@ -100,11 +100,15 @@ export async function fetchMasivoProspectos(search?: string): Promise<{ id: stri
 export async function fetchFlotaProspectoMessages(
   prospectoId: string,
   limit = 50,
-): Promise<WhatsappMessageItem[]> {
-  const res = await api<{ items: WhatsappMessageItem[] }>(
-    `/api/whatsapp/flota/prospectos/${prospectoId}/messages?limit=${limit}`,
+  before?: string,
+): Promise<{ items: WhatsappMessageItem[]; hasMore: boolean }> {
+  const params = new URLSearchParams();
+  params.set('limit', String(limit));
+  if (before) params.set('before', before);
+  const res = await api<{ items: WhatsappMessageItem[]; hasMore: boolean }>(
+    `/api/whatsapp/flota/prospectos/${prospectoId}/messages?${params}`,
   );
-  return res.items ?? [];
+  return res.items ? res : { items: [], hasMore: false };
 }
 
 export async function sendFlotaWhatsappMessage(
@@ -175,4 +179,39 @@ export async function importExcelPreview(file: File): Promise<FlotaExcelPreview>
     throw new Error(msg);
   }
   return body as FlotaExcelPreview;
+}
+
+export type FlotaBulkProgress = {
+  jobId: string;
+  total: number;
+  sent: number;
+  failed: number;
+  currentName: string;
+  currentIndex: number;
+  nextDelay: number;
+  finished: boolean;
+  cancelled: boolean;
+};
+
+export async function sendFlotaBulk(params: {
+  prospectoIds: string[];
+  text: string;
+  imageUrl?: string;
+}): Promise<{ jobId: string }> {
+  return api('/api/whatsapp/flota/send-bulk', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+}
+
+export async function getFlotaBulkProgress(jobId: string): Promise<FlotaBulkProgress | null> {
+  try {
+    return await api<FlotaBulkProgress>(`/api/whatsapp/flota/send-bulk/${jobId}`);
+  } catch {
+    return null;
+  }
+}
+
+export async function cancelFlotaBulk(jobId: string): Promise<void> {
+  return api(`/api/whatsapp/flota/send-bulk/${jobId}`, { method: 'DELETE' });
 }

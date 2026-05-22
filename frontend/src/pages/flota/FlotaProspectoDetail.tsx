@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import {
@@ -34,7 +34,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { DetailLayout } from '@/components/shared/DetailLayout';
 import { EntityInfoCard } from '@/components/shared/EntityInfoCard';
 import { TimelinePanel } from '@/components/shared/TimelinePanel';
-import { WhatsappContactDrawer } from '@/components/shared/WhatsappContactDrawer';
 import { formatDate } from '@/lib/formatters';
 import { toast } from 'sonner';
 import { QuickActionsWithDialogs } from '@/components/shared/QuickActionsWithDialogs';
@@ -50,9 +49,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { flotaProspectoDetail, flotaProspectoUpdate, flotaProspectoFiles, flotaProspectoFileContentUrl, flotaProspectoUploadFile, type FlotaProspectoRow, type FlotaFile } from '@/lib/flotaProspectosApi';
+import { flotaProspectoDetail, flotaProspectoUpdate, flotaProspectoFiles, flotaProspectoFileContentUrl, flotaProspectoUploadFile, fetchOperadores, type FlotaProspectoRow, type FlotaFile, type OperadorUser } from '@/lib/flotaProspectosApi';
 
-const ESTADOS = ['AFILIADO', 'CITADO', 'SEGUIMIENTO', 'INFORMACION', 'SIN REQUISITOS', 'NO RESPONDE'] as const;
+const ESTADOS = ['Afiliado', 'Citado', 'Seguimiento', 'Informacion', 'Sin Requisitos', 'No Responde'] as const;
 
 const TIMELINE_MOCK = [
   {
@@ -66,17 +65,22 @@ const TIMELINE_MOCK = [
 ];
 
 const estadoColors: Record<string, string> = {
-  AFILIADO: 'shadow-none bg-purple-100 text-purple-700 border-purple-300 hover:bg-purple-200',
-  CITADO: 'shadow-none bg-blue-100 text-blue-700 border-blue-300 hover:bg-blue-200',
-  SEGUIMIENTO: 'shadow-none bg-green-100 text-green-700 border-green-300 hover:bg-green-200 dark:bg-green-950/40 dark:text-green-300 dark:border-green-800 dark:hover:bg-green-950/60',
-  INFORMACION: 'shadow-none bg-cyan-100 text-cyan-700 border-cyan-300 hover:bg-cyan-200',
-  'SIN REQUISITOS': 'shadow-none bg-red-100 text-red-700 border-red-300 hover:bg-red-200',
-  'NO RESPONDE': 'shadow-none bg-yellow-100 text-yellow-700 border-yellow-300 hover:bg-yellow-200',
+  Afiliado: 'shadow-none bg-purple-100 text-purple-700 border-purple-300 hover:bg-purple-200',
+  Citado: 'shadow-none bg-blue-100 text-blue-700 border-blue-300 hover:bg-blue-200',
+  Seguimiento: 'shadow-none bg-green-100 text-green-700 border-green-300 hover:bg-green-200 dark:bg-green-950/40 dark:text-green-300 dark:border-green-800 dark:hover:bg-green-950/60',
+  Informacion: 'shadow-none bg-cyan-100 text-cyan-700 border-cyan-300 hover:bg-cyan-200',
+  'Sin Requisitos': 'shadow-none bg-red-100 text-red-700 border-red-300 hover:bg-red-200',
+  'No Responde': 'shadow-none bg-yellow-100 text-yellow-700 border-yellow-300 hover:bg-yellow-200',
 };
 
 function formatStatus(status: string) {
   if (!status) return '';
   return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+}
+
+function getEstadoColor(estado: string): string | undefined {
+  const key = Object.keys(estadoColors).find((k) => k.toLowerCase() === estado.toLowerCase());
+  return key ? estadoColors[key] : undefined;
 }
 
 function ProspectoInformacionAside({ prospecto }: { prospecto: FlotaProspectoRow }) {
@@ -123,7 +127,6 @@ export default function FlotaProspectoDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('historial');
-  const [whatsappDrawerOpen, setWhatsappDrawerOpen] = useState(false);
   const [prospecto, setProspecto] = useState<FlotaProspectoRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [updatingEstado, setUpdatingEstado] = useState(false);
@@ -146,6 +149,7 @@ export default function FlotaProspectoDetail() {
   const [uploadLoading, setUploadLoading] = useState(false);
   const [fileLightboxUrl, setFileLightboxUrl] = useState<string | null>(null);
   const [fileUrls, setFileUrls] = useState<Record<string, string>>({});
+  const [operadores, setOperadores] = useState<OperadorUser[]>([]);
 
   const fetchHistory = useCallback(async () => {
     if (!id || !prospecto) return;
@@ -194,6 +198,10 @@ export default function FlotaProspectoDetail() {
   useEffect(() => {
     void fetchDetail();
   }, [fetchDetail]);
+
+  useEffect(() => {
+    fetchOperadores().then(setOperadores).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (prospecto) {
@@ -296,23 +304,6 @@ export default function FlotaProspectoDetail() {
     }
   }, []);
 
-  const prospectoForWhatsApp = useMemo(() => {
-    if (!prospecto) return null;
-    return {
-      id: prospecto.id,
-      name: prospecto.nombreCompleto,
-      telefono: prospecto.celular || '',
-      companies: [],
-      correo: '',
-      fuente: 'Flota' as const,
-      etapa: prospecto.estado as any,
-      assignedTo: '',
-      assignedToName: '',
-      estimatedValue: 0,
-      createdAt: prospecto.createdAt,
-    };
-  }, [prospecto]);
-
   const handleEventClick = useCallback((event: any) => {
     if (event.type !== 'cambio_estado') return;
 
@@ -365,9 +356,9 @@ export default function FlotaProspectoDetail() {
         <DropdownMenuTrigger asChild>
           <Button
             variant="outline"
-            className={cn(
+              className={cn(
               "h-9 transition-colors",
-              estadoColors[prospecto.estado]
+              getEstadoColor(prospecto.estado)
             )}
             disabled={updatingEstado}
           >
@@ -392,7 +383,7 @@ export default function FlotaProspectoDetail() {
       {/* QuickActionsWithDialogs eliminado por petición (botón Crear) */}
       <Button 
         className="gap-1.5 bg-whatsapp px-3 text-whatsapp-foreground hover:bg-whatsapp/90 h-9"
-        onClick={() => setWhatsappDrawerOpen(true)}
+        onClick={() => navigate(`/flota/mensajes?chat=${prospecto?.id}`)}
       >
         <MessageSquare className="size-4" />
         WhatsApp
@@ -552,14 +543,6 @@ export default function FlotaProspectoDetail() {
         </Tabs>
       </div>
 
-      {prospectoForWhatsApp && (
-        <WhatsappContactDrawer
-          contact={prospectoForWhatsApp as any}
-          open={whatsappDrawerOpen}
-          onOpenChange={setWhatsappDrawerOpen}
-        />
-      )}
-
       <Dialog open={editModalOpen} onOpenChange={(open) => setEditModalOpen(open)}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
@@ -611,10 +594,22 @@ export default function FlotaProspectoDetail() {
               </div>
               <div className="grid gap-2">
                 <Label>Operador</Label>
-                <Input
-                  value={editData.operador || ''}
-                  onChange={(e) => setEditData({ ...editData, operador: e.target.value })}
-                />
+                <Select
+                  value={editData.operador || '__none__'}
+                  onValueChange={(v) => setEditData({ ...editData, operador: v === '__none__' ? '' : v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sin operador" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Sin operador</SelectItem>
+                    {operadores.map((op) => (
+                      <SelectItem key={op.id} value={op.name}>
+                        {op.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">

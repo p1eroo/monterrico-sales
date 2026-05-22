@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback, memo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { io } from 'socket.io-client';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   DndContext,
   closestCorners,
@@ -25,6 +27,7 @@ import {
   CheckCheck,
   ArrowLeft,
   ArrowRight,
+  ArrowDown,
   Users,
   MessageSquare,
   CheckCircle2,
@@ -77,6 +80,13 @@ import {
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -109,19 +119,22 @@ import {
   importExcelPreview,
   uploadFlotaImage,
   fetchMasivoProspectos,
+  sendFlotaBulk,
+  getFlotaBulkProgress,
+  cancelFlotaBulk,
   type FlotaConversation,
   type FlotaExcelContact,
   type FlotaWhatsappConnectionResponse,
   type FlotaWhatsappConnection,
 } from '@/lib/flotaWhatsappApi';
-import { flotaProspectoCreate, flotaProspectosList, flotaProspectosCounts } from '@/lib/flotaProspectosApi';
+import { flotaProspectoCreate, flotaProspectosList, fetchOperadores, type OperadorUser } from '@/lib/flotaProspectosApi';
 import { type WhatsappMessageItem, type WhatsappSocketPayload, sendWhatsappMessage, downloadWhatsappAttachment } from '@/lib/whatsappApi';
 import * as QRCode from 'qrcode';
 import * as XLSX from 'xlsx';
 
 /* ==================== TIPOS ==================== */
 
-const ESTADOS = ['NUEVO', 'AFILIADO', 'CITADO', 'SEGUIMIENTO', 'INFORMACION', 'SIN REQUISITOS', 'NO RESPONDE'] as const;
+const ESTADOS = ['Nuevo', 'Afiliado', 'Citado', 'Seguimiento', 'Informacion', 'Sin Requisitos', 'No Responde'] as const;
 
 function formatStatus(status: string) {
   if (!status) return '';
@@ -129,14 +142,20 @@ function formatStatus(status: string) {
 }
 
 const tagStyles: Record<string, string> = {
-  NUEVO: 'bg-slate-100 text-slate-700 border-slate-300',
-  CITADO: 'bg-primary/10 text-primary border-primary/20',
-  AFILIADO: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20',
-  SEGUIMIENTO: 'bg-amber-500/10 text-amber-700 border-amber-500/20',
-  INFORMACION: 'bg-sky-500/10 text-sky-700 border-sky-500/20',
-  'SIN REQUISITOS': 'bg-rose-500/10 text-rose-700 border-rose-500/20',
-  'NO RESPONDE': 'bg-yellow-100 text-yellow-700 border-yellow-300',
+  Nuevo: 'bg-slate-100 text-slate-700 border-slate-300',
+  Citado: 'bg-primary/10 text-primary border-primary/20',
+  Afiliado: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20',
+  Seguimiento: 'bg-amber-500/10 text-amber-700 border-amber-500/20',
+  Informacion: 'bg-sky-500/10 text-sky-700 border-sky-500/20',
+  'Sin Requisitos': 'bg-rose-500/10 text-rose-700 border-rose-500/20',
+  'No Responde': 'bg-yellow-100 text-yellow-700 border-yellow-300',
 };
+
+function getTagStyle(estado: string | undefined): string | undefined {
+  if (!estado) return undefined;
+  const key = Object.keys(tagStyles).find((k) => k.toLowerCase() === estado.toLowerCase());
+  return key ? tagStyles[key] : undefined;
+}
 
 function formatBytes(size: number): string {
   if (!Number.isFinite(size) || size <= 0) return '';
@@ -267,16 +286,27 @@ function MessageAttachment({
 /* ==================== MAIN ==================== */
 
 export default function FlotaMensajes() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState<'inbox' | 'masivo' | 'pipeline'>('inbox');
   const [connection, setConnection] = useState<FlotaWhatsappConnectionResponse | null>(null);
   const [evoModalOpen, setEvoModalOpen] = useState(false);
   const [loadingConn, setLoadingConn] = useState(true);
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
-
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(
+    () => searchParams.get('chat') || null,
+);
   const pipelineSelect = useCallback((id: string) => {
     setActiveConversationId(id);
     setTab('inbox');
   }, []);
+
+  const handleActiveChange = useCallback((id: string | null) => {
+    setActiveConversationId(id);
+    if (id) {
+      setSearchParams({ chat: id }, { replace: true });
+    } else {
+      setSearchParams({}, { replace: true });
+    }
+  }, [setSearchParams]);
 
   const instance = connection?.instance ?? null;
   const isConnected = instance?.isConnected ?? false;
@@ -392,7 +422,7 @@ export default function FlotaMensajes() {
 
       {tab === 'inbox' ? (
         loadingConn ? <LoadingState /> :
-        isConnected ? <InboxView activeId={activeConversationId} onActiveChange={setActiveConversationId} /> : <ConnectPrompt onClick={() => setEvoModalOpen(true)} />
+        isConnected ? <InboxView activeId={activeConversationId} onActiveChange={handleActiveChange} /> : <ConnectPrompt onClick={() => setEvoModalOpen(true)} />
       ) : tab === 'masivo' ? (
         loadingConn ? <LoadingState /> :
         <MasivoView isConnected={isConnected} onConnectClick={() => setEvoModalOpen(true)} />
@@ -651,9 +681,96 @@ function ConnectPrompt({ onClick }: { onClick: () => void }) {
   );
 }
 
+const ConversationItem = memo(({
+  conversation,
+  isActive,
+  index,
+  start,
+  measureElement,
+  onClick,
+}: {
+  conversation: FlotaConversation;
+  isActive: boolean;
+  index: number;
+  start: number;
+  measureElement: (element: HTMLElement | null) => void;
+  onClick: (id: string) => void;
+}) => {
+  const dateStr = useMemo(() => {
+    if (!conversation.time) return '';
+    const msgDate = new Date(conversation.time);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today.getTime() - 86400000);
+    const msgDay = new Date(msgDate.getFullYear(), msgDate.getMonth(), msgDate.getDate());
+    const diffDays = Math.floor((today.getTime() - msgDay.getTime()) / 86400000);
+    if (diffDays === 0) {
+      return msgDate.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
+    }
+    if (diffDays === 1) {
+      return 'Ayer';
+    }
+    if (diffDays < 7) {
+      return msgDate.toLocaleDateString('es-PE', { weekday: 'short' });
+    }
+    return msgDate.toLocaleDateString('es-PE', { day: 'numeric', month: 'numeric' });
+  }, [conversation.time]);
+
+  return (
+    <div
+      data-index={index}
+      ref={measureElement}
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        transform: `translateY(${start}px)`,
+      }}
+    >
+      <button
+        onClick={() => onClick(conversation.id)}
+        className={cn(
+          'flex w-full items-start gap-3 border-b px-4 py-3 text-left transition-colors hover:bg-muted/60',
+          isActive && 'bg-primary/5',
+        )}
+      >
+        <div className={cn(
+          'flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary',
+          conversation.unread > 0 && 'bg-primary text-primary-foreground',
+        )}>
+          {conversation.name.slice(0, 2).toUpperCase()}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <p className={cn('truncate text-sm text-foreground', conversation.unread > 0 && 'font-semibold')}>{conversation.name}</p>
+            <span className="shrink-0 text-xs text-muted-foreground">
+              {dateStr}
+            </span>
+          </div>
+          <p className={cn('mt-0.5 line-clamp-1 text-sm', conversation.unread > 0 ? 'font-medium text-foreground' : 'text-muted-foreground')}>{conversation.preview}</p>
+          <div className="mt-1.5 flex items-center gap-2">
+            <span className="text-[11px] text-muted-foreground">{conversation.phone}</span>
+            {conversation.unread > 0 && (
+              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
+                {conversation.unread}
+              </span>
+            )}
+          </div>
+        </div>
+      </button>
+    </div>
+  );
+});
+
+ConversationItem.displayName = 'ConversationItem';
+
 /* ==================== INBOX ==================== */
 
-function InboxView({ activeId: externalActiveId, onActiveChange }: { activeId: string | null; onActiveChange: (id: string | null) => void }) {
+function InboxView({ activeId: externalActiveId, onActiveChange }: {
+  activeId: string | null;
+  onActiveChange: (id: string | null) => void;
+}) {
   const [conversations, setConversations] = useState<FlotaConversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
@@ -665,6 +782,14 @@ function InboxView({ activeId: externalActiveId, onActiveChange }: { activeId: s
   const [newName, setNewName] = useState('');
   const [creatingChat, setCreatingChat] = useState(false);
   const firstLoad = useRef(true);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const activeIdRef = useRef(activeId);
+  const socketRef = useRef<any>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    activeIdRef.current = activeId;
+  }, [activeId]);
 
   useEffect(() => {
     if (activeId) {
@@ -684,10 +809,122 @@ function InboxView({ activeId: externalActiveId, onActiveChange }: { activeId: s
 
   useEffect(() => {
     void loadConversations();
-    const interval = setInterval(() => {
+  }, []);
+
+  /** Socket.IO unificado: actualizar sidebar + mensajes del chat activo en tiempo real */
+  useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+    console.log('[SocketEffect] Token exists:', !!token, 'URL:', `${API_BASE}/whatsapp`);
+    if (!token) {
+      console.warn('[SocketEffect] No token found — socket not created');
+      return;
+    }
+    const socket = io(`${API_BASE}/whatsapp`, {
+      auth: { token },
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+    });
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      console.log('[Socket] Connected, id:', socket.id);
       void loadConversations();
-    }, 10000);
-    return () => clearInterval(interval);
+    });
+
+    socket.on('connect_error', (err: Error) => {
+      console.error('[Socket] Connection error:', err.message, err.stack?.slice(0, 200));
+    });
+
+    socket.on('disconnect', (reason: string) => {
+      console.warn('[Socket] Disconnected:', reason);
+    });
+
+    socket.on('reconnect_attempt', (attempt: number) => {
+      console.log('[Socket] Reconnect attempt', attempt);
+    });
+
+    socket.on('whatsapp', (payload: WhatsappSocketPayload) => {
+      const currentActiveId = activeIdRef.current;
+
+      console.log('[Socket] Evento whatsapp recibido', {
+        type: payload.type,
+        contactId: payload.contactId,
+        activeId: currentActiveId,
+        direction: payload.type === 'message' ? (payload as any).item?.direction : undefined,
+        ts: new Date().toISOString(),
+      });
+
+      // --- Update sidebar for active contact ---
+      if (payload.contactId === currentActiveId) {
+        if (payload.type === 'message') {
+          console.log('[Socket] Mensaje para contacto activo, actualizando cache + sidebar');
+          setMessagesCache((prev) => {
+            const existing = prev[payload.contactId] ?? [];
+            const rest = existing.filter((x) => x.id !== (payload as any).item?.id && !x.id.startsWith('opt:'));
+            const next = [...rest, (payload as any).item].filter(Boolean);
+            next.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+            return { ...prev, [payload.contactId]: next };
+          });
+          const now = new Date().toISOString();
+          const body = (payload as any).item?.body ?? '';
+          const dir = (payload as any).item?.direction ?? 'inbound';
+          setConversations(prev => prev.map(c =>
+            c.id === payload.contactId
+              ? { ...c, preview: String(body).slice(0, 100), time: now, direction: dir, unread: 0 }
+              : c
+          ).sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()));
+          if (dir === 'inbound') {
+            markConversationAsRead(payload.contactId).catch(() => {});
+          }
+        } else if (payload.type === 'status') {
+          console.log('[Socket] Actualización de estado para contacto activo');
+          setMessagesCache((prev) => {
+            const existing = prev[payload.contactId] ?? [];
+            const updated = existing.map((m) =>
+              m.id === payload.id
+                ? { ...m, waOutboundStatus: payload.waOutboundStatus }
+                : m,
+            );
+            return { ...prev, [payload.contactId]: updated };
+          });
+        }
+        return;
+      }
+
+      // --- Update sidebar for non-active contacts ---
+      if (payload.type === 'message') {
+        console.log('[Socket] Mensaje para contacto NO activo, actualizando sidebar');
+        const now = new Date().toISOString();
+        const body = (payload as any).item?.body ?? '';
+        const direction = (payload as any).item?.direction || 'inbound';
+        setConversations(prev => {
+          const exists = prev.some(c => c.id === payload.contactId);
+          if (!exists) {
+            console.log('[Socket] Contacto no existe en sidebar, recargando conversaciones');
+            void loadConversations();
+            return prev;
+          }
+          console.log('[Socket] Actualizando preview en sidebar para', payload.contactId);
+          return prev.map(c =>
+            c.id === payload.contactId
+              ? { ...c, preview: body.slice(0, 100), time: now, lastDirection: direction, unread: direction === 'inbound' ? c.unread + 1 : c.unread }
+              : c
+          ).sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+        });
+      }
+    });
+
+    const onVis = () => {
+      if (document.visibilityState === 'visible') void loadConversations();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      socketRef.current = null;
+      socket.disconnect();
+      document.removeEventListener('visibilitychange', onVis);
+    };
   }, []);
 
   async function loadConversations() {
@@ -696,7 +933,32 @@ function InboxView({ activeId: externalActiveId, onActiveChange }: { activeId: s
     }
     try {
       const data = await fetchConversations();
-      setConversations(data);
+      console.log('[Poll] loadConversations completado, items:', data.length, 'ts:', new Date().toISOString());
+      setConversations(prev => {
+        if (firstLoad.current) return data;
+        const prevMap = new Map(prev.map(c => [c.id, c]));
+        for (const d of data) {
+          const existing = prevMap.get(d.id);
+          if (existing) {
+            prevMap.set(d.id, {
+              ...existing,
+              name: d.name,
+              phone: d.phone,
+              preview: d.preview,
+              direction: d.direction,
+              estado: d.estado,
+              operador: d.operador,
+              time: d.time > existing.time ? d.time : existing.time,
+            });
+          } else {
+            prevMap.set(d.id, d);
+          }
+        }
+        const merged = Array.from(prevMap.values());
+        merged.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+        console.log('[Poll] Merge: prev', prev.length, '-> merged', merged.length);
+        return merged;
+      });
     } catch {
       if (firstLoad.current) {
         toast.error('No se pudieron cargar las conversaciones');
@@ -708,6 +970,15 @@ function InboxView({ activeId: externalActiveId, onActiveChange }: { activeId: s
       }
     }
   }
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      void loadConversations();
+    }, 5000);
+    pollRef.current = id;
+    return () => clearInterval(id);
+  }, []);
 
   async function handleNewChat() {
     const phone = newPhone.trim();
@@ -741,15 +1012,30 @@ function InboxView({ activeId: externalActiveId, onActiveChange }: { activeId: s
     }
   }
 
-  const filtered = conversations
+  const queryLower = useMemo(() => query.toLowerCase(), [query]);
+
+  const filtered = useMemo(() => conversations
     .filter((c) => {
       if (filter === 'unread') return c.unread > 0;
       if (filter === 'groups') return c.phone.includes('@g.us');
       return true;
     })
     .filter((c) =>
-      c.name.toLowerCase().includes(query.toLowerCase()) || c.phone.includes(query),
-    );
+      c.name.toLowerCase().includes(queryLower) || c.phone.includes(query),
+    ), [conversations, filter, query, queryLower]);
+
+  const virtualizer = useVirtualizer({
+    count: filtered.length,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: () => 72,
+    overscan: 8,
+  });
+
+  function handleMarkRead(id: string) {
+    setConversations(prev => prev.map(c =>
+      c.id === id ? { ...c, unread: 0 } : c
+    ));
+  }
 
   return (
     <div className="grid h-[calc(100vh-11rem)] grid-cols-1 gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
@@ -792,7 +1078,7 @@ function InboxView({ activeId: externalActiveId, onActiveChange }: { activeId: s
             </Button>
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto">
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
           {loading ? (
             <div className="flex items-center justify-center py-16">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -802,66 +1088,33 @@ function InboxView({ activeId: externalActiveId, onActiveChange }: { activeId: s
               {query ? 'Sin resultados' : 'No hay conversaciones aún'}
             </div>
           ) : (
-            filtered.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => setActiveId(c.id)}
-                className={cn(
-                  'flex w-full items-start gap-3 border-b px-4 py-3 text-left transition-colors hover:bg-muted/60',
-                  activeId === c.id && 'bg-primary/5',
-                )}
-              >
-                <div className={cn(
-                  'flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary',
-                  c.unread > 0 && 'bg-primary text-primary-foreground',
-                )}>
-                  {c.name.slice(0, 2).toUpperCase()}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className={cn('truncate text-sm text-foreground', c.unread > 0 && 'font-semibold')}>{c.name}</p>
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {(() => {
-                        const msgDate = new Date(c.time);
-                        const now = new Date();
-                        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-                        const yesterday = new Date(today.getTime() - 86400000);
-                        const msgDay = new Date(msgDate.getFullYear(), msgDate.getMonth(), msgDate.getDate());
-                        const diffDays = Math.floor((today.getTime() - msgDay.getTime()) / 86400000);
-                        if (diffDays === 0) {
-                          return msgDate.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
-                        }
-                        if (diffDays === 1) {
-                          return 'Ayer';
-                        }
-                        if (diffDays < 7) {
-                          return msgDate.toLocaleDateString('es-PE', { weekday: 'short' });
-                        }
-                        return msgDate.toLocaleDateString('es-PE', { day: 'numeric', month: 'numeric' });
-                      })()}
-                    </span>
-                  </div>
-                  <p className={cn('mt-0.5 line-clamp-1 text-sm', c.unread > 0 ? 'font-medium text-foreground' : 'text-muted-foreground')}>{c.preview}</p>
-                  <div className="mt-1.5 flex items-center gap-2">
-                    <span className="text-[11px] text-muted-foreground">{c.phone}</span>
-                    {c.unread > 0 && (
-                      <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
-                        {c.unread}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </button>
-            ))
+            <div style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
+              {virtualizer.getVirtualItems().map((vi) => {
+                const c = filtered[vi.index];
+                return (
+                  <ConversationItem
+                    key={c.id}
+                    conversation={c}
+                    isActive={activeId === c.id}
+                    index={vi.index}
+                    start={vi.start}
+                    measureElement={virtualizer.measureElement}
+                    onClick={setActiveId}
+                  />
+                );
+              })}
+            </div>
           )}
         </div>
       </aside>
 
       {activeId ? (
         <ChatPanel
+          key={activeId}
           contactId={activeId}
           conversations={conversations}
           onContactUpdated={loadConversations}
+          onMarkRead={handleMarkRead}
           messagesCache={messagesCache}
           setMessagesCache={setMessagesCache}
         />
@@ -912,10 +1165,11 @@ function InboxView({ activeId: externalActiveId, onActiveChange }: { activeId: s
   );
 }
 
-function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, setMessagesCache }: {
+function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, messagesCache, setMessagesCache }: {
   contactId: string;
   conversations: FlotaConversation[];
   onContactUpdated: () => void;
+  onMarkRead: (id: string) => void;
   messagesCache: Record<string, WhatsappMessageItem[]>;
   setMessagesCache: React.Dispatch<React.SetStateAction<Record<string, WhatsappMessageItem[]>>>;
 }) {
@@ -931,11 +1185,32 @@ function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, 
   const [editData, setEditData] = useState<Record<string, string>>({});
   const scrollRef = useRef<HTMLDivElement>(null);
   const convo = conversations.find((c) => c.id === contactId);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [operadores, setOperadores] = useState<string[]>([]);
+  const [prospectoData, setProspectoData] = useState<{ name: string; phone: string } | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const loadingOlderRef = useRef(false);
+  const msgVirtualizerRef = useRef<any>(null);
 
   useEffect(() => {
-    flotaProspectosCounts().then((c) => setOperadores(c.operadores)).catch(() => {});
+    if (!contactId || convo) {
+      setProspectoData(null);
+      return;
+    }
+    api<Record<string, unknown>>(`/flota-prospectos/${contactId}`)
+      .then((data) => {
+        setProspectoData({
+          name: String(data.nombreCompleto || ''),
+          phone: String(data.celular || data.movil || ''),
+        });
+      })
+      .catch(() => setProspectoData(null));
+  }, [contactId, !!convo]);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [operadores, setOperadores] = useState<OperadorUser[]>([]);
+
+  useEffect(() => {
+    fetchOperadores().then((users) => setOperadores(users)).catch(() => {});
   }, []);
 
   async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -987,8 +1262,16 @@ function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, 
   const loadMessages = useCallback(async (): Promise<number> => {
     if (!contactId) return 0;
     try {
-      const items = await fetchFlotaProspectoMessages(contactId);
-      setMessagesCache(prev => ({ ...prev, [contactId]: items }));
+      const { items, hasMore } = await fetchFlotaProspectoMessages(contactId);
+      setMessagesCache(prev => {
+        const existing = prev[contactId] ?? [];
+        const existingIds = new Set(items.map(i => i.id));
+        const deduped = existing.filter(i => !existingIds.has(i.id) && !i.id.startsWith('opt:'));
+        const merged = [...deduped, ...items];
+        merged.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+        return { ...prev, [contactId]: merged };
+      });
+      setHasMore(hasMore);
       return items.length;
     } catch {
       toast.error('No se pudieron cargar los mensajes');
@@ -1002,80 +1285,68 @@ function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, 
     void loadMessages();
   }, [contactId, loadMessages]);
 
-  /** Polling ligero (~5,5 s) — solo si la pestaña está visible */
+  /** Polling de mensajes cada 5s mientras haya un chat activo */
   useEffect(() => {
     if (!contactId) return;
-    const id = window.setInterval(() => {
-      if (document.visibilityState !== 'visible') return;
+    const id = setInterval(() => {
       void loadMessages();
-    }, 5500);
-    return () => window.clearInterval(id);
+    }, 5000);
+    return () => clearInterval(id);
   }, [contactId, loadMessages]);
 
-  /** Refetch al volver a la pestaña o al foco de la ventana */
-  useEffect(() => {
-    if (!contactId) return;
-    const onVis = () => {
-      if (document.visibilityState === 'visible') void loadMessages();
-    };
-    const onFocus = () => void loadMessages();
-    document.addEventListener('visibilitychange', onVis);
-    window.addEventListener('focus', onFocus);
-    return () => {
-      document.removeEventListener('visibilitychange', onVis);
-      window.removeEventListener('focus', onFocus);
-    };
-  }, [contactId, loadMessages]);
+  // Ref to avoid stale closure on messagesCache inside the scroll handler
+  const messagesCacheRef = useRef(messagesCache);
+  useEffect(() => { messagesCacheRef.current = messagesCache; }, [messagesCache]);
 
-  /** Socket.IO: mensajes nuevos y actualización de estado de entrega */
-  useEffect(() => {
-    if (!contactId) return;
-    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-    if (!token) return;
+  const loadOlderMessages = useCallback(async () => {
+    if (!contactId || loadingOlderRef.current || !hasMore) return;
+    const current = messagesCacheRef.current[contactId] ?? [];
+    if (current.length === 0) return;
+    const oldest = current[0];
+    if (!oldest) return;
 
-    const socket = io(`${API_BASE}/whatsapp`, {
-      auth: { token },
-      transports: ['websocket', 'polling'],
-      reconnection: true,
-    });
-
-    socket.emit('join', { contactId });
-
-    const onPayload = (payload: WhatsappSocketPayload) => {
-      if (payload.contactId !== contactId) return;
-      if (payload.type === 'message') {
-        setMessagesCache((prev) => {
-          const existing = prev[contactId] ?? [];
-          const rest = existing.filter((x) => x.id !== payload.item.id && !x.id.startsWith('opt:'));
-          const next = [...rest, payload.item];
-          next.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-          return { ...prev, [contactId]: next };
-        });
-      } else if (payload.type === 'status') {
-        setMessagesCache((prev) => {
-          const existing = prev[contactId] ?? [];
-          const updated = existing.map((m) =>
-            m.id === payload.id
-              ? { ...m, waOutboundStatus: payload.waOutboundStatus }
-              : m,
-          );
-          return { ...prev, [contactId]: updated };
-        });
+    loadingOlderRef.current = true;
+    setLoadingOlder(true);
+    try {
+      const result = await fetchFlotaProspectoMessages(contactId, 30, oldest.createdAt);
+      if (result.items.length === 0) {
+        setHasMore(false);
+        return;
       }
-    };
+      const firstVisibleIndex = msgVirtualizerRef.current?.getVirtualItems()[0]?.index ?? 0;
+      const insertedCount = result.items.length;
 
-    socket.on('whatsapp', onPayload);
-    return () => {
-      socket.off('whatsapp', onPayload);
-      socket.disconnect();
-    };
-  }, [contactId, setMessagesCache]);
+      setMessagesCache(prev => {
+        const existing = prev[contactId] ?? [];
+        return { ...prev, [contactId]: [...result.items, ...existing] };
+      });
+      setHasMore(result.hasMore);
 
+      setTimeout(() => {
+        msgVirtualizerRef.current?.scrollToIndex(firstVisibleIndex + insertedCount, { align: 'start' });
+      }, 16);
+    } catch {
+      /* silently fail */
+    } finally {
+      loadingOlderRef.current = false;
+      setLoadingOlder(false);
+    }
+  }, [contactId, hasMore, setMessagesCache]);
+
+  // Unified scroll handler: load older msgs on top + reset new-msg badge on bottom
   useEffect(() => {
-    const count = messagesCache[contactId]?.length ?? 0;
-    if (count === 0) return;
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'instant' });
-  }, [messagesCache[contactId]?.length, contactId]);
+    const el = scrollRef.current;
+    if (!el) return;
+    const handleScroll = () => {
+      if (hasMore && el.scrollTop < 80) {
+        void loadOlderMessages();
+      }
+      const dist = el.scrollHeight - el.scrollTop - el.clientHeight;
+      if (dist < 100) setNewMessagesCount(0);
+    };
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    return () => el.removeEventListener('scroll', handleScroll);
+  }, [loadOlderMessages, hasMore]);
 
   async function send() {
     if (!draft.trim() && !imageUrl) return;
@@ -1126,12 +1397,108 @@ function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, 
       toast.error(e instanceof Error ? e.message : 'No se pudo enviar el mensaje');
       return;
     }
-    setTimeout(() => {
-      void loadMessages();
-    }, 30000);
+    markConversationAsRead(contactId).catch(() => {});
+    onMarkRead(contactId);
   }
 
   const messages = messagesCache[contactId] ?? [];
+
+  const messageItems = useMemo(() => {
+    const items: Array<{ type: 'date'; key: string; label: string } | { type: 'message'; key: string; msg: WhatsappMessageItem; mine: boolean }> = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const formatDateLabel = (date: Date) => {
+      if (date.getTime() === today.getTime()) return 'Hoy';
+      if (date.getTime() === yesterday.getTime()) return 'Ayer';
+      return date.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' });
+    };
+
+    const grouped: { date: Date; msgs: WhatsappMessageItem[] }[] = [];
+    let currentDate: Date | null = null;
+    let currentGroup: WhatsappMessageItem[] = [];
+
+    for (const m of messages) {
+      const msgDate = new Date(m.createdAt);
+      msgDate.setHours(0, 0, 0, 0);
+      if (!currentDate || msgDate.getTime() !== currentDate.getTime()) {
+        if (currentGroup.length > 0) grouped.push({ date: currentDate!, msgs: currentGroup });
+        currentDate = msgDate;
+        currentGroup = [m];
+      } else {
+        currentGroup.push(m);
+      }
+    }
+    if (currentGroup.length > 0) grouped.push({ date: currentDate!, msgs: currentGroup });
+
+    for (const g of grouped) {
+      items.push({ type: 'date', key: `d-${g.date.getTime()}`, label: formatDateLabel(g.date) });
+      for (const m of g.msgs) {
+        items.push({ type: 'message', key: m.id, msg: m, mine: m.direction === 'outbound' });
+      }
+    }
+    return items;
+  }, [messages]);
+
+  const msgVirtualizer = useVirtualizer({
+    count: messageItems.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 60,
+    measureElement: (el) => el.getBoundingClientRect().height,
+    overscan: 5,
+  });
+
+  useEffect(() => {
+    msgVirtualizerRef.current = msgVirtualizer;
+  }, [msgVirtualizer]);
+
+  const hasInitialScrolledRef = useRef(false);
+  const prevLenRef = useRef(0);
+  const [newMessagesCount, setNewMessagesCount] = useState(0);
+
+  useEffect(() => {
+    hasInitialScrolledRef.current = false;
+    prevLenRef.current = 0;
+    setNewMessagesCount(0);
+  }, [contactId]);
+
+  useEffect(() => {
+    const len = messageItems.length;
+    if (len === 0) return;
+    const container = scrollRef.current;
+
+    if (!hasInitialScrolledRef.current) {
+      // First load: scroll to bottom via virtualizer (avoids race with measured sizes)
+      hasInitialScrolledRef.current = true;
+      prevLenRef.current = len;
+      requestAnimationFrame(() => {
+        msgVirtualizerRef.current?.scrollToIndex(len - 1, { align: 'end' });
+      });
+      return;
+    }
+
+    // Only react to genuinely new messages (not reloads of the same batch)
+    if (len <= prevLenRef.current) {
+      prevLenRef.current = len;
+      return;
+    }
+    prevLenRef.current = len;
+
+    const distanceFromBottom = container
+      ? container.scrollHeight - container.scrollTop - container.clientHeight
+      : 0;
+
+    if (distanceFromBottom < 200) {
+      requestAnimationFrame(() => {
+        const el = scrollRef.current;
+        if (el) el.scrollTop = el.scrollHeight;
+      });
+    } else {
+      setNewMessagesCount((c) => c + 1);
+    }
+  }, [messageItems.length, contactId]);
 
   async function handleSaveProspecto() {
     if (!editData.nombreCompleto?.trim()) {
@@ -1199,15 +1566,15 @@ function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, 
 
   return (
     <div className="flex h-full min-h-0 min-w-0 gap-4">
-      <section className={cn("flex flex-col flex-1 min-w-0 overflow-hidden rounded-lg border border-border bg-card shadow-sm transition-all", mediaPanelOpen ? "hidden xl:flex" : "")}>
+      <section className={cn("flex flex-col flex-1 min-w-0 overflow-hidden rounded-lg border border-border bg-card shadow-sm relative transition-all", mediaPanelOpen ? "hidden xl:flex" : "")}>
         <div className="flex items-center justify-between border-b px-5 py-3">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary">
-              {convo?.name.slice(0, 2).toUpperCase() ?? '??'}
+              {(convo?.name || prospectoData?.name || '??').slice(0, 2).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate font-semibold leading-tight">{convo?.name ?? 'Desconocido'}</p>
-              <p className="truncate text-xs text-muted-foreground">{convo?.phone ?? ''}</p>
+              <p className="truncate font-semibold leading-tight">{convo?.name || prospectoData?.name || 'Desconocido'}</p>
+              <p className="truncate text-xs text-muted-foreground">{convo?.phone || prospectoData?.phone || ''}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -1222,8 +1589,8 @@ function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, 
               <button
                 className={cn(
                   'rounded-md border px-3 py-1.5 text-xs font-medium transition-colors',
-                  convo?.estado && tagStyles[convo.estado]
-                    ? tagStyles[convo.estado]
+                  getTagStyle(convo?.estado)
+                    ? getTagStyle(convo?.estado)
                     : 'border-input bg-background text-muted-foreground hover:bg-muted',
                 )}
               >
@@ -1258,8 +1625,8 @@ function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, 
                 </DropdownMenuItem>
               )}
               {operadores.map((op) => (
-                <DropdownMenuItem key={op} onClick={() => handleCambiarOperador(op)}>
-                  {op}
+                <DropdownMenuItem key={op.id} onClick={() => handleCambiarOperador(op.name)}>
+                  {op.name}
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
@@ -1271,87 +1638,83 @@ function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, 
         ref={scrollRef}
         className="flex-1 overflow-y-auto overflow-x-hidden bg-[radial-gradient(circle_at_1px_1px,theme(colors.muted.foreground/0.08)_1px,transparent_0)] [background-size:18px_18px] px-4 py-5"
       >
-        <div className="flex flex-col gap-3">
-          {messages.length === 0 ? (
-            <div className="py-16 text-center text-sm text-muted-foreground">
-              No hay mensajes aún
-            </div>
-          ) : (
-            (() => {
-              const today = new Date();
-              today.setHours(0, 0, 0, 0);
-              const yesterday = new Date(today);
-              yesterday.setDate(yesterday.getDate() - 1);
-
-              const formatDateLabel = (date: Date) => {
-                if (date.getTime() === today.getTime()) return 'Hoy';
-                if (date.getTime() === yesterday.getTime()) return 'Ayer';
-                return date.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' });
-              };
-
-              const grouped: { date: Date; messages: typeof messages }[] = [];
-              let currentDate: Date | null = null;
-              let currentGroup: typeof messages = [];
-
-              messages.forEach((m) => {
-                const msgDate = new Date(m.createdAt);
-                msgDate.setHours(0, 0, 0, 0);
-                if (!currentDate || msgDate.getTime() !== currentDate.getTime()) {
-                  if (currentGroup.length > 0) grouped.push({ date: currentDate!, messages: currentGroup });
-                  currentDate = msgDate;
-                  currentGroup = [m];
-                } else {
-                  currentGroup.push(m);
-                }
-              });
-              if (currentGroup.length > 0) grouped.push({ date: currentDate!, messages: currentGroup });
-
-              return grouped.map((group, gi) => (
-                <div key={gi}>
-                  <div className="my-3 flex items-center gap-3">
-                    <div className="h-px flex-1 border-t border-border/40" />
-                    <span className="text-[11px] font-medium capitalize text-muted-foreground">
-                      {formatDateLabel(group.date)}
-                    </span>
-                    <div className="h-px flex-1 border-t border-border/40" />
-                  </div>
-                  {group.messages.map((m) => {
-                    const mine = m.direction === 'outbound';
-                    return (
-                      <div key={m.id} className={cn('flex mb-2 w-full', mine ? 'justify-end' : 'justify-start')}>
-                        <div
-                          className={cn(
-                            'max-w-[85%] min-w-0 rounded-2xl px-4 py-2.5 text-sm shadow-sm',
-                            mine
-                              ? 'rounded-br-sm bg-primary text-primary-foreground'
-                              : 'rounded-bl-sm bg-muted text-foreground',
-                          )}
-                        >
-                          {m.attachments?.map((attachment) => (
-                            <MessageAttachment
-                              key={attachment.id}
-                              attachment={attachment}
-                              mine={mine}
-                              setLightboxUrl={setLightboxUrl}
-                            />
-                          ))}
-                          {m.body && (!m.attachments?.length || !['[Imagen]', '[Documento]', '[Video]', '[Audio]'].includes(m.body.trim())) && (
-                            <p className="whitespace-pre-wrap break-words">{m.body}</p>
-                          )}
-                          <div className={cn('mt-1 flex items-center justify-end gap-1 text-[10px]', mine ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
-                            <span>{new Date(m.createdAt).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}</span>
-                            {mine && <CheckCheck className={cn('h-3 w-3', m.waOutboundStatus === 'read' ? 'text-sky-300' : '')} />}
-                          </div>
+        {messageItems.length === 0 ? (
+          <div className="py-16 text-center text-sm text-muted-foreground">
+            No hay mensajes aún
+          </div>
+        ) : (
+          <div style={{ height: msgVirtualizer.getTotalSize(), position: 'relative' }}>
+            {msgVirtualizer.getVirtualItems().map((vi) => {
+              const item = messageItems[vi.index];
+              return (
+                <div
+                  key={item.key}
+                  data-index={vi.index}
+                  ref={msgVirtualizer.measureElement}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    transform: `translateY(${vi.start}px)`,
+                  }}
+                >
+                  {item.type === 'date' ? (
+                    <div className="my-3 flex items-center gap-3">
+                      <div className="h-px flex-1 border-t border-border/40" />
+                      <span className="text-[11px] font-medium capitalize text-muted-foreground">
+                        {item.label}
+                      </span>
+                      <div className="h-px flex-1 border-t border-border/40" />
+                    </div>
+                  ) : (
+                    <div className={cn('flex mb-2 w-full', item.mine ? 'justify-end' : 'justify-start')}>
+                      <div
+                        className={cn(
+                          'max-w-[85%] min-w-0 rounded-2xl px-4 py-2.5 text-sm shadow-sm',
+                          item.mine
+                            ? 'rounded-br-sm bg-primary text-primary-foreground'
+                            : 'rounded-bl-sm bg-muted text-foreground',
+                        )}
+                      >
+                        {item.msg.attachments?.map((attachment) => (
+                          <MessageAttachment
+                            key={attachment.id}
+                            attachment={attachment}
+                            mine={item.mine}
+                            setLightboxUrl={setLightboxUrl}
+                          />
+                        ))}
+                        {item.msg.body && (!item.msg.attachments?.length || !['[Imagen]', '[Documento]', '[Video]', '[Audio]'].includes(item.msg.body.trim())) && (
+                          <p className="whitespace-pre-wrap break-words">{item.msg.body}</p>
+                        )}
+                        <div className={cn('mt-1 flex items-center justify-end gap-1 text-[10px]', item.mine ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
+                          <span>{new Date(item.msg.createdAt).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}</span>
+                          {item.mine && <CheckCheck className={cn('h-3 w-3', item.msg.waOutboundStatus === 'read' ? 'text-sky-300' : '')} />}
                         </div>
                       </div>
-                    );
-                  })}
+                    </div>
+                  )}
                 </div>
-              ));
-            })()
-          )}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
+
+      {newMessagesCount > 0 && (
+        <button
+          onClick={() => {
+            msgVirtualizer.scrollToIndex(messageItems.length - 1, { align: 'end' });
+            setNewMessagesCount(0);
+          }}
+          className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5 rounded-full bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground shadow-lg transition-all hover:bg-primary/90"
+        >
+          <MessageSquare className="h-3.5 w-3.5" />
+          {newMessagesCount} {newMessagesCount === 1 ? 'nuevo' : 'nuevos'}
+          <ArrowDown className="h-3.5 w-3.5" />
+        </button>
+      )}
 
       <div className="border-t bg-background/60 p-3">
         <input
@@ -1461,11 +1824,22 @@ function ChatPanel({ contactId, conversations, onContactUpdated, messagesCache, 
             </div>
             <div className="space-y-1">
               <Label>Operador</Label>
-              <Input
-                value={editData.operador ?? ''}
-                onChange={(e) => setEditData((prev) => ({ ...prev, operador: e.target.value }))}
-                placeholder="Operador"
-              />
+              <Select
+                value={editData.operador || '__none__'}
+                onValueChange={(v) => setEditData((prev) => ({ ...prev, operador: v === '__none__' ? '' : v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sin operador" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Sin operador</SelectItem>
+                  {operadores.map((op) => (
+                    <SelectItem key={op.id} value={op.name}>
+                      {op.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1">
               <Label>Modalidad</Label>
@@ -1594,11 +1968,29 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
   } | null>(null);
   const cancelRef = useRef(false);
   const fileRef = useRef<HTMLInputElement>(null);
-
-  const BULK_DELAYS = [35000, 45000, 55000, 65000];
+  const bulkJobIdRef = useRef<string | null>(null);
+  const bulkSocketRef = useRef<ReturnType<typeof io> | null>(null);
+  const masivoCrmScrollRef = useRef<HTMLDivElement>(null);
+  const masivoExcelScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     void loadContacts();
+  }, []);
+
+  // Check for pending bulk job on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('flotaBulkJobId');
+    if (!saved) return;
+    getFlotaBulkProgress(saved).then((p) => {
+      if (p && !p.finished && !p.cancelled) {
+        connectBulkSocket(saved, p);
+      } else {
+        localStorage.removeItem('flotaBulkJobId');
+      }
+    }).catch(() => localStorage.removeItem('flotaBulkJobId'));
+    return () => {
+      bulkSocketRef.current?.disconnect();
+    };
   }, []);
 
   async function loadContacts() {
@@ -1657,6 +2049,20 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
     ? contacts.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
     : [];
 
+  const masivoCrmVirtualizer = useVirtualizer({
+    count: source === 'crm' ? filtered.length : 0,
+    getScrollElement: () => masivoCrmScrollRef.current,
+    estimateSize: () => 52,
+    overscan: 5,
+  });
+
+  const masivoExcelVirtualizer = useVirtualizer({
+    count: source === 'excel' ? (filtered as FlotaExcelContact[]).length : 0,
+    getScrollElement: () => masivoExcelScrollRef.current,
+    estimateSize: () => 48,
+    overscan: 5,
+  });
+
   function toggle(phone: string) {
     setSelectedIds((s) => {
       const n = new Set(s);
@@ -1686,6 +2092,48 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
       .map((c) => ({ contactId: c.contactId ?? undefined, flotaProspectoId: undefined, name: c.name, phone: c.phone }));
   }
 
+  function connectBulkSocket(jobId: string, existing?: { total: number; sent: number; failed: number; currentName: string; currentIndex: number; nextDelay: number }) {
+    const token = localStorage.getItem('accessToken');
+    if (!token) return;
+    if (existing) {
+      setSending(true);
+      setBulkProgress({
+        total: existing.total,
+        sent: existing.sent,
+        failed: existing.failed,
+        currentName: existing.currentName,
+        currentIndex: existing.currentIndex,
+        nextDelay: existing.nextDelay,
+      });
+    }
+    const socket = io(`${API_BASE}/whatsapp`, { auth: { token }, transports: ['websocket', 'polling'] });
+    socket.emit('join-bulk', { jobId });
+    socket.on('flota-bulk-progress', (p: { total: number; sent: number; failed: number; currentName: string; currentIndex: number; nextDelay: number; finished: boolean; cancelled: boolean }) => {
+      setBulkProgress({
+        total: p.total,
+        sent: p.sent,
+        failed: p.failed,
+        currentName: p.currentName,
+        currentIndex: p.currentIndex,
+        nextDelay: p.nextDelay,
+      });
+      if (p.finished || p.cancelled) {
+        setSending(false);
+        socket.disconnect();
+        localStorage.removeItem('flotaBulkJobId');
+        if (p.cancelled) {
+          toast.success(`Envío cancelado. Enviado: ${p.sent} · Fallidos: ${p.failed}`);
+        } else {
+          toast.success(`Envío completado. Enviado: ${p.sent} · Fallidos: ${p.failed}`);
+        }
+        setSelectedIds(new Set());
+        setStep(1);
+      }
+    });
+    bulkSocketRef.current = socket;
+    bulkJobIdRef.current = jobId;
+  }
+
   async function handleSend() {
     if (!isConnected) {
       onConnectClick();
@@ -1696,99 +2144,40 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
       toast.error(source === null ? 'Selecciona una fuente primero.' : source === 'excel' ? 'Ningún contacto del Excel tiene coincidencia en el CRM.' : 'Selecciona al menos un contacto.');
       return;
     }
+    const prospectoIds: string[] = [];
+    for (const t of targets) {
+      const id = t.contactId || t.flotaProspectoId;
+      if (id) prospectoIds.push(id);
+    }
+    if (prospectoIds.length === 0) {
+      toast.error('Ninguno de los contactos seleccionados tiene un prospecto asignado en el sistema.');
+      return;
+    }
 
-    const personalized = (t: string) =>
-      t
-        .replaceAll('{{nombre}}', targets[0]?.name ?? '')
-        .replaceAll('{{empresa}}', '')
-        .replaceAll('{{celular}}', targets[0]?.phone ?? '');
-
-    const textToSend = personalized(message.trim()) || message.trim();
-
-    cancelRef.current = false;
     setSending(true);
-    setBulkProgress({ total: targets.length, sent: 0, failed: 0, currentName: '', currentIndex: 0, nextDelay: BULK_DELAYS[0]! });
+    setBulkProgress({ total: prospectoIds.length, sent: 0, failed: 0, currentName: '', currentIndex: 0, nextDelay: 0 });
 
-    const results: Array<{ name: string; phone: string; ok: boolean; error?: string; duplicate?: boolean }> = [];
-
-    for (let i = 0; i < targets.length; i++) {
-      if (cancelRef.current) break;
-
-      const t = targets[i]!;
-      const delayMs = BULK_DELAYS[i % BULK_DELAYS.length]!;
-      const personalizedMsg = message.trim()
-        .replaceAll('{{nombre}}', t.name)
-        .replaceAll('{{empresa}}', '')
-        .replaceAll('{{celular}}', t.phone);
-      const finalText = personalizedMsg || textToSend;
-
-      setBulkProgress({
-        total: targets.length,
-        sent: results.filter((r) => r.ok).length,
-        failed: results.filter((r) => !r.ok).length,
-        currentName: t.name,
-        currentIndex: i,
-        nextDelay: delayMs,
-      });
-
-      try {
-        await sendWhatsappMessage(t.contactId, finalText, t.phone, t.name, imageUrl || undefined, t.flotaProspectoId);
-        results.push({ name: t.name, phone: t.phone, ok: true });
-        setBulkProgress({
-          total: targets.length,
-          sent: results.filter((r) => r.ok).length,
-          failed: results.filter((r) => !r.ok).length,
-          currentName: t.name,
-          currentIndex: i + 1,
-          nextDelay: BULK_DELAYS[(i + 1) % BULK_DELAYS.length]!,
-        });
-      } catch (e) {
-        const errorMsg = e instanceof Error ? e.message : 'Error';
-        console.error(`[FlotaBulk] Falló envío a ${t.name} (${t.phone}):`, errorMsg);
-        const isDuplicate = errorMsg.toLowerCase().includes('ya existe');
-        if (isDuplicate) {
-          results.push({ name: t.name, phone: t.phone, ok: false, error: errorMsg, duplicate: true });
-        } else {
-          results.push({ name: t.name, phone: t.phone, ok: false, error: errorMsg });
-        }
-      }
-
-      if (i < targets.length - 1 && !cancelRef.current) {
-        await new Promise((r) => setTimeout(r, delayMs));
-      }
+    try {
+      const { jobId } = await sendFlotaBulk({ prospectoIds, text: message.trim(), imageUrl: imageUrl || undefined });
+      localStorage.setItem('flotaBulkJobId', jobId);
+      connectBulkSocket(jobId);
+      toast.success(`Envío masivo de ${prospectoIds.length} mensajes iniciado en segundo plano`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al iniciar el envío');
+      setSending(false);
+      setBulkProgress(null);
     }
-
-    const sent = results.filter((r) => r.ok).length;
-    const failed = results.filter((r) => !r.ok && !r.duplicate).length;
-    const duplicates = results.filter((r) => r.duplicate).length;
-    const failedResults = results.filter((r) => !r.ok && !r.duplicate);
-    const duplicateResults = results.filter((r) => r.duplicate);
-
-    if (cancelRef.current) {
-      toast.success(`Envío cancelado. Enviado: ${sent} · Pendientes: ${targets.length - results.length}`);
-    } else if (duplicates > 0) {
-      toast.success(`Envío completado. Enviado: ${sent} · Fallidos: ${failed} · Ya existentes: ${duplicates}`, { duration: 10000 });
-    } else {
-      toast.success(`Envío completado. Enviado: ${sent} · Fallidos: ${failed}`);
-    }
-
-    if (duplicateResults.length > 0) {
-      const firstDup = duplicateResults[0]!;
-      toast.error(`No enviado por duplicado: ${firstDup.name} (${firstDup.phone})`, { duration: 10000 });
-    } else if (failedResults.length > 0) {
-      console.error('[FlotaBulk] Fallidos:', failedResults);
-      const firstError = failedResults[0]!.error;
-      toast.error(`Primer fallo: ${firstError}`, { duration: 10000 });
-    }
-
-    setBulkProgress(null);
-    setSending(false);
-    setSelectedIds(new Set());
-    setStep(1);
   }
 
   function cancelBulkSend() {
-    cancelRef.current = true;
+    const jobId = bulkJobIdRef.current;
+    if (jobId) {
+      cancelFlotaBulk(jobId).catch(() => {});
+    }
+    bulkSocketRef.current?.disconnect();
+    setSending(false);
+    setBulkProgress(null);
+    localStorage.removeItem('flotaBulkJobId');
   }
 
   if (!isConnected) {
@@ -1918,7 +2307,7 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
                     </Button>
                   </div>
 
-                  <div className="max-h-72 space-y-1 overflow-y-auto rounded-lg border p-2">
+                  <div ref={masivoCrmScrollRef} className="max-h-72 overflow-y-auto rounded-lg border p-2">
                     {loadingContacts ? (
                       <div className="flex items-center justify-center py-8">
                         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -1926,25 +2315,32 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
                     ) : filtered.length === 0 ? (
                       <p className="py-8 text-center text-sm text-muted-foreground">Sin contactos</p>
                     ) : (
-                      (filtered as FlotaConversation[]).map((c) => {
-                        const on = selectedIds.has(c.id!);
-                        return (
-                          <button
-                            key={c.id}
-                            onClick={() => toggle(c.id!)}
-                            className={cn(
-                              'flex w-full items-center justify-between rounded-md px-3 py-2 text-sm transition-colors',
-                              on ? 'bg-primary/10 text-primary' : 'hover:bg-muted',
-                            )}
-                          >
-                            <div className="text-left">
-                              <span>{c.name}</span>
-                              <p className="text-[11px] text-muted-foreground">{c.phone}</p>
+                      <div style={{ height: masivoCrmVirtualizer.getTotalSize(), position: 'relative' }}>
+                        {masivoCrmVirtualizer.getVirtualItems().map((vi) => {
+                          const c = (filtered as FlotaConversation[])[vi.index]!;
+                          const on = selectedIds.has(c.id!);
+                          return (
+                            <div
+                              key={c.id}
+                              style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${vi.start}px)` }}
+                            >
+                              <button
+                                onClick={() => toggle(c.id!)}
+                                className={cn(
+                                  'flex w-full items-center justify-between rounded-md px-3 py-2 text-sm transition-colors',
+                                  on ? 'bg-primary/10 text-primary' : 'hover:bg-muted',
+                                )}
+                              >
+                                <div className="text-left">
+                                  <span>{c.name}</span>
+                                  <p className="text-[11px] text-muted-foreground">{c.phone}</p>
+                                </div>
+                                {on ? <CheckCircle2 className="h-4 w-4" /> : <Plus className="h-4 w-4 text-muted-foreground" />}
+                              </button>
                             </div>
-                            {on ? <CheckCircle2 className="h-4 w-4" /> : <Plus className="h-4 w-4 text-muted-foreground" />}
-                          </button>
-                        );
-                      })
+                          );
+                        })}
+                      </div>
                     )}
                   </div>
                 </>
@@ -1978,74 +2374,69 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
                       className="h-8 text-xs"
                     />
                   </div>
-                  <div className="max-h-96 overflow-y-auto">
-                    <Table>
-                      <TableHeader className="bg-muted/50 sticky top-0">
-                        <TableRow>
-                          <TableHead className="w-10">
-                            <Checkbox
-                              checked={
-                                excelContacts.length > 0 &&
-                                excelContacts.every((c) => selectedIds.has(c.phone))
-                              }
-                              onCheckedChange={() => {
-                                const allSelected = excelContacts.every((c) => selectedIds.has(c.phone));
-                                if (allSelected) {
-                                  setSelectedIds(new Set());
-                                } else {
-                                  setSelectedIds(new Set(excelContacts.map((c) => c.phone)));
-                                }
-                              }}
-                            />
-                          </TableHead>
-                          <TableHead>Nombre</TableHead>
-                          <TableHead>Teléfono</TableHead>
-                          <TableHead>CRM</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {(filtered as FlotaExcelContact[]).length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={4} className="py-12 text-center text-sm text-muted-foreground">
-                              Sin resultados
-                            </TableCell>
-                          </TableRow>
-                        ) : (
-                          (filtered as FlotaExcelContact[]).map((c) => {
-                            const on = selectedIds.has(c.phone);
-                            return (
-                              <TableRow key={c.phone} className={cn(on && 'bg-primary/5')}>
-                                <TableCell>
-                                  <Checkbox
-                                    checked={on}
-                                    onCheckedChange={(checked) => {
-                                      if (checked) {
-                                        setSelectedIds((prev) => new Set([...prev, c.phone]));
-                                      } else {
-                                        setSelectedIds((prev) => {
-                                          const n = new Set(prev);
-                                          n.delete(c.phone);
-                                          return n;
-                                        });
-                                      }
-                                    }}
-                                  />
-                                </TableCell>
-                                <TableCell className="font-medium">{c.name}</TableCell>
-                                <TableCell>{c.phone}</TableCell>
-                                <TableCell>
-                                  {c.contactId ? (
-                                    <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-medium text-green-700">Coincide</span>
-                                  ) : (
-                                    <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">Sin CRM</span>
-                                  )}
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })
-                        )}
-                      </TableBody>
-                    </Table>
+                  <div ref={masivoExcelScrollRef} className="max-h-96 overflow-y-auto rounded-lg border">
+                    <div className="bg-muted/50 sticky top-0 z-10 flex items-center border-b px-4 h-10 text-xs font-medium text-muted-foreground">
+                      <Checkbox
+                        checked={
+                          excelContacts.length > 0 &&
+                          excelContacts.every((c) => selectedIds.has(c.phone))
+                        }
+                        onCheckedChange={() => {
+                          const allSelected = excelContacts.every((c) => selectedIds.has(c.phone));
+                          if (allSelected) {
+                            setSelectedIds(new Set());
+                          } else {
+                            setSelectedIds(new Set(excelContacts.map((c) => c.phone)));
+                          }
+                        }}
+                      />
+                      <span className="ml-3 flex-1">Nombre</span>
+                      <span className="flex-1">Teléfono</span>
+                      <span className="flex-1">CRM</span>
+                    </div>
+                    {filtered.length === 0 ? (
+                      <div className="py-12 text-center text-sm text-muted-foreground">
+                        Sin resultados
+                      </div>
+                    ) : (
+                      <div style={{ height: masivoExcelVirtualizer.getTotalSize(), position: 'relative' }}>
+                        {masivoExcelVirtualizer.getVirtualItems().map((vi) => {
+                          const c = (filtered as FlotaExcelContact[])[vi.index]!;
+                          const on = selectedIds.has(c.phone);
+                          return (
+                            <div
+                              key={c.phone}
+                              style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${vi.start}px)` }}
+                              className={cn('flex items-center border-b px-4 h-12 text-sm hover:bg-muted/50', on && 'bg-primary/5')}
+                            >
+                              <Checkbox
+                                checked={on}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    setSelectedIds((prev) => new Set([...prev, c.phone]));
+                                  } else {
+                                    setSelectedIds((prev) => {
+                                      const n = new Set(prev);
+                                      n.delete(c.phone);
+                                      return n;
+                                    });
+                                  }
+                                }}
+                              />
+                              <span className="ml-3 flex-1 font-medium truncate">{c.name}</span>
+                              <span className="flex-1 truncate">{c.phone}</span>
+                              <span className="flex-1">
+                                {c.contactId ? (
+                                  <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-medium text-green-700">Coincide</span>
+                                ) : (
+                                  <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">Sin CRM</span>
+                                )}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 </>
               ) : source === 'excel' ? (
@@ -2439,11 +2830,14 @@ function FlotaPipelineView({ onSelect }: { onSelect: (contactId: string) => void
     for (const s of ESTADOS_PIPELINE) map[s] = [];
     for (const c of conversations) {
       const estado = c.estado;
-      if (estado && map[estado]) {
-        map[estado].push(c);
-      } else {
-        map['Nuevo'].push(c);
+      if (estado) {
+        const key = ESTADOS_PIPELINE.find((k) => k.toLowerCase() === estado.toLowerCase());
+        if (key) {
+          map[key].push(c);
+          continue;
+        }
       }
+      map['Nuevo'].push(c);
     }
     return map;
   }, [conversations]);

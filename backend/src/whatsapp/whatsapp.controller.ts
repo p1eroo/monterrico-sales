@@ -2,8 +2,10 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Header,
+  Logger,
   NotFoundException,
   Param,
   Post,
@@ -36,6 +38,8 @@ type AuthedReq = {
 @Controller('api/whatsapp')
 @UseGuards(PermissionsGuard)
 export class WhatsappController {
+  private readonly logger = new Logger(WhatsappController.name);
+
   constructor(
     private readonly whatsapp: WhatsappService,
     private readonly crmDataScope: CrmDataScopeService,
@@ -165,11 +169,12 @@ export class WhatsappController {
   async flotaProspectoMessages(
     @Param('id') id: string,
     @Query('limit') limit?: string,
+    @Query('before') before?: string,
   ) {
     const lim = Number.isFinite(Number.parseInt(limit ?? '50', 10))
       ? Number.parseInt(limit ?? '50', 10)
       : 50;
-    return this.whatsapp.listForFlotaProspecto(id, lim);
+    return this.whatsapp.listForFlotaProspecto(id, Math.min(200, Math.max(1, lim)), before);
   }
 
   @Post('flota/send')
@@ -202,11 +207,16 @@ export class WhatsappController {
       req.user.userId,
       req.user.roleId,
     );
-    return this.whatsapp.sendBulk(
+    const total = body.contactIds.length;
+    // Fire and forget: no esperamos a que termine, responde inmediato
+    this.whatsapp.sendBulk(
       { contactIds: body.contactIds, text: text || '', imageUrl: body.imageUrl?.trim() },
       scope,
       req.user.userId,
-    );
+    ).catch((err) => {
+      this.logger.error(`Error en envío masivo (${total} contactos): ${err instanceof Error ? err.message : String(err)}`);
+    });
+    return { ok: true, total, message: `Envío masivo de ${total} mensajes iniciado en segundo plano` };
   }
 
   @Post('flota/upload-image')
@@ -264,5 +274,41 @@ export class WhatsappController {
       throw new BadRequestException('Adjunta un archivo Excel (.xlsx)');
     }
     return this.whatsapp.importExcelPreview(file.buffer);
+  }
+
+  @Post('flota/send-bulk')
+  async sendFlotaBulk(
+    @Req() req: AuthedReq,
+    @Body() body: { prospectoIds: string[]; text: string; imageUrl?: string },
+  ) {
+    if (!body.text?.trim() && !body.imageUrl?.trim()) {
+      throw new BadRequestException('text o imageUrl son obligatorios');
+    }
+    if (!body.prospectoIds?.length) {
+      throw new BadRequestException('prospectoIds debe ser un array con al menos un ID');
+    }
+    if (body.prospectoIds.length > 1000) {
+      throw new BadRequestException('Máximo 1000 contactos por envío masivo');
+    }
+    return this.whatsapp.sendFlotaBulk({
+      prospectoIds: body.prospectoIds,
+      text: body.text?.trim() || '',
+      imageUrl: body.imageUrl?.trim(),
+      userId: req.user.userId,
+    });
+  }
+
+  @Get('flota/send-bulk/:jobId')
+  getFlotaBulkProgress(@Param('jobId') jobId: string) {
+    const progress = this.whatsapp.getFlotaBulkProgress(jobId);
+    if (!progress) throw new NotFoundException('Job no encontrado o ya expiró');
+    return progress;
+  }
+
+  @Delete('flota/send-bulk/:jobId')
+  cancelFlotaBulk(@Param('jobId') jobId: string) {
+    const ok = this.whatsapp.cancelFlotaBulk(jobId);
+    if (!ok) throw new NotFoundException('Job no encontrado o ya finalizó');
+    return { ok: true };
   }
 }

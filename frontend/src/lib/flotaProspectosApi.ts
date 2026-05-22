@@ -168,3 +168,12 @@ export async function flotaProspectoUploadFile(
     body: formData,
   });
 }
+
+export interface OperadorUser {
+  id: string;
+  name: string;
+}
+
+export async function fetchOperadores(): Promise<OperadorUser[]> {
+  return api<OperadorUser[]>('/users/by-role/operador');
+}

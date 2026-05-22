@@ -57,6 +57,15 @@ function parseInt10(raw: string): number | null {
   return isNaN(n) ? null : n;
 }
 
+const ESTADOS_VALIDOS = ['Nuevo', 'Afiliado', 'Citado', 'Seguimiento', 'Informacion', 'Sin Requisitos', 'No Responde'];
+
+function normalizeEstado(raw: string): string {
+  const cleaned = raw.trim();
+  if (!cleaned) return 'Nuevo';
+  const match = ESTADOS_VALIDOS.find((e) => e.toLowerCase() === cleaned.toLowerCase());
+  return match || 'Nuevo';
+}
+
 export interface ImportSheetsResult {
   total: number;
   imported: number;
@@ -78,15 +87,8 @@ export class FlotaProspectosService {
 
   private normalizeCelular(celular?: string | null): string | null {
     if (!celular) return null;
-
-    // Quitar +51, espacios, guiones
-    return (
-      celular
-        .replace(/^\+51/, '')
-        .replace(/\s+/g, '')
-        .replace(/-/g, '')
-        .trim() || null
-    );
+    const digits = celular.replace(/\D/g, '');
+    return digits.slice(-9) || null;
   }
 
 
@@ -104,7 +106,7 @@ export class FlotaProspectosService {
       where: where as any,
       select: { id: true, nombreCompleto: true, celular: true, movil: true },
       orderBy: { nombreCompleto: 'asc' },
-      take: 500,
+      take: 5000,
     });
   }
 
@@ -377,23 +379,34 @@ if (params.mes) {
     result.total = dataRows.length;
     if (dataRows.length === 0) return result;
 
+    // Extraer todos los celulares normalizados del sheet para filtrar la consulta de existentes
+    const sheetPhones = new Set<string>();
+    for (const row of dataRows) {
+      const cel = col.CELULAR !== -1 ? cell(row, col.CELULAR) : cell(row, col.MOVIL);
+      const norm = this.normalizeCelular(cel);
+      if (norm) sheetPhones.add(norm);
+    }
 
-    // 2. Obtener todos los prospectos existentes con celular (para duplicados/actualización)
+    // 2. Obtener solo los prospectos existentes cuyos celulares aparecen en el sheet
     const existingProspectos = new Map<string, { id: string; estado: string }>();
-    (
-      await this.prisma.flotaProspecto.findMany({
+    if (sheetPhones.size > 0) {
+      const existingRows = await this.prisma.flotaProspecto.findMany({
         where: { celular: { not: null } },
         select: { id: true, celular: true, estado: true },
-      })
-    ).forEach((r) => {
-      const norm = this.normalizeCelular(r.celular);
-      if (norm) existingProspectos.set(norm, { id: r.id, estado: r.estado });
-    });
+      });
+      for (const r of existingRows) {
+        const norm = this.normalizeCelular(r.celular);
+        if (norm && sheetPhones.has(norm)) {
+          existingProspectos.set(norm, { id: r.id, estado: r.estado });
+        }
+      }
+    }
 
     const batchPhones = new Map<string, number>();
 
     // 3. Mapear y preparar registros
     const records: any[] = [];
+    const updateBatch: Array<{ id: string; data: Record<string, unknown> }> = [];
 
     for (let i = 0; i < dataRows.length; i++) {
       const row = dataRows[i];
@@ -417,7 +430,7 @@ if (params.mes) {
           esDuplicado = true;
         }
         if (!esDuplicado) {
-          batchPhones.set(celularNorm, i);
+          batchPhones.set(celularNorm, records.length);
         }
       }
 
@@ -440,7 +453,7 @@ if (params.mes) {
           }
           if (col.ESTADO !== -1) {
             const val = cell(row, col.ESTADO);
-            if (val) updateData.estado = val;
+            if (val) updateData.estado = normalizeEstado(val);
           }
           if (col.MODALIDAD !== -1) {
             const val = cell(row, col.MODALIDAD);
@@ -479,28 +492,88 @@ if (params.mes) {
             if (val) updateData.fechaRegistro = val;
           }
           if (Object.keys(updateData).length > 0) {
-            try {
-              await this.prisma.flotaProspecto.update({
-                where: { id: existing.id },
-                data: updateData as any,
-              });
-              result.updated++;
-            } catch (err) {
-              result.errors.push(`Fila ${i + 1}: Error actualizando prospecto existente: ${err instanceof Error ? err.message : String(err)}`);
+            updateBatch.push({ id: existing.id, data: updateData });
+            if (updateBatch.length >= 100) {
+              await this.prisma.$transaction(
+                updateBatch.map(({ id, data }) =>
+                  this.prisma.flotaProspecto.update({ where: { id }, data: data as any }),
+                ),
+              );
+              result.updated += updateBatch.length;
+              updateBatch.length = 0;
             }
           } else {
             result.duplicates++;
           }
         } else {
-          result.duplicates++;
-          result.errors.push(`Fila ${i + 1}: Omitida por duplicado (Celular: ${celularNorm || celular}).`);
+          const batchIdx = batchPhones.get(celularNorm);
+          if (batchIdx !== undefined) {
+            const rec = records[batchIdx];
+            if (nombre) rec.nombreCompleto = nombre;
+            if (col.RED_SOCIAL !== -1) {
+              const val = cell(row, col.RED_SOCIAL);
+              if (val) rec.redSocial = val;
+            }
+            if (col.EDAD !== -1) {
+              const val = parseInt10(cell(row, col.EDAD));
+              if (val !== null) rec.edad = val;
+            }
+            if (col.OPERADOR !== -1) {
+              const val = cell(row, col.OPERADOR);
+              if (val) rec.operador = val;
+            }
+            if (col.ESTADO !== -1) {
+              const val = cell(row, col.ESTADO);
+              if (val) rec.estado = normalizeEstado(val);
+            }
+            if (col.MODALIDAD !== -1) {
+              const val = cell(row, col.MODALIDAD);
+              if (val) rec.modalidad = val;
+            }
+            if (col.ANIO_VEHICULO !== -1) {
+              const val = parseInt10(cell(row, col.ANIO_VEHICULO));
+              if (val !== null) rec.anioVehiculo = val;
+            }
+            if (col.DISTRITO !== -1) {
+              const val = cell(row, col.DISTRITO);
+              if (val) rec.distrito = val;
+            }
+            if (col.FECHA_CITA !== -1) {
+              const val = parseDate(cell(row, col.FECHA_CITA));
+              if (val) rec.fechaCita = val;
+            }
+            if (col.ASISTENCIA !== -1) {
+              const val = cell(row, col.ASISTENCIA);
+              if (val) rec.asistencia = val;
+            }
+            if (col.FECHA_AFILIACION !== -1) {
+              const val = parseDate(cell(row, col.FECHA_AFILIACION));
+              if (val) rec.fechaAfiliacion = val;
+            }
+            if (col.MOVIL !== -1) {
+              const val = cell(row, col.MOVIL);
+              if (val) rec.movil = val;
+            }
+            if (col.OBSERVACIONES !== -1) {
+              const val = cell(row, col.OBSERVACIONES);
+              if (val) rec.observaciones = val;
+            }
+            if (col.FECHA_REGISTRO !== -1) {
+              const val = parseDate(cell(row, col.FECHA_REGISTRO));
+              if (val) rec.fechaRegistro = val;
+            }
+            result.updated++;
+          } else {
+            result.duplicates++;
+            result.errors.push(`Fila ${i + 1}: Omitida por duplicado (Celular: ${celularNorm || celular}).`);
+          }
         }
         continue;
       }
 
       const estadoRaw = col.ESTADO !== -1 ? cell(row, col.ESTADO) : '';
 
-      const estado = estadoRaw || 'Nuevo';
+      const estado = normalizeEstado(estadoRaw);
 
       records.push({
         fechaRegistro:
@@ -536,9 +609,18 @@ if (params.mes) {
       });
     }
 
+    // Flush remaining updates
+    if (updateBatch.length > 0) {
+      await this.prisma.$transaction(
+        updateBatch.map(({ id, data }) =>
+          this.prisma.flotaProspecto.update({ where: { id }, data: data as any }),
+        ),
+      );
+      result.updated += updateBatch.length;
+    }
 
-    // 4. Insertar en lotes de 50
-    const BATCH_SIZE = 50;
+    // 4. Insertar en lotes de 500
+    const BATCH_SIZE = 500;
     for (let i = 0; i < records.length; i += BATCH_SIZE) {
       const batch = records.slice(i, i + BATCH_SIZE);
       try {
