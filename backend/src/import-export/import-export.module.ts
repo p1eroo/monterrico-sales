@@ -24,5 +24,6 @@ import { SyncModule } from '../sync/sync.module';
   ],
   controllers: [ImportExportController],
   providers: [ImportExportService, ImportExportJobsService],
+  exports: [ImportExportJobsService],
 })
 export class ImportExportModule {}

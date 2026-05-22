@@ -58,6 +58,7 @@ import {
   ExternalLink,
   Music2,
   PanelRight,
+  Lock,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -127,7 +128,9 @@ import {
   type FlotaWhatsappConnectionResponse,
   type FlotaWhatsappConnection,
 } from '@/lib/flotaWhatsappApi';
-import { flotaProspectoCreate, flotaProspectosList, fetchOperadores, type OperadorUser } from '@/lib/flotaProspectosApi';
+import { flotaProspectoCreate, flotaProspectosList, fetchOperadores, getOperatorDisplayName, type OperadorUser } from '@/lib/flotaProspectosApi';
+import { useAppStore } from '@/store';
+import { usePermissions } from '@/hooks/usePermissions';
 import { type WhatsappMessageItem, type WhatsappSocketPayload, sendWhatsappMessage, downloadWhatsappAttachment } from '@/lib/whatsappApi';
 import * as QRCode from 'qrcode';
 import * as XLSX from 'xlsx';
@@ -785,7 +788,6 @@ function InboxView({ activeId: externalActiveId, onActiveChange }: {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const activeIdRef = useRef(activeId);
   const socketRef = useRef<any>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     activeIdRef.current = activeId;
@@ -814,11 +816,7 @@ function InboxView({ activeId: externalActiveId, onActiveChange }: {
   /** Socket.IO unificado: actualizar sidebar + mensajes del chat activo en tiempo real */
   useEffect(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-    console.log('[SocketEffect] Token exists:', !!token, 'URL:', `${API_BASE}/whatsapp`);
-    if (!token) {
-      console.warn('[SocketEffect] No token found — socket not created');
-      return;
-    }
+    if (!token) return;
     const socket = io(`${API_BASE}/whatsapp`, {
       auth: { token },
       transports: ['websocket', 'polling'],
@@ -829,37 +827,27 @@ function InboxView({ activeId: externalActiveId, onActiveChange }: {
     socketRef.current = socket;
 
     socket.on('connect', () => {
-      console.log('[Socket] Connected, id:', socket.id);
       void loadConversations();
     });
 
-    socket.on('connect_error', (err: Error) => {
-      console.error('[Socket] Connection error:', err.message, err.stack?.slice(0, 200));
+    socket.on('connect_error', (_err: Error) => {
+      // socket connection error
     });
 
-    socket.on('disconnect', (reason: string) => {
-      console.warn('[Socket] Disconnected:', reason);
+    socket.on('disconnect', (_reason: string) => {
+      // socket disconnected
     });
 
-    socket.on('reconnect_attempt', (attempt: number) => {
-      console.log('[Socket] Reconnect attempt', attempt);
+    socket.on('reconnect_attempt', (_attempt: number) => {
+      // socket reconnecting
     });
 
     socket.on('whatsapp', (payload: WhatsappSocketPayload) => {
       const currentActiveId = activeIdRef.current;
 
-      console.log('[Socket] Evento whatsapp recibido', {
-        type: payload.type,
-        contactId: payload.contactId,
-        activeId: currentActiveId,
-        direction: payload.type === 'message' ? (payload as any).item?.direction : undefined,
-        ts: new Date().toISOString(),
-      });
-
       // --- Update sidebar for active contact ---
       if (payload.contactId === currentActiveId) {
         if (payload.type === 'message') {
-          console.log('[Socket] Mensaje para contacto activo, actualizando cache + sidebar');
           setMessagesCache((prev) => {
             const existing = prev[payload.contactId] ?? [];
             const rest = existing.filter((x) => x.id !== (payload as any).item?.id && !x.id.startsWith('opt:'));
@@ -879,7 +867,6 @@ function InboxView({ activeId: externalActiveId, onActiveChange }: {
             markConversationAsRead(payload.contactId).catch(() => {});
           }
         } else if (payload.type === 'status') {
-          console.log('[Socket] Actualización de estado para contacto activo');
           setMessagesCache((prev) => {
             const existing = prev[payload.contactId] ?? [];
             const updated = existing.map((m) =>
@@ -895,18 +882,15 @@ function InboxView({ activeId: externalActiveId, onActiveChange }: {
 
       // --- Update sidebar for non-active contacts ---
       if (payload.type === 'message') {
-        console.log('[Socket] Mensaje para contacto NO activo, actualizando sidebar');
         const now = new Date().toISOString();
         const body = (payload as any).item?.body ?? '';
         const direction = (payload as any).item?.direction || 'inbound';
         setConversations(prev => {
           const exists = prev.some(c => c.id === payload.contactId);
           if (!exists) {
-            console.log('[Socket] Contacto no existe en sidebar, recargando conversaciones');
             void loadConversations();
             return prev;
           }
-          console.log('[Socket] Actualizando preview en sidebar para', payload.contactId);
           return prev.map(c =>
             c.id === payload.contactId
               ? { ...c, preview: body.slice(0, 100), time: now, lastDirection: direction, unread: direction === 'inbound' ? c.unread + 1 : c.unread }
@@ -933,7 +917,6 @@ function InboxView({ activeId: externalActiveId, onActiveChange }: {
     }
     try {
       const data = await fetchConversations();
-      console.log('[Poll] loadConversations completado, items:', data.length, 'ts:', new Date().toISOString());
       setConversations(prev => {
         if (firstLoad.current) return data;
         const prevMap = new Map(prev.map(c => [c.id, c]));
@@ -956,7 +939,6 @@ function InboxView({ activeId: externalActiveId, onActiveChange }: {
         }
         const merged = Array.from(prevMap.values());
         merged.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
-        console.log('[Poll] Merge: prev', prev.length, '-> merged', merged.length);
         return merged;
       });
     } catch {
@@ -970,15 +952,6 @@ function InboxView({ activeId: externalActiveId, onActiveChange }: {
       }
     }
   }
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      if (document.visibilityState !== 'visible') return;
-      void loadConversations();
-    }, 5000);
-    pollRef.current = id;
-    return () => clearInterval(id);
-  }, []);
 
   async function handleNewChat() {
     const phone = newPhone.trim();
@@ -1185,6 +1158,9 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
   const [editData, setEditData] = useState<Record<string, string>>({});
   const scrollRef = useRef<HTMLDivElement>(null);
   const convo = conversations.find((c) => c.id === contactId);
+  const currentUser = useAppStore((s) => s.currentUser);
+  const isOperadorRole = currentUser?.role === 'operador';
+  const canAssignOperador = !isOperadorRole || !convo?.operador;
   const [prospectoData, setProspectoData] = useState<{ name: string; phone: string } | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
@@ -1252,6 +1228,9 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
       for (const [k, v] of Object.entries(data)) {
         if (v != null) fields[k] = String(v);
       }
+      if (fields.operador) {
+        fields.operador = getOperatorDisplayName(fields.operador, operadores);
+      }
       setEditData(fields);
     } catch {
       toast.error('No se pudo cargar los datos del prospecto');
@@ -1283,15 +1262,6 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
   useEffect(() => {
     if (!contactId) return;
     void loadMessages();
-  }, [contactId, loadMessages]);
-
-  /** Polling de mensajes cada 5s mientras haya un chat activo */
-  useEffect(() => {
-    if (!contactId) return;
-    const id = setInterval(() => {
-      void loadMessages();
-    }, 5000);
-    return () => clearInterval(id);
   }, [contactId, loadMessages]);
 
   // Ref to avoid stale closure on messagesCache inside the scroll handler
@@ -1507,7 +1477,7 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
     }
     setSaving(true);
     const body: Record<string, unknown> = {};
-    const allowedFields = ['nombreCompleto', 'celular', 'movil', 'edad', 'distrito', 'operador', 'modalidad', 'redSocial', 'anioVehiculo', 'observaciones', 'estado'];
+    const allowedFields = ['nombreCompleto', 'celular', 'movil', 'edad', 'distrito', 'modalidad', 'redSocial', 'anioVehiculo', 'observaciones', 'estado'];
     for (const k of allowedFields) {
       const v = editData[k];
       if (k === 'edad' || k === 'anioVehiculo') {
@@ -1553,7 +1523,7 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
   async function handleCambiarOperador(nuevoOperador: string) {
     if (!contactId) return;
     try {
-      await api(`/flota-prospectos/${contactId}`, {
+      await api(`/flota-prospectos/${contactId}/operador`, {
         method: 'PATCH',
         body: JSON.stringify({ operador: nuevoOperador || null }),
       });
@@ -1605,17 +1575,22 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-          <DropdownMenu>
+          <DropdownMenu open={canAssignOperador ? undefined : false}>
             <DropdownMenuTrigger asChild>
               <button
                 className={cn(
                   'rounded-md border px-3 py-1.5 text-xs font-medium transition-colors',
+                  !canAssignOperador && 'cursor-not-allowed opacity-50',
                   convo?.operador
                     ? 'border-sky-500/30 bg-sky-500/10 text-sky-700 hover:bg-sky-500/20'
                     : 'border-input bg-background text-muted-foreground hover:bg-muted',
                 )}
+                disabled={!canAssignOperador}
               >
-                {convo?.operador || 'Operador'}
+                {convo?.operador && !canAssignOperador ? (
+                  <Lock className="mr-1 inline-block size-3" />
+                ) : null}
+                {getOperatorDisplayName(convo?.operador, operadores) || 'Operador'}
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -2791,9 +2766,17 @@ function FlotaPipelineView({ onSelect }: { onSelect: (contactId: string) => void
   const [conversations, setConversations] = useState<FlotaConversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [operadorFilter, setOperadorFilter] = useState('all');
+  const [operadores, setOperadores] = useState<OperadorUser[]>([]);
+
+  const { hasPermission } = usePermissions();
+  const currentUser = useAppStore((s) => s.currentUser);
+  const hasVerTodos = hasPermission('flota_prospectos.ver_todos');
 
   useEffect(() => {
     void loadConversations();
+    fetchOperadores().then(setOperadores).catch(() => {});
   }, []);
 
   async function loadConversations() {
@@ -2825,10 +2808,32 @@ function FlotaPipelineView({ onSelect }: { onSelect: (contactId: string) => void
     }
   }
 
+  const filterOperadores = useMemo(() => {
+    if (hasVerTodos) return operadores;
+    return operadores.filter((op) => op.name === currentUser?.name);
+  }, [hasVerTodos, operadores, currentUser?.name]);
+
+  const filteredConversations = useMemo(() => {
+    let list = conversations;
+    if (searchTerm.trim()) {
+      const s = searchTerm.trim().toLowerCase();
+      list = list.filter((c) => c.name.toLowerCase().includes(s) || c.phone.includes(s));
+    }
+    if (operadorFilter === '__unassigned__') {
+      list = list.filter((c) => !c.operador);
+    } else if (operadorFilter !== 'all') {
+      list = list.filter((c) => getOperatorDisplayName(c.operador, operadores) === operadorFilter);
+    }
+    return list.map((c) => ({
+      ...c,
+      operador: c.operador ? getOperatorDisplayName(c.operador, operadores) : c.operador,
+    }));
+  }, [conversations, searchTerm, operadorFilter, operadores]);
+
   const grouped = useMemo(() => {
     const map: Record<string, FlotaConversation[]> = {};
     for (const s of ESTADOS_PIPELINE) map[s] = [];
-    for (const c of conversations) {
+    for (const c of filteredConversations) {
       const estado = c.estado;
       if (estado) {
         const key = ESTADOS_PIPELINE.find((k) => k.toLowerCase() === estado.toLowerCase());
@@ -2840,7 +2845,7 @@ function FlotaPipelineView({ onSelect }: { onSelect: (contactId: string) => void
       map['Nuevo'].push(c);
     }
     return map;
-  }, [conversations]);
+  }, [filteredConversations]);
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
@@ -2888,10 +2893,33 @@ function FlotaPipelineView({ onSelect }: { onSelect: (contactId: string) => void
 
   return (
     <div className="flex flex-col overflow-hidden rounded-lg border bg-card" style={{ height: 'calc(100vh - 13rem)' }}>
-      <div className="border-b px-4 py-3 shrink-0 flex items-center justify-between">
+      <div className="border-b px-4 py-3 shrink-0 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="font-semibold">Pipeline de Prospectos Flota</h2>
-          <p className="text-sm text-muted-foreground">{conversations.length} prospectos</p>
+          <p className="text-sm text-muted-foreground">{filteredConversations.length} de {conversations.length} prospectos</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Buscar nombre o teléfono..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="h-8 w-56 pl-8 text-xs"
+            />
+          </div>
+          <Select value={operadorFilter} onValueChange={(v) => setOperadorFilter(v)}>
+            <SelectTrigger className="h-8 w-36 text-xs">
+              <SelectValue placeholder="Operador" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              {filterOperadores.map((op) => (
+                <SelectItem key={op.id} value={op.name}>{op.name}</SelectItem>
+              ))}
+              <SelectItem value="__unassigned__">Sin asignar</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
       <DndContext

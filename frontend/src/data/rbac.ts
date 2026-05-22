@@ -57,7 +57,7 @@ export const MODULE_ALLOWED_ACTIONS: Record<
   configuracion: ['ver', 'editar'],
   agentes_ia: ['ver', 'editar'],
   flota_dashboard: ['ver', 'exportar'],
-  flota_prospectos: ['ver', 'crear', 'editar', 'eliminar', 'asignar', 'exportar'],
+  flota_prospectos: ['ver', 'crear', 'editar', 'eliminar', 'asignar', 'exportar', 'ver_todos'],
   flota_conductores: ['ver', 'crear', 'editar', 'eliminar', 'exportar'],
   flota_reportes: ['ver', 'exportar'],
   flota_mensajes: ['ver', 'crear', 'editar', 'eliminar', 'exportar'],
@@ -97,6 +97,12 @@ export const PERMISSION_ACTIONS = [
     label: 'Datos completos del equipo',
     tooltip:
       'Ver y filtrar registros de todos los asesores. Sin esto solo ves tu cartera.',
+  },
+  {
+    id: 'ver_todos',
+    label: 'Ver todos los registros',
+    tooltip:
+      'Ver prospectos de todos los operadores. Sin esto solo ves los tuyos.',
   },
 ] as const;
 

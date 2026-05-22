@@ -158,6 +158,7 @@ export class WhatsappController {
   }
 
   @Post('flota/read/:prospectoId')
+  @RequirePermissions('flota_mensajes.ver')
   async markFlotaProspectoAsRead(
     @Param('prospectoId') prospectoId: string,
   ) {
@@ -166,6 +167,7 @@ export class WhatsappController {
   }
 
   @Get('flota/prospectos/:id/messages')
+  @RequirePermissions('flota_mensajes.ver')
   async flotaProspectoMessages(
     @Param('id') id: string,
     @Query('limit') limit?: string,
@@ -178,6 +180,7 @@ export class WhatsappController {
   }
 
   @Post('flota/send')
+  @RequirePermissions('flota_mensajes.editar')
   async flotaSend(
     @Req() req: AuthedReq,
     @Body() body: { prospectoId: string; text?: string; imageUrl?: string },

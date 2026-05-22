@@ -29,6 +29,12 @@ export class UsersController {
     return this.usersService.findAsesoresEquipo();
   }
 
+  @Get('by-role/operador')
+  @RequirePermissions('usuarios.ver')
+  findOperadores() {
+    return this.usersService.findOperadores();
+  }
+
   @Get()
   @RequirePermissions('usuarios.ver')
   findAll() {

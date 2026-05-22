@@ -1,6 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { usePermissions } from "@/hooks/usePermissions";
+import { useAppStore } from "@/store";
+import { useImportJobsStore } from "@/store/importJobsStore";
 import {
   Search,
   UserPlus,
@@ -50,12 +53,11 @@ import {
   flotaProspectosSheetPreview,
   flotaProspectosDeleteMany,
   flotaProspectoCreate,
-  fetchOperadores,
+  fetchOperadores, getOperatorDisplayName,
   type FlotaProspectoRow,
   type FlotaProspectosCounts,
   type OperadorUser,
   type SheetPreviewResponse,
-  type ImportSheetsResult,
 } from "@/lib/flotaProspectosApi";
 import { getConductorTelefonos } from "@/lib/flotaConductoresApi";
 
@@ -77,8 +79,6 @@ export default function FlotaProspectos() {
   const [counts, setCounts] = useState<FlotaProspectosCounts | null>(null);
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
-  const [importResult, setImportResult] = useState<ImportSheetsResult | null>(null);
-  const [errorsModalOpen, setErrorsModalOpen] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [searchDebounced, setSearchDebounced] = useState("");
@@ -110,6 +110,17 @@ export default function FlotaProspectos() {
     anioVehiculo: "",
     observaciones: "",
   });
+
+  const { hasPermission } = usePermissions();
+  const currentUser = useAppStore((s) => s.currentUser);
+  const hasVerTodos = hasPermission('flota_prospectos.ver_todos');
+  const enqueueJob = useImportJobsStore((s) => s.enqueueJob);
+  const completionTick = useImportJobsStore((s) => s.completionTickByEntity['flota-prospecto']);
+
+  const filterOperadores = useMemo(() => {
+    if (hasVerTodos) return operadores;
+    return operadores.filter((op) => op.name === currentUser.name);
+  }, [hasVerTodos, operadores, currentUser.name]);
 
   const loadSheetNames = useCallback(async () => {
     try {
@@ -166,7 +177,16 @@ export default function FlotaProspectos() {
         duplicados: duplicadosFilter || undefined,
         mes: mesFilter === "all" ? undefined : mesFilter,
         redSocial: redSocialFilter === "all" ? undefined : redSocialFilter,
-        operador: operadorFilter === "all" ? undefined : operadorFilter,
+        operador: operadorFilter === "all" ? undefined : operadorFilter === "__unassigned__" ? "__unassigned__" : (() => {
+          const op = operadores.find(o => o.name === operadorFilter);
+          if (!op) return operadorFilter;
+          const firstName = op.name.split(' ')[0];
+          const aliases = [op.name, op.username];
+          if (firstName !== op.name && firstName.toLowerCase() !== op.username.toLowerCase()) {
+            aliases.push(firstName);
+          }
+          return aliases.join(',');
+        })(),
       });
       
       setProspectos(res.data);
@@ -188,6 +208,12 @@ export default function FlotaProspectos() {
       /* silently fail */
     }
   }, []);
+
+  // Auto-recargar cuando una importación finaliza
+  useEffect(() => {
+    if (!completionTick) return;
+    void Promise.all([loadProspectos(), loadCounts()]);
+  }, [completionTick, loadProspectos, loadCounts]);
 
   useEffect(() => {
     void loadProspectos();
@@ -261,27 +287,9 @@ export default function FlotaProspectos() {
     closePreview();
     setImporting(true);
     try {
-      const result = await flotaProspectosImportSheets(selectedSheet);
-      setImportResult(result);
-      
-      const hasErrors = result.errors && result.errors.length > 0;
-      
-      toast.success(
-        `Importación completada: ${result.imported} importados, ${result.updated} actualizados, ${result.skipped} omitidos`,
-        {
-          duration: hasErrors ? 10000 : 5000,
-          action: hasErrors ? {
-            label: "Ver detalles",
-            onClick: () => setErrorsModalOpen(true)
-          } : undefined
-        }
-      );
-      
-      if (hasErrors) {
-        setErrorsModalOpen(true);
-      }
-
-      await Promise.all([loadProspectos(), loadCounts()]);
+      const job = await flotaProspectosImportSheets(selectedSheet);
+      enqueueJob(job);
+      toast.success("Importación iniciada. Revisá el progreso en la tarjeta de importación.");
     } catch (e) {
       toast.error(
         e instanceof Error ? e.message : "Error al importar desde Sheets",
@@ -445,11 +453,12 @@ export default function FlotaProspectos() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
-            {operadores.map((op) => (
+            {filterOperadores.map((op) => (
               <SelectItem key={op.id} value={op.name}>
                 {op.name}
               </SelectItem>
             ))}
+            <SelectItem value="__unassigned__">Sin asignar</SelectItem>
           </SelectContent>
         </Select>
 
@@ -627,7 +636,7 @@ export default function FlotaProspectos() {
                       </TableCell>
                       <TableCell>{prospecto.edad ?? "—"}</TableCell>
                       <TableCell className="text-muted-foreground">
-                        {prospecto.operador || "—"}
+                        {getOperatorDisplayName(prospecto.operador, operadores) || "—"}
                       </TableCell>
                       <TableCell>
                         <Badge
@@ -914,68 +923,6 @@ export default function FlotaProspectos() {
               ) : (
                 "Crear Prospecto"
               )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <Dialog open={errorsModalOpen} onOpenChange={setErrorsModalOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-red-600">
-              <XCircle className="size-5" />
-              Detalles de la Importación
-            </DialogTitle>
-            <DialogDescription>
-              Se encontraron {importResult?.errors.length || 0} avisos o errores durante el proceso.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="py-4">
-            <div className="grid grid-cols-4 gap-4 mb-6">
-              <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-100">
-                <p className="text-xs text-emerald-600 font-medium uppercase">Importados</p>
-                <p className="text-2xl font-bold text-emerald-700">{importResult?.imported || 0}</p>
-              </div>
-              <div className="p-3 rounded-lg bg-sky-50 border border-sky-100">
-                <p className="text-xs text-sky-600 font-medium uppercase">Actualizados</p>
-                <p className="text-2xl font-bold text-sky-700">{importResult?.updated || 0}</p>
-              </div>
-              <div className="p-3 rounded-lg bg-amber-50 border border-amber-100">
-                <p className="text-xs text-amber-600 font-medium uppercase">Omitidos</p>
-                <p className="text-2xl font-bold text-amber-700">{importResult?.skipped || 0}</p>
-              </div>
-              <div className="p-3 rounded-lg bg-red-50 border border-red-100">
-                <p className="text-xs text-red-600 font-medium uppercase">Errores</p>
-                <p className="text-2xl font-bold text-red-700">{importResult?.errors.length || 0}</p>
-              </div>
-            </div>
-
-            <h4 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
-              <Info className="size-4 text-muted-foreground" />
-              Lista de errores y advertencias:
-            </h4>
-            
-            <div className="max-h-[350px] overflow-y-auto rounded-md border bg-muted/30 p-2">
-              {importResult?.errors && importResult.errors.length > 0 ? (
-                <ul className="space-y-2">
-                  {importResult.errors.map((error, i) => (
-                    <li key={i} className="text-sm py-2 px-3 bg-card rounded border border-border flex items-start gap-2">
-                      <span className="shrink-0 mt-0.5 text-red-500 font-bold">•</span>
-                      <span>{error}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-muted-foreground py-8 text-center">
-                  No hay detalles de errores disponibles.
-                </p>
-              )}
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button onClick={() => setErrorsModalOpen(false)}>
-              Entendido
             </Button>
           </DialogFooter>
         </DialogContent>

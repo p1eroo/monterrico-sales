@@ -39,7 +39,7 @@ export function buildUserFormSchema(isEdit: boolean) {
       password: z.string().optional(),
       roleId: z.string().min(1, 'Selecciona un rol'),
       status: z.boolean(),
-      allowedAreas: z.array(z.enum(['comercial', 'flota'])).min(1, 'Selecciona al menos un área'),
+      allowedAreas: z.array(z.enum(['comercial', 'flota', 'marketing'])).min(1, 'Selecciona al menos un área'),
     })
     .superRefine((data, ctx) => {
       if (!isEdit) {
@@ -272,7 +272,7 @@ export function UserFormModal({
 
           <div className="space-y-3 rounded-lg border p-4">
             <Label>Áreas Permitidas *</Label>
-            <div className="grid grid-cols-2 gap-4 pt-1">
+            <div className="grid grid-cols-3 gap-4 pt-1">
               <div className="flex items-center gap-2">
                 <Switch
                   id="area-comercial"
@@ -302,6 +302,21 @@ export function UserFormModal({
                   }}
                 />
                 <Label htmlFor="area-flota" className="font-normal cursor-pointer">Flota</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="area-marketing"
+                  checked={form.watch('allowedAreas').includes('marketing')}
+                  onCheckedChange={(checked) => {
+                    const current = form.getValues('allowedAreas');
+                    if (checked) {
+                      form.setValue('allowedAreas', [...current, 'marketing']);
+                    } else {
+                      form.setValue('allowedAreas', current.filter(a => a !== 'marketing'));
+                    }
+                  }}
+                />
+                <Label htmlFor="area-marketing" className="font-normal cursor-pointer">Marketing</Label>
               </div>
             </div>
             {form.formState.errors.allowedAreas && (

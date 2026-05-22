@@ -100,6 +100,10 @@ const navItemsAdmin: NavDef[] = [
   { to: '/settings', label: 'Configuración', icon: Settings, permission: 'configuracion.ver' },
 ];
 
+const navItemsMarketing: NavDef[] = [
+  { to: '/marketing', label: 'Dashboard', icon: LayoutDashboard },
+];
+
 export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -109,6 +113,7 @@ export function AppSidebar() {
   const effectiveArea = allowedAreas.length === 1 ? allowedAreas[0] : area;
   const currentNavItems = 
     effectiveArea === 'flota' ? navItemsFlota : 
+    effectiveArea === 'marketing' ? navItemsMarketing :
     effectiveArea === 'admin' ? navItemsAdmin : 
     navItems;
   const visibleNav = currentNavItems;

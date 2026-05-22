@@ -10,17 +10,40 @@ import {
   HttpException,
   HttpStatus,
   Req,
+  UseGuards,
 } from '@nestjs/common';
 import { FlotaProspectosService } from './flota-prospectos.service';
 import { Public } from '../auth/decorators/public.decorator';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
+import { PrismaService } from '../prisma/prisma.service';
+import { ImportExportJobsService } from '../import-export/import-export-jobs.service';
+import type { CrmDataScope } from '../auth/crm-data-scope.service';
+
+type AuthedReq = { user: { userId: string; name: string; roleId?: string } };
 
 @Controller()
+@UseGuards(PermissionsGuard)
 export class FlotaProspectosController {
-  constructor(private readonly service: FlotaProspectosService) {}
+  constructor(
+    private readonly service: FlotaProspectosService,
+    private readonly prisma: PrismaService,
+    private readonly importExportJobs: ImportExportJobsService,
+  ) {}
+
+  private async buildFlotaScope(userId: string, roleId?: string): Promise<CrmDataScope> {
+    const perm = roleId ? await this.prisma.authority.findFirst({
+      where: { roleId, permission: 'flota_prospectos.ver_todos' },
+      select: { id: true },
+    }) : null;
+    return { viewerUserId: userId, unrestricted: !!perm };
+  }
 
   /** GET /flota-prospectos — Listado paginado con filtros */
   @Get('flota-prospectos')
+  @RequirePermissions('flota_prospectos.ver')
   async findAll(
+    @Req() req: AuthedReq,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('search') search?: string,
@@ -30,6 +53,10 @@ export class FlotaProspectosController {
     @Query('redSocial') redSocial?: string,
     @Query('operador') operador?: string,
   ) {
+    const scope = await this.buildFlotaScope(
+      req.user.userId,
+      req.user.roleId,
+    );
     return this.service.findAll({
       page: page ? parseInt(page, 10) : 1,
       limit: limit ? parseInt(limit, 10) : 25,
@@ -39,19 +66,54 @@ export class FlotaProspectosController {
       mes: mes || undefined,
       redSocial: redSocial || undefined,
       operador: operador || undefined,
+    }, scope);
+  }
+
+  /** GET /flota-prospectos/operadores — Lista de operadores activos para dropdowns */
+  @Get('flota-prospectos/operadores')
+  @RequirePermissions('flota_prospectos.ver')
+  async findOperadores() {
+    const rows = await this.prisma.user.findMany({
+      where: {
+        status: 'activo',
+        role: { slug: 'operador' },
+      },
+      include: {
+        accounts: {
+          select: { provider: true, providerId: true },
+        },
+      },
+    });
+    return rows.map((r) => {
+      const cred = r.accounts.find((a) => a.provider === 'credentials');
+      return {
+        id: r.id,
+        name: r.name,
+        username: cred?.providerId ?? '',
+      };
     });
   }
 
   /** GET /flota-prospectos/counts — Conteo por estado + duplicados */
   @Get('flota-prospectos/counts')
-  async getCounts() {
-    return this.service.getCounts();
+  @RequirePermissions('flota_prospectos.ver')
+  async getCounts(@Req() req: AuthedReq) {
+    const scope = await this.buildFlotaScope(
+      req.user.userId,
+      req.user.roleId,
+    );
+    return this.service.getCounts(scope);
   }
 
   /** GET /flota-prospectos/masivo-list — Lista ligera de prospectos para el envío masivo */
   @Get('flota-prospectos/masivo-list')
-  async listForMasivo(@Query('search') search?: string) {
-    return this.service.listForMasivo(search);
+  @RequirePermissions('flota_prospectos.ver')
+  async listForMasivo(@Req() req: AuthedReq, @Query('search') search?: string) {
+    const scope = await this.buildFlotaScope(
+      req.user.userId,
+      req.user.roleId,
+    );
+    return this.service.listForMasivo(search, scope);
   }
 
   /** GET /flota/sheets — Hojas disponibles del spreadsheet */
@@ -83,13 +145,25 @@ export class FlotaProspectosController {
     }
   }
 
-
-  /** POST /flota/import/:sheetName — Importar desde Google Sheets */
+  /** POST /flota/import/:sheetName — Importar desde Google Sheets con progreso */
   @Post('flota/import/:sheetName')
-  async importFromSheets(@Param('sheetName') sheetName: string) {
+  @RequirePermissions('flota_prospectos.crear')
+  async importFromSheets(
+    @Param('sheetName') sheetName: string,
+    @Req() req: AuthedReq,
+  ) {
     try {
-      const result = await this.service.importFromSheets(sheetName);
-      return result;
+      const preview = await this.service.getPreview(sheetName);
+      const totalRows = preview.totalRows;
+
+      return this.importExportJobs.startJob(
+        {
+          entity: 'flota-prospecto',
+          ownerUserId: req.user.userId,
+          totalRows,
+        },
+        (update) => this.service.importFromSheetsWithProgress(sheetName, update),
+      );
     } catch (err) {
       throw new HttpException(
         err instanceof Error ? err.message : 'Error al importar',
@@ -100,6 +174,7 @@ export class FlotaProspectosController {
 
   /** GET /flota-prospectos/:id — Detalle de un prospecto */
   @Get('flota-prospectos/:id')
+  @RequirePermissions('flota_prospectos.ver')
   async findOne(@Param('id') id: string) {
     const prospecto = await this.service.findOne(id);
     if (!prospecto) {
@@ -108,15 +183,16 @@ export class FlotaProspectosController {
     return prospecto;
   }
 
-  /** PATCH /flota-prospectos/:id — Actualizar un prospecto */
+  /** PATCH /flota-prospectos/:id — Actualizar un prospecto (excepto operador) */
   @Patch('flota-prospectos/:id')
+  @RequirePermissions('flota_prospectos.editar')
   async update(
-    @Param('id') id: string, 
+    @Param('id') id: string,
     @Body() body: Record<string, unknown>,
-    @Req() req: any
+    @Req() req: AuthedReq,
   ) {
     try {
-      const actor = { userId: req.user?.id, userName: req.user?.name };
+      const actor = { userId: req.user.userId, userName: req.user.name };
       return await this.service.update(id, body, actor);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -127,8 +203,29 @@ export class FlotaProspectosController {
     }
   }
 
+  /** PATCH /flota-prospectos/:id/operador — Asignar operador a un prospecto */
+  @Patch('flota-prospectos/:id/operador')
+  @RequirePermissions('flota_prospectos.asignar')
+  async updateOperador(
+    @Param('id') id: string,
+    @Body() body: { operador?: string | null },
+    @Req() req: AuthedReq,
+  ) {
+    try {
+      const actor = { userId: req.user.userId, userName: req.user.name };
+      return await this.service.updateOperador(id, body.operador, actor);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      throw new HttpException(
+        `No se pudo asignar operador: ${msg}`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
   /** DELETE /flota-prospectos/:id — Eliminar un prospecto */
   @Delete('flota-prospectos/:id')
+  @RequirePermissions('flota_prospectos.eliminar')
   async remove(@Param('id') id: string) {
     try {
       await this.service.remove(id);
@@ -144,6 +241,7 @@ export class FlotaProspectosController {
 
   /** POST /flota-prospectos/delete-many — Eliminar múltiples prospectos */
   @Post('flota-prospectos/delete-many')
+  @RequirePermissions('flota_prospectos.eliminar')
   async removeMany(@Body() ids: string[]) {
     try {
       const deleted = await this.service.removeMany(ids);
@@ -158,6 +256,7 @@ export class FlotaProspectosController {
 
   /** POST /flota-prospectos — Crear nuevo prospecto */
   @Post('flota-prospectos')
+  @RequirePermissions('flota_prospectos.crear')
   async create(@Body() body: Record<string, unknown>) {
     try {
       return await this.service.createOne(body);

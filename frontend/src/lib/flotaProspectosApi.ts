@@ -1,4 +1,5 @@
 import { api } from './api';
+import type { ImportJob } from './importExportApi';
 
 export interface FlotaProspectoRow {
   id: string;
@@ -78,8 +79,8 @@ export async function flotaProspectosCounts(): Promise<FlotaProspectosCounts> {
 
 export async function flotaProspectosImportSheets(
   sheetName?: string,
-): Promise<ImportSheetsResult> {
-  return api<ImportSheetsResult>('/flota/import/' + encodeURIComponent(sheetName || ''), {
+): Promise<ImportJob> {
+  return api<ImportJob>('/flota/import/' + encodeURIComponent(sheetName || ''), {
     method: 'POST',
   });
 }
@@ -172,8 +173,62 @@ export async function flotaProspectoUploadFile(
 export interface OperadorUser {
   id: string;
   name: string;
+  username: string;
 }
 
 export async function fetchOperadores(): Promise<OperadorUser[]> {
-  return api<OperadorUser[]>('/users/by-role/operador');
+  return api<OperadorUser[]>('/flota-prospectos/operadores');
+}
+
+/** Busca el nombre canónico de un operador, matcheando por username, nombre completo o primer nombre */
+export function getOperatorDisplayName(
+  value: string | null | undefined,
+  operadores: OperadorUser[],
+): string {
+  if (!value?.trim()) return '';
+  const v = value.trim().toLowerCase();
+
+  // 1. match exacto por username
+  let match = operadores.find((op) => op.username?.toLowerCase() === v);
+  if (match) return match.name;
+
+  // 2. match exacto por nombre completo
+  match = operadores.find((op) => op.name.toLowerCase() === v);
+  if (match) return match.name;
+
+  // 3. match por primer nombre (solo si hay 1 resultado para evitar ambigüedad)
+  const firstNameMatches = operadores.filter((op) => {
+    const first = op.name.toLowerCase().split(' ')[0];
+    return first === v;
+  });
+  if (firstNameMatches.length === 1) return firstNameMatches[0].name;
+
+  // 4. match parcial por username (ej: "pmedrano" → "pmedranop"), mínimo 3 caracteres
+  if (v.length >= 3) {
+    const partial = operadores.filter((op) => {
+      const u = op.username?.toLowerCase();
+      return u && (u.startsWith(v) || v.startsWith(u));
+    });
+    if (partial.length === 1) return partial[0].name;
+  }
+
+  // 5. match por fragmentos del nombre (ej: "pmedranop" contiene partes de "paul medrano")
+  const fragmentMatch = operadores.filter((op) => {
+    const opLower = op.name.toLowerCase();
+    const opParts = opLower.split(/\s+/).filter(Boolean);
+    const opNorm = opLower.replace(/\s+/g, '');
+    const vNorm = v.replace(/\s+/g, '');
+    // Check if normalized strings overlap significantly
+    return (
+      opNorm.startsWith(vNorm) || vNorm.startsWith(opNorm) ||
+      opNorm.includes(vNorm) || vNorm.includes(opNorm) ||
+      opParts.some(p => v.length >= 3 && v.includes(p)) ||
+      opParts.some(p => p.length >= 3 && p.includes(v))
+    );
+  });
+  if (fragmentMatch.length === 1) return fragmentMatch[0].name;
+
+  // 6. sin match → devolver valor original capitalizando primera letra
+  const raw = value.trim();
+  return raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
 }

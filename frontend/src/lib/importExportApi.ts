@@ -23,12 +23,13 @@ export type ImportJobStatus = 'queued' | 'running' | 'completed' | 'failed';
 
 export type ImportJob = {
   id: string;
-  entity: 'contacts' | 'companies' | 'opportunities';
+  entity: 'contacts' | 'companies' | 'opportunities' | 'flota-prospecto';
   filename?: string;
   status: ImportJobStatus;
   totalRows: number;
   processedRows: number;
   created: number;
+  updated: number;
   skipped: number;
   errorCount: number;
   percent: number;

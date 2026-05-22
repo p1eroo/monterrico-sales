@@ -2020,6 +2020,20 @@ export class WhatsappService {
 
     await this.emitListItemById(prospectoId, created.id);
 
+    // Auto-asignar al operador que envía el primer mensaje
+    if (!prospecto.operador?.trim()) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { name: true, role: { select: { slug: true } } },
+      });
+      if (user?.name && user?.role?.slug === 'operador') {
+        await this.prisma.flotaProspecto.update({
+          where: { id: prospectoId },
+          data: { operador: user.name },
+        });
+      }
+    }
+
     return { ok: true, waMessageId: sent.waMessageId ?? null };
   }
 

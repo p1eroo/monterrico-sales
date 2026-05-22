@@ -7,9 +7,9 @@ interface AppState {
   sidebarMobileOpen: boolean;
   toggleSidebar: () => void;
   setSidebarMobileOpen: (open: boolean) => void;
-  /** Área actual: comercial, flota o admin */
-  area: 'comercial' | 'flota' | 'admin';
-  setArea: (area: 'comercial' | 'flota' | 'admin') => void;
+  /** Área actual: comercial, flota, marketing o admin */
+  area: 'comercial' | 'flota' | 'marketing' | 'admin';
+  setArea: (area: 'comercial' | 'flota' | 'marketing' | 'admin') => void;
   /** `null` = usar plantilla por slug hasta tener respuesta API; `[]` = rol sin permisos en BD. */
   permissionKeys: string[] | null;
   setPermissionKeys: (keys: string[] | null) => void;
@@ -28,7 +28,7 @@ interface AppState {
     status?: 'activo' | 'inactivo';
     createdAt?: string;
     lastActivity?: string;
-    allowedAreas: ('comercial' | 'flota')[];
+    allowedAreas: ('comercial' | 'flota' | 'marketing')[];
   };
   updateCurrentUser: (data: Partial<AppState['currentUser']>) => void;
   isAuthenticated: boolean;

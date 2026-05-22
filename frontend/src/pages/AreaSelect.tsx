@@ -27,6 +27,12 @@ const areas = [
     imageDark: "/assets/flota_bg_dark.png",
     imageLight: "/assets/flota_bg_light.png",
   },
+  {
+    id: "marketing" as const,
+    name: "Marketing",
+    imageDark: "/assets/marketing.webp",
+    imageLight: "/assets/marketing.webp",
+  },
 ];
 
 export default function AreaSelect() {
@@ -49,7 +55,7 @@ export default function AreaSelect() {
   const isAdmin = currentUser.role === "admin";
   const userAllowedAreas = currentUser.allowedAreas || [];
 
-  const handleSelect = (areaId: "comercial" | "flota" | "admin") => {
+  const handleSelect = (areaId: "comercial" | "flota" | "marketing" | "admin") => {
     if (areaId !== "admin" && !isAdmin && !userAllowedAreas.includes(areaId)) {
       toast.error("Acceso restringido: No tienes permisos para esta área.");
       return;
@@ -60,6 +66,8 @@ export default function AreaSelect() {
     setArea(areaId);
     if (areaId === "admin") {
       navigate("/admin");
+    } else if (areaId === "marketing") {
+      navigate("/marketing");
     } else {
       navigate(areaId === "flota" ? "/flota" : "/dashboard");
     }
@@ -131,14 +139,14 @@ export default function AreaSelect() {
           position: "relative",
           zIndex: 10,
           width: "100%",
-          maxWidth: "800px",
+          maxWidth: "1260px",
         }}
       >
         <div
           style={{
             display: "grid",
             gap: "2rem",
-            gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
+            gridTemplateColumns: "repeat(3, 1fr)",
           }}
         >
           {areas.map((area) => {

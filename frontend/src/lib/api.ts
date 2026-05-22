@@ -32,7 +32,7 @@ export type AuthMeResponse = {
   permissions: string[];
   joinedAt: string;
   lastActivity: string | null;
-  allowedAreas: ('comercial' | 'flota')[];
+  allowedAreas: ('comercial' | 'flota' | 'marketing')[];
 };
 
 /** Perfil y permisos reales (tabla Authority). Requiere Bearer. */

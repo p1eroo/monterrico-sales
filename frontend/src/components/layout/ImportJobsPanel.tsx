@@ -10,9 +10,10 @@ import { useImportJobsStore } from '@/store/importJobsStore';
 import { importJobErrorsList, type ImportJob } from '@/lib/importExportApi';
 import { ImportJobErrorsDialog } from '@/components/layout/ImportJobErrorsDialog';
 
-function entityLabel(entity: 'contacts' | 'companies' | 'opportunities') {
+function entityLabel(entity: 'contacts' | 'companies' | 'opportunities' | 'flota-prospecto') {
   if (entity === 'contacts') return 'contactos';
   if (entity === 'companies') return 'empresas';
+  if (entity === 'flota-prospecto') return 'prospectos flota';
   return 'oportunidades';
 }
 
@@ -129,6 +130,7 @@ export function ImportJobsPanel() {
 
               <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                 <span>Creadas: {job.created}</span>
+                {job.updated > 0 && <span>Actualizadas: {job.updated}</span>}
                 <span>Omitidas: {job.skipped}</span>
                 <span>Errores: {job.errorCount}</span>
               </div>

@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Tooltip,
@@ -6,13 +7,13 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { HelpCircle } from 'lucide-react';
-import type { PermissionKey } from '@/types';
+import type { PermissionKey, PermissionModule, PermissionAction } from '@/types';
 import {
   PERMISSION_MODULES,
+  MODULE_ALLOWED_ACTIONS,
   PERMISSION_ACTIONS,
   moduleAllowsAction,
 } from '@/data/rbac';
-import type { PermissionModule, PermissionAction } from '@/types';
 import { cn } from '@/lib/utils';
 
 interface PermissionMatrixProps {
@@ -34,6 +35,17 @@ export function PermissionMatrix({
     (mod) => mod.area === filterArea
   );
 
+  const visibleActions = useMemo(() => {
+    const actionSet = new Set<string>();
+    for (const mod of filteredModules) {
+      const modActions = MODULE_ALLOWED_ACTIONS[mod.id as PermissionModule];
+      if (modActions) {
+        modActions.forEach((a) => actionSet.add(a));
+      }
+    }
+    return PERMISSION_ACTIONS.filter((a) => actionSet.has(a.id));
+  }, [filteredModules]);
+
   return (
     <TooltipProvider>
       <div className="overflow-x-auto rounded-lg border bg-card">
@@ -43,7 +55,7 @@ export function PermissionMatrix({
               <th className="px-4 py-3 text-left text-sm font-medium">
                 Módulo
               </th>
-              {PERMISSION_ACTIONS.map((act) => (
+              {visibleActions.map((act) => (
                 <th key={act.id} className="px-3 py-3 text-center">
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -68,9 +80,9 @@ export function PermissionMatrix({
           <tbody>
             {filteredModules.map((mod) => {
               const modId = mod.id as PermissionModule;
-              const modKeys = PERMISSION_ACTIONS.filter((a) =>
-                moduleAllowsAction(modId, a.id as PermissionAction),
-              ).map((a) => `${mod.id}.${a.id}` as PermissionKey);
+              const modKeys = visibleActions
+                .filter((a) => moduleAllowsAction(modId, a.id as PermissionAction))
+                .map((a) => `${mod.id}.${a.id}` as PermissionKey);
               const allChecked =
                 modKeys.length > 0 && modKeys.every((k) => permissions[k]);
 
@@ -85,7 +97,7 @@ export function PermissionMatrix({
                   <td className="px-4 py-2.5 font-medium text-sm">
                     {mod.label}
                   </td>
-                  {PERMISSION_ACTIONS.map((act) => {
+                  {visibleActions.map((act) => {
                     const key = `${mod.id}.${act.id}` as PermissionKey;
                     const allowed = moduleAllowsAction(
                       modId,

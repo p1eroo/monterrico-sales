@@ -27,6 +27,7 @@ export const useImportJobsStore = create<ImportJobsState>((set, get) => ({
     contacts: 0,
     companies: 0,
     opportunities: 0,
+    'flota-prospecto': 0,
   },
   enqueueJob: (job) =>
     set((state) => ({

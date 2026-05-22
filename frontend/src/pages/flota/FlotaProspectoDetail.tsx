@@ -36,6 +36,7 @@ import { EntityInfoCard } from '@/components/shared/EntityInfoCard';
 import { TimelinePanel } from '@/components/shared/TimelinePanel';
 import { formatDate } from '@/lib/formatters';
 import { toast } from 'sonner';
+import { api } from '@/lib/api';
 import { QuickActionsWithDialogs } from '@/components/shared/QuickActionsWithDialogs';
 import {
   DropdownMenu,
@@ -49,7 +50,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { flotaProspectoDetail, flotaProspectoUpdate, flotaProspectoFiles, flotaProspectoFileContentUrl, flotaProspectoUploadFile, fetchOperadores, type FlotaProspectoRow, type FlotaFile, type OperadorUser } from '@/lib/flotaProspectosApi';
+import { flotaProspectoDetail, flotaProspectoUpdate, flotaProspectoFiles, flotaProspectoFileContentUrl, flotaProspectoUploadFile, fetchOperadores, getOperatorDisplayName, type FlotaProspectoRow, type FlotaFile, type OperadorUser } from '@/lib/flotaProspectosApi';
 
 const ESTADOS = ['Afiliado', 'Citado', 'Seguimiento', 'Informacion', 'Sin Requisitos', 'No Responde'] as const;
 
@@ -83,7 +84,7 @@ function getEstadoColor(estado: string): string | undefined {
   return key ? estadoColors[key] : undefined;
 }
 
-function ProspectoInformacionAside({ prospecto }: { prospecto: FlotaProspectoRow }) {
+function ProspectoInformacionAside({ prospecto, operadores }: { prospecto: FlotaProspectoRow; operadores: OperadorUser[] }) {
   return (
     <EntityInfoCard
       title="INFORMACION"
@@ -94,7 +95,7 @@ function ProspectoInformacionAside({ prospecto }: { prospecto: FlotaProspectoRow
         { icon: Globe, value: prospecto.redSocial || 'Sin fuente' },
         { icon: MapPin, value: prospecto.distrito || 'Sin distrito' },
         { icon: CalendarDays, value: `Registrado: ${prospecto.fechaRegistro ? formatDate(prospecto.fechaRegistro) : '—'}` },
-        { icon: User, value: `Operador: ${prospecto.operador || '—'}` },
+        { icon: User, value: `Operador: ${getOperatorDisplayName(prospecto.operador, operadores) || '—'}` },
         { icon: Car, value: `Año Veh.: ${prospecto.anioVehiculo || '—'}` },
         { icon: MessageSquare, value: `Modalidad: ${prospecto.modalidad || '—'}` },
         { icon: ClipboardList, value: `Móvil: ${prospecto.movil || '—'}` },
@@ -393,7 +394,7 @@ export default function FlotaProspectoDetail() {
         size="icon"
         className="h-9 w-9 shrink-0 rounded-lg text-text-secondary hover:bg-accent hover:text-accent-foreground"
         onClick={() => {
-          setEditData(prospecto);
+          setEditData({ ...prospecto, operador: getOperatorDisplayName(prospecto.operador, operadores) });
           setEditModalOpen(true);
         }}
       >
@@ -406,7 +407,19 @@ export default function FlotaProspectoDetail() {
     if (!prospecto) return;
     setSavingEdit(true);
     try {
-      const updated = await flotaProspectoUpdate(prospecto.id, editData);
+      const { operador, ...otherData } = editData;
+      const updated = await flotaProspectoUpdate(prospecto.id, otherData);
+      if (operador !== prospecto.operador) {
+        try {
+          await api(`/flota-prospectos/${prospecto.id}/operador`, {
+            method: 'PATCH',
+            body: JSON.stringify({ operador: operador || null }),
+          });
+          updated.operador = operador || null;
+        } catch {
+          toast.error('No tienes permiso para asignar operador');
+        }
+      }
       setProspecto(updated);
       setEditModalOpen(false);
       toast.success('Prospecto actualizado');
@@ -423,7 +436,7 @@ export default function FlotaProspectoDetail() {
       title={prospecto.nombreCompleto}
       subtitle={`Celular: ${prospecto.celular || '—'}`}
       headerActions={headerActions}
-      leftAside={<ProspectoInformacionAside prospecto={prospecto} />}
+      leftAside={<ProspectoInformacionAside prospecto={prospecto} operadores={operadores} />}
       sidebar={<ProspectoArchivosAside />}
     >
       <div className="space-y-6">

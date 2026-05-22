@@ -3,6 +3,17 @@ import { PrismaService } from '../prisma/prisma.service';
 import { GoogleSheetsService } from './google-sheets.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { ActivityActor } from '../activity-logs/activity-logs.types';
+import type { CrmDataScope } from '../auth/crm-data-scope.service';
+import type { ImportJobProgressInput } from '../import-export/import-export-jobs.service';
+import type { BulkImportResultDto, BulkImportRowError } from '../import-export/import-export.service';
+
+function normalizeStr(s: string): string {
+  return s.toLowerCase().replace(/\s+/g, '').trim();
+}
+
+function getInitials(s: string): string {
+  return s.split(/\s+/).map(w => w[0] || '').join('').toLowerCase();
+}
 
 /** Mapeo de columnas del Google Sheet (basado en la captura del usuario). */
 // Columnas: N° | F. REGISTRO | RED SOCIAL | CELULAR | APELLIDOS Y NOMBRES | EDAD | OPERADOR | ESTADO | MODALIDAD | AÑO VEH. | DISTRITO | F. CITA | ASISTENCIA | F AFILIACION | MOVIL | OBSERVACIONES
@@ -93,8 +104,16 @@ export class FlotaProspectosService {
 
 
   /** Lista ligera para el envío masivo desde CRM */
-  async listForMasivo(search?: string) {
+  async listForMasivo(search?: string, scope?: CrmDataScope) {
     const where: Record<string, unknown> = {};
+
+    if (scope && !scope.unrestricted) {
+      const operadorFilter = await this.getScopeOperadorFilter(scope.viewerUserId);
+      if (operadorFilter) {
+        where.AND = [{ OR: [operadorFilter, { operador: null }] }] as any;
+      }
+    }
+
     if (search?.trim()) {
       const s = search.trim();
       where.OR = [
@@ -110,6 +129,60 @@ export class FlotaProspectosService {
     });
   }
 
+  private async getScopeOperadorFilter(userId: string): Promise<Record<string, unknown> | null> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { name: true },
+    });
+    if (!user?.name) return null;
+
+    const account = await this.prisma.account.findFirst({
+      where: { userId, provider: 'credentials' },
+      select: { providerId: true },
+    });
+    const username = account?.providerId || null;
+
+    const distinctOps = await this.prisma.flotaProspecto.findMany({
+      where: { operador: { not: null } },
+      select: { operador: true },
+      distinct: ['operador'],
+    });
+
+    const userLower = user.name.toLowerCase().trim();
+    const normUser = normalizeStr(user.name);
+    const nameParts = userLower.split(/\s+/).filter(Boolean);
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : '';
+    const initials = getInitials(user.name);
+
+    const matching = [user.name];
+
+    for (const op of distinctOps) {
+      if (!op.operador) continue;
+      const v = op.operador.trim();
+      const vLower = v.toLowerCase();
+      const normOp = normalizeStr(v);
+
+      if (vLower === userLower) { matching.push(v); continue; }
+      if (normOp === normUser) { matching.push(v); continue; }
+      if (normOp.includes(normUser) || normUser.includes(normOp)) { matching.push(v); continue; }
+      if (vLower === firstName || normOp === firstName) { matching.push(v); continue; }
+      if (lastName && (vLower === lastName || normOp === lastName)) { matching.push(v); continue; }
+      if (firstName && vLower.includes(firstName)) { matching.push(v); continue; }
+      if (lastName && vLower.includes(lastName)) { matching.push(v); continue; }
+      if (vLower === initials) { matching.push(v); continue; }
+      if (username) {
+        const normUsername = normalizeStr(username);
+        if (normOp.includes(normUsername) || normUsername.includes(normOp)) { matching.push(v); continue; }
+        if (vLower.startsWith(normUsername) || normUsername.startsWith(vLower)) { matching.push(v); continue; }
+      }
+    }
+
+    const unique = [...new Set(matching)];
+    return unique.length === 1 && unique[0] === user.name
+      ? { operador: user.name }
+      : { operador: { in: unique } };
+  }
 
   /** Lista paginada con filtros */
   async findAll(params: {
@@ -121,27 +194,38 @@ export class FlotaProspectosService {
     mes?: string;
     redSocial?: string;
     operador?: string;
-  }) {
+  }, scope?: CrmDataScope) {
     const page = params.page ?? 1;
     const limit = params.limit ?? 25;
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = {};
 
-    if (params.estado) {
-      where.estado = params.estado;
-    }
+    // "Sin asignar" filter overrides all operador-based scoping
+    if (params.operador === '__unassigned__') {
+      where.operador = null;
+    } else {
+      // Apply data scope: if restricted, only show prospects matching this user or unassigned
+      if (scope && !scope.unrestricted) {
+        const operadorFilter = await this.getScopeOperadorFilter(scope.viewerUserId);
+        if (operadorFilter) {
+          where.AND = [{ OR: [operadorFilter, { operador: null }] }] as any;
+        }
+      }
 
-    if (params.duplicados) {
-      where.esDuplicado = true;
-    }
-
-    if (params.redSocial) {
-      where.redSocial = params.redSocial;
-    }
-
-    if (params.operador) {
-      where.operador = params.operador;
+      if (params.operador) {
+        if (scope && !scope.unrestricted) {
+          // scope already set in AND above
+        } else {
+          const aliases = params.operador.split(',').map(s => s.trim()).filter(Boolean);
+          const orConditions = aliases.map(a => ({ operador: { contains: a, mode: 'insensitive' } }));
+          if ((where.OR as any[])?.length > 0) {
+            (where.OR as any[]).push(...orConditions);
+          } else {
+            where.OR = orConditions;
+          }
+        }
+      }
     }
 
 if (params.mes) {
@@ -184,14 +268,16 @@ if (params.mes) {
     return this.prisma.flotaProspecto.findUnique({ where: { id } });
   }
 
-  /** Actualizar un prospecto */
+  /** Actualizar un prospecto (ignora campo operador) */
   async update(id: string, data: Record<string, unknown>, actor?: ActivityActor) {
     const existing = await this.prisma.flotaProspecto.findUnique({ where: { id } });
     if (!existing) throw new Error('Prospecto no encontrado');
 
+    const { operador: _ignored, ...safeData } = data;
+
     const updated = await this.prisma.flotaProspecto.update({
       where: { id },
-      data: data as any,
+      data: safeData as any,
     });
 
     // Registrar cambio de estado en el historial
@@ -215,6 +301,31 @@ if (params.mes) {
         description: `Actualización de observaciones: ${data.observaciones}`,
       });
     }
+
+    return updated;
+  }
+
+  /** Asignar operador a un prospecto (endpoint dedicado) */
+  async updateOperador(id: string, operador: string | null | undefined, actor?: ActivityActor) {
+    const existing = await this.prisma.flotaProspecto.findUnique({ where: { id } });
+    if (!existing) throw new Error('Prospecto no encontrado');
+
+    const val = operador?.trim() || null;
+    const updated = await this.prisma.flotaProspecto.update({
+      where: { id },
+      data: { operador: val },
+    });
+
+    await this.activityLogs.record(actor || null, {
+      action: 'asignar',
+      module: 'flota',
+      entityType: 'flota-prospecto',
+      entityId: id,
+      entityName: updated.nombreCompleto,
+      description: val
+        ? `Operador asignado: ${val}`
+        : 'Operador removido',
+    });
 
     return updated;
   }
@@ -494,12 +605,14 @@ if (params.mes) {
           if (Object.keys(updateData).length > 0) {
             updateBatch.push({ id: existing.id, data: updateData });
             if (updateBatch.length >= 100) {
-              await this.prisma.$transaction(
-                updateBatch.map(({ id, data }) =>
-                  this.prisma.flotaProspecto.update({ where: { id }, data: data as any }),
-                ),
-              );
-              result.updated += updateBatch.length;
+              const batch = [...updateBatch];
+              updateBatch.length = 0;
+              await this.prisma.$transaction(async (tx) => {
+                await Promise.all(
+                  batch.map(({ id, data }) => tx.flotaProspecto.update({ where: { id }, data: data as any })),
+                );
+              }, { timeout: 30000 });
+              result.updated += batch.length;
               updateBatch.length = 0;
             }
           } else {
@@ -611,12 +724,14 @@ if (params.mes) {
 
     // Flush remaining updates
     if (updateBatch.length > 0) {
-      await this.prisma.$transaction(
-        updateBatch.map(({ id, data }) =>
-          this.prisma.flotaProspecto.update({ where: { id }, data: data as any }),
-        ),
-      );
-      result.updated += updateBatch.length;
+      const batch = [...updateBatch];
+      updateBatch.length = 0;
+      await this.prisma.$transaction(async (tx) => {
+        await Promise.all(
+          batch.map(({ id, data }) => tx.flotaProspecto.update({ where: { id }, data: data as any })),
+        );
+      }, { timeout: 30000 });
+      result.updated += batch.length;
     }
 
     // 4. Insertar en lotes de 500
@@ -640,16 +755,202 @@ if (params.mes) {
     return result;
   }
 
+  /** Importar desde Google Sheets con progreso (para jobs) */
+  async importFromSheetsWithProgress(
+    sheetName: string,
+    update: (progress: ImportJobProgressInput) => void,
+  ): Promise<BulkImportResultDto> {
+    const errors: BulkImportRowError[] = [];
+
+    let rawRows: string[][];
+    try {
+      rawRows = await this.googleSheets.readAllRows(sheetName);
+    } catch (err) {
+      throw new Error(
+        `No se pudo leer el Google Sheet: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+
+    if (rawRows.length === 0) {
+      return { totalRows: 0, created: 0, skipped: 0, errors };
+    }
+
+    const { dataRows, col } = this.findHeaderAndData(rawRows);
+    const totalRows = dataRows.length;
+    if (totalRows === 0) return { totalRows: 0, created: 0, skipped: 0, errors };
+
+    const sheetPhones = new Set<string>();
+    for (const row of dataRows) {
+      const cel = col.CELULAR !== -1 ? cell(row, col.CELULAR) : cell(row, col.MOVIL);
+      const norm = this.normalizeCelular(cel);
+      if (norm) sheetPhones.add(norm);
+    }
+
+    const existingProspectos = new Map<string, { id: string; estado: string }>();
+    if (sheetPhones.size > 0) {
+      const existingRows = await this.prisma.flotaProspecto.findMany({
+        where: { celular: { not: null } },
+        select: { id: true, celular: true, estado: true },
+      });
+      for (const r of existingRows) {
+        const norm = this.normalizeCelular(r.celular);
+        if (norm && sheetPhones.has(norm)) {
+          existingProspectos.set(norm, { id: r.id, estado: r.estado });
+        }
+      }
+    }
+
+    const batchPhones = new Map<string, number>();
+    const records: any[] = [];
+    const updateBatch: Array<{ id: string; data: Record<string, unknown> }> = [];
+
+    let created = 0;
+    let updated = 0;
+    let skipped = 0;
+
+    for (let i = 0; i < dataRows.length; i++) {
+      const row = dataRows[i];
+      const nombre = col.NOMBRE_COMPLETO !== -1 ? cell(row, col.NOMBRE_COMPLETO) : '';
+      const celular = col.CELULAR !== -1 ? cell(row, col.CELULAR) : cell(row, col.MOVIL);
+      const celularNorm = this.normalizeCelular(celular) || '';
+
+      if (!celularNorm && !nombre) {
+        skipped++;
+        errors.push({ row: i + 1, message: 'Omitida por falta de nombre y celular.' });
+        continue;
+      }
+
+      let esDuplicado = false;
+      if (celularNorm) {
+        if (existingProspectos.has(celularNorm) || batchPhones.has(celularNorm)) {
+          esDuplicado = true;
+        }
+        if (!esDuplicado) {
+          batchPhones.set(celularNorm, records.length);
+        }
+      }
+
+      if (esDuplicado) {
+        const existing = existingProspectos.get(celularNorm);
+        if (existing && celularNorm) {
+          const updateData: Record<string, unknown> = {};
+          if (nombre) updateData.nombreCompleto = nombre;
+          if (col.RED_SOCIAL !== -1) { const val = cell(row, col.RED_SOCIAL); if (val) updateData.redSocial = val; }
+          if (col.EDAD !== -1) { const val = parseInt10(cell(row, col.EDAD)); if (val !== null) updateData.edad = val; }
+          if (col.OPERADOR !== -1) { const val = cell(row, col.OPERADOR); if (val) updateData.operador = val; }
+          if (col.ESTADO !== -1) { const val = cell(row, col.ESTADO); if (val) updateData.estado = normalizeEstado(val); }
+          if (col.MODALIDAD !== -1) { const val = cell(row, col.MODALIDAD); if (val) updateData.modalidad = val; }
+          if (col.ANIO_VEHICULO !== -1) { const val = parseInt10(cell(row, col.ANIO_VEHICULO)); if (val !== null) updateData.anioVehiculo = val; }
+          if (col.DISTRITO !== -1) { const val = cell(row, col.DISTRITO); if (val) updateData.distrito = val; }
+          if (col.FECHA_CITA !== -1) { const val = parseDate(cell(row, col.FECHA_CITA)); if (val) updateData.fechaCita = val; }
+          if (col.ASISTENCIA !== -1) { const val = cell(row, col.ASISTENCIA); if (val) updateData.asistencia = val; }
+          if (col.FECHA_AFILIACION !== -1) { const val = parseDate(cell(row, col.FECHA_AFILIACION)); if (val) updateData.fechaAfiliacion = val; }
+          if (col.MOVIL !== -1) { const val = cell(row, col.MOVIL); if (val) updateData.movil = val; }
+          if (col.OBSERVACIONES !== -1) { const val = cell(row, col.OBSERVACIONES); if (val) updateData.observaciones = val; }
+          if (col.FECHA_REGISTRO !== -1) { const val = parseDate(cell(row, col.FECHA_REGISTRO)); if (val) updateData.fechaRegistro = val; }
+          if (Object.keys(updateData).length > 0) {
+            updateBatch.push({ id: existing.id, data: updateData });
+            if (updateBatch.length >= 100) {
+              const batch = [...updateBatch];
+              updateBatch.length = 0;
+              await this.prisma.$transaction(async (tx) => {
+                await Promise.all(
+                  batch.map(({ id, data }) => tx.flotaProspecto.update({ where: { id }, data: data as any })),
+                );
+              }, { timeout: 30000 });
+              updated += batch.length;
+              update({ processedRows: i + 1, created, updated, skipped, errorCount: errors.length });
+            }
+          } else {
+            skipped++;
+          }
+        } else {
+          skipped++;
+          errors.push({ row: i + 1, message: `Omitida por duplicado (Celular: ${celularNorm || celular}).` });
+        }
+        continue;
+      }
+
+      const estadoRaw = col.ESTADO !== -1 ? cell(row, col.ESTADO) : '';
+      const estado = normalizeEstado(estadoRaw);
+
+      records.push({
+        fechaRegistro: col.FECHA_REGISTRO !== -1 ? parseDate(cell(row, col.FECHA_REGISTRO)) : null,
+        redSocial: col.RED_SOCIAL !== -1 ? cell(row, col.RED_SOCIAL) || null : null,
+        celular: celular || null,
+        nombreCompleto: nombre,
+        edad: col.EDAD !== -1 ? parseInt10(cell(row, col.EDAD)) : null,
+        operador: col.OPERADOR !== -1 ? cell(row, col.OPERADOR) || null : null,
+        estado,
+        modalidad: col.MODALIDAD !== -1 ? cell(row, col.MODALIDAD) || null : null,
+        anioVehiculo: col.ANIO_VEHICULO !== -1 ? parseInt10(cell(row, col.ANIO_VEHICULO)) : null,
+        distrito: col.DISTRITO !== -1 ? cell(row, col.DISTRITO) || null : null,
+        fechaCita: col.FECHA_CITA !== -1 ? parseDate(cell(row, col.FECHA_CITA)) : null,
+        asistencia: col.ASISTENCIA !== -1 ? cell(row, col.ASISTENCIA) || null : null,
+        fechaAfiliacion: col.FECHA_AFILIACION !== -1 ? parseDate(cell(row, col.FECHA_AFILIACION)) : null,
+        movil: col.MOVIL !== -1 ? cell(row, col.MOVIL) || null : null,
+        observaciones: col.OBSERVACIONES !== -1 ? cell(row, col.OBSERVACIONES) || null : null,
+        esDuplicado,
+      });
+
+      // Report progress every 100 rows
+      if ((i + 1) % 100 === 0) {
+        update({ processedRows: i + 1, created, updated, skipped, errorCount: errors.length });
+      }
+    }
+
+    update({ processedRows: dataRows.length, created, updated, skipped, errorCount: errors.length });
+
+    // Flush remaining updates
+    if (updateBatch.length > 0) {
+      const batch = [...updateBatch];
+      updateBatch.length = 0;
+      await this.prisma.$transaction(async (tx) => {
+        await Promise.all(
+          batch.map(({ id, data }) => tx.flotaProspecto.update({ where: { id }, data: data as any })),
+        );
+      }, { timeout: 30000 });
+      updated += batch.length;
+    }
+
+    // Insert new records in batches
+    const BATCH_SIZE = 500;
+    for (let i = 0; i < records.length; i += BATCH_SIZE) {
+      const batch = records.slice(i, i + BATCH_SIZE);
+      try {
+        await this.prisma.flotaProspecto.createMany({ data: batch as any });
+        created += batch.length;
+      } catch (err) {
+        const msg = `Error insertando lote ${Math.floor(i / BATCH_SIZE) + 1}: ${err instanceof Error ? err.message : String(err)}`;
+        this.logger.error(msg);
+        errors.push({ row: i + 1, message: msg });
+      }
+      update({ processedRows: dataRows.length, created, updated, skipped, errorCount: errors.length });
+    }
+
+    this.logger.log(`Importación completada: ${created} creados, ${updated} actualizados, ${skipped} omitidos, ${errors.length} errores`);
+
+    return { totalRows, created, skipped, errors };
+  }
+
   /** Contar prospectos por estado y duplicados */
-  async getCounts() {
+  async getCounts(scope?: CrmDataScope) {
     const now = new Date();
     const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const endOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0);
 
+    const baseWhere = {} as Record<string, unknown>;
+    if (scope && !scope.unrestricted) {
+      const operadorFilter = await this.getScopeOperadorFilter(scope.viewerUserId);
+      if (operadorFilter) {
+        baseWhere.OR = [operadorFilter, { operador: null }] as any;
+      }
+    }
+
     const [total, duplicados, estados, redes, operadores, nuevosEsteMes, nuevosMesPasado] = await Promise.all([
-      this.prisma.flotaProspecto.count(),
-      this.prisma.flotaProspecto.count({ where: { esDuplicado: true } }),
+      this.prisma.flotaProspecto.count({ where: baseWhere as any }),
+      this.prisma.flotaProspecto.count({ where: { esDuplicado: true, ...baseWhere } as any }),
       this.prisma.$queryRawUnsafe<Array<{ estado: string; count: bigint }>>(
         `SELECT estado, COUNT(*)::int as count FROM "FlotaProspecto" GROUP BY estado`,
       ),
@@ -668,7 +969,8 @@ if (params.mes) {
           createdAt: {
             gte: startOfCurrentMonth,
           },
-        },
+          ...baseWhere,
+        } as any,
       }),
       this.prisma.flotaProspecto.count({
         where: {
@@ -676,7 +978,8 @@ if (params.mes) {
             gte: startOfPrevMonth,
             lte: endOfPrevMonth,
           },
-        },
+          ...baseWhere,
+        } as any,
       }),
     ]);
 

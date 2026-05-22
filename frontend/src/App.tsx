@@ -42,6 +42,7 @@ const FlotaProspectoDetail = lazy(() => import('@/pages/flota/FlotaProspectoDeta
 const FlotaConductores = lazy(() => import('@/pages/flota/FlotaConductores'));
 const FlotaReportes = lazy(() => import('@/pages/flota/FlotaReportes'));
 const FlotaMensajes = lazy(() => import('@/pages/flota/FlotaMensajes'));
+const MarketingDashboard = lazy(() => import('@/pages/marketing/MarketingDashboard'));
 const AreaSelect = lazy(() => import('@/pages/AreaSelect'));
 
 function LoadingFallback() {
@@ -76,6 +77,8 @@ function MainRoutes() {
   useEffect(() => {
     if (location.pathname.startsWith('/flota')) {
       setArea('flota');
+    } else if (location.pathname.startsWith('/marketing')) {
+      setArea('marketing');
     } else if (location.pathname.startsWith('/admin')) {
       setArea('admin');
     } else {
@@ -146,6 +149,8 @@ function MainRoutes() {
         <Route path="/flota/conductores" element={<FlotaConductores />} />
         <Route path="/flota/reportes" element={<FlotaReportes />} />
         <Route path="/flota/mensajes" element={<FlotaMensajes />} />
+        <Route path="/marketing" element={<Navigate to="/marketing/dashboard" replace />} />
+        <Route path="/marketing/dashboard" element={<MarketingDashboard />} />
       </Route>
     </Route>
     <Route element={<ProtectedRoute><ModuleGate /></ProtectedRoute>}>

@@ -135,7 +135,9 @@ export type PermissionAction =
   | 'asignar'
   | 'exportar'
   /** Ver datos de todo el equipo en CRM (listados, reportes, exportaciones acotadas en backend si falta). */
-  | 'datos_completos';
+  | 'datos_completos'
+  /** Ver prospectos de todos los operadores en Flota. */
+  | 'ver_todos';
 
 /** RBAC: Permiso = módulo + acción (ej: contactos.ver) */
 export type PermissionKey = `${PermissionModule}.${PermissionAction}`;
@@ -172,7 +174,7 @@ export interface User {
   joinedAt: string;
   /** Última actividad (mock) */
   lastActivity?: string;
-  allowedAreas: ('comercial' | 'flota')[];
+  allowedAreas: ('comercial' | 'flota' | 'marketing')[];
 }
 
 export interface Contact {

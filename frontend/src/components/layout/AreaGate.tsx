@@ -21,9 +21,15 @@ export function AreaGate() {
     }
   }
 
-  // Rutas Comerciales (todas las que no son flota o admin)
-  // Nota: Consideramos que si no tiene "comercial" y trata de entrar a rutas base, debe ser bloqueado
-  const isCommercialPath = !path.startsWith('/flota') && !path.startsWith('/admin') && !path.startsWith('/area-select') && !path.startsWith('/login') && !path.startsWith('/profile');
+  // Rutas de Marketing
+  if (path.startsWith('/marketing')) {
+    if (!allowedAreas.includes('marketing')) {
+      return <Navigate to="/area-select" replace />;
+    }
+  }
+
+  // Rutas Comerciales (todas las que no son flota, marketing o admin)
+  const isCommercialPath = !path.startsWith('/flota') && !path.startsWith('/marketing') && !path.startsWith('/admin') && !path.startsWith('/area-select') && !path.startsWith('/login') && !path.startsWith('/profile');
   
   if (isCommercialPath) {
     if (!allowedAreas.includes('comercial')) {

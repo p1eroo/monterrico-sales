@@ -2,12 +2,13 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import type { BulkImportResultDto } from './import-export.service';
 
-export type ImportJobEntity = 'contacts' | 'companies' | 'opportunities';
+export type ImportJobEntity = 'contacts' | 'companies' | 'opportunities' | 'flota-prospecto';
 export type ImportJobStatus = 'queued' | 'running' | 'completed' | 'failed';
 
 export type ImportJobProgressInput = {
   processedRows: number;
   created: number;
+  updated?: number;
   skipped: number;
   errorCount: number;
 };
@@ -21,6 +22,7 @@ type ImportJobState = {
   totalRows: number;
   processedRows: number;
   created: number;
+  updated: number;
   skipped: number;
   errorCount: number;
   startedAt: string;
@@ -38,6 +40,7 @@ export type ImportJobDto = {
   totalRows: number;
   processedRows: number;
   created: number;
+  updated: number;
   skipped: number;
   errorCount: number;
   percent: number;
@@ -67,6 +70,7 @@ export class ImportExportJobsService {
       totalRows: job.totalRows,
       processedRows: job.processedRows,
       created: job.created,
+      updated: job.updated,
       skipped: job.skipped,
       errorCount: job.errorCount,
       percent,
@@ -106,6 +110,7 @@ export class ImportExportJobsService {
       totalRows: params.totalRows,
       processedRows: 0,
       created: 0,
+      updated: 0,
       skipped: 0,
       errorCount: 0,
       startedAt: now,
@@ -137,6 +142,7 @@ export class ImportExportJobsService {
         if (!current) return;
         current.processedRows = Math.min(current.totalRows, Math.max(0, progress.processedRows));
         current.created = Math.max(0, progress.created);
+        if (progress.updated !== undefined) current.updated = Math.max(0, progress.updated);
         current.skipped = Math.max(0, progress.skipped);
         current.errorCount = Math.max(0, progress.errorCount);
         current.updatedAt = new Date().toISOString();

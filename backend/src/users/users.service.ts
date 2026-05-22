@@ -65,6 +65,24 @@ export class UsersService {
     return rows.map(toApiUser);
   }
 
+  async findOperadores() {
+    const rows = await this.prisma.user.findMany({
+      where: {
+        status: 'activo',
+        role: { slug: 'operador' },
+      },
+      include: {
+        role: { select: { id: true, slug: true } },
+        accounts: { select: { provider: true, providerId: true } },
+      },
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      username: getUsernameFromAccounts(r.accounts),
+    }));
+  }
+
   /** Asesores / cartera comercial (vista Equipo). Sin administradores ni mandos. */
   async findAsesoresEquipo() {
     const rows = await this.prisma.user.findMany({
