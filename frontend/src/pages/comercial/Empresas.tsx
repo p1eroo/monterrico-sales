@@ -692,20 +692,36 @@ export default function EmpresasPage() {
   }
 
   async function handleSaveCompanyFromList(payload: CompanyEditSavePayload) {
-    if (!editEmpresa) return;
+    const empresaId = editEmpresa?.id;
+    if (!empresaId) return;
+    const prevRowIndex = summaryRows.findIndex((r) => r.id === empresaId);
+    const prevRow = prevRowIndex >= 0 ? summaryRows[prevRowIndex] : null;
+
+    if (editEmpresa?.isLocalOnly) {
+      updateCompany(empresaId, {
+        name: payload.name,
+        domain: payload.domain || undefined,
+        rubro: (payload.rubro || undefined) as CompanyRubro | undefined,
+        tipo: (payload.tipo || undefined) as CompanyTipo | undefined,
+      });
+      setEditEmpresa(null);
+      toast.success('Empresa actualizada correctamente');
+      return;
+    }
+
+    // Close modal and update optimistically
+    setEditEmpresa(null);
+    if (prevRow) {
+      setSummaryRows((prev) => {
+        const next = [...prev];
+        next[prevRowIndex] = { ...next[prevRowIndex], name: payload.name };
+        return next;
+      });
+    }
+
+    toast.loading('Guardando cambios…', { id: `save-${empresaId}` });
     try {
-      if (editEmpresa.isLocalOnly) {
-        updateCompany(editEmpresa.id, {
-          name: payload.name,
-          domain: payload.domain || undefined,
-          rubro: (payload.rubro || undefined) as CompanyRubro | undefined,
-          tipo: (payload.tipo || undefined) as CompanyTipo | undefined,
-        });
-        await loadSummary();
-        toast.success('Empresa actualizada correctamente');
-        return;
-      }
-      await api<ApiCompanyRecord>(`/companies/${editEmpresa.id}`, {
+      const result = await api<ApiCompanyRecord>(`/companies/${empresaId}`, {
         method: 'PATCH',
         body: JSON.stringify({
           name: payload.name,
@@ -715,11 +731,21 @@ export default function EmpresasPage() {
           tipo: payload.tipo || undefined,
         }),
       });
-      await loadSummary();
-      toast.success('Empresa actualizada correctamente');
+      // Reconcile with API response
+      setSummaryRows((prev) => prev.map((r) => (r.id === empresaId ? { ...r, ...result, clienteRecuperado: result.clienteRecuperado as CompanySummaryRow['clienteRecuperado'] } : r)));
+      await new Promise((r) => setTimeout(r, 600));
+      toast.success('Empresa actualizada', { id: `save-${empresaId}` });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'No se pudo guardar');
-      throw e;
+      // Revert on error
+      if (prevRow && prevRowIndex >= 0) {
+        setSummaryRows((prev) => {
+          const next = [...prev];
+          next[prevRowIndex] = prevRow;
+          return next;
+        });
+      }
+      await new Promise((r) => setTimeout(r, 600));
+      toast.error(e instanceof Error ? e.message : 'No se pudo guardar', { id: `save-${empresaId}` });
     }
   }
 

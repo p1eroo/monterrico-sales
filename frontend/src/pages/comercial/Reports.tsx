@@ -37,7 +37,7 @@ import { contactSourceLabels } from '@/data/mock';
 import {
   fetchAnalyticsSummary,
   fetchAnalyticsKPIs,
-  analyticsRangeFromPreset,
+  formatLocalISODate,
   type AnalyticsSummary,
   type AnalyticsKPIs,
 } from '@/lib/analyticsApi';
@@ -57,7 +57,7 @@ import { SalesByMonthBarChart } from '@/components/shared/SalesByMonthBarChart';
 import { chartHasAnyValue } from '@/lib/chartEmpty';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FunnelChart, type FunnelStage } from '@/components/crm/FunnelChart';
-import { buildCompaniesStageFunnelRows } from '@/lib/companyStageFunnelData';
+import { buildOpportunitiesStageFunnelStages } from '@/lib/companyStageFunnelData';
 
 const COLORS = ['#13944C', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];
 
@@ -96,7 +96,7 @@ function changeTone(s: string): 'positive' | 'negative' | 'neutral' {
   return 'neutral';
 }
 
-type DateRangePreset = '7d' | '1m' | '3m' | '1y' | 'custom';
+import { startOfMonth, endOfMonth, subMonths } from 'date-fns';
 
 /** Alineado con `analytics.service.ts` (semanas ISO lun–dom UTC). */
 function startOfUtcWeekMonday(d: Date): Date {
@@ -113,7 +113,7 @@ function isoWeekNumberUtc(d: Date): number {
   const dayNum = x.getUTCDay() || 7;
   x.setUTCDate(x.getUTCDate() + 4 - dayNum);
   const yearStart = new Date(Date.UTC(x.getUTCFullYear(), 0, 1));
-  return Math.ceil((x.getTime() - yearStart.getTime()) / 86400000 / 7);
+  return Math.ceil((x.getTime() - yearStart.getTime() + 86400000) / 86400000 / 7);
 }
 
 function isoWeekYearUtc(monday: Date): number {
@@ -145,8 +145,10 @@ export default function Reports() {
   const currentUser = useAppStore((s) => s.currentUser);
   const { hasPermission } = usePermissions();
   const bundle = useCrmConfigStore((s) => s.bundle);
-  const [dateRange, setDateRange] = useState<DateRangePreset>('3m');
-  const [customRange, setCustomRange] = useState<DateRange | undefined>();
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: startOfMonth(subMonths(new Date(), 1)),
+    to: endOfMonth(new Date()),
+  });
   const [advisorFilter, setAdvisorFilter] = useState('all');
   const { canSeeAllAdvisors, currentUserId } = useCrmTeamAdvisorFilter(
     advisorFilter,
@@ -190,7 +192,7 @@ export default function Reports() {
   /** Lunes UTC (ms) de la última semana visible en el gráfico de avance semanal. */
   const [weeklyProgressCapMs, setWeeklyProgressCapMs] = useState<number | null>(null);
   const [weeklyOppsProgressCapMs, setWeeklyOppsProgressCapMs] = useState<number | null>(null);
-  const [companiesFunnelModalOpen, setCompaniesFunnelModalOpen] = useState(false);
+  const [opportunitiesFunnelModalOpen, setOpportunitiesFunnelModalOpen] = useState(false);
   const [periodModalOpen, setPeriodModalOpen] = useState(false);
   const [sourceModalOpen, setSourceModalOpen] = useState(false);
   const [weeklyCompaniesModalOpen, setWeeklyCompaniesModalOpen] = useState(false);
@@ -198,7 +200,6 @@ export default function Reports() {
   const [conversionModalOpen, setConversionModalOpen] = useState(false);
   const [advisorPerfModalOpen, setAdvisorPerfModalOpen] = useState(false);
   const [salesByMonthModalOpen, setSalesByMonthModalOpen] = useState(false);
-  const [pipelineModalOpen, setPipelineModalOpen] = useState(false);
   const [activitiesModalOpen, setActivitiesModalOpen] = useState(false);
   const [tasksModalOpen, setTasksModalOpen] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
@@ -208,12 +209,13 @@ export default function Reports() {
     "flex max-h-[min(calc(100dvh-1.5rem),900px)] w-full max-w-[min(100vw-1rem,56rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(100vw-2rem,56rem)]";
 
   useEffect(() => {
-    if (dateRange === 'custom' && (!customRange?.from || !customRange?.to)) {
+    if (!dateRange?.from || !dateRange?.to) {
       setSummary(null);
       setKpis(null);
       return;
     }
-    const { from, to } = analyticsRangeFromPreset(dateRange, customRange);
+    const from = formatLocalISODate(dateRange.from);
+    const to = formatLocalISODate(dateRange.to);
     const advisorId = advisorFilter !== 'all' ? advisorFilter : undefined;
     const source = sourceFilter !== 'all' ? sourceFilter : undefined;
     let cancelled = false;
@@ -247,7 +249,7 @@ export default function Reports() {
     return () => {
       cancelled = true;
     };
-  }, [dateRange, customRange?.from, customRange?.to, advisorFilter, sourceFilter]);
+  }, [dateRange?.from?.getTime(), dateRange?.to?.getTime(), advisorFilter, sourceFilter]);
 
   const leadsBySourceData = useMemo(() => {
     if (!summary) return [];
@@ -265,19 +267,17 @@ export default function Reports() {
     }));
   }, [summary, bundle]);
 
-  const companiesStageFunnelRows = useMemo(
-    () => buildCompaniesStageFunnelRows(summary?.companiesByStage ?? [], bundle),
-    [summary?.companiesByStage, bundle],
-  );
+  const companiesBySourceData = useMemo(() => {
+    if (!summary) return [];
+    return summary.companiesBySource.map((x) => ({
+      ...x,
+      name: getSourceLabelFromCatalog(x.name, bundle, contactSourceLabels),
+    }));
+  }, [summary, bundle]);
 
-  const companiesFunnelStages: FunnelStage[] = useMemo(
-    () =>
-      companiesStageFunnelRows.map((r) => ({
-        label: r.name,
-        value: r.value,
-        color: r.fill,
-      })),
-    [companiesStageFunnelRows],
+  const opportunitiesFunnelStages: FunnelStage[] = useMemo(
+    () => buildOpportunitiesStageFunnelStages(summary?.opportunitiesByStage ?? [], bundle),
+    [summary?.opportunitiesByStage, bundle],
   );
 
   const companiesWeeklyProgressData = useMemo(
@@ -509,7 +509,7 @@ export default function Reports() {
         opportunitiesByStage: opportunitiesByStageData,
         activitiesByType: activitiesByTypeData,
         followUpsByMonth: followUpsData,
-        companiesByStage: companiesFunnelStages,
+        companiesByStage: opportunitiesFunnelStages,
         weeklyOppsData: weeklyOppsProgressChartData,
       };
 
@@ -642,17 +642,14 @@ export default function Reports() {
   const periodChartEmpty =
     !loading && (!summary || !chartHasAnyValue(leadsByPeriodData, ['leads', 'nuevos']));
   const sourceChartEmpty =
-    !loading && (!summary || !chartHasAnyValue(leadsBySourceData, ['value']));
+    !loading && (!summary || !chartHasAnyValue(companiesBySourceData, ['value']));
   const conversionChartEmpty =
     !loading && (!summary || !chartHasAnyValue(conversionData, ['tasa']));
   const advisorChartEmpty =
     !loading &&
-    (!summary || !chartHasAnyValue(performanceByAdvisor, ['empresas', 'ventas']));
+    (!summary || !chartHasAnyValue(performanceByAdvisor, ['oportunidades', 'contactos']));
   const salesChartEmpty =
     !loading && (!summary || !chartHasAnyValue(salesByMonthData, ['ventas', 'meta']));
-  const pipelineChartEmpty =
-    !loading &&
-    (!summary || !chartHasAnyValue(opportunitiesByStageData, ['value', 'count']));
   const activitiesChartEmpty =
     !loading &&
     (!summary ||
@@ -660,9 +657,9 @@ export default function Reports() {
   const followUpsChartEmpty =
     !loading &&
     (!summary || !chartHasAnyValue(followUpsData, ['completados', 'pendientes']));
-  const companiesFunnelEmpty =
+  const opportunitiesFunnelEmpty =
     !loading &&
-    (!summary || !chartHasAnyValue(summary.companiesByStage ?? [], ['value']));
+    (!summary || !chartHasAnyValue(summary.opportunitiesByStage ?? [], ['count']));
   const weeklyCompaniesChartEmpty =
     !loading &&
     (!summary ||
@@ -685,8 +682,8 @@ export default function Reports() {
         trendType: kpis ? changeTone(kpis.changes.contacts) : 'neutral' as const,
       },
       {
-        label: 'Tasa de Conversión',
-        value: kpis ? `${kpis.conversionPct}%` : '—',
+        label: 'Ganadas en el periodo',
+        value: kpis ? String(kpis.conversionPct) : '—',
         icon: Target,
         color: 'text-blue-600 dark:text-blue-400',
         bg: 'bg-blue-50 dark:bg-blue-900/30',
@@ -726,25 +723,11 @@ export default function Reports() {
       {/* Filters */}
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:flex-wrap">
         <div className="flex flex-wrap items-center gap-2">
-          <Select value={dateRange} onValueChange={(v) => setDateRange(v as DateRangePreset)}>
-            <SelectTrigger className="h-9 w-full rounded-md border-input bg-card shadow-none md:w-[200px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7d">Últimos 7 días</SelectItem>
-              <SelectItem value="1m">Último mes</SelectItem>
-              <SelectItem value="3m">Últimos 3 meses</SelectItem>
-              <SelectItem value="1y">Este año</SelectItem>
-              <SelectItem value="custom">Personalizado</SelectItem>
-            </SelectContent>
-          </Select>
-          {dateRange === 'custom' && (
-            <DateRangePicker
-              value={customRange}
-              onChange={setCustomRange}
-              placeholder="Seleccionar rango"
-            />
-          )}
+          <DateRangePicker 
+            value={dateRange} 
+            onChange={setDateRange} 
+            className="w-[260px]"
+          />
           {loading && (
             <span className="text-xs text-muted-foreground">Cargando…</span>
           )}
@@ -949,12 +932,12 @@ export default function Reports() {
           </CardContent>
         </Card>
 
-        {/* 2. Contactos por Fuente - PieChart Donut */}
+        {/* 2. Empresas por Fuente - PieChart Donut */}
         <Card id="chart-sources">
           <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2">
             <div className="min-w-0 space-y-1">
-              <CardTitle className="text-base">Contactos por Fuente</CardTitle>
-              <CardDescription>Distribución de contactos según canal de origen</CardDescription>
+              <CardTitle className="text-base">Empresas por Fuente</CardTitle>
+              <CardDescription>Distribución de empresas según canal de origen</CardDescription>
             </div>
             <Button
               type="button"
@@ -963,7 +946,7 @@ export default function Reports() {
               className="h-8 w-8 shrink-0 text-muted-foreground"
               onClick={() => setSourceModalOpen(true)}
               disabled={loading || sourceChartEmpty}
-              aria-label="Ampliar contactos por fuente"
+              aria-label="Ampliar empresas por fuente"
             >
               <Maximize2 className="h-4 w-4" />
             </Button>
@@ -973,14 +956,14 @@ export default function Reports() {
               loading={loading}
               isEmpty={sourceChartEmpty}
               variant="donut"
-              emptyMessage="Sin contactos por fuente en este periodo."
+              emptyMessage="Sin empresas por fuente en este periodo."
               className={chartH}
             >
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     isAnimationActive={!exportingPdf}
-                    data={leadsBySourceData}
+                    data={companiesBySourceData}
                     cx="50%"
                     cy="50%"
                     innerRadius={65}
@@ -992,7 +975,7 @@ export default function Reports() {
                     labelLine={{ strokeWidth: 1 }}
                     style={{ fontSize: '11px' }}
                   >
-                    {leadsBySourceData.map((_entry, index) => (
+                    {companiesBySourceData.map((_entry, index) => (
                       <Cell key={`cell-source-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
@@ -1013,11 +996,11 @@ export default function Reports() {
           </CardContent>
         </Card>
 
-        {/* Embudo empresas por etapa (izquierda); derecha reservada */}
+        {/* Oportunidades por etapa */}
         <Card id="chart-funnel">
           <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2 max-md:pb-1.5">
             <div className="min-w-0 space-y-1">
-              <CardTitle className="text-base">Empresas por etapa</CardTitle>
+              <CardTitle className="text-base">Oportunidades por etapa</CardTitle>
               <CardDescription>
                 Embudo según etapa comercial
               </CardDescription>
@@ -1027,9 +1010,9 @@ export default function Reports() {
               variant="ghost"
               size="icon"
               className="h-8 w-8 shrink-0 text-muted-foreground"
-              onClick={() => setCompaniesFunnelModalOpen(true)}
-              disabled={loading || companiesFunnelEmpty}
-              aria-label="Ampliar embudo de empresas por etapa"
+              onClick={() => setOpportunitiesFunnelModalOpen(true)}
+              disabled={loading || opportunitiesFunnelEmpty}
+              aria-label="Ampliar oportunidades por etapa"
             >
               <Maximize2 className="h-4 w-4" />
             </Button>
@@ -1037,27 +1020,27 @@ export default function Reports() {
           <CardContent className="max-md:px-3 max-md:pb-2 max-md:pt-0">
             <ChartCardBody
               loading={loading}
-              isEmpty={companiesFunnelEmpty}
+              isEmpty={opportunitiesFunnelEmpty}
               variant="bar"
-              emptyMessage="Sin empresas en este periodo con las etapas seleccionadas."
+              emptyMessage="Sin oportunidades en este periodo con las etapas seleccionadas."
               className="min-h-[min(52vh,420px)] py-3 max-md:min-h-0 max-md:py-1"
             >
-              <FunnelChart stages={companiesFunnelStages} height={360} variant="rect" />
+              <FunnelChart stages={opportunitiesFunnelStages} height={360} variant="rect" singularLabel="oportunidad" />
             </ChartCardBody>
           </CardContent>
         </Card>
 
-        <Dialog open={companiesFunnelModalOpen} onOpenChange={setCompaniesFunnelModalOpen}>
+        <Dialog open={opportunitiesFunnelModalOpen} onOpenChange={setOpportunitiesFunnelModalOpen}>
           <DialogContent
             className={dialogContentClass}
             showCloseButton
           >
             <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
-              <DialogTitle className="pr-8 text-base">Empresas por etapa</DialogTitle>
+              <DialogTitle className="pr-8 text-base">Oportunidades por etapa</DialogTitle>
             </DialogHeader>
             <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 sm:px-6 sm:pb-6">
-              {!companiesFunnelEmpty ? (
-                <FunnelChart stages={companiesFunnelStages} height={500} showLegend variant="rect" />
+              {!opportunitiesFunnelEmpty ? (
+                <FunnelChart stages={opportunitiesFunnelStages} height={500} showLegend variant="rect" singularLabel="oportunidad" />
               ) : null}
             </div>
           </DialogContent>
@@ -1125,7 +1108,7 @@ export default function Reports() {
         <Dialog open={sourceModalOpen} onOpenChange={setSourceModalOpen}>
           <DialogContent className={dialogContentClass} showCloseButton>
             <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
-              <DialogTitle className="pr-8 text-base">Contactos por Fuente</DialogTitle>
+              <DialogTitle className="pr-8 text-base">Empresas por Fuente</DialogTitle>
             </DialogHeader>
             <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 sm:px-6 sm:pb-6">
               {!sourceChartEmpty ? (
@@ -1134,7 +1117,7 @@ export default function Reports() {
                     <PieChart>
                       <Pie
                         isAnimationActive={!exportingPdf}
-                        data={leadsBySourceData}
+                        data={companiesBySourceData}
                         cx="50%"
                         cy="50%"
                         innerRadius={90}
@@ -1146,7 +1129,7 @@ export default function Reports() {
                         labelLine={{ strokeWidth: 1 }}
                         style={{ fontSize: '11px' }}
                       >
-                        {leadsBySourceData.map((_entry, index) => (
+                        {companiesBySourceData.map((_entry, index) => (
                           <Cell key={`cell-source-modal-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
@@ -1250,7 +1233,7 @@ export default function Reports() {
         <Dialog open={conversionModalOpen} onOpenChange={setConversionModalOpen}>
           <DialogContent className={dialogContentClass} showCloseButton>
             <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
-              <DialogTitle className="pr-8 text-base">Tasa de Conversión</DialogTitle>
+              <DialogTitle className="pr-8 text-base">Ganadas por Mes</DialogTitle>
             </DialogHeader>
             <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 sm:px-6 sm:pb-6">
               {!conversionChartEmpty ? (
@@ -1263,7 +1246,28 @@ export default function Reports() {
                         tick={{ fontSize: 12 }}
                         tickLine={false}
                         axisLine={false}
-                        tickFormatter={(v) => `${v}%`}
+                        allowDecimals={false}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          borderRadius: '8px',
+                          border: `1px solid ${chartTheme.tooltipBorder}`,
+                          backgroundColor: chartTheme.tooltipBg,
+                          color: chartTheme.tooltipText,
+                          fontSize: '13px',
+                        }}
+                        itemStyle={{ color: chartTheme.tooltipText }}
+                        labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
+                        formatter={(value?: number) => [value ?? 0, 'Convertidas']}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="tasa"
+                        name="Convertidas a Activo"
+                        stroke="#8b5cf6"
+                        strokeWidth={2}
+                        dot={{ r: 4, fill: '#8b5cf6', strokeWidth: 2, stroke: '#fff' }}
+                        activeDot={{ r: 6, strokeWidth: 0 }}
                       />
                       <Tooltip
                         contentStyle={{
@@ -1327,8 +1331,8 @@ export default function Reports() {
                         labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
                       />
                       <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
-                      <Bar isAnimationActive={!exportingPdf} dataKey="empresas" name="Empresas" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={16} />
-                      <Bar isAnimationActive={!exportingPdf} dataKey="ventas" name="Ventas" fill="#13944C" radius={[0, 4, 4, 0]} barSize={16} />
+<Bar isAnimationActive={!exportingPdf} dataKey="oportunidades" name="Oportunidades" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={16} />
+<Bar isAnimationActive={!exportingPdf} dataKey="contactos" name="Contactos" fill="#13944C" radius={[0, 4, 4, 0]} barSize={16} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -1352,51 +1356,7 @@ export default function Reports() {
           </DialogContent>
         </Dialog>
 
-        <Dialog open={pipelineModalOpen} onOpenChange={setPipelineModalOpen}>
-          <DialogContent className={dialogContentClass} showCloseButton>
-            <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
-              <DialogTitle className="pr-8 text-base">Pipeline por Etapa</DialogTitle>
-            </DialogHeader>
-            <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 sm:px-6 sm:pb-6">
-              {!pipelineChartEmpty ? (
-                <div className="h-[520px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={opportunitiesByStageData}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartTheme.gridStroke} />
-                      <XAxis dataKey="name" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                      <YAxis
-                        tick={{ fontSize: 12 }}
-                        tickLine={false}
-                        axisLine={false}
-                        tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          borderRadius: '8px',
-                          border: `1px solid ${chartTheme.tooltipBorder}`,
-                          backgroundColor: chartTheme.tooltipBg,
-                          color: chartTheme.tooltipText,
-                          fontSize: '13px',
-                        }}
-                        itemStyle={{ color: chartTheme.tooltipText }}
-                        labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
-                        formatter={(value?: number, name?: string) => [
-                          name === 'value' ? formatCurrency(value ?? 0) : (value ?? 0),
-                          name === 'value' ? 'Valor' : 'Oportunidades',
-                        ]}
-                      />
-                      <Bar isAnimationActive={!exportingPdf} dataKey="value" name="Valor" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={42}>
-                        {opportunitiesByStageData.map((_entry, index) => (
-                          <Cell key={`cell-pipeline-modal-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              ) : null}
-            </div>
-          </DialogContent>
-        </Dialog>
+
 
         <Dialog open={activitiesModalOpen} onOpenChange={setActivitiesModalOpen}>
           <DialogContent className={dialogContentClass} showCloseButton>
@@ -1827,12 +1787,12 @@ export default function Reports() {
           </CardContent>
         </Card>
 
-        {/* 3. Tasa de conversión - LineChart */}
+        {/* 3. Conversión a Activo - LineChart */}
         <Card id="chart-conversion">
           <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2">
             <div className="min-w-0 space-y-1">
-              <CardTitle className="text-base">Tasa de Conversión</CardTitle>
-              <CardDescription>Porcentaje de conversión mensual de contactos a clientes</CardDescription>
+              <CardTitle className="text-base">Ganadas por Mes</CardTitle>
+              <CardDescription>Oportunidades con estado ganada por mes</CardDescription>
             </div>
             <Button
               type="button"
@@ -1841,7 +1801,7 @@ export default function Reports() {
               className="h-8 w-8 shrink-0 text-muted-foreground"
               onClick={() => setConversionModalOpen(true)}
               disabled={loading || conversionChartEmpty}
-              aria-label="Ampliar tasa de conversión"
+              aria-label="Ampliar conversión a activo"
             >
               <Maximize2 className="h-4 w-4" />
             </Button>
@@ -1851,7 +1811,7 @@ export default function Reports() {
               loading={loading}
               isEmpty={conversionChartEmpty}
               variant="line"
-              emptyMessage="Sin datos de conversión en este periodo."
+              emptyMessage="Sin datos en este periodo."
               className={chartH}
             >
               <ResponsiveContainer width="100%" height="100%">
@@ -1862,7 +1822,7 @@ export default function Reports() {
                     tick={{ fontSize: 12 }}
                     tickLine={false}
                     axisLine={false}
-                    tickFormatter={(v) => `${v}%`}
+                    allowDecimals={false}
                   />
                   <Tooltip
                     contentStyle={{
@@ -1874,12 +1834,12 @@ export default function Reports() {
                     }}
                     itemStyle={{ color: chartTheme.tooltipText }}
                     labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
-                    formatter={(value?: number) => [`${(value ?? 0)}%`, 'Conversión']}
+                    formatter={(value?: number) => [value ?? 0, 'Convertidas']}
                   />
                   <Line
                     type="monotone"
                     dataKey="tasa"
-                    name="Tasa de Conversión"
+                    name="Convertidas a Activo"
                     stroke="#8b5cf6"
                     strokeWidth={2.5}
                     dot={{ r: 5, fill: '#8b5cf6', strokeWidth: 2, stroke: '#fff' }}
@@ -1941,8 +1901,8 @@ export default function Reports() {
                     labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
                   />
                   <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
-                  <Bar dataKey="empresas" name="Empresas" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={14} />
-                  <Bar dataKey="ventas" name="Ventas" fill="#13944C" radius={[0, 4, 4, 0]} barSize={14} />
+                  <Bar dataKey="oportunidades" name="Oportunidades" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={14} />
+                  <Bar dataKey="contactos" name="Contactos" fill="#13944C" radius={[0, 4, 4, 0]} barSize={14} />
                 </BarChart>
               </ResponsiveContainer>
             </ChartCardBody>
@@ -1981,65 +1941,80 @@ export default function Reports() {
           </CardContent>
         </Card>
 
-        {/* 6. Pipeline por Etapa - BarChart Horizontal */}
+        {/* 6. Interacción con Oportunidades */}
         <Card id="chart-pipeline">
           <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2">
             <div className="min-w-0 space-y-1">
-              <CardTitle className="text-base">Pipeline por Etapa</CardTitle>
-              <CardDescription>Valor total de oportunidades por etapa del embudo</CardDescription>
+              <CardTitle className="text-base">Interacción con Contactos</CardTitle>
+              <CardDescription>Contactos creados en el periodo con y sin interacción</CardDescription>
             </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 shrink-0 text-muted-foreground"
-              onClick={() => setPipelineModalOpen(true)}
-              disabled={loading || pipelineChartEmpty}
-              aria-label="Ampliar pipeline por etapa"
-            >
-              <Maximize2 className="h-4 w-4" />
-            </Button>
           </CardHeader>
           <CardContent>
             <ChartCardBody
               loading={loading}
-              isEmpty={pipelineChartEmpty}
-              variant="bar"
-              emptyMessage="Sin oportunidades por etapa en este periodo."
+              isEmpty={!summary || (summary.opportunitiesInteraction.withInteraction === 0 && summary.opportunitiesInteraction.withoutInteraction === 0)}
+              variant="donut"
+              emptyMessage="Sin datos de interacción en este periodo."
               className={chartH}
             >
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={opportunitiesByStageData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartTheme.gridStroke} />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                  <YAxis
-                    tick={{ fontSize: 12 }}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      borderRadius: '8px',
-                      border: `1px solid ${chartTheme.tooltipBorder}`,
-                      backgroundColor: chartTheme.tooltipBg,
-                      color: chartTheme.tooltipText,
-                      fontSize: '13px',
-                    }}
-                    itemStyle={{ color: chartTheme.tooltipText }}
-                    labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
-                    formatter={(value?: number, name?: string) => [
-                      name === 'value' ? formatCurrency(value ?? 0) : (value ?? 0),
-                      name === 'value' ? 'Valor' : 'Oportunidades',
-                    ]}
-                  />
-                  <Bar dataKey="value" name="Valor" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={36}>
-                    {opportunitiesByStageData.map((_entry, index) => (
-                      <Cell key={`cell-pipeline-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+              {summary && (() => {
+                const data = [
+                  { name: 'Con interacción', value: summary.opportunitiesInteraction.withInteraction },
+                  { name: 'Sin interacción', value: summary.opportunitiesInteraction.withoutInteraction },
+                ];
+                const total = data[0].value + data[1].value;
+                return (
+                  <div className="flex items-center gap-4 h-full">
+                    <div className="h-full flex-1 min-w-0">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={data}
+                            cx="50%" cy="50%"
+                            innerRadius={65} outerRadius={100}
+                            dataKey="value" nameKey="name"
+                            stroke="none" paddingAngle={3}
+                            isAnimationActive={!exportingPdf}
+                          >
+                            <Cell fill="#13944C" />
+                            <Cell fill="#ef4444" />
+                          </Pie>
+                          <Tooltip
+                            contentStyle={{
+                              borderRadius: '8px',
+                              border: `1px solid ${chartTheme.tooltipBorder}`,
+                              backgroundColor: chartTheme.tooltipBg,
+                              color: chartTheme.tooltipText,
+                              fontSize: '13px',
+                            }}
+                            itemStyle={{ color: chartTheme.tooltipText }}
+                            labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
+                            formatter={(value?: number) => [value ?? 0, 'Contactos']}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="space-y-4 shrink-0">
+                      <div className="flex items-center gap-3">
+                        <div className="size-3 rounded-full bg-emerald-500 shrink-0" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Con interacción</p>
+                          <p className="text-lg font-bold">{data[0].value}</p>
+                          <p className="text-xs text-muted-foreground">{total > 0 ? Math.round(data[0].value / total * 100) : 0}%</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="size-3 rounded-full bg-red-500 shrink-0" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Sin interacción</p>
+                          <p className="text-lg font-bold">{data[1].value}</p>
+                          <p className="text-xs text-muted-foreground">{total > 0 ? Math.round(data[1].value / total * 100) : 0}%</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </ChartCardBody>
           </CardContent>
         </Card>

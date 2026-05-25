@@ -14,6 +14,7 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import {
+  Building2,
   Calendar,
   CheckSquare,
   CircleDot,
@@ -23,7 +24,9 @@ import {
   MoreHorizontal,
   Phone,
   Plus,
+  Target,
   User,
+  UserCircle,
   Users,
 } from 'lucide-react';
 import type { Activity, ActivityStatus, ActivityType, ContactPriority, TaskKind } from '@/types';
@@ -103,17 +106,6 @@ const taskKindAriaLabel: Record<TaskKind, string> = {
   whatsapp: 'WhatsApp',
 };
 
-/** Solo empresa u oportunidad bajo el título (evita “contacto · contacto”). */
-function kanbanCompanySubtitle(a: Activity): string | undefined {
-  const raw = a.contactName?.trim();
-  if (raw?.includes(' - ')) {
-    const rest = raw.split(' - ').slice(1).join(' - ').trim();
-    return rest || undefined;
-  }
-  if (a.companyId && !a.contactId && raw) return raw;
-  if (a.opportunityTitle?.trim()) return a.opportunityTitle.trim();
-  return undefined;
-}
 
 function priorityFlagClass(p: ContactPriority): string {
   if (p === 'alta') return 'text-red-600 dark:text-red-400';
@@ -172,7 +164,10 @@ const TaskKanbanCard = memo(function TaskKanbanCard({
   const circle = activityTypeIconCircleClass(kind);
   const overdue = isOverdue(task.dueDate, task.status);
   const priority: ContactPriority = task.priority ?? 'media';
-  const companySubtitle = kanbanCompanySubtitle(task);
+
+  const hasContact = task.contactId && task.contactName?.trim();
+  const hasCompany = task.companyId && task.companyName?.trim();
+  const hasOpportunity = task.opportunityId && task.opportunityTitle?.trim();
 
   return (
     <div
@@ -182,18 +177,18 @@ const TaskKanbanCard = memo(function TaskKanbanCard({
         overlay && 'pointer-events-none rotate-1 cursor-grabbing shadow-xl ring-2 ring-primary/20',
       )}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-center justify-between gap-2">
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
             onCardClick();
           }}
-          className="flex min-w-0 flex-1 items-start gap-2.5 text-left"
+          className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
         >
           <div
             className={cn(
-              'mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full',
+              'flex size-7 shrink-0 items-center justify-center rounded-full',
               ACTIVITY_ICON_INHERIT,
               circle ?? 'bg-muted text-muted-foreground [&_svg]:size-3.5',
             )}
@@ -206,11 +201,6 @@ const TaskKanbanCard = memo(function TaskKanbanCard({
             <p className="truncate text-sm font-semibold leading-snug text-foreground" title={task.title}>
               {task.title}
             </p>
-            {companySubtitle ? (
-              <p className="mt-0.5 truncate text-xs text-muted-foreground" title={companySubtitle}>
-                {companySubtitle}
-              </p>
-            ) : null}
           </div>
         </button>
         {!overlay && (
@@ -257,6 +247,24 @@ const TaskKanbanCard = memo(function TaskKanbanCard({
             {priorityLabels[priority]}
           </span>
         </div>
+        {hasContact && (
+          <div className="flex items-center gap-2">
+            <UserCircle className="size-3.5 shrink-0 opacity-50" aria-hidden />
+            <span className="truncate">{task.contactName?.trim()}{task.contactPhone ? ` · ${task.contactPhone}` : ''}</span>
+          </div>
+        )}
+        {hasCompany && (
+          <div className="flex items-center gap-2">
+            <Building2 className="size-3.5 shrink-0 opacity-50" aria-hidden />
+            <span className="truncate">{task.companyName?.trim()}</span>
+          </div>
+        )}
+        {hasOpportunity && (
+          <div className="flex items-center gap-2">
+            <Target className="size-3.5 shrink-0 opacity-50" aria-hidden />
+            <span className="truncate">{task.opportunityTitle?.trim()}</span>
+          </div>
+        )}
       </div>
     </div>
   );

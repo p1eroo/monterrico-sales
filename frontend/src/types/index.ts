@@ -217,6 +217,7 @@ export interface Activity {
   description: string;
   contactId?: string;
   contactName?: string;
+  contactPhone?: string;
   companyId?: string;
   companyName?: string;
   opportunityId?: string;

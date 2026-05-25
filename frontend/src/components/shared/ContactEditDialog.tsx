@@ -71,22 +71,18 @@ export function ContactEditDialog({
     }
   }, [open, contact, activeAdvisors]);
 
-  async function handleSave() {
+  function handleSave() {
     if (!contact || !editForm.name.trim()) return;
     setSaving(true);
-    try {
-      await onSave({
-        name: editForm.name.trim(),
-        cargo: editForm.cargo.trim(),
-        telefono: editForm.telefono.trim(),
-        correo: editForm.correo.trim(),
-        fuente: editForm.fuente,
-        ...(canEditAssignee ? { assignedTo: editForm.assignedTo } : {}),
-      });
-      onOpenChange(false);
-    } finally {
-      setSaving(false);
-    }
+    onOpenChange(false);
+    void Promise.resolve(onSave({
+      name: editForm.name.trim(),
+      cargo: editForm.cargo.trim(),
+      telefono: editForm.telefono.trim(),
+      correo: editForm.correo.trim(),
+      fuente: editForm.fuente,
+      ...(canEditAssignee ? { assignedTo: editForm.assignedTo } : {}),
+    })).finally(() => setSaving(false));
   }
 
   return (
@@ -96,6 +92,10 @@ export function ContactEditDialog({
           <DialogTitle>Editar Contacto</DialogTitle>
           <DialogDescription>Modifica los datos del contacto.</DialogDescription>
         </DialogHeader>
+        {saving ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">Guardando…</p>
+        ) : (
+        <>
         <div className="grid gap-4 py-2">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -168,6 +168,8 @@ export function ContactEditDialog({
             {saving ? 'Guardando…' : 'Guardar cambios'}
           </Button>
         </DialogFooter>
+        </>
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -21,7 +21,7 @@ export type ReportsExportInput = {
   contactsByPeriod: { name: string; leads: number; nuevos: number }[];
   contactsBySource: { name: string; value: number }[];
   conversionByMonth: { name: string; tasa: number }[];
-  performanceByAdvisor: { name: string; empresas: number; ventas: number }[];
+  performanceByAdvisor: { name: string; oportunidades: number; contactos: number }[];
   salesByMonth: {
     name: string;
     ventas: number;
@@ -151,11 +151,11 @@ export function downloadReportsCsv(data: ReportsExportInput, baseName: string) {
       },
       {
         title: 'Rendimiento por asesor',
-        headers: ['Asesor', 'Empresas', 'Ventas'],
+        headers: ['Asesor', 'Oportunidades', 'Contactos'],
         rows: data.performanceByAdvisor.map((x) => [
           x.name,
-          x.empresas,
-          x.ventas,
+          x.oportunidades,
+          x.contactos,
         ]),
       },
       {
@@ -264,8 +264,8 @@ export function downloadReportsXlsx(data: ReportsExportInput, baseName: string) 
     'Asesores',
     data.performanceByAdvisor.map((x) => ({
       Asesor: x.name,
-      Empresas: x.empresas,
-      Ventas: x.ventas,
+      Oportunidades: x.oportunidades,
+      Contactos: x.contactos,
     })),
   );
   addSheet(
@@ -373,11 +373,11 @@ export function downloadReportsPdf(data: ReportsExportInput, baseName: string) {
       },
       {
         title: 'Rendimiento por asesor',
-        head: [['Asesor', 'Empresas', 'Ventas']],
+        head: [['Asesor', 'Oportunidades', 'Contactos']],
         body: data.performanceByAdvisor.map((x) => [
           x.name,
-          x.empresas,
-          x.ventas,
+          x.oportunidades,
+          x.contactos,
         ]),
         chartKey: 'performance',
       },

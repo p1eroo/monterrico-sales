@@ -6,7 +6,7 @@ import {
   CheckSquare, Mail, Clock, MessageCircle,
   CalendarDays, CalendarCheck, AlertTriangle,
   RefreshCw, Check, Pencil, Trash2, Building2,
-  List, Grid3X3,
+  List, Grid3X3, Target, UserCircle,
 } from 'lucide-react';
 import type {
   Activity, ActivityType, ActivityStatus, TaskKind, ContactPriority, TaskAssociation,
@@ -103,10 +103,10 @@ const taskTypeLabels: Record<TaskKind, string> = {
 };
 
 const activityStatusConfig: Record<ActivityStatus, { label: string; className: string }> = {
-  pendiente: { label: 'Pendiente', className: 'bg-amber-100 text-amber-700 border-amber-200' },
-  completada: { label: 'Completada', className: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-  en_progreso: { label: 'En progreso', className: 'bg-blue-100 text-blue-700 border-blue-200' },
-  vencida: { label: 'Vencida', className: 'bg-red-100 text-red-700 border-red-200' },
+  pendiente: { label: 'Pendiente', className: 'text-amber-600' },
+  completada: { label: 'Completada', className: 'text-emerald-600' },
+  en_progreso: { label: 'En progreso', className: 'text-blue-600' },
+  vencida: { label: 'Vencida', className: 'text-red-600' },
 };
 
 const statusTabs = [
@@ -120,9 +120,9 @@ const statusTabs = [
 function TaskStatusBadge({ status }: { status: ActivityStatus }) {
   const config = activityStatusConfig[status];
   return (
-    <Badge variant="outline" className={cn('text-[11px] font-medium', config.className)}>
+    <span className={cn('text-xs font-medium', config.className)}>
       {config.label}
-    </Badge>
+    </span>
   );
 }
 
@@ -178,6 +178,8 @@ export default function TareasPage() {
   );
   const [activeTab, setActiveTab] = useState('todas');
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('kanban');
+  const [listPage, setListPage] = useState(1);
+  const TASKS_PER_PAGE = 20;
   const [newTaskOpen, setNewTaskOpen] = useState(false);
   const [newTaskColumnStatus, setNewTaskColumnStatus] = useState<ActivityStatus | undefined>();
   const [calendarDate, setCalendarDate] = useState<Date | undefined>();
@@ -271,6 +273,12 @@ export default function TareasPage() {
       );
     });
   }, [allTasksForDisplay, search, activeTab, statusFilter, priorityFilter, advisorFilter, calendarDate]);
+
+  const paginatedTasks = useMemo(() => {
+    const start = (listPage - 1) * TASKS_PER_PAGE;
+    return filteredTasks.slice(start, start + TASKS_PER_PAGE);
+  }, [filteredTasks, listPage]);
+  const totalPages = Math.max(1, Math.ceil(filteredTasks.length / TASKS_PER_PAGE));
 
   /** Misma lógica de filtros que la lista, sin pestaña de estado (el tablero agrupa por columna). */
   const tasksForKanban = useMemo(() => {
@@ -859,6 +867,7 @@ export default function TareasPage() {
                   }}
                 />
               ) : (
+                <>
                 <div className="min-w-0 overflow-x-auto rounded-xl bg-background">
                   <Table
                     className="table-fixed w-full min-w-[1040px]"
@@ -867,10 +876,12 @@ export default function TareasPage() {
                     <colgroup>
                       <col className="w-10" />
                       <col className="w-11" />
-                      <col className="min-w-[12rem] w-[22%]" />
-                      <col className="min-w-[11rem] w-[18%]" />
+                      <col className="min-w-[10rem] w-[18%]" />
+                      <col className="min-w-[11rem] w-[17%]" />
+                      <col className="min-w-[11rem] w-[17%]" />
+                      <col className="min-w-[11rem] w-[17%]" />
                       <col className="w-[104px]" />
-                      <col className="w-[9.25rem]" />
+                      <col className="w-20" />
                       <col className="w-[11.25rem]" />
                       <col className="w-[124px]" />
                       <col className="w-10" />
@@ -884,13 +895,19 @@ export default function TareasPage() {
                         <TableHead className="min-w-[12rem] whitespace-normal text-muted-foreground">
                           <span className="block hyphens-auto pr-1 leading-tight sm:whitespace-nowrap">Título</span>
                         </TableHead>
-                        <TableHead className="hidden min-w-[11rem] whitespace-normal sm:table-cell text-muted-foreground">
+                        <TableHead className="hidden min-w-[10rem] whitespace-normal sm:table-cell text-muted-foreground">
+                          <span className="block pr-1 leading-tight sm:whitespace-nowrap">Contacto</span>
+                        </TableHead>
+                        <TableHead className="hidden min-w-[10rem] whitespace-normal sm:table-cell text-muted-foreground">
                           <span className="block pr-1 leading-tight sm:whitespace-nowrap">Empresa</span>
+                        </TableHead>
+                        <TableHead className="hidden min-w-[10rem] whitespace-normal sm:table-cell text-muted-foreground">
+                          <span className="block pr-1 leading-tight sm:whitespace-nowrap">Oportunidad</span>
                         </TableHead>
                         <TableHead className="hidden w-[104px] sm:table-cell px-2 text-muted-foreground">
                           Prioridad
                         </TableHead>
-                        <TableHead className="hidden w-[9.25rem] md:table-cell px-2 text-muted-foreground">
+                        <TableHead className="hidden w-20 md:table-cell px-2 text-muted-foreground">
                           Asignado
                         </TableHead>
                         <TableHead className="hidden w-[11.25rem] lg:table-cell px-2 text-muted-foreground">
@@ -901,7 +918,7 @@ export default function TareasPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredTasks.map((task) => {
+                      {paginatedTasks.map((task) => {
                         const taskType: TaskKind =
                           task.taskKind && TASK_KINDS.includes(task.taskKind)
                             ? task.taskKind
@@ -910,7 +927,6 @@ export default function TareasPage() {
                         const circle = activityTypeIconCircleClass(taskType);
                         const overdue = isOverdue(task.dueDate, task.status);
                         const taskPriority: ContactPriority = task.priority ?? 'media';
-                        const companyLabel = activityCompanyDisplayName(task);
 
                         return (
                           <TableRow
@@ -962,12 +978,28 @@ export default function TareasPage() {
                                 {task.title}
                               </span>
                             </TableCell>
-                            <TableCell className="hidden min-w-[11rem] align-middle sm:table-cell text-muted-foreground">
-                              {companyLabel ? (
-                                <span className="flex items-center gap-1.5" title={companyLabel}>
-                                  <Building2 className="size-3.5 shrink-0 text-muted-foreground/70" aria-hidden />
-                                  <span className="truncate text-sm">{companyLabel}</span>
-                                </span>
+                            <TableCell className="hidden min-w-[10rem] align-middle sm:table-cell">
+                              {task.contactName ? (
+                                <div className="truncate" title={`${task.contactName}${task.contactPhone ? ` - ${task.contactPhone}` : ''}`}>
+                                  <span className="text-sm font-medium text-foreground">{task.contactName}</span>
+                                  {task.contactPhone && (
+                                    <span className="block truncate text-xs text-muted-foreground">{task.contactPhone}</span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-sm text-muted-foreground/50">—</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="hidden min-w-[10rem] align-middle sm:table-cell">
+                              {task.companyName ? (
+                                <span className="block truncate text-sm font-medium text-foreground" title={task.companyName}>{task.companyName}</span>
+                              ) : (
+                                <span className="text-sm text-muted-foreground/50">—</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="hidden min-w-[10rem] align-middle sm:table-cell">
+                              {task.opportunityTitle ? (
+                                <span className="block truncate text-sm font-medium text-foreground" title={task.opportunityTitle}>{task.opportunityTitle}</span>
                               ) : (
                                 <span className="text-sm text-muted-foreground/50">—</span>
                               )}
@@ -980,9 +1012,9 @@ export default function TareasPage() {
                                 {priorityLabels[taskPriority]}
                               </Badge>
                             </TableCell>
-                            <TableCell className="hidden min-w-0 max-w-[9.25rem] align-middle px-2 md:table-cell text-muted-foreground">
+                            <TableCell className="hidden min-w-0 max-w-20 align-middle px-2 md:table-cell text-muted-foreground">
                               <span className="block truncate text-sm" title={task.assignedToName}>
-                                {task.assignedToName}
+                                {task.assignedToName?.split(' ')[0]}
                               </span>
                             </TableCell>
                             <TableCell className="hidden min-w-0 max-w-[11.25rem] align-middle px-2 text-sm text-muted-foreground lg:table-cell">
@@ -1035,6 +1067,7 @@ export default function TareasPage() {
                     </TableBody>
                   </Table>
                 </div>
+                </>
               )}
             </TabsContent>
           </Tabs>

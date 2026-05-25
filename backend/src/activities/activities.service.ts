@@ -17,7 +17,7 @@ const TASK_KINDS = new Set(['llamada', 'reunion', 'correo', 'whatsapp']);
 
 const activityInclude = {
   user: { select: { id: true, name: true } },
-  contacts: { include: { contact: { select: { id: true, name: true } } } },
+  contacts: { include: { contact: { select: { id: true, name: true, telefono: true } } } },
   companies: { include: { company: { select: { id: true, name: true } } } },
   opportunities: {
     include: {
@@ -41,7 +41,7 @@ const activitySelectListSlim = {
   completedAt: true,
   createdAt: true,
   user: { select: { id: true, name: true } },
-  contacts: { include: { contact: { select: { id: true, name: true } } } },
+  contacts: { include: { contact: { select: { id: true, name: true, telefono: true } } } },
   companies: { include: { company: { select: { id: true, name: true } } } },
   opportunities: {
     include: { opportunity: { select: { id: true, title: true } } },
@@ -232,7 +232,39 @@ export class ActivitiesService {
     const contactId = dto.contactId?.trim();
     const companyId = dto.companyId?.trim();
     const opportunityId = dto.opportunityId?.trim();
-    if (!contactId && !companyId && !opportunityId) {
+
+    // Auto-vincular compañía/contacto si solo se vinculó una oportunidad
+    let resolvedContactId = contactId;
+    let resolvedCompanyId = companyId;
+    let resolvedOpportunityId = opportunityId;
+
+    if (opportunityId) {
+      // Quien nos dieron una oportunidad, buscar empresa y contacto vinculados
+      if (!resolvedCompanyId) {
+        const co = await this.prisma.companyOpportunity.findFirst({
+          where: { opportunityId },
+          select: { companyId: true },
+        });
+        if (co) resolvedCompanyId = co.companyId;
+      }
+      if (!resolvedContactId) {
+        const co = await this.prisma.contactOpportunity.findFirst({
+          where: { opportunityId },
+          select: { contactId: true },
+        });
+        if (co) resolvedContactId = co.contactId;
+      }
+    } else if (companyId && !opportunityId) {
+      // Solo empresa → buscar su oportunidad principal (la primera)
+      const co = await this.prisma.companyOpportunity.findFirst({
+        where: { companyId },
+        orderBy: { opportunity: { createdAt: 'desc' } },
+        select: { opportunityId: true },
+      });
+      if (co) resolvedOpportunityId = co.opportunityId;
+    }
+
+    if (!resolvedContactId && !resolvedCompanyId && !resolvedOpportunityId) {
       throw new BadRequestException(
         'Debe vincularse a al menos un contacto, empresa u oportunidad',
       );
@@ -296,15 +328,27 @@ export class ActivitiesService {
         await tx.contactActivity.create({
           data: { contactId, activityId: activity.id },
         });
+      } else if (resolvedContactId) {
+        await tx.contactActivity.create({
+          data: { contactId: resolvedContactId, activityId: activity.id },
+        });
       }
       if (companyId) {
         await tx.companyActivity.create({
           data: { companyId, activityId: activity.id },
         });
+      } else if (resolvedCompanyId) {
+        await tx.companyActivity.create({
+          data: { companyId: resolvedCompanyId, activityId: activity.id },
+        });
       }
       if (opportunityId) {
         await tx.opportunityActivity.create({
           data: { opportunityId, activityId: activity.id },
+        });
+      } else if (resolvedOpportunityId) {
+        await tx.opportunityActivity.create({
+          data: { opportunityId: resolvedOpportunityId, activityId: activity.id },
         });
       }
       return tx.activity.findUniqueOrThrow({

@@ -10,11 +10,7 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import type { Opportunity, OpportunityStatus } from '@/types';
-import { api } from '@/lib/api';
-import {
-  type ApiOpportunityDetail,
-  isLikelyOpportunityCuid,
-} from '@/lib/opportunityApi';
+import { isLikelyOpportunityCuid } from '@/lib/opportunityApi';
 
 const statusLabels: Record<OpportunityStatus, string> = {
   abierta: 'Abierta',
@@ -23,18 +19,25 @@ const statusLabels: Record<OpportunityStatus, string> = {
   suspendida: 'Suspendida',
 };
 
+export type OpportunityEditSavePayload = {
+  title: string;
+  amount: number;
+  expectedCloseDate: string | null;
+  status: OpportunityStatus;
+};
+
 export type OpportunityEditDialogProps = {
   opportunity: Opportunity | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSaved: () => void;
+  onSave: (payload: OpportunityEditSavePayload) => Promise<void>;
 };
 
 export function OpportunityEditDialog({
   opportunity,
   open,
   onOpenChange,
-  onSaved,
+  onSave,
 }: OpportunityEditDialogProps) {
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState(0);
@@ -54,31 +57,22 @@ export function OpportunityEditDialog({
     setStatus(opportunity.status);
   }, [opportunity, open]);
 
-  async function handleSave() {
+  function handleSave() {
     if (!opportunity?.id || !title.trim()) return;
     if (!isLikelyOpportunityCuid(opportunity.id)) {
       toast.error('Solo se pueden editar oportunidades guardadas en el servidor');
       return;
     }
     setSaving(true);
-    try {
-      await api<ApiOpportunityDetail>(`/opportunities/${opportunity.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          title: title.trim(),
-          amount,
-          expectedCloseDate: expectedCloseDate || null,
-          status,
-        }),
-      });
-      toast.success('Oportunidad actualizada');
-      onOpenChange(false);
-      onSaved();
-    } catch (e) {
+    onOpenChange(false);
+    void onSave({
+      title: title.trim(),
+      amount,
+      expectedCloseDate: expectedCloseDate || null,
+      status,
+    }).catch((e) => {
       toast.error(e instanceof Error ? e.message : 'No se pudo guardar');
-    } finally {
-      setSaving(false);
-    }
+    }).finally(() => setSaving(false));
   }
 
   return (
@@ -88,6 +82,10 @@ export function OpportunityEditDialog({
           <DialogTitle>Editar oportunidad</DialogTitle>
           <DialogDescription>Modifica los datos de la oportunidad.</DialogDescription>
         </DialogHeader>
+        {saving ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">Guardando…</p>
+        ) : (
+        <>
         <div className="grid gap-4 py-2">
           <div className="space-y-2">
             <Label>Nombre *</Label>
@@ -135,6 +133,8 @@ export function OpportunityEditDialog({
             Guardar cambios
           </Button>
         </DialogFooter>
+        </>
+        )}
       </DialogContent>
     </Dialog>
   );

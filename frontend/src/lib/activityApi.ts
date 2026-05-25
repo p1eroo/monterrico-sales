@@ -27,7 +27,7 @@ export type ApiActivity = {
   completedAt: string | null;
   createdAt: string;
   user?: { id: string; name: string } | null;
-  contacts?: { contact: { id: string; name: string } }[];
+  contacts?: { contact: { id: string; name: string; telefono?: string | null } }[];
   companies?: { company: { id: string; name: string } }[];
   opportunities?: { opportunity: { id: string; title: string } }[];
 };
@@ -85,6 +85,7 @@ export function mapApiActivityToActivity(row: ApiActivity): Activity {
     description: row.description ?? '',
     contactId: contact?.id,
     contactName: contact?.name,
+    contactPhone: contact?.telefono ?? undefined,
     companyId: company?.id,
     companyName: company?.name,
     opportunityId: opportunity?.id,

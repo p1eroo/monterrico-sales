@@ -184,7 +184,9 @@ export async function downloadImportExportCsv(
       ? `plantilla-${slug}.xlsx`
       : entity === 'companies'
         ? 'empresas-export-comercial.xlsx'
-        : `${slug}-export.xlsx`;
+        : entity === 'opportunities'
+          ? 'oportunidades-export-comercial.xlsx'
+          : `${slug}-export.xlsx`;
   triggerBlobDownload(blob, name);
 }
 

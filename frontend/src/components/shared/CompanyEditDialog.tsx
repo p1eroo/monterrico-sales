@@ -135,21 +135,18 @@ export function CompanyEditDialog({
     };
   }, [open, row, standalone]);
 
-  async function handleSave() {
+  function handleSave() {
     if (!row || !editForm.name.trim()) return;
+    const targetRow = row;
+    onOpenChange(false);
     setSaving(true);
-    try {
-      await onSave({
-        name: editForm.name.trim(),
-        domain: editForm.domain.trim(),
-        telefono: editForm.telefono.trim(),
-        rubro: editForm.rubro,
-        tipo: editForm.tipo,
-      });
-      onOpenChange(false);
-    } finally {
-      setSaving(false);
-    }
+    void Promise.resolve(onSave({
+      name: editForm.name.trim(),
+      domain: editForm.domain.trim(),
+      telefono: editForm.telefono.trim(),
+      rubro: editForm.rubro,
+      tipo: editForm.tipo,
+    })).finally(() => setSaving(false));
   }
 
   const showTelefono = !row?.isLocalOnly && isLikelyCompanyCuid(row?.id ?? '');
@@ -163,6 +160,8 @@ export function CompanyEditDialog({
         </DialogHeader>
         {loadingApi ? (
           <p className="py-6 text-center text-sm text-muted-foreground">Cargando datos…</p>
+        ) : saving ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">Guardando…</p>
         ) : (
           <>
             <div className="grid gap-4 py-2">

@@ -48,6 +48,7 @@ import { api } from '@/lib/api';
 import { opportunityDetailHref } from '@/lib/detailRoutes';
 import {
   type ApiOpportunityListRow,
+  type ApiOpportunityDetail,
   isLikelyOpportunityCuid,
   mapApiOpportunityToOpportunity,
   opportunityListAll,
@@ -334,6 +335,47 @@ export default function OpportunitiesPage() {
     toast.success(`Oportunidad "${data.title.trim()}" creada exitosamente`);
   }
 
+  async function handleSaveOpportunity(payload: { title: string; amount: number; expectedCloseDate: string | null; status: string }) {
+    const targetOpp = editOpportunity;
+    if (!targetOpp) return;
+    const oppId = targetOpp.id;
+    const prevRow = apiRows.find((r) => r.id === oppId);
+
+    // Close modal and update optimistically
+    setEditOpportunity(null);
+    if (prevRow) {
+      setApiRows((prev) => prev.map((r) =>
+        r.id === oppId
+          ? { ...r, title: payload.title, amount: payload.amount, status: payload.status }
+          : r,
+      ));
+    }
+
+    toast.loading('Guardando cambios…', { id: `save-${oppId}` });
+    try {
+      const result = await api<ApiOpportunityDetail>(`/opportunities/${oppId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          title: payload.title,
+          amount: payload.amount,
+          expectedCloseDate: payload.expectedCloseDate,
+          status: payload.status,
+        }),
+      });
+      // Reconcile with API response
+      setApiRows((prev) => prev.map((r) => (r.id === oppId ? result : r)));
+      await new Promise((r) => setTimeout(r, 600));
+      toast.success('Oportunidad actualizada', { id: `save-${oppId}` });
+    } catch (e) {
+      // Revert on error
+      if (prevRow) {
+        setApiRows((prev) => prev.map((r) => (r.id === oppId ? prevRow : r)));
+      }
+      await new Promise((r) => setTimeout(r, 600));
+      toast.error(e instanceof Error ? e.message : 'No se pudo guardar', { id: `save-${oppId}` });
+    }
+  }
+
   async function handleOppTemplate() {
     try {
       setExportBusy(true);
@@ -442,17 +484,6 @@ export default function OpportunitiesPage() {
       />
       <PageHeader title="Oportunidades" description="Gestiona el pipeline de ventas y oportunidades comerciales">
         <span className="mr-2 text-sm text-muted-foreground">Total: {allOpportunities.length}</span>
-        {hasPermission('oportunidades.exportar') && (
-            <Button
-              variant="outline"
-              disabled={exportBusy}
-              onClick={() => void handleOppTemplate()}
-              className="bg-card"
-            >
-              {exportBusy ? <Loader2 className="size-4 animate-spin" /> : <FileSpreadsheet className="size-4" />}{' '}
-              Plantilla
-            </Button>
-          )}
           {hasPermission('oportunidades.crear') && (
             <Button variant="outline" disabled={importBusy} onClick={openOppImport} className="bg-card">
               {importBusy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}{' '}
@@ -771,7 +802,7 @@ export default function OpportunitiesPage() {
         onOpenChange={(open) => {
           if (!open) setEditOpportunity(null);
         }}
-        onSaved={() => void loadApiOpportunities()}
+        onSave={handleSaveOpportunity}
       />
     </div>
   );

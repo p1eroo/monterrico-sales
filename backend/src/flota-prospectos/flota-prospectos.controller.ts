@@ -105,6 +105,21 @@ export class FlotaProspectosController {
     return this.service.getCounts(scope);
   }
 
+  /** GET /flota-prospectos/operador-stats — Estadísticas por operador en un rango */
+  @Get('flota-prospectos/operador-stats')
+  @RequirePermissions('flota_prospectos.ver')
+  async getOperadorStats(
+    @Query('fecini') fecini: string,
+    @Query('fecfin') fecfin: string,
+    @Req() req: AuthedReq,
+  ) {
+    const scope = await this.buildFlotaScope(
+      req.user.userId,
+      req.user.roleId,
+    );
+    return this.service.getOperadorStats(fecini, fecfin, scope);
+  }
+
   /** GET /flota-prospectos/masivo-list — Lista ligera de prospectos para el envío masivo */
   @Get('flota-prospectos/masivo-list')
   @RequirePermissions('flota_prospectos.ver')

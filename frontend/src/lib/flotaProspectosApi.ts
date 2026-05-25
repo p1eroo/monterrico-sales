@@ -232,3 +232,15 @@ export function getOperatorDisplayName(
   const raw = value.trim();
   return raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
 }
+
+export interface OperadorStats {
+  operador: string;
+  prospectosAsignados: number;
+  chatsActivos: number;
+  mensajesEnviados: number;
+  mensajesRecibidos: number;
+}
+
+export async function fetchOperadorStats(fecini: string, fecfin: string): Promise<OperadorStats[]> {
+  return api(`/flota-prospectos/operador-stats?fecini=${fecini}&fecfin=${fecfin}`);
+}

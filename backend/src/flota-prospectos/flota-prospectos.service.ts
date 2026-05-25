@@ -228,6 +228,18 @@ export class FlotaProspectosService {
       }
     }
 
+    if (params.estado) {
+      where.estado = normalizeEstado(params.estado);
+    }
+
+    if (params.redSocial) {
+      where.redSocial = params.redSocial;
+    }
+
+    if (params.duplicados) {
+      where.esDuplicado = true;
+    }
+
 if (params.mes) {
       const [yearStr, monthStr] = params.mes.split('-');
       const year = parseInt(yearStr, 10);
@@ -1000,5 +1012,68 @@ if (params.mes) {
       nuevosEsteMes,
       nuevosMesPasado,
     };
+  }
+
+  async getOperadorStats(fecini: string, fecfin: string, scope?: CrmDataScope) {
+    const startDate = new Date(fecini + 'T00:00:00.000Z');
+    const endDate = new Date(fecfin + 'T23:59:59.999Z');
+
+    const baseWhere: any = {
+      fechaRegistro: { gte: startDate, lte: endDate },
+    };
+
+    if (scope && !scope.unrestricted) {
+      const operadorFilter = await this.getScopeOperadorFilter(scope.viewerUserId);
+      if (operadorFilter) {
+        baseWhere.OR = [operadorFilter];
+      }
+    }
+
+    const operadores = await this.prisma.flotaProspecto.findMany({
+      where: { ...baseWhere, operador: { not: null } },
+      select: { operador: true },
+      distinct: ['operador'],
+    });
+
+    const operatorNames = operadores.map((o) => o.operador).filter(Boolean) as string[];
+
+    const rows = await Promise.all(
+      operatorNames.map(async (operador) => {
+        const [prospectosAsignados, mensajesData, chatsData] = await Promise.all([
+          this.prisma.flotaProspecto.count({
+            where: { operador, fechaRegistro: { gte: startDate, lte: endDate } },
+          }),
+          this.prisma.crmWhatsappMessage.groupBy({
+            by: ['direction'],
+            where: {
+              flotaProspecto: { operador },
+              createdAt: { gte: startDate, lte: endDate },
+            },
+            _count: { id: true },
+          }),
+          this.prisma.crmWhatsappMessage.findMany({
+            where: {
+              flotaProspecto: { operador },
+              createdAt: { gte: startDate, lte: endDate },
+            },
+            select: { flotaProspectoId: true },
+            distinct: ['flotaProspectoId'],
+          }),
+        ]);
+
+        const mensajesEnviados = mensajesData.find((m) => m.direction === 'outbound')?._count.id ?? 0;
+        const mensajesRecibidos = mensajesData.find((m) => m.direction === 'inbound')?._count.id ?? 0;
+
+        return {
+          operador,
+          prospectosAsignados,
+          chatsActivos: chatsData.length,
+          mensajesEnviados,
+          mensajesRecibidos,
+        };
+      }),
+    );
+
+    return rows;
   }
 }

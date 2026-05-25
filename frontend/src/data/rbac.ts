@@ -42,7 +42,7 @@ export const MODULE_ALLOWED_ACTIONS: Record<
   dashboard: ['ver', 'exportar'],
   contactos: ['ver', 'crear', 'editar', 'eliminar', 'asignar', 'exportar'],
   empresas: ['ver', 'crear', 'editar', 'eliminar', 'asignar', 'exportar'],
-  oportunidades: ['ver', 'crear', 'editar', 'eliminar', 'asignar'],
+  oportunidades: ['ver', 'crear', 'editar', 'eliminar', 'asignar', 'exportar'],
   pipeline: ['ver', 'editar', 'asignar'],
   actividades: ['ver', 'crear', 'editar', 'eliminar', 'asignar'],
   reportes: ['ver', 'exportar'],

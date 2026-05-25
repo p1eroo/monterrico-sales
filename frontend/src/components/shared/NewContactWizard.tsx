@@ -584,23 +584,25 @@ return () => {
               .map((c) => {
                 const isSelected = selectedCompanyId === c.id;
                 return (
-                  <button
+                  <label
                     key={c.id}
-                    type="button"
-                    className={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted ${isSelected ? 'bg-muted' : ''}`}
-                    onClick={() => {
-                      if (isSelected) {
-                        setSelectedCompanyId(null);
-                      } else {
-                        setSelectedCompanyId(c.id);
-                        setCompany(c.name);
-                      }
-                    }}
+                    className={`flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted ${isSelected ? 'bg-muted' : ''}`}
                   >
-                    <Checkbox checked={isSelected} className="size-3.5 shrink-0" />
+                    <Checkbox 
+                      checked={isSelected} 
+                      className="size-3.5 shrink-0" 
+                      onCheckedChange={() => {
+                        if (isSelected) {
+                          setSelectedCompanyId(null);
+                        } else {
+                          setSelectedCompanyId(c.id);
+                          setCompany(c.name);
+                        }
+                      }}
+                    />
                     <Building2 className="size-3.5 shrink-0 text-muted-foreground" />
                     <span className="min-w-0 truncate text-left">{c.name}</span>
-                  </button>
+                  </label>
                 );
               })}
 
@@ -611,22 +613,24 @@ return () => {
               .map((o) => {
                 const isSelected = selectedOpportunityIds.includes(o.id);
                 return (
-                  <button
+                  <label
                     key={o.id}
-                    type="button"
-                    className={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted ${isSelected ? 'bg-muted' : ''}`}
-                    onClick={() => {
-                      if (isSelected) {
-                        setSelectedOpportunityIds((prev) => prev.filter((id) => id !== o.id));
-                      } else {
-                        setSelectedOpportunityIds((prev) => [...prev, o.id]);
-                      }
-                    }}
+                    className={`flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted ${isSelected ? 'bg-muted' : ''}`}
                   >
-                    <Checkbox checked={isSelected} className="size-3.5 shrink-0" />
+                    <Checkbox 
+                      checked={isSelected} 
+                      className="size-3.5 shrink-0" 
+                      onCheckedChange={() => {
+                        if (isSelected) {
+                          setSelectedOpportunityIds((prev) => prev.filter((id) => id !== o.id));
+                        } else {
+                          setSelectedOpportunityIds((prev) => [...prev, o.id]);
+                        }
+                      }}
+                    />
                     <Briefcase className="size-3.5 shrink-0 text-muted-foreground" />
                     <span className="min-w-0 truncate text-left">{o.title}</span>
-                  </button>
+                  </label>
                 );
               })}
         </div>

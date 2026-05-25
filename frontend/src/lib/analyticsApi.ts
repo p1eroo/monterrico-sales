@@ -30,9 +30,11 @@ export type AnalyticsSummary = {
     }[];
   }[];
   contactsBySource: { name: string; value: number }[];
+  companiesBySource: { name: string; value: number }[];
   funnelByStage: { name: string; value: number }[];
   /** Empresas creadas en el rango, agrupadas por `etapa` (mismos filtros que contactos). */
-companiesByStage: { name: string; value: number }[];
+  companiesByStage: { name: string; value: number }[];
+  opportunitiesByStage: { name: string; count: number }[];
   /** Por semana ISO (UTC): avance / nuevo / retroceso / sin cambios en cartera. */
   companiesWeeklyProgress: {
     name: string;
@@ -49,7 +51,7 @@ companiesByStage: { name: string; value: number }[];
     atraso: number;
     sinCambios: number;
   }[];
-  performanceByAdvisor: { name: string; empresas: number; ventas: number }[];
+  performanceByAdvisor: { name: string; oportunidades: number; contactos: number }[];
   pendingActivities: {
     id: string;
     title: string;
@@ -69,6 +71,7 @@ companiesByStage: { name: string; value: number }[];
   }[];
   opportunitiesByStageData: { name: string; count: number; value: number }[];
   followUpsByMonth: { name: string; completados: number; pendientes: number }[];
+  opportunitiesInteraction: { withInteraction: number; withoutInteraction: number };
 };
 
 export type AnalyticsGoalProgress = {

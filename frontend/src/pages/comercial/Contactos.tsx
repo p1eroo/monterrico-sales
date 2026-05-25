@@ -89,6 +89,7 @@ import {
   contactListPaginated,
   contactListEtapaCounts,
   primaryCompanyIdFromApiContact,
+  apiContactDetailToListRow,
 } from "@/lib/contactApi";
 import { buildOptimisticContact } from "@/lib/optimisticEntities";
 import {
@@ -343,7 +344,31 @@ export default function ContactosPage() {
   }
 
   async function handleSaveContactFromList(payload: ContactEditSavePayload) {
-    if (!editContact) return;
+    const targetContact = editContact;
+    if (!targetContact) return;
+    const contactId = targetContact.id;
+    const prevRowIndex = apiRows.findIndex((r) => r.id === contactId);
+    const prevRow = prevRowIndex >= 0 ? apiRows[prevRowIndex] : null;
+
+    // Close modal and update optimistically
+    setEditContact(null);
+    if (prevRow) {
+      const updatedRows = [...apiRows];
+      updatedRows[prevRowIndex] = {
+        ...prevRow,
+        name: payload.name,
+        cargo: payload.cargo || null,
+        telefono: payload.telefono,
+        correo: payload.correo,
+        fuente: payload.fuente,
+        ...(payload.assignedTo !== undefined && canEditAssignee
+          ? { assignedTo: payload.assignedTo, user: { ...prevRow.user, id: payload.assignedTo, name: prevRow.user?.name ?? '' } }
+          : {}),
+      } as ApiContactListRow;
+      setApiRows(updatedRows);
+    }
+
+    toast.loading('Guardando cambios…', { id: `save-${contactId}` });
     try {
       const body: Record<string, unknown> = {
         name: payload.name,
@@ -354,22 +379,36 @@ export default function ContactosPage() {
       };
       if (payload.assignedTo !== undefined && canEditAssignee) {
         if (!isLikelyContactCuid(payload.assignedTo)) {
-          toast.error(
-            "El asesor debe ser un usuario del servidor (id válido en PostgreSQL).",
-          );
-          throw new Error("invalid_assignee");
+          toast.error("El asesor debe ser un usuario del servidor (id válido en PostgreSQL).", { id: `save-${contactId}` });
+          if (prevRow && prevRowIndex >= 0) {
+            const rollback = [...apiRows];
+            rollback[prevRowIndex] = prevRow;
+            setApiRows(rollback);
+          }
+          setEditContact(editContact);
+          return;
         }
         body.assignedTo = payload.assignedTo;
       }
-      await api<ApiContactDetail>(`/contacts/${editContact.id}`, {
+      const result = await api<ApiContactDetail>(`/contacts/${contactId}`, {
         method: "PATCH",
         body: JSON.stringify(body),
       });
-      await loadApiContacts();
-      toast.success("Contacto actualizado correctamente");
+      // Reconcile with actual API response
+      setApiRows((prev) => prev.map((r) => (r.id === contactId ? apiContactDetailToListRow(result) : r)));
+      await new Promise((r) => setTimeout(r, 600));
+      toast.success('Contacto actualizado', { id: `save-${contactId}` });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "No se pudo guardar");
-      throw e;
+      // Revert on error
+      if (prevRow && prevRowIndex >= 0) {
+        setApiRows((prev) => {
+          const next = [...prev];
+          next[prevRowIndex] = prevRow;
+          return next;
+        });
+      }
+      await new Promise((r) => setTimeout(r, 600));
+      toast.error(e instanceof Error ? e.message : "No se pudo guardar", { id: `save-${contactId}` });
     }
   }
   const startIndex = totalContacts === 0 ? 0 : (page - 1) * ITEMS_PER_PAGE + 1;

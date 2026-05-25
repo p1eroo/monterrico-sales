@@ -1,19 +1,60 @@
-import type { LucideIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { useGoalsStore } from '@/store/goalsStore';
 import { useAnalyticsGoalStore } from '@/store/analyticsGoalStore';
 import { useAppStore } from '@/store';
 import { usePermissions } from '@/hooks/usePermissions';
 import { formatCurrencyShort } from '@/lib/formatters';
 import { utcYearMonthKey } from '@/lib/monthlySales';
-import { cn } from '@/lib/utils';
 
 export type GoalPeriod = 'weekly' | 'monthly';
 
+function GaugeProgress({ percent, sales, goal }: { percent: number; sales: number; goal: number }) {
+  const data = [
+    { name: 'Restante', value: Math.max(0, 100 - percent) },
+    { name: 'Progreso', value: percent },
+  ];
+  const color = percent >= 100 ? '#13944C' : '#3b82f6';
+
+  return (
+    <div className="flex flex-col items-center w-full max-w-[300px]">
+      <div className="h-36 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={data}
+              cx="50%"
+              cy="100%"
+              startAngle={180}
+              endAngle={0}
+              innerRadius={80}
+              outerRadius={115}
+              dataKey="value"
+              stroke="none"
+              isAnimationActive={false}
+            >
+              <Cell fill="#e5e7eb" />
+              <Cell fill={color} />
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="flex items-center justify-between w-full mt-2">
+        <div className="text-left">
+          <p className="text-base font-bold tabular-nums">{formatCurrencyShort(sales)}</p>
+          <p className="text-xs text-muted-foreground">actual</p>
+        </div>
+        <div className="text-right">
+          <p className="text-sm font-bold tabular-nums">{goal > 0 ? formatCurrencyShort(goal) : '—'}</p>
+          {goal > 0 && <p className="text-xs text-muted-foreground">meta</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface GoalCardProps {
   period: GoalPeriod;
-  icon: LucideIcon;
   labelPersonal: string;
   labelTeam: string;
   periodLabel: string;
@@ -22,7 +63,6 @@ interface GoalCardProps {
 
 export function GoalCard({
   period,
-  icon: Icon,
   labelPersonal,
   labelTeam,
   periodLabel,
@@ -63,63 +103,19 @@ export function GoalCard({
         : myMonthly;
 
   const percent = goal > 0 ? Math.min(100, Math.round((sales / goal) * 100)) : 0;
-  const isComplete = goal > 0 && sales >= goal;
-
-  if (goal <= 0) {
-    return (
-      <Card className="border-dashed py-0">
-        <CardContent className="px-4 py-2.5">
-          <div className="flex items-start gap-2">
-            <Icon className="size-4 shrink-0 text-muted-foreground" />
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-muted-foreground">
-                {showGlobal ? labelTeam : labelPersonal}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                No hay una meta establecida.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <Card className="relative overflow-hidden border-primary/20 py-0">
-      <CardContent className="px-4 py-2.5">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <Icon className="size-4 shrink-0 text-primary" />
-              <p className="text-sm font-medium text-muted-foreground">
-                {showGlobal ? labelTeam : labelPersonal}
-              </p>
-            </div>
-            <p className="mt-0.5 text-2xl font-bold tracking-tight">
-              {formatCurrencyShort(sales)}
-              <span className="ml-1 text-base font-normal text-muted-foreground">
-                / {formatCurrencyShort(goal)}
-              </span>
-            </p>
-            <p
-              className={cn(
-                'mt-0.5 text-xs text-muted-foreground',
-                periodLabelCapitalize && 'capitalize'
-              )}
-            >
-              {periodLabel}
-            </p>
-            <Progress value={percent} className="mt-2 h-2" />
-            <p
-              className={cn(
-                'mt-0.5 text-xs font-medium',
-                isComplete ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'
-              )}
-            >
-              {isComplete ? '¡Meta cumplida!' : `${percent}% completado`}
-            </p>
-          </div>
+      <CardContent className="px-4 py-3">
+        <div className="flex flex-col items-center gap-2">
+          <p className="self-start text-sm font-medium text-muted-foreground">
+            {showGlobal ? labelTeam : labelPersonal}
+          </p>
+          {goal > 0 ? (
+            <GaugeProgress percent={percent} sales={sales} goal={goal} />
+          ) : (
+            <GaugeProgress percent={percent} sales={sales} goal={0} />
+          )}
         </div>
       </CardContent>
     </Card>

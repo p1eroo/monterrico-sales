@@ -3289,7 +3289,7 @@ export class ImportExportService {
   }
 
   async opportunitiesExportCsv(scope?: CrmDataScope): Promise<string> {
-    const scopedWhere =
+    const scopedWhere: Prisma.OpportunityWhereInput =
       scope && !scope.unrestricted
         ? { assignedTo: scope.viewerUserId }
         : {};
@@ -3297,41 +3297,124 @@ export class ImportExportService {
       where: scopedWhere,
       take: 10_000,
       orderBy: { updatedAt: 'desc' },
-      include: {
-        contacts: {
-          take: 1,
-          select: { contact: { select: { id: true, correo: true } } },
-        },
-        companies: {
-          take: 1,
-          select: { company: { select: { id: true, ruc: true } } },
-        },
+      select: {
+        id: true,
+        title: true,
+        fuente: true,
+        etapa: true,
+        createdAt: true,
+        user: { select: { name: true } },
       },
     });
-    const lines: string[] = [stringifyCsvRow([...OPPORTUNITY_HEADERS])];
+
+    const now = new Date();
+    const minCreatedTs =
+      list.length === 0
+        ? now.getTime()
+        : Math.min(...list.map((o) => o.createdAt.getTime()));
+    const weekCols = buildIsoWeekExportColumns(new Date(minCreatedTs), now);
+
+    const baseHeaders = [
+      'Fecha de Ingreso',
+      'Oportunidad',
+      'Origen',
+      'Asesor',
+    ];
+    const headers = [...baseHeaders, ...weekCols.map((w) => w.key)];
+
+    const [stages, leadSources] = await Promise.all([
+      this.prisma.crmStage.findMany({
+        select: { slug: true, probability: true },
+      }),
+      this.prisma.crmLeadSource.findMany({
+        select: { slug: true, name: true },
+      }),
+    ]);
+
+    const probBySlug = new Map<string, number>();
+    for (const s of stages) {
+      probBySlug.set(s.slug.trim().toLowerCase(), Math.round(Number(s.probability) || 0));
+    }
+    const sourceLabel = new Map<string, string>();
+    for (const s of leadSources) {
+      sourceLabel.set(s.slug.trim().toLowerCase(), s.name.trim());
+    }
+
+    const resolveProb = (slugRaw: string): number => {
+      const slug = slugRaw.trim().toLowerCase();
+      const p = probBySlug.get(slug);
+      if (p !== undefined) return p;
+      return STAGE_PROBABILITY_FALLBACK[slug] ?? 0;
+    };
+
+    const oppIds = list.map((o) => o.id);
+    const auditRows =
+      oppIds.length === 0
+        ? []
+        : await this.prisma.auditChangeSet.findMany({
+            where: {
+              module: 'oportunidades',
+              entityType: 'Oportunidad',
+              entityId: { in: oppIds },
+              entries: { some: { fieldKey: 'etapa' } },
+            },
+            orderBy: { createdAt: 'asc' },
+            select: {
+              entityId: true,
+              createdAt: true,
+              entries: {
+                where: { fieldKey: 'etapa' },
+                take: 1,
+                select: { oldValue: true, newValue: true },
+              },
+            },
+          });
+
+    const auditsByOpp = new Map<string, { at: Date; oldValue: string; newValue: string }[]>();
+    for (const r of auditRows) {
+      const ent = r.entries[0];
+      if (!ent || !r.entityId) continue;
+      const arr = auditsByOpp.get(r.entityId) ?? [];
+      arr.push({ at: r.createdAt, oldValue: ent.oldValue, newValue: ent.newValue });
+      auditsByOpp.set(r.entityId, arr);
+    }
+    for (const arr of auditsByOpp.values()) {
+      arr.sort((a, b) => a.at.getTime() - b.at.getTime());
+    }
+
+    const fuenteLabel = (slug: string | null | undefined): string => {
+      if (!slug?.trim()) return '';
+      const key = slug.trim().toLowerCase();
+      return sourceLabel.get(key) ?? slug.trim();
+    };
+
+    const ingresoStr = (d: Date) => {
+      const dd = String(d.getUTCDate()).padStart(2, '0');
+      const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+      const yyyy = String(d.getUTCFullYear());
+      return `${dd}/${mm}/${yyyy}`;
+    };
+
+    const lines: string[] = [stringifyCsvRow(headers)];
     for (const o of list) {
-      const c = o.contacts[0]?.contact;
-      const co = o.companies[0]?.company;
-      lines.push(
-        stringifyCsvRow([
-          o.id,
-          o.title,
-          String(o.amount),
-          o.etapa,
-          o.status,
-          o.priority,
-          String(o.probability),
-          o.expectedCloseDate
-            ? o.expectedCloseDate.toISOString().slice(0, 10)
-            : '',
-          o.assignedTo ?? '',
-          c?.id ?? '',
-          co?.id ?? '',
-          c?.correo ?? '',
-          co?.ruc ?? '',
-          o.fuente ?? 'base',
-        ]),
-      );
+      const audits = auditsByOpp.get(o.id) ?? [];
+      const etapaAt = buildEtapaStepFunction(o.createdAt, o.etapa, audits);
+      const row: string[] = [
+        ingresoStr(o.createdAt),
+        o.title,
+        fuenteLabel(o.fuente),
+        o.user?.name ?? '',
+      ];
+      const createdMs = o.createdAt.getTime();
+      for (const col of weekCols) {
+        if (col.weekEnd.getTime() < createdMs) {
+          row.push('0%');
+        } else {
+          const p = resolveProb(etapaAt(col.weekEnd));
+          row.push(`${p}%`);
+        }
+      }
+      lines.push(stringifyCsvRow(row));
     }
     return UTF8_BOM + lines.join('\n');
   }

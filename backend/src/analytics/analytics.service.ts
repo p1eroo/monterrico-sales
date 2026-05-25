@@ -14,14 +14,16 @@ function parseDayStart(isoDate: string): Date {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
     throw new BadRequestException('from/to debe ser YYYY-MM-DD');
   }
-  return new Date(`${isoDate}T00:00:00.000Z`);
+  const [y, m, d] = isoDate.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d, 5, 0, 0, 0));
 }
 
 function parseDayEnd(isoDate: string): Date {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
     throw new BadRequestException('from/to debe ser YYYY-MM-DD');
   }
-  return new Date(`${isoDate}T23:59:59.999Z`);
+  const [y, m, d] = isoDate.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + 1, 4, 59, 59, 999));
 }
 
 function monthKey(d: Date): string {
@@ -43,7 +45,7 @@ function eachMonthBetween(from: Date, to: Date): string[] {
   const keys: string[] = [];
   const cur = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), 1));
   const end = new Date(Date.UTC(to.getUTCFullYear(), to.getUTCMonth(), 1));
-  while (cur <= end) {
+  while (cur.getTime() < end.getTime()) {
     keys.push(monthKey(cur));
     cur.setUTCMonth(cur.getUTCMonth() + 1);
   }
@@ -91,7 +93,7 @@ function isoWeekNumberUtc(d: Date): number {
   const dayNum = x.getUTCDay() || 7;
   x.setUTCDate(x.getUTCDate() + 4 - dayNum);
   const yearStart = new Date(Date.UTC(x.getUTCFullYear(), 0, 1));
-  return Math.ceil((x.getTime() - yearStart.getTime()) / 86400000 / 7);
+  return Math.ceil((x.getTime() - yearStart.getTime() + 86400000) / 86400000 / 7);
 }
 
 type CompanyWeeklyProgressRow = {
@@ -610,6 +612,8 @@ export class AnalyticsService {
       funnelGroups,
       userRows,
       companyStageGroups,
+      totalOppsCreated,
+      companySourceGroups,
     ] = await Promise.all([
       this.prisma.contact.count({ where: cw }),
       this.prisma.contact.count({ where: pw }),
@@ -692,17 +696,25 @@ export class AnalyticsService {
         where: compW,
         _count: { id: true },
       }),
+      this.prisma.opportunity.count({
+        where: {
+          createdAt: { gte: from, lte: to },
+          ...(advisorId?.trim() ? { assignedTo: advisorId.trim() } : {}),
+        },
+      }),
+      this.prisma.company.groupBy({
+        by: ['fuente'],
+        where: compW,
+        _count: { id: true },
+      }),
     ]);
 
     const closedSalesAmount = closedAgg._sum.amount ?? 0;
     const closedSalesPrev = closedAggPrev._sum.amount ?? 0;
     const pipelineValue = pipelineAgg._sum.amount ?? 0;
 
-    /** Conversión aproximada: oportunidades ganadas / contactos creados en el periodo */
-    const conversionPct =
-      totalContacts > 0
-        ? Math.round(((closedAgg._count ?? 0) / totalContacts) * 1000) / 10
-        : 0;
+    /** Oportunidades ganadas en el periodo (status = 'ganada') */
+    const conversionPct = closedAgg._count ?? 0;
 
     const pctChange = (cur: number, prev: number): string => {
       if (prev <= 0) return cur > 0 ? '+100%' : '0%';
@@ -842,35 +854,67 @@ export class AnalyticsService {
       value: g._count.id,
     }));
 
-    const companyByAdvisor = await this.prisma.company.groupBy({
-      by: ['assignedTo'],
+    const mergedByCompanySource = new Map<string, number>();
+    for (const g of companySourceGroups) {
+      if (!g.fuente) continue;
+      const k = resolveLeadSourceKeyLoose(g.fuente, leadCatalog);
+      mergedByCompanySource.set(k, (mergedByCompanySource.get(k) ?? 0) + g._count.id);
+    }
+    const companiesBySource = [...mergedByCompanySource.entries()]
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+
+    const opportunitiesByStage = await this.prisma.opportunity.groupBy({
+      by: ['etapa'],
       where: {
-        ...compW,
-        assignedTo: { not: null },
+        createdAt: { gte: from, lte: to },
+        ...(advisorId?.trim() ? { assignedTo: advisorId.trim() } : {}),
       },
       _count: { id: true },
     });
-    const wonByAdvisor = await this.prisma.opportunity.groupBy({
+    const opportunitiesByStageData2 = opportunitiesByStage
+      .map((g) => ({
+        name: g.etapa,
+        count: g._count.id,
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    const oppCountByAdvisor = await this.prisma.opportunity.groupBy({
       by: ['assignedTo'],
-      where: this.opportunityWhereWonInRange(from, to, advisorId, unrestricted),
-      _sum: { amount: true },
+      where: {
+        assignedTo: { not: null },
+        createdAt: { gte: from, lte: to },
+        ...(advisorId?.trim() ? { assignedTo: advisorId.trim() } : {}),
+        ...(unrestricted ? {} : { assignedTo: { not: null } }),
+      },
+      _count: { id: true },
     });
-    const companyMap = new Map(
-      companyByAdvisor
+    const contactCountByAdvisor = await this.prisma.contact.groupBy({
+      by: ['assignedTo'],
+      where: {
+        assignedTo: { not: null },
+        createdAt: { gte: from, lte: to },
+        ...(advisorId?.trim() ? { assignedTo: advisorId.trim() } : {}),
+        ...(unrestricted ? {} : { assignedTo: { not: null } }),
+      },
+      _count: { id: true },
+    });
+    const oppCountMap = new Map(
+      oppCountByAdvisor
         .filter((x) => x.assignedTo)
         .map((x) => [x.assignedTo!, x._count.id]),
     );
-    const wonMap = new Map(
-      wonByAdvisor
+    const contactCountMap = new Map(
+      contactCountByAdvisor
         .filter((x) => x.assignedTo)
-        .map((x) => [x.assignedTo!, x._sum.amount ?? 0]),
+        .map((x) => [x.assignedTo!, x._count.id]),
     );
     const idToName = new Map(
       userRows.map((u) => [u.id, u.name.trim() || 'Sin nombre'] as const),
     );
     const advisorIds = new Set<string>();
-    for (const k of companyMap.keys()) advisorIds.add(k);
-    for (const k of wonMap.keys()) if (k) advisorIds.add(k!);
+    for (const k of oppCountMap.keys()) advisorIds.add(k);
+    for (const k of contactCountMap.keys()) if (k) advisorIds.add(k!);
 
     const missingNameIds = [...advisorIds].filter((id) => !idToName.has(id));
     if (missingNameIds.length > 0) {
@@ -886,11 +930,11 @@ export class AnalyticsService {
     const performanceByAdvisor = [...advisorIds]
       .map((id) => ({
         name: idToName.get(id) ?? 'Usuario no encontrado',
-        empresas: companyMap.get(id) ?? 0,
-        ventas: wonMap.get(id) ?? 0,
+        oportunidades: oppCountMap.get(id) ?? 0,
+        contactos: contactCountMap.get(id) ?? 0,
       }))
-      .filter((r) => r.empresas > 0 || r.ventas > 0)
-      .sort((a, b) => b.ventas - a.ventas)
+      .filter((r) => r.oportunidades > 0 || r.contactos > 0)
+      .sort((a, b) => b.oportunidades - a.oportunidades)
       .slice(0, 20);
 
     const pendingActivities = await this.prisma.activity.findMany({
@@ -946,7 +990,7 @@ export class AnalyticsService {
       nuevos: contactsByMonthMap.get(ym)?.nuevos ?? 0,
     }));
 
-    /** Conversión por mes (oportunidades ganadas en mes / contactos creados en mes) */
+    /** Conversión por mes (oportunidades ganadas en el mes) */
     const conversionByMonth = await Promise.all(
       months.map(async (ym) => {
         const [y, m] = ym.split('-').map((x) => parseInt(x, 10));
@@ -954,21 +998,10 @@ export class AnalyticsService {
         const mEnd = new Date(Date.UTC(y, m, 0, 23, 59, 59, 999));
         const cFrom = mStart > from ? mStart : from;
         const cTo = mEnd < to ? mEnd : to;
-        const [cc, wo] = await Promise.all([
-          this.prisma.contact.count({
-            where: this.contactWhere(cFrom, cTo, advisorId, source, unrestricted),
-          }),
-          this.prisma.opportunity.count({
-            where: this.opportunityWhereWonInRange(
-              cFrom,
-              cTo,
-              advisorId,
-              unrestricted,
-            ),
-          }),
-        ]);
-        const tasa = cc > 0 ? Math.round((wo / cc) * 1000) / 10 : 0;
-        return { name: monthLabelEs(ym), tasa };
+        const ganadas = await this.prisma.opportunity.count({
+          where: this.opportunityWhereWonInRange(cFrom, cTo, advisorId, unrestricted),
+        });
+        return { name: monthLabelEs(ym), tasa: ganadas };
       }),
     );
 
@@ -1072,6 +1105,44 @@ export class AnalyticsService {
       opts.crmScope,
     );
 
+    /** Contactos con/sin interacción en el periodo */
+    const contactPortfolioWhere = this.contactWhere(from, to, advisorId, source, unrestricted);
+    const contactIds = await this.prisma.contact.findMany({
+      where: contactPortfolioWhere,
+      select: { id: true },
+    });
+    const contactIdSet = new Set(contactIds.map((c) => c.id));
+
+    const [activityContacts, auditContacts] = await Promise.all([
+      this.prisma.contactActivity.findMany({
+        where: {
+          contactId: { in: [...contactIdSet] },
+          activity: { createdAt: { gte: from, lte: to } },
+        },
+        select: { contactId: true },
+        distinct: ['contactId'],
+      }),
+      this.prisma.auditChangeSet.findMany({
+        where: {
+          module: 'contactos',
+          entityType: 'Contacto',
+          entityId: { in: [...contactIdSet] },
+          createdAt: { gte: from, lte: to },
+        },
+        select: { entityId: true },
+        distinct: ['entityId'],
+      }),
+    ]);
+    const withInteraction = new Set<string>();
+    for (const a of activityContacts) withInteraction.add(a.contactId);
+    for (const a of auditContacts) if (a.entityId) withInteraction.add(a.entityId);
+    const withInteractionCount = withInteraction.size;
+    const withoutInteractionCount = Math.max(0, contactIdSet.size - withInteractionCount);
+    const opportunitiesInteraction = {
+      withInteraction: withInteractionCount,
+      withoutInteraction: withoutInteractionCount,
+    };
+
     return {
       range: {
         from: from.toISOString(),
@@ -1096,6 +1167,7 @@ export class AnalyticsService {
       },
       salesByMonth,
       contactsBySource,
+      companiesBySource,
       funnelByStage,
       companiesByStage,
       companiesWeeklyProgress,
@@ -1106,7 +1178,9 @@ export class AnalyticsService {
       conversionByMonth,
       activitiesByTypeData,
       opportunitiesByStageData,
+      opportunitiesByStage: opportunitiesByStageData2,
       followUpsByMonth,
+      opportunitiesInteraction,
     };
   }
 
@@ -1235,6 +1309,7 @@ export class AnalyticsService {
       pendingActivitiesCount,
       overdueActivitiesCount,
       activitiesCompletedCount,
+      totalOppsCreated,
     ] = await Promise.all([
       this.prisma.contact.count({ where: cw }),
       this.prisma.contact.count({ where: pw }),
@@ -1276,16 +1351,19 @@ export class AnalyticsService {
           unrestricted,
         ),
       }),
+      this.prisma.opportunity.count({
+        where: {
+          createdAt: { gte: from, lte: to },
+          ...(advisorId?.trim() ? { assignedTo: advisorId.trim() } : {}),
+        },
+      }),
     ]);
 
     const closedSalesAmount = closedAgg._sum.amount ?? 0;
     const closedSalesPrev = closedAggPrev._sum.amount ?? 0;
     const pipelineValue = pipelineAgg._sum.amount ?? 0;
 
-    const conversionPct =
-      totalContacts > 0
-        ? Math.round(((closedAgg._count ?? 0) / totalContacts) * 1000) / 10
-        : 0;
+    const conversionPct = closedAgg._count ?? 0;
 
     const pctChange = (cur: number, prev: number): string => {
       if (prev <= 0) return cur > 0 ? '+100%' : '0%';

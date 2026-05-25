@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
 import {
   Users,
@@ -45,13 +46,6 @@ import { MetricCard } from '@/components/shared/MetricCard';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { contactSourceLabels } from '@/data/mock';
 import type { Contact } from '@/types';
 import { contactListAll, mapApiContactRowToContact } from '@/lib/contactApi';
@@ -63,7 +57,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import {
   fetchAnalyticsSummary,
   fetchAnalyticsKPIs,
-  analyticsRangeFromPreset,
+  formatLocalISODate,
   type AnalyticsSummary,
   type AnalyticsKPIs,
 } from '@/lib/analyticsApi';
@@ -89,8 +83,6 @@ const activityIconMap: Record<string, typeof Phone> = {
   whatsapp: MessageSquare,
 };
 
-type DateRangePreset = '7d' | '1m' | '3m' | '1y' | 'custom';
-
 function changeTone(s: string): 'positive' | 'negative' | 'neutral' {
   const t = s.trim();
   if (t.startsWith('-')) return 'negative';
@@ -102,8 +94,10 @@ export default function Dashboard() {
   const { hasPermission } = usePermissions();
   const chartTheme = useChartTheme();
   const bundle = useCrmConfigStore((s) => s.bundle);
-  const [dateRange, setDateRange] = useState<DateRangePreset>('1m');
-  const [customRange, setCustomRange] = useState<DateRange | undefined>();
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: startOfMonth(subMonths(new Date(), 1)),
+    to: endOfMonth(new Date()),
+  });
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
@@ -129,12 +123,13 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    if (dateRange === 'custom' && (!customRange?.from || !customRange?.to)) {
+    if (!dateRange?.from || !dateRange?.to) {
       setSummary(null);
       setKpis(null);
       return;
     }
-    const { from, to } = analyticsRangeFromPreset(dateRange, customRange);
+    const from = formatLocalISODate(dateRange.from);
+    const to = formatLocalISODate(dateRange.to);
     let cancelled = false;
 
     // Cargar KPIs primero (rápido)
@@ -166,7 +161,7 @@ export default function Dashboard() {
     return () => {
       cancelled = true;
     };
-  }, [dateRange, customRange?.from, customRange?.to]);
+  }, [dateRange?.from?.getTime(), dateRange?.to?.getTime()]);
 
   const latestContacts = useMemo(() => {
     return [...contacts]
@@ -232,7 +227,7 @@ export default function Dashboard() {
     (!summary || !chartHasAnyValue(funnelData, ['value']));
   const advisorChartEmpty =
     !summaryLoading &&
-    (!summary || !chartHasAnyValue(performanceByAdvisor, ['empresas', 'ventas']));
+    (!summary || !chartHasAnyValue(performanceByAdvisor, ['oportunidades', 'contactos']));
 
   const handleExport = useCallback(
     (format: 'PDF' | 'Excel' | 'CSV') => {
@@ -288,26 +283,11 @@ export default function Dashboard() {
         description="Resumen ejecutivo del equipo comercial"
       >
         <div className="flex flex-wrap items-center gap-2">
-          <Select value={dateRange} onValueChange={(v) => setDateRange(v as DateRangePreset)}>
-            <SelectTrigger className="h-9 w-[160px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7d">Últimos 7 días</SelectItem>
-              <SelectItem value="1m">Último mes</SelectItem>
-              <SelectItem value="3m">Últimos 3 meses</SelectItem>
-              <SelectItem value="1y">Este año</SelectItem>
-              <SelectItem value="custom">Personalizado</SelectItem>
-            </SelectContent>
-          </Select>
-          {dateRange === 'custom' && (
-            <DateRangePicker
-              value={customRange}
-              onChange={setCustomRange}
-              placeholder="Seleccionar rango"
-              className="h-9 w-[240px]"
-            />
-          )}
+          <DateRangePicker 
+            value={dateRange} 
+            onChange={setDateRange} 
+            className="w-[260px]"
+          />
           {summaryLoading && (
             <span className="text-xs text-muted-foreground">Cargando métricas…</span>
           )}
@@ -345,13 +325,7 @@ export default function Dashboard() {
         )}
       </PageHeader>
 
-      {/* Metas semanal y mensual */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <WeeklyGoalCard />
-        <MonthlyGoalCard />
-      </div>
-
-      {/* KPI Row 1 */}
+      {/* KPI Row */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           title="Total Contactos"
@@ -377,49 +351,18 @@ export default function Dashboard() {
           loading={kpisLoading}
         />
         <MetricCard
-          title="Tasa de Conversión"
-          value={kpis ? `${kpis.conversionPct}%` : '—'}
-          changeType="neutral"
-          icon={Percent}
-          loading={kpisLoading}
-        />
-      </div>
-
-      {/* KPI Row 2 */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
-          title="Contactos Nuevos"
-          value={kpis?.newContactsInRange ?? '—'}
-          changeType="neutral"
-          icon={UserPlus}
-          loading={kpisLoading}
-        />
-        <MetricCard
           title="Tareas pendientes"
           value={kpis?.pendingActivities ?? '—'}
           changeType="neutral"
           icon={CalendarCheck}
           loading={kpisLoading}
         />
-        <MetricCard
-          title="Tareas vencidas"
-          value={kpis?.overdueFollowUps ?? '—'}
-          change={
-            kpis && kpis.overdueFollowUps > 0 ? 'Requiere atención' : undefined
-          }
-          changeType={
-            kpis && kpis.overdueFollowUps > 0 ? 'warning' : 'neutral'
-          }
-          icon={AlertTriangle}
-          loading={kpisLoading}
-        />
-        <MetricCard
-          title="Valor Pipeline"
-          value={kpis ? formatCurrency(kpis.pipelineValue) : '—'}
-          changeType="neutral"
-          icon={DollarSign}
-          loading={kpisLoading}
-        />
+      </div>
+
+      {/* Metas semanal y mensual */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <WeeklyGoalCard />
+        <MonthlyGoalCard />
       </div>
 
       {/* Charts Row 1 */}
@@ -609,20 +552,8 @@ export default function Dashboard() {
                     labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
                   />
                   <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
-                  <Bar
-                    dataKey="empresas"
-                    name="Empresas"
-                    fill="#3b82f6"
-                    radius={[0, 4, 4, 0]}
-                    barSize={14}
-                  />
-                  <Bar
-                    dataKey="ventas"
-                    name="Ventas"
-                    fill="#13944C"
-                    radius={[0, 4, 4, 0]}
-                    barSize={14}
-                  />
+                  <Bar dataKey="oportunidades" name="Oportunidades" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={14} />
+                  <Bar dataKey="contactos" name="Contactos" fill="#13944C" radius={[0, 4, 4, 0]} barSize={14} />
                 </BarChart>
               </ResponsiveContainer>
             </ChartCardBody>
@@ -723,14 +654,9 @@ export default function Dashboard() {
                     itemStyle={{ color: chartTheme.tooltipText }}
                     labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
                   />
-                  <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
-                  <Bar
-                    dataKey="empresas"
-                    name="Empresas"
-                    fill="#3b82f6"
-                    radius={[0, 4, 4, 0]}
-                    barSize={14}
-                  />
+              <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
+              <Bar dataKey="oportunidades" name="Oportunidades" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={16} />
+              <Bar dataKey="contactos" name="Contactos" fill="#13944C" radius={[0, 4, 4, 0]} barSize={16} />
                   <Bar
                     dataKey="ventas"
                     name="Ventas"
