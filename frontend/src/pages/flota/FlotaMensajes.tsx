@@ -2133,7 +2133,6 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
   const fileRef = useRef<HTMLInputElement>(null);
   const bulkJobIdRef = useRef<string | null>(null);
   const bulkSocketRef = useRef<ReturnType<typeof io> | null>(null);
-  const masivoCrmScrollRef = useRef<HTMLDivElement>(null);
   const masivoExcelScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -2218,13 +2217,6 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
     ? contacts.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
     : [];
 
-  const masivoCrmVirtualizer = useVirtualizer({
-    count: source === 'crm' ? filtered.length : 0,
-    getScrollElement: () => masivoCrmScrollRef.current,
-    estimateSize: () => 52,
-    overscan: 5,
-  });
-
   const masivoExcelVirtualizer = useVirtualizer({
     count: source === 'excel' ? (filtered as FlotaExcelContact[]).length : 0,
     getScrollElement: () => masivoExcelScrollRef.current,
@@ -2233,10 +2225,8 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
   });
 
   const selectedPageCount = Math.ceil(selected.length / SELECTED_PAGE_SIZE);
-  const paginatedSelected = useMemo(
-    () => selected.slice((selectedPage - 1) * SELECTED_PAGE_SIZE, selectedPage * SELECTED_PAGE_SIZE),
-    [selected, selectedPage],
-  );
+  const safePage = Math.max(1, selectedPageCount <= 0 ? 1 : selectedPage > selectedPageCount ? selectedPageCount : selectedPage);
+  const paginatedSelected = selected.slice((safePage - 1) * SELECTED_PAGE_SIZE, safePage * SELECTED_PAGE_SIZE);
 
   // Reset page when source changes or page exceeds available pages
   useEffect(() => {
@@ -2248,15 +2238,6 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
       setSelectedPage(selectedPageCount);
     }
   }, [selectedPageCount, selectedPage]);
-
-  function toggle(phone: string) {
-    setSelectedIds((s) => {
-      const n = new Set(s);
-      if (n.has(phone)) n.delete(phone);
-      else n.add(phone);
-      return n;
-    });
-  }
 
   function preview(text: string) {
     const name = previewContact?.name ?? '';
@@ -2520,53 +2501,10 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
                     <Button
                       className="mt-3 w-full"
                       onClick={() => setSelectedIds(new Set(contacts.map((c) => c.id!)))}
+                      disabled={contacts.length === 0}
                     >
-                      <Plus className="mr-1 h-4 w-4" /> Agregar todos
+                      <Plus className="mr-1 h-4 w-4" /> Agregar todos ({contacts.length})
                     </Button>
-                  </div>
-
-                  <div ref={masivoCrmScrollRef} className="max-h-72 overflow-y-auto rounded-lg border p-2">
-                    {loadingContacts ? (
-                      <div className="flex items-center justify-center py-8">
-                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                      </div>
-                    ) : filtered.length === 0 ? (
-                      <p className="py-8 text-center text-sm text-muted-foreground">Sin contactos</p>
-                    ) : (
-                      <div style={{ height: masivoCrmVirtualizer.getTotalSize(), position: 'relative' }}>
-                        {masivoCrmVirtualizer.getVirtualItems().map((vi) => {
-                          const c = (filtered as FlotaConversation[])[vi.index]!;
-                          const on = selectedIds.has(c.id!);
-                          return (
-                            <div
-                              key={c.id}
-                              style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${vi.start}px)` }}
-                            >
-                              <button
-                                onClick={() => toggle(c.id!)}
-                                className={cn(
-                                  'flex w-full items-center justify-between rounded-md px-3 py-2 text-sm transition-colors',
-                                  on ? 'bg-primary/10 text-primary' : 'hover:bg-muted',
-                                )}
-                              >
-                                <div className="text-left min-w-0 flex-1">
-                                  <span className="truncate block">{c.name}</span>
-                                  <div className="flex items-center gap-1.5 mt-0.5">
-                                    <p className="text-[11px] text-muted-foreground">{c.phone}</p>
-                                    {c.estado && (
-                                      <span className={cn('inline-flex items-center rounded-full px-1.5 py-0 text-[10px] font-medium', getTagStyle(c.estado))}>
-                                        {formatStatus(c.estado)}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                                {on ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <Plus className="h-4 w-4 shrink-0 text-muted-foreground" />}
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
                   </div>
                 </>
               )}
@@ -2689,7 +2627,7 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
                           {source === 'crm' && <th className="px-4 py-2 text-left font-medium">Estado</th>}
                         </tr>
                       </thead>
-                      <tbody>
+                      <tbody key={`${source}-${selectedIds.size}`}>
                         {selected.length === 0 ? (
                           <tr>
                             <td colSpan={source === 'crm' ? 3 : 2} className="px-4 py-12 text-center text-sm text-muted-foreground">
