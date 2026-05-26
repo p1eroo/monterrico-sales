@@ -57,6 +57,8 @@ import {
   FileText,
   ExternalLink,
   Music2,
+  Mic,
+  MicOff,
   PanelRight,
   Lock,
 } from 'lucide-react';
@@ -119,6 +121,7 @@ import {
   markConversationAsRead,
   importExcelPreview,
   uploadFlotaImage,
+  uploadFlotaAudio,
   fetchMasivoProspectos,
   sendFlotaBulk,
   getFlotaBulkProgress,
@@ -1151,6 +1154,14 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [uploadingAudio, setUploadingAudio] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordingChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
@@ -1183,6 +1194,7 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
   }, [contactId, !!convo]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const audioFileInputRef = useRef<HTMLInputElement>(null);
   const [operadores, setOperadores] = useState<OperadorUser[]>([]);
 
   useEffect(() => {
@@ -1213,6 +1225,107 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
     setImageFile(null);
     setImagePreview(null);
     setImageUrl(null);
+  }
+
+  async function handleAudioSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAudioFile(file);
+    setUploadingAudio(true);
+    try {
+      const url = await uploadFlotaAudio(file);
+      setAudioUrl(url);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al subir el audio');
+      setAudioFile(null);
+    } finally {
+      setUploadingAudio(false);
+    }
+    e.target.value = '';
+  }
+
+  function handleRemoveAudio() {
+    setAudioFile(null);
+    setAudioUrl(null);
+  }
+
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : 'audio/webm';
+      const recorder = new MediaRecorder(stream, { mimeType });
+      const chunks: Blob[] = [];
+      recordingChunksRef.current = chunks;
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+      recorder.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(chunks, { type: mimeType });
+        void sendAudioBlob(blob);
+      };
+      recorder.start(250);
+      mediaRecorderRef.current = recorder;
+      setIsRecording(true);
+      setRecordingDuration(0);
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration((d) => d + 1);
+      }, 1000);
+    } catch {
+      toast.error('No se pudo acceder al micrófono. Permití el acceso e intentá de nuevo.');
+    }
+  }
+
+  function stopRecording() {
+    const recorder = mediaRecorderRef.current;
+    if (recorder?.state === 'recording') recorder.stop();
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    recordingTimerRef.current = null;
+    setIsRecording(false);
+    setRecordingDuration(0);
+  }
+
+  async function sendAudioBlob(blob: Blob) {
+    const file = new File([blob], 'audio.webm', { type: blob.type });
+    setUploadingAudio(true);
+    try {
+      const url = await uploadFlotaAudio(file);
+      const optimisticId = `opt:${Date.now()}`;
+      const optimistic: WhatsappMessageItem = {
+        id: optimisticId,
+        direction: 'outbound',
+        body: draft.trim() || '',
+        fromWaId: '',
+        toWaId: convo?.phone ?? '',
+        createdAt: new Date().toISOString(),
+        waMessageId: null,
+        evoInstanceName: null,
+        waOutboundStatus: 'sent',
+        attachments: [{
+          id: `opt-att:${Date.now()}`,
+          name: 'audio.mp3',
+          mimeType: 'audio/mpeg',
+          size: file.size,
+          mediaType: 'audio' as const,
+          url,
+          downloadUrl: url,
+        }],
+      };
+      setMessagesCache((prev) => {
+        const existing = prev[contactId] ?? [];
+        return { ...prev, [contactId]: [...existing, optimistic] };
+      });
+      setDraft('');
+      const savedDraft = draft;
+      await sendFlotaWhatsappMessage(contactId, savedDraft, undefined, url);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al enviar el audio');
+    } finally {
+      setUploadingAudio(false);
+      setAudioUrl(null);
+    }
   }
 
   useEffect(() => {
@@ -1319,24 +1432,41 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
   }, [loadOlderMessages, hasMore]);
 
   async function send() {
-    if (!draft.trim() && !imageUrl) return;
+    if (!draft.trim() && !imageUrl && !audioUrl) return;
     const body = draft.trim();
     const optimisticId = `opt:${Date.now()}`;
     setDraft('');
     const finalImageUrl = imageUrl;
+    const finalAudioUrl = audioUrl;
     if (imagePreview) URL.revokeObjectURL(imagePreview);
     setImageFile(null);
     setImagePreview(null);
     setImageUrl(null);
-    const optimisticAttachments = finalImageUrl ? [{
-      id: `opt-att:${Date.now()}`,
-      name: imageFile?.name || 'imagen.jpg',
-      mimeType: imageFile?.type || 'image/jpeg',
-      size: imageFile?.size || 0,
-      mediaType: 'image' as const,
-      url: finalImageUrl,
-      downloadUrl: finalImageUrl,
-    }] : [];
+    setAudioFile(null);
+    setAudioUrl(null);
+    const optimisticAttachments: WhatsappMessageItem['attachments'] = [];
+    if (finalImageUrl) {
+      optimisticAttachments.push({
+        id: `opt-att:${Date.now()}`,
+        name: imageFile?.name || 'imagen.jpg',
+        mimeType: imageFile?.type || 'image/jpeg',
+        size: imageFile?.size || 0,
+        mediaType: 'image' as const,
+        url: finalImageUrl,
+        downloadUrl: finalImageUrl,
+      });
+    }
+    if (finalAudioUrl) {
+      optimisticAttachments.push({
+        id: `opt-att:${Date.now() + 1}`,
+        name: audioFile?.name || 'audio.ogg',
+        mimeType: audioFile?.type || 'audio/ogg',
+        size: audioFile?.size || 0,
+        mediaType: 'audio' as const,
+        url: finalAudioUrl,
+        downloadUrl: finalAudioUrl,
+      });
+    }
     const optimistic: WhatsappMessageItem = {
       id: optimisticId,
       direction: 'outbound',
@@ -1355,7 +1485,7 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
       return { ...prev, [contactId]: next };
     });
     try {
-      await sendFlotaWhatsappMessage(contactId, body || '', finalImageUrl || undefined);
+      await sendFlotaWhatsappMessage(contactId, body || '', finalImageUrl || undefined, finalAudioUrl || undefined);
     } catch (e) {
       setMessagesCache((prev) => {
         const existing = prev[contactId] ?? [];
@@ -1364,6 +1494,7 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
       });
       setDraft(body);
       setImageUrl(finalImageUrl);
+      setAudioUrl(finalAudioUrl);
       toast.error(e instanceof Error ? e.message : 'No se pudo enviar el mensaje');
       return;
     }
@@ -1699,6 +1830,13 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
           className="hidden"
           onChange={handleImageSelect}
         />
+        <input
+          ref={audioFileInputRef}
+          type="file"
+          accept="audio/*"
+          className="hidden"
+          onChange={handleAudioSelect}
+        />
         {imagePreview && (
           <div className="mb-2 relative inline-block">
             <img src={imagePreview} alt="Preview" className="max-h-24 rounded-lg object-cover" />
@@ -1716,34 +1854,81 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
             </button>
           </div>
         )}
+        {audioFile && (
+          <div className="mb-2 flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-2 text-sm">
+            <Music2 className="h-4 w-4 text-muted-foreground" />
+            <span className="flex-1 truncate">{audioFile.name}</span>
+            {uploadingAudio ? (
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            ) : (
+              <button
+                type="button"
+                onClick={handleRemoveAudio}
+                className="rounded-full bg-destructive p-0.5 text-white hover:bg-destructive/90"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+        )}
         <div className="flex items-end gap-2">
           <Button variant="ghost" size="icon" className="shrink-0" onClick={() => fileInputRef.current?.click()} disabled={uploadingImage}>
             <Paperclip className="h-5 w-5" />
           </Button>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="ghost" size="icon" className="shrink-0"><Smile className="h-5 w-5" /></Button>
-            </PopoverTrigger>
-            <PopoverContent side="top" align="start" className="w-auto p-0 border-0">
-              <EmojiGrid onSelect={(emoji) => setDraft((prev) => prev + emoji)} />
-            </PopoverContent>
-          </Popover>
-          <Textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                void send();
-              }
-            }}
-            placeholder="Escribe un mensaje..."
-            className="min-h-[44px] max-h-32 resize-none"
-            rows={1}
-          />
-          <Button onClick={() => void send()} disabled={!draft.trim() && !imageUrl} className="shrink-0">
-            <Send className="h-4 w-4" />
+          <Button variant="ghost" size="icon" className="shrink-0" onClick={() => audioFileInputRef.current?.click()} disabled={uploadingAudio}>
+            <Music2 className="h-5 w-5" />
           </Button>
+          {isRecording ? (
+            <div className="flex flex-1 items-center gap-2 rounded-lg border bg-destructive/5 px-3 py-2">
+              <div className="flex items-center gap-2 text-sm font-medium text-destructive">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-destructive" />
+                Grabando...
+              </div>
+              <span className="text-sm tabular-nums text-muted-foreground">
+                {Math.floor(recordingDuration / 60)}:{String(recordingDuration % 60).padStart(2, '0')}
+              </span>
+              <div className="flex-1" />
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="shrink-0 text-destructive hover:text-destructive"
+                onClick={stopRecording}
+              >
+                <StopCircle className="h-5 w-5" />
+              </Button>
+            </div>
+          ) : (
+            <>
+              <Button variant="ghost" size="icon" className="shrink-0" onClick={() => void startRecording()} disabled={uploadingAudio || uploadingImage}>
+                <Mic className="h-5 w-5" />
+              </Button>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="icon" className="shrink-0"><Smile className="h-5 w-5" /></Button>
+                </PopoverTrigger>
+                <PopoverContent side="top" align="start" className="w-auto p-0 border-0">
+                  <EmojiGrid onSelect={(emoji) => setDraft((prev) => prev + emoji)} />
+                </PopoverContent>
+              </Popover>
+              <Textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    void send();
+                  }
+                }}
+                placeholder="Escribe un mensaje..."
+                className="min-h-[44px] max-h-32 resize-none"
+                rows={1}
+              />
+              <Button onClick={() => void send()} disabled={!draft.trim() && !imageUrl && !audioUrl} className="shrink-0">
+                <Send className="h-4 w-4" />
+              </Button>
+            </>
+          )}
         </div>
       </div>
 

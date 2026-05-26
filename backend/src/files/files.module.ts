@@ -10,6 +10,6 @@ import { MediaModule } from '../media/media.module';
   imports: [PrismaModule, AuthModule, MediaModule],
   controllers: [FilesController],
   providers: [FilesService, S3StorageService],
-  exports: [FilesService],
+  exports: [FilesService, S3StorageService],
 })
 export class FilesModule {}

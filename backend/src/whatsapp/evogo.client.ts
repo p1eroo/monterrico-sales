@@ -476,6 +476,7 @@ export class EvogoClient {
     mediatype?: string;
     caption?: string;
     mimeType?: string;
+    fileName?: string;
   }): Promise<EvogoSendTextResult> {
     const body: Record<string, unknown> = {
       number: params.number,
@@ -487,6 +488,9 @@ export class EvogoClient {
     }
     if (params.mimeType) {
       body.mimeType = params.mimeType;
+    }
+    if (params.fileName) {
+      body.fileName = params.fileName;
     }
     const res = await this.requestJsonWithManagerFallback('/send/media', {
       method: 'POST',

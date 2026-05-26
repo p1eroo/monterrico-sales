@@ -115,10 +115,11 @@ export async function sendFlotaWhatsappMessage(
   prospectoId: string,
   text: string,
   imageUrl?: string,
+  audioUrl?: string,
 ): Promise<{ ok: boolean; waMessageId: string | null }> {
   return api<{ ok: boolean; waMessageId: string | null }>('/api/whatsapp/flota/send', {
     method: 'POST',
-    body: JSON.stringify({ prospectoId, text: text || undefined, imageUrl: imageUrl || undefined }),
+    body: JSON.stringify({ prospectoId, text: text || undefined, imageUrl: imageUrl || undefined, audioUrl: audioUrl || undefined }),
   });
 }
 
@@ -137,6 +138,24 @@ export async function uploadFlotaImage(file: File): Promise<string> {
   }
   const data = await res.json() as { url?: string };
   if (!data.url) throw new Error('No se recibió URL de la imagen');
+  return data.url;
+}
+
+export async function uploadFlotaAudio(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const token = getAccessToken();
+  const res = await fetch(`${API_BASE}/api/whatsapp/flota/upload-audio`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Error subiendo audio: ${text}`);
+  }
+  const data = await res.json() as { url?: string };
+  if (!data.url) throw new Error('No se recibió URL del audio');
   return data.url;
 }
 

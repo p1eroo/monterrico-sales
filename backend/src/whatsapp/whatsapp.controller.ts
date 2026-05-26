@@ -183,15 +183,16 @@ export class WhatsappController {
   @RequirePermissions('flota_mensajes.editar')
   async flotaSend(
     @Req() req: AuthedReq,
-    @Body() body: { prospectoId: string; text?: string; imageUrl?: string },
+    @Body() body: { prospectoId: string; text?: string; imageUrl?: string; audioUrl?: string },
   ) {
     const prospectoId = body.prospectoId?.trim();
     const text = body.text?.trim();
     const imageUrl = body.imageUrl?.trim();
-    if (!prospectoId || (!text && !imageUrl)) {
-      throw new BadRequestException('prospectoId y text o imageUrl son obligatorios');
+    const audioUrl = body.audioUrl?.trim();
+    if (!prospectoId || (!text && !imageUrl && !audioUrl)) {
+      throw new BadRequestException('prospectoId y text, imageUrl o audioUrl son obligatorios');
     }
-    return this.whatsapp.sendFromFlotaProspecto(prospectoId, text || '', imageUrl || undefined, req.user.userId);
+    return this.whatsapp.sendFromFlotaProspecto(prospectoId, text || '', imageUrl || undefined, audioUrl || undefined, req.user.userId);
   }
 
   @Post('send-bulk')
@@ -244,6 +245,24 @@ export class WhatsappController {
       'image/webp',
       { authorizationHeader: authHeader },
     );
+    return { url };
+  }
+
+  @Post('flota/upload-audio')
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } }))
+  async uploadFlotaAudio(
+    @Req() req: AuthedReq,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    if (!file?.buffer?.length) {
+      throw new BadRequestException('Adjunta un audio (max 50MB)');
+    }
+    const allowed = ['audio/ogg', 'audio/mpeg', 'audio/mp4', 'audio/wav', 'audio/webm', 'audio/aac', 'audio/m4a'];
+    if (!allowed.includes(file.mimetype)) {
+      throw new BadRequestException('Solo se permiten formatos OGG, MP3, M4A, WAV, AAC o WEBM');
+    }
+    this.logger.log(`Subiendo audio: ${file.originalname}, ${file.mimetype}, ${file.size} bytes`);
+    const url = await this.whatsapp.uploadFlotaAudio(file.buffer, file.originalname, file.mimetype, req.user.userId);
     return { url };
   }
 

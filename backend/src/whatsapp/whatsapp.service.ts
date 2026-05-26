@@ -13,6 +13,7 @@ import { ContactsService } from '../contacts/contacts.service';
 import type { CrmDataScope } from '../auth/crm-data-scope.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { FilesService } from '../files/files.service';
+import { S3StorageService } from '../files/s3-storage.service';
 import { EvogoClient, type EvogoSendTextResult } from './evogo.client';
 import { SendWhatsappDto } from './dto/send-whatsapp.dto';
 import { digitsOnly, normalizePeWaNumber } from './wa-number.util';
@@ -27,6 +28,8 @@ import {
   stripHeavyPayload,
 } from './evolution-webhook.util';
 import { WhatsappGateway } from './whatsapp.gateway';
+import { spawn } from 'child_process';
+import { randomUUID } from 'node:crypto';
 import XLSX from 'xlsx';
 
 type JsonRecord = Record<string, unknown>;
@@ -130,6 +133,7 @@ export class WhatsappService {
     private readonly contactsService: ContactsService,
     private readonly notifications: NotificationsService,
     private readonly files: FilesService,
+    private readonly s3: S3StorageService,
     private readonly gateway: WhatsappGateway,
   ) {}
 
@@ -776,8 +780,9 @@ export class WhatsappService {
       'audio/mp4': 'm4a',
       'application/pdf': 'pdf',
     };
-    if (mime in known) return known[mime]!;
-    if (mime.includes('/')) return mime.split('/')[1]!.replace(/[^a-z0-9]+/g, '') || 'bin';
+    const baseMime = mime.includes(';') ? mime.split(';')[0]!.trim() : mime.includes(' ') ? mime.split(' ')[0]!.trim() : mime;
+    if (baseMime in known) return known[baseMime]!;
+    if (baseMime.includes('/')) return baseMime.split('/')[1]!.replace(/[^a-z0-9]+/g, '') || 'bin';
     return 'bin';
   }
 
@@ -896,7 +901,7 @@ export class WhatsappService {
       );
       const proxyUrl = `/api/whatsapp/media/proxy/${row.id}`;
       const mediaType = fallbackMedia?.mediaType;
-      const useProxy = mediaType === 'image' || mediaType === 'video' || mediaType === 'document';
+      const useProxy = mediaType === 'image' || mediaType === 'video' || mediaType === 'audio' || mediaType === 'document';
       const fallbackAttachments: WhatsappMessageAttachmentDto[] =
         fallbackMedia && fallbackUrl
           ? [
@@ -913,8 +918,8 @@ export class WhatsappService {
                   fallbackMedia.mimeType || 'application/octet-stream',
                 size: fallbackMedia.size ?? 0,
                 mediaType: fallbackMedia.mediaType,
-                url: useProxy ? proxyUrl : fallbackUrl,
-                downloadUrl: useProxy ? proxyUrl : fallbackUrl,
+                url: fallbackUrl,
+                downloadUrl: fallbackUrl,
                 proxyUrl: useProxy ? proxyUrl : null,
               },
             ]
@@ -962,7 +967,15 @@ export class WhatsappService {
       this.logger.warn(`Adjunto WhatsApp ${messageId} omitido: no hay entityId`);
       return;
     }
-    const uploadedById = contact?.assignedTo || instance?.userId;
+    let uploadedById = contact?.assignedTo || instance?.userId;
+    if (!uploadedById) {
+      const admin = await this.prisma.user.findFirst({
+        where: { role: { slug: 'admin' } },
+        select: { id: true },
+        orderBy: { createdAt: 'asc' },
+      });
+      uploadedById = admin?.id ?? undefined;
+    }
     if (!uploadedById) {
       this.logger.warn(`Adjunto WhatsApp ${messageId} omitido: no hay usuario dueño para CrmFile (instance=${!!instance}, instance.userId=${instance?.userId || 'null'}, contact=${!!contact})`);
       return;
@@ -1928,7 +1941,83 @@ export class WhatsappService {
     });
   }
 
-  async sendFromFlotaProspecto(prospectoId: string, text: string, imageUrl: string | undefined, userId: string) {
+  async uploadFlotaAudio(buffer: Buffer, originalName: string, mimeType: string, userId: string): Promise<string> {
+    let audioBuffer = buffer;
+    let audioMime = mimeType;
+    let audioName = originalName;
+    if (mimeType.startsWith('audio/webm') || mimeType.startsWith('audio/ogg')) {
+      try {
+        audioBuffer = await this.convertWebmToMp3(buffer);
+        audioMime = 'audio/mpeg';
+        audioName = originalName.replace(/\.[^.]+$/, '.mp3');
+      } catch (e) {
+        this.logger.warn(`Error convirtiendo audio a MP3: ${String(e)}. Enviando como original.`);
+      }
+    }
+    const uuid = randomUUID();
+    const storageKey = `whatsapp-audio/${userId}/${uuid}-${audioName}`;
+    if (this.s3.isConfigured()) {
+      await this.s3.putObject(storageKey, audioBuffer, audioMime);
+    } else {
+      const { url } = await this.files.presignGet((await this.files.create(userId, {
+        buffer: audioBuffer,
+        originalName: audioName,
+        mimeType: audioMime,
+        entityType: 'flota-prospecto',
+        entityId: userId,
+        entityName: 'audio-upload',
+        relatedEntityType: 'whatsapp-message',
+        relatedEntityName: 'audio-enviado',
+      })).id, 'inline');
+      return url;
+    }
+    const file = await this.prisma.crmFile.create({
+      data: {
+        storageKey,
+        originalName: audioName,
+        mimeType: audioMime,
+        size: audioBuffer.length,
+        entityType: 'flota-prospecto',
+        entityId: userId,
+        entityName: 'audio-upload',
+        relatedEntityType: 'whatsapp-message',
+        relatedEntityName: 'audio-enviado',
+        uploadedBy: userId,
+      },
+    });
+    const { url } = await this.files.presignGet(file.id, 'inline');
+    this.logger.log(`Audio subido: ${url} (${audioBuffer.length} bytes, ${audioMime})`);
+    return url;
+  }
+
+  private convertWebmToMp3(input: Buffer): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      const ffmpeg = spawn('ffmpeg', [
+        '-i', 'pipe:0',
+        '-c:a', 'libmp3lame',
+        '-b:a', '32k',
+        '-ac', '1',
+        '-ar', '24000',
+        '-f', 'mp3',
+        'pipe:1',
+      ]);
+      const chunks: Buffer[] = [];
+      ffmpeg.stdout.on('data', (c: Buffer) => chunks.push(c));
+      let stderr = '';
+      ffmpeg.stderr.on('data', (c: Buffer) => { stderr += c.toString(); });
+      ffmpeg.on('close', (code) => {
+        if (code === 0 && chunks.length > 0) {
+          resolve(Buffer.concat(chunks));
+        } else {
+          reject(new Error(`ffmpeg exit ${code}: ${stderr.slice(-200)}`));
+        }
+      });
+      ffmpeg.on('error', reject);
+      ffmpeg.stdin.end(input);
+    });
+  }
+
+  async sendFromFlotaProspecto(prospectoId: string, text: string, imageUrl: string | undefined, audioUrl: string | undefined, userId: string) {
     const current = await this.findSharedInstance();
     if (!current) {
       throw new ServiceUnavailableException('El WhatsApp compartido de Flota no está configurado. Conéctalo primero.');
@@ -1963,6 +2052,16 @@ export class WhatsappService {
         mediatype: 'image',
         caption,
       });
+    } else if (audioUrl) {
+      sent = await this.evogo.sendMedia({
+        instanceApiKey: instance.instanceApiKey,
+        number: to,
+        mediaUrl: audioUrl,
+        mediatype: 'document',
+        mimeType: 'audio/mpeg',
+        fileName: 'audio-mensaje.mp3',
+        caption,
+      });
     } else {
       sent = await this.evogo.sendText({
         instanceApiKey: instance.instanceApiKey,
@@ -1977,7 +2076,7 @@ export class WhatsappService {
       throw new ServiceUnavailableException(`No se pudo enviar: ${msg}`);
     }
 
-    const body = imageUrl ? (caption || '') : text.trim();
+    const body = imageUrl ? (caption || '') : audioUrl ? (caption || '') : text.trim();
 
     const created = await this.prisma.crmWhatsappMessage.create({
       data: {
@@ -1996,25 +2095,26 @@ export class WhatsappService {
       },
     });
 
-    if (imageUrl) {
+    if (imageUrl || audioUrl) {
       try {
+        const isAudio = !!audioUrl;
         await this.prisma.crmFile.create({
           data: {
-            storageKey: imageUrl,
-            originalName: 'imagen-enviada.jpg',
-            mimeType: 'image/jpeg',
+            storageKey: imageUrl || audioUrl || '',
+            originalName: isAudio ? 'audio-enviado.mp3' : 'imagen-enviada.jpg',
+            mimeType: isAudio ? 'audio/mpeg' : 'image/jpeg',
             size: 0,
             entityType: 'flota-prospecto',
             entityId: prospectoId,
             entityName: prospecto.nombreCompleto?.trim() || null,
             relatedEntityType: 'whatsapp-message',
             relatedEntityId: created.id,
-            relatedEntityName: 'imagen-enviada',
+            relatedEntityName: isAudio ? 'audio-enviado' : 'imagen-enviada',
             uploadedBy: userId,
           },
         });
       } catch (e) {
-        this.logger.warn(`No se pudo crear adjunto de imagen saliente ${created.id}: ${String(e)}`);
+        this.logger.warn(`No se pudo crear adjunto de medio saliente ${created.id}: ${String(e)}`);
       }
     }
 
