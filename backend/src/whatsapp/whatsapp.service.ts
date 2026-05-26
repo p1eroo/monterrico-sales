@@ -1954,38 +1954,18 @@ export class WhatsappService {
         this.logger.warn(`Error convirtiendo audio a MP3: ${String(e)}. Enviando como original.`);
       }
     }
-    const uuid = randomUUID();
-    const storageKey = `whatsapp-audio/${userId}/${uuid}-${audioName}`;
-    if (this.s3.isConfigured()) {
-      await this.s3.putObject(storageKey, audioBuffer, audioMime);
-    } else {
-      const { url } = await this.files.presignGet((await this.files.create(userId, {
-        buffer: audioBuffer,
-        originalName: audioName,
-        mimeType: audioMime,
-        entityType: 'flota-prospecto',
-        entityId: userId,
-        entityName: 'audio-upload',
-        relatedEntityType: 'whatsapp-message',
-        relatedEntityName: 'audio-enviado',
-      })).id, 'inline');
-      return url;
-    }
-    const file = await this.prisma.crmFile.create({
-      data: {
-        storageKey,
-        originalName: audioName,
-        mimeType: audioMime,
-        size: audioBuffer.length,
-        entityType: 'flota-prospecto',
-        entityId: userId,
-        entityName: 'audio-upload',
-        relatedEntityType: 'whatsapp-message',
-        relatedEntityName: 'audio-enviado',
-        uploadedBy: userId,
-      },
-    });
-    const { url } = await this.files.presignGet(file.id, 'inline');
+    const authHeader = this.config.get<string>('MEDIA_UPLOAD_AUTHORIZATION')?.trim();
+    const url = await this.files.create(userId, {
+      buffer: audioBuffer,
+      originalName: audioName,
+      mimeType: audioMime,
+      entityType: 'flota-prospecto',
+      entityId: userId,
+      entityName: 'audio-upload',
+      relatedEntityType: 'whatsapp-message',
+      relatedEntityName: 'audio-enviado',
+      authorizationHeader: authHeader,
+    }).then((file) => this.files.presignGet(file.id, 'inline')).then((r) => r.url);
     this.logger.log(`Audio subido: ${url} (${audioBuffer.length} bytes, ${audioMime})`);
     return url;
   }
@@ -2057,9 +2037,8 @@ export class WhatsappService {
         instanceApiKey: instance.instanceApiKey,
         number: to,
         mediaUrl: audioUrl,
-        mediatype: 'document',
+        mediatype: 'audio',
         mimeType: 'audio/mpeg',
-        fileName: 'audio-mensaje.mp3',
         caption,
       });
     } else {

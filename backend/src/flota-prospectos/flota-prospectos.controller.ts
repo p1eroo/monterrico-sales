@@ -123,12 +123,12 @@ export class FlotaProspectosController {
   /** GET /flota-prospectos/masivo-list — Lista ligera de prospectos para el envío masivo */
   @Get('flota-prospectos/masivo-list')
   @RequirePermissions('flota_prospectos.ver')
-  async listForMasivo(@Req() req: AuthedReq, @Query('search') search?: string) {
+  async listForMasivo(@Req() req: AuthedReq, @Query('search') search?: string, @Query('estado') estado?: string) {
     const scope = await this.buildFlotaScope(
       req.user.userId,
       req.user.roleId,
     );
-    return this.service.listForMasivo(search, scope);
+    return this.service.listForMasivo(search, scope, estado);
   }
 
   /** GET /flota/sheets — Hojas disponibles del spreadsheet */

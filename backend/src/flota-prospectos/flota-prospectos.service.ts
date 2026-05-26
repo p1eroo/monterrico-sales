@@ -104,7 +104,7 @@ export class FlotaProspectosService {
 
 
   /** Lista ligera para el envío masivo desde CRM */
-  async listForMasivo(search?: string, scope?: CrmDataScope) {
+  async listForMasivo(search?: string, scope?: CrmDataScope, estado?: string) {
     const where: Record<string, unknown> = {};
 
     if (scope && !scope.unrestricted) {
@@ -112,6 +112,10 @@ export class FlotaProspectosService {
       if (operadorFilter) {
         where.AND = [{ OR: [operadorFilter, { operador: null }] }] as any;
       }
+    }
+
+    if (estado) {
+      where.estado = { equals: estado, mode: 'insensitive' };
     }
 
     if (search?.trim()) {
@@ -123,9 +127,9 @@ export class FlotaProspectosService {
     }
     return this.prisma.flotaProspecto.findMany({
       where: where as any,
-      select: { id: true, nombreCompleto: true, celular: true, movil: true },
+      select: { id: true, nombreCompleto: true, celular: true, movil: true, estado: true },
       orderBy: { nombreCompleto: 'asc' },
-      take: 5000,
+      take: 20000,
     });
   }
 

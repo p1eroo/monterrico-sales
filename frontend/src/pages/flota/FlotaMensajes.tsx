@@ -2113,6 +2113,9 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
   const [source, setSource] = useState<'crm' | 'excel' | null>(null);
   const [message, setMessage] = useState('');
   const [search, setSearch] = useState('');
+  const [estadoFilter, setEstadoFilter] = useState<string>('');
+  const [selectedPage, setSelectedPage] = useState(1);
+  const SELECTED_PAGE_SIZE = 50;
   const [sending, setSending] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -2134,8 +2137,14 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
   const masivoExcelScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    setSelectedIds(new Set());
     void loadContacts();
   }, []);
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+    void loadContacts();
+  }, [estadoFilter]);
 
   // Check for pending bulk job on mount
   useEffect(() => {
@@ -2156,7 +2165,7 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
   async function loadContacts() {
     setLoadingContacts(true);
     try {
-      const data = await fetchMasivoProspectos();
+      const data = await fetchMasivoProspectos(undefined, estadoFilter || undefined);
       const mapped: FlotaConversation[] = data.map((p) => ({
         id: p.id,
         name: p.nombreCompleto,
@@ -2165,7 +2174,7 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
         time: new Date().toISOString(),
         direction: 'outbound',
         unread: 0,
-        estado: undefined,
+        estado: p.estado ?? undefined,
       }));
       setContacts(mapped);
     } catch {
@@ -2222,6 +2231,23 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
     estimateSize: () => 48,
     overscan: 5,
   });
+
+  const selectedPageCount = Math.ceil(selected.length / SELECTED_PAGE_SIZE);
+  const paginatedSelected = useMemo(
+    () => selected.slice((selectedPage - 1) * SELECTED_PAGE_SIZE, selectedPage * SELECTED_PAGE_SIZE),
+    [selected, selectedPage],
+  );
+
+  // Reset page when source changes or page exceeds available pages
+  useEffect(() => {
+    setSelectedPage(1);
+  }, [source]);
+  
+  useEffect(() => {
+    if (selectedPage > selectedPageCount && selectedPageCount > 0) {
+      setSelectedPage(selectedPageCount);
+    }
+  }, [selectedPageCount, selectedPage]);
 
   function toggle(phone: string) {
     setSelectedIds((s) => {
@@ -2456,6 +2482,38 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
                     <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nombre o teléfono..." />
                   </div>
 
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-muted-foreground">Filtrar por estado</label>
+                    <div className="flex flex-wrap gap-1">
+                      <button
+                        onClick={() => setEstadoFilter('')}
+                        className={cn(
+                          'rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+                          !estadoFilter
+                            ? 'bg-primary text-primary-foreground shadow-sm'
+                            : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                        )}
+                      >
+                        Todos
+                      </button>
+                      {ESTADOS.map((est) => (
+                        <button
+                          key={est}
+                          onClick={() => setEstadoFilter(estadoFilter === est ? '' : est)}
+                          className={cn(
+                            'rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+                            estadoFilter === est
+                              ? 'bg-primary text-primary-foreground shadow-sm'
+                              : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                            getTagStyle(est) && estadoFilter !== est ? getTagStyle(est) : '',
+                          )}
+                        >
+                          {formatStatus(est)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   <div className="rounded-lg border bg-muted/40 p-4">
                     <p className="text-xs font-medium text-muted-foreground">Contactos disponibles</p>
                     <p className="mt-1 text-3xl font-bold text-primary">{contacts.length}</p>
@@ -2491,11 +2549,18 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
                                   on ? 'bg-primary/10 text-primary' : 'hover:bg-muted',
                                 )}
                               >
-                                <div className="text-left">
-                                  <span>{c.name}</span>
-                                  <p className="text-[11px] text-muted-foreground">{c.phone}</p>
+                                <div className="text-left min-w-0 flex-1">
+                                  <span className="truncate block">{c.name}</span>
+                                  <div className="flex items-center gap-1.5 mt-0.5">
+                                    <p className="text-[11px] text-muted-foreground">{c.phone}</p>
+                                    {c.estado && (
+                                      <span className={cn('inline-flex items-center rounded-full px-1.5 py-0 text-[10px] font-medium', getTagStyle(c.estado))}>
+                                        {formatStatus(c.estado)}
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
-                                {on ? <CheckCircle2 className="h-4 w-4" /> : <Plus className="h-4 w-4 text-muted-foreground" />}
+                                {on ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <Plus className="h-4 w-4 shrink-0 text-muted-foreground" />}
                               </button>
                             </div>
                           );
@@ -2606,12 +2671,12 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
                 </div>
               ) : (
                 <>
-                  <div className="flex items-center justify-between border-b p-4">
+                  <div className="flex items-center justify-between border-b p-4 shrink-0">
                     <div>
                       <h3 className="font-semibold">Destinatarios seleccionados</h3>
                       <p className="text-xs text-muted-foreground">{selected.length} contactos</p>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>
+                    <Button variant="outline" size="sm" onClick={() => { setSelectedIds(new Set()); setSelectedPage(1); }}>
                       Eliminar seleccionados
                     </Button>
                   </div>
@@ -2621,26 +2686,69 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
                         <tr>
                           <th className="px-4 py-2 text-left font-medium">Nombre</th>
                           <th className="px-4 py-2 text-left font-medium">Teléfono</th>
+                          {source === 'crm' && <th className="px-4 py-2 text-left font-medium">Estado</th>}
                         </tr>
                       </thead>
                       <tbody>
                         {selected.length === 0 ? (
                           <tr>
-                            <td colSpan={2} className="px-4 py-12 text-center text-sm text-muted-foreground">
+                            <td colSpan={source === 'crm' ? 3 : 2} className="px-4 py-12 text-center text-sm text-muted-foreground">
                               Selecciona contactos desde el panel izquierdo
                             </td>
                           </tr>
                         ) : (
-                          selected.map((c) => (
-                            <tr key={'phone' in c ? c.phone : (c as FlotaConversation).id} className="border-t">
-                              <td className="px-4 py-3 font-medium">{c.name}</td>
-                              <td className="px-4 py-3 text-muted-foreground">{'phone' in c ? c.phone : (c as FlotaConversation).phone}</td>
-                            </tr>
-                          ))
+                          paginatedSelected.map((c) => {
+                            const isCrm = source === 'crm';
+                            const convo = c as FlotaConversation;
+                            const excelC = c as FlotaExcelContact;
+                            return (
+                              <tr key={isCrm ? convo.id : excelC.phone} className="border-t">
+                                <td className="px-4 py-3 font-medium">{c.name}</td>
+                                <td className="px-4 py-3 text-muted-foreground">{isCrm ? convo.phone : excelC.phone}</td>
+                                {isCrm && (
+                                  <td className="px-4 py-3">
+                                    {convo.estado && (
+                                      <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium', getTagStyle(convo.estado))}>
+                                        {formatStatus(convo.estado)}
+                                      </span>
+                                    )}
+                                  </td>
+                                )}
+                              </tr>
+                            );
+                          })
                         )}
                       </tbody>
                     </table>
                   </div>
+                  {selectedPageCount > 1 && (
+                    <div className="flex items-center justify-between border-t px-4 py-2 text-xs text-muted-foreground">
+                      <span>
+                        {(selectedPage - 1) * SELECTED_PAGE_SIZE + 1}–{Math.min(selectedPage * SELECTED_PAGE_SIZE, selected.length)} de {selected.length}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          disabled={selectedPage <= 1}
+                          onClick={() => setSelectedPage((p) => Math.max(1, p - 1))}
+                        >
+                          <ArrowLeft className="h-3 w-3" />
+                        </Button>
+                        <span className="px-2 font-medium">{selectedPage} / {selectedPageCount}</span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          disabled={selectedPage >= selectedPageCount}
+                          onClick={() => setSelectedPage((p) => Math.min(selectedPageCount, p + 1))}
+                        >
+                          <ArrowRight className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </div>

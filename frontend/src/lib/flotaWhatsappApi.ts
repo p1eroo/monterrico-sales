@@ -92,9 +92,12 @@ export async function markConversationAsRead(prospectoId: string): Promise<void>
   return api(`/api/whatsapp/flota/read/${prospectoId}`, { method: 'POST' });
 }
 
-export async function fetchMasivoProspectos(search?: string): Promise<{ id: string; nombreCompleto: string; celular: string | null; movil: string | null }[]> {
-  const params = search?.trim() ? `?search=${encodeURIComponent(search.trim())}` : '';
-  return api(`/flota-prospectos/masivo-list${params}`);
+export async function fetchMasivoProspectos(search?: string, estado?: string): Promise<{ id: string; nombreCompleto: string; celular: string | null; movil: string | null; estado: string | null }[]> {
+  const qs = new URLSearchParams();
+  if (search?.trim()) qs.set('search', search.trim());
+  if (estado) qs.set('estado', estado);
+  const qsStr = qs.toString();
+  return api(`/flota-prospectos/masivo-list${qsStr ? '?' + qsStr : ''}`);
 }
 
 export async function fetchFlotaProspectoMessages(
