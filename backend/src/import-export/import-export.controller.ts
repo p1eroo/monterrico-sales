@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   Post,
+  Query,
   Req,
   Res,
   UploadedFile,
@@ -57,12 +58,21 @@ export class ImportExportController {
   async contactsExport(
     @Res({ passthrough: false }) res: Response,
     @Req() req: AuthedReq,
+    @Query('assignedTo') assignedTo?: string,
+    @Query('search') search?: string,
+    @Query('etapa') etapa?: string,
+    @Query('fuente') fuente?: string,
   ) {
     const scope = await this.crmDataScope.buildScope(
       req.user.userId,
       req.user.roleId,
     );
-    const body = await this.importExportService.contactsExportCsv(scope);
+    const body = await this.importExportService.contactsExportCsv(scope, {
+      assignedTo: assignedTo?.trim() || undefined,
+      search: search?.trim() || undefined,
+      etapa: etapa?.trim() || undefined,
+      fuente: fuente?.trim() || undefined,
+    });
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader(
       'Content-Disposition',
@@ -132,12 +142,29 @@ export class ImportExportController {
   async companiesExport(
     @Res({ passthrough: false }) res: Response,
     @Req() req: AuthedReq,
+    @Query('assignedTo') assignedTo?: string,
+    @Query('search') search?: string,
+    @Query('etapa') etapa?: string,
+    @Query('fuente') fuente?: string,
+    @Query('rubro') rubro?: string,
+    @Query('tipo') tipo?: string,
+    @Query('lastInteractionFrom') lastInteractionFrom?: string,
+    @Query('lastInteractionTo') lastInteractionTo?: string,
   ) {
     const scope = await this.crmDataScope.buildScope(
       req.user.userId,
       req.user.roleId,
     );
-    const body = await this.importExportService.companiesExportCsv(scope);
+    const body = await this.importExportService.companiesExportCsv(scope, {
+      assignedTo: assignedTo?.trim() || undefined,
+      search: search?.trim() || undefined,
+      etapa: etapa?.trim() || undefined,
+      fuente: fuente?.trim() || undefined,
+      rubro: rubro?.trim() || undefined,
+      tipo: tipo?.trim() || undefined,
+      lastInteractionFrom: lastInteractionFrom?.trim() || undefined,
+      lastInteractionTo: lastInteractionTo?.trim() || undefined,
+    });
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader(
       'Content-Disposition',
@@ -207,12 +234,21 @@ export class ImportExportController {
   async opportunitiesExport(
     @Res({ passthrough: false }) res: Response,
     @Req() req: AuthedReq,
+    @Query('assignedTo') assignedTo?: string,
+    @Query('search') search?: string,
+    @Query('etapa') etapa?: string,
+    @Query('status') status?: string,
   ) {
     const scope = await this.crmDataScope.buildScope(
       req.user.userId,
       req.user.roleId,
     );
-    const body = await this.importExportService.opportunitiesExportCsv(scope);
+    const body = await this.importExportService.opportunitiesExportCsv(scope, {
+      assignedTo: assignedTo?.trim() || undefined,
+      search: search?.trim() || undefined,
+      etapa: etapa?.trim() || undefined,
+      status: status?.trim() || undefined,
+    });
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader(
       'Content-Disposition',

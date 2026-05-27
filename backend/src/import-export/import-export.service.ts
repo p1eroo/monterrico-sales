@@ -942,13 +942,46 @@ export class ImportExportService {
     return UTF8_BOM + stringifyCsvRow([...CONTACT_HEADERS]);
   }
 
-  async contactsExportCsv(scope?: CrmDataScope): Promise<string> {
-    const scopedWhere =
-      scope && !scope.unrestricted
-        ? { assignedTo: scope.viewerUserId }
-        : {};
+  async contactsExportCsv(
+    scope?: CrmDataScope,
+    opts?: {
+      search?: string;
+      etapa?: string;
+      fuente?: string;
+      assignedTo?: string;
+    },
+  ): Promise<string> {
+    const where: Prisma.ContactWhereInput = {};
+    if (opts?.search?.trim()) {
+      const q = opts.search.trim();
+      where.OR = [
+        { name: { contains: q, mode: 'insensitive' } },
+        { correo: { contains: q, mode: 'insensitive' } },
+        { telefono: { contains: q } },
+        { cargo: { contains: q, mode: 'insensitive' } },
+        {
+          companies: {
+            some: {
+              company: {
+                name: { contains: q, mode: 'insensitive' },
+              },
+            },
+          },
+        },
+      ];
+    }
+    if (opts?.etapa?.trim()) where.etapa = opts.etapa.trim();
+    if (opts?.fuente?.trim()) {
+      const canon = await this.crmConfig.normalizeLeadSource(opts.fuente);
+      where.fuente = { equals: canon, mode: 'insensitive' };
+    }
+    if (scope && !scope.unrestricted) {
+      where.assignedTo = scope.viewerUserId;
+    } else if (opts?.assignedTo?.trim()) {
+      where.assignedTo = opts.assignedTo.trim();
+    }
     const rows = await this.prisma.contact.findMany({
-      where: scopedWhere,
+      where,
       take: 10_000,
       orderBy: { updatedAt: 'desc' },
       select: {
@@ -2195,9 +2228,53 @@ export class ImportExportService {
    * La reconstrucción de etapa usa auditoría de `etapa`; sin historial, etapa constante.
    * La plantilla de importación sigue usando {@link COMPANY_HEADERS}.
    */
-  async companiesExportCsv(scope?: CrmDataScope): Promise<string> {
+  async companiesExportCsv(
+    scope?: CrmDataScope,
+    opts?: {
+      search?: string;
+      rubro?: string;
+      tipo?: string;
+      etapa?: string;
+      fuente?: string;
+      assignedTo?: string;
+      lastInteractionFrom?: string;
+      lastInteractionTo?: string;
+    },
+  ): Promise<string> {
+    const where: Prisma.CompanyWhereInput = {};
+    if (opts?.search?.trim()) {
+      const q = opts.search.trim();
+      where.OR = [
+        { name: { contains: q, mode: 'insensitive' } },
+        { razonSocial: { contains: q, mode: 'insensitive' } },
+        { ruc: { contains: q } },
+        { domain: { contains: q, mode: 'insensitive' } },
+        {
+          contacts: {
+            some: {
+              contact: {
+                OR: [
+                  { name: { contains: q, mode: 'insensitive' } },
+                  { correo: { contains: q, mode: 'insensitive' } },
+                ],
+              },
+            },
+          },
+        },
+      ];
+    }
+    if (opts?.rubro?.trim()) where.rubro = opts.rubro.trim();
+    if (opts?.tipo?.trim()) where.tipo = opts.tipo.trim();
+    if (opts?.fuente?.trim()) {
+      const fuenteQ = await this.crmConfig.normalizeLeadSource(opts.fuente).catch(() => opts.fuente!.trim());
+      where.fuente = { equals: fuenteQ, mode: 'insensitive' };
+    }
+    if (opts?.etapa?.trim()) where.etapa = opts.etapa.trim();
+    if (opts?.assignedTo?.trim() && (!scope || scope.unrestricted)) {
+      where.assignedTo = opts.assignedTo.trim();
+    }
     const list = await this.prisma.company.findMany({
-      where: mergeCompanyScope({}, scope),
+      where: mergeCompanyScope(where, scope),
       take: 10_000,
       orderBy: { updatedAt: 'desc' },
       select: {
@@ -3288,13 +3365,29 @@ export class ImportExportService {
     return UTF8_BOM + stringifyCsvRow([...OPPORTUNITY_HEADERS]);
   }
 
-  async opportunitiesExportCsv(scope?: CrmDataScope): Promise<string> {
-    const scopedWhere: Prisma.OpportunityWhereInput =
-      scope && !scope.unrestricted
-        ? { assignedTo: scope.viewerUserId }
-        : {};
+  async opportunitiesExportCsv(
+    scope?: CrmDataScope,
+    opts?: {
+      search?: string;
+      etapa?: string;
+      status?: string;
+      assignedTo?: string;
+    },
+  ): Promise<string> {
+    const where: Prisma.OpportunityWhereInput = {};
+    if (opts?.search?.trim()) {
+      const q = opts.search.trim();
+      where.title = { contains: q, mode: 'insensitive' };
+    }
+    if (opts?.etapa?.trim()) where.etapa = opts.etapa.trim();
+    if (opts?.status?.trim()) where.status = opts.status.trim();
+    if (scope && !scope.unrestricted) {
+      where.assignedTo = scope.viewerUserId;
+    } else if (opts?.assignedTo?.trim()) {
+      where.assignedTo = opts.assignedTo.trim();
+    }
     const list = await this.prisma.opportunity.findMany({
-      where: scopedWhere,
+      where,
       take: 10_000,
       orderBy: { updatedAt: 'desc' },
       select: {

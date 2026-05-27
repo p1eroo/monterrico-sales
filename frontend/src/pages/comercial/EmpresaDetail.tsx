@@ -88,6 +88,7 @@ import { buildOptimisticContact } from '@/lib/optimisticEntities';
 import { generateOptimisticId, useOptimisticCrmStore } from '@/store/optimisticCrmStore';
 import { useStageBadgeTone } from '@/hooks/useStageBadgeTone';
 import { useCrmConfigStore, getStageLabelFromCatalog } from '@/store/crmConfigStore';
+import { getHighestPriorityOpportunityEtapa } from '@/lib/opportunityUtils';
 
 const TIMELINE_PAGE_SIZE = 8;
 
@@ -311,13 +312,6 @@ export default function EmpresaDetailPage() {
         }
       : undefined) ??
     companyDataFromApi;
-  const displayEtapaKey =
-    fromApiById && apiRecord?.etapa
-      ? apiRecord.etapa
-      : firstContact?.etapa;
-  const displayEtapaLabel = displayEtapaKey
-    ? getStageLabelFromCatalog(displayEtapaKey, crmBundle, etapaLabels as Record<string, string>)
-    : '—';
   const displayFuenteLabel =
     fromApiById && apiRecord?.fuente
       ? (contactSourceLabels[apiRecord.fuente as ContactSource] ??
@@ -325,8 +319,6 @@ export default function EmpresaDetailPage() {
       : firstContact?.fuente
         ? (contactSourceLabels[firstContact.fuente] ?? firstContact.fuente)
         : '—';
-
-  const stageTone = useStageBadgeTone(displayEtapaKey);
 
   const displayAssignedToName = fromApiById && apiRecord?.user?.name
     ? apiRecord.user.name
@@ -365,6 +357,17 @@ export default function EmpresaDetailPage() {
       return viaContact || viaCompany;
     });
   }, [companyContacts, opportunities, resolvedCompanyId, fromApiById]);
+
+  const displayEtapaKey = useMemo(() => {
+    const fromOpp = getHighestPriorityOpportunityEtapa(companyOpportunities);
+    if (fromOpp) return fromOpp;
+    if (fromApiById && apiRecord?.etapa) return apiRecord.etapa;
+    return firstContact?.etapa;
+  }, [companyOpportunities, fromApiById, apiRecord?.etapa, firstContact?.etapa]);
+  const displayEtapaLabel = displayEtapaKey
+    ? getStageLabelFromCatalog(displayEtapaKey, crmBundle, etapaLabels as Record<string, string>)
+    : '—';
+  const stageTone = useStageBadgeTone(displayEtapaKey);
 
   const opportunitiesAmountSum = useMemo(
     () => companyOpportunities.reduce((sum, o) => sum + (Number(o.amount) || 0), 0),
@@ -604,6 +607,7 @@ export default function EmpresaDetailPage() {
   }
   const [editForm, setEditForm] = useState({
     name: '', domain: '', telefono: '', rubro: '' as CompanyRubro | '', tipo: '' as CompanyTipo | '', assignedTo: '',
+    ruc: '', razonSocial: '',
   });
 
 
@@ -674,6 +678,8 @@ export default function EmpresaDetailPage() {
       rubro: companyData?.rubro ?? '',
       tipo: companyData?.tipo ?? '',
       assignedTo: assignedToInit,
+      ruc: (fromApiById && apiRecord?.ruc) ? apiRecord.ruc : '',
+      razonSocial: (fromApiById && apiRecord?.razonSocial) ? apiRecord.razonSocial : '',
     });
     setEditDialogOpen(true);
   }
@@ -688,6 +694,8 @@ export default function EmpresaDetailPage() {
             telefono: editForm.telefono?.trim() || undefined,
             rubro: editForm.rubro || undefined,
             tipo: editForm.tipo || undefined,
+            ruc: editForm.ruc?.trim() || undefined,
+            razonSocial: editForm.razonSocial?.trim() || undefined,
           };
           if (canEditAssignee && showAdvisorInCompanyEdit && editForm.assignedTo) {
             if (!isLikelyContactCuid(editForm.assignedTo)) {
@@ -745,30 +753,6 @@ export default function EmpresaDetailPage() {
     if (editForm.name !== companyName) {
       navigate(`/empresas/${encodeURIComponent(editForm.name)}`, { replace: true });
     }
-  }
-
-  function handleEtapaChange(newEtapa: string) {
-    if (fromApiById && apiRecord) {
-      void (async () => {
-        try {
-          await api(`/companies/${apiRecord.id}`, {
-            method: 'PATCH',
-            body: JSON.stringify({ etapa: newEtapa }),
-          });
-          const row = await api<ApiCompanyRecord>(`/companies/${apiRecord.id}`);
-          setApiRecord(row);
-          await reloadContactsData();
-          toast.success('Etapa actualizada correctamente');
-        } catch (e) {
-          toast.error(e instanceof Error ? e.message : 'Error al actualizar etapa');
-        }
-      })();
-      return;
-    }
-    for (const contact of companyContacts) {
-      updateContact(contact.id, { etapa: newEtapa as Etapa });
-    }
-    toast.success('Etapa actualizada correctamente');
   }
 
   // --- Handlers ---
@@ -1272,10 +1256,8 @@ return (
           stageLabel={displayEtapaLabel}
           stageClassName={stageTone.className}
           stageStyle={stageTone.style}
-          currentEtapaSlug={
-            (fromApiById && apiRecord?.etapa) ? apiRecord.etapa : (firstContact?.etapa ?? '')
-          }
-          onEtapaChange={!isStandalone ? handleEtapaChange : undefined}
+          currentEtapaSlug={displayEtapaKey ?? ''}
+          onEtapaChange={undefined}
           estimatedValueLabel={formatCurrency(displayFacturacion)}
           quickActions={(
             <QuickActionsWithDialogs
@@ -1654,21 +1636,31 @@ return (
           <DialogDescription>Modifica los datos de la empresa.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-2">
-          <div className="space-y-2">
-            <Label>Nombre de la empresa *</Label>
-            <Input value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>RUC</Label>
+              <Input placeholder="20XXXXXXXX" value={editForm.ruc} onChange={(e) => setEditForm((f) => ({ ...f, ruc: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>Razón Social</Label>
+              <Input placeholder="Razón social" value={editForm.razonSocial} onChange={(e) => setEditForm((f) => ({ ...f, razonSocial: e.target.value }))} />
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label>Dominio web</Label>
-            <Input placeholder="empresa.com" value={editForm.domain} onChange={(e) => setEditForm((f) => ({ ...f, domain: e.target.value }))} />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Nombre de la empresa *</Label>
+              <Input value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>Dominio web</Label>
+              <Input placeholder="empresa.com" value={editForm.domain} onChange={(e) => setEditForm((f) => ({ ...f, domain: e.target.value }))} />
+            </div>
           </div>
-          {fromApiById && (
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Teléfono</Label>
               <Input placeholder="+51 999 999 999" value={editForm.telefono} onChange={(e) => setEditForm((f) => ({ ...f, telefono: e.target.value }))} />
             </div>
-          )}
-          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Rubro</Label>
               <Select value={editForm.rubro} onValueChange={(v) => setEditForm((f) => ({ ...f, rubro: v as CompanyRubro }))}>
@@ -1680,6 +1672,8 @@ return (
                 </SelectContent>
               </Select>
             </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Tipo</Label>
               <Select value={editForm.tipo} onValueChange={(v) => setEditForm((f) => ({ ...f, tipo: v as CompanyTipo }))}>
@@ -1691,20 +1685,20 @@ return (
                 </SelectContent>
               </Select>
             </div>
+            {showAdvisorInCompanyEdit ? (
+              <AssignedAdvisorFormField
+                htmlId="company-edit-assigned-to"
+                value={editForm.assignedTo}
+                onChange={(assignedTo) => setEditForm((f) => ({ ...f, assignedTo }))}
+                disabled={!canEditAssignee}
+                fallbackName={
+                  users.find((u) => u.id === editForm.assignedTo)?.name ??
+                  apiRecord?.user?.name ??
+                  firstContact?.assignedToName
+                }
+              />
+            ) : <div />}
           </div>
-          {showAdvisorInCompanyEdit ? (
-            <AssignedAdvisorFormField
-              htmlId="company-edit-assigned-to"
-              value={editForm.assignedTo}
-              onChange={(assignedTo) => setEditForm((f) => ({ ...f, assignedTo }))}
-              disabled={!canEditAssignee}
-              fallbackName={
-                users.find((u) => u.id === editForm.assignedTo)?.name ??
-                apiRecord?.user?.name ??
-                firstContact?.assignedToName
-              }
-            />
-          ) : null}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancelar</Button>

@@ -860,7 +860,12 @@ export default function ContactosPage() {
   async function handleContactExport() {
     try {
       setExportBusy(true);
-      await downloadImportExportCsv("contacts", "export");
+      const params: Record<string, string> = {};
+      if (searchDebounced) params.search = searchDebounced;
+      if (etapaFilter !== "todos") params.etapa = etapaFilter;
+      if (sourceFilter !== "todos") params.fuente = sourceFilter;
+      if (advisorFilter !== "todos") params.assignedTo = advisorFilter;
+      await downloadImportExportCsv("contacts", "export", params);
       toast.success("Exportación descargada");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "No se pudo exportar");

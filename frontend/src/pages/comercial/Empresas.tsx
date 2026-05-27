@@ -729,6 +729,11 @@ export default function EmpresasPage() {
           telefono: payload.telefono.trim() || undefined,
           rubro: payload.rubro || undefined,
           tipo: payload.tipo || undefined,
+          ruc: payload.ruc.trim() || undefined,
+          razonSocial: payload.razonSocial.trim() || undefined,
+          ...(payload.assignedTo && isLikelyContactCuid(payload.assignedTo)
+            ? { assignedTo: payload.assignedTo }
+            : {}),
         }),
       });
       // Reconcile with API response
@@ -800,7 +805,26 @@ export default function EmpresasPage() {
   async function handleCompanyExport() {
     try {
       setExportBusy(true);
-      await downloadImportExportCsv('companies', 'export');
+      const params: Record<string, string> = {};
+      if (searchDebounced) params.search = searchDebounced;
+      if (etapaFilter !== 'todos') params.etapa = etapaFilter;
+      if (sourceFilter !== 'todos') params.fuente = sourceFilter;
+      if (rubroFilter !== 'todos') params.rubro = rubroFilter;
+      if (tipoFilter !== 'todos') params.tipo = tipoFilter;
+      if (advisorFilter !== 'todos') params.assignedTo = advisorFilter;
+      if (interactionRange?.from) params.lastInteractionFrom = new Date(
+        interactionRange.from.getFullYear(),
+        interactionRange.from.getMonth(),
+        interactionRange.from.getDate(),
+        0, 0, 0, 0,
+      ).toISOString();
+      if (interactionRange?.to) params.lastInteractionTo = new Date(
+        interactionRange.to.getFullYear(),
+        interactionRange.to.getMonth(),
+        interactionRange.to.getDate(),
+        23, 59, 59, 999,
+      ).toISOString();
+      await downloadImportExportCsv('companies', 'export', params);
       toast.success('Exportación descargada');
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'No se pudo exportar');

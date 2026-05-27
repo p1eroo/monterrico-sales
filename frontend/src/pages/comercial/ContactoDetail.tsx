@@ -79,6 +79,7 @@ import { type ApiCompanyRecord } from '@/lib/companyApi';
 import { usePaginatedCompanyPicker, type PaginatedCompanyPickerOptions } from '@/hooks/usePaginatedCompanyPicker';
 import { useStageBadgeTone } from '@/hooks/useStageBadgeTone';
 import { useCrmConfigStore, getStageLabelFromCatalog } from '@/store/crmConfigStore';
+import { getHighestPriorityOpportunityEtapa } from '@/lib/opportunityUtils';
 import {
   usePaginatedOpportunityPicker,
   type OpportunityPickerExcludeFilter,
@@ -267,6 +268,10 @@ export default function ContactoDetailPage() {
     }
     return routeId ? getOpportunitiesByContactId(routeId) : [];
   }, [fromApi, apiRecord, routeId, getOpportunitiesByContactId]);
+
+  const derivedEtapa = useMemo(() => {
+    return getHighestPriorityOpportunityEtapa(contactOpportunities) ?? contact?.etapa;
+  }, [contactOpportunities, contact?.etapa]);
 
   const defaultContactIdForNewOpp = useMemo(
     () => contact?.id ?? '',
@@ -502,7 +507,7 @@ export default function ContactoDetailPage() {
     }
   }, [timelinePage, totalTimelinePages]);
 
-  const contactStageTone = useStageBadgeTone(contact?.etapa);
+  const contactStageTone = useStageBadgeTone(derivedEtapa);
 
   const availableCompaniesToLink = useMemo(() => {
     if (fromApi) return [];
@@ -695,30 +700,6 @@ export default function ContactoDetailPage() {
       createdAt: new Date().toISOString().slice(0, 10),
     });
     toast.success(`Oportunidad "${data.title.trim()}" creada correctamente`);
-  }
-
-  function handleEtapaChange(newEtapa: string) {
-    if (!contact) return;
-    if (fromApi && routeId) {
-      void (async () => {
-        try {
-          const today = new Date().toISOString().slice(0, 10);
-          const history = contact.etapaHistory ?? [];
-          const newHistory = [...history, { etapa: newEtapa as Etapa, fecha: today }];
-          const updated = await api<ApiContactDetail>(`/contacts/${routeId}`, {
-            method: 'PATCH',
-            body: JSON.stringify({ etapa: newEtapa, etapaHistory: newHistory }),
-          });
-          setApiRecord(updated);
-          toast.success('Etapa actualizada correctamente');
-        } catch (e) {
-          toast.error(e instanceof Error ? e.message : 'No se pudo actualizar la etapa');
-        }
-      })();
-      return;
-    }
-    updateContact(contact.id, { etapa: newEtapa as Contact['etapa'] });
-    toast.success('Etapa actualizada correctamente');
   }
 
   async function handleAddCompany(
@@ -958,11 +939,11 @@ export default function ContactoDetailPage() {
           backPath="/contactos"
           name={contact.name}
           subtitle={contact.cargo}
-          stageLabel={getStageLabelFromCatalog(contact.etapa, crmBundle, etapaLabels as Record<string, string>)}
+          stageLabel={getStageLabelFromCatalog(derivedEtapa, crmBundle, etapaLabels as Record<string, string>)}
           stageClassName={contactStageTone.className}
           stageStyle={contactStageTone.style}
-          currentEtapaSlug={contact.etapa}
-          onEtapaChange={handleEtapaChange}
+          currentEtapaSlug={derivedEtapa}
+          onEtapaChange={undefined}
           quickActions={(
             <QuickActionsWithDialogs
               entityName={contact.name}

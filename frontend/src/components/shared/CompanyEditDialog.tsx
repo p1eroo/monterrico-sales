@@ -23,6 +23,10 @@ import { api } from '@/lib/api';
 import type { ApiCompanyRecord } from '@/lib/companyApi';
 import { isLikelyCompanyCuid } from '@/lib/companyApi';
 import { useCompaniesStore } from '@/store/companiesStore';
+import { useAppStore } from '@/store';
+import { canReassignCommercialAdvisor } from '@/data/rbac';
+import { useUsers } from '@/hooks/useUsers';
+import { AssignedAdvisorFormField } from '@/components/shared/AssignedAdvisorFormField';
 
 export type CompanyEditSavePayload = {
   name: string;
@@ -30,6 +34,9 @@ export type CompanyEditSavePayload = {
   telefono: string;
   rubro: string;
   tipo: string;
+  ruc: string;
+  razonSocial: string;
+  assignedTo: string;
 };
 
 export type CompanyEditSummaryRow = {
@@ -56,6 +63,9 @@ export function CompanyEditDialog({
   const standalone = useCompaniesStore((s) =>
     row?.isLocalOnly ? s.companies.find((c) => c.id === row.id) : undefined,
   );
+  const { users, activeAdvisors } = useUsers();
+  const currentUserRole = useAppStore((s) => s.currentUser.role ?? '');
+  const canEditAssignee = canReassignCommercialAdvisor(currentUserRole);
 
   const [editForm, setEditForm] = useState({
     name: '',
@@ -63,6 +73,9 @@ export function CompanyEditDialog({
     telefono: '',
     rubro: '' as CompanyRubro | '',
     tipo: '' as CompanyTipo | '',
+    ruc: '',
+    razonSocial: '',
+    assignedTo: '',
   });
   const [saving, setSaving] = useState(false);
   const [loadingApi, setLoadingApi] = useState(false);
@@ -77,6 +90,9 @@ export function CompanyEditDialog({
         telefono: '',
         rubro: standalone.rubro ?? '',
         tipo: standalone.tipo ?? '',
+        ruc: '',
+        razonSocial: '',
+        assignedTo: '',
       });
       return;
     }
@@ -88,6 +104,9 @@ export function CompanyEditDialog({
         telefono: '',
         rubro: (row.rubro && row.rubro in companyRubroLabels ? row.rubro : '') as CompanyRubro | '',
         tipo: (row.tipo && (row.tipo === 'A' || row.tipo === 'B' || row.tipo === 'C') ? row.tipo : '') as CompanyTipo | '',
+        ruc: '',
+        razonSocial: '',
+        assignedTo: '',
       });
       return;
     }
@@ -99,6 +118,9 @@ export function CompanyEditDialog({
         telefono: '',
         rubro: (row.rubro && row.rubro in companyRubroLabels ? row.rubro : '') as CompanyRubro | '',
         tipo: (row.tipo && (row.tipo === 'A' || row.tipo === 'B' || row.tipo === 'C') ? row.tipo : '') as CompanyTipo | '',
+        ruc: '',
+        razonSocial: '',
+        assignedTo: '',
       });
       return;
     }
@@ -114,6 +136,9 @@ export function CompanyEditDialog({
           telefono: rec.telefono ?? '',
           rubro: (rec.rubro && rec.rubro in companyRubroLabels ? rec.rubro : '') as CompanyRubro | '',
           tipo: (rec.tipo && (rec.tipo === 'A' || rec.tipo === 'B' || rec.tipo === 'C') ? rec.tipo : '') as CompanyTipo | '',
+          ruc: rec.ruc ?? '',
+          razonSocial: rec.razonSocial ?? '',
+          assignedTo: rec.assignedTo ?? activeAdvisors[0]?.id ?? '',
         });
       })
       .catch(() => {
@@ -124,6 +149,9 @@ export function CompanyEditDialog({
             telefono: '',
             rubro: (row.rubro && row.rubro in companyRubroLabels ? row.rubro : '') as CompanyRubro | '',
             tipo: (row.tipo && (row.tipo === 'A' || row.tipo === 'B' || row.tipo === 'C') ? row.tipo : '') as CompanyTipo | '',
+            ruc: '',
+            razonSocial: '',
+            assignedTo: '',
           });
         }
       })
@@ -146,10 +174,11 @@ export function CompanyEditDialog({
       telefono: editForm.telefono.trim(),
       rubro: editForm.rubro,
       tipo: editForm.tipo,
+      ruc: editForm.ruc.trim(),
+      razonSocial: editForm.razonSocial.trim(),
+      assignedTo: editForm.assignedTo,
     })).finally(() => setSaving(false));
   }
-
-  const showTelefono = !row?.isLocalOnly && isLikelyCompanyCuid(row?.id ?? '');
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -165,24 +194,46 @@ export function CompanyEditDialog({
         ) : (
           <>
             <div className="grid gap-4 py-2">
-              <div className="space-y-2">
-                <Label htmlFor="company-edit-name">Nombre de la empresa *</Label>
-                <Input
-                  id="company-edit-name"
-                  value={editForm.name}
-                  onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
-                />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="company-edit-ruc">RUC</Label>
+                  <Input
+                    id="company-edit-ruc"
+                    placeholder="20XXXXXXXX"
+                    value={editForm.ruc}
+                    onChange={(e) => setEditForm((f) => ({ ...f, ruc: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="company-edit-razon-social">Razón Social</Label>
+                  <Input
+                    id="company-edit-razon-social"
+                    placeholder="Razón social"
+                    value={editForm.razonSocial}
+                    onChange={(e) => setEditForm((f) => ({ ...f, razonSocial: e.target.value }))}
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="company-edit-domain">Dominio web</Label>
-                <Input
-                  id="company-edit-domain"
-                  placeholder="empresa.com"
-                  value={editForm.domain}
-                  onChange={(e) => setEditForm((f) => ({ ...f, domain: e.target.value }))}
-                />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="company-edit-name">Nombre de la empresa *</Label>
+                  <Input
+                    id="company-edit-name"
+                    value={editForm.name}
+                    onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="company-edit-domain">Dominio web</Label>
+                  <Input
+                    id="company-edit-domain"
+                    placeholder="empresa.com"
+                    value={editForm.domain}
+                    onChange={(e) => setEditForm((f) => ({ ...f, domain: e.target.value }))}
+                  />
+                </div>
               </div>
-              {showTelefono ? (
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="company-edit-phone">Teléfono</Label>
                   <Input
@@ -192,8 +243,6 @@ export function CompanyEditDialog({
                     onChange={(e) => setEditForm((f) => ({ ...f, telefono: e.target.value }))}
                   />
                 </div>
-              ) : null}
-              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Rubro</Label>
                   <Select
@@ -212,6 +261,8 @@ export function CompanyEditDialog({
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Tipo</Label>
                   <Select
@@ -230,6 +281,13 @@ export function CompanyEditDialog({
                     </SelectContent>
                   </Select>
                 </div>
+                <AssignedAdvisorFormField
+                  htmlId="company-list-edit-assigned-to"
+                  value={editForm.assignedTo}
+                  onChange={(assignedTo) => setEditForm((f) => ({ ...f, assignedTo }))}
+                  disabled={!canEditAssignee}
+                  fallbackName={users.find((u) => u.id === editForm.assignedTo)?.name}
+                />
               </div>
             </div>
             <DialogFooter>

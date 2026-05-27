@@ -146,13 +146,18 @@ function templateRequiredHeaders(
 export async function downloadImportExportCsv(
   entity: 'contacts' | 'companies' | 'opportunities',
   kind: 'template' | 'export',
+  params?: Record<string, string>,
 ): Promise<void> {
   const token = getToken();
   const path =
     kind === 'template'
       ? `/import-export/${entity}/template`
       : `/import-export/${entity}/export`;
-  const res = await fetch(`${API_BASE}${path}`, {
+  const qs =
+    params && Object.keys(params).length > 0
+      ? '?' + new URLSearchParams(params).toString()
+      : '';
+  const res = await fetch(`${API_BASE}${path}${qs}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
   if (!res.ok) {

@@ -391,7 +391,12 @@ export default function OpportunitiesPage() {
   async function handleOppExport() {
     try {
       setExportBusy(true);
-      await downloadImportExportCsv('opportunities', 'export');
+      const params: Record<string, string> = {};
+      if (search) params.search = search;
+      if (etapaFilter !== 'todas') params.etapa = etapaFilter;
+      if (statusFilter !== 'todas') params.status = statusFilter;
+      if (assigneeFilter !== 'todos') params.assignedTo = assigneeFilter;
+      await downloadImportExportCsv('opportunities', 'export', params);
       toast.success('Exportación descargada');
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'No se pudo exportar');
