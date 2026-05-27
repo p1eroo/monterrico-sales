@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Check, X, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
@@ -48,6 +48,9 @@ export function InlineEditCell({
   const [editValue, setEditValue] = useState('');
   const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const processingRef = useRef(false);
+  const onSavedRef = useRef(onSaved);
+  onSavedRef.current = onSaved;
 
   useEffect(() => {
     if (editing && inputRef.current && type !== 'select') {
@@ -72,10 +75,19 @@ export function InlineEditCell({
   const cancel = useCallback(
     (e?: React.MouseEvent) => {
       e?.stopPropagation();
-      setEditing(false);
+      if (!processingRef.current) {
+        setEditing(false);
+      }
     },
     [],
   );
+
+  const saveUrl = useMemo(() => {
+    if (fieldKey === 'operador') {
+      return `/flota-prospectos/${fieldId}/operador`;
+    }
+    return `/flota-prospectos/${fieldId}`;
+  }, [fieldKey, fieldId]);
 
   const save = useCallback(
     async (e?: React.MouseEvent) => {
@@ -88,19 +100,21 @@ export function InlineEditCell({
       setSaving(true);
       try {
         const body: Record<string, unknown> = {};
+        const numericValue = type === 'number' ? parseInt(trimmed, 10) : undefined;
         if (type === 'number') {
-          const num = parseInt(trimmed, 10);
-          body[fieldKey] = isNaN(num) ? null : num;
+          body[fieldKey] = isNaN(numericValue!) ? null : numericValue;
+        } else if (fieldKey === 'operador') {
+          body.operador = trimmed || null;
         } else {
           body[fieldKey] = trimmed || null;
         }
-        await api(`/flota-prospectos/${fieldId}`, {
+        await api(saveUrl, {
           method: 'PATCH',
           body: JSON.stringify(body),
         });
         toast.success('Actualizado');
         setEditing(false);
-        onSaved?.();
+        onSavedRef.current?.();
       } catch (err) {
         toast.error(
           err instanceof Error ? err.message : 'Error al actualizar',
@@ -109,7 +123,7 @@ export function InlineEditCell({
         setSaving(false);
       }
     },
-    [editValue, value, fieldKey, fieldId, type, onSaved],
+    [editValue, value, fieldKey, fieldId, type, onSaved, saveUrl],
   );
 
   const handleKeyDown = useCallback(
@@ -166,27 +180,35 @@ export function InlineEditCell({
         <Select
           value={editValue}
           onValueChange={(v) => {
+            processingRef.current = true;
             setEditValue(v);
             setEditing(false);
             const finalValue = v === '__none__' ? null : v;
-            if ((finalValue ?? '') === (value ?? '')) return;
+            if ((finalValue ?? '') === (value ?? '')) {
+              processingRef.current = false;
+              return;
+            }
             setSaving(true);
-            api(`/flota-prospectos/${fieldId}`, {
+            const body: Record<string, unknown> = {
+              [fieldKey]: finalValue,
+            };
+            api(saveUrl, {
               method: 'PATCH',
-              body: JSON.stringify({
-                [fieldKey]: finalValue,
-              }),
+              body: JSON.stringify(body),
             })
               .then(() => {
                 toast.success('Actualizado');
-                onSaved?.();
+                onSavedRef.current?.();
               })
               .catch((err) =>
                 toast.error(
                   err instanceof Error ? err.message : 'Error al actualizar',
                 ),
               )
-              .finally(() => setSaving(false));
+              .finally(() => {
+                setSaving(false);
+                processingRef.current = false;
+              });
           }}
           onOpenChange={(open) => {
             if (!open) cancel();

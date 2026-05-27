@@ -144,8 +144,8 @@ export default function FlotaProspectos() {
   }, [hasVerTodos, operadores, currentUser.name]);
 
   const operadorOptions = useMemo(
-    () => operadores.map((op) => ({ label: op.name, value: op.name })),
-    [operadores],
+    () => filterOperadores.map((op) => ({ label: op.name, value: op.name })),
+    [filterOperadores],
   );
 
   const loadSheetNames = useCallback(async (spreadsheetId?: string) => {
