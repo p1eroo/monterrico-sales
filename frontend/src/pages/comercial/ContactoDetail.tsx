@@ -939,10 +939,10 @@ export default function ContactoDetailPage() {
           backPath="/contactos"
           name={contact.name}
           subtitle={contact.cargo}
-          stageLabel={getStageLabelFromCatalog(derivedEtapa, crmBundle, etapaLabels as Record<string, string>)}
+          stageLabel={getStageLabelFromCatalog(derivedEtapa ?? '', crmBundle, etapaLabels as Record<string, string>)}
           stageClassName={contactStageTone.className}
           stageStyle={contactStageTone.style}
-          currentEtapaSlug={derivedEtapa}
+          currentEtapaSlug={derivedEtapa ?? ''}
           onEtapaChange={undefined}
           quickActions={(
             <QuickActionsWithDialogs
