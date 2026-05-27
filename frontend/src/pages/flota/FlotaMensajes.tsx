@@ -47,6 +47,7 @@ import {
   LayoutList,
   StopCircle,
   Download,
+  Pause,
   Edit2,
   Edit,
   X,
@@ -126,6 +127,8 @@ import {
   sendFlotaBulk,
   getFlotaBulkProgress,
   cancelFlotaBulk,
+  pauseFlotaBulk,
+  resumeFlotaBulk,
   type FlotaConversation,
   type FlotaExcelContact,
   type FlotaWhatsappConnectionResponse,
@@ -2130,6 +2133,7 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
     currentName: string;
     currentIndex: number;
     nextDelay: number;
+    paused: boolean;
   } | null>(null);
   const cancelRef = useRef(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -2261,7 +2265,7 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
       .map((c) => ({ contactId: c.contactId ?? undefined, flotaProspectoId: undefined, name: c.name, phone: c.phone }));
   }
 
-  function connectBulkSocket(jobId: string, existing?: { total: number; sent: number; failed: number; currentName: string; currentIndex: number; nextDelay: number }) {
+  function connectBulkSocket(jobId: string, existing?: { total: number; sent: number; failed: number; currentName: string; currentIndex: number; nextDelay: number; paused: boolean }) {
     const token = localStorage.getItem('accessToken');
     if (!token) return;
     if (existing) {
@@ -2273,11 +2277,12 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
         currentName: existing.currentName,
         currentIndex: existing.currentIndex,
         nextDelay: existing.nextDelay,
+        paused: existing.paused,
       });
     }
     const socket = io(`${API_BASE}/whatsapp`, { auth: { token }, transports: ['websocket', 'polling'] });
     socket.emit('join-bulk', { jobId });
-    socket.on('flota-bulk-progress', (p: { total: number; sent: number; failed: number; currentName: string; currentIndex: number; nextDelay: number; finished: boolean; cancelled: boolean }) => {
+    socket.on('flota-bulk-progress', (p: { total: number; sent: number; failed: number; currentName: string; currentIndex: number; nextDelay: number; finished: boolean; cancelled: boolean; paused: boolean }) => {
       setBulkProgress({
         total: p.total,
         sent: p.sent,
@@ -2285,6 +2290,7 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
         currentName: p.currentName,
         currentIndex: p.currentIndex,
         nextDelay: p.nextDelay,
+        paused: p.paused,
       });
       if (p.finished || p.cancelled) {
         setSending(false);
@@ -2324,7 +2330,7 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
     }
 
     setSending(true);
-    setBulkProgress({ total: prospectoIds.length, sent: 0, failed: 0, currentName: '', currentIndex: 0, nextDelay: 0 });
+    setBulkProgress({ total: prospectoIds.length, sent: 0, failed: 0, currentName: '', currentIndex: 0, nextDelay: 0, paused: false });
 
     try {
       const { jobId } = await sendFlotaBulk({ prospectoIds, text: message.trim(), imageUrl: imageUrl || undefined });
@@ -2838,9 +2844,11 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
         {step === 3 && bulkProgress && (
           <div className="mx-auto max-w-2xl space-y-5">
             <div>
-              <h3 className="font-semibold">Enviando campaña masiva</h3>
+              <h3 className="font-semibold">
+                {bulkProgress.paused ? 'Envío masivo pausado' : 'Enviando campaña masiva'}
+              </h3>
               <p className="text-xs text-muted-foreground">
-                No cierres esta pestaña hasta que termine
+                {bulkProgress.paused ? 'Reanuda para continuar.' : 'No cierres esta pestaña hasta que termine'}
               </p>
             </div>
 
@@ -2852,7 +2860,10 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
 
               <div className="h-2 overflow-hidden rounded-full bg-muted">
                 <div
-                  className="h-full rounded-full bg-primary transition-all duration-500"
+                  className={cn(
+                    'h-full rounded-full transition-all duration-500',
+                    bulkProgress.paused ? 'bg-amber-500' : 'bg-primary',
+                  )}
                   style={{ width: `${((bulkProgress.sent + bulkProgress.failed) / bulkProgress.total) * 100}%` }}
                 />
               </div>
@@ -2887,14 +2898,49 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
                 </div>
               )}
 
-              <Button
-                variant="outline"
-                className="w-full border-destructive/30 text-destructive hover:bg-destructive/10"
-                onClick={cancelBulkSend}
-              >
-                <StopCircle className="mr-2 h-4 w-4" />
-                Cancelar envío
-              </Button>
+              <div className="flex gap-2">
+                {bulkProgress.paused ? (
+                  <Button
+                    variant="outline"
+                    className="flex-1 border-emerald-500/30 text-emerald-700 hover:bg-emerald-50"
+                    onClick={() => {
+                      const jobId = bulkJobIdRef.current;
+                      if (jobId) {
+                        resumeFlotaBulk(jobId).catch(() => {});
+                        setBulkProgress((prev) => prev ? { ...prev, paused: false } : null);
+                        toast.success('Envío reanudado');
+                      }
+                    }}
+                  >
+                    <Play className="mr-2 h-4 w-4" />
+                    Reanudar envío
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    className="flex-1 border-amber-500/30 text-amber-700 hover:bg-amber-50"
+                    onClick={() => {
+                      const jobId = bulkJobIdRef.current;
+                      if (jobId) {
+                        pauseFlotaBulk(jobId).catch(() => {});
+                        setBulkProgress((prev) => prev ? { ...prev, paused: true } : null);
+                        toast.success('Envío pausado');
+                      }
+                    }}
+                  >
+                    <Pause className="mr-2 h-4 w-4" />
+                    Pausar envío
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  className="flex-1 border-destructive/30 text-destructive hover:bg-destructive/10"
+                  onClick={cancelBulkSend}
+                >
+                  <StopCircle className="mr-2 h-4 w-4" />
+                  Cancelar envío
+                </Button>
+              </div>
             </div>
           </div>
         )}

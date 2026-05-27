@@ -60,7 +60,7 @@ export function OpportunityEditDialog({
   function handleSave() {
     if (!opportunity?.id || !title.trim()) return;
     if (!isLikelyOpportunityCuid(opportunity.id)) {
-      toast.error('Solo se pueden editar oportunidades guardadas en el servidor');
+      toast.error('Solo se pueden editar oportunidades guardadas');
       return;
     }
     setSaving(true);

@@ -190,7 +190,7 @@ export default function OpportunitiesPage() {
 
   function openOpportunityDetail(opp: Opportunity) {
     if (isPendingOpportunityId(opp.id)) {
-      toast.info('Guardando oportunidad en el servidor…');
+      toast.info('Guardando oportunidad…');
       return;
     }
     navigate(opportunityDetailHref(opp));
@@ -318,6 +318,7 @@ export default function OpportunitiesPage() {
     const body = buildOpportunityCreateBody(data);
     const optId = generateOptimisticId('o');
     addPendingOpportunity(buildOptimisticOpportunity(optId, data));
+    toast.loading('Guardando…', { id: 'create-opp-list' });
     try {
       await api('/opportunities', {
         method: 'POST',
@@ -326,13 +327,14 @@ export default function OpportunitiesPage() {
     } catch (e) {
       removePendingOpportunity(optId);
       toast.error(
-        e instanceof Error ? e.message : 'No se pudo crear la oportunidad en el servidor',
+        e instanceof Error ? e.message : 'No se pudo crear la oportunidad',
+        { id: 'create-opp-list' },
       );
       throw e;
     }
     removePendingOpportunity(optId);
     await loadApiOpportunities();
-    toast.success(`Oportunidad "${data.title.trim()}" creada exitosamente`);
+    toast.success(`Oportunidad "${data.title.trim()}" creada exitosamente`, { id: 'create-opp-list' });
   }
 
   async function handleSaveOpportunity(payload: { title: string; amount: number; expectedCloseDate: string | null; status: string }) {
@@ -364,14 +366,12 @@ export default function OpportunitiesPage() {
       });
       // Reconcile with API response
       setApiRows((prev) => prev.map((r) => (r.id === oppId ? result : r)));
-      await new Promise((r) => setTimeout(r, 600));
       toast.success('Oportunidad actualizada', { id: `save-${oppId}` });
     } catch (e) {
       // Revert on error
       if (prevRow) {
         setApiRows((prev) => prev.map((r) => (r.id === oppId ? prevRow : r)));
       }
-      await new Promise((r) => setTimeout(r, 600));
       toast.error(e instanceof Error ? e.message : 'No se pudo guardar', { id: `save-${oppId}` });
     }
   }
@@ -411,7 +411,7 @@ export default function OpportunitiesPage() {
 
   function openOpportunityPreview(opp: Opportunity) {
     if (isPendingOpportunityId(opp.id)) {
-      toast.info('Guardando oportunidad en el servidor…');
+      toast.info('Guardando oportunidad…');
       return;
     }
     setPreviewOpportunity(opp);
@@ -427,7 +427,7 @@ export default function OpportunitiesPage() {
       return;
     }
     if (!isLikelyOpportunityCuid(opp.id)) {
-      toast.error('Solo se pueden editar oportunidades guardadas en el servidor');
+      toast.error('Solo se pueden editar oportunidades guardadas');
       return;
     }
     setEditOpportunity(opp);
@@ -450,14 +450,15 @@ export default function OpportunitiesPage() {
     if (!oppToDelete) return;
     try {
       if (!isLikelyOpportunityCuid(oppToDelete.id)) {
-        toast.error('Solo se pueden eliminar oportunidades guardadas en el servidor');
+        toast.error('Solo se pueden eliminar oportunidades guardadas');
         return;
       }
+      toast.loading('Eliminando…', { id: 'delete-opp-list' });
       await api(`/opportunities/${oppToDelete.id}`, { method: 'DELETE' });
       await loadApiOpportunities();
-      toast.success('Oportunidad eliminada correctamente');
+      toast.success('Oportunidad eliminada correctamente', { id: 'delete-opp-list' });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'No se pudo eliminar');
+      toast.error(e instanceof Error ? e.message : 'No se pudo eliminar', { id: 'delete-opp-list' });
     } finally {
       setOppToDelete(null);
     }

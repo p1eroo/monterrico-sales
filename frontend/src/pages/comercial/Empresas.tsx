@@ -579,7 +579,7 @@ export default function EmpresasPage() {
       await loadSummary();
     } catch (e) {
       const msg =
-        e instanceof Error ? e.message : 'No se pudo guardar la empresa en el servidor';
+        e instanceof Error ? e.message : 'No se pudo guardar la empresa';
       toast.error(msg);
       throw e instanceof Error ? e : new Error(msg);
     }
@@ -618,7 +618,7 @@ export default function EmpresasPage() {
         contactApiError =
           e instanceof Error
             ? e.message
-            : 'No se pudo crear el contacto en el servidor';
+            : 'No se pudo crear el contacto';
       }
     }
 
@@ -642,7 +642,7 @@ export default function EmpresasPage() {
       opportunityApiError =
         e instanceof Error
           ? e.message
-          : 'No se pudo crear la oportunidad en el servidor';
+          : 'No se pudo crear la oportunidad';
     }
 
     await loadSummary();
@@ -738,7 +738,6 @@ export default function EmpresasPage() {
       });
       // Reconcile with API response
       setSummaryRows((prev) => prev.map((r) => (r.id === empresaId ? { ...r, ...result, clienteRecuperado: result.clienteRecuperado as CompanySummaryRow['clienteRecuperado'] } : r)));
-      await new Promise((r) => setTimeout(r, 600));
       toast.success('Empresa actualizada', { id: `save-${empresaId}` });
     } catch (e) {
       // Revert on error
@@ -749,7 +748,6 @@ export default function EmpresasPage() {
           return next;
         });
       }
-      await new Promise((r) => setTimeout(r, 600));
       toast.error(e instanceof Error ? e.message : 'No se pudo guardar', { id: `save-${empresaId}` });
     }
   }
@@ -760,18 +758,19 @@ export default function EmpresasPage() {
       if (empresaToDelete.isLocalOnly) {
         deleteCompany(empresaToDelete.id);
         await loadSummary();
-        toast.success('Empresa eliminada correctamente');
+        toast.success('Empresa eliminada correctamente', { id: 'delete-empresa' });
         return;
       }
       if (!isLikelyCompanyCuid(empresaToDelete.id)) {
-        toast.error('Solo se pueden eliminar empresas guardadas en el servidor');
+        toast.error('Solo se pueden eliminar empresas guardadas', { id: 'delete-empresa' });
         return;
       }
+      toast.loading('Eliminando…', { id: 'delete-empresa' });
       await api(`/companies/${empresaToDelete.id}`, { method: 'DELETE' });
       await loadSummary();
-      toast.success('Empresa eliminada correctamente');
+      toast.success('Empresa eliminada correctamente', { id: 'delete-empresa' });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'No se pudo eliminar');
+      toast.error(e instanceof Error ? e.message : 'No se pudo eliminar', { id: 'delete-empresa' });
     } finally {
       setEmpresaToDelete(null);
     }

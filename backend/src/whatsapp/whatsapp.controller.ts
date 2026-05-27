@@ -309,9 +309,6 @@ export class WhatsappController {
     if (!body.prospectoIds?.length) {
       throw new BadRequestException('prospectoIds debe ser un array con al menos un ID');
     }
-    if (body.prospectoIds.length > 1000) {
-      throw new BadRequestException('Máximo 1000 contactos por envío masivo');
-    }
     return this.whatsapp.sendFlotaBulk({
       prospectoIds: body.prospectoIds,
       text: body.text?.trim() || '',
@@ -330,6 +327,20 @@ export class WhatsappController {
   @Delete('flota/send-bulk/:jobId')
   cancelFlotaBulk(@Param('jobId') jobId: string) {
     const ok = this.whatsapp.cancelFlotaBulk(jobId);
+    if (!ok) throw new NotFoundException('Job no encontrado o ya finalizó');
+    return { ok: true };
+  }
+
+  @Post('flota/send-bulk/:jobId/pause')
+  pauseFlotaBulk(@Param('jobId') jobId: string) {
+    const ok = this.whatsapp.pauseFlotaBulk(jobId);
+    if (!ok) throw new NotFoundException('Job no encontrado o ya finalizó');
+    return { ok: true };
+  }
+
+  @Post('flota/send-bulk/:jobId/resume')
+  resumeFlotaBulk(@Param('jobId') jobId: string) {
+    const ok = this.whatsapp.resumeFlotaBulk(jobId);
     if (!ok) throw new NotFoundException('Job no encontrado o ya finalizó');
     return { ok: true };
   }

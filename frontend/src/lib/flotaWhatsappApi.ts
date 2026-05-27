@@ -213,6 +213,7 @@ export type FlotaBulkProgress = {
   nextDelay: number;
   finished: boolean;
   cancelled: boolean;
+  paused: boolean;
 };
 
 export async function sendFlotaBulk(params: {
@@ -236,4 +237,12 @@ export async function getFlotaBulkProgress(jobId: string): Promise<FlotaBulkProg
 
 export async function cancelFlotaBulk(jobId: string): Promise<void> {
   return api(`/api/whatsapp/flota/send-bulk/${jobId}`, { method: 'DELETE' });
+}
+
+export async function pauseFlotaBulk(jobId: string): Promise<void> {
+  return api(`/api/whatsapp/flota/send-bulk/${jobId}/pause`, { method: 'POST' });
+}
+
+export async function resumeFlotaBulk(jobId: string): Promise<void> {
+  return api(`/api/whatsapp/flota/send-bulk/${jobId}/resume`, { method: 'POST' });
 }

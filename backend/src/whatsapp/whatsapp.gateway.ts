@@ -31,6 +31,7 @@ export type FlotaBulkProgressPayload = {
   nextDelay: number;
   finished: boolean;
   cancelled: boolean;
+  paused: boolean;
 };
 
 @WebSocketGateway({

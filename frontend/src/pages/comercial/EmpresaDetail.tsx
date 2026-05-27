@@ -302,6 +302,7 @@ export default function EmpresaDetailPage() {
         }
       : undefined;
   const companyData =
+    companyDataFromApi ??
     companyDataFromContact ??
     (standaloneCompany
       ? {
@@ -310,8 +311,7 @@ export default function EmpresaDetailPage() {
           rubro: standaloneCompany.rubro,
           tipo: standaloneCompany.tipo,
         }
-      : undefined) ??
-    companyDataFromApi;
+      : undefined);
   const displayFuenteLabel =
     fromApiById && apiRecord?.fuente
       ? (contactSourceLabels[apiRecord.fuente as ContactSource] ??
@@ -687,6 +687,8 @@ export default function EmpresaDetailPage() {
   function handleSaveEdit() {
     if (fromApiById && apiRecord) {
       void (async () => {
+        setEditDialogOpen(false);
+        toast.loading('Guardando cambios…', { id: `edit-company-${apiRecord.id}` });
         try {
           const body: Record<string, unknown> = {
             name: editForm.name.trim(),
@@ -699,25 +701,25 @@ export default function EmpresaDetailPage() {
           };
           if (canEditAssignee && showAdvisorInCompanyEdit && editForm.assignedTo) {
             if (!isLikelyContactCuid(editForm.assignedTo)) {
-              toast.error('El asesor debe ser un usuario del servidor (id válido en PostgreSQL).');
+              toast.error('El asesor seleccionado no es válido.', { id: `edit-company-${apiRecord.id}` });
               return;
             }
             body.assignedTo = editForm.assignedTo;
           }
-          await api<ApiCompanyRecord>(`/companies/${apiRecord.id}`, {
+          const row = await api<ApiCompanyRecord>(`/companies/${apiRecord.id}`, {
             method: 'PATCH',
             body: JSON.stringify(body),
           });
-          const row = await api<ApiCompanyRecord>(`/companies/${apiRecord.id}`);
           setApiRecord(row);
           const nextPath = companyDetailHref(row);
           if (nextPath.replace(/\/$/, '') !== location.pathname.replace(/\/$/, '')) {
             navigate(nextPath, { replace: true });
           }
-          toast.success('Empresa actualizada en el servidor');
-          setEditDialogOpen(false);
+          toast.success('Empresa actualizada', { id: `edit-company-${apiRecord.id}` });
         } catch (e) {
-          toast.error(e instanceof Error ? e.message : 'Error al guardar');
+          const freshRow = await api<ApiCompanyRecord>(`/companies/${apiRecord.id}`).catch(() => apiRecord);
+          setApiRecord(freshRow);
+          toast.error(e instanceof Error ? e.message : 'Error al guardar', { id: `edit-company-${apiRecord.id}` });
         }
       })();
       return;
@@ -766,6 +768,7 @@ export default function EmpresaDetailPage() {
       !firstContact
     ) {
       try {
+        toast.loading('Guardando…', { id: 'create-opp-empresa' });
         const merged: NewOpportunityFormValues = {
           ...data,
           companyId: companyIdStr,
@@ -774,9 +777,9 @@ export default function EmpresaDetailPage() {
         const body = buildOpportunityCreateBody(merged);
         await api('/opportunities', { method: 'POST', body: JSON.stringify(body) });
         await reloadOpportunityLists();
-        toast.success(`Oportunidad "${data.title.trim()}" creada`);
+        toast.success(`Oportunidad "${data.title.trim()}" creada`, { id: 'create-opp-empresa' });
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'No se pudo crear la oportunidad');
+        toast.error(e instanceof Error ? e.message : 'No se pudo crear la oportunidad', { id: 'create-opp-empresa' });
         throw e;
       }
       return;
@@ -837,6 +840,7 @@ export default function EmpresaDetailPage() {
 
       void (async () => {
         try {
+          toast.loading('Vinculando…', { id: 'link-opp-empresa' });
           const body: Record<string, unknown> = { companyId: companyKey };
           if (firstContact?.id && isLikelyContactCuid(firstContact.id)) {
             body.contactId = firstContact.id;
@@ -857,10 +861,12 @@ export default function EmpresaDetailPage() {
             ids.length === 1
               ? 'Oportunidad vinculada'
               : `${ids.length} oportunidades vinculadas`,
+            { id: 'link-opp-empresa' },
           );
         } catch (e) {
           toast.error(
-            e instanceof Error ? e.message : 'No se pudo vincular en el servidor',
+            e instanceof Error ? e.message : 'No se pudo vincular',
+            { id: 'link-opp-empresa' },
           );
           await reloadOpportunityLists();
         }
@@ -879,6 +885,9 @@ export default function EmpresaDetailPage() {
   }
 
 async function handleCreateNewContact(data: NewContactData) {
+  setNewContactOpen(false);
+  const LOADING_ID = 'create-contact-empresa';
+  toast.loading('Guardando…', { id: LOADING_ID });
   const defaultAssignedTo = firstContact?.assignedTo ?? activeAdvisors[0]?.id ?? '';
   const opportunityIdsToLink = data.selectedOpportunityIds ?? [];
 
@@ -950,22 +959,23 @@ async function handleCreateNewContact(data: NewContactData) {
         if (opportunityIdsToLink.length > 0) {
           if (nFail > 0) {
             toast.error(
-              `Contacto creado. ${nFail} oportunidad(es) no se pudieron vincular en el servidor.`,
+              `Contacto creado. ${nFail} oportunidad(es) no se pudieron vincular.`,
             );
           } else {
             toast.success(
               `Contacto creado y vinculado a ${opportunityIdsToLink.length} oportunidad${opportunityIdsToLink.length > 1 ? 'es' : ''}`,
+              { id: LOADING_ID },
             );
           }
         } else {
-          toast.success('Contacto creado y vinculado a la empresa');
+          toast.success('Contacto creado y vinculado a la empresa', { id: LOADING_ID });
         }
         void Promise.all([reloadContactsData(), reloadOpportunityLists()]).catch(() => {
           /* reconciliar con servidor; fallo silencioso para no duplicar toasts de éxito */
         });
       } catch (e) {
         removePendingContact(optId);
-        toast.error(e instanceof Error ? e.message : 'No se pudo crear el contacto');
+        toast.error(e instanceof Error ? e.message : 'No se pudo crear el contacto', { id: LOADING_ID });
       }
     })();
     return;
@@ -1015,6 +1025,7 @@ async function handleCreateNewContact(data: NewContactData) {
         return;
       }
       try {
+        toast.loading('Vinculando…', { id: 'link-contact-empresa' });
         await Promise.all(
           ids.map((contactId) =>
             contactAddCompany(contactId, companyKey, false),
@@ -1025,9 +1036,10 @@ async function handleCreateNewContact(data: NewContactData) {
           ids.length === 1
             ? 'Contacto vinculado'
             : `${ids.length} contactos vinculados`,
+          { id: 'link-contact-empresa' },
         );
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'No se pudo vincular');
+        toast.error(e instanceof Error ? e.message : 'No se pudo vincular', { id: 'link-contact-empresa' });
         await reloadContactsData();
       }
       setLinkContactIds([]);

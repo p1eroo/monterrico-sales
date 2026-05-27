@@ -1,4 +1,5 @@
 import { Search, Link2, Loader2 } from 'lucide-react';
+import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -71,6 +72,7 @@ export function LinkExistingDialog({
 }: LinkExistingDialogProps) {
   const displayLead =
     (leadName?.trim() || contactName?.trim() || 'este registro');
+  const [confirming, setConfirming] = useState(false);
 
   const toggleSelection = (id: string) => {
     if (selectionMode === 'single') {
@@ -191,15 +193,15 @@ export function LinkExistingDialog({
             {selectedIds.length} seleccionado{selectedIds.length !== 1 ? 's' : ''}
           </span>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={confirming}>
               Cancelar
             </Button>
             <Button
               className="bg-[#13944C] hover:bg-[#0f7a3d]"
-              onClick={onConfirm}
-              disabled={selectedIds.length === 0}
+              onClick={() => { setConfirming(true); onConfirm(); }}
+              disabled={selectedIds.length === 0 || confirming}
             >
-              {confirmLabel}
+              {confirming ? 'Vinculando…' : confirmLabel}
             </Button>
           </div>
         </DialogFooter>

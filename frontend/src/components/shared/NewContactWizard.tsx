@@ -1,34 +1,14 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useCrmConfigStore } from '@/store/crmConfigStore';
 import { toast } from 'sonner';
-import { Check, ChevronLeft, ChevronRight, Loader2, Building2, Link2, Briefcase, Search, ChevronDown } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Building2, Link2, Briefcase, Search, ChevronDown } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { Etapa, ContactSource } from '@/types';
 import { contactSourceLabels, etapaLabels } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
+import { useAppStore } from '@/store';
 import { companyListAll, type ApiCompanyRecord } from '@/lib/companyApi';
 import { opportunityListAll, type ApiOpportunityListRow } from '@/lib/opportunityApi';
-import { factilizaApi } from '@/lib/factilizaApi';
-
-/** Convierte "APELLIDO APELLIDO, NOMBRES" → "Nombres Apellido Apellido" con mayúscula inicial */
-function formatNombreCompleto(nombreCompleto: string): string {
-  const commaIdx = nombreCompleto.indexOf(',');
-  if (commaIdx === -1) {
-    return toTitleCase(nombreCompleto);
-  }
-  const apellidos = nombreCompleto.slice(0, commaIdx).trim();
-  const nombres = nombreCompleto.slice(commaIdx + 1).trim();
-  const ordenado = `${nombres} ${apellidos}`.trim();
-  return toTitleCase(ordenado);
-}
-
-function toTitleCase(s: string): string {
-  return s
-    .toLowerCase()
-    .split(/\s+/)
-    .map((w) => (w.length ? w[0].toUpperCase() + w.slice(1) : w))
-    .join(' ');
-}
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -132,23 +112,34 @@ export function NewContactWizard({
   const [phone, setPhone] = useState(defaultValues?.phone ?? '');
   const [email, setEmail] = useState(defaultValues?.email ?? '');
   const [source, setSource] = useState<ContactSource>(defaultValues?.source ?? 'base');
-  const [assignedTo, setAssignedTo] = useState(defaultValues?.assignedTo ?? '');
+  const [assignedTo, setAssignedTo] = useState(defaultValues?.assignedTo ?? useAppStore.getState().currentUser?.id ?? '');
   const [clienteRecuperado, setClienteRecuperado] = useState<'si' | 'no'>(defaultValues?.clienteRecuperado ?? 'no');
   const [departamento, setDepartamento] = useState(defaultValues?.departamento ?? '');
   const [provincia, setProvincia] = useState(defaultValues?.provincia ?? '');
   const [distrito, setDistrito] = useState(defaultValues?.distrito ?? '');
   const [direccion, setDireccion] = useState(defaultValues?.direccion ?? '');
-  const [docLookupLoading, setDocLookupLoading] = useState(false);
   const [apiOpportunities, setApiOpportunities] = useState<ApiOpportunityListRow[]>([]);
   const [assocPanelOpen, setAssocPanelOpen] = useState(false);
   const [assocCategory, setAssocCategory] = useState<'empresas' | 'oportunidades'>(() =>
     (lockCompanySelection ? 'oportunidades' : 'empresas'),
   );
   const [assocSearch, setAssocSearch] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const assocPickerRef = useRef<HTMLDivElement>(null);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(defaultCompanyId ?? null);
   const [selectedOpportunityIds, setSelectedOpportunityIds] = useState<string[]>(defaultOpportunityIds);
   const { activeAdvisors } = useUsers();
+  const currentUser = useAppStore((s) => s.currentUser);
+  const currentUserRef = useRef(currentUser);
+  currentUserRef.current = currentUser;
+  const advisorOptions = useMemo(() => {
+    if (!currentUser?.id) return activeAdvisors;
+    if (activeAdvisors.some((u) => u.id === currentUser.id)) return activeAdvisors;
+    return [
+      { id: currentUser.id, name: currentUser.name, status: 'activo' as const, role: 'asesor' as const },
+      ...activeAdvisors,
+    ];
+  }, [activeAdvisors, currentUser]);
   const bundle = useCrmConfigStore((s) => s.bundle);
 
   const stageOptions = useMemo(() => {
@@ -192,7 +183,8 @@ export function NewContactWizard({
     setPhone(d?.phone ?? '');
     setEmail(d?.email ?? '');
     setSource(d?.source ?? 'base');
-    setAssignedTo(d?.assignedTo ?? '');
+    const cu = currentUserRef.current;
+    setAssignedTo(d?.assignedTo ?? cu?.id ?? '');
     setClienteRecuperado(d?.clienteRecuperado ?? 'no');
     setDepartamento(d?.departamento ?? '');
     setProvincia(d?.provincia ?? '');
@@ -207,6 +199,7 @@ export function NewContactWizard({
     setAssocSearch('');
     setSelectedCompanyId(lockCo ? (defCo ?? null) : (defCo ?? d?.companyId ?? null));
     setSelectedOpportunityIds([...defOpps]);
+    setSubmitting(false);
   }, []);
 
   useEffect(() => {
@@ -217,12 +210,24 @@ export function NewContactWizard({
     if (lockCompanySelection) {
       setSelectedCompanyId(defCo ?? null);
       setAssocCategory('oportunidades');
+      if (!company.trim() && d?.company?.trim()) {
+        setCompany(d.company);
+      }
     } else {
       setSelectedCompanyId(defCo ?? d?.companyId ?? null);
       setAssocCategory('empresas');
     }
     setSelectedOpportunityIds([...defOpps]);
   }, [open, defaultCompanyId, lockCompanySelection, (defaultOpportunityIds ?? []).join(',')]);
+
+  useEffect(() => {
+    if (defaultCompanyId && apiCompanies.length > 0 && !company.trim()) {
+      const comp = apiCompanies.find((c) => c.id === defaultCompanyId);
+      if (comp) {
+        setCompany(comp.name);
+      }
+    }
+  }, [apiCompanies, defaultCompanyId]);
 
   const assocCompanyCount = apiCompanies.length;
   const assocOppCount = apiOpportunities.length;
@@ -271,35 +276,6 @@ function handleCompanyWizardSubmit(
     onOpenChange(next);
   }
 
-  async function handleDocLookup() {
-    if (!docType || !docNumber.trim()) {
-      toast.error('Selecciona tipo de documento e ingresa el número');
-      return;
-    }
-    setDocLookupLoading(true);
-    try {
-      if (docType === 'dni') {
-        const data = await factilizaApi.consultarDni(docNumber);
-        setName(data.nombre_completo ? formatNombreCompleto(data.nombre_completo) : '');
-        setDepartamento(data.departamento ?? '');
-        setProvincia(data.provincia ?? '');
-        setDistrito(data.distrito ?? '');
-        setDireccion(data.direccion_completa ?? data.direccion ?? '');
-      } else {
-        const data = await factilizaApi.consultarCee(docNumber);
-        const raw =
-          data.nombre_completo?.trim() ||
-          [data.apellido_paterno, data.apellido_materno, data.nombres].filter(Boolean).join(' ');
-        setName(raw ? formatNombreCompleto(raw) : '');
-      }
-      toast.success('Datos cargados correctamente');
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'No se pudo consultar el documento');
-    } finally {
-      setDocLookupLoading(false);
-    }
-  }
-
   useEffect(() => {
     if (!open || lockCompanySelection) return;
     let cancelled = false;
@@ -339,10 +315,6 @@ return () => {
         toast.error('Nombre y empresa son requeridos');
         return;
       }
-      if (!phone.trim()) {
-        toast.error('El teléfono es obligatorio');
-        return;
-      }
       if (!email.trim()) {
         toast.error('El correo es obligatorio');
         return;
@@ -352,18 +324,16 @@ return () => {
   }
 
   function handleSubmit() {
+    if (submitting) return;
     if (!name.trim() || !company.trim()) {
       toast.error('Nombre y empresa son requeridos');
-      return;
-    }
-    if (!phone.trim()) {
-      toast.error('El teléfono es obligatorio');
       return;
     }
     if (!email.trim()) {
       toast.error('El correo es obligatorio');
       return;
     }
+    setSubmitting(true);
     const finalCompanyId = selectedCompanyId || companyId;
     onSubmit({
       name: name.trim(),
@@ -435,37 +405,6 @@ return () => {
         <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
           {step === 0 && (
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Tipo de documento</Label>
-                <Select value={docType} onValueChange={(v) => { setDocType(v as 'dni' | 'cee'); setDocNumber(''); }}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="dni">DNI</SelectItem>
-                    <SelectItem value="cee">CEE</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>N° de {docType === 'dni' ? 'DNI' : docType === 'cee' ? 'CEE' : 'documento'}</Label>
-                <div className="relative">
-                  <Input
-                    value={docNumber}
-                    onChange={(e) => setDocNumber(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && docType && docNumber.trim()) {
-                        e.preventDefault();
-                        handleDocLookup();
-                      }
-                    }}
-                    placeholder={docType === 'dni' ? '12345678 — Enter para buscar' : docType === 'cee' ? '001234567890 — Enter para buscar' : 'Selecciona un tipo'}
-                    maxLength={docType === 'dni' ? 8 : 12}
-                    disabled={!docType}
-                  />
-                  {docLookupLoading && (
-                    <Loader2 className="absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
-                  )}
-                </div>
-              </div>
               <div className="space-y-2">
                 <Label>Nombre completo *</Label>
                 <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre del contacto" />
@@ -638,11 +577,6 @@ return () => {
     </div>
   )}
 </div>
-  <p className="text-xs text-muted-foreground">
-    {lockCompanySelection
-      ? 'Vincula oportunidades al contacto (la empresa ya está fijada en esta pantalla).'
-      : 'Filtra por texto sobre todas las empresas y oportunidades cargadas; se muestran las primeras coincidencias.'}
-  </p>
 </div>
               <div className="space-y-2">
                 <Label>Etapa</Label>
@@ -656,7 +590,7 @@ return () => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Teléfono *</Label>
+                <Label>Teléfono</Label>
                 <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+51 999 999 999" />
               </div>
               <div className="space-y-2">
@@ -684,7 +618,7 @@ return () => {
                 <Select value={assignedTo} onValueChange={setAssignedTo}>
                   <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar asesor" /></SelectTrigger>
                   <SelectContent>
-                    {activeAdvisors.map((u) => (
+                    {advisorOptions.map((u) => (
                       <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -727,27 +661,27 @@ return () => {
           <DialogFooter className="flex-row gap-2 sm:justify-between">
             <div>
               {step > 0 && (
-                <Button type="button" variant="outline" onClick={() => setStep((s) => s - 1)}>
+                <Button type="button" variant="outline" onClick={() => setStep((s) => s - 1)} disabled={submitting}>
                   <ChevronLeft className="size-4" /> Anterior
                 </Button>
               )}
             </div>
             <div className="flex gap-2">
-              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
+              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={submitting}>
                 Cancelar
               </Button>
               {step < 2 ? (
-                <Button type="button" className="bg-[#13944C] hover:bg-[#0f7a3d]" onClick={handleNext}>
+                <Button type="button" className="bg-[#13944C] hover:bg-[#0f7a3d]" onClick={handleNext} disabled={submitting}>
                   Siguiente <ChevronRight className="size-4" />
                 </Button>
               ) : (
                 <Button
                   type="button"
                   className="bg-[#13944C] hover:bg-[#0f7a3d]"
-                  disabled={!name.trim() || !company.trim()}
+                  disabled={submitting || !name.trim() || !company.trim()}
                   onClick={handleSubmit}
                 >
-                  {submitLabel}
+                  {submitting ? 'Guardando…' : submitLabel}
                 </Button>
               )}
             </div>

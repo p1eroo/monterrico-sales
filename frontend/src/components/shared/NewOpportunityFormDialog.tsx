@@ -118,6 +118,7 @@ export function NewOpportunityFormDialog({
   const [linkCompanySelectedIds, setLinkCompanySelectedIds] = useState<string[]>([]);
   const [pickedContactRow, setPickedContactRow] = useState<ApiContactListRow | null>(null);
   const [pickedCompanyRow, setPickedCompanyRow] = useState<ApiCompanyRecord | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const {
     items: contactPickerRows,
@@ -245,11 +246,13 @@ export function NewOpportunityFormDialog({
   }
 
   async function handleSubmit(data: NewOpportunityFormValues) {
+    if (submitting) return;
+    setSubmitting(true);
     try {
       await onCreate(data);
       handleDialogOpenChange(false);
     } catch {
-      /* toast / error en el padre */
+      setSubmitting(false);
     }
   }
 
@@ -509,7 +512,9 @@ export function NewOpportunityFormDialog({
               <Button type="button" variant="outline" onClick={() => handleDialogOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button type="submit">Crear Oportunidad</Button>
+              <Button type="submit" disabled={submitting}>
+                {submitting ? 'Guardando…' : 'Crear Oportunidad'}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>

@@ -140,13 +140,19 @@ export default function OportunidadDetailPage() {
 
   const oppStageTone = useStageBadgeTone(opp?.etapa);
 
-  const linkedContact = useMemo(() => {
-    if (!opp) return null;
-    if (fromApi && apiRecord?.contacts?.[0]?.contact) {
-      return mapApiContactToContact(apiRecord.contacts[0].contact);
+  const linkedContacts = useMemo(() => {
+    if (!opp) return [];
+    if (fromApi && apiRecord?.contacts?.length) {
+      return apiRecord.contacts.map((c) => mapApiContactToContact(c.contact));
     }
-    return opp.contactId ? contacts.find((l) => l.id === opp.contactId) ?? null : null;
+    if (opp.contactId) {
+      const found = contacts.find((l) => l.id === opp.contactId);
+      return found ? [found] : [];
+    }
+    return [];
   }, [fromApi, apiRecord, opp, contacts]);
+
+  const linkedContact = linkedContacts[0] ?? null;
 
   const primaryCompany = useMemo(() => {
     if (!opp) return null;
@@ -444,20 +450,21 @@ export default function OportunidadDetailPage() {
           };
           if (canEditAssignee && editForm.assignedTo) {
             if (!isLikelyContactCuid(editForm.assignedTo)) {
-              toast.error('El asesor debe ser un usuario del servidor (id válido en PostgreSQL).');
+              toast.error('El asesor seleccionado no es válido.');
               return;
             }
             body.assignedTo = editForm.assignedTo;
           }
+          setEditDialogOpen(false);
+          toast.loading('Guardando cambios…', { id: 'save-opp-edit' });
           const updated = await api<ApiOpportunityDetail>(`/opportunities/${routeId}`, {
             method: 'PATCH',
             body: JSON.stringify(body),
           });
           setApiRecord(updated);
-          toast.success('Oportunidad actualizada correctamente');
-          setEditDialogOpen(false);
+          toast.success('Oportunidad actualizada correctamente', { id: 'save-opp-edit' });
         } catch (e) {
-          toast.error(e instanceof Error ? e.message : 'No se pudo guardar');
+          toast.error(e instanceof Error ? e.message : 'No se pudo guardar', { id: 'save-opp-edit' });
         }
       })();
       return;
@@ -486,14 +493,15 @@ export default function OportunidadDetailPage() {
     if (fromApi && routeId) {
       void (async () => {
         try {
+          toast.loading('Actualizando etapa…', { id: 'save-opp-etapa' });
           const updated = await api<ApiOpportunityDetail>(`/opportunities/${routeId}`, {
             method: 'PATCH',
             body: JSON.stringify({ etapa: newEtapa }),
           });
           setApiRecord(updated);
-          toast.success('Etapa actualizada correctamente');
+          toast.success('Etapa actualizada correctamente', { id: 'save-opp-etapa' });
         } catch (e) {
-          toast.error(e instanceof Error ? e.message : 'No se pudo actualizar la etapa');
+          toast.error(e instanceof Error ? e.message : 'No se pudo actualizar la etapa', { id: 'save-opp-etapa' });
         }
       })();
       return;
@@ -504,6 +512,9 @@ export default function OportunidadDetailPage() {
 
 async function handleCreateNewContact(data: NewContactData) {
   if (!opp) return;
+  setNewContactOpen(false);
+  const LOADING_ID = 'create-contact-opp';
+  toast.loading('Guardando…', { id: LOADING_ID });
   const opportunityIdsToLink = data.selectedOpportunityIds ?? [];
   const allOppIds = [...new Set([opp.id, ...opportunityIdsToLink])];
   
@@ -534,7 +545,7 @@ async function handleCreateNewContact(data: NewContactData) {
         const coPatchId = data.newCompanyWizardUpdate?.companyId;
         if (coPatchId) {
           if (!w.origenLead) {
-            toast.error('Selecciona la fuente del lead en el wizard de empresa');
+            toast.error('Selecciona la fuente del lead en el wizard de empresa', { id: LOADING_ID });
             return;
           }
           try {
@@ -545,6 +556,7 @@ async function handleCreateNewContact(data: NewContactData) {
           } catch (err) {
             toast.error(
               err instanceof Error ? err.message : 'No se pudo actualizar la empresa',
+              { id: LOADING_ID },
             );
             return;
           }
@@ -558,11 +570,12 @@ async function handleCreateNewContact(data: NewContactData) {
           if (factEmpresa <= 0) {
             toast.error(
               'Indica facturación estimada de la empresa en el asistente (paso comercial u oportunidad).',
+              { id: LOADING_ID },
             );
             return;
           }
           if (!w.origenLead) {
-            toast.error('Selecciona la fuente del lead en el wizard de empresa');
+            toast.error('Selecciona la fuente del lead en el wizard de empresa', { id: LOADING_ID });
             return;
           }
           baseBody.newCompany = {
@@ -608,12 +621,11 @@ async function handleCreateNewContact(data: NewContactData) {
       
       const updated = await api<ApiOpportunityDetail>(`/opportunities/${routeId}`);
       setApiRecord(updated);
-      setNewContactOpen(false);
       toast.success(allOppIds.length > 1 
         ? `Contacto creado y vinculado a ${allOppIds.length} oportunidades`
-        : 'Contacto creado y vinculado a la oportunidad');
+        : 'Contacto creado y vinculado a la oportunidad', { id: LOADING_ID });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'No se pudo crear el contacto');
+      toast.error(e instanceof Error ? e.message : 'No se pudo crear el contacto', { id: LOADING_ID });
     }
     return;
   }
@@ -637,26 +649,29 @@ async function handleCreateNewContact(data: NewContactData) {
   
   toast.success(allOppIds.length > 1 
     ? `Contacto creado y vinculado a ${allOppIds.length} oportunidades`
-    : 'Contacto creado y vinculado a la oportunidad');
-  setNewContactOpen(false);
+    : 'Contacto creado y vinculado a la oportunidad', { id: LOADING_ID });
 }
 
   async function handleLinkContacts() {
     if (linkContactIds.length === 0 || !opp) return;
     if (fromApi && routeId) {
       try {
-        const firstContactId = linkContactIds[0];
-        const updated = await api<ApiOpportunityDetail>(`/opportunities/${routeId}`, {
-          method: 'PATCH',
-          body: JSON.stringify({ contactId: firstContactId }),
-        });
+        toast.loading('Vinculando…', { id: 'link-contact-opp' });
+        for (const contactId of linkContactIds) {
+          await api<ApiOpportunityDetail>(`/opportunities/${routeId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ contactId }),
+          });
+        }
+        const updated = await api<ApiOpportunityDetail>(`/opportunities/${routeId}`);
         setApiRecord(updated);
-        toast.success('Contacto vinculado a la oportunidad');
+        const n = linkContactIds.length;
+        toast.success(n === 1 ? 'Contacto vinculado a la oportunidad' : `${n} contactos vinculados a la oportunidad`, { id: 'link-contact-opp' });
         setLinkContactIds([]);
         setLinkContactSearch('');
         setAddExistingContactOpen(false);
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'No se pudo vincular');
+        toast.error(e instanceof Error ? e.message : 'No se pudo vincular', { id: 'link-contact-opp' });
       }
       return;
     }
@@ -669,17 +684,16 @@ async function handleCreateNewContact(data: NewContactData) {
   }
 
   async function handleRemoveContact(_contact?: { id: string }) {
-    if (!opp || !linkedContact) return;
+    if (!opp || !_contact?.id) return;
     if (fromApi && routeId) {
       try {
-        const updated = await api<ApiOpportunityDetail>(`/opportunities/${routeId}`, {
-          method: 'PATCH',
-          body: JSON.stringify({ contactId: null }),
-        });
+        toast.loading('Desvinculando…', { id: 'unlink-contact-opp' });
+        await api(`/opportunities/${routeId}/contacts/${_contact.id}`, { method: 'DELETE' });
+        const updated = await api<ApiOpportunityDetail>(`/opportunities/${routeId}`);
         setApiRecord(updated);
-        toast.success('Contacto desvinculado de la oportunidad');
+        toast.success('Contacto desvinculado de la oportunidad', { id: 'unlink-contact-opp' });
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'No se pudo desvincular');
+        toast.error(e instanceof Error ? e.message : 'No se pudo desvincular', { id: 'unlink-contact-opp' });
       }
       return;
     }
@@ -694,6 +708,7 @@ async function handleCreateNewContact(data: NewContactData) {
     if (!linkedContact) return;
     if (fromApi && routeId && isLikelyContactCuid(linkedContact.id)) {
       try {
+        toast.loading('Guardando…', { id: 'add-co-opp' });
         if (meta?.mode === 'update' && meta.existingCompanyId) {
           await api(`/companies/${meta.existingCompanyId}`, {
             method: 'PATCH',
@@ -704,7 +719,7 @@ async function handleCreateNewContact(data: NewContactData) {
           const updatedOpp = await api<ApiOpportunityDetail>(`/opportunities/${routeId}`);
           setApiRecord(updatedOpp);
           setNewCompanyDialogOpen(false);
-          toast.success('Empresa actualizada y vinculada correctamente');
+          toast.success('Empresa actualizada y vinculada correctamente', { id: 'add-co-opp' });
           return;
         }
 
@@ -739,10 +754,10 @@ async function handleCreateNewContact(data: NewContactData) {
         const updatedOpp = await api<ApiOpportunityDetail>(`/opportunities/${routeId}`);
         setApiRecord(updatedOpp);
         setNewCompanyDialogOpen(false);
-        toast.success('Empresa creada y vinculada correctamente');
+        toast.success('Empresa creada y vinculada correctamente', { id: 'add-co-opp' });
       } catch (e) {
         const msg = e instanceof Error ? e.message : 'No se pudo crear la empresa';
-        toast.error(msg);
+        toast.error(msg, { id: 'add-co-opp' });
         throw e instanceof Error ? e : new Error(msg);
       }
       return;
@@ -907,7 +922,7 @@ async function handleCreateNewContact(data: NewContactData) {
         <EmptyState
           icon={Briefcase}
           title="Oportunidad no encontrada"
-          description={apiError ?? 'La oportunidad que buscas no existe en el servidor.'}
+          description={apiError ?? 'La oportunidad que buscas no existe.'}
           actionLabel="Volver a Oportunidades"
           onAction={() => navigate('/opportunities')}
         />
@@ -950,7 +965,7 @@ async function handleCreateNewContact(data: NewContactData) {
           quickActions={(
             <QuickActionsWithDialogs
               entityName={opp.title}
-              contacts={linkedContact ? [linkedContact] : []}
+              contacts={linkedContacts}
               companies={linkedContact?.companies ?? []}
               opportunities={[opp]}
               contactId={opp?.contactId}
@@ -987,7 +1002,7 @@ async function handleCreateNewContact(data: NewContactData) {
           />
 
           <LinkedContactsCard
-            contacts={linkedContact ? [linkedContact] : []}
+            contacts={linkedContacts}
             title="Contactos"
             onCreate={() => setNewContactOpen(true)}
             onAddExisting={() => setAddExistingContactOpen(true)}
@@ -1131,7 +1146,7 @@ async function handleCreateNewContact(data: NewContactData) {
         <TabsContent value="tareas" className="mt-4">
           <TasksTab
             ref={tasksTabRef}
-            contacts={linkedContact ? [linkedContact] : []}
+            contacts={linkedContacts}
             companies={primaryCompany ? [{ name: primaryCompany.name }] : []}
             opportunities={opp ? [opp] : []}
             defaultAssigneeId={opp?.assignedTo}
@@ -1152,7 +1167,7 @@ async function handleCreateNewContact(data: NewContactData) {
   description={`Crea un nuevo contacto vinculado a la oportunidad "${opp.title}".`}
   submitLabel="Crear y vincular"
   defaultCompanyId={opp.clientId}
-  defaultOpportunityIds={!opp.contactId ? [opp.id] : []}
+          defaultOpportunityIds={[opp.id]}
 />
 
     {/* Vincular contacto existente */}

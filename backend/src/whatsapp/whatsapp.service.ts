@@ -2337,6 +2337,7 @@ export class WhatsappService {
     nextDelay: number;
     finished: boolean;
     cancelled: boolean;
+    paused: boolean;
     results: Array<{ contactId: string; status: string; error?: string; messageId?: string }>;
   }>();
 
@@ -2368,6 +2369,7 @@ export class WhatsappService {
       nextDelay: BULK_DELAYS[0]!,
       finished: false,
       cancelled: false,
+      paused: false,
       results: [] as Array<{ contactId: string; status: string; error?: string; messageId?: string }>,
     };
     this.flotaBulkJobs.set(jobId, job);
@@ -2384,6 +2386,7 @@ export class WhatsappService {
         nextDelay: job.nextDelay,
         finished: job.finished,
         cancelled: job.cancelled,
+        paused: job.paused,
       });
     };
 
@@ -2397,6 +2400,11 @@ export class WhatsappService {
       };
 
       for (let i = 0; i < params.prospectoIds.length; i++) {
+        if (job.cancelled) break;
+
+        while (job.paused && !job.cancelled) {
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+        }
         if (job.cancelled) break;
 
         const prospectoId = params.prospectoIds[i]!;
@@ -2537,6 +2545,7 @@ export class WhatsappService {
       nextDelay: job.nextDelay,
       finished: job.finished,
       cancelled: job.cancelled,
+      paused: job.paused,
     };
   }
 
@@ -2544,6 +2553,20 @@ export class WhatsappService {
     const job = this.flotaBulkJobs.get(jobId);
     if (!job) return false;
     job.cancelled = true;
+    return true;
+  }
+
+  pauseFlotaBulk(jobId: string) {
+    const job = this.flotaBulkJobs.get(jobId);
+    if (!job) return false;
+    job.paused = true;
+    return true;
+  }
+
+  resumeFlotaBulk(jobId: string) {
+    const job = this.flotaBulkJobs.get(jobId);
+    if (!job) return false;
+    job.paused = false;
     return true;
   }
 }

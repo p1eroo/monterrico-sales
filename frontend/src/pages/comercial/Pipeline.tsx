@@ -1025,7 +1025,7 @@ export default function Pipeline() {
       toast.success(`Oportunidad "${data.title.trim()}" creada exitosamente`);
     } catch (e) {
       toast.error(
-        e instanceof Error ? e.message : 'No se pudo crear la oportunidad en el servidor',
+        e instanceof Error ? e.message : 'No se pudo crear la oportunidad',
       );
       throw e;
     }
@@ -1107,7 +1107,7 @@ export default function Pipeline() {
 
   async function applyEtapaUpdate(contactId: string, etapa: Etapa): Promise<void> {
     if (!isLikelyContactCuid(contactId)) {
-      toast.error('Solo se puede actualizar la etapa de contactos guardados en el servidor');
+      toast.error('Solo se puede actualizar la etapa de contactos guardados');
       throw new Error('INVALID_CONTACT_ID');
     }
 
@@ -1146,7 +1146,7 @@ export default function Pipeline() {
 
   async function applyAssignUpdate(contactId: string, assignedTo: string): Promise<void> {
     if (!isLikelyContactCuid(contactId)) {
-      toast.error('Solo se puede asignar contactos guardados en el servidor');
+      toast.error('Solo se puede asignar contactos guardados');
       throw new Error('INVALID_CONTACT_ID');
     }
 

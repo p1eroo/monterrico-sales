@@ -321,7 +321,7 @@ export default function ContactosPage() {
 
   function openContactDetail(contact: Contact) {
     if (isPendingContactId(contact.id)) {
-      toast.info("Guardando contacto en el servidor…");
+      toast.info("Guardando contacto…");
       return;
     }
     navigate(contactDetailHref(contact));
@@ -333,11 +333,11 @@ export default function ContactosPage() {
 
   function openContactEdit(contact: Contact) {
     if (isPendingContactId(contact.id)) {
-      toast.info("Guardando contacto en el servidor…");
+      toast.info("Guardando contacto…");
       return;
     }
     if (!isLikelyContactCuid(contact.id)) {
-      toast.error("Solo se pueden editar contactos guardados en el servidor");
+      toast.error("Solo se pueden editar contactos guardados");
       return;
     }
     setEditContact(contact);
@@ -379,7 +379,7 @@ export default function ContactosPage() {
       };
       if (payload.assignedTo !== undefined && canEditAssignee) {
         if (!isLikelyContactCuid(payload.assignedTo)) {
-          toast.error("El asesor debe ser un usuario del servidor (id válido en PostgreSQL).", { id: `save-${contactId}` });
+          toast.error("El asesor seleccionado no es válido.", { id: `save-${contactId}` });
           if (prevRow && prevRowIndex >= 0) {
             const rollback = [...apiRows];
             rollback[prevRowIndex] = prevRow;
@@ -396,7 +396,6 @@ export default function ContactosPage() {
       });
       // Reconcile with actual API response
       setApiRows((prev) => prev.map((r) => (r.id === contactId ? apiContactDetailToListRow(result) : r)));
-      await new Promise((r) => setTimeout(r, 600));
       toast.success('Contacto actualizado', { id: `save-${contactId}` });
     } catch (e) {
       // Revert on error
@@ -407,7 +406,6 @@ export default function ContactosPage() {
           return next;
         });
       }
-      await new Promise((r) => setTimeout(r, 600));
       toast.error(e instanceof Error ? e.message : "No se pudo guardar", { id: `save-${contactId}` });
     }
   }
@@ -453,17 +451,19 @@ export default function ContactosPage() {
       return;
     }
     if (!isLikelyContactCuid(contactToDelete)) {
-      toast.error("Solo se pueden eliminar contactos guardados en el servidor");
+      toast.error("Solo se pueden eliminar contactos guardados");
       setContactToDelete(null);
       return;
     }
     try {
+      toast.loading('Eliminando…', { id: 'delete-contact' });
       await api(`/contacts/${contactToDelete}`, { method: "DELETE" });
       await loadApiContacts();
-      toast.success("Contacto eliminado correctamente");
+      toast.success("Contacto eliminado correctamente", { id: 'delete-contact' });
     } catch (e) {
       toast.error(
-        e instanceof Error ? e.message : "No se pudo eliminar en el servidor",
+        e instanceof Error ? e.message : "No se pudo eliminar",
+        { id: 'delete-contact' },
       );
     }
     setContactToDelete(null);
@@ -472,6 +472,7 @@ export default function ContactosPage() {
   async function handleBatchDelete() {
     if (selectedContacts.length === 0) return;
     setBatchDeleting(true);
+    toast.loading('Eliminando…', { id: 'batch-delete-contacts' });
     let deleted = 0;
     let failed = 0;
 
@@ -494,23 +495,25 @@ export default function ContactosPage() {
     await loadApiContacts();
 
     if (failed === 0) {
-      toast.success(`${deleted} contacto(s) eliminado(s) correctamente`);
+      toast.success(`${deleted} contacto(s) eliminado(s) correctamente`, { id: 'batch-delete-contacts' });
     } else if (deleted === 0) {
-      toast.error("No se pudo eliminar ningún contacto");
+      toast.error("No se pudo eliminar ningún contacto", { id: 'batch-delete-contacts' });
     } else {
       toast.warning(
         `${deleted} eliminado(s), ${failed} no se pudieron eliminar`,
+        { id: 'batch-delete-contacts' },
       );
     }
   }
 
   async function onSubmitNewContact(data: NewContactData) {
+    const LOADING_ID = 'create-contact-list';
     if (!data.phone?.trim()) {
-      toast.error("El teléfono es obligatorio");
+      toast.error("El teléfono es obligatorio", { id: LOADING_ID });
       return;
     }
     if (!data.email?.trim()) {
-      toast.error("El correo es obligatorio");
+      toast.error("El correo es obligatorio", { id: LOADING_ID });
       return;
     }
     if (data.newCompanyWizardData) {
@@ -519,9 +522,10 @@ export default function ContactosPage() {
 
       if (existingCoId) {
         if (!w.origenLead) {
-          toast.error("Selecciona la fuente del lead en el wizard de empresa");
+          toast.error("Selecciona la fuente del lead en el wizard de empresa", { id: LOADING_ID });
           return;
         }
+        toast.loading('Guardando…', { id: LOADING_ID });
         try {
           await api(`/companies/${existingCoId}`, {
             method: "PATCH",
@@ -580,7 +584,7 @@ export default function ContactosPage() {
           toast.error(
             e instanceof Error
               ? e.message
-              : "No se pudo crear el contacto en el servidor",
+              : "No se pudo crear el contacto",
           );
           return;
         }
@@ -687,7 +691,7 @@ export default function ContactosPage() {
         toast.error(
           e instanceof Error
             ? e.message
-            : "No se pudo crear el contacto en el servidor",
+            : "No se pudo crear el contacto",
         );
         return;
       }
@@ -772,7 +776,7 @@ export default function ContactosPage() {
         toast.error(
           e instanceof Error
             ? e.message
-            : "No se pudo resolver la empresa en el servidor",
+            : "No se pudo resolver la empresa",
         );
         return;
       }
@@ -826,7 +830,7 @@ export default function ContactosPage() {
       toast.error(
         e instanceof Error
           ? e.message
-          : "No se pudo crear el contacto en el servidor",
+          : "No se pudo crear el contacto",
       );
       return;
     }

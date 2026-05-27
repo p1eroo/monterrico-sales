@@ -132,6 +132,25 @@ export class OpportunitiesController {
       );
   }
 
+  @Delete(':id/contacts/:contactId')
+  @RequireAnyPermission('oportunidades.editar', 'contactos.editar')
+  unlinkContact(
+    @Param('id') id: string,
+    @Param('contactId') contactId: string,
+    @Req() req: AuthedReq,
+  ) {
+    return this.crmDataScope
+      .buildScope(req.user.userId, req.user.roleId)
+      .then((scope) =>
+        this.opportunitiesService.unlinkContactFromOpportunity(
+          id,
+          contactId,
+          { userId: req.user.userId, userName: req.user.name },
+          scope,
+        ),
+      );
+  }
+
   @Delete(':id')
   @RequirePermissions('oportunidades.eliminar')
   remove(@Param('id') id: string, @Req() req: AuthedReq) {

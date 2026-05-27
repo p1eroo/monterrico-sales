@@ -666,13 +666,12 @@ export class OpportunitiesService {
         ) {
           throw new BadRequestException('El contacto no existe');
         }
-        await this.prisma.$transaction(async (tx) => {
-          await tx.contactOpportunity.deleteMany({
-            where: { opportunityId: id },
-          });
-          await tx.contactOpportunity.create({
-            data: { contactId: cid, opportunityId: id },
-          });
+        await this.prisma.contactOpportunity.upsert({
+          where: {
+            contactId_opportunityId: { contactId: cid, opportunityId: id },
+          },
+          create: { contactId: cid, opportunityId: id },
+          update: {},
         });
       }
     }
@@ -920,6 +919,70 @@ export class OpportunitiesService {
       entityId: opportunityId,
       entityName: oppRow.title,
       description: `Desvinculada de la empresa "${companyBasic.name}"`,
+    });
+
+    const fresh = await this.prisma.opportunity.findUnique({
+      where: { id: opportunityId },
+      include: opportunityIncludeDetail,
+    });
+    if (!fresh) {
+      throw new NotFoundException('Oportunidad no encontrada');
+    }
+    return fresh;
+  }
+
+  async unlinkContactFromOpportunity(
+    opportunityIdOrSlug: string,
+    contactId: string,
+    actor: ActivityActor,
+    scope?: CrmDataScope,
+  ) {
+    const opportunityId = await this.resolveOpportunityId(opportunityIdOrSlug);
+    const oppRow = await this.prisma.opportunity.findUnique({
+      where: { id: opportunityId },
+      select: { title: true, assignedTo: true },
+    });
+    if (!oppRow) {
+      throw new NotFoundException('Oportunidad no encontrada');
+    }
+
+    const contact = await this.prisma.contact.findUnique({
+      where: { id: contactId },
+      select: { id: true, name: true, assignedTo: true },
+    });
+    if (!contact) {
+      throw new NotFoundException('Contacto no encontrado');
+    }
+
+    if (scope && !scope.unrestricted) {
+      const canSeeOpp = oppRow.assignedTo === scope.viewerUserId;
+      const canSeeContact = contact.assignedTo === scope.viewerUserId;
+      if (!canSeeOpp && !canSeeContact) {
+        throw new NotFoundException('Oportunidad no encontrada');
+      }
+    }
+
+    await this.prisma.contactOpportunity.delete({
+      where: {
+        contactId_opportunityId: { contactId, opportunityId },
+      },
+    });
+
+    await this.auditDetail.record(actor, {
+      action: 'actualizar',
+      module: 'oportunidades',
+      entityType: 'Oportunidad',
+      entityId: opportunityId,
+      entityName: oppRow.title,
+      entries: [],
+    });
+    await this.activityLogs.record(actor, {
+      action: 'actualizar',
+      module: 'oportunidades',
+      entityType: 'Oportunidad',
+      entityId: opportunityId,
+      entityName: oppRow.title,
+      description: `Contacto "${contact.name}" desvinculado`,
     });
 
     const fresh = await this.prisma.opportunity.findUnique({

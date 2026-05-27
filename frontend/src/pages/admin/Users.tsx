@@ -261,7 +261,7 @@ export default function UsersPage() {
         }),
       });
       await loadUsers();
-      toast.success('Usuario creado en el servidor');
+      toast.success('Usuario creado');
       setEditingUser(null);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'No se pudo crear el usuario';
