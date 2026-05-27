@@ -56,6 +56,7 @@ import { type ApiCompanyRecord, isLikelyCompanyCuid } from '@/lib/companyApi';
 import { isEntityDetailApiParam } from '@/lib/detailRoutes';
 import {
   type ApiOpportunityDetail,
+  type ApiContactFromOpportunity,
   isLikelyOpportunityCuid,
   mapApiContactToContact,
   mapApiOpportunityToOpportunity,
@@ -143,7 +144,7 @@ export default function OportunidadDetailPage() {
   const linkedContacts = useMemo(() => {
     if (!opp) return [];
     if (fromApi && apiRecord?.contacts?.length) {
-      return apiRecord.contacts.map((c) => mapApiContactToContact(c.contact));
+      return apiRecord.contacts.map((c) => mapApiContactToContact(c.contact as ApiContactFromOpportunity));
     }
     if (opp.contactId) {
       const found = contacts.find((l) => l.id === opp.contactId);
