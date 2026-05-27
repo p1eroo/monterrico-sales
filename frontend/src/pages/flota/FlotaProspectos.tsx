@@ -53,21 +53,40 @@ import {
   flotaProspectosSheetPreview,
   flotaProspectosDeleteMany,
   flotaProspectoCreate,
+  flotaProspectosSpreadsheets,
   fetchOperadores, getOperatorDisplayName,
   type FlotaProspectoRow,
   type FlotaProspectosCounts,
   type OperadorUser,
   type SheetPreviewResponse,
+  type SheetsSpreadsheet,
 } from "@/lib/flotaProspectosApi";
 import { getConductorTelefonos } from "@/lib/flotaConductoresApi";
+import { InlineEditCell } from "@/components/shared/InlineEditCell";
+
+const ESTADO_OPTIONS = [
+  { label: "Nuevo", value: "Nuevo" },
+  { label: "Afiliado", value: "Afiliado" },
+  { label: "Citado", value: "Citado" },
+  { label: "Seguimiento", value: "Seguimiento" },
+  { label: "Información", value: "Informacion" },
+  { label: "Sin Requisitos", value: "Sin Requisitos" },
+  { label: "No Responde", value: "No Responde" },
+];
+
+const ASISTENCIA_OPTIONS = [
+  { label: "Asistió", value: "Asistió" },
+  { label: "No Asistió", value: "No Asistió" },
+];
 
 const estadoColors: Record<string, string> = {
-  "AFILIADO": "bg-purple-200 text-purple-700 border-purple-200",
-  "CITADO": "bg-blue-100 text-blue-700 border-blue-200",
-  "SEGUIMIENTO": "bg-green-100 text-green-700 border-green-200 dark:bg-green-950/40 dark:text-green-300 dark:border-green-800",
-  "INFORMACION": "bg-cyan-100 text-cyan-700 border-cyan-200",
-  "SIN REQUISITOS": "bg-red-100 text-red-700 border-red-200",
-  "NO RESPONDE": "bg-yellow-200 text-yellow-700 border-yellow-200",
+  "Nuevo": "bg-gray-100 text-gray-700 border-gray-200",
+  "Afiliado": "bg-purple-200 text-purple-700 border-purple-200",
+  "Citado": "bg-blue-100 text-blue-700 border-blue-200",
+  "Seguimiento": "bg-green-100 text-green-700 border-green-200 dark:bg-green-950/40 dark:text-green-300 dark:border-green-800",
+  "Informacion": "bg-cyan-100 text-cyan-700 border-cyan-200",
+  "Sin Requisitos": "bg-red-100 text-red-700 border-red-200",
+  "No Responde": "bg-yellow-200 text-yellow-700 border-yellow-200",
 };
 
 const PAGE_SIZE = 25;
@@ -91,6 +110,8 @@ export default function FlotaProspectos() {
   const [page, setPage] = useState(1);
 
   const [sheetNames, setSheetNames] = useState<string[]>([]);
+  const [spreadsheets, setSpreadsheets] = useState<SheetsSpreadsheet[]>([]);
+  const [selectedSpreadsheetId, setSelectedSpreadsheetId] = useState<string | undefined>(undefined);
   const [selectedSheet, setSelectedSheet] = useState<string | undefined>(undefined);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewData, setPreviewData] = useState<SheetPreviewResponse | null>(null);
@@ -122,25 +143,50 @@ export default function FlotaProspectos() {
     return operadores.filter((op) => op.name === currentUser.name);
   }, [hasVerTodos, operadores, currentUser.name]);
 
-  const loadSheetNames = useCallback(async () => {
+  const operadorOptions = useMemo(
+    () => operadores.map((op) => ({ label: op.name, value: op.name })),
+    [operadores],
+  );
+
+  const loadSheetNames = useCallback(async (spreadsheetId?: string) => {
     try {
-      const res = await flotaProspectosSheetNames();
+      const res = await flotaProspectosSheetNames(spreadsheetId);
       console.log("Sheets fetched:", res);
       const sheets = res.sheets || [];
       setSheetNames(sheets);
-      if (sheets.length > 0 && !selectedSheet) {
-        setSelectedSheet(sheets[0]);
+      if (sheets.length > 0) {
+        setSelectedSheet((prev) => prev || sheets[0]);
       }
     } catch (e) {
       console.error("Error loading sheets:", e);
       toast.error(e instanceof Error ? e.message : "Error cargando hojas");
     }
-  }, [selectedSheet]);
+  }, []);
+  const loadSpreadsheets = useCallback(async () => {
+    try {
+      const res = await flotaProspectosSpreadsheets();
+      const list = res.spreadsheets || [];
+      setSpreadsheets(list);
+      if (list.length > 0) {
+        setSelectedSpreadsheetId((prev) => prev || list[0].id);
+      }
+    } catch (e) {
+      console.error("Error loading spreadsheets:", e);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadSpreadsheets();
+  }, [loadSpreadsheets]);
 
 
   useEffect(() => {
-    void loadSheetNames();
-  }, [loadSheetNames]);
+    if (selectedSpreadsheetId) {
+      setSheetNames([]);
+      setSelectedSheet(undefined);
+      void loadSheetNames(selectedSpreadsheetId);
+    }
+  }, [selectedSpreadsheetId, loadSheetNames]);
 
   // Load conductor telefonos for cross-reference
   useEffect(() => {
@@ -238,9 +284,9 @@ export default function FlotaProspectos() {
 
   const getRowClass = (prospecto: FlotaProspectoRow): string => {
     if (isConductor(prospecto.celular)) {
-      return "bg-green-50/50 border-l-4 border-l-green-500 cursor-pointer hover:bg-green-100/50 dark:bg-green-950/40 dark:border-l-green-400 dark:hover:bg-green-950/60";
+      return "bg-green-50/50 border-l-4 border-l-green-500 dark:bg-green-950/40 dark:border-l-green-400 dark:hover:bg-green-950/60";
     }
-    return "cursor-pointer hover:bg-muted/50";
+    return "hover:bg-muted/50";
   };
 
   const toggleSelectAll = () => {
@@ -268,7 +314,7 @@ export default function FlotaProspectos() {
     }
     setPreviewLoading(true);
     try {
-      const data = await flotaProspectosSheetPreview(selectedSheet);
+      const data = await flotaProspectosSheetPreview(selectedSheet, selectedSpreadsheetId);
       setPreviewData(data);
       setPreviewOpen(true);
     } catch (e) {
@@ -287,7 +333,7 @@ export default function FlotaProspectos() {
     closePreview();
     setImporting(true);
     try {
-      const job = await flotaProspectosImportSheets(selectedSheet);
+      const job = await flotaProspectosImportSheets(selectedSheet, selectedSpreadsheetId);
       enqueueJob(job);
       toast.success("Importación iniciada. Revisá el progreso en la tarjeta de importación.");
     } catch (e) {
@@ -349,6 +395,26 @@ export default function FlotaProspectos() {
           <span className="mr-2 text-sm text-muted-foreground">
             Total: {counts?.total ?? "—"}
           </span>
+          {spreadsheets.length > 0 && (
+            <Select
+              value={selectedSpreadsheetId ?? ""}
+              onValueChange={(v) => {
+                console.log("Spreadsheet selected:", v);
+                setSelectedSpreadsheetId(v);
+              }}
+            >
+              <SelectTrigger className="w-48 bg-card">
+                <SelectValue placeholder="Spreadsheet" />
+              </SelectTrigger>
+              <SelectContent>
+                {spreadsheets.map((sp) => (
+                  <SelectItem key={sp.id} value={sp.id}>
+                    {sp.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           {sheetNames.length > 0 && (
             <Select
               value={selectedSheet ?? ""}
@@ -418,12 +484,13 @@ export default function FlotaProspectos() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="AFILIADO">Afiliado</SelectItem>
-            <SelectItem value="CITADO">Citado</SelectItem>
-            <SelectItem value="SEGUIMIENTO">Seguimiento</SelectItem>
-            <SelectItem value="INFORMACION">Información</SelectItem>
-            <SelectItem value="SIN REQUISITOS">Sin Requisitos</SelectItem>
-            <SelectItem value="NO RESPONDE">No Responde</SelectItem>
+            <SelectItem value="Nuevo">Nuevo</SelectItem>
+            <SelectItem value="Afiliado">Afiliado</SelectItem>
+            <SelectItem value="Citado">Citado</SelectItem>
+            <SelectItem value="Seguimiento">Seguimiento</SelectItem>
+            <SelectItem value="Informacion">Información</SelectItem>
+            <SelectItem value="Sin Requisitos">Sin Requisitos</SelectItem>
+            <SelectItem value="No Responde">No Responde</SelectItem>
           </SelectContent>
         </Select>
         
@@ -600,9 +667,6 @@ export default function FlotaProspectos() {
                     <TableRow
                       key={prospecto.id}
                       className={getRowClass(prospecto)}
-                      onClick={() =>
-                        navigate(`/flota/prospectos/${prospecto.id}`)
-                      }
                     >
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <Checkbox
@@ -611,85 +675,183 @@ export default function FlotaProspectos() {
                         />
                       </TableCell>
                       <TableCell>
-                        {prospecto.fechaRegistro
-                          ? formatDateDMY(prospecto.fechaRegistro)
-                          : "—"}
+                        <InlineEditCell
+                          value={prospecto.fechaRegistro ? formatDateDMY(prospecto.fechaRegistro) : "—"}
+                          fieldId={prospecto.id}
+                          fieldKey="fechaRegistro"
+                          type="readonly"
+                        />
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {prospecto.redSocial || "—"}
+                        <InlineEditCell
+                          value={prospecto.redSocial || ""}
+                          fieldId={prospecto.id}
+                          fieldKey="redSocial"
+                          onSaved={loadProspectos}
+                        />
                       </TableCell>
-                      <TableCell>{prospecto.celular || "—"}</TableCell>
                       <TableCell>
-                        <span
-                          className={`font-medium ${prospecto.esDuplicado ? "text-red-600" : ""}`}
+                        <InlineEditCell
+                          value={prospecto.celular || "—"}
+                          fieldId={prospecto.id}
+                          fieldKey="celular"
+                          linkToDetail
+                          onNavigate={() => navigate(`/flota/prospectos/${prospecto.id}`)}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <InlineEditCell
+                          value={prospecto.nombreCompleto}
+                          fieldId={prospecto.id}
+                          fieldKey="nombreCompleto"
+                          onSaved={loadProspectos}
                         >
-                          {prospecto.nombreCompleto}
-                        </span>
-                        {prospecto.esDuplicado && (
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`font-medium ${prospecto.esDuplicado ? "text-red-600" : ""}`}
+                            >
+                              {prospecto.nombreCompleto}
+                            </span>
+                            {prospecto.esDuplicado && (
+                              <Badge
+                                variant="outline"
+                                className="border-red-200 bg-red-50 text-[10px] text-red-600"
+                              >
+                                Duplicado
+                              </Badge>
+                            )}
+                          </div>
+                        </InlineEditCell>
+                      </TableCell>
+                      <TableCell>
+                        <InlineEditCell
+                          value={prospecto.edad != null ? String(prospecto.edad) : ""}
+                          fieldId={prospecto.id}
+                          fieldKey="edad"
+                          type="number"
+                          onSaved={loadProspectos}
+                        />
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        <InlineEditCell
+                          value={getOperatorDisplayName(prospecto.operador, operadores) || ""}
+                          fieldId={prospecto.id}
+                          fieldKey="operador"
+                          type="select"
+                          options={operadorOptions}
+                          onSaved={loadProspectos}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <InlineEditCell
+                          value={prospecto.estado}
+                          fieldId={prospecto.id}
+                          fieldKey="estado"
+                          type="select"
+                          options={ESTADO_OPTIONS}
+                          onSaved={loadProspectos}
+                        >
                           <Badge
                             variant="outline"
-                            className="ml-2 border-red-200 bg-red-50 text-[10px] text-red-600"
+                            className={`text-xs ${estadoColors[prospecto.estado] || ""}`}
                           >
-                            Duplicado
+                            {prospecto.estado || "—"}
                           </Badge>
-                        )}
+                        </InlineEditCell>
                       </TableCell>
-                      <TableCell>{prospecto.edad ?? "—"}</TableCell>
                       <TableCell className="text-muted-foreground">
-                        {getOperatorDisplayName(prospecto.operador, operadores) || "—"}
+                        <InlineEditCell
+                          value={prospecto.modalidad || ""}
+                          fieldId={prospecto.id}
+                          fieldKey="modalidad"
+                          onSaved={loadProspectos}
+                        />
                       </TableCell>
                       <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={`text-xs ${estadoColors[prospecto.estado] || ""}`}
+                        <InlineEditCell
+                          value={prospecto.anioVehiculo != null ? String(prospecto.anioVehiculo) : ""}
+                          fieldId={prospecto.id}
+                          fieldKey="anioVehiculo"
+                          type="number"
+                          onSaved={loadProspectos}
+                        />
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        <InlineEditCell
+                          value={prospecto.distrito || ""}
+                          fieldId={prospecto.id}
+                          fieldKey="distrito"
+                          onSaved={loadProspectos}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <InlineEditCell
+                          value={prospecto.fechaCita || ""}
+                          fieldId={prospecto.id}
+                          fieldKey="fechaCita"
+                          type="date"
+                          onSaved={loadProspectos}
                         >
-                          {prospecto.estado}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {prospecto.modalidad || "—"}
-                      </TableCell>
-                      <TableCell>
-                        {prospecto.anioVehiculo || "—"}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {prospecto.distrito || "—"}
+                          {prospecto.fechaCita
+                            ? formatDateDMY(prospecto.fechaCita)
+                            : "—"}
+                        </InlineEditCell>
                       </TableCell>
                       <TableCell>
-                        {prospecto.fechaCita
-                          ? formatDateDMY(prospecto.fechaCita)
-                          : "—"}
+                        <InlineEditCell
+                          value={prospecto.asistencia || ""}
+                          fieldId={prospecto.id}
+                          fieldKey="asistencia"
+                          type="select"
+                          options={ASISTENCIA_OPTIONS}
+                          onSaved={loadProspectos}
+                        >
+                          {prospecto.asistencia ? (
+                            <Badge
+                              variant="outline"
+                              className={`text-xs ${
+                                prospecto.asistencia === "Asistió" ||
+                                prospecto.asistencia === "ASISTIO"
+                                  ? "bg-emerald-100 text-emerald-700"
+                                  : "bg-red-100 text-red-700"
+                              }`}
+                            >
+                              {prospecto.asistencia}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </InlineEditCell>
                       </TableCell>
                       <TableCell>
-                        {prospecto.asistencia ? (
-                          <Badge
-                            variant="outline"
-                            className={`text-xs ${
-                              prospecto.asistencia === "Asistió" ||
-                              prospecto.asistencia === "ASISTIO"
-                                ? "bg-emerald-100 text-emerald-700"
-                                : "bg-red-100 text-red-700"
-                            }`}
-                          >
-                            {prospecto.asistencia}
-                          </Badge>
-                        ) : (
-                          "—"
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {prospecto.fechaAfiliacion
-                          ? formatDateDMY(prospecto.fechaAfiliacion)
-                          : "—"}
+                        <InlineEditCell
+                          value={prospecto.fechaAfiliacion || ""}
+                          fieldId={prospecto.id}
+                          fieldKey="fechaAfiliacion"
+                          type="date"
+                          onSaved={loadProspectos}
+                        >
+                          {prospecto.fechaAfiliacion
+                            ? formatDateDMY(prospecto.fechaAfiliacion)
+                            : "—"}
+                        </InlineEditCell>
                       </TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">
-                        {prospecto.movil || "—"}
+                        <InlineEditCell
+                          value={prospecto.movil || ""}
+                          fieldId={prospecto.id}
+                          fieldKey="movil"
+                          onSaved={loadProspectos}
+                        />
                       </TableCell>
-                      <TableCell
-                        className="max-w-[200px] truncate"
-                        title={prospecto.observaciones || ""}
-                      >
-                        {prospecto.observaciones || "—"}
+                      <TableCell className="max-w-[200px]">
+                        <InlineEditCell
+                          value={prospecto.observaciones || ""}
+                          fieldId={prospecto.id}
+                          fieldKey="observaciones"
+                          onSaved={loadProspectos}
+                          className="max-w-[180px] truncate"
+                        />
                       </TableCell>
                     </TableRow>
                   ))

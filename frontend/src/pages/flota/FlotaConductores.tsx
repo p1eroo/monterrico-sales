@@ -9,11 +9,13 @@ import {
   Download,
   MapPin,
   Loader2,
+  XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -192,6 +194,22 @@ export default function FlotaConductores() {
   const [estadoSearch, setEstadoSearch] = useState("");
   const [page, setPage] = useState(1);
 
+  const STORAGE_KEY = 'flota-por-autorizar';
+  const [porAutorizarIds, setPorAutorizarIds] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const porAutorizarSet = useMemo(() => new Set(porAutorizarIds), [porAutorizarIds]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(porAutorizarIds));
+  }, [porAutorizarIds]);
+
   const pageSize = 10;
 
   const codigosList = useMemo(() => {
@@ -271,6 +289,20 @@ const stats = useMemo(() => {
         title="Conductores"
         description="Conductores de la flota Taxi Monterrico"
       >
+        {porAutorizarIds.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+            onClick={() => {
+              setPorAutorizarIds([]);
+              toast.success(`${porAutorizarIds.length} marcado(s) eliminado(s)`);
+            }}
+          >
+            <XCircle className="size-4" />
+            Limpiar Por Aut. ({porAutorizarIds.length})
+          </Button>
+        )}
         <Button variant="outline" className="gap-1.5">
           <Download className="size-4" />
           Exportar
@@ -560,9 +592,12 @@ const stats = useMemo(() => {
               className="bg-card"
             />
         ) : (
-            <Table containerClassName="overflow-visible" className="min-w-[1200px] bg-transparent">
+            <Table containerClassName="overflow-visible" className="min-w-[1280px] bg-transparent">
               <TableHeader>
-                <TableRow>
+                  <TableRow>
+                    <TableHead className="w-12 text-center">
+                      <span className="text-[10px] leading-none">Por Aut.</span>
+                    </TableHead>
                   <TableHead>Conductor</TableHead>
                   <TableHead>Código</TableHead>
                   <TableHead>Tipo Doc.</TableHead>
@@ -579,7 +614,7 @@ const stats = useMemo(() => {
                 {paginatedConductores.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={10}
+                      colSpan={11}
                       className="py-12 text-center text-muted-foreground"
                     >
                       No se encontraron conductores con los filtros aplicados.
@@ -591,6 +626,20 @@ const stats = useMemo(() => {
                       key={conductor.id}
                       className="cursor-pointer hover:bg-[#f8faf9]"
                     >
+                      <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={porAutorizarSet.has(String(conductor.idasociado))}
+                          onCheckedChange={(checked) => {
+                            if (checked === 'indeterminate') return;
+                            setPorAutorizarIds((prev) =>
+                              checked
+                                ? [...prev, String(conductor.idasociado)]
+                                : prev.filter((id) => id !== String(conductor.idasociado)),
+                            );
+                          }}
+                          aria-label={`Marcar ${conductor.nombres} como por autorizar`}
+                        />
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <div className="flex size-9 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-medium">

@@ -96,6 +96,33 @@ export default function FlotaReportes() {
   const [actividadModalOpen, setActividadModalOpen] = useState(false);
   const [sunatModalOpen, setSunatModalOpen] = useState(false);
 
+  const STORAGE_KEY = 'flota-por-autorizar';
+  const [porAutorizarCount, setPorAutorizarCount] = useState(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw).length : 0;
+    } catch {
+      return 0;
+    }
+  });
+
+  useEffect(() => {
+    const refresh = () => {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        setPorAutorizarCount(raw ? JSON.parse(raw).length : 0);
+      } catch {}
+    };
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') refresh();
+    });
+    return () => {
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, []);
+
   useEffect(() => {
     async function load() {
       setLoadingSunat(true);
@@ -270,10 +297,10 @@ export default function FlotaReportes() {
       autorizados: autorizadosCount,
       noAutorizados: noAutorizadosCount,
       penalizados,
-      porAutorizar: conductores.filter(c => c.sunat && c.estado !== 'ACTIVO').length,
+      porAutorizar: porAutorizarCount,
       nuevosIngresos
     };
-  }, [sunatFiltered, conductores, loadingSunatReal, sunatDateRange]);
+  }, [sunatFiltered, conductores, loadingSunatReal, sunatDateRange, porAutorizarCount]);
 
   const sunatChartData = useMemo(() => {
     if (!sunatDateRange?.from || !sunatDateRange?.to) {

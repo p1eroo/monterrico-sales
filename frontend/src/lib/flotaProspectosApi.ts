@@ -73,14 +73,27 @@ export async function flotaProspectosList(params: {
   );
 }
 
+export interface SheetsSpreadsheet {
+  id: string;
+  name: string;
+}
+
+export async function flotaProspectosSpreadsheets(): Promise<{ spreadsheets: SheetsSpreadsheet[] }> {
+  return api<{ spreadsheets: SheetsSpreadsheet[] }>('/flota/spreadsheets');
+}
+
 export async function flotaProspectosCounts(): Promise<FlotaProspectosCounts> {
   return api<FlotaProspectosCounts>('/flota-prospectos/counts');
 }
 
 export async function flotaProspectosImportSheets(
   sheetName?: string,
+  spreadsheetId?: string,
 ): Promise<ImportJob> {
-  return api<ImportJob>('/flota/import/' + encodeURIComponent(sheetName || ''), {
+  const qs = new URLSearchParams();
+  if (spreadsheetId) qs.set('spreadsheetId', spreadsheetId);
+  const qsStr = qs.toString();
+  return api<ImportJob>(`/flota/import/${encodeURIComponent(sheetName || '')}${qsStr ? '?' + qsStr : ''}`, {
     method: 'POST',
   });
 }
@@ -93,12 +106,19 @@ export interface SheetPreviewResponse {
 
 export async function flotaProspectosSheetPreview(
   sheetName: string,
+  spreadsheetId?: string,
 ): Promise<SheetPreviewResponse> {
-  return api<SheetPreviewResponse>('/flota/preview/' + encodeURIComponent(sheetName));
+  const qs = new URLSearchParams();
+  if (spreadsheetId) qs.set('spreadsheetId', spreadsheetId);
+  const qsStr = qs.toString();
+  return api<SheetPreviewResponse>(`/flota/preview/${encodeURIComponent(sheetName)}${qsStr ? '?' + qsStr : ''}`);
 }
 
-export async function flotaProspectosSheetNames(): Promise<{ sheets: string[] }> {
-  return api<{ sheets: string[] }>('/flota/sheets');
+export async function flotaProspectosSheetNames(spreadsheetId?: string): Promise<{ sheets: string[] }> {
+  const qs = new URLSearchParams();
+  if (spreadsheetId) qs.set('spreadsheetId', spreadsheetId);
+  const qsStr = qs.toString();
+  return api<{ sheets: string[] }>(`/flota/sheets${qsStr ? '?' + qsStr : ''}`);
 }
 
 export async function flotaProspectoDetail(

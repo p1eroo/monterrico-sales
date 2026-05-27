@@ -123,10 +123,11 @@ export default function MainLayout() {
   }, []);
 
   return (
+    <div className="h-svh overflow-hidden">
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset
-        className="min-w-0 max-w-full md:z-20"
+        className="min-w-0 max-w-full md:z-20 md:min-h-0 md:h-[calc(100svh-1rem)]"
         style={{
           backgroundImage: `url(${isDark ? bgOscuro : bgClaro})`,
           backgroundSize: 'cover',
@@ -161,5 +162,6 @@ export default function MainLayout() {
       />
       <AiAssistantDrawer />
     </SidebarProvider>
+    </div>
   );
 }

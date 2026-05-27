@@ -431,7 +431,9 @@ export default function FlotaMensajes() {
         isConnected ? <InboxView activeId={activeConversationId} onActiveChange={handleActiveChange} /> : <ConnectPrompt onClick={() => setEvoModalOpen(true)} />
       ) : tab === 'masivo' ? (
         loadingConn ? <LoadingState /> :
-        <MasivoView isConnected={isConnected} onConnectClick={() => setEvoModalOpen(true)} />
+        <div className="flex flex-col min-h-0 h-[calc(100vh-11rem)]">
+          <MasivoView isConnected={isConnected} onConnectClick={() => setEvoModalOpen(true)} />
+        </div>
       ) : (
         <FlotaPipelineView onSelect={pipelineSelect} />
       )}
@@ -2369,13 +2371,13 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
 
 
   return (
-    <Card>
-      <div className="border-b px-6 py-4">
+    <Card className="flex flex-col flex-1 min-h-0">
+      <div className="border-b px-6 py-4 shrink-0">
         <p className="text-sm text-muted-foreground">Crear campaña masiva · Paso {step} de 3: {step === 1 ? 'Audiencia' : step === 2 ? 'Mensaje' : 'Revisión'}</p>
         <Stepper step={step} />
       </div>
 
-      <div className="p-6">
+      <div className="flex-1 min-h-0 overflow-y-auto p-6">
         {step === 1 && (
           <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
             <div className="space-y-5">
@@ -2899,7 +2901,7 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
       </div>
 
       {!bulkProgress && (
-        <div className="flex items-center justify-between border-t bg-muted/30 px-6 py-4">
+        <div className="flex items-center justify-between border-t bg-muted/30 px-6 py-4 shrink-0">
           <Button variant="outline" onClick={() => setStep((s) => Math.max(1, s - 1))} disabled={step === 1}>
             <ArrowLeft className="mr-1 h-4 w-4" /> Anterior
           </Button>

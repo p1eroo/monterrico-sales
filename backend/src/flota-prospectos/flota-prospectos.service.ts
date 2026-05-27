@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { GoogleSheetsService } from './google-sheets.service';
+import { GoogleSheetsService, type SheetsSpreadsheet } from './google-sheets.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { ActivityActor } from '../activity-logs/activity-logs.types';
 import type { CrmDataScope } from '../auth/crm-data-scope.service';
@@ -378,14 +378,19 @@ if (params.mes) {
     return result.count;
   }
 
+  /** Obtener spreadsheets configurados */
+  getSpreadsheets(): SheetsSpreadsheet[] {
+    return this.googleSheets.getSpreadsheets();
+  }
+
   /** Obtener nombres de hojas del spreadsheet */
-  async getSheetNames(): Promise<string[]> {
-    return this.googleSheets.getSheetNames();
+  async getSheetNames(spreadsheetId?: string): Promise<string[]> {
+    return this.googleSheets.getSheetNames(spreadsheetId);
   }
 
   /** Obtiene las primeras 15 filas para vista previa */
-  async getPreview(sheetName: string) {
-    const rawRows = await this.googleSheets.readAllRows(sheetName);
+  async getPreview(sheetName: string, spreadsheetId?: string) {
+    const rawRows = await this.googleSheets.readAllRows(sheetName, spreadsheetId);
     if (rawRows.length === 0) {
       return { headers: [], rows: [], totalRows: 0 };
     }
@@ -478,7 +483,7 @@ if (params.mes) {
    * 3. Detecta duplicados por celular y los marca con esDuplicado=true.
    * 4. Inserta todo en la BD.
    */
-  async importFromSheets(sheetName?: string): Promise<ImportSheetsResult> {
+  async importFromSheets(sheetName?: string, spreadsheetId?: string): Promise<ImportSheetsResult> {
     const result: ImportSheetsResult = {
       total: 0,
       imported: 0,
@@ -491,7 +496,7 @@ if (params.mes) {
     // 1. Leer filas del Google Sheet
     let rawRows: string[][];
     try {
-      rawRows = await this.googleSheets.readAllRows(sheetName);
+      rawRows = await this.googleSheets.readAllRows(sheetName, spreadsheetId);
     } catch (err) {
       this.logger.error('Error leyendo Google Sheet', err);
       throw new Error(
@@ -775,12 +780,13 @@ if (params.mes) {
   async importFromSheetsWithProgress(
     sheetName: string,
     update: (progress: ImportJobProgressInput) => void,
+    spreadsheetId?: string,
   ): Promise<BulkImportResultDto> {
     const errors: BulkImportRowError[] = [];
 
     let rawRows: string[][];
     try {
-      rawRows = await this.googleSheets.readAllRows(sheetName);
+      rawRows = await this.googleSheets.readAllRows(sheetName, spreadsheetId);
     } catch (err) {
       throw new Error(
         `No se pudo leer el Google Sheet: ${err instanceof Error ? err.message : String(err)}`,

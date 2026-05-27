@@ -131,12 +131,19 @@ export class FlotaProspectosController {
     return this.service.listForMasivo(search, scope, estado);
   }
 
+  /** GET /flota/spreadsheets — Spreadsheets configurados */
+  @Public()
+  @Get('flota/spreadsheets')
+  getSpreadsheets() {
+    return { spreadsheets: this.service.getSpreadsheets() };
+  }
+
   /** GET /flota/sheets — Hojas disponibles del spreadsheet */
   @Public()
   @Get('flota/sheets')
-  async getSheetNames() {
+  async getSheetNames(@Query('spreadsheetId') spreadsheetId?: string) {
     try {
-      const names = await this.service.getSheetNames();
+      const names = await this.service.getSheetNames(spreadsheetId);
       return { sheets: names };
     } catch (err) {
       throw new HttpException(
@@ -149,9 +156,9 @@ export class FlotaProspectosController {
   /** GET /flota/preview/:sheetName — Vista previa de una hoja */
   @Public()
   @Get('flota/preview/:sheetName')
-  async getPreview(@Param('sheetName') sheetName: string) {
+  async getPreview(@Param('sheetName') sheetName: string, @Query('spreadsheetId') spreadsheetId?: string) {
     try {
-      return await this.service.getPreview(sheetName);
+      return await this.service.getPreview(sheetName, spreadsheetId);
     } catch (err) {
       throw new HttpException(
         err instanceof Error ? err.message : 'Error en vista previa',
@@ -166,9 +173,10 @@ export class FlotaProspectosController {
   async importFromSheets(
     @Param('sheetName') sheetName: string,
     @Req() req: AuthedReq,
+    @Query('spreadsheetId') spreadsheetId?: string,
   ) {
     try {
-      const preview = await this.service.getPreview(sheetName);
+      const preview = await this.service.getPreview(sheetName, spreadsheetId);
       const totalRows = preview.totalRows;
 
       return this.importExportJobs.startJob(
@@ -177,7 +185,7 @@ export class FlotaProspectosController {
           ownerUserId: req.user.userId,
           totalRows,
         },
-        (update) => this.service.importFromSheetsWithProgress(sheetName, update),
+        (update) => this.service.importFromSheetsWithProgress(sheetName, update, spreadsheetId),
       );
     } catch (err) {
       throw new HttpException(
