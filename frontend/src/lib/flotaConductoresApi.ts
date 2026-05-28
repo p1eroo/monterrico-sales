@@ -48,7 +48,7 @@ export async function getConductores(): Promise<Conductor[]> {
   return [];
 }
 
-export async function getConductorTelefonos(): Promise<string[]> {
+export async function getConductorTelefonos(): Promise<{ telefonos: string[]; codigoByTelefono: Record<string, string> }> {
   const res = await fetch(`${API_URL}?idestado=-98`);
   if (!res.ok) {
     throw new Error(`Error fetching telefonos: ${res.statusText}`);
@@ -56,15 +56,29 @@ export async function getConductorTelefonos(): Promise<string[]> {
   const data = await res.json();
   const conductores = data.ARegistrados || [];
   const telefonos = new Set<string>();
+  const codigoByTelefono: Record<string, string> = {};
   for (const c of conductores) {
+    const codigo = c.codigo?.trim();
     if (c.telefonop) {
-      telefonos.add(normalizarTelefono(c.telefonop));
+      for (const part of c.telefonop.split('/')) {
+        const n = normalizarTelefono(part);
+        if (n.length >= 6) {
+          telefonos.add(n);
+          if (codigo) codigoByTelefono[n] = codigo;
+        }
+      }
     }
     if (c.telefonos) {
-      telefonos.add(normalizarTelefono(c.telefonos));
+      for (const part of c.telefonos.split('/')) {
+        const n = normalizarTelefono(part);
+        if (n.length >= 6) {
+          telefonos.add(n);
+          if (codigo) codigoByTelefono[n] = codigo;
+        }
+      }
     }
   }
-  return Array.from(telefonos);
+  return { telefonos: Array.from(telefonos), codigoByTelefono };
 }
 
 function normalizarTelefono(telefono: string): string {

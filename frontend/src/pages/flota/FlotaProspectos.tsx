@@ -116,7 +116,10 @@ export default function FlotaProspectos() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewData, setPreviewData] = useState<SheetPreviewResponse | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
-  const [conductorTelefonos, setConductorTelefonos] = useState<Set<string>>(new Set());
+  const [conductorTelefonos, setConductorTelefonos] = useState<{ phones: Set<string>; codigoByPhone: Record<string, string> }>({
+    phones: new Set(),
+    codigoByPhone: {},
+  });
   const [operadores, setOperadores] = useState<OperadorUser[]>([]);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -192,8 +195,8 @@ export default function FlotaProspectos() {
   useEffect(() => {
     async function loadConductorTelefonos() {
       try {
-        const telefonos = await getConductorTelefonos();
-        setConductorTelefonos(new Set(telefonos));
+        const { telefonos, codigoByTelefono } = await getConductorTelefonos();
+        setConductorTelefonos({ phones: new Set(telefonos), codigoByPhone: codigoByTelefono });
       } catch (e) {
         console.error("Error loading conductor telefonos:", e);
       }
@@ -276,10 +279,17 @@ export default function FlotaProspectos() {
 
   const totalPages = Math.ceil(totalProspectos / PAGE_SIZE);
 
+  const getConductorCodigo = (celular: string | null): string | null => {
+    if (!celular) return null;
+    const normalized = celular.replace(/\D/g, '').replace(/^51/, '');
+    if (!conductorTelefonos.phones.has(normalized)) return null;
+    return conductorTelefonos.codigoByPhone[normalized] ?? null;
+  };
+
   const isConductor = (celular: string | null): boolean => {
     if (!celular) return false;
     const normalized = celular.replace(/\D/g, '').replace(/^51/, '');
-    return conductorTelefonos.has(normalized);
+    return conductorTelefonos.phones.has(normalized);
   };
 
   const getRowClass = (prospecto: FlotaProspectoRow): string => {
@@ -697,7 +707,20 @@ export default function FlotaProspectos() {
                           fieldKey="celular"
                           linkToDetail
                           onNavigate={() => navigate(`/flota/prospectos/${prospecto.id}`)}
-                        />
+                        >
+                          <div>
+                            <span>{prospecto.celular || "—"}</span>
+                            {(() => {
+                              const codigo = getConductorCodigo(prospecto.celular);
+                              if (!codigo) return null;
+                              return (
+                                <span className="block text-[10px] text-emerald-600 font-medium">
+                                  {codigo}
+                                </span>
+                              );
+                            })()}
+                          </div>
+                        </InlineEditCell>
                       </TableCell>
                       <TableCell>
                         <InlineEditCell
