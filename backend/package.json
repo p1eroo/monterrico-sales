@@ -19,7 +19,9 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "kb:backfill-embeddings": "node -r ts-node/register -r tsconfig-paths/register scripts/backfill-knowledge-embeddings.ts",
-    "scripts:link-contacts-opp": "node -r ts-node/register -r tsconfig-paths/register scripts/link-contacts-to-opportunities.ts"
+    "scripts:link-contacts-opp": "node -r ts-node/register -r tsconfig-paths/register scripts/link-contacts-to-opportunities.ts",
+    "scripts:diagnose-duplicates": "node -r ts-node/register -r tsconfig-paths/register scripts/diagnose_duplicates.ts",
+    "scripts:merge-duplicates": "node -r ts-node/register -r tsconfig-paths/register scripts/merge_duplicates.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1016.0",

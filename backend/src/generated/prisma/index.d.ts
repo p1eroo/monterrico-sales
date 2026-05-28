@@ -55006,12 +55006,12 @@ export namespace Prisma {
   export type CompanyWhereUniqueInput = Prisma.AtLeast<{
     id?: string
     urlSlug?: string
+    ruc?: string
     AND?: CompanyWhereInput | CompanyWhereInput[]
     OR?: CompanyWhereInput[]
     NOT?: CompanyWhereInput | CompanyWhereInput[]
     name?: StringFilter<"Company"> | string
     razonSocial?: StringNullableFilter<"Company"> | string | null
-    ruc?: StringNullableFilter<"Company"> | string | null
     telefono?: StringNullableFilter<"Company"> | string | null
     domain?: StringNullableFilter<"Company"> | string | null
     rubro?: StringNullableFilter<"Company"> | string | null
@@ -55036,7 +55036,7 @@ export namespace Prisma {
     opportunities?: CompanyOpportunityListRelationFilter
     activities?: CompanyActivityListRelationFilter
     clientRecord?: XOR<ClientNullableScalarRelationFilter, ClientWhereInput> | null
-  }, "id" | "urlSlug">
+  }, "id" | "urlSlug" | "ruc">
 
   export type CompanyOrderByWithAggregationInput = {
     id?: SortOrder

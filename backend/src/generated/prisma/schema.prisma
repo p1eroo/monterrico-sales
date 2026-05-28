@@ -492,7 +492,7 @@ model Company {
   urlSlug             String               @unique
   name                String
   razonSocial         String?
-  ruc                 String? // TODO: añadir @unique cuando se resuelvan RUC duplicados (ej: 20000000000)
+  ruc                 String?              @unique
   telefono            String?
   domain              String?
   rubro               String?
