@@ -28,8 +28,6 @@ import {
 export interface NewContactData {
   name: string;
   cargo?: string;
-  docType?: 'dni' | 'cee';
-  docNumber?: string;
   /** Nombre mostrado / texto para empresa nueva */
   company: string;
   /** Si el usuario eligió una empresa existente en el servidor (cuid) */
@@ -103,8 +101,6 @@ export function NewContactWizard({
   const [step, setStep] = useState(0);
   const [name, setName] = useState(defaultValues?.name ?? '');
   const [cargo, setCargo] = useState(defaultValues?.cargo ?? '');
-  const [docType, setDocType] = useState<'dni' | 'cee' | ''>(defaultValues?.docType ?? '');
-  const [docNumber, setDocNumber] = useState(defaultValues?.docNumber ?? '');
   const [company, setCompany] = useState(defaultValues?.company ?? '');
   const [companyId, setCompanyId] = useState<string | null>(defaultValues?.companyId ?? null);
   const [apiCompanies, setApiCompanies] = useState<ApiCompanyRecord[]>([]);
@@ -175,8 +171,6 @@ export function NewContactWizard({
     setStep(0);
     setName(d?.name ?? '');
     setCargo(d?.cargo ?? '');
-    setDocType(d?.docType ?? '');
-    setDocNumber(d?.docNumber ?? '');
     setCompany(d?.company ?? '');
     setCompanyId(d?.companyId ?? null);
     setEtapaCiclo(d?.etapaCiclo ?? 'lead');
@@ -338,8 +332,6 @@ return () => {
     onSubmit({
       name: name.trim(),
       cargo: cargo.trim() || undefined,
-      docType: docType || undefined,
-      docNumber: docNumber.trim() || undefined,
       company: company.trim(),
       companyId: finalCompanyId ?? undefined,
       etapaCiclo,

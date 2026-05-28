@@ -14,8 +14,6 @@ export class CreateContactDto {
   assignedTo?: string;
   /** Obligatorio en alta; debe ser > 0 */
   estimatedValue!: number;
-  docType?: string;
-  docNumber?: string;
   departamento?: string;
   provincia?: string;
   distrito?: string;

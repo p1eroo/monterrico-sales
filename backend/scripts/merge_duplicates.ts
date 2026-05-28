@@ -181,7 +181,7 @@ async function main() {
 
     const allCompanyContacts = await prisma.companyContact.findMany({
       include: {
-        contact: { select: { id: true, name: true, telefono: true, docNumber: true, createdAt: true } },
+        contact: { select: { id: true, name: true, telefono: true, createdAt: true } },
       },
       orderBy: [{ contact: { createdAt: 'asc' } }, { contactId: 'asc' }],
     });
@@ -201,32 +201,9 @@ async function main() {
     }> = [];
 
     for (const [companyId, ccList] of contactsByCompany) {
-      // --- Por DNI (8 dígitos) ---
-      const byDni = new Map<string, typeof ccList>();
-      for (const cc of ccList) {
-        const d = (cc.contact.docNumber ?? '').replace(/\D/g, '');
-        if (d.length === 8) {
-          const g = byDni.get(d) ?? [];
-          g.push(cc);
-          byDni.set(d, g);
-        }
-      }
-      for (const [, g] of byDni) {
-        if (g.length > 1) {
-          contactGroupsToMerge.push({
-            principalId: g[0].contactId,
-            duplicateIds: g.slice(1).map(x => x.contactId),
-            reason: `mismo DNI (${g[0].contact.docNumber})`,
-            companyId,
-          });
-        }
-      }
-
-      // --- Por nombre + teléfono (solo si no tienen DNI) ---
+      // --- Por nombre + teléfono ---
       const byNamePhone = new Map<string, typeof ccList>();
       for (const cc of ccList) {
-        const d = (cc.contact.docNumber ?? '').replace(/\D/g, '');
-        if (d.length === 8) continue;
         const key = `${cc.contact.name.trim().toLowerCase()}|${(cc.contact.telefono ?? '').trim()}`;
         if (!cc.contact.name.trim() || !cc.contact.telefono?.trim()) continue;
         const g = byNamePhone.get(key) ?? [];

@@ -546,8 +546,6 @@ export default function ContactosPage() {
           etapa: data.etapaCiclo,
           estimatedValue: 0,
           cargo: data.cargo?.trim() || undefined,
-          docType: data.docType || undefined,
-          docNumber: data.docNumber?.trim() || undefined,
           departamento: data.departamento?.trim() || undefined,
           provincia: data.provincia?.trim() || undefined,
           distrito: data.distrito?.trim() || undefined,
@@ -649,8 +647,6 @@ export default function ContactosPage() {
         etapa: data.etapaCiclo,
         estimatedValue: 0,
         cargo: data.cargo?.trim() || undefined,
-        docType: data.docType || undefined,
-        docNumber: data.docNumber?.trim() || undefined,
         departamento: data.departamento?.trim() || undefined,
         provincia: data.provincia?.trim() || undefined,
         distrito: data.distrito?.trim() || undefined,
@@ -1120,7 +1116,7 @@ export default function ContactosPage() {
           <Button
             variant="outline"
             disabled={importBusy}
-            title="Obligatorio: valor_estimado (>0). Nombre o DNI (8 dígitos en doc_numero) para RENIEC vía Factiliza. Si indicas nombre en el archivo, prevalece sobre el de la API. doc_tipo vacío o DNI."
+            title="Obligatorio: valor_estimado (>0). Si indicas nombre en el archivo, prevalece sobre el de la API."
             onClick={openContactImport}
             className="bg-card"
           >

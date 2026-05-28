@@ -532,8 +532,6 @@ async function handleCreateNewContact(data: NewContactData) {
         etapa: data.etapaCiclo,
         assignedTo: data.assignedTo?.trim() || opp.assignedTo || undefined,
         estimatedValue: data.estimatedValue ?? 0,
-        docType: data.docType || undefined,
-        docNumber: data.docNumber?.trim() || undefined,
         departamento: data.departamento?.trim() || undefined,
         provincia: data.provincia?.trim() || undefined,
         distrito: data.distrito?.trim() || undefined,
@@ -633,8 +631,6 @@ async function handleCreateNewContact(data: NewContactData) {
   const newContact = addContact({
     name: data.name,
     cargo: data.cargo,
-    docType: data.docType,
-    docNumber: data.docNumber,
     companies: data.company ? [{ name: data.company }] : [],
     telefono: data.phone || '',
     correo: data.email || '',

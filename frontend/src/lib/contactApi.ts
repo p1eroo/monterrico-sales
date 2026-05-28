@@ -48,8 +48,6 @@ export type ApiContactNested = {
   etapa: string;
   assignedTo?: string | null;
   estimatedValue: number;
-  docType?: string | null;
-  docNumber?: string | null;
   departamento?: string | null;
   provincia?: string | null;
   distrito?: string | null;
@@ -71,8 +69,6 @@ export type ApiContactListRow = {
   etapa: string;
   assignedTo?: string | null;
   estimatedValue: number;
-  docType?: string | null;
-  docNumber?: string | null;
   departamento?: string | null;
   provincia?: string | null;
   distrito?: string | null;
@@ -190,9 +186,6 @@ export function mapApiContactRowToContact(row: ApiContactListRow | ApiContactNes
       useUsersStore.getState().getUserName(assignedId),
     estimatedValue: row.estimatedValue,
     createdAt: row.createdAt.slice(0, 10),
-    docType:
-      row.docType === 'dni' || row.docType === 'cee' ? row.docType : undefined,
-    docNumber: row.docNumber ?? undefined,
     departamento: row.departamento ?? undefined,
     provincia: row.provincia ?? undefined,
     distrito: row.distrito ?? undefined,

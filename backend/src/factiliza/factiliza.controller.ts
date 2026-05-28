@@ -13,18 +13,6 @@ export class FactilizaController {
     private readonly prisma: PrismaService,
   ) {}
 
-  @Get('dni/:dni')
-  @RequirePermissions('contactos.ver')
-  consultarDni(@Param('dni') dni: string) {
-    return this.factilizaService.consultarDni(dni);
-  }
-
-  @Get('cee/:cee')
-  @RequirePermissions('contactos.ver')
-  consultarCee(@Param('cee') cee: string) {
-    return this.factilizaService.consultarCee(cee);
-  }
-
   @Get('ruc/:ruc')
   @RequirePermissions('empresas.ver')
   async consultarRuc(@Param('ruc') ruc: string) {

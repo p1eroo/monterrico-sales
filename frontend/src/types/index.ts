@@ -194,8 +194,6 @@ export interface Contact {
   assignedToName: string;
   estimatedValue: number;
   createdAt: string;
-  docType?: 'dni' | 'cee';
-  docNumber?: string;
   departamento?: string;
   provincia?: string;
   distrito?: string;

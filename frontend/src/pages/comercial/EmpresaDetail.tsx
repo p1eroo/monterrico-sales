@@ -911,8 +911,6 @@ async function handleCreateNewContact(data: NewContactData) {
       estimatedValue: 0,
       companyId: resolvedCompanyId,
       cargo: data.cargo?.trim() || undefined,
-      docType: data.docType || undefined,
-      docNumber: data.docNumber?.trim() || undefined,
       clienteRecuperado: data.clienteRecuperado,
       departamento: data.departamento?.trim() || undefined,
       provincia: data.provincia?.trim() || undefined,
@@ -983,8 +981,6 @@ async function handleCreateNewContact(data: NewContactData) {
   addContact({
     name: data.name,
     cargo: data.cargo,
-    docType: data.docType,
-    docNumber: data.docNumber,
     companies: [{ name: companyName, rubro: companyData?.rubro, tipo: companyData?.tipo }],
     telefono: data.phone || '',
     correo: data.email || '',

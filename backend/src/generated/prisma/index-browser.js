@@ -369,8 +369,6 @@ exports.Prisma.ContactScalarFieldEnum = {
   etapa: 'etapa',
   assignedTo: 'assignedTo',
   estimatedValue: 'estimatedValue',
-  docType: 'docType',
-  docNumber: 'docNumber',
   departamento: 'departamento',
   provincia: 'provincia',
   distrito: 'distrito',

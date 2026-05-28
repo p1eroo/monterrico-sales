@@ -30145,8 +30145,6 @@ export namespace Prisma {
     etapa: string | null
     assignedTo: string | null
     estimatedValue: number | null
-    docType: string | null
-    docNumber: string | null
     departamento: string | null
     provincia: string | null
     distrito: string | null
@@ -30167,8 +30165,6 @@ export namespace Prisma {
     etapa: string | null
     assignedTo: string | null
     estimatedValue: number | null
-    docType: string | null
-    docNumber: string | null
     departamento: string | null
     provincia: string | null
     distrito: string | null
@@ -30189,8 +30185,6 @@ export namespace Prisma {
     etapa: number
     assignedTo: number
     estimatedValue: number
-    docType: number
-    docNumber: number
     departamento: number
     provincia: number
     distrito: number
@@ -30222,8 +30216,6 @@ export namespace Prisma {
     etapa?: true
     assignedTo?: true
     estimatedValue?: true
-    docType?: true
-    docNumber?: true
     departamento?: true
     provincia?: true
     distrito?: true
@@ -30244,8 +30236,6 @@ export namespace Prisma {
     etapa?: true
     assignedTo?: true
     estimatedValue?: true
-    docType?: true
-    docNumber?: true
     departamento?: true
     provincia?: true
     distrito?: true
@@ -30266,8 +30256,6 @@ export namespace Prisma {
     etapa?: true
     assignedTo?: true
     estimatedValue?: true
-    docType?: true
-    docNumber?: true
     departamento?: true
     provincia?: true
     distrito?: true
@@ -30376,8 +30364,6 @@ export namespace Prisma {
     etapa: string
     assignedTo: string | null
     estimatedValue: number
-    docType: string | null
-    docNumber: string | null
     departamento: string | null
     provincia: string | null
     distrito: string | null
@@ -30418,8 +30404,6 @@ export namespace Prisma {
     etapa?: boolean
     assignedTo?: boolean
     estimatedValue?: boolean
-    docType?: boolean
-    docNumber?: boolean
     departamento?: boolean
     provincia?: boolean
     distrito?: boolean
@@ -30449,8 +30433,6 @@ export namespace Prisma {
     etapa?: boolean
     assignedTo?: boolean
     estimatedValue?: boolean
-    docType?: boolean
-    docNumber?: boolean
     departamento?: boolean
     provincia?: boolean
     distrito?: boolean
@@ -30473,8 +30455,6 @@ export namespace Prisma {
     etapa?: boolean
     assignedTo?: boolean
     estimatedValue?: boolean
-    docType?: boolean
-    docNumber?: boolean
     departamento?: boolean
     provincia?: boolean
     distrito?: boolean
@@ -30497,8 +30477,6 @@ export namespace Prisma {
     etapa?: boolean
     assignedTo?: boolean
     estimatedValue?: boolean
-    docType?: boolean
-    docNumber?: boolean
     departamento?: boolean
     provincia?: boolean
     distrito?: boolean
@@ -30509,7 +30487,7 @@ export namespace Prisma {
     updatedAt?: boolean
   }
 
-  export type ContactOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "urlSlug" | "name" | "cargo" | "telefono" | "correo" | "fuente" | "etapa" | "assignedTo" | "estimatedValue" | "docType" | "docNumber" | "departamento" | "provincia" | "distrito" | "direccion" | "clienteRecuperado" | "etapaHistory" | "createdAt" | "updatedAt", ExtArgs["result"]["contact"]>
+  export type ContactOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "urlSlug" | "name" | "cargo" | "telefono" | "correo" | "fuente" | "etapa" | "assignedTo" | "estimatedValue" | "departamento" | "provincia" | "distrito" | "direccion" | "clienteRecuperado" | "etapaHistory" | "createdAt" | "updatedAt", ExtArgs["result"]["contact"]>
   export type ContactInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     user?: boolean | Contact$userArgs<ExtArgs>
     companies?: boolean | Contact$companiesArgs<ExtArgs>
@@ -30552,8 +30530,6 @@ export namespace Prisma {
       etapa: string
       assignedTo: string | null
       estimatedValue: number
-      docType: string | null
-      docNumber: string | null
       departamento: string | null
       provincia: string | null
       distrito: string | null
@@ -31002,8 +30978,6 @@ export namespace Prisma {
     readonly etapa: FieldRef<"Contact", 'String'>
     readonly assignedTo: FieldRef<"Contact", 'String'>
     readonly estimatedValue: FieldRef<"Contact", 'Float'>
-    readonly docType: FieldRef<"Contact", 'String'>
-    readonly docNumber: FieldRef<"Contact", 'String'>
     readonly departamento: FieldRef<"Contact", 'String'>
     readonly provincia: FieldRef<"Contact", 'String'>
     readonly distrito: FieldRef<"Contact", 'String'>
@@ -52674,8 +52648,6 @@ export namespace Prisma {
     etapa: 'etapa',
     assignedTo: 'assignedTo',
     estimatedValue: 'estimatedValue',
-    docType: 'docType',
-    docNumber: 'docNumber',
     departamento: 'departamento',
     provincia: 'provincia',
     distrito: 'distrito',
@@ -54686,8 +54658,6 @@ export namespace Prisma {
     etapa?: StringFilter<"Contact"> | string
     assignedTo?: StringNullableFilter<"Contact"> | string | null
     estimatedValue?: FloatFilter<"Contact"> | number
-    docType?: StringNullableFilter<"Contact"> | string | null
-    docNumber?: StringNullableFilter<"Contact"> | string | null
     departamento?: StringNullableFilter<"Contact"> | string | null
     provincia?: StringNullableFilter<"Contact"> | string | null
     distrito?: StringNullableFilter<"Contact"> | string | null
@@ -54716,8 +54686,6 @@ export namespace Prisma {
     etapa?: SortOrder
     assignedTo?: SortOrderInput | SortOrder
     estimatedValue?: SortOrder
-    docType?: SortOrderInput | SortOrder
-    docNumber?: SortOrderInput | SortOrder
     departamento?: SortOrderInput | SortOrder
     provincia?: SortOrderInput | SortOrder
     distrito?: SortOrderInput | SortOrder
@@ -54749,8 +54717,6 @@ export namespace Prisma {
     etapa?: StringFilter<"Contact"> | string
     assignedTo?: StringNullableFilter<"Contact"> | string | null
     estimatedValue?: FloatFilter<"Contact"> | number
-    docType?: StringNullableFilter<"Contact"> | string | null
-    docNumber?: StringNullableFilter<"Contact"> | string | null
     departamento?: StringNullableFilter<"Contact"> | string | null
     provincia?: StringNullableFilter<"Contact"> | string | null
     distrito?: StringNullableFilter<"Contact"> | string | null
@@ -54779,8 +54745,6 @@ export namespace Prisma {
     etapa?: SortOrder
     assignedTo?: SortOrderInput | SortOrder
     estimatedValue?: SortOrder
-    docType?: SortOrderInput | SortOrder
-    docNumber?: SortOrderInput | SortOrder
     departamento?: SortOrderInput | SortOrder
     provincia?: SortOrderInput | SortOrder
     distrito?: SortOrderInput | SortOrder
@@ -54810,8 +54774,6 @@ export namespace Prisma {
     etapa?: StringWithAggregatesFilter<"Contact"> | string
     assignedTo?: StringNullableWithAggregatesFilter<"Contact"> | string | null
     estimatedValue?: FloatWithAggregatesFilter<"Contact"> | number
-    docType?: StringNullableWithAggregatesFilter<"Contact"> | string | null
-    docNumber?: StringNullableWithAggregatesFilter<"Contact"> | string | null
     departamento?: StringNullableWithAggregatesFilter<"Contact"> | string | null
     provincia?: StringNullableWithAggregatesFilter<"Contact"> | string | null
     distrito?: StringNullableWithAggregatesFilter<"Contact"> | string | null
@@ -57979,8 +57941,6 @@ export namespace Prisma {
     fuente: string
     etapa?: string
     estimatedValue?: number
-    docType?: string | null
-    docNumber?: string | null
     departamento?: string | null
     provincia?: string | null
     distrito?: string | null
@@ -58009,8 +57969,6 @@ export namespace Prisma {
     etapa?: string
     assignedTo?: string | null
     estimatedValue?: number
-    docType?: string | null
-    docNumber?: string | null
     departamento?: string | null
     provincia?: string | null
     distrito?: string | null
@@ -58037,8 +57995,6 @@ export namespace Prisma {
     fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
-    docType?: NullableStringFieldUpdateOperationsInput | string | null
-    docNumber?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
     provincia?: NullableStringFieldUpdateOperationsInput | string | null
     distrito?: NullableStringFieldUpdateOperationsInput | string | null
@@ -58067,8 +58023,6 @@ export namespace Prisma {
     etapa?: StringFieldUpdateOperationsInput | string
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     estimatedValue?: FloatFieldUpdateOperationsInput | number
-    docType?: NullableStringFieldUpdateOperationsInput | string | null
-    docNumber?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
     provincia?: NullableStringFieldUpdateOperationsInput | string | null
     distrito?: NullableStringFieldUpdateOperationsInput | string | null
@@ -58096,8 +58050,6 @@ export namespace Prisma {
     etapa?: string
     assignedTo?: string | null
     estimatedValue?: number
-    docType?: string | null
-    docNumber?: string | null
     departamento?: string | null
     provincia?: string | null
     distrito?: string | null
@@ -58118,8 +58070,6 @@ export namespace Prisma {
     fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
-    docType?: NullableStringFieldUpdateOperationsInput | string | null
-    docNumber?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
     provincia?: NullableStringFieldUpdateOperationsInput | string | null
     distrito?: NullableStringFieldUpdateOperationsInput | string | null
@@ -58141,8 +58091,6 @@ export namespace Prisma {
     etapa?: StringFieldUpdateOperationsInput | string
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     estimatedValue?: FloatFieldUpdateOperationsInput | number
-    docType?: NullableStringFieldUpdateOperationsInput | string | null
-    docNumber?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
     provincia?: NullableStringFieldUpdateOperationsInput | string | null
     distrito?: NullableStringFieldUpdateOperationsInput | string | null
@@ -61014,8 +60962,6 @@ export namespace Prisma {
     etapa?: SortOrder
     assignedTo?: SortOrder
     estimatedValue?: SortOrder
-    docType?: SortOrder
-    docNumber?: SortOrder
     departamento?: SortOrder
     provincia?: SortOrder
     distrito?: SortOrder
@@ -61041,8 +60987,6 @@ export namespace Prisma {
     etapa?: SortOrder
     assignedTo?: SortOrder
     estimatedValue?: SortOrder
-    docType?: SortOrder
-    docNumber?: SortOrder
     departamento?: SortOrder
     provincia?: SortOrder
     distrito?: SortOrder
@@ -61063,8 +61007,6 @@ export namespace Prisma {
     etapa?: SortOrder
     assignedTo?: SortOrder
     estimatedValue?: SortOrder
-    docType?: SortOrder
-    docNumber?: SortOrder
     departamento?: SortOrder
     provincia?: SortOrder
     distrito?: SortOrder
@@ -65086,8 +65028,6 @@ export namespace Prisma {
     fuente: string
     etapa?: string
     estimatedValue?: number
-    docType?: string | null
-    docNumber?: string | null
     departamento?: string | null
     provincia?: string | null
     distrito?: string | null
@@ -65114,8 +65054,6 @@ export namespace Prisma {
     fuente: string
     etapa?: string
     estimatedValue?: number
-    docType?: string | null
-    docNumber?: string | null
     departamento?: string | null
     provincia?: string | null
     distrito?: string | null
@@ -65819,8 +65757,6 @@ export namespace Prisma {
     etapa?: StringFilter<"Contact"> | string
     assignedTo?: StringNullableFilter<"Contact"> | string | null
     estimatedValue?: FloatFilter<"Contact"> | number
-    docType?: StringNullableFilter<"Contact"> | string | null
-    docNumber?: StringNullableFilter<"Contact"> | string | null
     departamento?: StringNullableFilter<"Contact"> | string | null
     provincia?: StringNullableFilter<"Contact"> | string | null
     distrito?: StringNullableFilter<"Contact"> | string | null
@@ -68368,8 +68304,6 @@ export namespace Prisma {
     fuente: string
     etapa?: string
     estimatedValue?: number
-    docType?: string | null
-    docNumber?: string | null
     departamento?: string | null
     provincia?: string | null
     distrito?: string | null
@@ -68397,8 +68331,6 @@ export namespace Prisma {
     etapa?: string
     assignedTo?: string | null
     estimatedValue?: number
-    docType?: string | null
-    docNumber?: string | null
     departamento?: string | null
     provincia?: string | null
     distrito?: string | null
@@ -68603,8 +68535,6 @@ export namespace Prisma {
     fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
-    docType?: NullableStringFieldUpdateOperationsInput | string | null
-    docNumber?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
     provincia?: NullableStringFieldUpdateOperationsInput | string | null
     distrito?: NullableStringFieldUpdateOperationsInput | string | null
@@ -68632,8 +68562,6 @@ export namespace Prisma {
     etapa?: StringFieldUpdateOperationsInput | string
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     estimatedValue?: FloatFieldUpdateOperationsInput | number
-    docType?: NullableStringFieldUpdateOperationsInput | string | null
-    docNumber?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
     provincia?: NullableStringFieldUpdateOperationsInput | string | null
     distrito?: NullableStringFieldUpdateOperationsInput | string | null
@@ -70012,8 +69940,6 @@ export namespace Prisma {
     fuente: string
     etapa?: string
     estimatedValue?: number
-    docType?: string | null
-    docNumber?: string | null
     departamento?: string | null
     provincia?: string | null
     distrito?: string | null
@@ -70041,8 +69967,6 @@ export namespace Prisma {
     etapa?: string
     assignedTo?: string | null
     estimatedValue?: number
-    docType?: string | null
-    docNumber?: string | null
     departamento?: string | null
     provincia?: string | null
     distrito?: string | null
@@ -70155,8 +70079,6 @@ export namespace Prisma {
     fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
-    docType?: NullableStringFieldUpdateOperationsInput | string | null
-    docNumber?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
     provincia?: NullableStringFieldUpdateOperationsInput | string | null
     distrito?: NullableStringFieldUpdateOperationsInput | string | null
@@ -70184,8 +70106,6 @@ export namespace Prisma {
     etapa?: StringFieldUpdateOperationsInput | string
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     estimatedValue?: FloatFieldUpdateOperationsInput | number
-    docType?: NullableStringFieldUpdateOperationsInput | string | null
-    docNumber?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
     provincia?: NullableStringFieldUpdateOperationsInput | string | null
     distrito?: NullableStringFieldUpdateOperationsInput | string | null
@@ -70211,8 +70131,6 @@ export namespace Prisma {
     fuente: string
     etapa?: string
     estimatedValue?: number
-    docType?: string | null
-    docNumber?: string | null
     departamento?: string | null
     provincia?: string | null
     distrito?: string | null
@@ -70240,8 +70158,6 @@ export namespace Prisma {
     etapa?: string
     assignedTo?: string | null
     estimatedValue?: number
-    docType?: string | null
-    docNumber?: string | null
     departamento?: string | null
     provincia?: string | null
     distrito?: string | null
@@ -70272,8 +70188,6 @@ export namespace Prisma {
     fuente: string
     etapa?: string
     estimatedValue?: number
-    docType?: string | null
-    docNumber?: string | null
     departamento?: string | null
     provincia?: string | null
     distrito?: string | null
@@ -70301,8 +70215,6 @@ export namespace Prisma {
     etapa?: string
     assignedTo?: string | null
     estimatedValue?: number
-    docType?: string | null
-    docNumber?: string | null
     departamento?: string | null
     provincia?: string | null
     distrito?: string | null
@@ -70344,8 +70256,6 @@ export namespace Prisma {
     fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
-    docType?: NullableStringFieldUpdateOperationsInput | string | null
-    docNumber?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
     provincia?: NullableStringFieldUpdateOperationsInput | string | null
     distrito?: NullableStringFieldUpdateOperationsInput | string | null
@@ -70373,8 +70283,6 @@ export namespace Prisma {
     etapa?: StringFieldUpdateOperationsInput | string
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     estimatedValue?: FloatFieldUpdateOperationsInput | number
-    docType?: NullableStringFieldUpdateOperationsInput | string | null
-    docNumber?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
     provincia?: NullableStringFieldUpdateOperationsInput | string | null
     distrito?: NullableStringFieldUpdateOperationsInput | string | null
@@ -70411,8 +70319,6 @@ export namespace Prisma {
     fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
-    docType?: NullableStringFieldUpdateOperationsInput | string | null
-    docNumber?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
     provincia?: NullableStringFieldUpdateOperationsInput | string | null
     distrito?: NullableStringFieldUpdateOperationsInput | string | null
@@ -70440,8 +70346,6 @@ export namespace Prisma {
     etapa?: StringFieldUpdateOperationsInput | string
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     estimatedValue?: FloatFieldUpdateOperationsInput | number
-    docType?: NullableStringFieldUpdateOperationsInput | string | null
-    docNumber?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
     provincia?: NullableStringFieldUpdateOperationsInput | string | null
     distrito?: NullableStringFieldUpdateOperationsInput | string | null
@@ -70467,8 +70371,6 @@ export namespace Prisma {
     fuente: string
     etapa?: string
     estimatedValue?: number
-    docType?: string | null
-    docNumber?: string | null
     departamento?: string | null
     provincia?: string | null
     distrito?: string | null
@@ -70496,8 +70398,6 @@ export namespace Prisma {
     etapa?: string
     assignedTo?: string | null
     estimatedValue?: number
-    docType?: string | null
-    docNumber?: string | null
     departamento?: string | null
     provincia?: string | null
     distrito?: string | null
@@ -70584,8 +70484,6 @@ export namespace Prisma {
     fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
-    docType?: NullableStringFieldUpdateOperationsInput | string | null
-    docNumber?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
     provincia?: NullableStringFieldUpdateOperationsInput | string | null
     distrito?: NullableStringFieldUpdateOperationsInput | string | null
@@ -70613,8 +70511,6 @@ export namespace Prisma {
     etapa?: StringFieldUpdateOperationsInput | string
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     estimatedValue?: FloatFieldUpdateOperationsInput | number
-    docType?: NullableStringFieldUpdateOperationsInput | string | null
-    docNumber?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
     provincia?: NullableStringFieldUpdateOperationsInput | string | null
     distrito?: NullableStringFieldUpdateOperationsInput | string | null
@@ -71387,8 +71283,6 @@ export namespace Prisma {
     fuente: string
     etapa?: string
     estimatedValue?: number
-    docType?: string | null
-    docNumber?: string | null
     departamento?: string | null
     provincia?: string | null
     distrito?: string | null
@@ -71416,8 +71310,6 @@ export namespace Prisma {
     etapa?: string
     assignedTo?: string | null
     estimatedValue?: number
-    docType?: string | null
-    docNumber?: string | null
     departamento?: string | null
     provincia?: string | null
     distrito?: string | null
@@ -71502,8 +71394,6 @@ export namespace Prisma {
     fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
-    docType?: NullableStringFieldUpdateOperationsInput | string | null
-    docNumber?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
     provincia?: NullableStringFieldUpdateOperationsInput | string | null
     distrito?: NullableStringFieldUpdateOperationsInput | string | null
@@ -71531,8 +71421,6 @@ export namespace Prisma {
     etapa?: StringFieldUpdateOperationsInput | string
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     estimatedValue?: FloatFieldUpdateOperationsInput | number
-    docType?: NullableStringFieldUpdateOperationsInput | string | null
-    docNumber?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
     provincia?: NullableStringFieldUpdateOperationsInput | string | null
     distrito?: NullableStringFieldUpdateOperationsInput | string | null
@@ -72472,8 +72360,6 @@ export namespace Prisma {
     fuente: string
     etapa?: string
     estimatedValue?: number
-    docType?: string | null
-    docNumber?: string | null
     departamento?: string | null
     provincia?: string | null
     distrito?: string | null
@@ -72723,8 +72609,6 @@ export namespace Prisma {
     fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
-    docType?: NullableStringFieldUpdateOperationsInput | string | null
-    docNumber?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
     provincia?: NullableStringFieldUpdateOperationsInput | string | null
     distrito?: NullableStringFieldUpdateOperationsInput | string | null
@@ -72751,8 +72635,6 @@ export namespace Prisma {
     fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
-    docType?: NullableStringFieldUpdateOperationsInput | string | null
-    docNumber?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
     provincia?: NullableStringFieldUpdateOperationsInput | string | null
     distrito?: NullableStringFieldUpdateOperationsInput | string | null
@@ -72779,8 +72661,6 @@ export namespace Prisma {
     fuente?: StringFieldUpdateOperationsInput | string
     etapa?: StringFieldUpdateOperationsInput | string
     estimatedValue?: FloatFieldUpdateOperationsInput | number
-    docType?: NullableStringFieldUpdateOperationsInput | string | null
-    docNumber?: NullableStringFieldUpdateOperationsInput | string | null
     departamento?: NullableStringFieldUpdateOperationsInput | string | null
     provincia?: NullableStringFieldUpdateOperationsInput | string | null
     distrito?: NullableStringFieldUpdateOperationsInput | string | null

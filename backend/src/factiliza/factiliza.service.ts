@@ -3,32 +3,6 @@ import { ConfigService } from '@nestjs/config';
 
 const FACTILIZA_BASE = 'https://api.factiliza.com/v1';
 
-export interface FactilizaDniData {
-  numero: string;
-  nombres: string;
-  apellido_paterno: string;
-  apellido_materno: string;
-  nombre_completo: string;
-  departamento?: string;
-  provincia?: string;
-  distrito?: string;
-  direccion?: string;
-  direccion_completa?: string;
-  ubigeo_reniec?: string;
-  ubigeo_sunat?: string;
-  ubigeo?: string[];
-  fecha_nacimiento?: string;
-  sexo?: string;
-}
-
-export interface FactilizaCeeData {
-  numero: string;
-  nombres: string;
-  apellido_paterno: string;
-  apellido_materno: string;
-  nombre_completo?: string;
-}
-
 export interface FactilizaRucData {
   numero: string;
   nombre_o_razon_social: string;
@@ -76,22 +50,6 @@ export class FactilizaService {
       throw new Error(msg);
     }
     return body.data as T;
-  }
-
-  async consultarDni(dni: string): Promise<FactilizaDniData> {
-    const trimmed = dni.replace(/\D/g, '').trim();
-    if (!trimmed || trimmed.length !== 8) {
-      throw new Error('El DNI debe tener 8 dígitos');
-    }
-    return this.fetchFromFactiliza<FactilizaDniData>(`/dni/info/${trimmed}`);
-  }
-
-  async consultarCee(cee: string): Promise<FactilizaCeeData> {
-    const trimmed = cee.trim();
-    if (!trimmed) {
-      throw new Error('El número de Carnet de extranjería es requerido');
-    }
-    return this.fetchFromFactiliza<FactilizaCeeData>(`/cee/info/${encodeURIComponent(trimmed)}`);
   }
 
   async consultarRuc(ruc: string): Promise<FactilizaRucData> {

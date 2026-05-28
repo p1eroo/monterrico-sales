@@ -419,8 +419,6 @@ model Contact {
   etapa             String               @default("lead")
   assignedTo        String?
   estimatedValue    Float                @default(0)
-  docType           String?
-  docNumber         String?
   departamento      String?
   provincia         String?
   distrito          String?

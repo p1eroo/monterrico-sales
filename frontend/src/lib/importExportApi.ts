@@ -131,7 +131,7 @@ function templateRequiredHeaders(
   entity: 'contacts' | 'companies' | 'opportunities',
 ): string[] {
   if (entity === 'contacts') {
-    return ['nombre', 'doc_numero', 'valor_estimado'];
+    return ['nombre', 'valor_estimado'];
   }
   if (entity === 'companies') {
     return ['nombre', 'razon_social', 'ruc'];

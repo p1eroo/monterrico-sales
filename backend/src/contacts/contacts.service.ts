@@ -387,8 +387,6 @@ export class ContactsService {
             etapa,
             assignedTo,
             estimatedValue,
-            docType: dto.docType?.trim() || null,
-            docNumber: dto.docNumber?.trim() || null,
             departamento: dto.departamento?.trim() || null,
             provincia: dto.provincia?.trim() || null,
             distrito: dto.distrito?.trim() || null,
@@ -610,8 +608,6 @@ export class ContactsService {
         etapa: true,
         assignedTo: true,
         estimatedValue: true,
-        docType: true,
-        docNumber: true,
         departamento: true,
         provincia: true,
         distrito: true,
@@ -695,10 +691,6 @@ export class ContactsService {
         );
       }
       data.estimatedValue = dto.estimatedValue;
-    }
-    if (dto.docType !== undefined) data.docType = dto.docType?.trim() || null;
-    if (dto.docNumber !== undefined) {
-      data.docNumber = dto.docNumber?.trim() || null;
     }
     if (dto.departamento !== undefined) {
       data.departamento = dto.departamento?.trim() || null;

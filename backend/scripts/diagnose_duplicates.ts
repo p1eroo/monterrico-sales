@@ -93,7 +93,7 @@ async function main() {
     const allCC = await prisma.companyContact.findMany({
       include: {
         contact: {
-          select: { id: true, name: true, telefono: true, correo: true, docNumber: true, cargo: true, createdAt: true },
+          select: { id: true, name: true, telefono: true, correo: true, cargo: true, createdAt: true },
         },
         company: { select: { id: true, name: true } },
       },
@@ -111,17 +111,10 @@ async function main() {
 
     for (const [companyId, list] of byCompany) {
       const companyName = list[0]?.company.name ?? companyId;
-      const dupByDni = new Map<string, typeof list>();
       const dupByName = new Map<string, typeof list>();
 
       for (const cc of list) {
         const c = cc.contact;
-        if (c.docNumber && c.docNumber.replace(/\D/g, '').length === 8) {
-          const key = c.docNumber.replace(/\D/g, '');
-          const g = dupByDni.get(key) ?? [];
-          g.push(cc);
-          dupByDni.set(key, g);
-        }
         const nameKey = `${c.name.trim().toLowerCase()}|${(c.telefono ?? '').trim()}`;
         if (c.name.trim() && c.telefono?.trim()) {
           const g = dupByName.get(nameKey) ?? [];
@@ -130,32 +123,17 @@ async function main() {
         }
       }
 
-      const realDupByDni = [...dupByDni.entries()].filter(([, g]) => g.length > 1);
       const realDupByName = [...dupByName.entries()].filter(([, g]) => g.length > 1);
 
-      if (realDupByDni.length > 0 || realDupByName.length > 0) {
+      if (realDupByName.length > 0) {
         console.log(`\n  Empresa: ${companyName} (${companyId})`);
 
-        for (const [dni, g] of realDupByDni) {
-          console.log(`    Mismo DNI (${dni}):`);
-          for (let i = 0; i < g.length; i++) {
-            const role = i === 0 ? '← CONSERVAR' : '→ MERGEAR';
-            console.log(`      ${role} ${g[i].contact.name} (id: ${g[i].contact.id})`);
-            console.log(`         Tel: ${g[i].contact.telefono}, Correo: ${g[i].contact.correo ?? '—'}, Cargo: ${g[i].contact.cargo ?? '—'}`);
-          }
-          totalDupContacts += g.length - 1;
-        }
-
         for (const [key, g] of realDupByName) {
-          const dnis = g.map((x) => x.contact.docNumber).filter(Boolean);
-          const allHaveDni = dnis.length === g.length && dnis.every((d) => d!.replace(/\D/g, '').length === 8);
-          if (allHaveDni) continue;
-
           console.log(`    Mismo nombre+teléfono (${g[0].contact.name} / ${g[0].contact.telefono}):`);
           for (let i = 0; i < g.length; i++) {
             const role = i === 0 ? '← CONSERVAR' : '→ MERGEAR';
             console.log(`      ${role} ${g[i].contact.name} (id: ${g[i].contact.id})`);
-            console.log(`         DNI: ${g[i].contact.docNumber ?? '—'}, Correo: ${g[i].contact.correo ?? '—'}, Cargo: ${g[i].contact.cargo ?? '—'}`);
+            console.log(`         Tel: ${g[i].contact.telefono}, Correo: ${g[i].contact.correo ?? '—'}, Cargo: ${g[i].contact.cargo ?? '—'}`);
           }
           totalDupContacts += g.length - 1;
         }
