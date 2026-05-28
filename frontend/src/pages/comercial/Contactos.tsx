@@ -786,8 +786,6 @@ export default function ContactosPage() {
       etapa: data.etapaCiclo,
       estimatedValue: 0,
       cargo: data.cargo?.trim() || undefined,
-      docType: data.docType || undefined,
-      docNumber: data.docNumber?.trim() || undefined,
       departamento: data.departamento?.trim() || undefined,
       provincia: data.provincia?.trim() || undefined,
       distrito: data.distrito?.trim() || undefined,
