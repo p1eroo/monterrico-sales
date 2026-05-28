@@ -2032,10 +2032,10 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
               <Button onClick={() => void send()} disabled={!draft.trim() && !imageUrl && !audioUrl} className="shrink-0">
                 <Send className="h-4 w-4" />
               </Button>
-            </>
-          )}
-        </div>
-      </div>
+              </>
+              )}
+            </div>
+          </div>
 
       <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
         <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
@@ -2481,26 +2481,39 @@ function MasivoView({ isConnected, masivoConnected = false, onConnectClick }: { 
   return (
     <Card className="flex flex-col flex-1 min-h-0">
       {masivoSubTab === 'new' ? (<>
-      <div className="flex items-center gap-1.5 border-b px-6 py-3 shrink-0 text-xs font-medium">
+      <div className="flex items-center justify-center border-b px-6 py-3 shrink-0 text-xs font-medium">
         {[
-          { n: 1, label: 'Audiencia' },
-          { n: 2, label: 'Mensaje' },
-          { n: 3, label: 'Revisión' },
-        ].map((s, i) => (
-          <span key={s.n} className="flex items-center gap-1.5">
-            {i > 0 && <span className="text-muted-foreground/30 mx-0.5">—</span>}
-            <span className={cn(
-              step === s.n ? 'text-primary font-semibold' : step > s.n ? 'text-muted-foreground/60' : 'text-muted-foreground/30',
-            )}>
-              {s.label}
-            </span>
-          </span>
-        ))}
+          { n: 1, label: 'Audiencia', icon: Users },
+          { n: 2, label: 'Mensaje', icon: MessageSquare },
+          { n: 3, label: 'Revisión', icon: CheckCircle2 },
+        ].map((s) => {
+          const Icon = s.icon;
+          const active = step === s.n;
+          const done = step > s.n;
+          return (
+            <div key={s.n} className="flex items-center gap-2">
+              <div
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+                  active ? 'bg-primary text-primary-foreground' : done ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground',
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" /> {s.label}
+              </div>
+              {s.n < 3 && (
+                <div className={cn(
+                  'h-px w-8',
+                  done ? 'bg-primary/40' : 'bg-border',
+                )} />
+              )}
+            </div>
+          );
+        })}
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto">
         {step === 1 && (
-          <div className="grid lg:grid-cols-[340px_1fr] min-h-full">
+          <div className="grid lg:grid-cols-[400px_1fr] min-h-full">
             <div className="space-y-5 border-r border-border p-6">
               <div>
                 <h3 className="font-semibold">Seleccionar audiencia</h3>
@@ -2579,13 +2592,8 @@ function MasivoView({ isConnected, masivoConnected = false, onConnectClick }: { 
                     Descargar plantilla
                   </button>
                 </div>
-              ) : (
+              ) : source === 'crm' ? (
                 <>
-                  <div className="space-y-2">
-                    <label className="text-xs font-medium text-muted-foreground">Buscar contacto</label>
-                    <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nombre o teléfono..." />
-                  </div>
-
                   <div className="space-y-2">
                     <label className="text-xs font-medium text-muted-foreground">Filtrar por estado</label>
                     <div className="flex flex-wrap gap-1">
@@ -2630,7 +2638,7 @@ function MasivoView({ isConnected, masivoConnected = false, onConnectClick }: { 
                     </Button>
                   </div>
                 </>
-              )}
+              ) : null}
             </div>
 
             <div className="flex flex-col min-h-0 p-6">
@@ -2959,7 +2967,6 @@ function MasivoView({ isConnected, masivoConnected = false, onConnectClick }: { 
         {step === 3 && bulkProgress && (
           <div className="mx-auto max-w-2xl space-y-5 p-6">
             <div>
-              <h3 className="font-semibold">
               <h3 className="font-semibold">
                 {bulkProgress.paused ? 'Envío masivo pausado' : 'Enviando campaña masiva'}
               </h3>
