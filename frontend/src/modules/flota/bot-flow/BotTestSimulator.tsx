@@ -160,7 +160,7 @@ export default function BotTestSimulator({ nodes, edges, open, onOpenChange }: B
       case 'end': {
         const config = node.data.config as { message?: string; session_status?: string };
         if (config.message) {
-          setMessages((prev) => [...prev, { role: 'bot', text: config.message, nodeId }]);
+          setMessages((prev) => [...prev, { role: 'bot', text: config.message!, nodeId }]);
         }
         setMessages((prev) => [...prev, { role: 'info', text: `✅ Flujo completado — Estado: ${config.session_status || 'completed'}`, nodeId }]);
         finish();

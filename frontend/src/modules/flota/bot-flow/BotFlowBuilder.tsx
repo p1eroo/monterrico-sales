@@ -124,7 +124,7 @@ const edgeTypes = { botEdge: BotEdge };
 function FlowCanvasInner() {
   const rf = useReactFlow();
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<BotFlowNodeData>>([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selectedNode, setSelectedNode] = useState<BotFlowNodeType | null>(null);
   const [validatorOpen, setValidatorOpen] = useState(false);
   const [simulatorOpen, setSimulatorOpen] = useState(false);

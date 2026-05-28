@@ -94,17 +94,20 @@ export const CRM_ACTION_TYPES = [
 ] as const;
 
 export interface StartNodeConfig {
+  [key: string]: unknown;
   name: string;
   description: string;
 }
 
 export interface MessageNodeConfig {
+  [key: string]: unknown;
   text: string;
   attachments: string[];
   delay: number;
 }
 
 export interface QuestionNodeConfig {
+  [key: string]: unknown;
   text: string;
   field_key: string;
   field_type: string;
@@ -115,6 +118,7 @@ export interface QuestionNodeConfig {
 }
 
 export interface ConditionRule {
+  [key: string]: unknown;
   id: string;
   operator: string;
   field_key: string;
@@ -123,10 +127,12 @@ export interface ConditionRule {
 }
 
 export interface ConditionNodeConfig {
+  [key: string]: unknown;
   rules: ConditionRule[];
 }
 
 export interface AiExtractNodeConfig {
+  [key: string]: unknown;
   prompt: string;
   schema: string;
   min_confidence: number;
@@ -134,11 +140,13 @@ export interface AiExtractNodeConfig {
 }
 
 export interface CrmActionNodeConfig {
+  [key: string]: unknown;
   action_type: string;
   payload: string;
 }
 
 export interface HumanHandoffNodeConfig {
+  [key: string]: unknown;
   message: string;
   queue: string;
   operator: string;
@@ -146,6 +154,7 @@ export interface HumanHandoffNodeConfig {
 }
 
 export interface EndNodeConfig {
+  [key: string]: unknown;
   message: string;
   session_status: string;
 }
@@ -206,6 +215,7 @@ export function getDefaultConfig(type: BotNodeType): BotNodeConfig {
 }
 
 export interface BotFlowNodeData {
+  [key: string]: unknown;
   nodeType: BotNodeType;
   config: BotNodeConfig;
   label: string;
@@ -215,6 +225,7 @@ export interface BotFlowNodeData {
 export type BotFlowNodeType = Node<BotFlowNodeData, 'botNode'>;
 
 export interface BotFlowEdgeData {
+  [key: string]: unknown;
   condition_type: 'always' | 'conditional';
   condition_config: Record<string, unknown>;
   label?: string;
