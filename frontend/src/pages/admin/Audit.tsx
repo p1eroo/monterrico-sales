@@ -4,7 +4,6 @@ import {
   Filter,
   ChevronDown,
   ChevronRight,
-  ChevronLeft,
   ClipboardCopy,
   User,
   FileText,
@@ -55,10 +54,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { Pagination } from '@/components/shared/Pagination';
 import { cn } from '@/lib/utils';
 import { formatDateTime, formatDateGroup } from '@/lib/formatters';
 
-const PAGE_SIZE = 15;
+const DEFAULT_PAGE_SIZE = 25;
 
 function getActionIcon(action: string) {
   switch (action) {
@@ -96,6 +96,7 @@ export default function AuditPage() {
   const [moduleFilter, setModuleFilter] = useState<string>('todos');
   const [actionFilter, setActionFilter] = useState<string>('todos');
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [viewMode, setViewMode] = useState<'table' | 'timeline'>('table');
   const [previewLog, setPreviewLog] = useState<ActivityLog | null>(null);
   const [expandedAudit, setExpandedAudit] = useState<string | null>(null);
@@ -119,7 +120,7 @@ export default function AuditPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, userFilter, moduleFilter, actionFilter]);
+  }, [debouncedSearch, userFilter, moduleFilter, actionFilter, pageSize]);
 
   useEffect(() => {
     if (activeTab !== 'actividad') {
@@ -130,7 +131,7 @@ export default function AuditPage() {
     setActivityError(null);
     fetchActivityLogs({
       page,
-      limit: PAGE_SIZE,
+      limit: pageSize,
       search: debouncedSearch.trim() || undefined,
       userId: userFilter === 'todos' ? undefined : userFilter,
       module: moduleFilter === 'todos' ? undefined : moduleFilter,
@@ -158,6 +159,7 @@ export default function AuditPage() {
   }, [
     activeTab,
     page,
+    pageSize,
     debouncedSearch,
     userFilter,
     moduleFilter,
@@ -173,7 +175,7 @@ export default function AuditPage() {
     setAuditError(null);
     fetchAuditDetailLogs({
       page,
-      limit: PAGE_SIZE,
+      limit: pageSize,
       search: debouncedSearch.trim() || undefined,
       userId: userFilter === 'todos' ? undefined : userFilter,
       module: moduleFilter === 'todos' ? undefined : moduleFilter,
@@ -201,6 +203,7 @@ export default function AuditPage() {
   }, [
     activeTab,
     page,
+    pageSize,
     debouncedSearch,
     userFilter,
     moduleFilter,
@@ -327,9 +330,9 @@ export default function AuditPage() {
           </div>
 
           {viewMode === 'table' ? (
-            <div className="overflow-x-auto rounded-xl bg-background">
+            <div className="overflow-auto rounded-xl bg-background scrollbar-thin max-h-[calc(100vh-18rem)] max-w-full">
               <Table className="min-w-[1200px]">
-                <TableHeader>
+                <TableHeader className="sticky top-0 z-10 bg-background">
                   <TableRow>
                     <TableHead className="w-10" />
                     <TableHead>Usuario</TableHead>
@@ -433,29 +436,16 @@ export default function AuditPage() {
                   />
                 </div>
               )}
-              {!activityLoading && activityTotalPages > 1 && (
-                <div className="flex items-center justify-between border-t px-4 py-3">
-                  <p className="text-sm text-muted-foreground">
-                    {activityTotal} registro{activityTotal !== 1 ? 's' : ''}
-                  </p>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={page <= 1}
-                      onClick={() => setPage((p) => p - 1)}
-                    >
-                      <ChevronLeft className="size-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={page >= activityTotalPages}
-                      onClick={() => setPage((p) => p + 1)}
-                    >
-                      <ChevronRight className="size-4" />
-                    </Button>
-                  </div>
+              {!activityLoading && activityTotal > 0 && (
+                <div className="mt-4">
+                  <Pagination
+                    page={page}
+                    totalPages={activityTotalPages}
+                    onPageChange={setPage}
+                    totalItems={activityTotal}
+                    pageSize={pageSize}
+                    onPageSizeChange={setPageSize}
+                  />
                 </div>
               )}
             </div>
@@ -523,9 +513,9 @@ export default function AuditPage() {
               {auditError}
             </p>
           ) : null}
-          <div className="overflow-x-auto rounded-xl bg-background">
+          <div className="overflow-auto rounded-xl bg-background scrollbar-thin max-h-[calc(100vh-18rem)] max-w-full">
             <Table className="min-w-[1200px]">
-              <TableHeader>
+              <TableHeader className="sticky top-0 z-10 bg-background">
                 <TableRow>
                   <TableHead className="w-10" />
                   <TableHead>Usuario</TableHead>
@@ -641,33 +631,16 @@ export default function AuditPage() {
                 />
               </div>
             )}
-            {!auditLoading && auditTotalPages > 1 && (
-              <div className="flex items-center justify-between border-t px-4 py-3">
-                <p className="text-sm text-muted-foreground">
-                  {auditTotal} registro{auditTotal !== 1 ? 's' : ''}
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={page <= 1}
-                    onClick={() => setPage((p) => p - 1)}
-                  >
-                    <ChevronLeft className="size-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={
-                      activeTab === 'actividad'
-                        ? page >= activityTotalPages
-                        : page >= auditTotalPages
-                    }
-                    onClick={() => setPage((p) => p + 1)}
-                  >
-                    <ChevronRight className="size-4" />
-                  </Button>
-                </div>
+            {!auditLoading && auditTotal > 0 && (
+              <div className="mt-4">
+                <Pagination
+                  page={page}
+                  totalPages={auditTotalPages}
+                  onPageChange={setPage}
+                  totalItems={auditTotal}
+                  pageSize={pageSize}
+                  onPageSizeChange={setPageSize}
+                />
               </div>
             )}
           </div>

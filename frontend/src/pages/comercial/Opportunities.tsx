@@ -6,7 +6,7 @@ import {
   Eye, Pencil, Trash2,
   DollarSign, Target, TrendingUp, Trophy,
   Calendar, X, User, Loader2,
-  FileSpreadsheet, Upload, Download, ChevronLeft, ChevronRight,
+  FileSpreadsheet, Upload, Download,
   Globe, Tag,
 } from 'lucide-react';
 import type { Etapa, OpportunityStatus, Opportunity } from '@/types';
@@ -15,6 +15,7 @@ import { useUsers } from '@/hooks/useUsers';
 import { cn } from '@/lib/utils';
 
 import { PageHeader } from '@/components/shared/PageHeader';
+import { Pagination } from '@/components/shared/Pagination';
 import { MetricCard } from '@/components/shared/MetricCard';
 import { PriorityBadge } from '@/components/shared/PriorityBadge';
 import {
@@ -115,7 +116,7 @@ const etapas: Etapa[] = [
   'activo', 'cierre_perdido', 'inactivo',
 ];
 
-const OPPORTUNITIES_PER_PAGE = 20;
+const DEFAULT_OPPORTUNITIES_PER_PAGE = 25;
 
 function ProbabilityBar({ value }: { value: number }) {
   const colorClass =
@@ -201,6 +202,7 @@ export default function OpportunitiesPage() {
   const [statusFilter, setStatusFilter] = useState('todas');
   const [assigneeFilter, setAssigneeFilter] = useState('todos');
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_OPPORTUNITIES_PER_PAGE);
   const { canSeeAllAdvisors, currentUserId } = useCrmTeamAdvisorFilter(
     assigneeFilter,
     setAssigneeFilter,
@@ -249,10 +251,10 @@ export default function OpportunitiesPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [search, activeTab, etapaFilter, statusFilter, assigneeFilter, viewMode]);
+  }, [search, activeTab, etapaFilter, statusFilter, assigneeFilter, viewMode, pageSize]);
 
   const totalFiltered = filteredOpportunities.length;
-  const totalPages = Math.max(1, Math.ceil(totalFiltered / OPPORTUNITIES_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
 
   useEffect(() => {
     if (page > totalPages) {
@@ -260,9 +262,9 @@ export default function OpportunitiesPage() {
     }
   }, [page, totalPages]);
 
-  const start = (page - 1) * OPPORTUNITIES_PER_PAGE;
+  const start = (page - 1) * pageSize;
   const displayedOpportunities = useMemo(
-    () => filteredOpportunities.slice(start, start + OPPORTUNITIES_PER_PAGE),
+    () => filteredOpportunities.slice(start, start + pageSize),
     [filteredOpportunities, start],
   );
   const startIndex = totalFiltered === 0 ? 0 : start + 1;
@@ -731,35 +733,14 @@ export default function OpportunitiesPage() {
 
       {/* Pagination */}
       {filteredOpportunities.length > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm text-muted-foreground">
-            Mostrando {startIndex}-{endIndex} de {filteredOpportunities.length} oportunidad
-            {filteredOpportunities.length !== 1 ? 'es' : ''}
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="bg-card"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => p - 1)}
-            >
-              <ChevronLeft className="size-4" /> Anterior
-            </Button>
-            <span className="px-2 text-sm text-muted-foreground">
-              {page} / {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              className="bg-card"
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              Siguiente <ChevronRight className="size-4" />
-            </Button>
-          </div>
-        </div>
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          totalItems={totalFiltered}
+          pageSize={pageSize}
+          onPageSizeChange={setPageSize}
+        />
       )}
 
       <NewOpportunityFormDialog
@@ -836,9 +817,9 @@ function OpportunitiesTable({
   canDelete: boolean;
 }) {
   return (
-    <div className="overflow-x-auto rounded-xl bg-background">
+    <div className="overflow-auto rounded-xl bg-background scrollbar-thin max-h-[calc(100vh-22rem)] max-w-full">
       <Table>
-        <TableHeader>
+        <TableHeader className="sticky top-0 z-10 bg-background">
           <TableRow>
             <TableHead className="min-w-0 max-w-[20rem]">Nombre</TableHead>
             <TableHead className="hidden min-w-0 max-w-[16rem] md:table-cell">

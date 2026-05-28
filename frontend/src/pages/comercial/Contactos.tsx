@@ -16,8 +16,6 @@ import {
   Mail,
   Building2,
   Users,
-  ChevronLeft,
-  ChevronRight,
   Upload,
   Download,
   FileSpreadsheet,
@@ -47,6 +45,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { ImportInProgressDialog } from "@/components/shared/ImportInProgressDialog";
+import { Pagination } from "@/components/shared/Pagination";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -119,7 +118,7 @@ import {
   CrmEntityCardGridSkeleton,
 } from "@/components/shared/CrmListPageSkeleton";
 
-const ITEMS_PER_PAGE = 25;
+const DEFAULT_ITEMS_PER_PAGE = 25;
 
 /** Tras crear un contacto, vincula oportunidades existentes por PATCH (mismo criterio que detalle de oportunidad). */
 async function linkNewContactToOpportunities(
@@ -203,6 +202,7 @@ export default function ContactosPage() {
     return "table";
   });
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_ITEMS_PER_PAGE);
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
   const [newContactOpen, setNewContactOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -245,7 +245,7 @@ export default function ContactosPage() {
     try {
       const res = await contactListPaginated({
         page,
-        limit: ITEMS_PER_PAGE,
+        limit: pageSize,
         search: searchDebounced || undefined,
         etapa: etapaFilter === "todos" ? undefined : etapaFilter,
         fuente: sourceFilter === "todos" ? undefined : sourceFilter,
@@ -261,7 +261,7 @@ export default function ContactosPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, searchDebounced, etapaFilter, sourceFilter, advisorFilter]);
+  }, [page, pageSize, searchDebounced, etapaFilter, sourceFilter, advisorFilter]);
 
   useEffect(() => {
     void loadApiContacts();
@@ -409,8 +409,8 @@ export default function ContactosPage() {
       toast.error(e instanceof Error ? e.message : "No se pudo guardar", { id: `save-${contactId}` });
     }
   }
-  const startIndex = totalContacts === 0 ? 0 : (page - 1) * ITEMS_PER_PAGE + 1;
-  const endIndex = Math.min(page * ITEMS_PER_PAGE, totalContacts);
+  const startIndex = totalContacts === 0 ? 0 : (page - 1) * pageSize + 1;
+  const endIndex = Math.min(page * pageSize, totalContacts);
 
   const advisorFilterIsActive = canSeeAllAdvisors
     ? advisorFilter !== "todos"
@@ -969,7 +969,7 @@ export default function ContactosPage() {
                   containerClassName="overflow-visible"
                   className="w-full min-w-max table-fixed"
                 >
-                  <TableHeader>
+        <TableHeader className="sticky top-0 z-10 bg-background">
                     <TableRow>
                       <TableHead className="sticky left-0 z-10 w-11 bg-background px-2">
                         Fila
@@ -1299,7 +1299,7 @@ export default function ContactosPage() {
             onAction={() => setNewContactOpen(true)}
           />
         ) : viewMode === "table" ? (
-          <div className="overflow-x-auto rounded-xl bg-background">
+           <div className="overflow-auto rounded-xl bg-background scrollbar-thin max-h-[calc(100vh-22rem)] max-w-full">
             <ContactsTable
               contacts={displayedContacts}
               selectedContacts={selectedContacts}
@@ -1334,51 +1334,18 @@ export default function ContactosPage() {
         )}
       </div>
 
-      {/* Pagination */}
-      {!loading && (totalContacts > 0 || pendingContacts.length > 0) && (
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm text-muted-foreground">
-            {totalContacts > 0 ? (
-              <>
-                Mostrando {startIndex}-{endIndex} de {totalContacts} contactos
-                {pendingContacts.length > 0 && (
-                  <span className="ml-1">
-                    · {pendingContacts.length} guardándose
-                  </span>
-                )}
-              </>
-            ) : (
-              <>
-                Contactos nuevos aparecerán aquí al sincronizar con el servidor.
-              </>
-            )}
-          </p>
-          {totalContacts > 0 && (
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="bg-card"
-                disabled={page <= 1 || loading}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                <ChevronLeft className="size-4" /> Anterior
-              </Button>
-              <span className="px-2 text-sm text-muted-foreground">
-                {page} / {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                className="bg-card"
-                disabled={page >= totalPages || loading}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Siguiente <ChevronRight className="size-4" />
-              </Button>
-            </div>
-          )}
-        </div>
+      {!loading && totalContacts > 0 && (
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          totalItems={totalContacts}
+          pageSize={pageSize}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setPage(1);
+          }}
+        />
       )}
 
       <NewContactWizard

@@ -473,9 +473,9 @@ export default function UsersPage() {
             </Card>
           ) : (
             <>
-            <div className="hidden overflow-x-auto rounded-xl bg-background md:block">
+            <div className="hidden overflow-auto rounded-xl bg-background scrollbar-thin max-h-[calc(100vh-15rem)] max-w-full md:block">
               <Table className="min-w-[1000px]">
-                <TableHeader>
+                <TableHeader className="sticky top-0 z-10 bg-background">
                   <TableRow>
                     <TableHead className="w-12">Usuario</TableHead>
                     <TableHead>Nombre</TableHead>

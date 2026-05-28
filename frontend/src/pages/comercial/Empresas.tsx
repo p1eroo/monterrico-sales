@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
-  Search, Building2, Users, ChevronRight, ChevronLeft, Briefcase,
+  Search, Building2, Users, Briefcase,
   FileSpreadsheet, Upload, Download, Plus, List, Grid3X3, Loader2,
   Eye, Pencil, Trash2, MoreHorizontal, Globe, Tag, User, MapPin,
 } from 'lucide-react';
@@ -16,6 +16,7 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { ImportInProgressDialog } from '@/components/shared/ImportInProgressDialog';
+import { Pagination } from '@/components/shared/Pagination';
 import { CompanyEditDialog, type CompanyEditSavePayload } from '@/components/shared/CompanyEditDialog';
 import { CompanyPreviewSheet } from '@/components/shared/CompanyPreviewSheet';
 import {
@@ -299,6 +300,7 @@ export default function EmpresasPage() {
     return 'table';
   });
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
   const [newEmpresaOpen, setNewEmpresaOpen] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
   const [importBusy, setImportBusy] = useState(false);
@@ -330,6 +332,10 @@ export default function EmpresasPage() {
     return () => clearTimeout(t);
   }, [search]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [searchDebounced, pageSize]);
+
   const loadSummary = useCallback(async () => {
     setLoading(true);
     try {
@@ -354,7 +360,7 @@ export default function EmpresasPage() {
 
       const res = await companyListSummaryPaginated({
         page,
-        limit: ITEMS_PER_PAGE,
+        limit: pageSize,
         search: searchDebounced || undefined,
         etapa: etapaFilter === 'todos' ? undefined : etapaFilter,
         fuente: sourceFilter === 'todos' ? undefined : sourceFilter,
@@ -377,6 +383,7 @@ export default function EmpresasPage() {
     }
   }, [
     page,
+    pageSize,
     searchDebounced,
     etapaFilter,
     sourceFilter,
@@ -776,8 +783,8 @@ export default function EmpresasPage() {
     }
   }
 
-  const startIndex = total === 0 ? 0 : (page - 1) * ITEMS_PER_PAGE + 1;
-  const endIndex = Math.min(page * ITEMS_PER_PAGE, total);
+  const startIndex = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const endIndex = Math.min(page * pageSize, total);
   const localExtraOnPage =
     page === 1 && filtersDefault
       ? standaloneCompanies.filter(
@@ -932,7 +939,7 @@ export default function EmpresasPage() {
                   containerClassName="overflow-visible"
                   className="w-max min-w-full text-sm"
                 >
-                  <TableHeader>
+<TableHeader className="sticky top-0 z-10 bg-background">
                     <TableRow className="hover:bg-transparent">
                       <TableHead className="sticky left-0 z-20 w-12 min-w-12 whitespace-nowrap bg-background px-2 shadow-[2px_0_6px_-4px_rgba(0,0,0,0.25)]">
                         Fila
@@ -1230,7 +1237,7 @@ export default function EmpresasPage() {
             onAction={() => setNewEmpresaOpen(true)}
           />
         ) : viewMode === 'table' ? (
-          <div className="overflow-x-auto rounded-xl bg-background">
+          <div className="overflow-auto rounded-xl bg-background scrollbar-thin max-h-[calc(100vh-22rem)] max-w-full">
             <Table className="min-w-[1200px]">
               <TableHeader>
                 <TableRow>
@@ -1461,38 +1468,18 @@ export default function EmpresasPage() {
       </div>
 
       {/* Pagination */}
-      {!loading && (total > 0 || displayRows.length > 0) && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            {total > 0
-              ? `Mostrando ${startIndex}-${endIndex} de ${total} en servidor`
-              : `${displayRows.length} empresa${displayRows.length !== 1 ? 's' : ''} (solo en dispositivo)`}
-            {localExtraOnPage > 0 && total > 0
-              ? ` · +${localExtraOnPage} local${localExtraOnPage !== 1 ? 'es' : ''}`
-              : ''}
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page <= 1 || loading}
-              onClick={() => setPage((p) => p - 1)}
-            >
-              <ChevronLeft className="size-4" /> Anterior
-            </Button>
-            <span className="px-2 text-sm text-muted-foreground">
-              {page} / {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page >= totalPages || loading}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              Siguiente <ChevronRight className="size-4" />
-            </Button>
-          </div>
-        </div>
+      {!loading && total > 0 && (
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          totalItems={total}
+          pageSize={pageSize}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setPage(1);
+          }}
+        />
       )}
 
       <NewCompanyWizard

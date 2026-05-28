@@ -3,6 +3,7 @@ import type { Client, ClientStatus } from '@/types';
 import { companyRubroLabels } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { Pagination } from '@/components/shared/Pagination';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,7 +17,7 @@ import {
 import {
   Building2, Users, UserX, DollarSign, Search, Eye,
   Phone, Mail, FileText, Clock, User, Download, ExternalLink,
-  Globe, ChevronLeft, ChevronRight,
+  Globe,
 } from 'lucide-react';
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
@@ -124,7 +125,7 @@ export default function Clients() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [assigneeFilter, setAssigneeFilter] = useState<string>('all');
   const [page, setPage] = useState(1);
-  const pageSize = 10;
+  const [pageSize, setPageSize] = useState(25);
   const { canSeeAllAdvisors } = useCrmTeamAdvisorFilter(
     assigneeFilter,
     setAssigneeFilter,
@@ -365,9 +366,9 @@ export default function Clients() {
           className="bg-card"
         />
       ) : (
-      <div className="overflow-x-auto rounded-xl bg-background">
+      <div className="overflow-auto rounded-xl bg-background scrollbar-thin max-h-[calc(100vh-22rem)] max-w-full">
         <Table className="min-w-[1100px]">
-          <TableHeader>
+          <TableHeader className="sticky top-0 z-10 bg-background">
             <TableRow>
               <TableHead>Empresa</TableHead>
               <TableHead className="hidden lg:table-cell">Rubro</TableHead>
@@ -492,61 +493,18 @@ export default function Clients() {
       </div>
       )}
 
-      {!loading && totalPages > 1 && (
-        <div className="flex items-center justify-between px-2 py-4">
-          <p className="text-sm text-muted-foreground">
-            Mostrando <span className="font-medium">{(page - 1) * pageSize + 1}</span> a{' '}
-            <span className="font-medium">
-              {Math.min(page * pageSize, filteredClients.length)}
-            </span> de{' '}
-            <span className="font-medium">{filteredClients.length}</span> clientes
-          </p>
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="h-8 w-8 p-0"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <div className="flex items-center gap-1">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
-                // Solo mostrar las primeras 3, la actual, y las últimas 3 si hay muchas páginas
-                if (
-                  totalPages > 7 &&
-                  p > 2 &&
-                  p < totalPages - 1 &&
-                  Math.abs(p - page) > 1
-                ) {
-                  if (p === 3 || p === totalPages - 2) return <span key={p} className="px-1 text-muted-foreground text-xs">...</span>;
-                  return null;
-                }
-                return (
-                  <Button
-                    key={p}
-                    variant={page === p ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setPage(p)}
-                    className="h-8 w-8 p-0 text-xs"
-                  >
-                    {p}
-                  </Button>
-                );
-              })}
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="h-8 w-8 p-0"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
+      {!loading && totalPages > 0 && (
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          totalItems={filteredClients.length}
+          pageSize={pageSize}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setPage(1);
+          }}
+        />
       )}
 
       <Sheet open={!!selectedClient} onOpenChange={(open) => !open && setSelectedClient(null)}>

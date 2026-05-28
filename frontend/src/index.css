@@ -314,13 +314,13 @@
 @layer utilities {
     /* Opt-in: barra fina coherente con el tema (Kanban, panel de actividades, …) */
     .scrollbar-thin {
-        scrollbar-width: thin;
+        scrollbar-width: thin !important;
         scrollbar-color: var(--crm-scrollbar-thumb) var(--background);
     }
     .scrollbar-thin::-webkit-scrollbar {
-        display: block;
-        width: 8px;
-        height: 8px;
+        display: block !important;
+        width: 8px !important;
+        height: 8px !important;
         background: var(--background);
     }
     .scrollbar-thin::-webkit-scrollbar-button {

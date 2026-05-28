@@ -25,6 +25,7 @@ import { es } from 'date-fns/locale';
 
 import { PageHeader } from '@/components/shared/PageHeader';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { Pagination } from '@/components/shared/Pagination';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -179,7 +180,7 @@ export default function TareasPage() {
   const [activeTab, setActiveTab] = useState('todas');
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('kanban');
   const [listPage, setListPage] = useState(1);
-  const TASKS_PER_PAGE = 20;
+  const [pageSize, setPageSize] = useState(25);
   const [newTaskOpen, setNewTaskOpen] = useState(false);
   const [newTaskColumnStatus, setNewTaskColumnStatus] = useState<ActivityStatus | undefined>();
   const [calendarDate, setCalendarDate] = useState<Date | undefined>();
@@ -275,10 +276,10 @@ export default function TareasPage() {
   }, [allTasksForDisplay, search, activeTab, statusFilter, priorityFilter, advisorFilter, calendarDate]);
 
   const paginatedTasks = useMemo(() => {
-    const start = (listPage - 1) * TASKS_PER_PAGE;
-    return filteredTasks.slice(start, start + TASKS_PER_PAGE);
-  }, [filteredTasks, listPage]);
-  const totalPages = Math.max(1, Math.ceil(filteredTasks.length / TASKS_PER_PAGE));
+    const start = (listPage - 1) * pageSize;
+    return filteredTasks.slice(start, start + pageSize);
+  }, [filteredTasks, listPage, pageSize]);
+  const totalPages = Math.max(1, Math.ceil(filteredTasks.length / pageSize));
 
   /** Misma lógica de filtros que la lista, sin pestaña de estado (el tablero agrupa por columna). */
   const tasksForKanban = useMemo(() => {
@@ -868,7 +869,7 @@ export default function TareasPage() {
                 />
               ) : (
                 <>
-                <div className="min-w-0 overflow-x-auto rounded-xl bg-background">
+                <div className="min-w-0 overflow-auto rounded-xl bg-background scrollbar-thin max-h-[calc(100vh-22rem)] max-w-full">"
                   <Table
                     className="table-fixed w-full min-w-[1040px]"
                     containerClassName="min-w-0 overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]"
@@ -886,7 +887,7 @@ export default function TareasPage() {
                       <col className="w-[124px]" />
                       <col className="w-10" />
                     </colgroup>
-                    <TableHeader>
+                    <TableHeader className="sticky top-0 z-10 bg-background">
                       <TableRow>
                         <TableHead className="w-10" />
                         <TableHead className="w-11 text-center text-muted-foreground">
@@ -1067,6 +1068,21 @@ export default function TareasPage() {
                     </TableBody>
                   </Table>
                 </div>
+                {filteredTasks.length > 0 && (
+                  <div className="mt-4">
+                    <Pagination
+                      page={listPage}
+                      totalPages={totalPages}
+                      onPageChange={setListPage}
+                      totalItems={filteredTasks.length}
+                      pageSize={pageSize}
+                      onPageSizeChange={(newSize) => {
+                        setPageSize(newSize);
+                        setListPage(1);
+                      }}
+                    />
+                  </div>
+                )}
                 </>
               )}
             </TabsContent>

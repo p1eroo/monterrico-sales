@@ -55,7 +55,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { CrmDataTableSkeleton } from "@/components/shared/CrmListPageSkeleton";
+import { Pagination } from "@/components/shared/Pagination";
 import { getConductores, type Conductor } from "@/lib/flotaConductoresApi";
+import { TableWithStickyScroll } from "@/components/shared/TableWithStickyScroll";
 import { formatCurrency, formatDate, formatDateDMY } from "@/lib/formatters";
 import { toast } from "sonner";
 
@@ -210,7 +212,7 @@ export default function FlotaConductores() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(porAutorizarIds));
   }, [porAutorizarIds]);
 
-  const pageSize = 10;
+  const [pageSize, setPageSize] = useState(25);
 
   const codigosList = useMemo(() => {
     return [...new Set(conductores.map(c => c.codigo).filter(Boolean))].sort() as string[];
@@ -574,7 +576,7 @@ const stats = useMemo(() => {
       </div>
 
       
-      <div className="overflow-x-auto rounded-xl bg-background">
+      <TableWithStickyScroll maxHeight="calc(100vh - 20rem)">
         {loading ? (
             <CrmDataTableSkeleton
               columns={[
@@ -593,7 +595,7 @@ const stats = useMemo(() => {
             />
         ) : (
             <Table containerClassName="overflow-visible" className="min-w-[1280px] bg-transparent">
-              <TableHeader>
+              <TableHeader className="sticky top-0 z-10 bg-background">
                   <TableRow>
                     <TableHead className="w-12 text-center">
                       <span className="text-[10px] leading-none">Por Aut.</span>
@@ -716,36 +718,22 @@ const stats = useMemo(() => {
             </Table>
         )}
 
-        {!loading && totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t">
-            <p className="text-sm text-muted-foreground">
-              Mostrando {paginatedConductores.length} de{" "}
-              {filteredConductores.length} conductores
-            </p>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-              >
-                Anterior
-              </Button>
-              <span className="text-sm">
-                Página {page} de {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-              >
-                Siguiente
-              </Button>
-            </div>
+        {!loading && totalPages > 0 && (
+          <div className="mt-4">
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              totalItems={filteredConductores.length}
+              pageSize={pageSize}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                setPage(1);
+              }}
+            />
           </div>
         )}
-      </div>
+      </TableWithStickyScroll>
     </div>
   );
 }

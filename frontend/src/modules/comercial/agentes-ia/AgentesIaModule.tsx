@@ -361,9 +361,9 @@ export function AgentesIaModule() {
               Nueva base de conocimiento
             </Button>
             </div>
-          <div className="overflow-x-auto rounded-xl bg-background">
+          <div className="overflow-auto rounded-xl bg-background scrollbar-thin max-h-[calc(100vh-22rem)] max-w-full">
             <Table>
-              <TableHeader>
+              <TableHeader className="sticky top-0 z-10 bg-background">
                 <TableRow>
                   <TableHead>Título</TableHead>
                   <TableHead>Tipo</TableHead>
@@ -429,9 +429,9 @@ export function AgentesIaModule() {
               Nueva regla
             </Button>
             </div>
-          <div className="overflow-x-auto rounded-xl bg-background">
+          <div className="overflow-auto rounded-xl bg-background scrollbar-thin max-h-[calc(100vh-22rem)] max-w-full">
             <Table>
-              <TableHeader>
+              <TableHeader className="sticky top-0 z-10 bg-background">
                 <TableRow>
                   <TableHead>Título</TableHead>
                   <TableHead>Condiciones</TableHead>
@@ -486,9 +486,9 @@ export function AgentesIaModule() {
                 Nueva regla
               </Button>
             </div>
-          <div className="overflow-x-auto rounded-xl bg-background">
+          <div className="overflow-auto rounded-xl bg-background scrollbar-thin max-h-[calc(100vh-22rem)] max-w-full">
             <Table>
-                <TableHeader>
+                <TableHeader className="sticky top-0 z-10 bg-background">
                   <TableRow>
                     <TableHead>Ref. externa</TableHead>
                     <TableHead>Canal</TableHead>
@@ -588,7 +588,7 @@ export function AgentesIaModule() {
             </CardHeader>
             <CardContent className="p-0">
               <Table>
-                <TableHeader>
+                <TableHeader className="sticky top-0 z-10 bg-background">
                   <TableRow>
                     <TableHead>Nombre</TableHead>
                     <TableHead className="text-right">Ejemplos</TableHead>
@@ -658,7 +658,7 @@ export function AgentesIaModule() {
 
           <Card>
             <Table>
-              <TableHeader>
+              <TableHeader className="sticky top-0 z-10 bg-background">
                 <TableRow>
                   <TableHead>Fecha</TableHead>
                   <TableHead>Conversación</TableHead>

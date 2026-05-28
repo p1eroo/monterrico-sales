@@ -48,7 +48,7 @@ export function PermissionMatrix({
 
   return (
     <TooltipProvider>
-      <div className="overflow-x-auto rounded-lg border bg-card">
+      <div className="overflow-auto rounded-lg border bg-card scrollbar-thin max-h-[calc(100vh-18rem)] max-w-full">">
         <table className="w-full min-w-[500px] border-collapse">
           <thead>
             <tr className="border-b bg-muted/50">

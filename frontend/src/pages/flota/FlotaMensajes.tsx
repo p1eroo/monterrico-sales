@@ -431,7 +431,7 @@ export default function FlotaMensajes() {
 
       {tab === 'inbox' ? (
         loadingConn ? <LoadingState /> :
-        isConnected ? <InboxView activeId={activeConversationId} onActiveChange={handleActiveChange} /> : <ConnectPrompt onClick={() => setEvoModalOpen(true)} />
+        <InboxView activeId={activeConversationId} onActiveChange={handleActiveChange} isConnected={isConnected} />
       ) : tab === 'masivo' ? (
         loadingConn ? <LoadingState /> :
         <div className="flex flex-col min-h-0 h-[calc(100vh-11rem)]">
@@ -778,9 +778,10 @@ ConversationItem.displayName = 'ConversationItem';
 
 /* ==================== INBOX ==================== */
 
-function InboxView({ activeId: externalActiveId, onActiveChange }: {
+function InboxView({ activeId: externalActiveId, onActiveChange, isConnected }: {
   activeId: string | null;
   onActiveChange: (id: string | null) => void;
+  isConnected: boolean;
 }) {
   const [conversations, setConversations] = useState<FlotaConversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -1019,7 +1020,14 @@ function InboxView({ activeId: externalActiveId, onActiveChange }: {
   }
 
   return (
-    <div className="grid h-[calc(100vh-11rem)] grid-cols-1 gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
+    <div className="flex flex-col h-[calc(100vh-11rem)] gap-4">
+      {!isConnected && (
+        <div className="shrink-0 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-700 flex items-center gap-2">
+          <Radio className="size-3.5 fill-amber-500 text-amber-500" />
+          WhatsApp no conectado. Conectalo desde el botón <strong>EvoGO</strong> en la cabecera.
+        </div>
+      )}
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
       <aside className="flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm">
         <div className="border-b px-3 pb-1 pt-3">
           <div className="flex gap-1">
@@ -1143,6 +1151,7 @@ function InboxView({ activeId: externalActiveId, onActiveChange }: {
         </DialogContent>
       </Dialog>
     </div>
+  </div>
   );
 }
 
@@ -3041,6 +3050,10 @@ const ACCENT_COLORS: Record<string, string> = {
   'Afiliado': '#9333ea',
 };
 
+const PIPELINE_VIRTUAL_MIN_CARDS = 16;
+const PIPELINE_CARD_ESTIMATE_PX = 130;
+const PIPELINE_CARD_GAP_PX = 8;
+
 function FlotaPipelineView({ onSelect }: { onSelect: (contactId: string) => void }) {
   const [conversations, setConversations] = useState<FlotaConversation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -3237,8 +3250,28 @@ interface FlotaKanbanColumnProps {
 }
 
 const FlotaKanbanColumn = memo(function FlotaKanbanColumn({ estado, conversations, onSelect }: FlotaKanbanColumnProps) {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
   const { setNodeRef } = useDroppable({ id: estado });
   const accentColor = ACCENT_COLORS[estado] ?? '#6b7280';
+
+  const setScrollAndDropRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      scrollRef.current = node;
+      setNodeRef(node);
+    },
+    [setNodeRef],
+  );
+
+  const useVirtual = conversations.length >= PIPELINE_VIRTUAL_MIN_CARDS;
+
+  const virtualizer = useVirtualizer({
+    count: useVirtual ? conversations.length : 0,
+    enabled: useVirtual,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => PIPELINE_CARD_ESTIMATE_PX,
+    gap: PIPELINE_CARD_GAP_PX,
+    overscan: 8,
+  });
 
   return (
     <div className="flex h-full min-w-[280px] max-w-[300px] shrink-0 flex-col rounded-lg border bg-muted/20">
@@ -3250,13 +3283,30 @@ const FlotaKanbanColumn = memo(function FlotaKanbanColumn({ estado, conversation
         </div>
       </div>
       <div
-        ref={setNodeRef}
+        ref={setScrollAndDropRef}
         className="scrollbar-thin flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto border-x border-b border-dashed border-transparent p-2"
         style={{ '--drop-active-bg': 'rgba(59,130,246,0.05)' } as React.CSSProperties}
       >
         {conversations.length === 0 ? (
           <div className="flex flex-1 items-center justify-center rounded-md border border-dashed border-muted-foreground/20 py-8 text-xs text-muted-foreground">
             Sin prospectos
+          </div>
+        ) : useVirtual ? (
+          <div className="relative w-full flex flex-col" style={{ height: virtualizer.getTotalSize(), gap: PIPELINE_CARD_GAP_PX }}>
+            {virtualizer.getVirtualItems().map((v) => {
+              const c = conversations[v.index]!;
+              return (
+                <div
+                  key={c.id}
+                  data-index={v.index}
+                  ref={virtualizer.measureElement}
+                  className="absolute left-0 top-0 w-full"
+                  style={{ transform: `translateY(${v.start}px)` }}
+                >
+                  <FlotaPipelineCard conversation={c} onSelect={onSelect} />
+                </div>
+              );
+            })}
           </div>
         ) : (
           conversations.map((c) => (

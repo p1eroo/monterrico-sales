@@ -63,6 +63,8 @@ import {
 } from "@/lib/flotaProspectosApi";
 import { getConductorTelefonos } from "@/lib/flotaConductoresApi";
 import { InlineEditCell } from "@/components/shared/InlineEditCell";
+import { TableWithStickyScroll } from "@/components/shared/TableWithStickyScroll";
+import { Pagination } from "@/components/shared/Pagination";
 
 const ESTADO_OPTIONS = [
   { label: "Nuevo", value: "Nuevo" },
@@ -89,8 +91,6 @@ const estadoColors: Record<string, string> = {
   "No Responde": "bg-yellow-200 text-yellow-700 border-yellow-200",
 };
 
-const PAGE_SIZE = 25;
-
 export default function FlotaProspectos() {
   const navigate = useNavigate();
   const [prospectos, setProspectos] = useState<FlotaProspectoRow[]>([]);
@@ -108,6 +108,7 @@ export default function FlotaProspectos() {
   const [duplicadosFilter, setDuplicadosFilter] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   const [sheetNames, setSheetNames] = useState<string[]>([]);
   const [spreadsheets, setSpreadsheets] = useState<SheetsSpreadsheet[]>([]);
@@ -220,7 +221,7 @@ export default function FlotaProspectos() {
     try {
       const res = await flotaProspectosList({
         page,
-        limit: PAGE_SIZE,
+        limit: pageSize,
         search: searchDebounced || undefined,
         estado: estadoFilter === "all" ? undefined : estadoFilter,
         duplicados: duplicadosFilter || undefined,
@@ -247,7 +248,7 @@ export default function FlotaProspectos() {
     } finally {
       setLoading(false);
     }
-  }, [page, searchDebounced, estadoFilter, duplicadosFilter, mesFilter, redSocialFilter, operadorFilter]);
+  }, [page, pageSize, searchDebounced, estadoFilter, duplicadosFilter, mesFilter, redSocialFilter, operadorFilter]);
 
   const loadCounts = useCallback(async () => {
     try {
@@ -275,9 +276,9 @@ export default function FlotaProspectos() {
   // Reset page on filter change
   useEffect(() => {
     setPage(1);
-  }, [searchDebounced, estadoFilter, duplicadosFilter, mesFilter, redSocialFilter, operadorFilter]);
+  }, [searchDebounced, estadoFilter, duplicadosFilter, mesFilter, redSocialFilter, operadorFilter, pageSize]);
 
-  const totalPages = Math.ceil(totalProspectos / PAGE_SIZE);
+  const totalPages = Math.ceil(totalProspectos / pageSize);
 
   const getConductorCodigo = (celular: string | null): string | null => {
     if (!celular) return null;
@@ -621,7 +622,7 @@ export default function FlotaProspectos() {
         )}
       </div>
 
-      <div className="overflow-x-auto rounded-xl bg-background">
+      <TableWithStickyScroll maxHeight="calc(100vh - 18rem)">
         {loading ? (
             <CrmDataTableSkeleton
               columns={[
@@ -649,7 +650,7 @@ export default function FlotaProspectos() {
             />
         ) : (
             <Table containerClassName="overflow-visible" className="min-w-[1300px] [&_td]:py-3 [&_th]:py-2 bg-transparent">
-              <TableHeader className="bg-muted/30">
+              <TableHeader className="bg-muted/30 sticky top-0 z-10">
                 <TableRow>
                   <TableHead className="w-10">
                     <Checkbox
@@ -761,8 +762,8 @@ export default function FlotaProspectos() {
                               >
                                 Duplicado
                               </Badge>
-                            )}
-                          </div>
+        )}
+                      </div>
                         </InlineEditCell>
                       </TableCell>
                       <TableCell>
@@ -914,37 +915,26 @@ export default function FlotaProspectos() {
               </TableBody>
             </Table>
         )}
-      </div>
+      </TableWithStickyScroll>
 
-      {!loading && totalPages > 1 && (
-          <div className="flex items-center justify-between px-0">
-            <p className="text-sm text-muted-foreground">
-              Mostrando {prospectos.length} de {totalProspectos} prospectos
-              {selectedIds.size > 0 && ` (${selectedIds.size} seleccionados)`}
+      {!loading && (
+        <div>
+          {selectedIds.size > 0 && (
+            <p className="text-xs text-muted-foreground mb-1 text-left italic">
+              ({selectedIds.size} seleccionados)
             </p>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-              >
-                Anterior
-              </Button>
-              <span className="text-sm">
-                Página {page} de {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-              >
-                Siguiente
-              </Button>
-            </div>
-          </div>
-        )}
+          )}
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            totalItems={totalProspectos}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+            pageSizeOptions={[10, 25, 50, 100]}
+          />
+        </div>
+      )}
 
       <Dialog open={previewOpen} onOpenChange={(open) => !open && closePreview()}>
         <DialogContent className="flex h-[min(92vh,880px)] max-h-[92vh] w-[min(96vw,calc(100vw-2rem))] max-w-[min(96vw,87.5rem)] flex-col gap-0 p-0 sm:max-w-[min(96vw,87.5rem)]">

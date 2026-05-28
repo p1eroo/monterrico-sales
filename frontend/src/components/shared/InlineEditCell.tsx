@@ -161,118 +161,115 @@ export function InlineEditCell({
     );
   }
 
-  if (!editing) {
-    return (
-      <button
-        type="button"
-        className={cn(
-          'group relative w-full min-h-[26px] rounded px-1.5 py-1 text-left transition-colors',
-          'border border-dashed border-transparent hover:border-muted-foreground/20 hover:bg-muted/40',
-          className,
-        )}
-        onClick={startEdit}
-      >
-        {children ?? (value != null ? String(value) : '—')}
-      </button>
-    );
-  }
-
-  if (type === 'select') {
-    return (
-      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-        <Select
-          value={editValue}
-          onValueChange={(v) => {
-            processingRef.current = true;
-            setEditValue(v);
-            setEditing(false);
-            const finalValue = v === '__none__' ? null : v;
-            if ((finalValue ?? '') === (value ?? '')) {
-              processingRef.current = false;
-              return;
-            }
-            setSaving(true);
-            const body: Record<string, unknown> = {
-              [fieldKey]: finalValue,
-            };
-            api(saveUrl, {
-              method: 'PATCH',
-              body: JSON.stringify(body),
-            })
-              .then(() => {
-                toast.success('Actualizado');
-                onSavedRef.current?.(fieldKey, finalValue);
-              })
-              .catch((err) =>
-                toast.error(
-                  err instanceof Error ? err.message : 'Error al actualizar',
-                ),
-              )
-              .finally(() => {
-                setSaving(false);
-                processingRef.current = false;
-              });
-          }}
-          onOpenChange={(open) => {
-            if (!open) cancel();
-          }}
-        >
-          <SelectTrigger className="h-8 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__none__">—</SelectItem>
-            {options.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-6 shrink-0"
-          onClick={cancel}
-        >
-          <X className="size-3" />
-        </Button>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-      <Input
-        ref={inputRef}
-        value={editValue}
-        onChange={(e) => setEditValue(e.target.value)}
-        onKeyDown={handleKeyDown}
-        type={type === 'number' ? 'number' : 'text'}
-        className="h-8 text-xs"
-        disabled={saving}
-      />
-      {saving ? (
-        <Loader2 className="size-4 shrink-0 animate-spin text-muted-foreground" />
-      ) : (
-        <>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-6 shrink-0 text-emerald-600"
-            onClick={(e) => void save(e)}
+    <div className="relative min-h-[26px]">
+      {!editing ? (
+        <button
+          type="button"
+          className={cn(
+            'w-full min-h-[26px] rounded px-1.5 py-1 text-left transition-colors',
+            'border border-dashed border-transparent hover:border-muted-foreground/20 hover:bg-muted/40',
+            className,
+          )}
+          onClick={startEdit}
+        >
+          {children ?? (value != null ? String(value) : '—')}
+        </button>
+      ) : type === 'select' ? (
+        <div className="relative z-20 flex items-center gap-1 bg-background rounded-md border shadow-md p-1" onClick={(e) => e.stopPropagation()}>
+          <Select
+            value={editValue}
+            onValueChange={(v) => {
+              processingRef.current = true;
+              setEditValue(v);
+              setEditing(false);
+              const finalValue = v === '__none__' ? null : v;
+              if ((finalValue ?? '') === (value ?? '')) {
+                processingRef.current = false;
+                return;
+              }
+              setSaving(true);
+              const body: Record<string, unknown> = {
+                [fieldKey]: finalValue,
+              };
+              api(saveUrl, {
+                method: 'PATCH',
+                body: JSON.stringify(body),
+              })
+                .then(() => {
+                  toast.success('Actualizado');
+                  onSavedRef.current?.(fieldKey, finalValue);
+                })
+                .catch((err) =>
+                  toast.error(
+                    err instanceof Error ? err.message : 'Error al actualizar',
+                  ),
+                )
+                .finally(() => {
+                  setSaving(false);
+                  processingRef.current = false;
+                });
+            }}
+            onOpenChange={(open) => {
+              if (!open) cancel();
+            }}
           >
-            <Check className="size-3" />
-          </Button>
+            <SelectTrigger className="h-8 text-xs min-w-[120px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">—</SelectItem>
+              {options.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button
             variant="ghost"
             size="icon"
-            className="size-6 shrink-0 text-destructive"
+            className="size-6 shrink-0"
             onClick={cancel}
           >
             <X className="size-3" />
           </Button>
-        </>
+        </div>
+      ) : (
+        <div className="absolute left-0 top-0 z-20 flex items-center gap-1 rounded-md border bg-background p-1 shadow-md" onClick={(e) => e.stopPropagation()}>
+          <Input
+            ref={inputRef}
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            type={type === 'number' ? 'number' : 'text'}
+            className="h-8 text-xs w-auto"
+            style={{ minWidth: `${Math.max(editValue?.length || 1, 8)}ch` }}
+            disabled={saving}
+          />
+          {saving ? (
+            <Loader2 className="size-4 shrink-0 animate-spin text-muted-foreground" />
+          ) : (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-6 shrink-0 text-emerald-600"
+                onClick={(e) => void save(e)}
+              >
+                <Check className="size-3" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-6 shrink-0 text-destructive"
+                onClick={cancel}
+              >
+                <X className="size-3" />
+              </Button>
+            </>
+          )}
+        </div>
       )}
     </div>
   );
