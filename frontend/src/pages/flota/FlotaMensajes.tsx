@@ -481,7 +481,7 @@ export default function FlotaMensajes() {
             ) : tab === 'conexiones' ? (
               <ConexionesView onConnectInstance={(inst) => setConnectingInstance(inst)} key={conexionesReloadTick} />
             ) : (
-              <div className="flex flex-col min-h-0 h-[calc(100vh-9rem)]">
+              <div className="flex flex-col min-h-0 flex-1">
                 <BotFlowBuilder />
               </div>
             )}
