@@ -467,7 +467,7 @@ export default function FlotaMensajes() {
 
         {/* Main content */}
         <div className="flex flex-col flex-1 min-w-0">
-          <div className="flex-1 min-h-0">
+          <div className="flex flex-col min-h-0 flex-1">
             {tab === 'inbox' ? (
               loadingConn ? <LoadingState /> :
               <InboxView activeId={activeConversationId} onActiveChange={handleActiveChange} isConnected={isConnected} />
@@ -2481,15 +2481,27 @@ function MasivoView({ isConnected, masivoConnected = false, onConnectClick }: { 
   return (
     <Card className="flex flex-col flex-1 min-h-0">
       {masivoSubTab === 'new' ? (<>
-      <div className="border-b px-6 py-4 shrink-0">
-        <p className="text-sm text-muted-foreground">Crear campaña masiva · Paso {step} de 3: {step === 1 ? 'Audiencia' : step === 2 ? 'Mensaje' : 'Revisión'}</p>
-        <Stepper step={step} />
+      <div className="flex items-center gap-1.5 border-b px-6 py-3 shrink-0 text-xs font-medium">
+        {[
+          { n: 1, label: 'Audiencia' },
+          { n: 2, label: 'Mensaje' },
+          { n: 3, label: 'Revisión' },
+        ].map((s, i) => (
+          <span key={s.n} className="flex items-center gap-1.5">
+            {i > 0 && <span className="text-muted-foreground/30 mx-0.5">—</span>}
+            <span className={cn(
+              step === s.n ? 'text-primary font-semibold' : step > s.n ? 'text-muted-foreground/60' : 'text-muted-foreground/30',
+            )}>
+              {s.label}
+            </span>
+          </span>
+        ))}
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto p-6">
+      <div className="flex-1 min-h-0 overflow-y-auto">
         {step === 1 && (
-          <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
-            <div className="space-y-5">
+          <div className="grid lg:grid-cols-[340px_1fr] min-h-full">
+            <div className="space-y-5 border-r border-border p-6">
               <div>
                 <h3 className="font-semibold">Seleccionar audiencia</h3>
                 <p className="text-xs text-muted-foreground">
@@ -2621,7 +2633,7 @@ function MasivoView({ isConnected, masivoConnected = false, onConnectClick }: { 
               )}
             </div>
 
-            <div className="rounded-lg border">
+            <div className="flex flex-col min-h-0 p-6">
               {source === 'excel' && excelContacts.length > 0 ? (
                 <>
                   <div className="flex items-center justify-between border-b p-4">
@@ -2729,7 +2741,7 @@ function MasivoView({ isConnected, masivoConnected = false, onConnectClick }: { 
                       Eliminar seleccionados
                     </Button>
                   </div>
-                  <div className="overflow-x-auto">
+                  <div className="flex-1 min-h-0 overflow-auto">
                     <table className="w-full text-sm">
                       <thead className="bg-muted/50 text-xs text-muted-foreground">
                         <tr>
@@ -2771,7 +2783,7 @@ function MasivoView({ isConnected, masivoConnected = false, onConnectClick }: { 
                     </table>
                   </div>
                   {selectedPageCount > 1 && (
-                    <div className="flex items-center justify-between border-t px-4 py-2 text-xs text-muted-foreground">
+                    <div className="flex items-center justify-between border-t px-4 py-2 text-xs text-muted-foreground shrink-0">
                       <span>
                         {(selectedPage - 1) * SELECTED_PAGE_SIZE + 1}–{Math.min(selectedPage * SELECTED_PAGE_SIZE, selected.length)} de {selected.length}
                       </span>
@@ -2805,7 +2817,7 @@ function MasivoView({ isConnected, masivoConnected = false, onConnectClick }: { 
         )}
 
         {step === 2 && (
-          <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+          <div className="grid gap-6 lg:grid-cols-[1fr_360px] p-6">
             <div className="space-y-5">
               <div>
                 <h3 className="font-semibold">Mensaje WhatsApp</h3>
@@ -2919,7 +2931,7 @@ function MasivoView({ isConnected, masivoConnected = false, onConnectClick }: { 
         )}
 
         {step === 3 && !bulkProgress && (
-          <div className="mx-auto max-w-2xl space-y-5">
+          <div className="mx-auto max-w-2xl space-y-5 p-6">
             <div>
               <h3 className="font-semibold">Resumen del envío masivo</h3>
               <p className="text-xs text-muted-foreground">Revisa los detalles antes de enviar</p>
@@ -2945,8 +2957,9 @@ function MasivoView({ isConnected, masivoConnected = false, onConnectClick }: { 
         )}
 
         {step === 3 && bulkProgress && (
-          <div className="mx-auto max-w-2xl space-y-5">
+          <div className="mx-auto max-w-2xl space-y-5 p-6">
             <div>
+              <h3 className="font-semibold">
               <h3 className="font-semibold">
                 {bulkProgress.paused ? 'Envío masivo pausado' : 'Enviando campaña masiva'}
               </h3>
