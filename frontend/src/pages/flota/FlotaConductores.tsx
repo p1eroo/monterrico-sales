@@ -717,23 +717,23 @@ const stats = useMemo(() => {
               </TableBody>
             </Table>
         )}
-
-        {!loading && totalPages > 0 && (
-          <div className="mt-4">
-            <Pagination
-              page={page}
-              totalPages={totalPages}
-              onPageChange={setPage}
-              totalItems={filteredConductores.length}
-              pageSize={pageSize}
-              onPageSizeChange={(newSize) => {
-                setPageSize(newSize);
-                setPage(1);
-              }}
-            />
-          </div>
-        )}
       </TableWithStickyScroll>
+
+      {!loading && totalPages > 0 && (
+        <div className="mt-4">
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            totalItems={filteredConductores.length}
+            pageSize={pageSize}
+            onPageSizeChange={(newSize) => {
+              setPageSize(newSize);
+              setPage(1);
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }

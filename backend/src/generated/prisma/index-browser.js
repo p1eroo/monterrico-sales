@@ -178,6 +178,8 @@ exports.Prisma.WhatsappInstanceScalarFieldEnum = {
   lastConnectedAt: 'lastConnectedAt',
   lastDisconnectedAt: 'lastDisconnectedAt',
   lastError: 'lastError',
+  useForInbox: 'useForInbox',
+  useForMasivo: 'useForMasivo',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
@@ -548,6 +550,21 @@ exports.Prisma.CampaignScalarFieldEnum = {
   createdByName: 'createdByName'
 };
 
+exports.Prisma.FlotaBulkCampaignScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  message: 'message',
+  total: 'total',
+  sent: 'sent',
+  failed: 'failed',
+  status: 'status',
+  imageUrl: 'imageUrl',
+  createdById: 'createdById',
+  createdByName: 'createdByName',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.CrmFileScalarFieldEnum = {
   id: 'id',
   storageKey: 'storageKey',
@@ -654,6 +671,7 @@ exports.Prisma.ModelName = {
   OpportunityActivity: 'OpportunityActivity',
   CampaignEmailSendLog: 'CampaignEmailSendLog',
   Campaign: 'Campaign',
+  FlotaBulkCampaign: 'FlotaBulkCampaign',
   CrmFile: 'CrmFile',
   FlotaProspecto: 'FlotaProspecto'
 };

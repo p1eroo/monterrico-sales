@@ -3,6 +3,7 @@ import {
   ConflictException,
   Injectable,
   Logger,
+  NotFoundException,
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -76,6 +77,8 @@ type WhatsappInstanceRow = {
   lastConnectedAt: Date | null;
   lastDisconnectedAt: Date | null;
   lastError: string | null;
+  useForInbox: boolean;
+  useForMasivo: boolean;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -118,6 +121,8 @@ const WHATSAPP_INSTANCE_SELECT = {
   lastConnectedAt: true,
   lastDisconnectedAt: true,
   lastError: true,
+  useForInbox: true,
+  useForMasivo: true,
   createdAt: true,
   updatedAt: true,
 } as const;
@@ -316,6 +321,8 @@ export class WhatsappService {
       lastConnectedAt: instance.lastConnectedAt?.toISOString() ?? null,
       lastDisconnectedAt: instance.lastDisconnectedAt?.toISOString() ?? null,
       lastError: instance.lastError,
+      useForInbox: instance.useForInbox,
+      useForMasivo: instance.useForMasivo,
       createdAt: instance.createdAt.toISOString(),
       updatedAt: instance.updatedAt.toISOString(),
     };
@@ -1795,6 +1802,180 @@ export class WhatsappService {
     return { canManage: this.personalConnectionsEnabled(), instance: this.serializeInstance(updated) };
   }
 
+  /* ======== Flota multi-instancia ======== */
+
+  async listFlotaInstances() {
+    const nodeInstances = await this.prisma.whatsappInstance.findMany({
+      where: { instanceType: 'flota_node' },
+      select: WHATSAPP_INSTANCE_SELECT,
+      orderBy: { createdAt: 'asc' },
+    }) as WhatsappInstanceRow[];
+    const synced = await Promise.all(
+      nodeInstances.map((inst) => this.syncConnectionState(inst, true)),
+    );
+    // Also include the original shared_flota instance
+    const shared = await this.findSharedInstance();
+    const sharedSynced = shared ? await this.syncConnectionState(shared, true) : null;
+    const all = [...synced, ...(sharedSynced ? [sharedSynced] : [])].filter(Boolean);
+    return all.map((inst) => this.serializeInstance(inst));
+  }
+
+  async createFlotaInstance(name: string, apiKey?: string) {
+    if (!this.personalConnectionsEnabled()) {
+      throw new ServiceUnavailableException(
+        'Faltan EVOGO_MANAGER_API_KEY o EVOGO_WEBHOOK_URL para crear instancias de Flota',
+      );
+    }
+    const webhookUrl = this.webhookUrl();
+    const created = await this.evogo.createInstance({
+      instanceName: name,
+      webhook: { url: webhookUrl },
+      token: apiKey || undefined,
+    });
+    const now = new Date();
+    const instance = await this.prisma.whatsappInstance.create({
+      data: {
+        instanceType: 'flota_node',
+        instanceName: created.instanceName,
+        instanceApiKey: created.instanceApiKey,
+        evoInstanceId: created.instanceId,
+        status: created.qrCode || created.qrText || created.pairingCode
+          ? 'qr_ready'
+          : this.normalizeConnectionState(created.status),
+        qrCode: created.qrCode,
+        qrText: created.qrText,
+        pairingCode: created.pairingCode,
+        qrGeneratedAt: created.qrCode || created.qrText || created.pairingCode ? now : null,
+        lastError: null,
+      },
+      select: WHATSAPP_INSTANCE_SELECT,
+    }) as WhatsappInstanceRow;
+    return { instance: this.serializeInstance(instance) };
+  }
+
+  async connectFlotaInstance(id: string) {
+    const instance = await this.prisma.whatsappInstance.findFirst({
+      where: { id, instanceType: { in: ['flota_node', 'shared_flota'] } },
+      select: WHATSAPP_INSTANCE_SELECT,
+    }) as WhatsappInstanceRow | null;
+    if (!instance) throw new NotFoundException('Instancia no encontrada');
+
+    const synced = await this.syncConnectionState(instance, true);
+    if (synced.status === 'open') {
+      return { instance: this.serializeInstance(synced) };
+    }
+    const webhookUrl = this.webhookUrl();
+    const qr = await this.evogo.connectInstance({
+      instanceName: instance.instanceName,
+      instanceApiKey: instance.instanceApiKey,
+      webhookUrl,
+    });
+    const now = new Date();
+    const hasQr = Boolean(qr.qrCode || qr.qrText || qr.pairingCode);
+    const updated = await this.updateInstance(instance.id, {
+      status: hasQr ? 'qr_ready' : instance.status,
+      qrCode: qr.qrCode,
+      qrText: qr.qrText,
+      pairingCode: qr.pairingCode,
+      qrGeneratedAt: hasQr ? now : null,
+      lastError: null,
+    });
+    return { instance: this.serializeInstance(updated) };
+  }
+
+  async disconnectFlotaInstance(id: string) {
+    const instance = await this.prisma.whatsappInstance.findFirst({
+      where: { id, instanceType: { in: ['flota_node', 'shared_flota'] } },
+      select: WHATSAPP_INSTANCE_SELECT,
+    }) as WhatsappInstanceRow | null;
+    if (!instance) throw new NotFoundException('Instancia no encontrada');
+    try {
+      await this.evogo.logoutInstance({
+        instanceName: instance.instanceName,
+        instanceApiKey: instance.instanceApiKey,
+      });
+    } catch {
+      // ignore
+    }
+    const now = new Date();
+    const updated = await this.updateInstance(instance.id, {
+      status: 'close',
+      qrCode: null,
+      qrText: null,
+      pairingCode: null,
+      qrGeneratedAt: null,
+      qrExpiresAt: null,
+      lastDisconnectedAt: now,
+      lastError: null,
+    });
+    return { instance: this.serializeInstance(updated) };
+  }
+
+  async deleteFlotaInstance(id: string) {
+    const instance = await this.prisma.whatsappInstance.findFirst({
+      where: { id, instanceType: 'flota_node' },
+      select: WHATSAPP_INSTANCE_SELECT,
+    }) as WhatsappInstanceRow | null;
+    if (!instance) throw new NotFoundException('Instancia no encontrada');
+    try {
+      await this.evogo.logoutInstance({
+        instanceName: instance.instanceName,
+        instanceApiKey: instance.instanceApiKey,
+      });
+    } catch {
+      // ignore
+    }
+    await this.prisma.whatsappInstance.delete({ where: { id: instance.id } });
+    return { ok: true };
+  }
+
+  /* ======== Flota Bulk Campaigns (historial) ======== */
+
+  async listFlotaBulkCampaigns(page = 1, limit = 20) {
+    const skip = (page - 1) * limit;
+    const [items, total] = await Promise.all([
+      this.prisma.flotaBulkCampaign.findMany({
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.flotaBulkCampaign.count(),
+    ]);
+    return { items, total, page, limit };
+  }
+
+  async getFlotaBulkCampaign(id: string) {
+    const campaign = await this.prisma.flotaBulkCampaign.findUnique({ where: { id } });
+    if (!campaign) throw new NotFoundException('Campaña no encontrada');
+    return campaign;
+  }
+
+  async updateFlotaInstanceFlags(id: string, flags: { useForInbox?: boolean; useForMasivo?: boolean }) {
+    const instance = await this.prisma.whatsappInstance.findFirst({
+      where: { id, instanceType: { in: ['flota_node', 'shared_flota'] } },
+    });
+    if (!instance) throw new NotFoundException('Instancia no encontrada');
+
+    // If setting inbox, unset all others
+    if (flags.useForInbox) {
+      await this.prisma.whatsappInstance.updateMany({
+        where: { instanceType: { in: ['flota_node', 'shared_flota'] }, id: { not: id } },
+        data: { useForInbox: false },
+      });
+    }
+
+    const updated = await this.prisma.whatsappInstance.update({
+      where: { id },
+      data: {
+        ...(flags.useForInbox !== undefined ? { useForInbox: flags.useForInbox } : {}),
+        ...(flags.useForMasivo !== undefined ? { useForMasivo: flags.useForMasivo } : {}),
+      },
+      select: WHATSAPP_INSTANCE_SELECT,
+    }) as WhatsappInstanceRow;
+
+    return { instance: this.serializeInstance(updated) };
+  }
+
   async sendSharedTestMessage(dto: { number: string; text: string }) {
     const current = await this.findSharedInstance();
     if (!current) {
@@ -1998,13 +2179,17 @@ export class WhatsappService {
   }
 
   async sendFromFlotaProspecto(prospectoId: string, text: string, imageUrl: string | undefined, audioUrl: string | undefined, userId: string) {
-    const current = await this.findSharedInstance();
-    if (!current) {
-      throw new ServiceUnavailableException('El WhatsApp compartido de Flota no está configurado. Conéctalo primero.');
+    // Try inbox instance first, then fall back to shared
+    let instance = await this.prisma.whatsappInstance.findFirst({
+      where: { useForInbox: true, status: 'open' },
+      select: WHATSAPP_INSTANCE_SELECT,
+    }) as WhatsappInstanceRow | null;
+    if (!instance) {
+      const shared = await this.findSharedInstance();
+      if (shared) instance = await this.syncConnectionState(shared, true);
     }
-    const instance = await this.syncConnectionState(current, true);
-    if (instance.status !== 'open') {
-      throw new ServiceUnavailableException('La instancia compartida de WhatsApp aún no está conectada.');
+    if (!instance || instance.status !== 'open') {
+      throw new ServiceUnavailableException('No hay ninguna instancia de WhatsApp conectada para enviar mensajes.');
     }
 
     const prospecto = await this.prisma.flotaProspecto.findUnique({ where: { id: prospectoId } });
@@ -2346,15 +2531,40 @@ export class WhatsappService {
     text: string;
     imageUrl?: string;
     userId: string;
-  }): Promise<{ jobId: string }> {
-    const current = await this.findSharedInstance();
-    if (!current) {
-      throw new ServiceUnavailableException('El WhatsApp compartido de Flota no está configurado.');
+  }): Promise<{ jobId: string; campaignId: string }> {
+    // Build pool of masivo instances
+    let instances = await this.prisma.whatsappInstance.findMany({
+      where: { useForMasivo: true, status: 'open' },
+      select: WHATSAPP_INSTANCE_SELECT,
+      orderBy: { createdAt: 'asc' },
+    }) as WhatsappInstanceRow[];
+    if (instances.length === 0) {
+      const shared = await this.findSharedInstance();
+      if (shared) {
+        const synced = await this.syncConnectionState(shared, true);
+        if (synced.status === 'open') instances = [synced];
+      }
     }
-    const instance = await this.syncConnectionState(current, true);
-    if (instance.status !== 'open') {
-      throw new ServiceUnavailableException('La instancia compartida de WhatsApp no está conectada.');
+    if (instances.length === 0) {
+      throw new ServiceUnavailableException('No hay instancias de WhatsApp conectadas para el envío masivo. Marcá al menos una en Conexiones.');
     }
+
+    // Create campaign record
+    const user = await this.prisma.user.findUnique({
+      where: { id: params.userId },
+      select: { name: true },
+    });
+    const campaign = await this.prisma.flotaBulkCampaign.create({
+      data: {
+        name: `Masivo ${new Date().toLocaleDateString('es-PE')}`,
+        message: params.text,
+        total: params.prospectoIds.length,
+        status: 'sending',
+        imageUrl: params.imageUrl || null,
+        createdById: params.userId,
+        createdByName: user?.name || 'Sistema',
+      },
+    });
 
     const jobId = `flota-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const BULK_DELAYS = [35000, 45000, 55000, 65000];
@@ -2392,12 +2602,8 @@ export class WhatsappService {
 
     // Process in background
     void (async () => {
-      const sender = {
-        instanceApiKey: instance.instanceApiKey,
-        evoInstanceId: instance.evoInstanceId || this.defaultInstanceId(),
-        evoInstanceName: instance.instanceName,
-        displayLineId: instance.instanceName,
-      };
+      let currentInstIdx = 0;
+      const getCurrentInst = () => instances[currentInstIdx % instances.length]!;
 
       for (let i = 0; i < params.prospectoIds.length; i++) {
         if (job.cancelled) break;
@@ -2407,6 +2613,8 @@ export class WhatsappService {
         }
         if (job.cancelled) break;
 
+        const senderInst = getCurrentInst();
+        currentInstIdx++;
         const prospectoId = params.prospectoIds[i]!;
         const delayMs = BULK_DELAYS[i % BULK_DELAYS.length]!;
 
@@ -2453,7 +2661,7 @@ export class WhatsappService {
           let sent;
           if (params.imageUrl) {
             sent = await this.evogo.sendMedia({
-              instanceApiKey: sender.instanceApiKey,
+              instanceApiKey: senderInst.instanceApiKey,
               number: to,
               mediaUrl: params.imageUrl,
               mediatype: 'image',
@@ -2461,7 +2669,7 @@ export class WhatsappService {
             });
           } else {
             sent = await this.evogo.sendText({
-              instanceApiKey: sender.instanceApiKey,
+              instanceApiKey: senderInst.instanceApiKey,
               number: to,
               text: finalBody,
             });
@@ -2478,15 +2686,15 @@ export class WhatsappService {
             const created = await this.prisma.crmWhatsappMessage.create({
               data: {
                 direction: 'outbound',
-                evoInstanceId: sender.evoInstanceId,
-                evoInstanceName: sender.evoInstanceName,
+                evoInstanceId: senderInst.evoInstanceId || this.defaultInstanceId(),
+                evoInstanceName: senderInst.instanceName,
                 waMessageId: sent.waMessageId ?? null,
-                fromWaId: sender.displayLineId,
+                fromWaId: senderInst.instanceName,
                 toWaId: to,
                 body,
                 payloadJson: stripHeavyPayload(sent.raw) as Prisma.InputJsonValue,
                 flotaProspectoId: prospectoId,
-                whatsappInstanceId: instance.id,
+                whatsappInstanceId: senderInst.id,
                 createdByUserId: params.userId,
                 waOutboundStatus: 'sent',
               },
@@ -2500,7 +2708,7 @@ export class WhatsappService {
                 id: created.id,
                 direction: 'outbound',
                 body,
-                fromWaId: sender.displayLineId,
+                fromWaId: senderInst.instanceName,
                 toWaId: to,
                 createdAt: created.createdAt.toISOString(),
                 waOutboundStatus: 'sent',
@@ -2525,11 +2733,20 @@ export class WhatsappService {
 
       job.finished = true;
       emit();
+      // Update campaign record
+      await this.prisma.flotaBulkCampaign.update({
+        where: { id: campaign.id },
+        data: {
+          sent: job.sent,
+          failed: job.failed,
+          status: job.cancelled ? 'cancelled' : 'sent',
+        },
+      });
       // Clean up after 10 minutes
       setTimeout(() => this.flotaBulkJobs.delete(jobId), 600000);
     })();
 
-    return { jobId };
+    return { jobId, campaignId: campaign.id };
   }
 
   getFlotaBulkProgress(jobId: string) {

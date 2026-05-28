@@ -1,29 +1,33 @@
 import {
-  BadRequestException,
-  Body,
   Controller,
-  Delete,
   Get,
+  Post,
+  Patch,
+  Delete,
+  Param,
+  Query,
+  Body,
+  ConflictException,
+  BadRequestException,
+  HttpException,
+  HttpStatus,
   Header,
+  Req,
+  UseGuards,
   Logger,
   NotFoundException,
-  Param,
-  Post,
-  Query,
-  Req,
-  Res,
-  UploadedFile,
-  UseGuards,
   UseInterceptors,
+  UploadedFile,
+  Res,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import type { Response } from 'express';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { RequireAnyPermission } from '../auth/decorators/require-any-permission.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { CrmDataScopeService } from '../auth/crm-data-scope.service';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { memoryStorage } from 'multer';
 import { WhatsappService } from './whatsapp.service';
 import { SendWhatsappDto } from './dto/send-whatsapp.dto';
 import { SendTestWhatsappDto } from './dto/send-test-whatsapp.dto';
@@ -149,6 +153,50 @@ export class WhatsappController {
       throw new BadRequestException('number y text son obligatorios');
     }
     return this.whatsapp.sendSharedTestMessage({ number, text });
+  }
+
+  /* ======== Flota multi-instancia ======== */
+
+  @Get('flota/instances')
+  @RequirePermissions('flota_mensajes.ver')
+  async listFlotaInstances() {
+    return this.whatsapp.listFlotaInstances();
+  }
+
+  @Post('flota/instances')
+  @RequirePermissions('flota_mensajes.ver')
+  async createFlotaInstance(@Body() body: { name: string; token?: string }) {
+    if (!body.name?.trim()) {
+      throw new BadRequestException('name es obligatorio');
+    }
+    return this.whatsapp.createFlotaInstance(body.name.trim(), body.token?.trim() || undefined);
+  }
+
+  @Post('flota/instances/:id/connect')
+  @RequirePermissions('flota_mensajes.ver')
+  async connectFlotaInstance(@Param('id') id: string) {
+    return this.whatsapp.connectFlotaInstance(id);
+  }
+
+  @Post('flota/instances/:id/disconnect')
+  @RequirePermissions('flota_mensajes.ver')
+  async disconnectFlotaInstance(@Param('id') id: string) {
+    return this.whatsapp.disconnectFlotaInstance(id);
+  }
+
+  @Delete('flota/instances/:id')
+  @RequirePermissions('flota_mensajes.ver')
+  async deleteFlotaInstance(@Param('id') id: string) {
+    return this.whatsapp.deleteFlotaInstance(id);
+  }
+
+  @Patch('flota/instances/:id/flags')
+  @RequirePermissions('flota_mensajes.ver')
+  async updateFlotaInstanceFlags(
+    @Param('id') id: string,
+    @Body() body: { useForInbox?: boolean; useForMasivo?: boolean },
+  ) {
+    return this.whatsapp.updateFlotaInstanceFlags(id, body);
   }
 
   @Get('conversations')
@@ -315,6 +363,15 @@ export class WhatsappController {
       imageUrl: body.imageUrl?.trim(),
       userId: req.user.userId,
     });
+  }
+
+  @Get('flota/bulk-campaigns')
+  @RequirePermissions('flota_mensajes.ver')
+  async listFlotaBulkCampaigns(@Query('page') page?: string, @Query('limit') limit?: string) {
+    return this.whatsapp.listFlotaBulkCampaigns(
+      page ? parseInt(page, 10) : 1,
+      limit ? parseInt(limit, 10) : 20,
+    );
   }
 
   @Get('flota/send-bulk/:jobId')

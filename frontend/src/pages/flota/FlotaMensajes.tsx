@@ -62,6 +62,7 @@ import {
   MicOff,
   PanelRight,
   Lock,
+  Link2,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -108,9 +109,11 @@ import {
 } from '@/components/ui/popover';
 import { EmojiGrid } from '@/components/EmojiGrid';
 import { PageHeader } from '@/components/shared/PageHeader';
+import BotFlowBuilder from '@/modules/flota/bot-flow/BotFlowBuilder';
 import { cn } from '@/lib/utils';
 import { api, API_BASE } from '@/lib/api';
 import { toast } from 'sonner';
+import { Pagination } from "@/components/shared/Pagination";
 import {
   fetchSharedConnection,
   connectSharedWhatsapp,
@@ -129,10 +132,19 @@ import {
   cancelFlotaBulk,
   pauseFlotaBulk,
   resumeFlotaBulk,
+  fetchFlotaInstances,
+  createFlotaInstance,
+  connectFlotaInstance,
+  disconnectFlotaInstance,
+  deleteFlotaInstance,
+  updateFlotaInstanceFlags,
+  listFlotaBulkCampaigns,
   type FlotaConversation,
   type FlotaExcelContact,
   type FlotaWhatsappConnectionResponse,
   type FlotaWhatsappConnection,
+  type FlotaInstanceDetail,
+  type FlotaBulkCampaign,
 } from '@/lib/flotaWhatsappApi';
 import { flotaProspectoCreate, flotaProspectosList, fetchOperadores, getOperatorDisplayName, type OperadorUser } from '@/lib/flotaProspectosApi';
 import { useAppStore } from '@/store';
@@ -296,7 +308,7 @@ function MessageAttachment({
 
 export default function FlotaMensajes() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [tab, setTab] = useState<'inbox' | 'masivo' | 'pipeline'>('inbox');
+  const [tab, setTab] = useState<'inbox' | 'masivo' | 'pipeline' | 'automatizacion' | 'conexiones'>('inbox');
   const [connection, setConnection] = useState<FlotaWhatsappConnectionResponse | null>(null);
   const [evoModalOpen, setEvoModalOpen] = useState(false);
   const [loadingConn, setLoadingConn] = useState(true);
@@ -347,64 +359,145 @@ export default function FlotaMensajes() {
     if (instance?.isConnected) setEvoModalOpen(false);
   }, [instance?.isConnected]);
 
+  // Multi-instance state
+  const [connectingInstance, setConnectingInstance] = useState<FlotaInstanceDetail | null>(null);
+  const [conexionesReloadTick, setConexionesReloadTick] = useState(0);
+  const [flotaInstances, setFlotaInstances] = useState<FlotaInstanceDetail[]>([]);
+
+  const inboxConnected = useMemo(
+    () => flotaInstances.some((i) => i.useForInbox && i.isConnected),
+    [flotaInstances],
+  );
+  const masivoConnected = useMemo(
+    () => flotaInstances.some((i) => i.useForMasivo && i.isConnected),
+    [flotaInstances],
+  );
+  const anyFlotaConnected = useMemo(
+    () => flotaInstances.some((i) => i.isConnected),
+    [flotaInstances],
+  );
+
+  useEffect(() => {
+    fetchFlotaInstances().then(setFlotaInstances).catch(() => {});
+    const interval = setInterval(() => {
+      fetchFlotaInstances().then(setFlotaInstances).catch(() => {});
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [conexionesReloadTick]);
+
+  const tabStatusConnected = useMemo(() => {
+    if (tab === 'inbox') return inboxConnected;
+    if (tab === 'masivo') return masivoConnected;
+    return isConnected || anyFlotaConnected;
+  }, [tab, inboxConnected, masivoConnected, isConnected, anyFlotaConnected]);
+
+  const handleConnectInstance = useCallback(async (id: string) => {
+    const { instance: updated } = await connectFlotaInstance(id);
+    setConnectingInstance(updated);
+  }, []);
+
+  const handleDisconnectInstance = useCallback(async (id: string) => {
+    await disconnectFlotaInstance(id);
+    setConnectingInstance(null);
+    setEvoModalOpen(false);
+    setConexionesReloadTick((t) => t + 1);
+    toast.success('Instancia desconectada');
+  }, []);
+
+  const handleCloseInstanceModal = useCallback(() => {
+    setConnectingInstance(null);
+    setConexionesReloadTick((t) => t + 1);
+  }, []);
+
   return (
-    <div className="space-y-6">
-      <PageHeader title="Mensajes">
-        <div className="inline-flex items-center gap-2">
-          <div className="inline-flex rounded-lg border bg-card p-1 shadow-sm">
-            <button
-              onClick={() => setTab('inbox')}
-              className={cn(
-                'inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors',
-                tab === 'inbox' ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              <Inbox className="h-4 w-4" /> Inbox
-            </button>
-            <button
-              onClick={() => setTab('masivo')}
-              className={cn(
-                'inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors',
-                tab === 'masivo' ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              <Send className="h-4 w-4" /> Masivo
-            </button>
-            <button
-              onClick={() => setTab('pipeline')}
-              className={cn(
-                'inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors',
-                tab === 'pipeline' ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              <LayoutList className="h-4 w-4" /> Pipeline
-            </button>
-          </div>
+    <div className="flex flex-col h-svh w-full overflow-hidden">
+      {/* Full-width header */}
+      <header className="flex items-center gap-3 border-b h-14 shrink-0 px-4">
+        <button
+          onClick={() => window.history.back()}
+          className="inline-flex items-center rounded-md border border-primary px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/10 transition-colors"
+        >
+          Volver
+        </button>
+      </header>
+
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        {/* Left icon sidebar */}
+        <aside className="flex flex-col items-center gap-3 border-r bg-card px-1.5 py-4 w-[54px] shrink-0">
+          {([
+            { key: 'inbox', icon: Inbox, label: 'Inbox' },
+            { key: 'masivo', icon: Send, label: 'Masivo' },
+            { key: 'pipeline', icon: LayoutList, label: 'Pipeline' },
+            { key: 'conexiones', icon: Link2, label: 'Conexiones' },
+            { key: 'automatizacion', icon: null, label: 'Bots', customIcon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg>' },
+          ] as const).map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.key}
+                onClick={() => setTab(item.key as any)}
+                className={cn(
+                  'flex items-center justify-center rounded-lg w-9 h-9 transition-colors',
+                  tab === item.key ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                )}
+                title={item.label}
+              >
+                {Icon ? <Icon className="h-4 w-4" /> : <span dangerouslySetInnerHTML={{ __html: item.customIcon || '' }} />}
+              </button>
+            );
+          })}
+          <div className="flex-1" />
           <button
             onClick={() => setEvoModalOpen(true)}
             className={cn(
-              'inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors',
-              isConnected
-                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20'
-                : 'border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20',
+              'flex items-center justify-center rounded-lg w-9 h-9 transition-colors',
+              tabStatusConnected
+                ? 'text-emerald-600 hover:bg-emerald-50'
+                : 'text-destructive hover:bg-destructive/10',
             )}
+            title={tabStatusConnected ? 'Conectado' : 'Desconectado'}
           >
             {loadingConn ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <Radio className={cn('h-3.5 w-3.5', isConnected ? 'fill-emerald-500 text-emerald-500' : 'fill-destructive text-destructive')} />
+              <Radio className={cn('h-4 w-4', tabStatusConnected ? 'fill-emerald-500 text-emerald-500' : 'fill-destructive text-destructive')} />
             )}
-            EvoGO
           </button>
+        </aside>
+
+        {/* Main content */}
+        <div className="flex flex-col flex-1 min-w-0">
+          <div className="flex-1 min-h-0">
+            {tab === 'inbox' ? (
+              loadingConn ? <LoadingState /> :
+              <InboxView activeId={activeConversationId} onActiveChange={handleActiveChange} isConnected={isConnected} />
+            ) : tab === 'masivo' ? (
+              loadingConn ? <LoadingState /> :
+              <div className="flex flex-col min-h-0 flex-1">
+                <MasivoView isConnected={isConnected} masivoConnected={masivoConnected} onConnectClick={() => setEvoModalOpen(true)} />
+              </div>
+            ) : tab === 'pipeline' ? (
+              <FlotaPipelineView onSelect={pipelineSelect} />
+            ) : tab === 'conexiones' ? (
+              <ConexionesView onConnectInstance={(inst) => setConnectingInstance(inst)} key={conexionesReloadTick} />
+            ) : (
+              <div className="flex flex-col min-h-0 h-[calc(100vh-9rem)]">
+                <BotFlowBuilder />
+              </div>
+            )}
+          </div>
         </div>
-      </PageHeader>
+      </div>
 
       <EvoGoModal
-        open={evoModalOpen}
-        onOpenChange={setEvoModalOpen}
+        open={evoModalOpen || !!connectingInstance}
+        onOpenChange={(v) => { if (!v) { setEvoModalOpen(false); handleCloseInstanceModal(); } }}
         connection={connection}
         loading={loadingConn}
         onRefresh={() => loadConnection(false)}
+        instanceOverride={connectingInstance}
+        onConnectInstance={handleConnectInstance}
+        onDisconnectInstance={handleDisconnectInstance}
         onConnect={async () => {
           try {
             const next = await connectSharedWhatsapp();
@@ -428,18 +521,6 @@ export default function FlotaMensajes() {
           }
         }}
       />
-
-      {tab === 'inbox' ? (
-        loadingConn ? <LoadingState /> :
-        <InboxView activeId={activeConversationId} onActiveChange={handleActiveChange} isConnected={isConnected} />
-      ) : tab === 'masivo' ? (
-        loadingConn ? <LoadingState /> :
-        <div className="flex flex-col min-h-0 h-[calc(100vh-11rem)]">
-          <MasivoView isConnected={isConnected} onConnectClick={() => setEvoModalOpen(true)} />
-        </div>
-      ) : (
-        <FlotaPipelineView onSelect={pipelineSelect} />
-      )}
     </div>
   );
 }
@@ -454,6 +535,9 @@ function EvoGoModal({
   onRefresh,
   onConnect,
   onDisconnect,
+  instanceOverride,
+  onConnectInstance,
+  onDisconnectInstance,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -462,8 +546,11 @@ function EvoGoModal({
   onRefresh: () => void;
   onConnect: () => Promise<void>;
   onDisconnect: () => Promise<void>;
+  instanceOverride?: FlotaInstanceDetail | null;
+  onConnectInstance?: (id: string) => Promise<void>;
+  onDisconnectInstance?: (id: string) => Promise<void>;
 }) {
-  const instance = connection?.instance ?? null;
+  const instance = instanceOverride ?? connection?.instance ?? null;
   const canManage = connection?.canManage ?? false;
   const isConnected = instance?.isConnected ?? false;
   const [busy, setBusy] = useState<string | null>(null);
@@ -485,13 +572,21 @@ function EvoGoModal({
 
   async function handleConnect() {
     setBusy('connect');
-    await onConnect();
+    if (instanceOverride && onConnectInstance) {
+      await onConnectInstance(instanceOverride.id);
+    } else {
+      await onConnect();
+    }
     setBusy(null);
   }
 
   async function handleDisconnect() {
     setBusy('disconnect');
-    await onDisconnect();
+    if (instanceOverride && onDisconnectInstance) {
+      await onDisconnectInstance(instanceOverride.id);
+    } else {
+      await onDisconnect();
+    }
     setBusy(null);
   }
 
@@ -521,12 +616,14 @@ function EvoGoModal({
           <DialogHeader className="pr-8">
             <DialogTitle className="flex items-center gap-2">
               <Radio className={cn('h-5 w-5', isConnected ? 'fill-emerald-500 text-emerald-500' : 'fill-destructive text-destructive')} />
-              Evolution GO — Flota
+              {instanceOverride ? `Conexión: ${instanceOverride.instanceName}` : 'Evolution GO — Flota'}
             </DialogTitle>
             <DialogDescription>
               {isConnected
-                ? `WhatsApp compartido conectado: ${instance?.instanceName || 'Flota'}`
-                : 'Escanea el QR para conectar el WhatsApp compartido de Flota'}
+                ? `${instance?.instanceName || 'WhatsApp'} conectado`
+                : instanceOverride
+                  ? `Escaneá el QR para conectar ${instanceOverride.instanceName}`
+                  : 'Escanea el QR para conectar el WhatsApp compartido de Flota'}
             </DialogDescription>
           </DialogHeader>
 
@@ -1020,15 +1117,9 @@ function InboxView({ activeId: externalActiveId, onActiveChange, isConnected }: 
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-11rem)] gap-4">
-      {!isConnected && (
-        <div className="shrink-0 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-700 flex items-center gap-2">
-          <Radio className="size-3.5 fill-amber-500 text-amber-500" />
-          WhatsApp no conectado. Conectalo desde el botón <strong>EvoGO</strong> en la cabecera.
-        </div>
-      )}
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
-      <aside className="flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+    <div className="flex flex-col h-full">
+      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[360px_minmax(0,1fr)]">
+      <aside className="flex flex-col overflow-hidden bg-card border-r border-border">
         <div className="border-b px-3 pb-1 pt-3">
           <div className="flex gap-1">
             {([
@@ -1108,7 +1199,7 @@ function InboxView({ activeId: externalActiveId, onActiveChange, isConnected }: 
           setMessagesCache={setMessagesCache}
         />
       ) : (
-        <div className="flex items-center justify-center rounded-lg border border-border bg-card text-sm text-muted-foreground shadow-sm">
+        <div className="flex h-full items-center justify-center bg-card text-sm text-muted-foreground">
           Selecciona una conversación
         </div>
       )}
@@ -1680,8 +1771,8 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
   }
 
   return (
-    <div className="flex h-full min-h-0 min-w-0 gap-4">
-      <section className={cn("flex flex-col flex-1 min-w-0 overflow-hidden rounded-lg border border-border bg-card shadow-sm relative transition-all", mediaPanelOpen ? "hidden xl:flex" : "")}>
+    <div className="flex h-full min-h-0 min-w-0">
+      <section className={cn("flex flex-col flex-1 min-w-0 overflow-hidden bg-card relative transition-all", mediaPanelOpen ? "hidden xl:flex" : "")}>
         <div className="flex items-center justify-between border-b px-5 py-3">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary">
@@ -2081,7 +2172,7 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
       </section>
 
       {mediaPanelOpen && (
-        <aside className="w-full xl:w-[320px] shrink-0 flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm animate-in slide-in-from-right-4">
+        <aside className="w-full xl:w-[320px] shrink-0 flex flex-col overflow-hidden bg-card animate-in slide-in-from-right-4">
           <div className="flex items-center justify-between border-b px-5 py-[13px]">
             <h3 className="text-sm font-semibold">Archivos del chat</h3>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setMediaPanelOpen(false)}>
@@ -2116,7 +2207,7 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
 
 /* ==================== MASIVO ==================== */
 
-function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onConnectClick: () => void }) {
+function MasivoView({ isConnected, masivoConnected = false, onConnectClick }: { isConnected: boolean; masivoConnected?: boolean; onConnectClick: () => void }) {
   const [contacts, setContacts] = useState<FlotaConversation[]>([]);
   const [excelContacts, setExcelContacts] = useState<FlotaExcelContact[]>([]);
   const [loadingContacts, setLoadingContacts] = useState(true);
@@ -2131,6 +2222,7 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
   const [selectedPage, setSelectedPage] = useState(1);
   const SELECTED_PAGE_SIZE = 50;
   const [sending, setSending] = useState(false);
+  const [masivoSubTab, setMasivoSubTab] = useState<'history' | 'new'>('history');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -2312,6 +2404,7 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
         }
         setSelectedIds(new Set());
         setStep(1);
+        setMasivoSubTab('history');
       }
     });
     bulkSocketRef.current = socket;
@@ -2319,7 +2412,7 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
   }
 
   async function handleSend() {
-    if (!isConnected) {
+    if (!isConnected && !masivoConnected) {
       onConnectClick();
       return;
     }
@@ -2364,7 +2457,7 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
     localStorage.removeItem('flotaBulkJobId');
   }
 
-  if (!isConnected) {
+  if (!isConnected && !masivoConnected) {
     return (
       <div className="flex flex-col items-center justify-center gap-6 py-24 text-center">
         <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted">
@@ -2387,6 +2480,7 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
 
   return (
     <Card className="flex flex-col flex-1 min-h-0">
+      {masivoSubTab === 'new' ? (<>
       <div className="border-b px-6 py-4 shrink-0">
         <p className="text-sm text-muted-foreground">Crear campaña masiva · Paso {step} de 3: {step === 1 ? 'Audiencia' : step === 2 ? 'Mensaje' : 'Revisión'}</p>
         <Stepper step={step} />
@@ -2965,11 +3059,14 @@ function MasivoView({ isConnected, onConnectClick }: { isConnected: boolean; onC
               Siguiente <ArrowRight className="ml-1 h-4 w-4" />
             </Button>
           ) : (
-            <Button variant="outline" onClick={() => { setStep(1); setCampaignName(''); setMessage(''); setSelectedIds(new Set()); }}>
+            <Button variant="outline" onClick={() => { setStep(1); setCampaignName(''); setMessage(''); setSelectedIds(new Set()); setMasivoSubTab('history'); }}>
               Nueva campaña
             </Button>
           )}
         </div>
+      )}
+      </>) : (
+        <MasivoHistoryView onCreateNew={() => setMasivoSubTab('new')} />
       )}
     </Card>
   );
@@ -3004,6 +3101,230 @@ function Stepper({ step }: { step: number }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/* ==================== CONEXIONES ==================== */
+
+function ConexionesView({ onConnectInstance }: { onConnectInstance?: (inst: FlotaInstanceDetail) => void }) {
+  const [instancias, setInstancias] = useState<FlotaInstanceDetail[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newInstancia, setNewInstancia] = useState({ nombre: '', token: '' });
+  const [inboxId, setInboxId] = useState<string | null>(null);
+  const [masivoIds, setMasivoIds] = useState<Set<string>>(new Set());
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await fetchFlotaInstances();
+      setInstancias(data);
+      setInboxId(data.find((i) => i.useForInbox)?.id ?? null);
+      setMasivoIds(new Set(data.filter((i) => i.useForMasivo).map((i) => i.id)));
+    } catch { toast.error('No se pudieron cargar las conexiones'); }
+    finally { setLoading(false); }
+  }, []);
+  useEffect(() => { void load(); }, [load]);
+
+  const handleCreate = useCallback(async () => {
+    if (!newInstancia.nombre.trim()) return;
+    setCreating(true);
+    try {
+      await createFlotaInstance(newInstancia.nombre.trim(), newInstancia.token.trim() || undefined);
+      toast.success('Instancia creada');
+      setCreateModalOpen(false);
+      setNewInstancia({ nombre: '', token: '' });
+      setLoading(true);
+      setInstancias(await fetchFlotaInstances());
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Error al crear'); }
+    finally { setCreating(false); setLoading(false); }
+  }, [newInstancia]);
+
+  const handleConnect = useCallback((inst: FlotaInstanceDetail) => onConnectInstance?.(inst), [onConnectInstance]);
+
+  const handleDisconnect = useCallback(async (id: string) => {
+    setBusyId(id);
+    try {
+      await disconnectFlotaInstance(id);
+      toast.success('Instancia desconectada');
+      setLoading(true);
+      setInstancias(await fetchFlotaInstances());
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Error al desconectar'); }
+    finally { setBusyId(null); setLoading(false); }
+  }, []);
+
+  const handleDelete = useCallback(async (id: string) => {
+    if (!window.confirm('¿Eliminar esta instancia definitivamente?')) return;
+    setBusyId(id);
+    try {
+      await deleteFlotaInstance(id);
+      toast.success('Instancia eliminada');
+      setLoading(true);
+      setInstancias(await fetchFlotaInstances());
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Error al eliminar'); }
+    finally { setBusyId(null); setLoading(false); }
+  }, []);
+
+  return (
+    <div className="flex flex-col h-full p-6 overflow-y-auto scrollbar-thin">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-xl font-bold tracking-tight">Conexiones WhatsApp</h2>
+          <p className="text-sm text-muted-foreground mt-1">Gestioná las líneas de WhatsApp conectadas</p>
+        </div>
+        <Button className="gap-1.5" onClick={() => setCreateModalOpen(true)}>
+          <Plus className="size-4" /> Agregar conexión
+        </Button>
+      </div>
+      {loading ? (
+        <div className="flex items-center justify-center flex-1"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+      ) : (
+      <div className="rounded-lg border overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/50 text-xs text-muted-foreground">
+            <tr>
+              <th className="px-4 py-3 text-left font-medium">Nombre</th><th className="px-4 py-3 text-left font-medium">Estado</th>
+              <th className="px-4 py-3 text-center font-medium">Inbox</th><th className="px-4 py-3 text-center font-medium">Masivo</th>
+              <th className="px-4 py-3 text-left font-medium">Último error</th><th className="px-4 py-3"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {instancias.length === 0 ? (
+              <tr><td colSpan={6} className="px-4 py-12 text-center text-sm text-muted-foreground">No hay conexiones</td></tr>
+            ) : instancias.map((inst) => {
+              const sl = inst.isConnected ? 'connected' : inst.status === 'qr_ready' ? 'qr_ready' : 'disconnected';
+              const ib = busyId === inst.id;
+              return (
+                <tr key={inst.id} className="border-t">
+                  <td className="px-4 py-3 font-medium">{inst.instanceName}</td>
+                  <td className="px-4 py-3">
+                    <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
+                      sl === 'connected' ? 'bg-emerald-100 text-emerald-700' : sl === 'qr_ready' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700')}>
+                      <span className={cn('size-1.5 rounded-full', sl === 'connected' ? 'bg-emerald-500' : sl === 'qr_ready' ? 'bg-amber-500' : 'bg-red-500')} />
+                      {inst.isConnected ? 'Conectado' : inst.status === 'qr_ready' ? 'QR pendiente' : 'Desconectado'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <input type="radio" name="inbox-selection" checked={inboxId === inst.id}
+                      onClick={() => {
+                        const nv = inboxId === inst.id ? null : inst.id;
+                        setInboxId(nv);
+                        updateFlotaInstanceFlags(inst.id, { useForInbox: !!nv }).then(() => toast.success(nv ? 'Inbox asignado' : 'Inbox desasignado')).catch(() => toast.error('Error'));
+                      }}
+                      readOnly className="size-4 accent-primary" disabled={!inst.isConnected} />
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <input type="checkbox" checked={masivoIds.has(inst.id)} disabled={!inst.isConnected}
+                      onChange={() => {
+                        setMasivoIds((p) => { const n = new Set(p); n.has(inst.id) ? n.delete(inst.id) : n.add(inst.id); return n; });
+                        updateFlotaInstanceFlags(inst.id, { useForMasivo: !masivoIds.has(inst.id) }).then(() => toast.success(!masivoIds.has(inst.id) ? 'Agregado a masivo' : 'Quitado de masivo')).catch(() => toast.error('Error'));
+                      }}
+                      className="size-4 accent-primary rounded" />
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground text-xs">{inst.lastError || '—'}</td>
+                  <td className="px-4 py-3 text-right space-x-1">
+                    {inst.isConnected
+                      ? <button className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50 px-2 py-1" disabled={ib} onClick={() => handleDisconnect(inst.id)}>{ib ? '...' : 'Desconectar'}</button>
+                      : <button className="text-xs text-emerald-600 hover:text-emerald-700 font-medium disabled:opacity-50 px-2 py-1" disabled={ib} onClick={() => handleConnect(inst)}>{ib ? '...' : 'Conectar'}</button>}
+                    <button className="text-xs text-destructive hover:text-destructive/80 disabled:opacity-50 px-2 py-1" disabled={ib} onClick={() => handleDelete(inst.id)}>Eliminar</button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      )}
+      <Dialog open={createModalOpen} onOpenChange={(o) => { setCreateModalOpen(o); if (!o) setNewInstancia({ nombre: '', token: '' }); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader className="pr-8">
+            <DialogTitle className="flex items-center gap-2"><Link2 className="h-5 w-5 text-primary" /> Agregar conexión</DialogTitle>
+            <DialogDescription>Creá una nueva instancia de WhatsApp en Evolution GO</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="inst-nombre">Nombre de instancia</Label>
+              <Input id="inst-nombre" value={newInstancia.nombre} onChange={(e) => setNewInstancia((p) => ({ ...p, nombre: e.target.value }))} placeholder="Ej: crm-flota-2" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="inst-token">Token de API (opcional)</Label>
+              <Input id="inst-token" value={newInstancia.token} onChange={(e) => setNewInstancia((p) => ({ ...p, token: e.target.value }))} placeholder="Ej: abc123def456" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setCreateModalOpen(false); setNewInstancia({ nombre: '', token: '' }); }}>Cancelar</Button>
+            <Button disabled={!newInstancia.nombre.trim() || creating} onClick={() => void handleCreate()}>
+              {creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Link2 className="mr-2 h-4 w-4" />}
+              {creating ? 'Creando...' : 'Crear'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+/* ==================== MASIVO HISTORY ==================== */
+
+function MasivoHistoryView({ onCreateNew }: { onCreateNew?: () => void }) {
+  const [campaigns, setCampaigns] = useState<FlotaBulkCampaign[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const PAGE_SIZE = 15;
+
+  useEffect(() => {
+    setLoading(true);
+    listFlotaBulkCampaigns(page, PAGE_SIZE).then((r) => { setCampaigns(r.items); setTotal(r.total); }).catch(() => toast.error('Error')).finally(() => setLoading(false));
+  }, [page]);
+
+  const tp = Math.ceil(total / PAGE_SIZE);
+  return (
+    <div className="flex flex-col h-full p-6 overflow-y-auto scrollbar-thin">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-xl font-bold tracking-tight">Campañas masivas</h2>
+          <p className="text-sm text-muted-foreground mt-1">{total > 0 ? `${total} campaña(s) realizadas` : 'Historial de envíos masivos'}</p>
+        </div>
+        <Button className="gap-1.5" onClick={onCreateNew}><Plus className="size-4" /> Nueva campaña</Button>
+      </div>
+      <div className="rounded-lg border overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/50 text-xs text-muted-foreground">
+            <tr>
+              <th className="px-4 py-3 text-left font-medium">Nombre</th><th className="px-4 py-3 text-left font-medium">Estado</th>
+              <th className="px-4 py-3 text-center font-medium">Total</th><th className="px-4 py-3 text-center font-medium">Enviados</th>
+              <th className="px-4 py-3 text-center font-medium">Fallidos</th><th className="px-4 py-3 text-left font-medium">Creado por</th><th className="px-4 py-3 text-left font-medium">Fecha</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan={7} className="px-4 py-12 text-center"><Loader2 className="size-5 animate-spin mx-auto text-muted-foreground" /></td></tr>
+            ) : campaigns.length === 0 ? (
+              <tr><td colSpan={7} className="px-4 py-12 text-center text-sm text-muted-foreground">No hay campañas aún</td></tr>
+            ) : campaigns.map((c) => (
+              <tr key={c.id} className="border-t">
+                <td className="px-4 py-3 font-medium">{c.name}</td>
+                <td className="px-4 py-3">
+                  <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
+                    c.status === 'sent' ? 'bg-emerald-100 text-emerald-700' : c.status === 'sending' ? 'bg-blue-100 text-blue-700' : c.status === 'cancelled' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700')}>
+                    {c.status === 'sent' ? 'Enviada' : c.status === 'sending' ? 'Enviando' : c.status === 'cancelled' ? 'Cancelada' : 'Fallida'}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-center tabular-nums">{c.total}</td>
+                <td className="px-4 py-3 text-center tabular-nums text-emerald-600">{c.sent}</td>
+                <td className="px-4 py-3 text-center tabular-nums text-red-600">{c.failed}</td>
+                <td className="px-4 py-3 text-muted-foreground">{c.createdByName}</td>
+                <td className="px-4 py-3 text-muted-foreground text-xs">{new Date(c.createdAt).toLocaleDateString('es-PE', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {tp > 1 && <Pagination page={page} totalPages={tp} onPageChange={setPage} totalItems={total} pageSize={PAGE_SIZE} />}
     </div>
   );
 }

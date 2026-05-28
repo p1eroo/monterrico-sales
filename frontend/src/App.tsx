@@ -148,13 +148,13 @@ function MainRoutes() {
         <Route path="/flota/prospectos/:id" element={<FlotaProspectoDetail />} />
         <Route path="/flota/conductores" element={<FlotaConductores />} />
         <Route path="/flota/reportes" element={<FlotaReportes />} />
-        <Route path="/flota/mensajes" element={<FlotaMensajes />} />
         <Route path="/marketing" element={<Navigate to="/marketing/dashboard" replace />} />
         <Route path="/marketing/dashboard" element={<MarketingDashboard />} />
       </Route>
     </Route>
     <Route element={<ProtectedRoute><ModuleGate /></ProtectedRoute>}>
         <Route path="/agentes-ia/workflow/:agentId" element={<AgentesIaWorkflow />} />
+        <Route path="/flota/mensajes" element={<FlotaMensajes />} />
       </Route>
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

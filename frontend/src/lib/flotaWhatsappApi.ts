@@ -29,6 +29,8 @@ export type FlotaWhatsappConnection = {
   qrGeneratedAt: string | null;
   qrExpiresAt: string | null;
   lastError: string | null;
+  useForInbox: boolean;
+  useForMasivo: boolean;
 };
 
 export type FlotaWhatsappConnectionResponse = {
@@ -220,7 +222,7 @@ export async function sendFlotaBulk(params: {
   prospectoIds: string[];
   text: string;
   imageUrl?: string;
-}): Promise<{ jobId: string }> {
+}): Promise<{ jobId: string; campaignId: string }> {
   return api('/api/whatsapp/flota/send-bulk', {
     method: 'POST',
     body: JSON.stringify(params),
@@ -245,4 +247,54 @@ export async function pauseFlotaBulk(jobId: string): Promise<void> {
 
 export async function resumeFlotaBulk(jobId: string): Promise<void> {
   return api(`/api/whatsapp/flota/send-bulk/${jobId}/resume`, { method: 'POST' });
+}
+
+export type FlotaInstanceDetail = FlotaWhatsappConnection & { id: string };
+
+export async function fetchFlotaInstances(): Promise<FlotaInstanceDetail[]> {
+  return api<FlotaInstanceDetail[]>('/api/whatsapp/flota/instances');
+}
+
+export async function createFlotaInstance(name: string, token?: string): Promise<{ instance: FlotaInstanceDetail }> {
+  return api('/api/whatsapp/flota/instances', {
+    method: 'POST',
+    body: JSON.stringify({ name, token }),
+  });
+}
+
+export async function connectFlotaInstance(id: string): Promise<{ instance: FlotaInstanceDetail }> {
+  return api(`/api/whatsapp/flota/instances/${id}/connect`, { method: 'POST' });
+}
+
+export async function disconnectFlotaInstance(id: string): Promise<{ instance: FlotaInstanceDetail }> {
+  return api(`/api/whatsapp/flota/instances/${id}/disconnect`, { method: 'POST' });
+}
+
+export async function deleteFlotaInstance(id: string): Promise<{ ok: boolean }> {
+  return api(`/api/whatsapp/flota/instances/${id}`, { method: 'DELETE' });
+}
+
+export async function updateFlotaInstanceFlags(id: string, flags: { useForInbox?: boolean; useForMasivo?: boolean }): Promise<{ instance: FlotaInstanceDetail }> {
+  return api(`/api/whatsapp/flota/instances/${id}/flags`, {
+    method: 'PATCH',
+    body: JSON.stringify(flags),
+  });
+}
+
+export type FlotaBulkCampaign = {
+  id: string;
+  name: string;
+  message: string;
+  total: number;
+  sent: number;
+  failed: number;
+  status: string;
+  imageUrl: string | null;
+  createdById: string;
+  createdByName: string;
+  createdAt: string;
+};
+
+export async function listFlotaBulkCampaigns(page = 1, limit = 20): Promise<{ items: FlotaBulkCampaign[]; total: number; page: number; limit: number }> {
+  return api(`/api/whatsapp/flota/bulk-campaigns?page=${page}&limit=${limit}`);
 }

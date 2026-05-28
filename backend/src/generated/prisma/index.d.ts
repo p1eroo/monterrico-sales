@@ -209,6 +209,11 @@ export type CampaignEmailSendLog = $Result.DefaultSelection<Prisma.$CampaignEmai
  */
 export type Campaign = $Result.DefaultSelection<Prisma.$CampaignPayload>
 /**
+ * Model FlotaBulkCampaign
+ * * Campaña de envío masivo de WhatsApp por Flota (persistida)
+ */
+export type FlotaBulkCampaign = $Result.DefaultSelection<Prisma.$FlotaBulkCampaignPayload>
+/**
  * Model CrmFile
  * * Adjuntos del CRM: metadatos en BD; binario en S3/MinIO o URL pública (CDN) vía proxy de medios.
  */
@@ -731,6 +736,16 @@ export class PrismaClient<
   get campaign(): Prisma.CampaignDelegate<ExtArgs, ClientOptions>;
 
   /**
+   * `prisma.flotaBulkCampaign`: Exposes CRUD operations for the **FlotaBulkCampaign** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more FlotaBulkCampaigns
+    * const flotaBulkCampaigns = await prisma.flotaBulkCampaign.findMany()
+    * ```
+    */
+  get flotaBulkCampaign(): Prisma.FlotaBulkCampaignDelegate<ExtArgs, ClientOptions>;
+
+  /**
    * `prisma.crmFile`: Exposes CRUD operations for the **CrmFile** model.
     * Example usage:
     * ```ts
@@ -1222,6 +1237,7 @@ export namespace Prisma {
     OpportunityActivity: 'OpportunityActivity',
     CampaignEmailSendLog: 'CampaignEmailSendLog',
     Campaign: 'Campaign',
+    FlotaBulkCampaign: 'FlotaBulkCampaign',
     CrmFile: 'CrmFile',
     FlotaProspecto: 'FlotaProspecto'
   };
@@ -1239,7 +1255,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "role" | "authority" | "account" | "user" | "whatsappInstance" | "crmNotification" | "activityLog" | "auditChangeSet" | "auditChangeEntry" | "aiConversation" | "aiMessage" | "aiKnowledgeBase" | "aiKnowledgeChunk" | "aiAssistantInstruction" | "crmOrganizationProfile" | "crmMonthlySalesTarget" | "crmLeadSource" | "crmStage" | "crmPriority" | "crmActivityType" | "crmUserSalesGoal" | "crmUserMonthlySalesTarget" | "contact" | "crmWhatsappMessage" | "company" | "client" | "opportunity" | "activity" | "companyContact" | "contactContact" | "contactOpportunity" | "companyCompany" | "companyOpportunity" | "opportunityOpportunity" | "contactActivity" | "companyActivity" | "opportunityActivity" | "campaignEmailSendLog" | "campaign" | "crmFile" | "flotaProspecto"
+      modelProps: "role" | "authority" | "account" | "user" | "whatsappInstance" | "crmNotification" | "activityLog" | "auditChangeSet" | "auditChangeEntry" | "aiConversation" | "aiMessage" | "aiKnowledgeBase" | "aiKnowledgeChunk" | "aiAssistantInstruction" | "crmOrganizationProfile" | "crmMonthlySalesTarget" | "crmLeadSource" | "crmStage" | "crmPriority" | "crmActivityType" | "crmUserSalesGoal" | "crmUserMonthlySalesTarget" | "contact" | "crmWhatsappMessage" | "company" | "client" | "opportunity" | "activity" | "companyContact" | "contactContact" | "contactOpportunity" | "companyCompany" | "companyOpportunity" | "opportunityOpportunity" | "contactActivity" | "companyActivity" | "opportunityActivity" | "campaignEmailSendLog" | "campaign" | "flotaBulkCampaign" | "crmFile" | "flotaProspecto"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -4129,6 +4145,80 @@ export namespace Prisma {
           }
         }
       }
+      FlotaBulkCampaign: {
+        payload: Prisma.$FlotaBulkCampaignPayload<ExtArgs>
+        fields: Prisma.FlotaBulkCampaignFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.FlotaBulkCampaignFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlotaBulkCampaignPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.FlotaBulkCampaignFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlotaBulkCampaignPayload>
+          }
+          findFirst: {
+            args: Prisma.FlotaBulkCampaignFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlotaBulkCampaignPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.FlotaBulkCampaignFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlotaBulkCampaignPayload>
+          }
+          findMany: {
+            args: Prisma.FlotaBulkCampaignFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlotaBulkCampaignPayload>[]
+          }
+          create: {
+            args: Prisma.FlotaBulkCampaignCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlotaBulkCampaignPayload>
+          }
+          createMany: {
+            args: Prisma.FlotaBulkCampaignCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.FlotaBulkCampaignCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlotaBulkCampaignPayload>[]
+          }
+          delete: {
+            args: Prisma.FlotaBulkCampaignDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlotaBulkCampaignPayload>
+          }
+          update: {
+            args: Prisma.FlotaBulkCampaignUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlotaBulkCampaignPayload>
+          }
+          deleteMany: {
+            args: Prisma.FlotaBulkCampaignDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.FlotaBulkCampaignUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.FlotaBulkCampaignUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlotaBulkCampaignPayload>[]
+          }
+          upsert: {
+            args: Prisma.FlotaBulkCampaignUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlotaBulkCampaignPayload>
+          }
+          aggregate: {
+            args: Prisma.FlotaBulkCampaignAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateFlotaBulkCampaign>
+          }
+          groupBy: {
+            args: Prisma.FlotaBulkCampaignGroupByArgs<ExtArgs>
+            result: $Utils.Optional<FlotaBulkCampaignGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.FlotaBulkCampaignCountArgs<ExtArgs>
+            result: $Utils.Optional<FlotaBulkCampaignCountAggregateOutputType> | number
+          }
+        }
+      }
       CrmFile: {
         payload: Prisma.$CrmFilePayload<ExtArgs>
         fields: Prisma.CrmFileFieldRefs
@@ -4424,6 +4514,7 @@ export namespace Prisma {
     opportunityActivity?: OpportunityActivityOmit
     campaignEmailSendLog?: CampaignEmailSendLogOmit
     campaign?: CampaignOmit
+    flotaBulkCampaign?: FlotaBulkCampaignOmit
     crmFile?: CrmFileOmit
     flotaProspecto?: FlotaProspectoOmit
   }
@@ -10058,6 +10149,8 @@ export namespace Prisma {
     lastConnectedAt: Date | null
     lastDisconnectedAt: Date | null
     lastError: string | null
+    useForInbox: boolean | null
+    useForMasivo: boolean | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -10079,6 +10172,8 @@ export namespace Prisma {
     lastConnectedAt: Date | null
     lastDisconnectedAt: Date | null
     lastError: string | null
+    useForInbox: boolean | null
+    useForMasivo: boolean | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -10100,6 +10195,8 @@ export namespace Prisma {
     lastConnectedAt: number
     lastDisconnectedAt: number
     lastError: number
+    useForInbox: number
+    useForMasivo: number
     createdAt: number
     updatedAt: number
     _all: number
@@ -10123,6 +10220,8 @@ export namespace Prisma {
     lastConnectedAt?: true
     lastDisconnectedAt?: true
     lastError?: true
+    useForInbox?: true
+    useForMasivo?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -10144,6 +10243,8 @@ export namespace Prisma {
     lastConnectedAt?: true
     lastDisconnectedAt?: true
     lastError?: true
+    useForInbox?: true
+    useForMasivo?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -10165,6 +10266,8 @@ export namespace Prisma {
     lastConnectedAt?: true
     lastDisconnectedAt?: true
     lastError?: true
+    useForInbox?: true
+    useForMasivo?: true
     createdAt?: true
     updatedAt?: true
     _all?: true
@@ -10259,6 +10362,8 @@ export namespace Prisma {
     lastConnectedAt: Date | null
     lastDisconnectedAt: Date | null
     lastError: string | null
+    useForInbox: boolean
+    useForMasivo: boolean
     createdAt: Date
     updatedAt: Date
     _count: WhatsappInstanceCountAggregateOutputType | null
@@ -10297,6 +10402,8 @@ export namespace Prisma {
     lastConnectedAt?: boolean
     lastDisconnectedAt?: boolean
     lastError?: boolean
+    useForInbox?: boolean
+    useForMasivo?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     user?: boolean | WhatsappInstance$userArgs<ExtArgs>
@@ -10321,6 +10428,8 @@ export namespace Prisma {
     lastConnectedAt?: boolean
     lastDisconnectedAt?: boolean
     lastError?: boolean
+    useForInbox?: boolean
+    useForMasivo?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     user?: boolean | WhatsappInstance$userArgs<ExtArgs>
@@ -10343,6 +10452,8 @@ export namespace Prisma {
     lastConnectedAt?: boolean
     lastDisconnectedAt?: boolean
     lastError?: boolean
+    useForInbox?: boolean
+    useForMasivo?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     user?: boolean | WhatsappInstance$userArgs<ExtArgs>
@@ -10365,11 +10476,13 @@ export namespace Prisma {
     lastConnectedAt?: boolean
     lastDisconnectedAt?: boolean
     lastError?: boolean
+    useForInbox?: boolean
+    useForMasivo?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type WhatsappInstanceOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "userId" | "instanceType" | "instanceName" | "instanceApiKey" | "evoInstanceId" | "displayLineId" | "status" | "qrCode" | "qrText" | "pairingCode" | "qrGeneratedAt" | "qrExpiresAt" | "lastConnectedAt" | "lastDisconnectedAt" | "lastError" | "createdAt" | "updatedAt", ExtArgs["result"]["whatsappInstance"]>
+  export type WhatsappInstanceOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "userId" | "instanceType" | "instanceName" | "instanceApiKey" | "evoInstanceId" | "displayLineId" | "status" | "qrCode" | "qrText" | "pairingCode" | "qrGeneratedAt" | "qrExpiresAt" | "lastConnectedAt" | "lastDisconnectedAt" | "lastError" | "useForInbox" | "useForMasivo" | "createdAt" | "updatedAt", ExtArgs["result"]["whatsappInstance"]>
   export type WhatsappInstanceInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     user?: boolean | WhatsappInstance$userArgs<ExtArgs>
     messages?: boolean | WhatsappInstance$messagesArgs<ExtArgs>
@@ -10405,6 +10518,8 @@ export namespace Prisma {
       lastConnectedAt: Date | null
       lastDisconnectedAt: Date | null
       lastError: string | null
+      useForInbox: boolean
+      useForMasivo: boolean
       createdAt: Date
       updatedAt: Date
     }, ExtArgs["result"]["whatsappInstance"]>
@@ -10848,6 +10963,8 @@ export namespace Prisma {
     readonly lastConnectedAt: FieldRef<"WhatsappInstance", 'DateTime'>
     readonly lastDisconnectedAt: FieldRef<"WhatsappInstance", 'DateTime'>
     readonly lastError: FieldRef<"WhatsappInstance", 'String'>
+    readonly useForInbox: FieldRef<"WhatsappInstance", 'Boolean'>
+    readonly useForMasivo: FieldRef<"WhatsappInstance", 'Boolean'>
     readonly createdAt: FieldRef<"WhatsappInstance", 'DateTime'>
     readonly updatedAt: FieldRef<"WhatsappInstance", 'DateTime'>
   }
@@ -49802,6 +49919,1139 @@ export namespace Prisma {
 
 
   /**
+   * Model FlotaBulkCampaign
+   */
+
+  export type AggregateFlotaBulkCampaign = {
+    _count: FlotaBulkCampaignCountAggregateOutputType | null
+    _avg: FlotaBulkCampaignAvgAggregateOutputType | null
+    _sum: FlotaBulkCampaignSumAggregateOutputType | null
+    _min: FlotaBulkCampaignMinAggregateOutputType | null
+    _max: FlotaBulkCampaignMaxAggregateOutputType | null
+  }
+
+  export type FlotaBulkCampaignAvgAggregateOutputType = {
+    total: number | null
+    sent: number | null
+    failed: number | null
+  }
+
+  export type FlotaBulkCampaignSumAggregateOutputType = {
+    total: number | null
+    sent: number | null
+    failed: number | null
+  }
+
+  export type FlotaBulkCampaignMinAggregateOutputType = {
+    id: string | null
+    name: string | null
+    message: string | null
+    total: number | null
+    sent: number | null
+    failed: number | null
+    status: string | null
+    imageUrl: string | null
+    createdById: string | null
+    createdByName: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type FlotaBulkCampaignMaxAggregateOutputType = {
+    id: string | null
+    name: string | null
+    message: string | null
+    total: number | null
+    sent: number | null
+    failed: number | null
+    status: string | null
+    imageUrl: string | null
+    createdById: string | null
+    createdByName: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type FlotaBulkCampaignCountAggregateOutputType = {
+    id: number
+    name: number
+    message: number
+    total: number
+    sent: number
+    failed: number
+    status: number
+    imageUrl: number
+    createdById: number
+    createdByName: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type FlotaBulkCampaignAvgAggregateInputType = {
+    total?: true
+    sent?: true
+    failed?: true
+  }
+
+  export type FlotaBulkCampaignSumAggregateInputType = {
+    total?: true
+    sent?: true
+    failed?: true
+  }
+
+  export type FlotaBulkCampaignMinAggregateInputType = {
+    id?: true
+    name?: true
+    message?: true
+    total?: true
+    sent?: true
+    failed?: true
+    status?: true
+    imageUrl?: true
+    createdById?: true
+    createdByName?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type FlotaBulkCampaignMaxAggregateInputType = {
+    id?: true
+    name?: true
+    message?: true
+    total?: true
+    sent?: true
+    failed?: true
+    status?: true
+    imageUrl?: true
+    createdById?: true
+    createdByName?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type FlotaBulkCampaignCountAggregateInputType = {
+    id?: true
+    name?: true
+    message?: true
+    total?: true
+    sent?: true
+    failed?: true
+    status?: true
+    imageUrl?: true
+    createdById?: true
+    createdByName?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type FlotaBulkCampaignAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which FlotaBulkCampaign to aggregate.
+     */
+    where?: FlotaBulkCampaignWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of FlotaBulkCampaigns to fetch.
+     */
+    orderBy?: FlotaBulkCampaignOrderByWithRelationInput | FlotaBulkCampaignOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: FlotaBulkCampaignWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` FlotaBulkCampaigns from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` FlotaBulkCampaigns.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned FlotaBulkCampaigns
+    **/
+    _count?: true | FlotaBulkCampaignCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: FlotaBulkCampaignAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: FlotaBulkCampaignSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: FlotaBulkCampaignMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: FlotaBulkCampaignMaxAggregateInputType
+  }
+
+  export type GetFlotaBulkCampaignAggregateType<T extends FlotaBulkCampaignAggregateArgs> = {
+        [P in keyof T & keyof AggregateFlotaBulkCampaign]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateFlotaBulkCampaign[P]>
+      : GetScalarType<T[P], AggregateFlotaBulkCampaign[P]>
+  }
+
+
+
+
+  export type FlotaBulkCampaignGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: FlotaBulkCampaignWhereInput
+    orderBy?: FlotaBulkCampaignOrderByWithAggregationInput | FlotaBulkCampaignOrderByWithAggregationInput[]
+    by: FlotaBulkCampaignScalarFieldEnum[] | FlotaBulkCampaignScalarFieldEnum
+    having?: FlotaBulkCampaignScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: FlotaBulkCampaignCountAggregateInputType | true
+    _avg?: FlotaBulkCampaignAvgAggregateInputType
+    _sum?: FlotaBulkCampaignSumAggregateInputType
+    _min?: FlotaBulkCampaignMinAggregateInputType
+    _max?: FlotaBulkCampaignMaxAggregateInputType
+  }
+
+  export type FlotaBulkCampaignGroupByOutputType = {
+    id: string
+    name: string
+    message: string
+    total: number
+    sent: number
+    failed: number
+    status: string
+    imageUrl: string | null
+    createdById: string
+    createdByName: string
+    createdAt: Date
+    updatedAt: Date
+    _count: FlotaBulkCampaignCountAggregateOutputType | null
+    _avg: FlotaBulkCampaignAvgAggregateOutputType | null
+    _sum: FlotaBulkCampaignSumAggregateOutputType | null
+    _min: FlotaBulkCampaignMinAggregateOutputType | null
+    _max: FlotaBulkCampaignMaxAggregateOutputType | null
+  }
+
+  type GetFlotaBulkCampaignGroupByPayload<T extends FlotaBulkCampaignGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<FlotaBulkCampaignGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof FlotaBulkCampaignGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], FlotaBulkCampaignGroupByOutputType[P]>
+            : GetScalarType<T[P], FlotaBulkCampaignGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type FlotaBulkCampaignSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    name?: boolean
+    message?: boolean
+    total?: boolean
+    sent?: boolean
+    failed?: boolean
+    status?: boolean
+    imageUrl?: boolean
+    createdById?: boolean
+    createdByName?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["flotaBulkCampaign"]>
+
+  export type FlotaBulkCampaignSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    name?: boolean
+    message?: boolean
+    total?: boolean
+    sent?: boolean
+    failed?: boolean
+    status?: boolean
+    imageUrl?: boolean
+    createdById?: boolean
+    createdByName?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["flotaBulkCampaign"]>
+
+  export type FlotaBulkCampaignSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    name?: boolean
+    message?: boolean
+    total?: boolean
+    sent?: boolean
+    failed?: boolean
+    status?: boolean
+    imageUrl?: boolean
+    createdById?: boolean
+    createdByName?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["flotaBulkCampaign"]>
+
+  export type FlotaBulkCampaignSelectScalar = {
+    id?: boolean
+    name?: boolean
+    message?: boolean
+    total?: boolean
+    sent?: boolean
+    failed?: boolean
+    status?: boolean
+    imageUrl?: boolean
+    createdById?: boolean
+    createdByName?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type FlotaBulkCampaignOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "message" | "total" | "sent" | "failed" | "status" | "imageUrl" | "createdById" | "createdByName" | "createdAt" | "updatedAt", ExtArgs["result"]["flotaBulkCampaign"]>
+
+  export type $FlotaBulkCampaignPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "FlotaBulkCampaign"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      name: string
+      message: string
+      total: number
+      sent: number
+      failed: number
+      status: string
+      imageUrl: string | null
+      createdById: string
+      createdByName: string
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["flotaBulkCampaign"]>
+    composites: {}
+  }
+
+  type FlotaBulkCampaignGetPayload<S extends boolean | null | undefined | FlotaBulkCampaignDefaultArgs> = $Result.GetResult<Prisma.$FlotaBulkCampaignPayload, S>
+
+  type FlotaBulkCampaignCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<FlotaBulkCampaignFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: FlotaBulkCampaignCountAggregateInputType | true
+    }
+
+  export interface FlotaBulkCampaignDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['FlotaBulkCampaign'], meta: { name: 'FlotaBulkCampaign' } }
+    /**
+     * Find zero or one FlotaBulkCampaign that matches the filter.
+     * @param {FlotaBulkCampaignFindUniqueArgs} args - Arguments to find a FlotaBulkCampaign
+     * @example
+     * // Get one FlotaBulkCampaign
+     * const flotaBulkCampaign = await prisma.flotaBulkCampaign.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends FlotaBulkCampaignFindUniqueArgs>(args: SelectSubset<T, FlotaBulkCampaignFindUniqueArgs<ExtArgs>>): Prisma__FlotaBulkCampaignClient<$Result.GetResult<Prisma.$FlotaBulkCampaignPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one FlotaBulkCampaign that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {FlotaBulkCampaignFindUniqueOrThrowArgs} args - Arguments to find a FlotaBulkCampaign
+     * @example
+     * // Get one FlotaBulkCampaign
+     * const flotaBulkCampaign = await prisma.flotaBulkCampaign.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends FlotaBulkCampaignFindUniqueOrThrowArgs>(args: SelectSubset<T, FlotaBulkCampaignFindUniqueOrThrowArgs<ExtArgs>>): Prisma__FlotaBulkCampaignClient<$Result.GetResult<Prisma.$FlotaBulkCampaignPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first FlotaBulkCampaign that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlotaBulkCampaignFindFirstArgs} args - Arguments to find a FlotaBulkCampaign
+     * @example
+     * // Get one FlotaBulkCampaign
+     * const flotaBulkCampaign = await prisma.flotaBulkCampaign.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends FlotaBulkCampaignFindFirstArgs>(args?: SelectSubset<T, FlotaBulkCampaignFindFirstArgs<ExtArgs>>): Prisma__FlotaBulkCampaignClient<$Result.GetResult<Prisma.$FlotaBulkCampaignPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first FlotaBulkCampaign that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlotaBulkCampaignFindFirstOrThrowArgs} args - Arguments to find a FlotaBulkCampaign
+     * @example
+     * // Get one FlotaBulkCampaign
+     * const flotaBulkCampaign = await prisma.flotaBulkCampaign.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends FlotaBulkCampaignFindFirstOrThrowArgs>(args?: SelectSubset<T, FlotaBulkCampaignFindFirstOrThrowArgs<ExtArgs>>): Prisma__FlotaBulkCampaignClient<$Result.GetResult<Prisma.$FlotaBulkCampaignPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more FlotaBulkCampaigns that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlotaBulkCampaignFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all FlotaBulkCampaigns
+     * const flotaBulkCampaigns = await prisma.flotaBulkCampaign.findMany()
+     * 
+     * // Get first 10 FlotaBulkCampaigns
+     * const flotaBulkCampaigns = await prisma.flotaBulkCampaign.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const flotaBulkCampaignWithIdOnly = await prisma.flotaBulkCampaign.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends FlotaBulkCampaignFindManyArgs>(args?: SelectSubset<T, FlotaBulkCampaignFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FlotaBulkCampaignPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a FlotaBulkCampaign.
+     * @param {FlotaBulkCampaignCreateArgs} args - Arguments to create a FlotaBulkCampaign.
+     * @example
+     * // Create one FlotaBulkCampaign
+     * const FlotaBulkCampaign = await prisma.flotaBulkCampaign.create({
+     *   data: {
+     *     // ... data to create a FlotaBulkCampaign
+     *   }
+     * })
+     * 
+     */
+    create<T extends FlotaBulkCampaignCreateArgs>(args: SelectSubset<T, FlotaBulkCampaignCreateArgs<ExtArgs>>): Prisma__FlotaBulkCampaignClient<$Result.GetResult<Prisma.$FlotaBulkCampaignPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many FlotaBulkCampaigns.
+     * @param {FlotaBulkCampaignCreateManyArgs} args - Arguments to create many FlotaBulkCampaigns.
+     * @example
+     * // Create many FlotaBulkCampaigns
+     * const flotaBulkCampaign = await prisma.flotaBulkCampaign.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends FlotaBulkCampaignCreateManyArgs>(args?: SelectSubset<T, FlotaBulkCampaignCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many FlotaBulkCampaigns and returns the data saved in the database.
+     * @param {FlotaBulkCampaignCreateManyAndReturnArgs} args - Arguments to create many FlotaBulkCampaigns.
+     * @example
+     * // Create many FlotaBulkCampaigns
+     * const flotaBulkCampaign = await prisma.flotaBulkCampaign.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many FlotaBulkCampaigns and only return the `id`
+     * const flotaBulkCampaignWithIdOnly = await prisma.flotaBulkCampaign.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends FlotaBulkCampaignCreateManyAndReturnArgs>(args?: SelectSubset<T, FlotaBulkCampaignCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FlotaBulkCampaignPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a FlotaBulkCampaign.
+     * @param {FlotaBulkCampaignDeleteArgs} args - Arguments to delete one FlotaBulkCampaign.
+     * @example
+     * // Delete one FlotaBulkCampaign
+     * const FlotaBulkCampaign = await prisma.flotaBulkCampaign.delete({
+     *   where: {
+     *     // ... filter to delete one FlotaBulkCampaign
+     *   }
+     * })
+     * 
+     */
+    delete<T extends FlotaBulkCampaignDeleteArgs>(args: SelectSubset<T, FlotaBulkCampaignDeleteArgs<ExtArgs>>): Prisma__FlotaBulkCampaignClient<$Result.GetResult<Prisma.$FlotaBulkCampaignPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one FlotaBulkCampaign.
+     * @param {FlotaBulkCampaignUpdateArgs} args - Arguments to update one FlotaBulkCampaign.
+     * @example
+     * // Update one FlotaBulkCampaign
+     * const flotaBulkCampaign = await prisma.flotaBulkCampaign.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends FlotaBulkCampaignUpdateArgs>(args: SelectSubset<T, FlotaBulkCampaignUpdateArgs<ExtArgs>>): Prisma__FlotaBulkCampaignClient<$Result.GetResult<Prisma.$FlotaBulkCampaignPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more FlotaBulkCampaigns.
+     * @param {FlotaBulkCampaignDeleteManyArgs} args - Arguments to filter FlotaBulkCampaigns to delete.
+     * @example
+     * // Delete a few FlotaBulkCampaigns
+     * const { count } = await prisma.flotaBulkCampaign.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends FlotaBulkCampaignDeleteManyArgs>(args?: SelectSubset<T, FlotaBulkCampaignDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more FlotaBulkCampaigns.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlotaBulkCampaignUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many FlotaBulkCampaigns
+     * const flotaBulkCampaign = await prisma.flotaBulkCampaign.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends FlotaBulkCampaignUpdateManyArgs>(args: SelectSubset<T, FlotaBulkCampaignUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more FlotaBulkCampaigns and returns the data updated in the database.
+     * @param {FlotaBulkCampaignUpdateManyAndReturnArgs} args - Arguments to update many FlotaBulkCampaigns.
+     * @example
+     * // Update many FlotaBulkCampaigns
+     * const flotaBulkCampaign = await prisma.flotaBulkCampaign.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more FlotaBulkCampaigns and only return the `id`
+     * const flotaBulkCampaignWithIdOnly = await prisma.flotaBulkCampaign.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends FlotaBulkCampaignUpdateManyAndReturnArgs>(args: SelectSubset<T, FlotaBulkCampaignUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FlotaBulkCampaignPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one FlotaBulkCampaign.
+     * @param {FlotaBulkCampaignUpsertArgs} args - Arguments to update or create a FlotaBulkCampaign.
+     * @example
+     * // Update or create a FlotaBulkCampaign
+     * const flotaBulkCampaign = await prisma.flotaBulkCampaign.upsert({
+     *   create: {
+     *     // ... data to create a FlotaBulkCampaign
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the FlotaBulkCampaign we want to update
+     *   }
+     * })
+     */
+    upsert<T extends FlotaBulkCampaignUpsertArgs>(args: SelectSubset<T, FlotaBulkCampaignUpsertArgs<ExtArgs>>): Prisma__FlotaBulkCampaignClient<$Result.GetResult<Prisma.$FlotaBulkCampaignPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of FlotaBulkCampaigns.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlotaBulkCampaignCountArgs} args - Arguments to filter FlotaBulkCampaigns to count.
+     * @example
+     * // Count the number of FlotaBulkCampaigns
+     * const count = await prisma.flotaBulkCampaign.count({
+     *   where: {
+     *     // ... the filter for the FlotaBulkCampaigns we want to count
+     *   }
+     * })
+    **/
+    count<T extends FlotaBulkCampaignCountArgs>(
+      args?: Subset<T, FlotaBulkCampaignCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], FlotaBulkCampaignCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a FlotaBulkCampaign.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlotaBulkCampaignAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends FlotaBulkCampaignAggregateArgs>(args: Subset<T, FlotaBulkCampaignAggregateArgs>): Prisma.PrismaPromise<GetFlotaBulkCampaignAggregateType<T>>
+
+    /**
+     * Group by FlotaBulkCampaign.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlotaBulkCampaignGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends FlotaBulkCampaignGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: FlotaBulkCampaignGroupByArgs['orderBy'] }
+        : { orderBy?: FlotaBulkCampaignGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, FlotaBulkCampaignGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetFlotaBulkCampaignGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the FlotaBulkCampaign model
+   */
+  readonly fields: FlotaBulkCampaignFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for FlotaBulkCampaign.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__FlotaBulkCampaignClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the FlotaBulkCampaign model
+   */
+  interface FlotaBulkCampaignFieldRefs {
+    readonly id: FieldRef<"FlotaBulkCampaign", 'String'>
+    readonly name: FieldRef<"FlotaBulkCampaign", 'String'>
+    readonly message: FieldRef<"FlotaBulkCampaign", 'String'>
+    readonly total: FieldRef<"FlotaBulkCampaign", 'Int'>
+    readonly sent: FieldRef<"FlotaBulkCampaign", 'Int'>
+    readonly failed: FieldRef<"FlotaBulkCampaign", 'Int'>
+    readonly status: FieldRef<"FlotaBulkCampaign", 'String'>
+    readonly imageUrl: FieldRef<"FlotaBulkCampaign", 'String'>
+    readonly createdById: FieldRef<"FlotaBulkCampaign", 'String'>
+    readonly createdByName: FieldRef<"FlotaBulkCampaign", 'String'>
+    readonly createdAt: FieldRef<"FlotaBulkCampaign", 'DateTime'>
+    readonly updatedAt: FieldRef<"FlotaBulkCampaign", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * FlotaBulkCampaign findUnique
+   */
+  export type FlotaBulkCampaignFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlotaBulkCampaign
+     */
+    select?: FlotaBulkCampaignSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlotaBulkCampaign
+     */
+    omit?: FlotaBulkCampaignOmit<ExtArgs> | null
+    /**
+     * Filter, which FlotaBulkCampaign to fetch.
+     */
+    where: FlotaBulkCampaignWhereUniqueInput
+  }
+
+  /**
+   * FlotaBulkCampaign findUniqueOrThrow
+   */
+  export type FlotaBulkCampaignFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlotaBulkCampaign
+     */
+    select?: FlotaBulkCampaignSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlotaBulkCampaign
+     */
+    omit?: FlotaBulkCampaignOmit<ExtArgs> | null
+    /**
+     * Filter, which FlotaBulkCampaign to fetch.
+     */
+    where: FlotaBulkCampaignWhereUniqueInput
+  }
+
+  /**
+   * FlotaBulkCampaign findFirst
+   */
+  export type FlotaBulkCampaignFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlotaBulkCampaign
+     */
+    select?: FlotaBulkCampaignSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlotaBulkCampaign
+     */
+    omit?: FlotaBulkCampaignOmit<ExtArgs> | null
+    /**
+     * Filter, which FlotaBulkCampaign to fetch.
+     */
+    where?: FlotaBulkCampaignWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of FlotaBulkCampaigns to fetch.
+     */
+    orderBy?: FlotaBulkCampaignOrderByWithRelationInput | FlotaBulkCampaignOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for FlotaBulkCampaigns.
+     */
+    cursor?: FlotaBulkCampaignWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` FlotaBulkCampaigns from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` FlotaBulkCampaigns.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of FlotaBulkCampaigns.
+     */
+    distinct?: FlotaBulkCampaignScalarFieldEnum | FlotaBulkCampaignScalarFieldEnum[]
+  }
+
+  /**
+   * FlotaBulkCampaign findFirstOrThrow
+   */
+  export type FlotaBulkCampaignFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlotaBulkCampaign
+     */
+    select?: FlotaBulkCampaignSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlotaBulkCampaign
+     */
+    omit?: FlotaBulkCampaignOmit<ExtArgs> | null
+    /**
+     * Filter, which FlotaBulkCampaign to fetch.
+     */
+    where?: FlotaBulkCampaignWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of FlotaBulkCampaigns to fetch.
+     */
+    orderBy?: FlotaBulkCampaignOrderByWithRelationInput | FlotaBulkCampaignOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for FlotaBulkCampaigns.
+     */
+    cursor?: FlotaBulkCampaignWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` FlotaBulkCampaigns from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` FlotaBulkCampaigns.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of FlotaBulkCampaigns.
+     */
+    distinct?: FlotaBulkCampaignScalarFieldEnum | FlotaBulkCampaignScalarFieldEnum[]
+  }
+
+  /**
+   * FlotaBulkCampaign findMany
+   */
+  export type FlotaBulkCampaignFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlotaBulkCampaign
+     */
+    select?: FlotaBulkCampaignSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlotaBulkCampaign
+     */
+    omit?: FlotaBulkCampaignOmit<ExtArgs> | null
+    /**
+     * Filter, which FlotaBulkCampaigns to fetch.
+     */
+    where?: FlotaBulkCampaignWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of FlotaBulkCampaigns to fetch.
+     */
+    orderBy?: FlotaBulkCampaignOrderByWithRelationInput | FlotaBulkCampaignOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing FlotaBulkCampaigns.
+     */
+    cursor?: FlotaBulkCampaignWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` FlotaBulkCampaigns from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` FlotaBulkCampaigns.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of FlotaBulkCampaigns.
+     */
+    distinct?: FlotaBulkCampaignScalarFieldEnum | FlotaBulkCampaignScalarFieldEnum[]
+  }
+
+  /**
+   * FlotaBulkCampaign create
+   */
+  export type FlotaBulkCampaignCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlotaBulkCampaign
+     */
+    select?: FlotaBulkCampaignSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlotaBulkCampaign
+     */
+    omit?: FlotaBulkCampaignOmit<ExtArgs> | null
+    /**
+     * The data needed to create a FlotaBulkCampaign.
+     */
+    data: XOR<FlotaBulkCampaignCreateInput, FlotaBulkCampaignUncheckedCreateInput>
+  }
+
+  /**
+   * FlotaBulkCampaign createMany
+   */
+  export type FlotaBulkCampaignCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many FlotaBulkCampaigns.
+     */
+    data: FlotaBulkCampaignCreateManyInput | FlotaBulkCampaignCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * FlotaBulkCampaign createManyAndReturn
+   */
+  export type FlotaBulkCampaignCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlotaBulkCampaign
+     */
+    select?: FlotaBulkCampaignSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlotaBulkCampaign
+     */
+    omit?: FlotaBulkCampaignOmit<ExtArgs> | null
+    /**
+     * The data used to create many FlotaBulkCampaigns.
+     */
+    data: FlotaBulkCampaignCreateManyInput | FlotaBulkCampaignCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * FlotaBulkCampaign update
+   */
+  export type FlotaBulkCampaignUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlotaBulkCampaign
+     */
+    select?: FlotaBulkCampaignSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlotaBulkCampaign
+     */
+    omit?: FlotaBulkCampaignOmit<ExtArgs> | null
+    /**
+     * The data needed to update a FlotaBulkCampaign.
+     */
+    data: XOR<FlotaBulkCampaignUpdateInput, FlotaBulkCampaignUncheckedUpdateInput>
+    /**
+     * Choose, which FlotaBulkCampaign to update.
+     */
+    where: FlotaBulkCampaignWhereUniqueInput
+  }
+
+  /**
+   * FlotaBulkCampaign updateMany
+   */
+  export type FlotaBulkCampaignUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update FlotaBulkCampaigns.
+     */
+    data: XOR<FlotaBulkCampaignUpdateManyMutationInput, FlotaBulkCampaignUncheckedUpdateManyInput>
+    /**
+     * Filter which FlotaBulkCampaigns to update
+     */
+    where?: FlotaBulkCampaignWhereInput
+    /**
+     * Limit how many FlotaBulkCampaigns to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * FlotaBulkCampaign updateManyAndReturn
+   */
+  export type FlotaBulkCampaignUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlotaBulkCampaign
+     */
+    select?: FlotaBulkCampaignSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlotaBulkCampaign
+     */
+    omit?: FlotaBulkCampaignOmit<ExtArgs> | null
+    /**
+     * The data used to update FlotaBulkCampaigns.
+     */
+    data: XOR<FlotaBulkCampaignUpdateManyMutationInput, FlotaBulkCampaignUncheckedUpdateManyInput>
+    /**
+     * Filter which FlotaBulkCampaigns to update
+     */
+    where?: FlotaBulkCampaignWhereInput
+    /**
+     * Limit how many FlotaBulkCampaigns to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * FlotaBulkCampaign upsert
+   */
+  export type FlotaBulkCampaignUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlotaBulkCampaign
+     */
+    select?: FlotaBulkCampaignSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlotaBulkCampaign
+     */
+    omit?: FlotaBulkCampaignOmit<ExtArgs> | null
+    /**
+     * The filter to search for the FlotaBulkCampaign to update in case it exists.
+     */
+    where: FlotaBulkCampaignWhereUniqueInput
+    /**
+     * In case the FlotaBulkCampaign found by the `where` argument doesn't exist, create a new FlotaBulkCampaign with this data.
+     */
+    create: XOR<FlotaBulkCampaignCreateInput, FlotaBulkCampaignUncheckedCreateInput>
+    /**
+     * In case the FlotaBulkCampaign was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<FlotaBulkCampaignUpdateInput, FlotaBulkCampaignUncheckedUpdateInput>
+  }
+
+  /**
+   * FlotaBulkCampaign delete
+   */
+  export type FlotaBulkCampaignDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlotaBulkCampaign
+     */
+    select?: FlotaBulkCampaignSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlotaBulkCampaign
+     */
+    omit?: FlotaBulkCampaignOmit<ExtArgs> | null
+    /**
+     * Filter which FlotaBulkCampaign to delete.
+     */
+    where: FlotaBulkCampaignWhereUniqueInput
+  }
+
+  /**
+   * FlotaBulkCampaign deleteMany
+   */
+  export type FlotaBulkCampaignDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which FlotaBulkCampaigns to delete
+     */
+    where?: FlotaBulkCampaignWhereInput
+    /**
+     * Limit how many FlotaBulkCampaigns to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * FlotaBulkCampaign without action
+   */
+  export type FlotaBulkCampaignDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlotaBulkCampaign
+     */
+    select?: FlotaBulkCampaignSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlotaBulkCampaign
+     */
+    omit?: FlotaBulkCampaignOmit<ExtArgs> | null
+  }
+
+
+  /**
    * Model CrmFile
    */
 
@@ -52403,6 +53653,8 @@ export namespace Prisma {
     lastConnectedAt: 'lastConnectedAt',
     lastDisconnectedAt: 'lastDisconnectedAt',
     lastError: 'lastError',
+    useForInbox: 'useForInbox',
+    useForMasivo: 'useForMasivo',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
   };
@@ -52876,6 +54128,24 @@ export namespace Prisma {
   };
 
   export type CampaignScalarFieldEnum = (typeof CampaignScalarFieldEnum)[keyof typeof CampaignScalarFieldEnum]
+
+
+  export const FlotaBulkCampaignScalarFieldEnum: {
+    id: 'id',
+    name: 'name',
+    message: 'message',
+    total: 'total',
+    sent: 'sent',
+    failed: 'failed',
+    status: 'status',
+    imageUrl: 'imageUrl',
+    createdById: 'createdById',
+    createdByName: 'createdByName',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type FlotaBulkCampaignScalarFieldEnum = (typeof FlotaBulkCampaignScalarFieldEnum)[keyof typeof FlotaBulkCampaignScalarFieldEnum]
 
 
   export const CrmFileScalarFieldEnum: {
@@ -53389,6 +54659,8 @@ export namespace Prisma {
     lastConnectedAt?: DateTimeNullableFilter<"WhatsappInstance"> | Date | string | null
     lastDisconnectedAt?: DateTimeNullableFilter<"WhatsappInstance"> | Date | string | null
     lastError?: StringNullableFilter<"WhatsappInstance"> | string | null
+    useForInbox?: BoolFilter<"WhatsappInstance"> | boolean
+    useForMasivo?: BoolFilter<"WhatsappInstance"> | boolean
     createdAt?: DateTimeFilter<"WhatsappInstance"> | Date | string
     updatedAt?: DateTimeFilter<"WhatsappInstance"> | Date | string
     user?: XOR<UserNullableScalarRelationFilter, UserWhereInput> | null
@@ -53412,6 +54684,8 @@ export namespace Prisma {
     lastConnectedAt?: SortOrderInput | SortOrder
     lastDisconnectedAt?: SortOrderInput | SortOrder
     lastError?: SortOrderInput | SortOrder
+    useForInbox?: SortOrder
+    useForMasivo?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     user?: UserOrderByWithRelationInput
@@ -53438,6 +54712,8 @@ export namespace Prisma {
     lastConnectedAt?: DateTimeNullableFilter<"WhatsappInstance"> | Date | string | null
     lastDisconnectedAt?: DateTimeNullableFilter<"WhatsappInstance"> | Date | string | null
     lastError?: StringNullableFilter<"WhatsappInstance"> | string | null
+    useForInbox?: BoolFilter<"WhatsappInstance"> | boolean
+    useForMasivo?: BoolFilter<"WhatsappInstance"> | boolean
     createdAt?: DateTimeFilter<"WhatsappInstance"> | Date | string
     updatedAt?: DateTimeFilter<"WhatsappInstance"> | Date | string
     user?: XOR<UserNullableScalarRelationFilter, UserWhereInput> | null
@@ -53461,6 +54737,8 @@ export namespace Prisma {
     lastConnectedAt?: SortOrderInput | SortOrder
     lastDisconnectedAt?: SortOrderInput | SortOrder
     lastError?: SortOrderInput | SortOrder
+    useForInbox?: SortOrder
+    useForMasivo?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     _count?: WhatsappInstanceCountOrderByAggregateInput
@@ -53488,6 +54766,8 @@ export namespace Prisma {
     lastConnectedAt?: DateTimeNullableWithAggregatesFilter<"WhatsappInstance"> | Date | string | null
     lastDisconnectedAt?: DateTimeNullableWithAggregatesFilter<"WhatsappInstance"> | Date | string | null
     lastError?: StringNullableWithAggregatesFilter<"WhatsappInstance"> | string | null
+    useForInbox?: BoolWithAggregatesFilter<"WhatsappInstance"> | boolean
+    useForMasivo?: BoolWithAggregatesFilter<"WhatsappInstance"> | boolean
     createdAt?: DateTimeWithAggregatesFilter<"WhatsappInstance"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"WhatsappInstance"> | Date | string
   }
@@ -55959,6 +57239,95 @@ export namespace Prisma {
     createdByName?: StringWithAggregatesFilter<"Campaign"> | string
   }
 
+  export type FlotaBulkCampaignWhereInput = {
+    AND?: FlotaBulkCampaignWhereInput | FlotaBulkCampaignWhereInput[]
+    OR?: FlotaBulkCampaignWhereInput[]
+    NOT?: FlotaBulkCampaignWhereInput | FlotaBulkCampaignWhereInput[]
+    id?: StringFilter<"FlotaBulkCampaign"> | string
+    name?: StringFilter<"FlotaBulkCampaign"> | string
+    message?: StringFilter<"FlotaBulkCampaign"> | string
+    total?: IntFilter<"FlotaBulkCampaign"> | number
+    sent?: IntFilter<"FlotaBulkCampaign"> | number
+    failed?: IntFilter<"FlotaBulkCampaign"> | number
+    status?: StringFilter<"FlotaBulkCampaign"> | string
+    imageUrl?: StringNullableFilter<"FlotaBulkCampaign"> | string | null
+    createdById?: StringFilter<"FlotaBulkCampaign"> | string
+    createdByName?: StringFilter<"FlotaBulkCampaign"> | string
+    createdAt?: DateTimeFilter<"FlotaBulkCampaign"> | Date | string
+    updatedAt?: DateTimeFilter<"FlotaBulkCampaign"> | Date | string
+  }
+
+  export type FlotaBulkCampaignOrderByWithRelationInput = {
+    id?: SortOrder
+    name?: SortOrder
+    message?: SortOrder
+    total?: SortOrder
+    sent?: SortOrder
+    failed?: SortOrder
+    status?: SortOrder
+    imageUrl?: SortOrderInput | SortOrder
+    createdById?: SortOrder
+    createdByName?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type FlotaBulkCampaignWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: FlotaBulkCampaignWhereInput | FlotaBulkCampaignWhereInput[]
+    OR?: FlotaBulkCampaignWhereInput[]
+    NOT?: FlotaBulkCampaignWhereInput | FlotaBulkCampaignWhereInput[]
+    name?: StringFilter<"FlotaBulkCampaign"> | string
+    message?: StringFilter<"FlotaBulkCampaign"> | string
+    total?: IntFilter<"FlotaBulkCampaign"> | number
+    sent?: IntFilter<"FlotaBulkCampaign"> | number
+    failed?: IntFilter<"FlotaBulkCampaign"> | number
+    status?: StringFilter<"FlotaBulkCampaign"> | string
+    imageUrl?: StringNullableFilter<"FlotaBulkCampaign"> | string | null
+    createdById?: StringFilter<"FlotaBulkCampaign"> | string
+    createdByName?: StringFilter<"FlotaBulkCampaign"> | string
+    createdAt?: DateTimeFilter<"FlotaBulkCampaign"> | Date | string
+    updatedAt?: DateTimeFilter<"FlotaBulkCampaign"> | Date | string
+  }, "id">
+
+  export type FlotaBulkCampaignOrderByWithAggregationInput = {
+    id?: SortOrder
+    name?: SortOrder
+    message?: SortOrder
+    total?: SortOrder
+    sent?: SortOrder
+    failed?: SortOrder
+    status?: SortOrder
+    imageUrl?: SortOrderInput | SortOrder
+    createdById?: SortOrder
+    createdByName?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: FlotaBulkCampaignCountOrderByAggregateInput
+    _avg?: FlotaBulkCampaignAvgOrderByAggregateInput
+    _max?: FlotaBulkCampaignMaxOrderByAggregateInput
+    _min?: FlotaBulkCampaignMinOrderByAggregateInput
+    _sum?: FlotaBulkCampaignSumOrderByAggregateInput
+  }
+
+  export type FlotaBulkCampaignScalarWhereWithAggregatesInput = {
+    AND?: FlotaBulkCampaignScalarWhereWithAggregatesInput | FlotaBulkCampaignScalarWhereWithAggregatesInput[]
+    OR?: FlotaBulkCampaignScalarWhereWithAggregatesInput[]
+    NOT?: FlotaBulkCampaignScalarWhereWithAggregatesInput | FlotaBulkCampaignScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"FlotaBulkCampaign"> | string
+    name?: StringWithAggregatesFilter<"FlotaBulkCampaign"> | string
+    message?: StringWithAggregatesFilter<"FlotaBulkCampaign"> | string
+    total?: IntWithAggregatesFilter<"FlotaBulkCampaign"> | number
+    sent?: IntWithAggregatesFilter<"FlotaBulkCampaign"> | number
+    failed?: IntWithAggregatesFilter<"FlotaBulkCampaign"> | number
+    status?: StringWithAggregatesFilter<"FlotaBulkCampaign"> | string
+    imageUrl?: StringNullableWithAggregatesFilter<"FlotaBulkCampaign"> | string | null
+    createdById?: StringWithAggregatesFilter<"FlotaBulkCampaign"> | string
+    createdByName?: StringWithAggregatesFilter<"FlotaBulkCampaign"> | string
+    createdAt?: DateTimeWithAggregatesFilter<"FlotaBulkCampaign"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"FlotaBulkCampaign"> | Date | string
+  }
+
   export type CrmFileWhereInput = {
     AND?: CrmFileWhereInput | CrmFileWhereInput[]
     OR?: CrmFileWhereInput[]
@@ -56560,6 +57929,8 @@ export namespace Prisma {
     lastConnectedAt?: Date | string | null
     lastDisconnectedAt?: Date | string | null
     lastError?: string | null
+    useForInbox?: boolean
+    useForMasivo?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     user?: UserCreateNestedOneWithoutWhatsappInstancesInput
@@ -56583,6 +57954,8 @@ export namespace Prisma {
     lastConnectedAt?: Date | string | null
     lastDisconnectedAt?: Date | string | null
     lastError?: string | null
+    useForInbox?: boolean
+    useForMasivo?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     messages?: CrmWhatsappMessageUncheckedCreateNestedManyWithoutWhatsappInstanceInput
@@ -56604,6 +57977,8 @@ export namespace Prisma {
     lastConnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastDisconnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastError?: NullableStringFieldUpdateOperationsInput | string | null
+    useForInbox?: BoolFieldUpdateOperationsInput | boolean
+    useForMasivo?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     user?: UserUpdateOneWithoutWhatsappInstancesNestedInput
@@ -56627,6 +58002,8 @@ export namespace Prisma {
     lastConnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastDisconnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastError?: NullableStringFieldUpdateOperationsInput | string | null
+    useForInbox?: BoolFieldUpdateOperationsInput | boolean
+    useForMasivo?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     messages?: CrmWhatsappMessageUncheckedUpdateManyWithoutWhatsappInstanceNestedInput
@@ -56649,6 +58026,8 @@ export namespace Prisma {
     lastConnectedAt?: Date | string | null
     lastDisconnectedAt?: Date | string | null
     lastError?: string | null
+    useForInbox?: boolean
+    useForMasivo?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -56669,6 +58048,8 @@ export namespace Prisma {
     lastConnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastDisconnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastError?: NullableStringFieldUpdateOperationsInput | string | null
+    useForInbox?: BoolFieldUpdateOperationsInput | boolean
+    useForMasivo?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -56690,6 +58071,8 @@ export namespace Prisma {
     lastConnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastDisconnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastError?: NullableStringFieldUpdateOperationsInput | string | null
+    useForInbox?: BoolFieldUpdateOperationsInput | boolean
+    useForMasivo?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -59313,6 +60696,111 @@ export namespace Prisma {
     createdByName?: StringFieldUpdateOperationsInput | string
   }
 
+  export type FlotaBulkCampaignCreateInput = {
+    id?: string
+    name: string
+    message: string
+    total?: number
+    sent?: number
+    failed?: number
+    status?: string
+    imageUrl?: string | null
+    createdById: string
+    createdByName: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type FlotaBulkCampaignUncheckedCreateInput = {
+    id?: string
+    name: string
+    message: string
+    total?: number
+    sent?: number
+    failed?: number
+    status?: string
+    imageUrl?: string | null
+    createdById: string
+    createdByName: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type FlotaBulkCampaignUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    message?: StringFieldUpdateOperationsInput | string
+    total?: IntFieldUpdateOperationsInput | number
+    sent?: IntFieldUpdateOperationsInput | number
+    failed?: IntFieldUpdateOperationsInput | number
+    status?: StringFieldUpdateOperationsInput | string
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    createdById?: StringFieldUpdateOperationsInput | string
+    createdByName?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type FlotaBulkCampaignUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    message?: StringFieldUpdateOperationsInput | string
+    total?: IntFieldUpdateOperationsInput | number
+    sent?: IntFieldUpdateOperationsInput | number
+    failed?: IntFieldUpdateOperationsInput | number
+    status?: StringFieldUpdateOperationsInput | string
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    createdById?: StringFieldUpdateOperationsInput | string
+    createdByName?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type FlotaBulkCampaignCreateManyInput = {
+    id?: string
+    name: string
+    message: string
+    total?: number
+    sent?: number
+    failed?: number
+    status?: string
+    imageUrl?: string | null
+    createdById: string
+    createdByName: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type FlotaBulkCampaignUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    message?: StringFieldUpdateOperationsInput | string
+    total?: IntFieldUpdateOperationsInput | number
+    sent?: IntFieldUpdateOperationsInput | number
+    failed?: IntFieldUpdateOperationsInput | number
+    status?: StringFieldUpdateOperationsInput | string
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    createdById?: StringFieldUpdateOperationsInput | string
+    createdByName?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type FlotaBulkCampaignUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    message?: StringFieldUpdateOperationsInput | string
+    total?: IntFieldUpdateOperationsInput | number
+    sent?: IntFieldUpdateOperationsInput | number
+    failed?: IntFieldUpdateOperationsInput | number
+    status?: StringFieldUpdateOperationsInput | string
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    createdById?: StringFieldUpdateOperationsInput | string
+    createdByName?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type CrmFileCreateInput = {
     id?: string
     storageKey: string
@@ -60104,6 +61592,8 @@ export namespace Prisma {
     lastConnectedAt?: SortOrder
     lastDisconnectedAt?: SortOrder
     lastError?: SortOrder
+    useForInbox?: SortOrder
+    useForMasivo?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -60125,6 +61615,8 @@ export namespace Prisma {
     lastConnectedAt?: SortOrder
     lastDisconnectedAt?: SortOrder
     lastError?: SortOrder
+    useForInbox?: SortOrder
+    useForMasivo?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -60146,6 +61638,8 @@ export namespace Prisma {
     lastConnectedAt?: SortOrder
     lastDisconnectedAt?: SortOrder
     lastError?: SortOrder
+    useForInbox?: SortOrder
+    useForMasivo?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -61688,6 +63182,63 @@ export namespace Prisma {
     clickedCount?: SortOrder
     failedCount?: SortOrder
     bounceCount?: SortOrder
+  }
+
+  export type FlotaBulkCampaignCountOrderByAggregateInput = {
+    id?: SortOrder
+    name?: SortOrder
+    message?: SortOrder
+    total?: SortOrder
+    sent?: SortOrder
+    failed?: SortOrder
+    status?: SortOrder
+    imageUrl?: SortOrder
+    createdById?: SortOrder
+    createdByName?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type FlotaBulkCampaignAvgOrderByAggregateInput = {
+    total?: SortOrder
+    sent?: SortOrder
+    failed?: SortOrder
+  }
+
+  export type FlotaBulkCampaignMaxOrderByAggregateInput = {
+    id?: SortOrder
+    name?: SortOrder
+    message?: SortOrder
+    total?: SortOrder
+    sent?: SortOrder
+    failed?: SortOrder
+    status?: SortOrder
+    imageUrl?: SortOrder
+    createdById?: SortOrder
+    createdByName?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type FlotaBulkCampaignMinOrderByAggregateInput = {
+    id?: SortOrder
+    name?: SortOrder
+    message?: SortOrder
+    total?: SortOrder
+    sent?: SortOrder
+    failed?: SortOrder
+    status?: SortOrder
+    imageUrl?: SortOrder
+    createdById?: SortOrder
+    createdByName?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type FlotaBulkCampaignSumOrderByAggregateInput = {
+    total?: SortOrder
+    sent?: SortOrder
+    failed?: SortOrder
   }
 
   export type CrmFileCountOrderByAggregateInput = {
@@ -65585,6 +67136,8 @@ export namespace Prisma {
     lastConnectedAt?: Date | string | null
     lastDisconnectedAt?: Date | string | null
     lastError?: string | null
+    useForInbox?: boolean
+    useForMasivo?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     messages?: CrmWhatsappMessageCreateNestedManyWithoutWhatsappInstanceInput
@@ -65606,6 +67159,8 @@ export namespace Prisma {
     lastConnectedAt?: Date | string | null
     lastDisconnectedAt?: Date | string | null
     lastError?: string | null
+    useForInbox?: boolean
+    useForMasivo?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     messages?: CrmWhatsappMessageUncheckedCreateNestedManyWithoutWhatsappInstanceInput
@@ -66209,6 +67764,8 @@ export namespace Prisma {
     lastConnectedAt?: DateTimeNullableFilter<"WhatsappInstance"> | Date | string | null
     lastDisconnectedAt?: DateTimeNullableFilter<"WhatsappInstance"> | Date | string | null
     lastError?: StringNullableFilter<"WhatsappInstance"> | string | null
+    useForInbox?: BoolFilter<"WhatsappInstance"> | boolean
+    useForMasivo?: BoolFilter<"WhatsappInstance"> | boolean
     createdAt?: DateTimeFilter<"WhatsappInstance"> | Date | string
     updatedAt?: DateTimeFilter<"WhatsappInstance"> | Date | string
   }
@@ -68418,6 +69975,8 @@ export namespace Prisma {
     lastConnectedAt?: Date | string | null
     lastDisconnectedAt?: Date | string | null
     lastError?: string | null
+    useForInbox?: boolean
+    useForMasivo?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     user?: UserCreateNestedOneWithoutWhatsappInstancesInput
@@ -68440,6 +69999,8 @@ export namespace Prisma {
     lastConnectedAt?: Date | string | null
     lastDisconnectedAt?: Date | string | null
     lastError?: string | null
+    useForInbox?: boolean
+    useForMasivo?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -68661,6 +70222,8 @@ export namespace Prisma {
     lastConnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastDisconnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastError?: NullableStringFieldUpdateOperationsInput | string | null
+    useForInbox?: BoolFieldUpdateOperationsInput | boolean
+    useForMasivo?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     user?: UserUpdateOneWithoutWhatsappInstancesNestedInput
@@ -68683,6 +70246,8 @@ export namespace Prisma {
     lastConnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastDisconnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastError?: NullableStringFieldUpdateOperationsInput | string | null
+    useForInbox?: BoolFieldUpdateOperationsInput | boolean
+    useForMasivo?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -72551,6 +74116,8 @@ export namespace Prisma {
     lastConnectedAt?: Date | string | null
     lastDisconnectedAt?: Date | string | null
     lastError?: string | null
+    useForInbox?: boolean
+    useForMasivo?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -73216,6 +74783,8 @@ export namespace Prisma {
     lastConnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastDisconnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastError?: NullableStringFieldUpdateOperationsInput | string | null
+    useForInbox?: BoolFieldUpdateOperationsInput | boolean
+    useForMasivo?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     messages?: CrmWhatsappMessageUpdateManyWithoutWhatsappInstanceNestedInput
@@ -73237,6 +74806,8 @@ export namespace Prisma {
     lastConnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastDisconnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastError?: NullableStringFieldUpdateOperationsInput | string | null
+    useForInbox?: BoolFieldUpdateOperationsInput | boolean
+    useForMasivo?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     messages?: CrmWhatsappMessageUncheckedUpdateManyWithoutWhatsappInstanceNestedInput
@@ -73258,6 +74829,8 @@ export namespace Prisma {
     lastConnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastDisconnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastError?: NullableStringFieldUpdateOperationsInput | string | null
+    useForInbox?: BoolFieldUpdateOperationsInput | boolean
+    useForMasivo?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
