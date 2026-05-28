@@ -292,6 +292,24 @@ export default function FlotaProspectos() {
     return conductorTelefonos.phones.has(normalized);
   };
 
+  const handleOptimisticSave = useCallback(
+    (id: string, field: string, newValue: string | null) => {
+      setProspectos((prev) =>
+        prev.map((p) => {
+          if (p.id !== id) return p;
+          const updated = { ...p };
+          if (field === 'edad' || field === 'anioVehiculo') {
+            (updated as any)[field] = newValue != null ? parseInt(newValue, 10) : null;
+          } else {
+            (updated as any)[field] = newValue;
+          }
+          return updated;
+        }),
+      );
+    },
+    [],
+  );
+
   const getRowClass = (prospecto: FlotaProspectoRow): string => {
     if (isConductor(prospecto.celular)) {
       return "bg-green-50/50 border-l-4 border-l-green-500 dark:bg-green-950/40 dark:border-l-green-400 dark:hover:bg-green-950/60";
@@ -623,6 +641,7 @@ export default function FlotaProspectos() {
                 { label: "F. Afiliacion" },
                 { label: "Movil" },
                 { label: "Observaciones" },
+                { label: "" },
               ]}
               rows={5}
               aria-label="Cargando prospectos"
@@ -658,13 +677,14 @@ export default function FlotaProspectos() {
                   <TableHead className="max-w-[200px]">
                     Observaciones
                   </TableHead>
+                  <TableHead className="w-10"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {prospectos.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={16}
+                      colSpan={17}
                       className="py-12 text-center text-muted-foreground"
                     >
                       {duplicadosFilter
@@ -697,16 +717,15 @@ export default function FlotaProspectos() {
                           value={prospecto.redSocial || ""}
                           fieldId={prospecto.id}
                           fieldKey="redSocial"
-                          onSaved={loadProspectos}
+                          onSaved={(f, v) => handleOptimisticSave(prospecto.id, f, v)}
                         />
                       </TableCell>
                       <TableCell>
                         <InlineEditCell
-                          value={prospecto.celular || "—"}
+                          value={prospecto.celular || ""}
                           fieldId={prospecto.id}
                           fieldKey="celular"
-                          linkToDetail
-                          onNavigate={() => navigate(`/flota/prospectos/${prospecto.id}`)}
+                          onSaved={(f, v) => handleOptimisticSave(prospecto.id, f, v)}
                         >
                           <div>
                             <span>{prospecto.celular || "—"}</span>
@@ -727,7 +746,7 @@ export default function FlotaProspectos() {
                           value={prospecto.nombreCompleto}
                           fieldId={prospecto.id}
                           fieldKey="nombreCompleto"
-                          onSaved={loadProspectos}
+                          onSaved={(f, v) => handleOptimisticSave(prospecto.id, f, v)}
                         >
                           <div className="flex items-center gap-2">
                             <span
@@ -752,7 +771,7 @@ export default function FlotaProspectos() {
                           fieldId={prospecto.id}
                           fieldKey="edad"
                           type="number"
-                          onSaved={loadProspectos}
+                          onSaved={(f, v) => handleOptimisticSave(prospecto.id, f, v)}
                         />
                       </TableCell>
                       <TableCell className="text-muted-foreground">
@@ -762,7 +781,7 @@ export default function FlotaProspectos() {
                           fieldKey="operador"
                           type="select"
                           options={operadorOptions}
-                          onSaved={loadProspectos}
+                          onSaved={(f, v) => handleOptimisticSave(prospecto.id, f, v)}
                         />
                       </TableCell>
                       <TableCell>
@@ -772,7 +791,7 @@ export default function FlotaProspectos() {
                           fieldKey="estado"
                           type="select"
                           options={ESTADO_OPTIONS}
-                          onSaved={loadProspectos}
+                          onSaved={(f, v) => handleOptimisticSave(prospecto.id, f, v)}
                         >
                           <Badge
                             variant="outline"
@@ -787,7 +806,7 @@ export default function FlotaProspectos() {
                           value={prospecto.modalidad || ""}
                           fieldId={prospecto.id}
                           fieldKey="modalidad"
-                          onSaved={loadProspectos}
+                          onSaved={(f, v) => handleOptimisticSave(prospecto.id, f, v)}
                         />
                       </TableCell>
                       <TableCell>
@@ -796,7 +815,7 @@ export default function FlotaProspectos() {
                           fieldId={prospecto.id}
                           fieldKey="anioVehiculo"
                           type="number"
-                          onSaved={loadProspectos}
+                          onSaved={(f, v) => handleOptimisticSave(prospecto.id, f, v)}
                         />
                       </TableCell>
                       <TableCell className="text-muted-foreground">
@@ -804,7 +823,7 @@ export default function FlotaProspectos() {
                           value={prospecto.distrito || ""}
                           fieldId={prospecto.id}
                           fieldKey="distrito"
-                          onSaved={loadProspectos}
+                          onSaved={(f, v) => handleOptimisticSave(prospecto.id, f, v)}
                         />
                       </TableCell>
                       <TableCell>
@@ -813,7 +832,7 @@ export default function FlotaProspectos() {
                           fieldId={prospecto.id}
                           fieldKey="fechaCita"
                           type="date"
-                          onSaved={loadProspectos}
+                          onSaved={(f, v) => handleOptimisticSave(prospecto.id, f, v)}
                         >
                           {prospecto.fechaCita
                             ? formatDateDMY(prospecto.fechaCita)
@@ -827,7 +846,7 @@ export default function FlotaProspectos() {
                           fieldKey="asistencia"
                           type="select"
                           options={ASISTENCIA_OPTIONS}
-                          onSaved={loadProspectos}
+                          onSaved={(f, v) => handleOptimisticSave(prospecto.id, f, v)}
                         >
                           {prospecto.asistencia ? (
                             <Badge
@@ -852,7 +871,7 @@ export default function FlotaProspectos() {
                           fieldId={prospecto.id}
                           fieldKey="fechaAfiliacion"
                           type="date"
-                          onSaved={loadProspectos}
+                          onSaved={(f, v) => handleOptimisticSave(prospecto.id, f, v)}
                         >
                           {prospecto.fechaAfiliacion
                             ? formatDateDMY(prospecto.fechaAfiliacion)
@@ -864,7 +883,7 @@ export default function FlotaProspectos() {
                           value={prospecto.movil || ""}
                           fieldId={prospecto.id}
                           fieldKey="movil"
-                          onSaved={loadProspectos}
+                          onSaved={(f, v) => handleOptimisticSave(prospecto.id, f, v)}
                         />
                       </TableCell>
                       <TableCell className="max-w-[200px]">
@@ -872,9 +891,22 @@ export default function FlotaProspectos() {
                           value={prospecto.observaciones || ""}
                           fieldId={prospecto.id}
                           fieldKey="observaciones"
-                          onSaved={loadProspectos}
+                          onSaved={(f, v) => handleOptimisticSave(prospecto.id, f, v)}
                           className="max-w-[180px] truncate"
                         />
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/flota/prospectos/${prospecto.id}`);
+                          }}
+                        >
+                          <Info className="size-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))

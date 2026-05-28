@@ -24,7 +24,7 @@ interface InlineEditCellProps {
   fieldKey: string;
   type?: 'text' | 'number' | 'select' | 'date' | 'readonly';
   options?: SelectOption[];
-  onSaved?: () => void;
+  onSaved?: (fieldKey: string, newValue: string | null) => void;
   onNavigate?: () => void;
   className?: string;
   /** Renderiza el display sin editarlo — viaja al detalle con onNavigate */
@@ -114,7 +114,10 @@ export function InlineEditCell({
         });
         toast.success('Actualizado');
         setEditing(false);
-        onSavedRef.current?.();
+        const savedValue = type === 'number'
+          ? (isNaN(numericValue!) ? null : String(numericValue))
+          : trimmed || null;
+        onSavedRef.current?.(fieldKey, savedValue);
       } catch (err) {
         toast.error(
           err instanceof Error ? err.message : 'Error al actualizar',
@@ -198,7 +201,7 @@ export function InlineEditCell({
             })
               .then(() => {
                 toast.success('Actualizado');
-                onSavedRef.current?.();
+                onSavedRef.current?.(fieldKey, finalValue);
               })
               .catch((err) =>
                 toast.error(
