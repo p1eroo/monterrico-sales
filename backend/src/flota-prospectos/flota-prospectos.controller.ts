@@ -7,6 +7,7 @@ import {
   Param,
   Query,
   Body,
+  ConflictException,
   HttpException,
   HttpStatus,
   Req,
@@ -277,6 +278,15 @@ export class FlotaProspectosController {
     }
   }
 
+  /** GET /flota-prospectos/by-phone/:phone — Buscar prospecto por celular */
+  @Get('flota-prospectos/by-phone/:phone')
+  @RequirePermissions('flota_prospectos.ver')
+  async findByPhone(@Param('phone') phone: string) {
+    const result = await this.service.findByPhone(phone);
+    if (!result) return { found: false, prospecto: null };
+    return { found: true, prospecto: result };
+  }
+
   /** POST /flota-prospectos — Crear nuevo prospecto */
   @Post('flota-prospectos')
   @RequirePermissions('flota_prospectos.crear')
@@ -284,6 +294,7 @@ export class FlotaProspectosController {
     try {
       return await this.service.createOne(body);
     } catch (err) {
+      if (err instanceof ConflictException) throw err;
       throw new HttpException(
         err instanceof Error ? err.message : 'No se pudo crear el prospecto',
         HttpStatus.BAD_REQUEST,

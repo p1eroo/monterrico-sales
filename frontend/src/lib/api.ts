@@ -80,6 +80,7 @@ export async function uploadAuthAvatar(file: File): Promise<AuthMeResponse> {
         : res.statusText || 'Error al subir avatar';
     const error = new Error(msg);
     (error as Error & { status?: number }).status = res.status;
+    (error as any).body = body;
     throw error;
   }
   return body as AuthMeResponse;
@@ -125,6 +126,7 @@ export async function api<T>(
     }
     const error = new Error(msg);
     (error as Error & { status?: number }).status = res.status;
+    (error as any).body = body;
     throw error;
   }
 

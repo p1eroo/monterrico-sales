@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -54,6 +54,7 @@ import {
   flotaProspectosDeleteMany,
   flotaProspectoCreate,
   flotaProspectosSpreadsheets,
+  flotaProspectosByPhone,
   fetchOperadores, getOperatorDisplayName,
   type FlotaProspectoRow,
   type FlotaProspectosCounts,
@@ -136,6 +137,8 @@ export default function FlotaProspectos() {
     observaciones: "",
   });
 
+  const [duplicateAlert, setDuplicateAlert] = useState<{ nombreCompleto: string; operador: string | null } | null>(null);
+
   const { hasPermission } = usePermissions();
   const currentUser = useAppStore((s) => s.currentUser);
   const hasVerTodos = hasPermission('flota_prospectos.ver_todos');
@@ -214,6 +217,19 @@ export default function FlotaProspectos() {
     const t = setTimeout(() => setSearchDebounced(searchTerm), 350);
     return () => clearTimeout(t);
   }, [searchTerm]);
+
+  // Check if searched phone belongs to another operator
+  const lastCheckedSearchRef = useRef("");
+  useEffect(() => {
+    const phone = searchDebounced.trim();
+    if (!phone || !/^\d{7,}$/.test(phone) || phone === lastCheckedSearchRef.current) return;
+    lastCheckedSearchRef.current = phone;
+    flotaProspectosByPhone(phone).then((res) => {
+      if (res.found && res.prospecto?.operador) {
+        toast.warning(`El número ${phone} ya existe y está asignado a ${res.prospecto.operador} (${res.prospecto.nombreCompleto})`, { duration: 6000 });
+      }
+    }).catch(() => {});
+  }, [searchDebounced]);
 
   // Load data
   const loadProspectos = useCallback(async () => {
@@ -374,6 +390,23 @@ export default function FlotaProspectos() {
     }
   }
 
+  async function checkDuplicatePhone(phone: string) {
+    if (!phone.trim()) {
+      setDuplicateAlert(null);
+      return;
+    }
+    try {
+      const res = await flotaProspectosByPhone(phone.trim());
+      if (res.found && res.prospecto) {
+        setDuplicateAlert(res.prospecto);
+      } else {
+        setDuplicateAlert(null);
+      }
+    } catch {
+      setDuplicateAlert(null);
+    }
+  }
+
   async function handleCreateProspecto() {
     if (!newProspecto.nombreCompleto.trim() || !newProspecto.celular.trim()) {
       toast.error("Nombre y celular son requeridos");
@@ -408,7 +441,15 @@ export default function FlotaProspectos() {
       });
       await Promise.all([loadProspectos(), loadCounts()]);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Error al crear prospecto");
+      const existing = (e as any).body?.existing;
+      if (existing) {
+        toast.error((e as Error).message, { duration: 6000 });
+        if (existing.operador) {
+          toast.warning(`Este número ya está asignado a ${existing.operador} (${existing.nombreCompleto})`, { duration: 6000 });
+        }
+      } else {
+        toast.error(e instanceof Error ? e.message : "Error al crear prospecto");
+      }
     } finally {
       setCreating(false);
     }
@@ -1037,9 +1078,20 @@ export default function FlotaProspectos() {
               <label className="text-sm font-medium">Celular *</label>
               <Input
                 value={newProspecto.celular}
-                onChange={(e) => setNewProspecto({ ...newProspecto, celular: e.target.value })}
+                onChange={(e) => {
+                  setNewProspecto({ ...newProspecto, celular: e.target.value });
+                  if (duplicateAlert) setDuplicateAlert(null);
+                }}
+                onBlur={() => void checkDuplicatePhone(newProspecto.celular)}
                 placeholder="999999999"
               />
+              {duplicateAlert && (
+                <p className="text-xs text-amber-600 flex items-center gap-1">
+                  <span className="size-1.5 rounded-full bg-amber-500 shrink-0" />
+                  Ya existe: {duplicateAlert.nombreCompleto}
+                  {duplicateAlert.operador && ` · Asignado a ${duplicateAlert.operador}`}
+                </p>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
@@ -1121,7 +1173,7 @@ export default function FlotaProspectos() {
             <Button variant="outline" onClick={() => setCreateModalOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={() => handleCreateProspecto()} disabled={creating}>
+            <Button onClick={() => handleCreateProspecto()} disabled={creating || !!duplicateAlert}>
               {creating ? (
                 <>
                   <Loader2 className="mr-2 size-4 animate-spin" />

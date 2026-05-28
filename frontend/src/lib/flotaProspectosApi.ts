@@ -200,6 +200,10 @@ export async function fetchOperadores(): Promise<OperadorUser[]> {
   return api<OperadorUser[]>('/flota-prospectos/operadores');
 }
 
+export async function flotaProspectosByPhone(phone: string): Promise<{ found: boolean; prospecto: { id: string; nombreCompleto: string; celular: string | null; operador: string | null; estado: string } | null }> {
+  return api(`/flota-prospectos/by-phone/${encodeURIComponent(phone)}`);
+}
+
 /** Busca el nombre canónico de un operador, matcheando por username, nombre completo o primer nombre */
 export function getOperatorDisplayName(
   value: string | null | undefined,

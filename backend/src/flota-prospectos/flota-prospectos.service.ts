@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { GoogleSheetsService, type SheetsSpreadsheet } from './google-sheets.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
@@ -100,6 +100,21 @@ export class FlotaProspectosService {
     if (!celular) return null;
     const digits = celular.replace(/\D/g, '');
     return digits.slice(-9) || null;
+  }
+
+  /** Buscar prospecto por celular normalizado */
+  async findByPhone(phone: string): Promise<{ id: string; nombreCompleto: string; celular: string | null; operador: string | null; estado: string } | null> {
+    const norm = this.normalizeCelular(phone);
+    if (!norm) return null;
+    return this.prisma.flotaProspecto.findFirst({
+      where: {
+        OR: [
+          { celular: { endsWith: norm } },
+          { movil: { endsWith: norm } },
+        ],
+      },
+      select: { id: true, nombreCompleto: true, celular: true, operador: true, estado: true },
+    });
   }
 
 
@@ -348,6 +363,18 @@ if (params.mes) {
 
   /** Crear un nuevo prospecto */
   async createOne(data: Record<string, unknown>) {
+    const rawPhone = String(data.celular || data.movil || '');
+    const existingByPhone = await this.findByPhone(rawPhone);
+    if (existingByPhone) {
+      const operadorName = existingByPhone.operador?.trim() || null;
+      const msg = operadorName
+        ? `Ya existe un prospecto con el celular ${rawPhone} (${existingByPhone.nombreCompleto}) asignado a ${operadorName}`
+        : `Ya existe un prospecto con el celular ${rawPhone} (${existingByPhone.nombreCompleto})`;
+      throw new ConflictException({
+        message: msg,
+        existing: existingByPhone,
+      });
+    }
     return this.prisma.flotaProspecto.create({
       data: {
         ...data as any,
