@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAppStore } from "@/store";
 import { useImportJobsStore } from "@/store/importJobsStore";
+import * as XLSX from "xlsx";
 import {
   Search,
   UserPlus,
@@ -13,6 +14,11 @@ import {
   Trash2,
   XCircle,
   Info,
+  Filter,
+  Globe,
+  Users,
+  Calendar,
+  Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +40,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Dialog,
   DialogContent,
@@ -83,13 +94,13 @@ const ASISTENCIA_OPTIONS = [
 ];
 
 const estadoColors: Record<string, string> = {
-  "Nuevo": "bg-gray-100 text-gray-700 border-gray-200",
-  "Afiliado": "bg-purple-200 text-purple-700 border-purple-200",
-  "Citado": "bg-blue-100 text-blue-700 border-blue-200",
-  "Seguimiento": "bg-green-100 text-green-700 border-green-200 dark:bg-green-950/40 dark:text-green-300 dark:border-green-800",
-  "Informacion": "bg-cyan-100 text-cyan-700 border-cyan-200",
-  "Sin Requisitos": "bg-red-100 text-red-700 border-red-200",
-  "No Responde": "bg-yellow-200 text-yellow-700 border-yellow-200",
+  "Nuevo": "text-gray-700 dark:text-gray-300",
+  "Afiliado": "text-purple-700 dark:text-purple-300",
+  "Citado": "text-blue-700 dark:text-blue-300",
+  "Seguimiento": "text-green-700 dark:text-green-300",
+  "Informacion": "text-cyan-700 dark:text-cyan-300",
+  "Sin Requisitos": "text-red-700 dark:text-red-300",
+  "No Responde": "text-yellow-700 dark:text-yellow-300",
 };
 
 export default function FlotaProspectos() {
@@ -99,6 +110,8 @@ export default function FlotaProspectos() {
   const [counts, setCounts] = useState<FlotaProspectosCounts | null>(null);
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importingFile, setImportingFile] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [searchDebounced, setSearchDebounced] = useState("");
@@ -353,6 +366,66 @@ export default function FlotaProspectos() {
     setSelectedIds(newSelected);
   };
 
+  const handleDownloadTemplate = useCallback(() => {
+    const headers = [
+      "FECHA_REGISTRO", "RED_SOCIAL", "CELULAR", "NOMBRE_COMPLETO",
+      "EDAD", "OPERADOR", "ESTADO", "MODALIDAD", "PLACA", "ANIO_VEHICULO",
+      "DISTRITO", "FECHA_CITA", "ASISTENCIA", "FECHA_AFILIACION",
+      "MOVIL", "OBSERVACIONES",
+    ];
+    const ws = XLSX.utils.aoa_to_sheet([headers]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Plantilla");
+    XLSX.writeFile(wb, "plantilla_prospectos.xlsx");
+    toast.success("Plantilla descargada");
+  }, []);
+
+  const handleFileImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportingFile(true);
+    try {
+      const data = await file.arrayBuffer();
+      const wb = XLSX.read(data, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' }) as string[][];
+      if (json.length < 2) {
+        toast.error('El archivo no tiene datos');
+        return;
+      }
+      const rows = json.slice(1).filter((r) => r.some((c) => c.trim()));
+      if (rows.length === 0) {
+        toast.error('El archivo no tiene datos');
+        return;
+      }
+      const prospectos = rows.map((r) => ({
+        fechaRegistro: r[0] || null,
+        redSocial: r[1] || null,
+        celular: r[2] || null,
+        nombreCompleto: r[3] || '',
+        edad: r[4] ? parseInt(r[4], 10) || null : null,
+        operador: r[5] || null,
+        estado: r[6] || 'Nuevo',
+        modalidad: r[7] || null,
+        placa: r[8] || null,
+        anioVehiculo: r[9] ? parseInt(r[9], 10) || null : null,
+        distrito: r[10] || null,
+        fechaCita: r[11] || null,
+        asistencia: r[12] || null,
+        fechaAfiliacion: r[13] || null,
+        movil: r[14] || null,
+        observaciones: r[15] || null,
+      }));
+      setPreviewData(prospectos as any);
+      setPreviewOpen(true);
+    } catch {
+      toast.error('Error al leer el archivo');
+    } finally {
+      setImportingFile(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }, []);
+
   async function handleOpenImportPreview() {
     if (!selectedSheet) {
       toast.error("Selecciona una hoja primero");
@@ -468,68 +541,105 @@ export default function FlotaProspectos() {
           <span className="mr-2 text-sm text-muted-foreground">
             Total: {counts?.total ?? "—"}
           </span>
-          {spreadsheets.length > 0 && (
-            <Select
-              value={selectedSpreadsheetId ?? ""}
-              onValueChange={(v) => {
-                console.log("Spreadsheet selected:", v);
-                setSelectedSpreadsheetId(v);
-              }}
-            >
-              <SelectTrigger className="w-48 bg-card">
-                <SelectValue placeholder="Spreadsheet" />
-              </SelectTrigger>
-              <SelectContent>
-                {spreadsheets.map((sp) => (
-                  <SelectItem key={sp.id} value={sp.id}>
-                    {sp.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-          {sheetNames.length > 0 && (
-            <Select
-              value={selectedSheet ?? ""}
-              onValueChange={(v) => {
-                console.log("Sheet selected:", v);
-                setSelectedSheet(v);
-              }}
-            >
-              <SelectTrigger className="w-40 bg-card">
-                <SelectValue placeholder="Hoja" />
-              </SelectTrigger>
-              <SelectContent>
-                {sheetNames.map((name) => (
-                  <SelectItem key={name} value={name}>
-                    {name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="gap-1.5"
+                disabled={previewLoading || importing}
+              >
+                {previewLoading || importing ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <FileSpreadsheet className="size-4" />
+                )}
+                Sheets
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-72 space-y-4 p-4">
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground">Spreadsheet</label>
+                <Select
+                  value={selectedSpreadsheetId ?? ""}
+                  onValueChange={(v) => {
+                    setSelectedSpreadsheetId(v);
+                    setSelectedSheet("");
+                  }}
+                >
+                  <SelectTrigger className="w-full bg-card">
+                    <SelectValue placeholder="Seleccionar..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {spreadsheets.map((sp) => (
+                      <SelectItem key={sp.id} value={sp.id}>
+                        {sp.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground">Hoja</label>
+                <Select
+                  value={selectedSheet ?? ""}
+                  onValueChange={(v) => setSelectedSheet(v)}
+                >
+                  <SelectTrigger className="w-full bg-card">
+                    <SelectValue placeholder="Seleccionar..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sheetNames.map((name) => (
+                      <SelectItem key={name} value={name}>
+                        {name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                size="sm"
+                className="w-full gap-1.5"
+                disabled={!selectedSheet || previewLoading || importing}
+                onClick={() => {
+                  if (!selectedSheet) {
+                    toast.error("Selecciona una hoja");
+                    return;
+                  }
+                  void handleOpenImportPreview();
+                }}
+              >
+                {previewLoading ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <FileSpreadsheet className="size-4" />
+                )}
+                {previewLoading ? "Cargando…" : "Importar"}
+              </Button>
+            </PopoverContent>
+          </Popover>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls"
+            className="hidden"
+            onChange={handleFileImport}
+          />
           <Button
             variant="outline"
             className="gap-1.5"
-            disabled={previewLoading || importing}
-            onClick={() => {
-              if (!selectedSheet) {
-                toast.error("Selecciona una hoja del dropdown");
-                return;
-              }
-              void handleOpenImportPreview();
-            }}
+            onClick={handleDownloadTemplate}
           >
-            {previewLoading || importing ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <FileSpreadsheet className="size-4" />
-            )}
-            {previewLoading
-              ? "Cargando..."
-              : importing
-                ? "Importando…"
-                : "Importar Sheets"}
+            <FileSpreadsheet className="size-4" />
+            Plantilla
+          </Button>
+          <Button
+            variant="outline"
+            className="gap-1.5"
+            disabled={importingFile}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {importingFile ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+            {importingFile ? "Importando…" : "Importar"}
           </Button>
           <Button className="gap-1.5" onClick={() => setCreateModalOpen(true)}>
             <UserPlus className="size-4" />
@@ -552,11 +662,12 @@ export default function FlotaProspectos() {
           value={estadoFilter}
           onValueChange={(v) => setEstadoFilter(v)}
         >
-          <SelectTrigger className="w-36 bg-card shadow-none">
+          <SelectTrigger className="w-32 bg-card shadow-none gap-1.5">
+            <Filter className="size-3.5 text-muted-foreground" />
             <SelectValue placeholder="Estado" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="all">Estado</SelectItem>
             <SelectItem value="Nuevo">Nuevo</SelectItem>
             <SelectItem value="Afiliado">Afiliado</SelectItem>
             <SelectItem value="Citado">Citado</SelectItem>
@@ -571,11 +682,12 @@ export default function FlotaProspectos() {
           value={redSocialFilter}
           onValueChange={(v) => setRedSocialFilter(v)}
         >
-          <SelectTrigger className="w-36 bg-card shadow-none">
+          <SelectTrigger className="w-32 bg-card shadow-none gap-1.5">
+            <Globe className="size-3.5 text-muted-foreground" />
             <SelectValue placeholder="Red Social" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todas RRSS</SelectItem>
+            <SelectItem value="all">Red Social</SelectItem>
             {counts?.redesSociales.map((rs) => (
               <SelectItem key={rs} value={rs}>
                 {rs}
@@ -588,11 +700,12 @@ export default function FlotaProspectos() {
           value={operadorFilter}
           onValueChange={(v) => setOperadorFilter(v)}
         >
-          <SelectTrigger className="w-36 bg-card shadow-none">
+          <SelectTrigger className="w-32 bg-card shadow-none gap-1.5">
+            <Users className="size-3.5 text-muted-foreground" />
             <SelectValue placeholder="Operador" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="all">Operador</SelectItem>
             {filterOperadores.map((op) => (
               <SelectItem key={op.id} value={op.name}>
                 {op.name}
@@ -603,11 +716,12 @@ export default function FlotaProspectos() {
         </Select>
 
         <Select value={mesFilter} onValueChange={(v) => setMesFilter(v)}>
-          <SelectTrigger className="w-28 bg-card shadow-none">
+          <SelectTrigger className="w-28 bg-card shadow-none gap-1.5">
+            <Calendar className="size-3.5 text-muted-foreground" />
             <SelectValue placeholder="Mes" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="all">Mes</SelectItem>
             <SelectItem value="2026-01">Ene 2026</SelectItem>
             <SelectItem value="2026-02">Feb 2026</SelectItem>
             <SelectItem value="2026-03">Mar 2026</SelectItem>
@@ -694,8 +808,8 @@ export default function FlotaProspectos() {
               className="bg-card"
             />
         ) : (
-            <Table containerClassName="overflow-visible" className="min-w-[1300px] [&_td]:py-3 [&_th]:py-2 bg-transparent">
-              <TableHeader className="bg-muted/30 sticky top-0 z-10">
+            <Table containerClassName="overflow-visible" className="min-w-[1300px] [&_td]:border [&_th]:border [&_td]:border-border/50 [&_th]:border-border/50 [&_td]:px-2 [&_th]:px-2 [&_td]:py-2 [&_th]:py-2 bg-transparent border-collapse">
+              <TableHeader className="bg-muted sticky top-0 z-10">
                 <TableRow>
                   <TableHead className="w-10">
                     <Checkbox
@@ -743,7 +857,7 @@ export default function FlotaProspectos() {
                   prospectos.map((prospecto) => (
                     <TableRow
                       key={prospecto.id}
-                      className={getRowClass(prospecto)}
+                      className={isConductor(prospecto.celular) ? "bg-green-50/50 border-l-4 border-l-green-500 dark:bg-green-950/40 dark:border-l-green-400" : ""}
                     >
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <Checkbox
@@ -840,12 +954,9 @@ export default function FlotaProspectos() {
                           options={ESTADO_OPTIONS}
                           onSaved={(f, v) => handleOptimisticSave(prospecto.id, f, v)}
                         >
-                          <Badge
-                            variant="outline"
-                            className={`text-xs ${estadoColors[prospecto.estado] || ""}`}
-                          >
+                          <span className={`text-xs ${estadoColors[prospecto.estado] || ""}`}>
                             {prospecto.estado || "—"}
-                          </Badge>
+                          </span>
                         </InlineEditCell>
                       </TableCell>
                       <TableCell className="text-muted-foreground">
@@ -1011,7 +1122,7 @@ export default function FlotaProspectos() {
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-6 py-3">
             {previewData && previewData.rows.length > 0 ? (
               <div className="min-h-0 flex-1 overflow-auto rounded-md border">
-                <Table containerClassName="overflow-visible" className="w-full min-w-max table-fixed">
+                <Table containerClassName="overflow-visible" className="w-full min-w-max table-fixed [&_td]:border [&_th]:border [&_td]:border-border/50 [&_th]:border-border/50 [&_td]:px-2 [&_th]:px-2 [&_td]:py-2 [&_th]:py-2 border-collapse">
                   <TableHeader>
                     <TableRow>
                       {previewData.headers.map((header) => (

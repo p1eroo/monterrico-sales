@@ -265,3 +265,41 @@ export interface ValidationError {
   message: string;
   type: 'error' | 'warning';
 }
+
+export type BotAgentStatus = 'active' | 'paused' | 'draft';
+export type BotChannel = 'whatsapp' | 'webchat' | 'messenger' | 'all';
+export type BotBrainMode = 'flow_only' | 'flow_with_ai' | 'ai_agent';
+
+export interface BotAgent {
+  id: string;
+  name: string;
+  description: string;
+  status: BotAgentStatus;
+  channel: BotChannel;
+  brainMode: BotBrainMode;
+  activeConversations: number;
+  totalConversations: number;
+  conversionRate: number;
+  handoffRate: number;
+  lastUpdated: string;
+  createdAt: string;
+  flow: {
+    id: string;
+    name: string;
+    description: string;
+    status: 'draft' | 'active' | 'archived';
+    nodes: { id: string; type: BotNodeType; position: { x: number; y: number }; data: BotFlowNodeData }[];
+    edges: { id: string; source: string; target: string; condition_type?: 'always' | 'conditional'; condition_config?: Record<string, unknown>; label?: string }[];
+  };
+}
+
+export type AutomationSection =
+  | 'dashboard'
+  | 'agentes'
+  | 'cerebro'
+  | 'entrenamiento'
+  | 'conocimiento'
+  | 'conversaciones'
+  | 'estadisticas'
+  | 'logs'
+  | 'configuracion';

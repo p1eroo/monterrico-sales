@@ -28,12 +28,13 @@ const COL = {
   ESTADO: 7,
   MODALIDAD: 8,
   ANIO_VEHICULO: 9,
-  DISTRITO: 10,
-  FECHA_CITA: 11,
-  ASISTENCIA: 12,
-  FECHA_AFILIACION: 13,
-  MOVIL: 14,
-  OBSERVACIONES: 16,
+  PLACA: 10,
+  DISTRITO: 11,
+  FECHA_CITA: 12,
+  ASISTENCIA: 13,
+  FECHA_AFILIACION: 14,
+  MOVIL: 15,
+  OBSERVACIONES: 17,
 };
 
 function cell(row: string[], idx: number): string {
@@ -42,7 +43,17 @@ function cell(row: string[], idx: number): string {
 
 function parseDate(raw: string): Date | null {
   if (!raw) return null;
-  // Intentar dd/mm/yyyy o dd-mm-yyyy
+  // Intentar yyyy-mm-dd (ISO) primero
+  const isoMatch = raw.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+  if (isoMatch) {
+    const d = new Date(Date.UTC(
+      parseInt(isoMatch[1], 10),
+      parseInt(isoMatch[2], 10) - 1,
+      parseInt(isoMatch[3], 10),
+    ));
+    if (!isNaN(d.getTime())) return d;
+  }
+  // Intentar dd/mm/yyyy o dd-mm-yyyy (LATAM)
   const dmyMatch = raw.match(/^(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?$/);
   if (dmyMatch) {
     const day = parseInt(dmyMatch[1], 10);
@@ -306,6 +317,13 @@ if (params.mes) {
 
     const { operador: _ignored, ...safeData } = data;
 
+    // Parse date fields before sending to Prisma
+    for (const field of ['fechaCita', 'fechaAfiliacion', 'fechaRegistro'] as const) {
+      if (safeData[field] !== undefined && typeof safeData[field] === 'string') {
+        safeData[field] = parseDate(safeData[field] as string) || safeData[field];
+      }
+    }
+
     const updated = await this.prisma.flotaProspecto.update({
       where: { id },
       data: safeData as any,
@@ -487,6 +505,7 @@ if (params.mes) {
       ANIO_VEHICULO: rawHeaders.findIndex(
         (h) => h.includes('AÑO') || h.includes('ANIO'),
       ),
+      PLACA: rawHeaders.findIndex((h) => h.includes('PLACA')),
       DISTRITO: rawHeaders.findIndex((h) => h.includes('DISTRITO')),
       FECHA_CITA: rawHeaders.findIndex((h) => h.includes('CITA')),
       ASISTENCIA: rawHeaders.findIndex((h) => h.includes('ASISTENCIA')),
@@ -622,6 +641,10 @@ if (params.mes) {
             const val = parseInt10(cell(row, col.ANIO_VEHICULO));
             if (val !== null) updateData.anioVehiculo = val;
           }
+          if (col.PLACA !== -1) {
+            const val = cell(row, col.PLACA);
+            if (val) updateData.placa = val;
+          }
           if (col.DISTRITO !== -1) {
             const val = cell(row, col.DISTRITO);
             if (val) updateData.distrito = val;
@@ -695,6 +718,10 @@ if (params.mes) {
               const val = parseInt10(cell(row, col.ANIO_VEHICULO));
               if (val !== null) rec.anioVehiculo = val;
             }
+            if (col.PLACA !== -1) {
+              const val = cell(row, col.PLACA);
+              if (val) rec.placa = val;
+            }
             if (col.DISTRITO !== -1) {
               const val = cell(row, col.DISTRITO);
               if (val) rec.distrito = val;
@@ -752,6 +779,8 @@ if (params.mes) {
           col.MODALIDAD !== -1 ? cell(row, col.MODALIDAD) || null : null,
         anioVehiculo:
           col.ANIO_VEHICULO !== -1 ? parseInt10(cell(row, col.ANIO_VEHICULO)) : null,
+        placa:
+          col.PLACA !== -1 ? cell(row, col.PLACA) || null : null,
         distrito: col.DISTRITO !== -1 ? cell(row, col.DISTRITO) || null : null,
         fechaCita:
           col.FECHA_CITA !== -1 ? parseDate(cell(row, col.FECHA_CITA)) : null,
@@ -890,6 +919,7 @@ if (params.mes) {
           if (col.ESTADO !== -1) { const val = cell(row, col.ESTADO); if (val) updateData.estado = normalizeEstado(val); }
           if (col.MODALIDAD !== -1) { const val = cell(row, col.MODALIDAD); if (val) updateData.modalidad = val; }
           if (col.ANIO_VEHICULO !== -1) { const val = parseInt10(cell(row, col.ANIO_VEHICULO)); if (val !== null) updateData.anioVehiculo = val; }
+          if (col.PLACA !== -1) { const val = cell(row, col.PLACA); if (val) updateData.placa = val; }
           if (col.DISTRITO !== -1) { const val = cell(row, col.DISTRITO); if (val) updateData.distrito = val; }
           if (col.FECHA_CITA !== -1) { const val = parseDate(cell(row, col.FECHA_CITA)); if (val) updateData.fechaCita = val; }
           if (col.ASISTENCIA !== -1) { const val = cell(row, col.ASISTENCIA); if (val) updateData.asistencia = val; }
@@ -933,6 +963,7 @@ if (params.mes) {
         estado,
         modalidad: col.MODALIDAD !== -1 ? cell(row, col.MODALIDAD) || null : null,
         anioVehiculo: col.ANIO_VEHICULO !== -1 ? parseInt10(cell(row, col.ANIO_VEHICULO)) : null,
+        placa: col.PLACA !== -1 ? cell(row, col.PLACA) || null : null,
         distrito: col.DISTRITO !== -1 ? cell(row, col.DISTRITO) || null : null,
         fechaCita: col.FECHA_CITA !== -1 ? parseDate(cell(row, col.FECHA_CITA)) : null,
         asistencia: col.ASISTENCIA !== -1 ? cell(row, col.ASISTENCIA) || null : null,

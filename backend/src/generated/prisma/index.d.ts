@@ -52291,6 +52291,7 @@ export namespace Prisma {
     estado: string | null
     modalidad: string | null
     anioVehiculo: number | null
+    placa: string | null
     distrito: string | null
     fechaCita: Date | null
     asistencia: string | null
@@ -52314,6 +52315,7 @@ export namespace Prisma {
     estado: string | null
     modalidad: string | null
     anioVehiculo: number | null
+    placa: string | null
     distrito: string | null
     fechaCita: Date | null
     asistencia: string | null
@@ -52337,6 +52339,7 @@ export namespace Prisma {
     estado: number
     modalidad: number
     anioVehiculo: number
+    placa: number
     distrito: number
     fechaCita: number
     asistencia: number
@@ -52372,6 +52375,7 @@ export namespace Prisma {
     estado?: true
     modalidad?: true
     anioVehiculo?: true
+    placa?: true
     distrito?: true
     fechaCita?: true
     asistencia?: true
@@ -52395,6 +52399,7 @@ export namespace Prisma {
     estado?: true
     modalidad?: true
     anioVehiculo?: true
+    placa?: true
     distrito?: true
     fechaCita?: true
     asistencia?: true
@@ -52418,6 +52423,7 @@ export namespace Prisma {
     estado?: true
     modalidad?: true
     anioVehiculo?: true
+    placa?: true
     distrito?: true
     fechaCita?: true
     asistencia?: true
@@ -52528,6 +52534,7 @@ export namespace Prisma {
     estado: string
     modalidad: string | null
     anioVehiculo: number | null
+    placa: string | null
     distrito: string | null
     fechaCita: Date | null
     asistencia: string | null
@@ -52570,6 +52577,7 @@ export namespace Prisma {
     estado?: boolean
     modalidad?: boolean
     anioVehiculo?: boolean
+    placa?: boolean
     distrito?: boolean
     fechaCita?: boolean
     asistencia?: boolean
@@ -52595,6 +52603,7 @@ export namespace Prisma {
     estado?: boolean
     modalidad?: boolean
     anioVehiculo?: boolean
+    placa?: boolean
     distrito?: boolean
     fechaCita?: boolean
     asistencia?: boolean
@@ -52618,6 +52627,7 @@ export namespace Prisma {
     estado?: boolean
     modalidad?: boolean
     anioVehiculo?: boolean
+    placa?: boolean
     distrito?: boolean
     fechaCita?: boolean
     asistencia?: boolean
@@ -52641,6 +52651,7 @@ export namespace Prisma {
     estado?: boolean
     modalidad?: boolean
     anioVehiculo?: boolean
+    placa?: boolean
     distrito?: boolean
     fechaCita?: boolean
     asistencia?: boolean
@@ -52653,7 +52664,7 @@ export namespace Prisma {
     updatedAt?: boolean
   }
 
-  export type FlotaProspectoOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "fechaRegistro" | "redSocial" | "celular" | "nombreCompleto" | "edad" | "operador" | "estado" | "modalidad" | "anioVehiculo" | "distrito" | "fechaCita" | "asistencia" | "fechaAfiliacion" | "movil" | "observaciones" | "esDuplicado" | "lastReadAt" | "createdAt" | "updatedAt", ExtArgs["result"]["flotaProspecto"]>
+  export type FlotaProspectoOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "fechaRegistro" | "redSocial" | "celular" | "nombreCompleto" | "edad" | "operador" | "estado" | "modalidad" | "anioVehiculo" | "placa" | "distrito" | "fechaCita" | "asistencia" | "fechaAfiliacion" | "movil" | "observaciones" | "esDuplicado" | "lastReadAt" | "createdAt" | "updatedAt", ExtArgs["result"]["flotaProspecto"]>
   export type FlotaProspectoInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     whatsappMessages?: boolean | FlotaProspecto$whatsappMessagesArgs<ExtArgs>
     _count?: boolean | FlotaProspectoCountOutputTypeDefaultArgs<ExtArgs>
@@ -52677,6 +52688,7 @@ export namespace Prisma {
       estado: string
       modalidad: string | null
       anioVehiculo: number | null
+      placa: string | null
       distrito: string | null
       fechaCita: Date | null
       asistencia: string | null
@@ -53124,6 +53136,7 @@ export namespace Prisma {
     readonly estado: FieldRef<"FlotaProspecto", 'String'>
     readonly modalidad: FieldRef<"FlotaProspecto", 'String'>
     readonly anioVehiculo: FieldRef<"FlotaProspecto", 'Int'>
+    readonly placa: FieldRef<"FlotaProspecto", 'String'>
     readonly distrito: FieldRef<"FlotaProspecto", 'String'>
     readonly fechaCita: FieldRef<"FlotaProspecto", 'DateTime'>
     readonly asistencia: FieldRef<"FlotaProspecto", 'String'>
@@ -54178,6 +54191,7 @@ export namespace Prisma {
     estado: 'estado',
     modalidad: 'modalidad',
     anioVehiculo: 'anioVehiculo',
+    placa: 'placa',
     distrito: 'distrito',
     fechaCita: 'fechaCita',
     asistencia: 'asistencia',
@@ -57439,6 +57453,7 @@ export namespace Prisma {
     estado?: StringFilter<"FlotaProspecto"> | string
     modalidad?: StringNullableFilter<"FlotaProspecto"> | string | null
     anioVehiculo?: IntNullableFilter<"FlotaProspecto"> | number | null
+    placa?: StringNullableFilter<"FlotaProspecto"> | string | null
     distrito?: StringNullableFilter<"FlotaProspecto"> | string | null
     fechaCita?: DateTimeNullableFilter<"FlotaProspecto"> | Date | string | null
     asistencia?: StringNullableFilter<"FlotaProspecto"> | string | null
@@ -57463,6 +57478,7 @@ export namespace Prisma {
     estado?: SortOrder
     modalidad?: SortOrderInput | SortOrder
     anioVehiculo?: SortOrderInput | SortOrder
+    placa?: SortOrderInput | SortOrder
     distrito?: SortOrderInput | SortOrder
     fechaCita?: SortOrderInput | SortOrder
     asistencia?: SortOrderInput | SortOrder
@@ -57490,6 +57506,7 @@ export namespace Prisma {
     estado?: StringFilter<"FlotaProspecto"> | string
     modalidad?: StringNullableFilter<"FlotaProspecto"> | string | null
     anioVehiculo?: IntNullableFilter<"FlotaProspecto"> | number | null
+    placa?: StringNullableFilter<"FlotaProspecto"> | string | null
     distrito?: StringNullableFilter<"FlotaProspecto"> | string | null
     fechaCita?: DateTimeNullableFilter<"FlotaProspecto"> | Date | string | null
     asistencia?: StringNullableFilter<"FlotaProspecto"> | string | null
@@ -57514,6 +57531,7 @@ export namespace Prisma {
     estado?: SortOrder
     modalidad?: SortOrderInput | SortOrder
     anioVehiculo?: SortOrderInput | SortOrder
+    placa?: SortOrderInput | SortOrder
     distrito?: SortOrderInput | SortOrder
     fechaCita?: SortOrderInput | SortOrder
     asistencia?: SortOrderInput | SortOrder
@@ -57545,6 +57563,7 @@ export namespace Prisma {
     estado?: StringWithAggregatesFilter<"FlotaProspecto"> | string
     modalidad?: StringNullableWithAggregatesFilter<"FlotaProspecto"> | string | null
     anioVehiculo?: IntNullableWithAggregatesFilter<"FlotaProspecto"> | number | null
+    placa?: StringNullableWithAggregatesFilter<"FlotaProspecto"> | string | null
     distrito?: StringNullableWithAggregatesFilter<"FlotaProspecto"> | string | null
     fechaCita?: DateTimeNullableWithAggregatesFilter<"FlotaProspecto"> | Date | string | null
     asistencia?: StringNullableWithAggregatesFilter<"FlotaProspecto"> | string | null
@@ -60923,6 +60942,7 @@ export namespace Prisma {
     estado?: string
     modalidad?: string | null
     anioVehiculo?: number | null
+    placa?: string | null
     distrito?: string | null
     fechaCita?: Date | string | null
     asistencia?: string | null
@@ -60947,6 +60967,7 @@ export namespace Prisma {
     estado?: string
     modalidad?: string | null
     anioVehiculo?: number | null
+    placa?: string | null
     distrito?: string | null
     fechaCita?: Date | string | null
     asistencia?: string | null
@@ -60971,6 +60992,7 @@ export namespace Prisma {
     estado?: StringFieldUpdateOperationsInput | string
     modalidad?: NullableStringFieldUpdateOperationsInput | string | null
     anioVehiculo?: NullableIntFieldUpdateOperationsInput | number | null
+    placa?: NullableStringFieldUpdateOperationsInput | string | null
     distrito?: NullableStringFieldUpdateOperationsInput | string | null
     fechaCita?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     asistencia?: NullableStringFieldUpdateOperationsInput | string | null
@@ -60995,6 +61017,7 @@ export namespace Prisma {
     estado?: StringFieldUpdateOperationsInput | string
     modalidad?: NullableStringFieldUpdateOperationsInput | string | null
     anioVehiculo?: NullableIntFieldUpdateOperationsInput | number | null
+    placa?: NullableStringFieldUpdateOperationsInput | string | null
     distrito?: NullableStringFieldUpdateOperationsInput | string | null
     fechaCita?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     asistencia?: NullableStringFieldUpdateOperationsInput | string | null
@@ -61019,6 +61042,7 @@ export namespace Prisma {
     estado?: string
     modalidad?: string | null
     anioVehiculo?: number | null
+    placa?: string | null
     distrito?: string | null
     fechaCita?: Date | string | null
     asistencia?: string | null
@@ -61042,6 +61066,7 @@ export namespace Prisma {
     estado?: StringFieldUpdateOperationsInput | string
     modalidad?: NullableStringFieldUpdateOperationsInput | string | null
     anioVehiculo?: NullableIntFieldUpdateOperationsInput | number | null
+    placa?: NullableStringFieldUpdateOperationsInput | string | null
     distrito?: NullableStringFieldUpdateOperationsInput | string | null
     fechaCita?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     asistencia?: NullableStringFieldUpdateOperationsInput | string | null
@@ -61065,6 +61090,7 @@ export namespace Prisma {
     estado?: StringFieldUpdateOperationsInput | string
     modalidad?: NullableStringFieldUpdateOperationsInput | string | null
     anioVehiculo?: NullableIntFieldUpdateOperationsInput | number | null
+    placa?: NullableStringFieldUpdateOperationsInput | string | null
     distrito?: NullableStringFieldUpdateOperationsInput | string | null
     fechaCita?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     asistencia?: NullableStringFieldUpdateOperationsInput | string | null
@@ -63319,6 +63345,7 @@ export namespace Prisma {
     estado?: SortOrder
     modalidad?: SortOrder
     anioVehiculo?: SortOrder
+    placa?: SortOrder
     distrito?: SortOrder
     fechaCita?: SortOrder
     asistencia?: SortOrder
@@ -63347,6 +63374,7 @@ export namespace Prisma {
     estado?: SortOrder
     modalidad?: SortOrder
     anioVehiculo?: SortOrder
+    placa?: SortOrder
     distrito?: SortOrder
     fechaCita?: SortOrder
     asistencia?: SortOrder
@@ -63370,6 +63398,7 @@ export namespace Prisma {
     estado?: SortOrder
     modalidad?: SortOrder
     anioVehiculo?: SortOrder
+    placa?: SortOrder
     distrito?: SortOrder
     fechaCita?: SortOrder
     asistencia?: SortOrder
@@ -69919,6 +69948,7 @@ export namespace Prisma {
     estado?: string
     modalidad?: string | null
     anioVehiculo?: number | null
+    placa?: string | null
     distrito?: string | null
     fechaCita?: Date | string | null
     asistencia?: string | null
@@ -69942,6 +69972,7 @@ export namespace Prisma {
     estado?: string
     modalidad?: string | null
     anioVehiculo?: number | null
+    placa?: string | null
     distrito?: string | null
     fechaCita?: Date | string | null
     asistencia?: string | null
@@ -70160,6 +70191,7 @@ export namespace Prisma {
     estado?: StringFieldUpdateOperationsInput | string
     modalidad?: NullableStringFieldUpdateOperationsInput | string | null
     anioVehiculo?: NullableIntFieldUpdateOperationsInput | number | null
+    placa?: NullableStringFieldUpdateOperationsInput | string | null
     distrito?: NullableStringFieldUpdateOperationsInput | string | null
     fechaCita?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     asistencia?: NullableStringFieldUpdateOperationsInput | string | null
@@ -70183,6 +70215,7 @@ export namespace Prisma {
     estado?: StringFieldUpdateOperationsInput | string
     modalidad?: NullableStringFieldUpdateOperationsInput | string | null
     anioVehiculo?: NullableIntFieldUpdateOperationsInput | number | null
+    placa?: NullableStringFieldUpdateOperationsInput | string | null
     distrito?: NullableStringFieldUpdateOperationsInput | string | null
     fechaCita?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     asistencia?: NullableStringFieldUpdateOperationsInput | string | null

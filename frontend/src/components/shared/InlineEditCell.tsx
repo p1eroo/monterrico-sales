@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Check, X, Loader2 } from 'lucide-react';
+import { X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -62,6 +62,7 @@ export function InlineEditCell({
   const startEdit = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
+      processingRef.current = false;
       let raw = value != null ? String(value) : '';
       if (type === 'date' && raw.includes('T')) {
         raw = raw.split('T')[0];
@@ -73,11 +74,10 @@ export function InlineEditCell({
   );
 
   const cancel = useCallback(
-    (e?: React.MouseEvent) => {
+    (e?: React.SyntheticEvent) => {
       e?.stopPropagation();
-      if (!processingRef.current) {
-        setEditing(false);
-      }
+      processingRef.current = true;
+      setEditing(false);
     },
     [],
   );
@@ -90,7 +90,7 @@ export function InlineEditCell({
   }, [fieldKey, fieldId]);
 
   const save = useCallback(
-    async (e?: React.MouseEvent) => {
+    async (e?: React.SyntheticEvent) => {
       e?.stopPropagation();
       const trimmed = editValue.trim();
       if (trimmed === String(value ?? '')) {
@@ -167,13 +167,12 @@ export function InlineEditCell({
         <button
           type="button"
           className={cn(
-            'w-full min-h-[26px] rounded px-1.5 py-1 text-left transition-colors',
-            'border border-dashed border-transparent hover:border-muted-foreground/20 hover:bg-muted/40',
+            'w-full text-left text-sm py-1 px-1 rounded transition-colors hover:bg-muted/20',
             className,
           )}
           onClick={startEdit}
         >
-          {children ?? (value != null ? String(value) : '—')}
+          {children ?? (value != null ? String(value) : <span className="text-muted-foreground italic">—</span>)}
         </button>
       ) : type === 'select' ? (
         <div className="relative z-20 flex items-center gap-1 bg-background rounded-md border shadow-md p-1" onClick={(e) => e.stopPropagation()}>
@@ -236,39 +235,18 @@ export function InlineEditCell({
           </Button>
         </div>
       ) : (
-        <div className="absolute left-0 top-0 z-20 flex items-center gap-1 rounded-md border bg-background p-1 shadow-md" onClick={(e) => e.stopPropagation()}>
+        <div className="absolute left-0 top-0 z-20 flex items-center rounded-md border bg-background shadow-md" onClick={(e) => e.stopPropagation()}>
           <Input
             ref={inputRef}
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            type={type === 'number' ? 'number' : 'text'}
-            className="h-8 text-xs w-auto"
-            style={{ minWidth: `${Math.max(editValue?.length || 1, 8)}ch` }}
+            onBlur={() => { if (!processingRef.current) void save(); }}
+            type={type === 'number' ? 'number' : type === 'date' ? 'date' : 'text'}
+            className="h-8 text-sm w-full"
+            style={{ minWidth: `${Math.max(editValue?.length || 1, 10)}ch` }}
             disabled={saving}
           />
-          {saving ? (
-            <Loader2 className="size-4 shrink-0 animate-spin text-muted-foreground" />
-          ) : (
-            <>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-6 shrink-0 text-emerald-600"
-                onClick={(e) => void save(e)}
-              >
-                <Check className="size-3" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-6 shrink-0 text-destructive"
-                onClick={cancel}
-              >
-                <X className="size-3" />
-              </Button>
-            </>
-          )}
         </div>
       )}
     </div>

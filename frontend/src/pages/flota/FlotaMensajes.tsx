@@ -100,9 +100,11 @@ import { api, API_BASE } from '@/lib/api';
 import { useAppStore } from '@/store';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Pagination } from '@/components/shared/Pagination';
+import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { EmojiGrid } from '@/components/EmojiGrid';
 import QRCode from 'qrcode';
 import BotFlowBuilder from '@/modules/flota/bot-flow/BotFlowBuilder';
+import AutomationLayout from '@/modules/flota/bot-flow/AutomationLayout';
 import * as XLSX from 'xlsx';
 import type { WhatsappSocketPayload, WhatsappMessageItem } from '@/lib/whatsappApi';
 import { downloadWhatsappAttachment } from '@/lib/whatsappApi';
@@ -301,7 +303,13 @@ function MessageAttachment({
 
 export default function FlotaMensajes() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [tab, setTab] = useState<'inbox' | 'masivo' | 'pipeline' | 'automatizacion' | 'conexiones'>('inbox');
+  const [tab, setTab] = useState<'inbox' | 'masivo' | 'pipeline' | 'automatizacion' | 'conexiones'>(
+    () => {
+      const t = searchParams.get('tab');
+      if (t === 'inbox' || t === 'masivo' || t === 'pipeline' || t === 'automatizacion' || t === 'conexiones') return t;
+      return 'inbox';
+    },
+  );
   const [connection, setConnection] = useState<FlotaWhatsappConnectionResponse | null>(null);
   const [evoModalOpen, setEvoModalOpen] = useState(false);
   const [loadingConn, setLoadingConn] = useState(true);
@@ -321,6 +329,14 @@ export default function FlotaMensajes() {
       setSearchParams({}, { replace: true });
     }
   }, [setSearchParams]);
+
+  useEffect(() => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('tab', tab);
+      return next;
+    }, { replace: true });
+  }, [tab, setSearchParams]);
 
   const instance = connection?.instance ?? null;
   const isConnected = instance?.isConnected ?? false;
@@ -405,13 +421,17 @@ export default function FlotaMensajes() {
   return (
     <div className="flex flex-col h-svh w-full overflow-hidden">
       {/* Full-width header */}
-      <header className="flex items-center gap-3 border-b border-muted h-14 shrink-0 px-4">
+      <header className="flex items-center gap-3 border-b border-sidebar-border/80 h-14 shrink-0 px-4 bg-sidebar text-sidebar-foreground">
         <button
           onClick={() => window.history.back()}
-          className="inline-flex items-center rounded-md border border-primary px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/10 transition-colors"
+          className="inline-flex items-center rounded-md border border-primary-foreground/30 px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary-foreground/10 transition-colors"
         >
           Volver
         </button>
+        <div className="flex-1" />
+        <div className="[&_button]:text-sidebar-foreground [&_button:hover]:bg-sidebar-accent [&_button:hover]:text-sidebar-accent-foreground [&_button]:size-9 [&_svg]:size-5">
+          <ThemeToggle />
+        </div>
       </header>
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
@@ -422,13 +442,13 @@ export default function FlotaMensajes() {
             { key: 'masivo', icon: Send, label: 'Masivo' },
             { key: 'pipeline', icon: LayoutList, label: 'Pipeline' },
             { key: 'conexiones', icon: Link2, label: 'Conexiones' },
-            { key: 'automatizacion', icon: null, label: 'Bots', customIcon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg>' },
+            { key: 'automatizacion', icon: null, label: 'Automatización', customIcon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg>' },
           ] as const).map((item) => {
             const Icon = item.icon;
             return (
               <button
                 key={item.key}
-                onClick={() => setTab(item.key as any)}
+                onClick={() => { setTab(item.key as any); setSearchParams({ tab: item.key }, { replace: true }); }}
                 className={cn(
                   'flex items-center justify-center rounded-lg w-9 h-9 transition-colors',
                   tab === item.key ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
@@ -474,9 +494,7 @@ export default function FlotaMensajes() {
             ) : tab === 'conexiones' ? (
               <ConexionesView onConnectInstance={(inst) => setConnectingInstance(inst)} key={conexionesReloadTick} />
             ) : (
-              <div className="flex flex-col min-h-0 flex-1">
-                <BotFlowBuilder />
-              </div>
+              <AutomationLayout />
             )}
           </div>
         </div>

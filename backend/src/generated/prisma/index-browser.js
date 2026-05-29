@@ -592,6 +592,7 @@ exports.Prisma.FlotaProspectoScalarFieldEnum = {
   estado: 'estado',
   modalidad: 'modalidad',
   anioVehiculo: 'anioVehiculo',
+  placa: 'placa',
   distrito: 'distrito',
   fechaCita: 'fechaCita',
   asistencia: 'asistencia',

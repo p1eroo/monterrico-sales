@@ -30,6 +30,7 @@ import {
   ToggleRight,
   Search,
   X,
+  CornerUpLeft,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -131,42 +132,55 @@ function BotEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targe
 
 const edgeTypes = { botEdge: BotEdge };
 
-function FlowCanvasInner() {
+interface FlowCanvasInnerProps {
+  botName?: string;
+  initialNodes?: { id: string; type: 'botNode'; position: { x: number; y: number }; data: BotFlowNodeData }[];
+  initialEdges?: { id: string; source: string; target: string; type: 'botEdge'; data: BotFlowEdgeData }[];
+  onBack?: () => void;
+}
+
+function FlowCanvasInner({ botName, initialNodes, initialEdges, onBack }: FlowCanvasInnerProps) {
   const rf = useReactFlow();
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<BotFlowNodeData>>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selectedNode, setSelectedNode] = useState<BotFlowNodeType | null>(null);
+  const [configPanelNode, setConfigPanelNode] = useState<BotFlowNodeType | null>(null);
   const [validatorOpen, setValidatorOpen] = useState(false);
   const [simulatorOpen, setSimulatorOpen] = useState(false);
   const [nodePickerOpen, setNodePickerOpen] = useState(false);
   const [nodePickerSearch, setNodePickerSearch] = useState('');
-  const initialized = useRef(false);
+  const initialized = useRef<string | null>(null);
 
-  const mockData = useMemo(() => createMockFlow(), []);
+  const mockData = useMemo(() => {
+    if (initialNodes && initialEdges) return { nodes: initialNodes, edges: initialEdges, id: 'custom' };
+    return { ...createMockFlow(), id: 'mock' };
+  }, [initialNodes, initialEdges]);
 
   useEffect(() => {
-    if (initialized.current) return;
-    initialized.current = true;
+    const key = `${mockData.nodes.length}-${mockData.edges.length}`;
+    if (initialized.current === key) return;
+    initialized.current = key;
     const flowNodes = mockData.nodes.map((n) => ({
       id: n.id,
       type: 'botNode' as const,
       position: n.position,
       data: n.data,
     }));
-    const flowEdges = mockData.edges.map((e) => ({
+    const flowEdges = mockData.edges.map((e: any) => ({
       id: e.id,
       source: e.source,
       target: e.target,
       type: 'botEdge' as const,
       data: {
-        condition_type: e.condition_type ?? 'always',
-        condition_config: e.condition_config ?? {},
-        label: e.label,
+        condition_type: e.condition_type ?? e.data?.condition_type ?? 'always',
+        condition_config: e.condition_config ?? e.data?.condition_config ?? {},
+        label: e.label ?? e.data?.label,
       } as BotFlowEdgeData,
     }));
     setNodes(flowNodes);
     setEdges(flowEdges);
-  }, [mockData, setNodes, setEdges]);
+    setTimeout(() => rf.fitView({ padding: 0.22 }), 100);
+  }, [mockData, setNodes, setEdges, rf]);
 
   const nodeTypes = useMemo(() => ({ botNode: BotNodeRenderer }), []);
 
@@ -199,8 +213,13 @@ function FlowCanvasInner() {
     setSelectedNode(n ?? null);
   }, []);
 
+  const onNodeDoubleClick = useCallback((_event: React.MouseEvent, node: Node) => {
+    setConfigPanelNode(node as BotFlowNodeType);
+  }, []);
+
   const clearSelection = useCallback(() => {
     setSelectedNode(null);
+    setConfigPanelNode(null);
   }, []);
 
   const handleSaveNode = useCallback(
@@ -271,9 +290,10 @@ function FlowCanvasInner() {
     if (!selectedNode) return;
     setNodes((nds: Node<BotFlowNodeData>[]) => nds.filter((n) => n.id !== selectedNode.id));
     setEdges((eds: Edge[]) => eds.filter((e) => e.source !== selectedNode.id && e.target !== selectedNode.id));
+    if (configPanelNode?.id === selectedNode.id) setConfigPanelNode(null);
     setSelectedNode(null);
     toast.success('Nodo eliminado');
-  }, [selectedNode, setNodes, setEdges]);
+  }, [selectedNode, configPanelNode, setNodes, setEdges]);
 
   const handleToggleNode = useCallback(() => {
     if (!selectedNode) return;
@@ -307,10 +327,13 @@ function FlowCanvasInner() {
 
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden bg-card">
-      <div className="flex flex-wrap items-center gap-3 border-b bg-card/90 px-4 py-2.5">
+      <div className="flex flex-wrap items-center gap-3 bg-card/90 px-4 py-2.5">
         <div className="flex items-center gap-1.5 text-sm font-semibold">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg>
-          Automatización
+          {onBack && (
+            <button onClick={onBack} className="inline-flex items-center rounded-md border border-primary p-1.5 text-primary hover:bg-primary/10">
+              <CornerUpLeft className="size-4" />
+            </button>
+          )}
         </div>
         <div className="flex-1" />
         <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={() => setValidatorOpen(true)}>
@@ -324,7 +347,7 @@ function FlowCanvasInner() {
         </Button>
       </div>
 
-      <div className="relative flex min-h-0 min-w-0 flex-1">
+      <div className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden">
         <div className="relative min-h-0 min-w-0 flex-1">
           <ReactFlow
             nodes={nodes}
@@ -335,6 +358,7 @@ function FlowCanvasInner() {
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             onSelectionChange={onSelectionChange}
+            onNodeDoubleClick={onNodeDoubleClick}
             fitView
             className="!bg-muted/25"
             proOptions={{ hideAttribution: true }}
@@ -358,7 +382,7 @@ function FlowCanvasInner() {
             />
           </ReactFlow>
 
-          <div className="pointer-events-none absolute top-4 right-4 z-10">
+          <div className="pointer-events-none absolute top-4 left-4 z-10">
             <div className="pointer-events-auto">
               <FlowToolbar onClick={() => setNodePickerOpen(true)} />
             </div>
@@ -392,10 +416,10 @@ function FlowCanvasInner() {
           </div>
         </div>
 
+        {nodePickerOpen && (
         <div
           className={cn(
-            'absolute right-0 top-0 bottom-0 z-50 flex w-[400px] flex-col border-l bg-card transition-transform duration-300 ease-in-out',
-            nodePickerOpen ? 'translate-x-0' : 'translate-x-full',
+            'absolute left-3 top-20 z-50 flex w-[340px] max-h-[calc(100vh-14rem)] flex-col border bg-card shadow-2xl rounded-xl animate-in slide-in-from-left-4 duration-200',
           )}
         >
           <div className="flex items-center justify-between border-b border-muted px-4 py-3">
@@ -465,10 +489,11 @@ function FlowCanvasInner() {
             )}
           </div>
         </div>
+        )}
 
-        {selectedNode && (
+        {configPanelNode && (
           <NodeConfigPanel
-            node={selectedNode}
+            node={configPanelNode}
             onSave={handleSaveNode}
             onClose={clearSelection}
             className="max-lg:fixed max-lg:inset-0 max-lg:z-30"
@@ -482,10 +507,28 @@ function FlowCanvasInner() {
   );
 }
 
-export default function BotFlowBuilder() {
+export default function BotFlowBuilder({ botAgent, onBack }: { botAgent?: { id: string; name: string; flow: { nodes: any[]; edges: any[] } }; onBack?: () => void }) {
+  const nodes = botAgent?.flow.nodes.map((n) => ({
+    id: n.id,
+    type: 'botNode' as const,
+    position: n.position,
+    data: n.data,
+  }));
+  const edges = botAgent?.flow.edges.map((e) => ({
+    id: e.id,
+    source: e.source,
+    target: e.target,
+    type: 'botEdge' as const,
+    data: {
+      condition_type: e.condition_type ?? 'always',
+      condition_config: e.condition_config ?? {},
+      label: e.label,
+    } as BotFlowEdgeData,
+  }));
+
   return (
     <ReactFlowProvider>
-      <FlowCanvasInner />
+      <FlowCanvasInner key={botAgent?.id || 'default'} botName={botAgent?.name} initialNodes={nodes} initialEdges={edges} onBack={onBack} />
     </ReactFlowProvider>
   );
 }

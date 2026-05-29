@@ -813,6 +813,7 @@ model FlotaProspecto {
   estado          String    @default("Nuevo")
   modalidad       String?
   anioVehiculo    Int?
+  placa           String?
   distrito        String?
   fechaCita       DateTime? @db.Date
   asistencia      String?
