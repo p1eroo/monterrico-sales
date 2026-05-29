@@ -1282,6 +1282,8 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
   const recordingChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [citadoDialogOpen, setCitadoDialogOpen] = useState(false);
+  const [citadoDate, setCitadoDate] = useState('');
   const [saving, setSaving] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [mediaPanelOpen, setMediaPanelOpen] = useState(false);
@@ -1758,6 +1760,11 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
 
   async function handleCambiarEstado(nuevoEstado: string) {
     if (!contactId) return;
+    if (nuevoEstado === 'Citado') {
+      setCitadoDate(editData.fechaCita ? editData.fechaCita.split('T')[0] : '');
+      setCitadoDialogOpen(true);
+      return;
+    }
     try {
       await api(`/flota-prospectos/${contactId}`, {
         method: 'PATCH',
@@ -2215,6 +2222,42 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
           </div>
         </aside>
       )}
+
+      <Dialog open={citadoDialogOpen} onOpenChange={setCitadoDialogOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Programar cita</DialogTitle>
+            <DialogDescription>Ingresa la fecha de la cita para este prospecto.</DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              type="date"
+              value={citadoDate}
+              onChange={(e) => setCitadoDate(e.target.value)}
+              className="w-full"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCitadoDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={async () => {
+              if (!citadoDate) { toast.error('Selecciona una fecha'); return; }
+              try {
+                await api(`/flota-prospectos/${contactId}`, {
+                  method: 'PATCH',
+                  body: JSON.stringify({ estado: 'Citado', fechaCita: citadoDate }),
+                });
+                toast.success('Cita programada');
+                setCitadoDialogOpen(false);
+                onContactUpdated();
+              } catch (e) {
+                toast.error(e instanceof Error ? e.message : 'Error al guardar');
+              }
+            }} disabled={!citadoDate}>
+              Guardar cita
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

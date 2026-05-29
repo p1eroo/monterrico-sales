@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { api } from "@/lib/api";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAppStore } from "@/store";
 import { useImportJobsStore } from "@/store/importJobsStore";
@@ -112,6 +113,9 @@ export default function FlotaProspectos() {
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importingFile, setImportingFile] = useState(false);
+  const [citadoDialogOpen, setCitadoDialogOpen] = useState(false);
+  const [citadoProspectId, setCitadoProspectId] = useState<string | null>(null);
+  const [citadoDate, setCitadoDate] = useState('');
 
   const [searchTerm, setSearchTerm] = useState("");
   const [searchDebounced, setSearchDebounced] = useState("");
@@ -952,7 +956,14 @@ export default function FlotaProspectos() {
                           fieldKey="estado"
                           type="select"
                           options={ESTADO_OPTIONS}
-                          onSaved={(f, v) => handleOptimisticSave(prospecto.id, f, v)}
+                          onSaved={(f, v) => {
+                            handleOptimisticSave(prospecto.id, f, v);
+                            if (v === 'Citado') {
+                              setCitadoProspectId(prospecto.id);
+                              setCitadoDate(prospecto.fechaCita ? prospecto.fechaCita.split('T')[0] : '');
+                              setCitadoDialogOpen(true);
+                            }
+                          }}
                         >
                           <span className={`text-xs ${estadoColors[prospecto.estado] || ""}`}>
                             {prospecto.estado || "—"}
@@ -1322,6 +1333,45 @@ export default function FlotaProspectos() {
               ) : (
                 "Crear Prospecto"
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={citadoDialogOpen} onOpenChange={setCitadoDialogOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Programar cita</DialogTitle>
+            <DialogDescription>Indica la fecha de la cita para el prospecto.</DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              type="date"
+              value={citadoDate}
+              onChange={(e) => setCitadoDate(e.target.value)}
+              className="w-full"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCitadoDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={async () => {
+              if (!citadoProspectId || !citadoDate) {
+                toast.error('Selecciona una fecha');
+                return;
+              }
+              try {
+                await api(`/flota-prospectos/${citadoProspectId}`, {
+                  method: 'PATCH',
+                  body: JSON.stringify({ fechaCita: citadoDate }),
+                });
+                setCitadoDialogOpen(false);
+                await Promise.all([loadProspectos(), loadCounts()]);
+                toast.success('Cita programada');
+              } catch (e) {
+                toast.error(e instanceof Error ? e.message : 'Error al guardar');
+              }
+            }} disabled={!citadoDate}>
+              Guardar cita
             </Button>
           </DialogFooter>
         </DialogContent>
