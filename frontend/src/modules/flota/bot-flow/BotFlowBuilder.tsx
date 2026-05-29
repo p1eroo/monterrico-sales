@@ -28,9 +28,13 @@ import {
   Trash2,
   ToggleLeft,
   ToggleRight,
+  Search,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import { BotNodeRenderer } from './BotNodeRenderer';
 import FlowToolbar from './FlowToolbar';
 import NodeConfigPanel from './NodeConfigPanel';
@@ -40,6 +44,8 @@ import { createMockFlow } from './mockData';
 import {
   NODE_COLORS,
   NODE_LABELS,
+  NODE_DESCRIPTIONS,
+  BOT_NODE_TYPES,
   getDefaultConfig,
   type BotFlowNodeType,
   type BotFlowNodeData,
@@ -77,7 +83,10 @@ function BotEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targe
   const edgeData = data as BotFlowEdgeData | undefined;
   const isConditional = edgeData?.condition_type === 'conditional';
   const label = edgeData?.label;
-  const accent = isConditional ? '#8b5cf6' : '#94a3b8';
+  const isAffirmative = label?.toLowerCase() === 'sí' || label?.toLowerCase() === 'si' || label?.toLowerCase() === 'yes' || label?.toLowerCase() === 'true';
+  const accent = isConditional
+    ? (isAffirmative ? '#10b981' : '#8b5cf6')
+    : '#94a3b8';
 
   const [path, labelX, labelY] = getSmoothStepPath({
     sourceX,
@@ -99,7 +108,8 @@ function BotEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targe
       style={{
         stroke: selected ? accent : `${accent}60`,
         strokeWidth: selected ? 2.5 : 1.75,
-        strokeDasharray: isConditional ? '6,4' : undefined,
+        strokeDasharray: isConditional ? (isAffirmative ? undefined : '6,4') : undefined,
+        strokeLinecap: 'round',
       }}
       labelStyle={{
         fill: accent,
@@ -128,6 +138,8 @@ function FlowCanvasInner() {
   const [selectedNode, setSelectedNode] = useState<BotFlowNodeType | null>(null);
   const [validatorOpen, setValidatorOpen] = useState(false);
   const [simulatorOpen, setSimulatorOpen] = useState(false);
+  const [nodePickerOpen, setNodePickerOpen] = useState(false);
+  const [nodePickerSearch, setNodePickerSearch] = useState('');
   const initialized = useRef(false);
 
   const mockData = useMemo(() => createMockFlow(), []);
@@ -160,14 +172,26 @@ function FlowCanvasInner() {
 
   const onConnect = useCallback(
     (params: Connection) => {
+      const edgeData: BotFlowEdgeData = { condition_type: 'always', condition_config: {} };
+      const sourceNode = nodes.find((n) => n.id === params.source);
+      if (sourceNode?.data.nodeType === 'condition' && params.sourceHandle) {
+        const config = sourceNode.data.config as { rules?: { id: string; output_label?: string }[] };
+        const idx = parseInt(params.sourceHandle.replace('out-', ''), 10);
+        const rule = config.rules?.[idx];
+        if (rule) {
+          edgeData.condition_type = 'conditional';
+          edgeData.condition_config = { rule_id: rule.id };
+          edgeData.label = rule.output_label || `Regla ${idx + 1}`;
+        }
+      }
       setEdges((eds) =>
         addEdge(
-          { ...params, type: 'botEdge', data: { condition_type: 'always', condition_config: {} } as BotFlowEdgeData },
+          { ...params, type: 'botEdge', data: edgeData },
           eds,
         ),
       );
     },
-    [setEdges],
+    [setEdges, nodes],
   );
 
   const onSelectionChange = useCallback((params: OnSelectionChangeParams) => {
@@ -316,10 +340,10 @@ function FlowCanvasInner() {
             proOptions={{ hideAttribution: true }}
             deleteKeyCode={['Backspace', 'Delete']}
             defaultEdgeOptions={{ type: 'botEdge' }}
-            panOnScroll
+            panOnDrag={[1]}
             selectionOnDrag
           >
-            <Background gap={22} size={1} color="var(--workflow-grid-dot, #cbd5e1)" />
+            <Background gap={22} size={1.5} color="var(--workflow-grid-dot, #94a3b8)" />
             <Controls
               className="!border-border !bg-card/95 !shadow-lg [&_button]:!border-border [&_button]:!bg-muted"
               showInteractive={false}
@@ -334,10 +358,14 @@ function FlowCanvasInner() {
             />
           </ReactFlow>
 
+          <div className="pointer-events-none absolute top-4 right-4 z-10">
+            <div className="pointer-events-auto">
+              <FlowToolbar onClick={() => setNodePickerOpen(true)} />
+            </div>
+          </div>
+
           <div className="pointer-events-none absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 gap-2">
             <div className="pointer-events-auto flex items-center gap-1 rounded-xl border bg-card/95 px-2 py-1.5 shadow-xl backdrop-blur-md">
-              <FlowToolbar onAddNode={handleAddNode} />
-              <div className="mx-0.5 w-px self-stretch bg-border" />
               <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs" onClick={() => rf.fitView({ padding: 0.22 })}>
                 <Maximize2 className="size-3.5" /> Centrar
               </Button>
@@ -361,6 +389,80 @@ function FlowCanvasInner() {
                 </>
               )}
             </div>
+          </div>
+        </div>
+
+        <div
+          className={cn(
+            'absolute right-0 top-0 bottom-0 z-50 flex w-[400px] flex-col border-l bg-card transition-transform duration-300 ease-in-out',
+            nodePickerOpen ? 'translate-x-0' : 'translate-x-full',
+          )}
+        >
+          <div className="flex items-center justify-between border-b border-muted px-4 py-3">
+            <h3 className="text-base font-semibold">Agregar nodo</h3>
+            <Button variant="ghost" size="icon" className="size-7" onClick={() => { setNodePickerOpen(false); setNodePickerSearch(''); }}>
+              <X className="size-4" />
+            </Button>
+          </div>
+
+          <div className="px-3 py-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={nodePickerSearch}
+                onChange={(e) => setNodePickerSearch(e.target.value)}
+                placeholder="Buscar nodo..."
+                className="h-8 pl-8 text-sm"
+                autoFocus
+              />
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-1">
+            {(nodePickerSearch.trim()
+              ? BOT_NODE_TYPES.filter((t) =>
+                  NODE_LABELS[t].toLowerCase().includes(nodePickerSearch.toLowerCase()) ||
+                  NODE_DESCRIPTIONS[t].toLowerCase().includes(nodePickerSearch.toLowerCase()),
+                )
+              : BOT_NODE_TYPES
+            ).map((type) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => {
+                  handleAddNode(type);
+                  setNodePickerOpen(false);
+                  setNodePickerSearch('');
+                }}
+                className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2.5 text-left transition-colors hover:bg-accent"
+              >
+                <span
+                  className="flex size-9 shrink-0 items-center justify-center rounded-lg"
+                  style={{ backgroundColor: `${NODE_COLORS[type]}18`, color: NODE_COLORS[type] }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    {type === 'start' && <polygon points="5 3 19 12 5 21 5 3"/>}
+                    {type === 'message' && <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>}
+                    {type === 'question' && <><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></>}
+                    {type === 'condition' && <><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></>}
+                    {type === 'ai_extract' && <><path d="M12 2a8 8 0 0 0-8 8c0 2.5 1.5 4.8 3 6.5V20a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-3.5c1.5-1.7 3-4 3-6.5a8 8 0 0 0-8-8z"/><circle cx="12" cy="11" r="3"/></>}
+                    {type === 'crm_action' && <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>}
+                    {type === 'human_handoff' && <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6"/><path d="M22 11h-6"/></>}
+                    {type === 'end' && <><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></>}
+                  </svg>
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-foreground">{NODE_LABELS[type]}</p>
+                  <p className="truncate text-xs text-muted-foreground">{NODE_DESCRIPTIONS[type]}</p>
+                </div>
+              </button>
+            ))}
+            {nodePickerSearch.trim() && BOT_NODE_TYPES.filter((t) =>
+              NODE_LABELS[t].toLowerCase().includes(nodePickerSearch.toLowerCase()) ||
+              NODE_DESCRIPTIONS[t].toLowerCase().includes(nodePickerSearch.toLowerCase()),
+            ).length === 0 && (
+              <p className="py-6 text-center text-[11px] text-muted-foreground">Sin resultados</p>
+            )}
           </div>
         </div>
 

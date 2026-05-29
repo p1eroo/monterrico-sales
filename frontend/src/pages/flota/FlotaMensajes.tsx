@@ -92,41 +92,40 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Card, CardContent } from '@/components/ui/card';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Table,
-  TableHeader,
-  TableRow,
-  TableHead,
-  TableBody,
-  TableCell,
-} from '@/components/ui/table';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import { EmojiGrid } from '@/components/EmojiGrid';
-import { PageHeader } from '@/components/shared/PageHeader';
-import BotFlowBuilder from '@/modules/flota/bot-flow/BotFlowBuilder';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { api, API_BASE } from '@/lib/api';
-import { toast } from 'sonner';
-import { Pagination } from "@/components/shared/Pagination";
+import { useAppStore } from '@/store';
+import { usePermissions } from '@/hooks/usePermissions';
+import { Pagination } from '@/components/shared/Pagination';
+import { EmojiGrid } from '@/components/EmojiGrid';
+import QRCode from 'qrcode';
+import BotFlowBuilder from '@/modules/flota/bot-flow/BotFlowBuilder';
+import * as XLSX from 'xlsx';
+import type { WhatsappSocketPayload, WhatsappMessageItem } from '@/lib/whatsappApi';
+import { downloadWhatsappAttachment } from '@/lib/whatsappApi';
+import type { OperadorUser } from '@/lib/flotaProspectosApi';
+import {
+  fetchOperadores,
+  getOperatorDisplayName,
+  flotaProspectoCreate,
+  flotaProspectosList,
+} from '@/lib/flotaProspectosApi';
 import {
   fetchSharedConnection,
   connectSharedWhatsapp,
   disconnectSharedWhatsapp,
   sendSharedTestMessage,
   fetchConversations,
+  markConversationAsRead,
+  fetchMasivoProspectos,
   fetchFlotaProspectoMessages,
   sendFlotaWhatsappMessage,
-  markConversationAsRead,
-  importExcelPreview,
   uploadFlotaImage,
   uploadFlotaAudio,
-  fetchMasivoProspectos,
+  importExcelPreview,
   sendFlotaBulk,
   getFlotaBulkProgress,
   cancelFlotaBulk,
@@ -139,19 +138,13 @@ import {
   deleteFlotaInstance,
   updateFlotaInstanceFlags,
   listFlotaBulkCampaigns,
-  type FlotaConversation,
   type FlotaExcelContact,
+  type FlotaConversation,
   type FlotaWhatsappConnectionResponse,
-  type FlotaWhatsappConnection,
   type FlotaInstanceDetail,
   type FlotaBulkCampaign,
+  type FlotaBulkProgress,
 } from '@/lib/flotaWhatsappApi';
-import { flotaProspectoCreate, flotaProspectosList, fetchOperadores, getOperatorDisplayName, type OperadorUser } from '@/lib/flotaProspectosApi';
-import { useAppStore } from '@/store';
-import { usePermissions } from '@/hooks/usePermissions';
-import { type WhatsappMessageItem, type WhatsappSocketPayload, sendWhatsappMessage, downloadWhatsappAttachment } from '@/lib/whatsappApi';
-import * as QRCode from 'qrcode';
-import * as XLSX from 'xlsx';
 
 /* ==================== TIPOS ==================== */
 
@@ -412,7 +405,7 @@ export default function FlotaMensajes() {
   return (
     <div className="flex flex-col h-svh w-full overflow-hidden">
       {/* Full-width header */}
-      <header className="flex items-center gap-3 border-b h-14 shrink-0 px-4">
+      <header className="flex items-center gap-3 border-b border-muted h-14 shrink-0 px-4">
         <button
           onClick={() => window.history.back()}
           className="inline-flex items-center rounded-md border border-primary px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/10 transition-colors"
@@ -423,7 +416,7 @@ export default function FlotaMensajes() {
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Left icon sidebar */}
-        <aside className="flex flex-col items-center gap-3 border-r bg-card px-1.5 py-4 w-[54px] shrink-0">
+        <aside className="flex flex-col items-center gap-3 border-r border-muted bg-card px-1.5 py-4 w-[54px] shrink-0">
           {([
             { key: 'inbox', icon: Inbox, label: 'Inbox' },
             { key: 'masivo', icon: Send, label: 'Masivo' },
@@ -466,7 +459,7 @@ export default function FlotaMensajes() {
         </aside>
 
         {/* Main content */}
-        <div className="flex flex-col flex-1 min-w-0">
+        <div className="flex flex-col flex-1 min-w-0 bg-card">
           <div className="flex flex-col min-h-0 flex-1">
             {tab === 'inbox' ? (
               loadingConn ? <LoadingState /> :
@@ -838,13 +831,15 @@ const ConversationItem = memo(({
     >
       <button
         onClick={() => onClick(conversation.id)}
-        className={cn(
-          'flex w-full items-start gap-3 border-b px-4 py-3 text-left transition-colors hover:bg-muted/60',
-          isActive && 'bg-primary/5',
-        )}
+        className="flex w-full items-start text-left transition-colors px-3 py-[5px] group"
       >
         <div className={cn(
-          'flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary',
+          'flex w-full items-start gap-3 rounded-lg px-3 py-1 transition-colors',
+          'group-hover:bg-accent group-hover:shadow-sm',
+          isActive && 'bg-accent shadow-sm',
+        )}>
+        <div className={cn(
+          'flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary',
           conversation.unread > 0 && 'bg-primary text-primary-foreground',
         )}>
           {conversation.name.slice(0, 2).toUpperCase()}
@@ -865,6 +860,7 @@ const ConversationItem = memo(({
               </span>
             )}
           </div>
+        </div>
         </div>
       </button>
     </div>
@@ -1119,8 +1115,8 @@ function InboxView({ activeId: externalActiveId, onActiveChange, isConnected }: 
   return (
     <div className="flex flex-col h-full">
       <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[360px_minmax(0,1fr)]">
-      <aside className="flex flex-col overflow-hidden bg-card border-r border-border">
-        <div className="border-b px-3 pb-1 pt-3">
+      <aside className="flex flex-col overflow-hidden bg-card border-r border-muted">
+        <div className="border-b border-muted px-3 pb-1 pt-3">
           <div className="flex gap-1">
             {([
               ['all', 'Todos'],
@@ -1142,7 +1138,7 @@ function InboxView({ activeId: externalActiveId, onActiveChange, isConnected }: 
             ))}
           </div>
         </div>
-        <div className="border-b px-3 py-2">
+        <div className="border-b border-muted px-3 py-2">
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -1158,7 +1154,7 @@ function InboxView({ activeId: externalActiveId, onActiveChange, isConnected }: 
             </Button>
           </div>
         </div>
-        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pt-1.5">
           {loading ? (
             <div className="flex items-center justify-center py-16">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -1773,7 +1769,7 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
   return (
     <div className="flex h-full min-h-0 min-w-0">
       <section className={cn("flex flex-col flex-1 min-w-0 overflow-hidden bg-card relative transition-all", mediaPanelOpen ? "hidden xl:flex" : "")}>
-        <div className="flex items-center justify-between border-b px-5 py-3">
+        <div className="flex items-center justify-between border-b border-muted px-5 py-3">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary">
               {(convo?.name || prospectoData?.name || '??').slice(0, 2).toUpperCase()}
@@ -1872,11 +1868,11 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
                 >
                   {item.type === 'date' ? (
                     <div className="my-3 flex items-center gap-3">
-                      <div className="h-px flex-1 border-t border-border/40" />
+                      <div className="h-px flex-1 border-t border-muted/40" />
                       <span className="text-[11px] font-medium capitalize text-muted-foreground">
                         {item.label}
                       </span>
-                      <div className="h-px flex-1 border-t border-border/40" />
+                      <div className="h-px flex-1 border-t border-muted/40" />
                     </div>
                   ) : (
                     <div className={cn('flex mb-2 w-full', item.mine ? 'justify-end' : 'justify-start')}>
@@ -1927,7 +1923,7 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
         </button>
       )}
 
-      <div className="border-t bg-background/60 p-3">
+      <div className="border-t border-muted bg-background/60 p-3">
         <input
           ref={fileInputRef}
           type="file"
@@ -2173,7 +2169,7 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
 
       {mediaPanelOpen && (
         <aside className="w-full xl:w-[320px] shrink-0 flex flex-col overflow-hidden bg-card animate-in slide-in-from-right-4">
-          <div className="flex items-center justify-between border-b px-5 py-[13px]">
+          <div className="flex items-center justify-between border-b border-muted px-5 py-[13px]">
             <h3 className="text-sm font-semibold">Archivos del chat</h3>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setMediaPanelOpen(false)}>
               <X className="h-4 w-4" />
@@ -2479,9 +2475,9 @@ function MasivoView({ isConnected, masivoConnected = false, onConnectClick }: { 
 
 
   return (
-    <Card className="flex flex-col flex-1 min-h-0">
+    <div className="flex flex-col flex-1 min-h-0">
       {masivoSubTab === 'new' ? (<>
-      <div className="flex items-center justify-center border-b px-6 py-3 shrink-0 text-xs font-medium">
+      <div className="flex items-center justify-center border-b border-muted px-6 py-3 shrink-0 text-xs font-medium">
         {[
           { n: 1, label: 'Audiencia', icon: Users },
           { n: 2, label: 'Mensaje', icon: MessageSquare },
@@ -2514,7 +2510,7 @@ function MasivoView({ isConnected, masivoConnected = false, onConnectClick }: { 
       <div className="flex-1 min-h-0 overflow-y-auto">
         {step === 1 && (
           <div className="grid lg:grid-cols-[400px_1fr] min-h-full">
-            <div className="space-y-5 border-r border-border p-6">
+            <div className="space-y-5 border-r border-muted p-6">
               <div>
                 <h3 className="font-semibold">Seleccionar audiencia</h3>
                 <p className="text-xs text-muted-foreground">
@@ -2644,7 +2640,7 @@ function MasivoView({ isConnected, masivoConnected = false, onConnectClick }: { 
             <div className="flex flex-col min-h-0 p-6">
               {source === 'excel' && excelContacts.length > 0 ? (
                 <>
-                  <div className="flex items-center justify-between border-b p-4">
+                  <div className="flex items-center justify-between border-b border-muted p-4">
                     <div>
                       <h3 className="font-semibold">Contactos importados</h3>
                       <p className="text-xs text-muted-foreground">{selectedIds.size} de {excelContacts.length} seleccionados</p>
@@ -2660,7 +2656,7 @@ function MasivoView({ isConnected, masivoConnected = false, onConnectClick }: { 
                       )}
                     </div>
                   </div>
-                  <div className="border-b px-4 py-3">
+                  <div className="border-b border-muted px-4 py-3">
                     <Input
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
@@ -2669,7 +2665,7 @@ function MasivoView({ isConnected, masivoConnected = false, onConnectClick }: { 
                     />
                   </div>
                   <div ref={masivoExcelScrollRef} className="max-h-96 overflow-y-auto rounded-lg border">
-                    <div className="bg-muted/50 sticky top-0 z-10 flex items-center border-b px-4 h-10 text-xs font-medium text-muted-foreground">
+                    <div className="bg-muted/50 sticky top-0 z-10 flex items-center border-b border-muted px-4 h-10 text-xs font-medium text-muted-foreground">
                       <Checkbox
                         checked={
                           excelContacts.length > 0 &&
@@ -2740,7 +2736,7 @@ function MasivoView({ isConnected, masivoConnected = false, onConnectClick }: { 
                 </div>
               ) : (
                 <>
-                  <div className="flex items-center justify-between border-b p-4 shrink-0">
+                  <div className="flex items-center justify-between border-b border-muted p-4 shrink-0">
                     <div>
                       <h3 className="font-semibold">Destinatarios seleccionados</h3>
                       <p className="text-xs text-muted-foreground">{selected.length} contactos</p>
@@ -2791,7 +2787,7 @@ function MasivoView({ isConnected, masivoConnected = false, onConnectClick }: { 
                     </table>
                   </div>
                   {selectedPageCount > 1 && (
-                    <div className="flex items-center justify-between border-t px-4 py-2 text-xs text-muted-foreground shrink-0">
+                    <div className="flex items-center justify-between border-t border-muted px-4 py-2 text-xs text-muted-foreground shrink-0">
                       <span>
                         {(selectedPage - 1) * SELECTED_PAGE_SIZE + 1}–{Math.min(selectedPage * SELECTED_PAGE_SIZE, selected.length)} de {selected.length}
                       </span>
@@ -2939,28 +2935,54 @@ function MasivoView({ isConnected, masivoConnected = false, onConnectClick }: { 
         )}
 
         {step === 3 && !bulkProgress && (
-          <div className="mx-auto max-w-2xl space-y-5 p-6">
-            <div>
-              <h3 className="font-semibold">Resumen del envío masivo</h3>
-              <p className="text-xs text-muted-foreground">Revisa los detalles antes de enviar</p>
+          <div className="grid gap-0 lg:grid-cols-[1fr_580px] min-h-full"> 
+            <div className="flex flex-col border-r border-muted p-6">
+              <div className="space-y-5 flex-1 mx-auto max-w-xl w-full">
+                <div>
+                  <h3 className="font-semibold">Resumen del envío masivo</h3>
+                  <p className="text-xs text-muted-foreground">Revisa los detalles antes de enviar</p>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <SummaryCard label="Destinatarios" value={String(selected.length)} icon={<Users className="h-4 w-4" />} />
+                  <SummaryCard label="Canal" value="WhatsApp · Evolution GO" icon={<MessageSquare className="h-4 w-4" />} />
+                  <SummaryCard label="Nombre campaña" value={campaignName || 'Sin nombre'} icon={<Send className="h-4 w-4" />} />
+                  <SummaryCard label="Enviado por" value="Flota" icon={<CheckCircle2 className="h-4 w-4" />} />
+                </div>
+
+                <Button
+                  size="lg"
+                  className="w-full"
+                  onClick={handleSend}
+                  disabled={selected.length === 0 || (!message.trim() && !imageUrl)}
+                >
+                  <Send className="mr-2 h-4 w-4" />
+                  Enviar
+                </Button>
+              </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <SummaryCard label="Destinatarios" value={String(selected.length)} icon={<Users className="h-4 w-4" />} />
-              <SummaryCard label="Canal" value="WhatsApp · Evolution GO" icon={<MessageSquare className="h-4 w-4" />} />
-              <SummaryCard label="Nombre campaña" value={campaignName || 'Sin nombre'} icon={<Send className="h-4 w-4" />} />
-              <SummaryCard label="Enviado por" value="Flota" icon={<CheckCircle2 className="h-4 w-4" />} />
+            <div className="flex items-center justify-center p-6">
+              <div className="space-y-3 max-w-sm w-full">
+                <div className="rounded-2xl bg-card p-4 text-sm text-card-foreground shadow-inner">
+                  {message.trim() || imagePreview ? (
+                    <div className="rounded-2xl rounded-bl-sm bg-emerald-600/90 p-3 text-white">
+                      {imagePreview && <img src={imagePreview} alt="Adjunto" className="mb-2 max-h-48 rounded-lg object-cover" />}
+                      <p className="whitespace-pre-wrap">{preview(message)}</p>
+                      <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-white/80">
+                        <span>ahora</span>
+                        <CheckCheck className="h-3 w-3" />
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="py-8 text-center text-muted-foreground">Sin contenido</p>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Vista previa con datos de: <b>{previewContact?.name}</b>
+                </p>
+              </div>
             </div>
-
-            <Button
-              size="lg"
-              className="w-full"
-              onClick={handleSend}
-              disabled={selected.length === 0 || (!message.trim() && !imageUrl)}
-            >
-              <Send className="mr-2 h-4 w-4" />
-              Enviar
-            </Button>
           </div>
         )}
 
@@ -3070,7 +3092,7 @@ function MasivoView({ isConnected, masivoConnected = false, onConnectClick }: { 
       </div>
 
       {!bulkProgress && (
-        <div className="flex items-center justify-between border-t bg-muted/30 px-6 py-4 shrink-0">
+        <div className="flex items-center justify-between border-t border-muted bg-muted/30 px-6 py-4 shrink-0">
           <Button variant="outline" onClick={() => setStep((s) => Math.max(1, s - 1))} disabled={step === 1}>
             <ArrowLeft className="mr-1 h-4 w-4" /> Anterior
           </Button>
@@ -3088,7 +3110,7 @@ function MasivoView({ isConnected, masivoConnected = false, onConnectClick }: { 
       </>) : (
         <MasivoHistoryView onCreateNew={() => setMasivoSubTab('new')} />
       )}
-    </Card>
+    </div>
   );
 }
 
@@ -3525,8 +3547,8 @@ function FlotaPipelineView({ onSelect }: { onSelect: (contactId: string) => void
   if (loading) return <LoadingState />;
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-lg border bg-card" style={{ height: 'calc(100vh - 13rem)' }}>
-      <div className="border-b px-4 py-3 shrink-0 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col overflow-hidden h-full">
+      <div className="px-4 py-3 shrink-0 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="font-semibold">Pipeline de Prospectos Flota</h2>
           <p className="text-sm text-muted-foreground">{filteredConversations.length} de {conversations.length} prospectos</p>
@@ -3617,7 +3639,7 @@ const FlotaKanbanColumn = memo(function FlotaKanbanColumn({ estado, conversation
   return (
     <div className="flex h-full min-w-[280px] max-w-[300px] shrink-0 flex-col rounded-lg border bg-muted/20">
       <div className="h-1 rounded-t-lg" style={{ backgroundColor: accentColor }} />
-      <div className="flex items-center justify-between border-x border-t px-3.5 py-3">
+      <div className="flex items-center justify-between border-x border-t border-muted px-3.5 py-3">
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-semibold">{ESTADO_LABELS[estado] ?? estado}</h3>
           <Badge variant="secondary" className="text-xs font-bold">{conversations.length}</Badge>
@@ -3676,7 +3698,7 @@ const FlotaPipelineCard = memo(function FlotaPipelineCard({ conversation: c, onS
       ref={setNodeRef}
       style={style}
       className={cn(
-        'group relative select-none rounded-lg border border-border bg-card p-3.5 shadow-sm',
+        'group relative select-none rounded-lg border border-muted bg-card p-3.5 shadow-sm',
         'transition-[box-shadow,border-color] duration-150',
         'hover:border-primary/30 dark:hover:shadow-lg',
         isDragging ? 'opacity-40 transition-none' : '',

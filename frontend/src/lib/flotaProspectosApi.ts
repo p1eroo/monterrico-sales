@@ -12,6 +12,7 @@ export interface FlotaProspectoRow {
   estado: string;
   modalidad: string | null;
   anioVehiculo: number | null;
+  placa: string | null;
   distrito: string | null;
   fechaCita: string | null;
   asistencia: string | null;

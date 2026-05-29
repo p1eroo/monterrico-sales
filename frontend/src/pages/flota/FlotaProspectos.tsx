@@ -134,6 +134,7 @@ export default function FlotaProspectos() {
     edad: "",
     modalidad: "",
     anioVehiculo: "",
+    placa: "",
     observaciones: "",
   });
 
@@ -423,6 +424,7 @@ export default function FlotaProspectos() {
         distrito: newProspecto.distrito.trim() || null,
         edad: newProspecto.edad ? parseInt(newProspecto.edad, 10) : null,
         anioVehiculo: newProspecto.anioVehiculo ? parseInt(newProspecto.anioVehiculo, 10) : null,
+        placa: newProspecto.placa.trim() || null,
         observaciones: newProspecto.observaciones.trim() || null,
         estado: "Nuevo",
       });
@@ -437,6 +439,7 @@ export default function FlotaProspectos() {
         edad: "",
         modalidad: "",
         anioVehiculo: "",
+        placa: "",
         observaciones: "",
       });
       await Promise.all([loadProspectos(), loadCounts()]);
@@ -676,6 +679,7 @@ export default function FlotaProspectos() {
                 { label: "Operador" },
                 { label: "Estado" },
                 { label: "Modalidad" },
+                { label: "Placa" },
                 { label: "Año Veh." },
                 { label: "Distrito" },
                 { label: "F. Cita" },
@@ -710,6 +714,7 @@ export default function FlotaProspectos() {
                   <TableHead>Operador</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Modalidad</TableHead>
+                  <TableHead>Placa</TableHead>
                   <TableHead>Año Veh.</TableHead>
                   <TableHead>Distrito</TableHead>
                   <TableHead>F. Cita</TableHead>
@@ -726,7 +731,7 @@ export default function FlotaProspectos() {
                 {prospectos.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={17}
+                      colSpan={18}
                       className="py-12 text-center text-muted-foreground"
                     >
                       {duplicadosFilter
@@ -848,6 +853,14 @@ export default function FlotaProspectos() {
                           value={prospecto.modalidad || ""}
                           fieldId={prospecto.id}
                           fieldKey="modalidad"
+                          onSaved={(f, v) => handleOptimisticSave(prospecto.id, f, v)}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <InlineEditCell
+                          value={prospecto.placa || ""}
+                          fieldId={prospecto.id}
+                          fieldKey="placa"
                           onSaved={(f, v) => handleOptimisticSave(prospecto.id, f, v)}
                         />
                       </TableCell>
@@ -1074,26 +1087,27 @@ export default function FlotaProspectos() {
                 placeholder="Nombres y Apellidos"
               />
             </div>
-            <div className="grid gap-2">
-              <label className="text-sm font-medium">Celular *</label>
-              <Input
-                value={newProspecto.celular}
-                onChange={(e) => {
-                  setNewProspecto({ ...newProspecto, celular: e.target.value });
-                  if (duplicateAlert) setDuplicateAlert(null);
-                }}
-                onBlur={() => void checkDuplicatePhone(newProspecto.celular)}
-                placeholder="999999999"
-              />
-              {duplicateAlert && (
-                <p className="text-xs text-amber-600 flex items-center gap-1">
-                  <span className="size-1.5 rounded-full bg-amber-500 shrink-0" />
-                  Ya existe: {duplicateAlert.nombreCompleto}
-                  {duplicateAlert.operador && ` · Asignado a ${duplicateAlert.operador}`}
-                </p>
-              )}
-            </div>
             <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Celular *</label>
+                <Input
+                  value={newProspecto.celular}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/\D/g, '').slice(0, 9);
+                    setNewProspecto({ ...newProspecto, celular: raw });
+                    if (duplicateAlert) setDuplicateAlert(null);
+                  }}
+                  onBlur={() => void checkDuplicatePhone(newProspecto.celular)}
+                  placeholder="999999999"
+                />
+                {duplicateAlert && (
+                  <p className="text-xs text-amber-600 flex items-center gap-1">
+                    <span className="size-1.5 rounded-full bg-amber-500 shrink-0" />
+                    Ya existe: {duplicateAlert.nombreCompleto}
+                    {duplicateAlert.operador && ` · Asignado a ${duplicateAlert.operador}`}
+                  </p>
+                )}
+              </div>
               <div className="grid gap-2">
                 <label className="text-sm font-medium">Edad</label>
                 <Input
@@ -1101,6 +1115,21 @@ export default function FlotaProspectos() {
                   value={newProspecto.edad}
                   onChange={(e) => setNewProspecto({ ...newProspecto, edad: e.target.value })}
                   placeholder="18"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Placa</label>
+                <Input
+                  value={newProspecto.placa}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 6);
+                    const formatted = raw.length > 3 ? `${raw.slice(0, 3)}-${raw.slice(3)}` : raw;
+                    setNewProspecto({ ...newProspecto, placa: formatted });
+                  }}
+                  placeholder="ABC-123"
+                  maxLength={7}
                 />
               </div>
               <div className="grid gap-2">
