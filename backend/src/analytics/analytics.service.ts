@@ -264,8 +264,11 @@ export class AnalyticsService {
     }
 
     const rows: CompanyWeeklyProgressRow[] = [];
+    const maxWeeks = 26;
     let weekStart = startOfUtcWeekMonday(from);
-    while (weekStart <= to) {
+    let weekCount = 0;
+    while (weekStart <= to && weekCount < maxWeeks) {
+      weekCount++;
       const weekEnd = endOfUtcWeekSunday(weekStart);
       const clipStart = maxUtcDate(weekStart, from);
       const clipEnd = minUtcDate(weekEnd, to);
@@ -428,9 +431,12 @@ export class AnalyticsService {
     console.log('[DEBUG] auditsByOpp:', auditsByOpp.size);
 
     const rows: OpportunityWeeklyProgressRow[] = [];
+    const maxWeeks = 26;
     let weekStart = startOfUtcWeekMonday(from);
+    let weekCount = 0;
 
-    while (weekStart <= to) {
+    while (weekStart <= to && weekCount < maxWeeks) {
+      weekCount++;
       const weekEnd = endOfUtcWeekSunday(weekStart);
       const clipStart = maxUtcDate(weekStart, from);
       const clipEnd = minUtcDate(weekEnd, to);
@@ -524,10 +530,15 @@ export class AnalyticsService {
   private opportunityWhereOpen(
     advisorId: string | undefined,
     _unrestricted: boolean,
+    from?: Date,
+    to?: Date,
   ): Prisma.OpportunityWhereInput {
     const w: Prisma.OpportunityWhereInput = {
       status: 'abierta',
     };
+    if (from && to) {
+      w.createdAt = { gte: from, lte: to };
+    }
     if (advisorId?.trim()) {
       w.assignedTo = advisorId.trim();
     }
@@ -619,7 +630,7 @@ export class AnalyticsService {
       this.prisma.contact.count({ where: pw }),
       this.prisma.contact.count({ where: cw }),
       this.prisma.opportunity.count({
-        where: this.opportunityWhereOpen(advisorId, unrestricted),
+        where: this.opportunityWhereOpen(advisorId, unrestricted, from, to),
       }),
       this.prisma.opportunity.aggregate({
         where: this.opportunityWhereWonInRange(from, to, advisorId, unrestricted),
@@ -631,7 +642,7 @@ export class AnalyticsService {
         _sum: { amount: true },
       }),
       this.prisma.opportunity.aggregate({
-        where: this.opportunityWhereOpen(advisorId, unrestricted),
+        where: this.opportunityWhereOpen(advisorId, unrestricted, from, to),
         _sum: { amount: true },
       }),
       this.prisma.activity.count({
@@ -1039,7 +1050,7 @@ export class AnalyticsService {
     /** Oportunidades abiertas por etapa (conteo + suma de montos) */
     const oppsByStage = await this.prisma.opportunity.groupBy({
       by: ['etapa'],
-      where: this.opportunityWhereOpen(advisorId, unrestricted),
+      where: this.opportunityWhereOpen(advisorId, unrestricted, from, to),
       _count: { id: true },
       _sum: { amount: true },
     });
@@ -1315,7 +1326,7 @@ export class AnalyticsService {
       this.prisma.contact.count({ where: pw }),
       this.prisma.contact.count({ where: cw }),
       this.prisma.opportunity.count({
-        where: this.opportunityWhereOpen(advisorId, unrestricted),
+        where: this.opportunityWhereOpen(advisorId, unrestricted, from, to),
       }),
       this.prisma.opportunity.aggregate({
         where: this.opportunityWhereWonInRange(from, to, advisorId, unrestricted),
@@ -1327,7 +1338,7 @@ export class AnalyticsService {
         _sum: { amount: true },
       }),
       this.prisma.opportunity.aggregate({
-        where: this.opportunityWhereOpen(advisorId, unrestricted),
+        where: this.opportunityWhereOpen(advisorId, unrestricted, from, to),
         _sum: { amount: true },
       }),
       this.prisma.activity.count({

@@ -48,6 +48,7 @@ export type FlotaConversation = {
   unread: number;
   estado?: string;
   operador?: string;
+  lastSender?: string;
 };
 
 export type FlotaBulkResult = {
@@ -297,4 +298,12 @@ export type FlotaBulkCampaign = {
 
 export async function listFlotaBulkCampaigns(page = 1, limit = 20): Promise<{ items: FlotaBulkCampaign[]; total: number; page: number; limit: number }> {
   return api(`/api/whatsapp/flota/bulk-campaigns?page=${page}&limit=${limit}`);
+}
+
+export async function fetchContactPhoto(prospectoId: string): Promise<{ url: string } | null> {
+  try {
+    return await api(`/api/whatsapp/flota/photo/${prospectoId}`);
+  } catch {
+    return null;
+  }
 }

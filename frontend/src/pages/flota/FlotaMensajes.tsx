@@ -872,6 +872,12 @@ const ConversationItem = memo(({
           <p className={cn('mt-0.5 line-clamp-1 text-sm', conversation.unread > 0 ? 'font-medium text-foreground' : 'text-muted-foreground')}>{conversation.preview}</p>
           <div className="mt-1.5 flex items-center gap-2">
             <span className="text-[11px] text-muted-foreground">{conversation.phone}</span>
+            <span className="flex-1" />
+            {conversation.lastSender && conversation.lastSender !== conversation.name && (
+              <span className="truncate text-[11px] font-medium text-emerald-600/70 max-w-[100px]">
+                {conversation.lastSender?.split(' ')[0]}
+              </span>
+            )}
             {conversation.unread > 0 && (
               <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
                 {conversation.unread}
@@ -1132,7 +1138,7 @@ function InboxView({ activeId: externalActiveId, onActiveChange, isConnected }: 
 
   return (
     <div className="flex flex-col h-full">
-      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[360px_minmax(0,1fr)]">
+      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[400px_minmax(0,1fr)]">
       <aside className="flex flex-col overflow-hidden bg-card border-r border-muted">
         <div className="border-b border-muted px-3 pb-1 pt-3">
           <div className="flex gap-1">

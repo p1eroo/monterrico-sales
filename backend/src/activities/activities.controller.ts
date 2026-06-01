@@ -54,6 +54,8 @@ export class ActivitiesController {
     @Query('type') type?: string,
     @Query('status') status?: string,
     @Query('assignedTo') assignedTo?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
   ) {
     const scope = await this.crmDataScope.buildScope(
       req.user.userId,
@@ -70,6 +72,8 @@ export class ActivitiesController {
         type: type?.trim() || undefined,
         status: status?.trim() || undefined,
         assignedTo: assignedTo?.trim() || undefined,
+        from: from?.trim() || undefined,
+        to: to?.trim() || undefined,
       },
       scope,
     );

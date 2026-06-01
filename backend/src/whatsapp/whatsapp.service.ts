@@ -2037,6 +2037,7 @@ export class WhatsappService {
         flotaProspecto: {
           select: { id: true, nombreCompleto: true, celular: true, estado: true, lastReadAt: true, operador: true },
         },
+        createdBy: { select: { name: true } },
       },
       orderBy: { createdAt: 'desc' },
       take: 1000,
@@ -2053,6 +2054,7 @@ export class WhatsappService {
       lastReadAt: Date | null;
       estado?: string;
       operador?: string | null;
+      lastSender?: string;
     }>();
 
     for (const row of rows) {
@@ -2076,12 +2078,14 @@ export class WhatsappService {
           lastReadAt: prospectLastReadAt,
           estado: row.flotaProspecto?.estado ?? undefined,
           operador: row.flotaProspecto?.operador ?? null,
+          lastSender: row.direction === 'outbound' ? (row as any).createdBy?.name : row.flotaProspecto?.nombreCompleto,
         });
       } else {
         if (row.createdAt.getTime() > existingEntry.lastTime.getTime()) {
           existingEntry.lastTime = row.createdAt;
           existingEntry.lastMessage = row.body.slice(0, 100);
           existingEntry.lastDirection = row.direction;
+          existingEntry.lastSender = row.direction === 'outbound' ? (row as any).createdBy?.name : undefined;
         }
         if (row.direction === 'inbound' && (!existingEntry.lastReadAt || row.createdAt > existingEntry.lastReadAt)) {
           existingEntry.unread++;
@@ -2112,6 +2116,7 @@ export class WhatsappService {
       unread: Math.min(c.unread, 99),
       estado: c.estado,
       operador: c.operador ?? undefined,
+      lastSender: c.lastSender ?? c.name,
     }));
   }
 

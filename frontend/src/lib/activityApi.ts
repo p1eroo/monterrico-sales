@@ -148,11 +148,15 @@ export async function fetchActivities(): Promise<Activity[]> {
 export async function fetchActivitiesList(params: {
   assignedTo?: string;
   limit?: number;
+  from?: string;
+  to?: string;
 }): Promise<Activity[]> {
   const q = new URLSearchParams();
   q.set('page', '1');
   q.set('limit', String(params.limit ?? 2000));
   if (params.assignedTo) q.set('assignedTo', params.assignedTo);
+  if (params.from) q.set('from', params.from);
+  if (params.to) q.set('to', params.to);
   const res = await api<{
     data: ApiActivity[];
     total: number;

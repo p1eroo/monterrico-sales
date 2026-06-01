@@ -369,6 +369,8 @@ export class ActivitiesService {
       type?: string;
       status?: string;
       assignedTo?: string;
+      from?: string;
+      to?: string;
     },
     scope?: CrmDataScope,
   ) {
@@ -379,6 +381,11 @@ export class ActivitiesService {
     const where: Prisma.ActivityWhereInput = {};
     if (opts?.type?.trim()) where.type = opts.type.trim();
     if (opts?.status?.trim()) where.status = opts.status.trim();
+    if (opts?.from?.trim() || opts?.to?.trim()) {
+      where.completedAt = {};
+      if (opts.from?.trim()) where.completedAt.gte = new Date(opts.from.trim());
+      if (opts.to?.trim()) where.completedAt.lte = new Date(opts.to.trim() + 'T23:59:59.999Z');
+    }
     if (scope && !scope.unrestricted) {
       where.assignedTo = scope.viewerUserId;
     } else if (opts?.assignedTo?.trim()) {

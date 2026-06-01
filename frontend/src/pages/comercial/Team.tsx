@@ -173,32 +173,24 @@ export default function TeamPage() {
     setAdvisorKpis({});
     const { from, to } = activeWeekRange;
     (async () => {
-      const rows = await Promise.all(
+      let loaded = false;
+      await Promise.allSettled(
         advisorIdList.map(async (id) => {
           try {
             const s = await fetchAnalyticsSummary({ from, to, advisorId: id });
+            if (cancelled) return;
             const empresas = s.companiesByStage?.reduce((acc, g) => acc + g.value, 0) ?? 0;
-            return {
-              id,
-              k: {
-                empresas,
-                oportunidades: s.kpis.activeOpportunities,
-                ventas: s.kpis.closedSalesAmount,
-                conversion: s.kpis.conversionPct,
-              },
-            };
+            setAdvisorKpis((prev) => ({
+              ...prev,
+              [id]: { empresas, oportunidades: s.kpis.activeOpportunities, ventas: s.kpis.closedSalesAmount, conversion: s.kpis.conversionPct },
+            }));
+            if (!loaded) { loaded = true; setListMetricsLoading(false); }
           } catch {
-            return { id, k: null };
+            if (!loaded) { loaded = true; setListMetricsLoading(false); }
           }
         }),
       );
-      if (cancelled) return;
-      const next: typeof advisorKpis = {};
-      for (const r of rows) {
-        if (r.k) next[r.id] = { ...r.k };
-      }
-      setAdvisorKpis(next);
-      setListMetricsLoading(false);
+      if (!loaded) setListMetricsLoading(false);
     })();
     return () => {
       cancelled = true;
@@ -218,20 +210,23 @@ export default function TeamPage() {
           const s = await fetchAnalyticsSummary({ from, to, advisorId: selectedUser.id });
           if (cancelled) return;
           setSummary(s);
+          setProfileLoading(false);
         } catch (e) {
           if (cancelled) return;
           setProfileError(
             e instanceof Error ? e.message : 'Error al cargar analítica del periodo',
           );
           setSummary(null);
+          setProfileLoading(false);
         }
       } else {
         setSummary(null);
+        setProfileLoading(false);
       }
 
       if (canViewActividades) {
         try {
-          const acts = await fetchActivitiesList({ assignedTo: selectedUser.id, limit: 2500 });
+          const acts = await fetchActivitiesList({ assignedTo: selectedUser.id, limit: 2500, from, to });
           if (cancelled) return;
           setAdvisorActivities(acts);
         } catch (e) {
@@ -242,8 +237,6 @@ export default function TeamPage() {
       } else {
         setAdvisorActivities([]);
       }
-
-      if (!cancelled) setProfileLoading(false);
     })();
     return () => {
       cancelled = true;
@@ -251,10 +244,8 @@ export default function TeamPage() {
   }, [selectedUser, activeWeekRange, canViewAnalytics, canViewActividades]);
 
   const actividadesCompletasEnRango = useMemo(() => {
-    if (!activeWeekRange) return [];
-    const { from, to } = activeWeekRange;
-    return advisorActivities.filter((a) => activityInDateRange(a, from, to));
-  }, [advisorActivities, activeWeekRange]);
+    return advisorActivities;
+  }, [advisorActivities]);
 
   const actividadesPorTipo = useMemo(() => {
     const m = new Map<string, number>();
