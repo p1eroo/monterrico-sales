@@ -102,6 +102,8 @@ const navItemsAdmin: NavDef[] = [
 
 const navItemsMarketing: NavDef[] = [
   { to: '/marketing', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/marketing/leads', label: 'Leads', icon: UserPlus },
+  { to: '/marketing/integrations', label: 'Integraciones', icon: ArrowRightLeft },
 ];
 
 export function AppSidebar() {
