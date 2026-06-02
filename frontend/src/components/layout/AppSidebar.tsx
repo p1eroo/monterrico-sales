@@ -185,7 +185,7 @@ export function AppSidebar() {
             <SidebarMenuButton
               tooltip="Cambiar área"
               onClick={() => navigate('/area-select')}
-              className="text-sidebar-foreground/60 hover:bg-accent"
+              className="text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             >
               <ArrowRightLeft />
               <span>Cambiar área</span>
