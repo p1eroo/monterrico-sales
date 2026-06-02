@@ -281,7 +281,10 @@ export default function FlotaReportes() {
       }
     });
 
-    const penalizados = sunatFiltered.filter((s: any) => (s.tiempopuntualidad || 0) > 15).length;
+    const penalizados = sunatFiltered.filter((s: any) => {
+      const m = s.movil || '';
+      return !authorizedPrefixes.some(p => m.startsWith(p));
+    }).length;
     
     // For Nuevos Ingresos, count drivers created in the selected range
     const rangeStart = sunatDateRange?.from;
