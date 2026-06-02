@@ -117,6 +117,8 @@ export default function FlotaProspectos() {
   const [citadoDialogOpen, setCitadoDialogOpen] = useState(false);
   const [citadoProspectId, setCitadoProspectId] = useState<string | null>(null);
   const [citadoDate, setCitadoDate] = useState('');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [searchDebounced, setSearchDebounced] = useState("");
@@ -767,21 +769,7 @@ export default function FlotaProspectos() {
           <Button
             variant="destructive"
             className="gap-1.5"
-            onClick={async () => {
-              const confirm = window.confirm(
-                `¿Eliminar ${selectedIds.size} prospecto(s)?`,
-              );
-              if (!confirm) return;
-              try {
-                await flotaProspectosDeleteMany(Array.from(selectedIds));
-                toast.success(`${selectedIds.size} eliminado(s)`);
-                setSelectedIds(new Set());
-                void loadProspectos();
-                void loadCounts();
-              } catch (e) {
-                toast.error(e instanceof Error ? e.message : "Error eliminando");
-              }
-            }}
+            onClick={() => setDeleteDialogOpen(true)}
           >
             <Trash2 className="size-4" />
             Eliminar ({selectedIds.size})
@@ -1119,59 +1107,53 @@ export default function FlotaProspectos() {
 
       <Dialog open={previewOpen} onOpenChange={(open) => !open && closePreview()}>
         <DialogContent className="flex h-[min(92vh,880px)] max-h-[92vh] w-[min(96vw,calc(100vw-2rem))] max-w-[min(96vw,87.5rem)] flex-col gap-0 p-0 sm:max-w-[min(96vw,87.5rem)]">
-          <DialogHeader className="shrink-0 space-y-1 border-b px-6 py-4 text-left">
-            <DialogTitle>Vista previa de importación</DialogTitle>
-            <DialogDescription className="text-left">
-              {previewData ? (
-                <>
-                  <span className="block">
-                    Hoja: <strong>{selectedSheet}</strong> · {previewData.totalRows} fila(s) total(es)
-                  </span>
-                  <span className="text-muted-foreground">
-                    A continuación se muestra el listado de datos detectados. Confirma para importar.
-
-                  </span>
-                </>
-              ) : null}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="w-full max-w-full overflow-auto px-6 py-3" style={{ maxHeight: 'calc(100% - 5rem)' }}>
-            {previewData && previewData.rows.length > 0 ? (
-              <table className="border-collapse [&_td]:border [&_th]:border [&_td]:border-border/50 [&_th]:border-border/50 [&_td]:px-2 [&_th]:px-2 [&_td]:py-2 [&_th]:py-2" style={{ minWidth: 'max-content', width: 'max-content' }}>
-                <thead className="sticky top-0 z-10 bg-background">
-                  <tr>
-                    {previewData.headers.map((header) => (
-                      <th
-                        key={header}
-                        className="w-[8.5rem] min-w-[8.5rem] max-w-[8.5rem] align-bottom h-10 px-2 text-left font-medium whitespace-nowrap text-foreground"
-                      >
-                        <span className="block truncate" title={header}>
-                          {header}
-                        </span>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {previewData.rows.map((row, idx) => (
-                    <tr key={idx} className="border-b border-transparent transition-colors hover:bg-muted/50">
-                      {previewData.headers.map((header) => (
-                        <td
-                          key={`${idx}-${header}`}
-                          className="w-[8.5rem] min-w-[8.5rem] max-w-[8.5rem] align-top text-xs p-2 whitespace-nowrap"
-                        >
-                          {String(row[header] ?? "")}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : previewData ? (
-              <p className="text-sm text-muted-foreground">
-                No hay filas que mostrar.
+          <DialogHeader className="shrink-0 border-b px-6 py-4">
+            <h2 className="text-lg font-semibold">Vista previa de importación</h2>
+            {previewData ? (
+              <p className="text-sm text-muted-foreground mt-1">
+                {previewData.totalRows} fila(s) total(es) &middot; Confirma para importar.
               </p>
             ) : null}
+          </DialogHeader>
+          <div className="flex-1 min-h-0 overflow-hidden px-6 py-3">
+            <div className="h-full overflow-auto rounded-md border" style={{ scrollbarWidth: 'thin' }}>
+              {previewData && previewData.rows.length > 0 ? (
+                <table className="table-fixed border-collapse [&_td]:border [&_th]:border [&_td]:border-border/50 [&_th]:border-border/50 [&_td]:px-2 [&_th]:px-2 [&_td]:py-2 [&_th]:py-2" style={{ width: 'max-content', minWidth: 'max-content' }}>
+                  <thead>
+                    <tr>
+                      {previewData.headers.map((header) => (
+                        <th
+                          key={header}
+                          className="w-[8.5rem] min-w-[8.5rem] max-w-[8.5rem] h-10 px-2 text-left font-medium whitespace-nowrap text-foreground bg-muted"
+                        >
+                          <span className="block truncate" title={header}>
+                            {header}
+                          </span>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {previewData.rows.map((row, idx) => (
+                      <tr key={idx} className="border-b border-transparent transition-colors hover:bg-muted/50">
+                        {previewData.headers.map((header) => (
+                          <td
+                            key={`${idx}-${header}`}
+                            className="w-[8.5rem] min-w-[8.5rem] max-w-[8.5rem] align-top text-xs p-2 whitespace-nowrap"
+                          >
+                            {String(row[header] ?? "")}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : previewData ? (
+                <p className="text-sm text-muted-foreground p-4">
+                  No hay filas que mostrar.
+                </p>
+              ) : null}
+            </div>
           </div>
           <DialogFooter className="shrink-0 border-t px-6 py-4">
             <Button type="button" variant="outline" onClick={closePreview}>
@@ -1375,6 +1357,45 @@ export default function FlotaProspectos() {
               }
             }} disabled={!citadoDate}>
               Guardar cita
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={(open) => !open && setDeleteDialogOpen(false)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Eliminar prospectos</DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro de eliminar <strong>{selectedIds.size}</strong> prospecto(s)? Esta acción no se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={deleting}>
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={deleting}
+              onClick={async () => {
+                setDeleting(true);
+                try {
+                  await flotaProspectosDeleteMany(Array.from(selectedIds));
+                  toast.success(`${selectedIds.size} eliminado(s)`);
+                  setSelectedIds(new Set());
+                  setDeleteDialogOpen(false);
+                  void loadProspectos();
+                  void loadCounts();
+                } catch (e) {
+                  toast.error(e instanceof Error ? e.message : "Error eliminando");
+                } finally {
+                  setDeleting(false);
+                }
+              }}
+            >
+              {deleting ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+              {deleting ? "Eliminando..." : "Eliminar"}
             </Button>
           </DialogFooter>
         </DialogContent>
