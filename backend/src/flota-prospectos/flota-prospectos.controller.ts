@@ -168,6 +168,32 @@ export class FlotaProspectosController {
     }
   }
 
+  /** POST /flota/import-rows — Importar desde filas enviadas (archivo local) */
+  @Post('flota/import-rows')
+  @RequirePermissions('flota_prospectos.crear')
+  async importRows(
+    @Body() body: { rows: string[][] },
+    @Req() req: AuthedReq,
+  ) {
+    try {
+      const totalRows = body.rows.length > 1 ? body.rows.length - 1 : 0;
+
+      return this.importExportJobs.startJob(
+        {
+          entity: 'flota-prospecto',
+          ownerUserId: req.user.userId,
+          totalRows,
+        },
+        (update) => this.service.importRowsWithProgress(body.rows, update),
+      );
+    } catch (err) {
+      throw new HttpException(
+        err instanceof Error ? err.message : 'Error al importar desde archivo',
+        HttpStatus.BAD_GATEWAY,
+      );
+    }
+  }
+
   /** POST /flota/import/:sheetName — Importar desde Google Sheets con progreso */
   @Post('flota/import/:sheetName')
   @RequirePermissions('flota_prospectos.crear')

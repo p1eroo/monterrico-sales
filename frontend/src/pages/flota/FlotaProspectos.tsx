@@ -60,6 +60,7 @@ import { formatDateDMY } from "@/lib/formatters";
 import {
   flotaProspectosList,
   flotaProspectosImportSheets,
+  flotaProspectosImportRows,
   flotaProspectosCounts,
   flotaProspectosSheetNames,
   flotaProspectosSheetPreview,
@@ -135,6 +136,8 @@ export default function FlotaProspectos() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewData, setPreviewData] = useState<SheetPreviewResponse | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewSource, setPreviewSource] = useState<'sheets' | 'file'>('sheets');
+  const rawImportRowsRef = useRef<any[][] | null>(null);
   const [conductorTelefonos, setConductorTelefonos] = useState<{ phones: Set<string>; codigoByPhone: Record<string, string> }>({
     phones: new Set(),
     codigoByPhone: {},
@@ -392,35 +395,27 @@ export default function FlotaProspectos() {
       const data = await file.arrayBuffer();
       const wb = XLSX.read(data, { type: 'array' });
       const ws = wb.Sheets[wb.SheetNames[0]];
-      const json = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' }) as string[][];
+      const json = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' }) as any[][];
       if (json.length < 2) {
         toast.error('El archivo no tiene datos');
         return;
       }
-      const rows = json.slice(1).filter((r) => r.some((c) => c.trim()));
+      const rows = json.slice(1).filter((r) => r.some((c) => c != null && String(c).trim() !== ''));
       if (rows.length === 0) {
         toast.error('El archivo no tiene datos');
         return;
       }
-      const prospectos = rows.map((r) => ({
-        fechaRegistro: r[0] || null,
-        redSocial: r[1] || null,
-        celular: r[2] || null,
-        nombreCompleto: r[3] || '',
-        edad: r[4] ? parseInt(r[4], 10) || null : null,
-        operador: r[5] || null,
-        estado: r[6] || 'Nuevo',
-        modalidad: r[7] || null,
-        placa: r[8] || null,
-        anioVehiculo: r[9] ? parseInt(r[9], 10) || null : null,
-        distrito: r[10] || null,
-        fechaCita: r[11] || null,
-        asistencia: r[12] || null,
-        fechaAfiliacion: r[13] || null,
-        movil: r[14] || null,
-        observaciones: r[15] || null,
-      }));
-      setPreviewData(prospectos as any);
+      const headers = (json[0] || []).map((h: any) => String(h || '').trim()).filter(Boolean);
+      const previewRows = rows.map((r: any[]) => {
+        const obj: Record<string, string> = {};
+        headers.forEach((h: string, i: number) => {
+          if (h) obj[h] = String(r[i] || '');
+        });
+        return obj;
+      });
+      rawImportRowsRef.current = [json[0] as any[], ...rows as any[][]];
+      setPreviewData({ headers, rows: previewRows, totalRows: previewRows.length });
+      setPreviewSource('file');
       setPreviewOpen(true);
     } catch {
       toast.error('Error al leer el archivo');
@@ -439,6 +434,7 @@ export default function FlotaProspectos() {
     try {
       const data = await flotaProspectosSheetPreview(selectedSheet, selectedSpreadsheetId);
       setPreviewData(data);
+      setPreviewSource('sheets');
       setPreviewOpen(true);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error cargando vista previa");
@@ -450,18 +446,27 @@ export default function FlotaProspectos() {
   function closePreview() {
     setPreviewOpen(false);
     setPreviewData(null);
+    setPreviewSource('sheets');
+    rawImportRowsRef.current = null;
   }
 
   async function handleConfirmImport() {
+    const rows = previewSource === 'file' ? rawImportRowsRef.current : null;
     closePreview();
     setImporting(true);
     try {
-      const job = await flotaProspectosImportSheets(selectedSheet, selectedSpreadsheetId);
-      enqueueJob(job);
-      toast.success("Importación iniciada. Revisá el progreso en la tarjeta de importación.");
+      if (rows) {
+        const job = await flotaProspectosImportRows(rows);
+        enqueueJob(job);
+        toast.success("Importación iniciada. Revisá el progreso en la tarjeta de importación.");
+      } else {
+        const job = await flotaProspectosImportSheets(selectedSheet, selectedSpreadsheetId);
+        enqueueJob(job);
+        toast.success("Importación iniciada. Revisá el progreso en la tarjeta de importación.");
+      }
     } catch (e) {
       toast.error(
-        e instanceof Error ? e.message : "Error al importar desde Sheets",
+        e instanceof Error ? e.message : "Error al importar",
       );
     } finally {
       setImporting(false);
@@ -1130,40 +1135,38 @@ export default function FlotaProspectos() {
               ) : null}
             </DialogDescription>
           </DialogHeader>
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-6 py-3">
+          <div className="w-full max-w-full overflow-auto px-6 py-3" style={{ maxHeight: 'calc(100% - 5rem)' }}>
             {previewData && previewData.rows.length > 0 ? (
-              <div className="min-h-0 flex-1 overflow-auto rounded-md border">
-                <Table containerClassName="overflow-visible" className="w-full min-w-max table-fixed [&_td]:border [&_th]:border [&_td]:border-border/50 [&_th]:border-border/50 [&_td]:px-2 [&_th]:px-2 [&_td]:py-2 [&_th]:py-2 border-collapse">
-                  <TableHeader>
-                    <TableRow>
-                      {previewData.headers.map((header) => (
-                        <TableHead
-                          key={header}
-                          className="w-[8.5rem] min-w-[8.5rem] max-w-[8.5rem] align-bottom"
-                        >
-                          <span className="block truncate" title={header}>
-                            {header}
-                          </span>
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {previewData.rows.map((row, idx) => (
-                      <TableRow key={idx}>
-                        {previewData.headers.map((header) => (
-                          <TableCell
-                            key={`${idx}-${header}`}
-                            className="w-[8.5rem] min-w-[8.5rem] max-w-[8.5rem] align-top text-xs"
-                          >
-                            {String(row[header] ?? "")}
-                          </TableCell>
-                        ))}
-                      </TableRow>
+              <table className="border-collapse [&_td]:border [&_th]:border [&_td]:border-border/50 [&_th]:border-border/50 [&_td]:px-2 [&_th]:px-2 [&_td]:py-2 [&_th]:py-2" style={{ minWidth: 'max-content', width: 'max-content' }}>
+                <thead className="sticky top-0 z-10 bg-background">
+                  <tr>
+                    {previewData.headers.map((header) => (
+                      <th
+                        key={header}
+                        className="w-[8.5rem] min-w-[8.5rem] max-w-[8.5rem] align-bottom h-10 px-2 text-left font-medium whitespace-nowrap text-foreground"
+                      >
+                        <span className="block truncate" title={header}>
+                          {header}
+                        </span>
+                      </th>
                     ))}
-                  </TableBody>
-                </Table>
-              </div>
+                  </tr>
+                </thead>
+                <tbody>
+                  {previewData.rows.map((row, idx) => (
+                    <tr key={idx} className="border-b border-transparent transition-colors hover:bg-muted/50">
+                      {previewData.headers.map((header) => (
+                        <td
+                          key={`${idx}-${header}`}
+                          className="w-[8.5rem] min-w-[8.5rem] max-w-[8.5rem] align-top text-xs p-2 whitespace-nowrap"
+                        >
+                          {String(row[header] ?? "")}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             ) : previewData ? (
               <p className="text-sm text-muted-foreground">
                 No hay filas que mostrar.

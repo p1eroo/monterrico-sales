@@ -234,7 +234,16 @@ const CRM_TOOLS: Record<string, unknown>[] = [
     function: {
       name: 'count_all_companies',
       description:
-        'Cuenta todas las empresas registradas en el CRM (total global, sin filtrar por asesor). Usar cuando pregunte cuántas empresas hay en total en el sistema, “en todo el CRM”, “en general”, etc. Requiere empresas.ver (equivalente al listado con filtro de todos los asesores).',
+        'Cuenta todas las empresas registradas en el CRM (total global, sin filtrar por asesor). Usar cuando pregunte cuántas empresas hay en total en el sistema, "en todo el CRM", "en general", etc. Requiere empresas.ver (equivalente al listado con filtro de todos los asesores).',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'count_companies_by_advisor',
+      description:
+        'Cuenta las empresas del CRM agrupadas por asesor (usuario asignado). Devuelve el nombre del asesor y la cantidad de empresas que tiene asignadas. Requiere empresas.ver.',
       parameters: { type: 'object', properties: {} },
     },
   },

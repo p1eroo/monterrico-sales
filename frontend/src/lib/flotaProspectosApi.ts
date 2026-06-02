@@ -115,6 +115,13 @@ export async function flotaProspectosSheetPreview(
   return api<SheetPreviewResponse>(`/flota/preview/${encodeURIComponent(sheetName)}${qsStr ? '?' + qsStr : ''}`);
 }
 
+export async function flotaProspectosImportRows(rows: any[][]): Promise<ImportJob> {
+  return api<ImportJob>('/flota/import-rows', {
+    method: 'POST',
+    body: JSON.stringify({ rows }),
+  });
+}
+
 export async function flotaProspectosSheetNames(spreadsheetId?: string): Promise<{ sheets: string[] }> {
   const qs = new URLSearchParams();
   if (spreadsheetId) qs.set('spreadsheetId', spreadsheetId);

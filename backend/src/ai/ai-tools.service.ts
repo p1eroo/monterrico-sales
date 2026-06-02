@@ -264,6 +264,31 @@ export class AiToolsService {
     return { count, scope: 'todas las empresas registradas en el CRM' };
   }
 
+  async countCompaniesByAdvisor(userId: string): Promise<Record<string, unknown>> {
+    if (!(await this.userHasPermission(userId, 'empresas.ver'))) {
+      return { error: 'Sin permiso para ver empresas' };
+    }
+    const groups = await this.prisma.company.groupBy({
+      by: ['assignedTo'],
+      _count: { _all: true },
+      where: { assignedTo: { not: null } },
+    });
+    const userIds = groups.map((g) => g.assignedTo).filter(Boolean) as string[];
+    const users = userIds.length > 0
+      ? await this.prisma.user.findMany({
+          where: { id: { in: userIds } },
+          select: { id: true, name: true },
+        })
+      : [];
+    const userMap = new Map(users.map((u) => [u.id, u.name]));
+    return {
+      byAdvisor: groups.map((g) => ({
+        advisorName: g.assignedTo ? (userMap.get(g.assignedTo) ?? 'Desconocido') : 'Sin asesor',
+        count: g._count._all,
+      })),
+    };
+  }
+
   /** Oportunidades abiertas asignadas al usuario. */
   async countMyOpenOpportunities(
     userId: string,
@@ -510,6 +535,8 @@ export class AiToolsService {
         return this.countMyCompanies(userId);
       case 'count_all_companies':
         return this.countAllCompanies(userId);
+      case 'count_companies_by_advisor':
+        return this.countCompaniesByAdvisor(userId);
       case 'count_my_open_opportunities':
         return this.countMyOpenOpportunities(userId);
       case 'count_my_pending_tasks':

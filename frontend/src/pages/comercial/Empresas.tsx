@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+// import * as XLSX from 'xlsx';
 import {
   Search, Building2, Users, Briefcase,
   FileSpreadsheet, Upload, Download, Plus, List, Grid3X3, Loader2,
@@ -63,6 +64,8 @@ import {
   isLikelyCompanyCuid,
 } from '@/lib/companyApi';
 import { isLikelyContactCuid, contactCreate } from '@/lib/contactApi';
+// import { contactListAll } from '@/lib/contactApi';
+// import { opportunityListAll } from '@/lib/opportunityApi';
 import { companyDetailHref, contactDetailHref } from '@/lib/detailRoutes';
 import {
   Dialog,
@@ -312,6 +315,7 @@ export default function EmpresasPage() {
     null,
   );
   const [exportBusy, setExportBusy] = useState(false);
+  // const [fullExportBusy, setFullExportBusy] = useState(false);
   const { activeAdvisors } = useUsers();
   const { hasPermission } = usePermissions();
   const [previewEmpresa, setPreviewEmpresa] = useState<EmpresaSummaryRow | null>(null);
@@ -839,6 +843,77 @@ export default function EmpresasPage() {
     }
   }
 
+  /* async function handleFullExport() {
+    try {
+      setFullExportBusy(true);
+      const params: Record<string, string> = {};
+      if (searchDebounced) params.search = searchDebounced;
+      if (etapaFilter !== 'todos') params.etapa = etapaFilter;
+      if (sourceFilter !== 'todos') params.fuente = sourceFilter;
+      if (rubroFilter !== 'todos') params.rubro = rubroFilter;
+      if (tipoFilter !== 'todos') params.tipo = tipoFilter;
+      if (advisorFilter !== 'todos') params.assignedTo = advisorFilter;
+      if (interactionRange?.from) params.lastInteractionFrom = interactionRange.from.toISOString();
+      if (interactionRange?.to) params.lastInteractionTo = interactionRange.to.toISOString();
+
+      const [companies, contacts, opportunities] = await Promise.all([
+        companyListSummaryPaginated({ limit: 5000, ...params }),
+        contactListAll(params),
+        opportunityListAll(params),
+      ]);
+
+      const wsEmpresas = XLSX.utils.json_to_sheet(
+        companies.data.map((c) => ({
+          Empresa: c.name,
+          RUC: c.ruc || '',
+          Etapa: c.displayEtapa,
+          Asesor: c.displayAdvisorName || '',
+          Teléfono: c.telefono || '',
+          Rubro: c.rubro || '',
+          Fuente: c.fuente || '',
+          'Última interacción': c.lastInteractionAt ? new Date(c.lastInteractionAt).toLocaleDateString('es-PE') : '',
+        })),
+      );
+
+      const wsContactos = XLSX.utils.json_to_sheet(
+        contacts.flatMap((c) =>
+          (c.companies || []).map((cc) => ({
+            Empresa: cc.company.name,
+            Contacto: c.name,
+            Email: c.correo,
+            Teléfono: c.telefono,
+            Etapa: c.etapa,
+            Cargo: c.cargo || '',
+          })),
+        ),
+      );
+
+      const wsOportunidades = XLSX.utils.json_to_sheet(
+        opportunities.flatMap((o) =>
+          (o.companies || []).map((oc) => ({
+            Empresa: oc.company.name,
+            Oportunidad: o.title,
+            Monto: o.amount,
+            Etapa: o.etapa,
+            Estado: o.status,
+            'Fecha cierre': o.expectedCloseDate ? new Date(o.expectedCloseDate).toLocaleDateString('es-PE') : '',
+          })),
+        ),
+      );
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, wsEmpresas, 'Empresas');
+      XLSX.utils.book_append_sheet(wb, wsContactos, 'Contactos');
+      XLSX.utils.book_append_sheet(wb, wsOportunidades, 'Oportunidades');
+      XLSX.writeFile(wb, `export_full_empresas_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      toast.success('Exportación completa descargada');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error en exportación completa');
+    } finally {
+      setFullExportBusy(false);
+    }
+  } */
+
   function openCompanyImport() {
     importInputRef.current?.click();
   }
@@ -1090,6 +1165,17 @@ export default function EmpresasPage() {
             Exportar
           </Button>
         )}
+        {/* hasPermission('empresas.exportar') && (
+          <Button
+            variant="outline"
+            disabled={fullExportBusy}
+            onClick={() => void handleFullExport()}
+            className="bg-card"
+          >
+            {fullExportBusy ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}{' '}
+            Full Exp
+          </Button>
+        ) */}
         <Button className="bg-[#13944C] hover:bg-[#0f7a3d]" onClick={() => setNewEmpresaOpen(true)}>
           <Plus className="size-4" /> Nueva Empresa
         </Button>

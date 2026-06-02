@@ -832,6 +832,174 @@ if (params.mes) {
     return result;
   }
 
+  /** Importar desde filas enviadas directamente (archivo local) */
+  async importRowsWithProgress(
+    rows: string[][],
+    update: (progress: ImportJobProgressInput) => void,
+  ): Promise<BulkImportResultDto> {
+    const errors: BulkImportRowError[] = [];
+
+    if (rows.length < 2) {
+      return { totalRows: 0, created: 0, skipped: 0, errors };
+    }
+
+    const { dataRows, col } = this.findHeaderAndData(rows);
+    const totalRows = dataRows.length;
+    if (totalRows === 0) return { totalRows: 0, created: 0, skipped: 0, errors };
+
+    const sheetPhones = new Set<string>();
+    for (const row of dataRows) {
+      const cel = col.CELULAR !== -1 ? cell(row, col.CELULAR) : cell(row, col.MOVIL);
+      const norm = this.normalizeCelular(cel);
+      if (norm) sheetPhones.add(norm);
+    }
+
+    const existingProspectos = new Map<string, { id: string; estado: string }>();
+    if (sheetPhones.size > 0) {
+      const existingRows = await this.prisma.flotaProspecto.findMany({
+        where: { celular: { not: null } },
+        select: { id: true, celular: true, estado: true },
+      });
+      for (const r of existingRows) {
+        const norm = this.normalizeCelular(r.celular);
+        if (norm && sheetPhones.has(norm)) {
+          existingProspectos.set(norm, { id: r.id, estado: r.estado });
+        }
+      }
+    }
+
+    const batchPhones = new Map<string, number>();
+    const records: any[] = [];
+    const updateBatch: Array<{ id: string; data: Record<string, unknown> }> = [];
+
+    let created = 0;
+    let updated = 0;
+    let skipped = 0;
+
+    for (let i = 0; i < dataRows.length; i++) {
+      const row = dataRows[i];
+      const nombre = col.NOMBRE_COMPLETO !== -1 ? cell(row, col.NOMBRE_COMPLETO) : '';
+      const celular = col.CELULAR !== -1 ? cell(row, col.CELULAR) : cell(row, col.MOVIL);
+      const celularNorm = this.normalizeCelular(celular) || '';
+
+      if (!celularNorm && !nombre) {
+        skipped++;
+        errors.push({ row: i + 1, message: 'Omitida por falta de nombre y celular.' });
+        continue;
+      }
+
+      let esDuplicado = false;
+      if (celularNorm) {
+        if (existingProspectos.has(celularNorm) || batchPhones.has(celularNorm)) {
+          esDuplicado = true;
+        }
+        if (!esDuplicado) {
+          batchPhones.set(celularNorm, records.length);
+        }
+      }
+
+      if (esDuplicado) {
+        const existing = existingProspectos.get(celularNorm);
+        if (existing && celularNorm) {
+          const updateData: Record<string, unknown> = {};
+          if (nombre) updateData.nombreCompleto = nombre;
+          if (col.RED_SOCIAL !== -1) { const val = cell(row, col.RED_SOCIAL); if (val) updateData.redSocial = val; }
+          if (col.EDAD !== -1) { const val = parseInt10(cell(row, col.EDAD)); if (val !== null) updateData.edad = val; }
+          if (col.OPERADOR !== -1) { const val = cell(row, col.OPERADOR); if (val) updateData.operador = val; }
+          if (col.ESTADO !== -1) { const val = cell(row, col.ESTADO); if (val) updateData.estado = normalizeEstado(val); }
+          if (col.MODALIDAD !== -1) { const val = cell(row, col.MODALIDAD); if (val) updateData.modalidad = val; }
+          if (col.ANIO_VEHICULO !== -1) { const val = parseInt10(cell(row, col.ANIO_VEHICULO)); if (val !== null) updateData.anioVehiculo = val; }
+          if (col.PLACA !== -1) { const val = cell(row, col.PLACA); if (val) updateData.placa = val; }
+          if (col.DISTRITO !== -1) { const val = cell(row, col.DISTRITO); if (val) updateData.distrito = val; }
+          if (col.FECHA_CITA !== -1) { const val = parseDate(cell(row, col.FECHA_CITA)); if (val) updateData.fechaCita = val; }
+          if (col.ASISTENCIA !== -1) { const val = cell(row, col.ASISTENCIA); if (val) updateData.asistencia = val; }
+          if (col.FECHA_AFILIACION !== -1) { const val = parseDate(cell(row, col.FECHA_AFILIACION)); if (val) updateData.fechaAfiliacion = val; }
+          if (col.MOVIL !== -1) { const val = cell(row, col.MOVIL); if (val) updateData.movil = val; }
+          if (col.OBSERVACIONES !== -1) { const val = cell(row, col.OBSERVACIONES); if (val) updateData.observaciones = val; }
+          if (col.FECHA_REGISTRO !== -1) { const val = parseDate(cell(row, col.FECHA_REGISTRO)); if (val) updateData.fechaRegistro = val; }
+          if (Object.keys(updateData).length > 0) {
+            updateBatch.push({ id: existing.id, data: updateData });
+            if (updateBatch.length >= 100) {
+              const batch = [...updateBatch];
+              updateBatch.length = 0;
+              await this.prisma.$transaction(async (tx) => {
+                await Promise.all(
+                  batch.map(({ id, data }) => tx.flotaProspecto.update({ where: { id }, data: data as any })),
+                );
+              }, { timeout: 30000 });
+              updated += batch.length;
+              update({ processedRows: i + 1, created, updated, skipped, errorCount: errors.length });
+            }
+          } else {
+            skipped++;
+          }
+        } else {
+          skipped++;
+          errors.push({ row: i + 1, message: `Omitida por duplicado (Celular: ${celularNorm || celular}).` });
+        }
+        continue;
+      }
+
+      const estadoRaw = col.ESTADO !== -1 ? cell(row, col.ESTADO) : '';
+      const estado = normalizeEstado(estadoRaw);
+
+      records.push({
+        fechaRegistro: col.FECHA_REGISTRO !== -1 ? parseDate(cell(row, col.FECHA_REGISTRO)) : null,
+        redSocial: col.RED_SOCIAL !== -1 ? cell(row, col.RED_SOCIAL) || null : null,
+        celular: celular || null,
+        nombreCompleto: nombre,
+        edad: col.EDAD !== -1 ? parseInt10(cell(row, col.EDAD)) : null,
+        operador: col.OPERADOR !== -1 ? cell(row, col.OPERADOR) || null : null,
+        estado,
+        modalidad: col.MODALIDAD !== -1 ? cell(row, col.MODALIDAD) || null : null,
+        anioVehiculo: col.ANIO_VEHICULO !== -1 ? parseInt10(cell(row, col.ANIO_VEHICULO)) : null,
+        placa: col.PLACA !== -1 ? cell(row, col.PLACA) || null : null,
+        distrito: col.DISTRITO !== -1 ? cell(row, col.DISTRITO) || null : null,
+        fechaCita: col.FECHA_CITA !== -1 ? parseDate(cell(row, col.FECHA_CITA)) : null,
+        asistencia: col.ASISTENCIA !== -1 ? cell(row, col.ASISTENCIA) || null : null,
+        fechaAfiliacion: col.FECHA_AFILIACION !== -1 ? parseDate(cell(row, col.FECHA_AFILIACION)) : null,
+        movil: col.MOVIL !== -1 ? cell(row, col.MOVIL) || null : null,
+        observaciones: col.OBSERVACIONES !== -1 ? cell(row, col.OBSERVACIONES) || null : null,
+        esDuplicado,
+      });
+
+      if ((i + 1) % 100 === 0) {
+        update({ processedRows: i + 1, created, updated, skipped, errorCount: errors.length });
+      }
+    }
+
+    update({ processedRows: dataRows.length, created, updated, skipped, errorCount: errors.length });
+
+    if (updateBatch.length > 0) {
+      const batch = [...updateBatch];
+      updateBatch.length = 0;
+      await this.prisma.$transaction(async (tx) => {
+        await Promise.all(
+          batch.map(({ id, data }) => tx.flotaProspecto.update({ where: { id }, data: data as any })),
+        );
+      }, { timeout: 30000 });
+      updated += batch.length;
+    }
+
+    const BATCH_SIZE = 500;
+    for (let i = 0; i < records.length; i += BATCH_SIZE) {
+      const batch = records.slice(i, i + BATCH_SIZE);
+      try {
+        await this.prisma.flotaProspecto.createMany({ data: batch as any });
+        created += batch.length;
+      } catch (err) {
+        const msg = `Error insertando lote ${Math.floor(i / BATCH_SIZE) + 1}: ${err instanceof Error ? err.message : String(err)}`;
+        this.logger.error(msg);
+        errors.push({ row: i + 1, message: msg });
+      }
+      update({ processedRows: dataRows.length, created, updated, skipped, errorCount: errors.length });
+    }
+
+    this.logger.log(`Importación desde archivo completada: ${created} creados, ${updated} actualizados, ${skipped} omitidos, ${errors.length} errores`);
+
+    return { totalRows, created, skipped, errors };
+  }
+
   /** Importar desde Google Sheets con progreso (para jobs) */
   async importFromSheetsWithProgress(
     sheetName: string,
