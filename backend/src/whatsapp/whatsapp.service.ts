@@ -2092,7 +2092,9 @@ export class WhatsappService {
           existingEntry.lastTime = row.createdAt;
           existingEntry.lastMessage = row.body.slice(0, 100);
           existingEntry.lastDirection = row.direction;
-          existingEntry.lastSender = row.direction === 'outbound' ? (row as any).createdBy?.name : row.flotaProspecto?.nombreCompleto;
+        }
+        if (row.direction === 'outbound' && (row as any).createdBy?.name) {
+          existingEntry.lastSender = (row as any).createdBy?.name;
         }
         if (row.direction === 'inbound' && (!existingEntry.lastReadAt || row.createdAt > existingEntry.lastReadAt)) {
           existingEntry.unread++;
