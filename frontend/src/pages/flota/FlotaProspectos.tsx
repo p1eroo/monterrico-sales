@@ -911,7 +911,16 @@ export default function FlotaProspectos() {
                           fieldId={prospecto.id}
                           fieldKey="fechaRegistro"
                           type="readonly"
-                        />
+                        >
+                          <div>
+                            <div>{prospecto.fechaRegistro ? formatDateDMY(prospecto.fechaRegistro) : "—"}</div>
+                            {prospecto.createdAt && (
+                              <div className="text-[10px] text-muted-foreground mt-0.5">
+                                Importado: {new Date(prospecto.createdAt).toLocaleDateString('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: '2-digit', year: 'numeric' })}
+                              </div>
+                            )}
+                          </div>
+                        </InlineEditCell>
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         <InlineEditCell
