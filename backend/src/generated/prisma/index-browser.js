@@ -605,6 +605,14 @@ exports.Prisma.FlotaProspectoScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.FlotaLlamadaScalarFieldEnum = {
+  id: 'id',
+  prospectoId: 'prospectoId',
+  userName: 'userName',
+  notas: 'notas',
+  createdAt: 'createdAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -674,7 +682,8 @@ exports.Prisma.ModelName = {
   Campaign: 'Campaign',
   FlotaBulkCampaign: 'FlotaBulkCampaign',
   CrmFile: 'CrmFile',
-  FlotaProspecto: 'FlotaProspecto'
+  FlotaProspecto: 'FlotaProspecto',
+  FlotaLlamada: 'FlotaLlamada'
 };
 
 /**

@@ -327,4 +327,40 @@ export class FlotaProspectosController {
       );
     }
   }
+
+  /** GET /flota-prospectos/:id/llamadas — Listar llamadas de un prospecto */
+  @Get('flota-prospectos/:id/llamadas')
+  @RequirePermissions('flota_prospectos.ver')
+  async getLlamadas(@Param('id') id: string) {
+    return this.service.getLlamadas(id);
+  }
+
+  /** GET /flota/calendario-citas — Prospectos con fechaCita para el calendario */
+  @Get('flota/calendario-citas')
+  @RequirePermissions('flota_prospectos.ver')
+  async getCalendarCitas() {
+    return this.service.getCalendarCitas();
+  }
+
+  /** POST /flota-prospectos/:id/llamadas — Registrar una llamada */
+  @Post('flota-prospectos/:id/llamadas')
+  @RequirePermissions('flota_prospectos.crear')
+  async createLlamada(
+    @Param('id') id: string,
+    @Body() body: { userName: string; notas?: string | null; createdAt?: string | null },
+    @Req() req: AuthedReq,
+  ) {
+    try {
+      return await this.service.createLlamada(id, {
+        userName: req.user.name,
+        notas: body.notas ?? null,
+        createdAt: body.createdAt ?? null,
+      });
+    } catch (err) {
+      throw new HttpException(
+        err instanceof Error ? err.message : 'Error al registrar llamada',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
 }

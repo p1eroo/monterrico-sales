@@ -20,6 +20,8 @@ import {
   Users,
   Calendar,
   Upload,
+  MoreVertical,
+  Phone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,6 +43,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Popover,
   PopoverContent,
@@ -68,6 +76,7 @@ import {
   flotaProspectoCreate,
   flotaProspectosSpreadsheets,
   flotaProspectosByPhone,
+  flotaLlamadaCreate,
   fetchOperadores, getOperatorDisplayName,
   type FlotaProspectoRow,
   type FlotaProspectosCounts,
@@ -117,8 +126,14 @@ export default function FlotaProspectos() {
   const [citadoDialogOpen, setCitadoDialogOpen] = useState(false);
   const [citadoProspectId, setCitadoProspectId] = useState<string | null>(null);
   const [citadoDate, setCitadoDate] = useState('');
+  const [citadoTime, setCitadoTime] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [llamadaProspecto, setLlamadaProspecto] = useState<{ id: string; nombre: string } | null>(null);
+  const [llamadaFecha, setLlamadaFecha] = useState('');
+  const [llamadaHora, setLlamadaHora] = useState('');
+  const [llamadaNotas, setLlamadaNotas] = useState('');
+  const [llamadaSaving, setLlamadaSaving] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [searchDebounced, setSearchDebounced] = useState("");
@@ -304,6 +319,21 @@ export default function FlotaProspectos() {
     void Promise.all([loadProspectos(), loadCounts()]);
   }, [completionTick, loadProspectos, loadCounts]);
 
+  // Auto-recargar cuando otra pestaña actualiza un prospecto (BroadcastChannel)
+  useEffect(() => {
+    try {
+      const bc = new BroadcastChannel("flota-prospectos");
+      bc.onmessage = (event) => {
+        if (event.data?.type === "refresh") {
+          void Promise.all([loadProspectos(), loadCounts()]);
+        }
+      };
+      return () => bc.close();
+    } catch {
+      /* BroadcastChannel no soportado */
+    }
+  }, [loadProspectos, loadCounts]);
+
   useEffect(() => {
     void loadProspectos();
   }, [loadProspectos]);
@@ -324,6 +354,19 @@ export default function FlotaProspectos() {
     const normalized = celular.replace(/\D/g, '').replace(/^51/, '');
     if (!conductorTelefonos.phones.has(normalized)) return null;
     return conductorTelefonos.codigoByPhone[normalized] ?? null;
+  };
+
+  const getLatestObservacion = (obs: string | null | undefined): string => {
+    if (!obs) return '';
+    return obs.split('\n---\n')[0].replace(/^\[.+?\]\s*/, '');
+  };
+
+  const toLocalDatetimeValue = (iso: string | null | undefined): string => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    const date = d.toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
+    const time = d.toLocaleTimeString('en-GB', { timeZone: 'America/Lima', hour: '2-digit', minute: '2-digit', hour12: false });
+    return `${date}T${time}`;
   };
 
   const isConductor = (celular: string | null): boolean => {
@@ -777,7 +820,7 @@ export default function FlotaProspectos() {
         )}
       </div>
 
-      <TableWithStickyScroll maxHeight="calc(100vh - 18rem)">
+      <TableWithStickyScroll maxHeight="calc(100vh - 20rem)">
         {loading ? (
             <CrmDataTableSkeleton
               columns={[
@@ -953,7 +996,8 @@ export default function FlotaProspectos() {
                             handleOptimisticSave(prospecto.id, f, v);
                             if (v === 'Citado') {
                               setCitadoProspectId(prospecto.id);
-                              setCitadoDate(prospecto.fechaCita ? prospecto.fechaCita.split('T')[0] : '');
+                              setCitadoDate(prospecto.fechaCita ? toLocalDatetimeValue(prospecto.fechaCita).split('T')[0] : '');
+                              setCitadoTime(prospecto.fechaCita ? toLocalDatetimeValue(prospecto.fechaCita).split('T')[1] : '');
                               setCitadoDialogOpen(true);
                             }
                           }}
@@ -998,15 +1042,20 @@ export default function FlotaProspectos() {
                       </TableCell>
                       <TableCell>
                         <InlineEditCell
-                          value={prospecto.fechaCita || ""}
+                          value={toLocalDatetimeValue(prospecto.fechaCita)}
                           fieldId={prospecto.id}
                           fieldKey="fechaCita"
-                          type="date"
+                          type="datetime-local"
                           onSaved={(f, v) => handleOptimisticSave(prospecto.id, f, v)}
                         >
-                          {prospecto.fechaCita
-                            ? formatDateDMY(prospecto.fechaCita)
-                            : "—"}
+                          {prospecto.fechaCita ? (
+                            <div>
+                              <div>{formatDateDMY(prospecto.fechaCita)}</div>
+                              <div className="text-[10px] text-muted-foreground mt-0.5">
+                                {new Date(prospecto.fechaCita).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Lima' })}
+                              </div>
+                            </div>
+                          ) : "—"}
                         </InlineEditCell>
                       </TableCell>
                       <TableCell>
@@ -1058,25 +1107,65 @@ export default function FlotaProspectos() {
                       </TableCell>
                       <TableCell className="max-w-[200px]">
                         <InlineEditCell
-                          value={prospecto.observaciones || ""}
+                          value={getLatestObservacion(prospecto.observaciones)}
                           fieldId={prospecto.id}
                           fieldKey="observaciones"
+                          onSaveOverride={async (rawValue) => {
+                            const fullObs = prospecto.observaciones || '';
+                            const entries = fullObs.split('\n---\n').filter(Boolean);
+                            let newObs: string;
+                            if (entries.length > 0) {
+                              const latest = entries[0];
+                              const datePrefix = latest.match(/^\[.+?\]\s*/)?.[0] || '';
+                              entries[0] = datePrefix ? `${datePrefix}${rawValue}` : rawValue;
+                              newObs = entries.join('\n---\n');
+                            } else {
+                              newObs = rawValue;
+                            }
+                            await api(`/flota-prospectos/${prospecto.id}`, {
+                              method: 'PATCH',
+                              body: JSON.stringify({ observaciones: newObs }),
+                            });
+                          }}
                           onSaved={(f, v) => handleOptimisticSave(prospecto.id, f, v)}
                           className="max-w-[180px] truncate"
                         />
                       </TableCell>
                       <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/flota/prospectos/${prospecto.id}`);
-                          }}
-                        >
-                          <Info className="size-4" />
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MoreVertical className="size-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-44">
+                            <DropdownMenuItem
+                              className="cursor-pointer gap-2"
+                              onClick={() => navigate(`/flota/prospectos/${prospecto.id}`)}
+                            >
+                              <Info className="size-4" />
+                              Vista detallada
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="cursor-pointer gap-2"
+                              onClick={() => {
+                                const now = new Date();
+                                setLlamadaProspecto({ id: prospecto.id, nombre: prospecto.nombreCompleto });
+                                setLlamadaFecha(now.toISOString().split('T')[0]);
+                                setLlamadaHora(now.toTimeString().split(' ')[0].substring(0, 5));
+                                setLlamadaNotas('');
+                              }}
+                            >
+                              <Phone className="size-4" />
+                              Registrar llamada
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))
@@ -1327,13 +1416,19 @@ export default function FlotaProspectos() {
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Programar cita</DialogTitle>
-            <DialogDescription>Indica la fecha de la cita para el prospecto.</DialogDescription>
+            <DialogDescription>Indica la fecha y hora de la cita para el prospecto.</DialogDescription>
           </DialogHeader>
-          <div className="py-4">
+          <div className="py-4 space-y-3">
             <Input
               type="date"
               value={citadoDate}
               onChange={(e) => setCitadoDate(e.target.value)}
+              className="w-full"
+            />
+            <Input
+              type="time"
+              value={citadoTime}
+              onChange={(e) => setCitadoTime(e.target.value)}
               className="w-full"
             />
           </div>
@@ -1345,9 +1440,10 @@ export default function FlotaProspectos() {
                 return;
               }
               try {
+                const fechaHora = new Date(`${citadoDate}T${citadoTime || '12:00'}:00`).toISOString();
                 await api(`/flota-prospectos/${citadoProspectId}`, {
                   method: 'PATCH',
-                  body: JSON.stringify({ fechaCita: citadoDate }),
+                  body: JSON.stringify({ fechaCita: fechaHora }),
                 });
                 setCitadoDialogOpen(false);
                 await Promise.all([loadProspectos(), loadCounts()]);
@@ -1396,6 +1492,74 @@ export default function FlotaProspectos() {
             >
               {deleting ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
               {deleting ? "Eliminando..." : "Eliminar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!llamadaProspecto} onOpenChange={(open) => { if (!open) setLlamadaProspecto(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Registrar llamada</DialogTitle>
+            <DialogDescription>
+              {llamadaProspecto?.nombre ? `Prospecto: ${llamadaProspecto.nombre}` : 'Fecha y hora de la llamada'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Fecha</label>
+                <Input
+                  type="date"
+                  value={llamadaFecha}
+                  onChange={(e) => setLlamadaFecha(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Hora</label>
+                <Input
+                  type="time"
+                  value={llamadaHora}
+                  onChange={(e) => setLlamadaHora(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">Notas / Comentarios</label>
+              <textarea
+                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                placeholder="Comentarios sobre la llamada..."
+                value={llamadaNotas}
+                onChange={(e) => setLlamadaNotas(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLlamadaProspecto(null)} disabled={llamadaSaving}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!llamadaProspecto) return;
+                setLlamadaSaving(true);
+                try {
+                  const fechaHora = new Date(`${llamadaFecha}T${llamadaHora}:00`);
+                  await flotaLlamadaCreate(llamadaProspecto.id, {
+                    notas: llamadaNotas.trim() || null,
+                    createdAt: fechaHora.toISOString(),
+                  });
+                  toast.success('Llamada registrada');
+                  setLlamadaProspecto(null);
+                } catch {
+                  toast.error('No se pudo registrar la llamada');
+                } finally {
+                  setLlamadaSaving(false);
+                }
+              }}
+              disabled={!llamadaNotas.trim() || llamadaSaving}
+            >
+              {llamadaSaving ? <Loader2 className="size-4 animate-spin" /> : <Phone className="size-4" />}
+              {llamadaSaving ? 'Guardando...' : 'Registrar llamada'}
             </Button>
           </DialogFooter>
         </DialogContent>

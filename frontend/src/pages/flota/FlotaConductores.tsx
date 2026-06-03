@@ -47,12 +47,6 @@ import {
 } from "@/components/ui/popover";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { CrmDataTableSkeleton } from "@/components/shared/CrmListPageSkeleton";
 import { Pagination } from "@/components/shared/Pagination";
@@ -576,7 +570,7 @@ const stats = useMemo(() => {
       </div>
 
       
-      <TableWithStickyScroll maxHeight="calc(100vh - 20rem)">
+      <TableWithStickyScroll maxHeight="calc(100vh - 26rem)">
         {loading ? (
             <CrmDataTableSkeleton
               columns={[
@@ -598,7 +592,7 @@ const stats = useMemo(() => {
               <TableHeader className="sticky top-0 z-10 bg-background">
                   <TableRow>
                     <TableHead className="w-12 text-center">
-                      <span className="text-[10px] leading-none">Por Aut.</span>
+                      <span>Por Aut.</span>
                     </TableHead>
                   <TableHead>Conductor</TableHead>
                   <TableHead>Código</TableHead>
@@ -609,14 +603,13 @@ const stats = useMemo(() => {
                   <TableHead>Estado</TableHead>
                   <TableHead>Agente</TableHead>
                   <TableHead>Fec. Registro</TableHead>
-                  <TableHead className="w-10"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {paginatedConductores.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={11}
+                      colSpan={10}
                       className="py-12 text-center text-muted-foreground"
                     >
                       No se encontraron conductores con los filtros aplicados.
@@ -626,7 +619,7 @@ const stats = useMemo(() => {
                   paginatedConductores.map((conductor) => (
                     <TableRow
                       key={conductor.id}
-                      className="cursor-pointer hover:bg-[#f8faf9]"
+                      className="cursor-pointer hover:bg-muted/50"
                     >
                       <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                         <Checkbox
@@ -668,7 +661,7 @@ const stats = useMemo(() => {
                         {conductor.telefonop} {conductor.telefonos ? `/ ${conductor.telefonos}` : ""}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="font-mono bg-zinc-50">
+                        <Badge variant="outline" className="font-mono bg-muted/30">
                           {conductor.nplaca || "—"}
                         </Badge>
                       </TableCell>
@@ -678,8 +671,8 @@ const stats = useMemo(() => {
                           className={cn(
                             "text-xs",
                             conductor.estado === "Activo" || conductor.estado === "ACTIVO"
-                              ? "bg-emerald-100 text-emerald-700 border-emerald-200"
-                              : "bg-red-100 text-red-700 border-red-200"
+                              ? "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
+                              : "bg-red-100 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800"
                           )}
                         >
                           {conductor.estado}
@@ -691,26 +684,6 @@ const stats = useMemo(() => {
                       <TableCell className="text-muted-foreground text-xs">
                         {conductor.fechorregistro ? formatDateDMY(conductor.fechorregistro) : "—"}
                       </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                            >
-                              <MoreHorizontal className="size-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>Ver detalle</DropdownMenuItem>
-                            <DropdownMenuItem>Editar</DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive">
-                              Eliminar
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
                     </TableRow>
                   ))
                 )}
@@ -720,7 +693,7 @@ const stats = useMemo(() => {
       </TableWithStickyScroll>
 
       {!loading && totalPages > 0 && (
-        <div className="mt-4">
+        <div>
           <Pagination
             page={page}
             totalPages={totalPages}

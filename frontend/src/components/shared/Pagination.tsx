@@ -75,7 +75,7 @@ export function Pagination({
   const pageNumbers = getPageNumbers();
 
   return (
-    <div className="flex w-full items-center justify-between py-4 border-t border-border/40 mt-4">
+    <div className="flex w-full items-center justify-between py-4">
       {/* Left side: Results count range */}
       <div>
         <p className="text-sm text-muted-foreground font-normal">

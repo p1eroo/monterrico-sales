@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import {
@@ -26,6 +26,8 @@ import {
   X,
   Video,
   FileText,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -50,7 +52,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { flotaProspectoDetail, flotaProspectoUpdate, flotaProspectoFiles, flotaProspectoFileContentUrl, flotaProspectoUploadFile, fetchOperadores, getOperatorDisplayName, type FlotaProspectoRow, type FlotaFile, type OperadorUser } from '@/lib/flotaProspectosApi';
+import { flotaProspectoDetail, flotaProspectoUpdate, flotaProspectoFiles, flotaProspectoFileContentUrl, flotaProspectoUploadFile, flotaLlamadasList, flotaLlamadaCreate, fetchOperadores, getOperatorDisplayName, type FlotaProspectoRow, type FlotaLlamada, type FlotaFile, type OperadorUser } from '@/lib/flotaProspectosApi';
 
 const ESTADOS = ['Afiliado', 'Citado', 'Seguimiento', 'Informacion', 'Sin Requisitos', 'No Responde'] as const;
 
@@ -137,6 +139,8 @@ export default function FlotaProspectoDetail() {
 
   const [historyEvents, setHistoryEvents] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [timelinePage, setTimelinePage] = useState(1);
+  const TIMELINE_PAGE_SIZE = 7;
 
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [targetStatus, setTargetStatus] = useState<string | null>(null);
@@ -151,6 +155,14 @@ export default function FlotaProspectoDetail() {
   const [fileLightboxUrl, setFileLightboxUrl] = useState<string | null>(null);
   const [fileUrls, setFileUrls] = useState<Record<string, string>>({});
   const [operadores, setOperadores] = useState<OperadorUser[]>([]);
+  const [newNoteText, setNewNoteText] = useState('');
+  const [savingNote, setSavingNote] = useState(false);
+  const [llamadaModalOpen, setLlamadaModalOpen] = useState(false);
+  const [llamadaFecha, setLlamadaFecha] = useState('');
+  const [llamadaHora, setLlamadaHora] = useState('');
+  const [llamadaNotas, setLlamadaNotas] = useState('');
+  const [llamadaSaving, setLlamadaSaving] = useState(false);
+  const [llamadas, setLlamadas] = useState<FlotaLlamada[]>([]);
 
   const fetchHistory = useCallback(async () => {
     if (!id || !prospecto) return;
@@ -181,6 +193,18 @@ export default function FlotaProspectoDetail() {
       setLoadingHistory(false);
     }
   }, [id, prospecto]);
+
+  const totalTimelinePages = Math.ceil(historyEvents.length / TIMELINE_PAGE_SIZE);
+  const paginatedEvents = useMemo(
+    () => historyEvents.slice((timelinePage - 1) * TIMELINE_PAGE_SIZE, timelinePage * TIMELINE_PAGE_SIZE),
+    [historyEvents, timelinePage],
+  );
+
+  useEffect(() => {
+    if (timelinePage > totalTimelinePages && totalTimelinePages > 0) {
+      setTimelinePage(totalTimelinePages);
+    }
+  }, [timelinePage, totalTimelinePages]);
 
   const fetchDetail = useCallback(async () => {
     if (!id) return;
@@ -271,6 +295,22 @@ export default function FlotaProspectoDetail() {
     }
   }, [activeTab, fetchFiles]);
 
+  const fetchLlamadas = useCallback(async () => {
+    if (!prospecto?.id) return;
+    try {
+      const data = await flotaLlamadasList(prospecto.id);
+      setLlamadas(data);
+    } catch {
+      toast.error('No se pudieron cargar las llamadas');
+    }
+  }, [prospecto?.id]);
+
+  useEffect(() => {
+    if (activeTab === 'llamadas') {
+      void fetchLlamadas();
+    }
+  }, [activeTab, fetchLlamadas]);
+
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !prospecto?.id) return;
@@ -286,6 +326,44 @@ export default function FlotaProspectoDetail() {
     }
     e.target.value = '';
   }, [prospecto?.id, fetchFiles]);
+
+  const handleAddNote = useCallback(async () => {
+    if (!prospecto || !newNoteText.trim()) return;
+    setSavingNote(true);
+    try {
+      const dateStr = new Date().toLocaleString('es-PE', { timeZone: 'America/Lima' });
+      const currentObs = prospecto.observaciones || '';
+      const sep = currentObs ? '\n---\n' : '';
+      const newObs = `[${dateStr}] ${newNoteText.trim()}${sep}${currentObs}`;
+      const updated = await flotaProspectoUpdate(prospecto.id, { observaciones: newObs });
+      setProspecto(updated);
+      setNewNoteText('');
+      toast.success('Observación agregada');
+      void fetchHistory();
+    } catch {
+      toast.error('No se pudo agregar la observación');
+    } finally {
+      setSavingNote(false);
+    }
+  }, [prospecto, newNoteText, fetchHistory]);
+
+  const handleAddLlamada = useCallback(async () => {
+    if (!prospecto?.id) return;
+    setLlamadaSaving(true);
+    try {
+      const fechaHora = new Date(`${llamadaFecha}T${llamadaHora}:00`);
+      const newLlamada = await flotaLlamadaCreate(prospecto.id, {
+        notas: llamadaNotas.trim() || null,
+        createdAt: fechaHora.toISOString(),
+      });
+      setLlamadas((prev) => [newLlamada, ...prev]);
+    } catch {
+      toast.error('No se pudo registrar la llamada');
+    } finally {
+      setLlamadaSaving(false);
+      setLlamadaModalOpen(false);
+    }
+  }, [prospecto?.id, llamadaFecha, llamadaHora, llamadaNotas]);
 
   const openFilePreview = useCallback(async (file: FlotaFile) => {
     if (file.mimeType.startsWith('image/')) {
@@ -390,11 +468,29 @@ export default function FlotaProspectoDetail() {
         WhatsApp
       </Button>
       <Button
+        variant="outline"
+        className="gap-1.5 h-9"
+        onClick={() => {
+          const now = new Date();
+          setLlamadaFecha(now.toISOString().split('T')[0]);
+          setLlamadaHora(now.toTimeString().split(' ')[0].substring(0, 5));
+          setLlamadaNotas('');
+          setLlamadaModalOpen(true);
+        }}
+      >
+        <Phone className="size-4" />
+        Llamada
+      </Button>
+      <Button
         variant="ghost"
         size="icon"
         className="h-9 w-9 shrink-0 rounded-lg text-text-secondary hover:bg-accent hover:text-accent-foreground"
         onClick={() => {
-          setEditData({ ...prospecto, operador: getOperatorDisplayName(prospecto.operador, operadores) });
+          setEditData({
+            ...prospecto,
+            observaciones: (prospecto.observaciones || '').split('\n---\n')[0].replace(/^\[.+?\]\s*/, ''),
+            operador: getOperatorDisplayName(prospecto.operador, operadores),
+          });
           setEditModalOpen(true);
         }}
       >
@@ -407,8 +503,18 @@ export default function FlotaProspectoDetail() {
     if (!prospecto) return;
     setSavingEdit(true);
     try {
-      const { operador, ...otherData } = editData;
-      const updated = await flotaProspectoUpdate(prospecto.id, otherData);
+      const { operador, observaciones, ...otherData } = editData;
+      let finalObs = observaciones || null;
+      if (finalObs !== undefined && prospecto.observaciones) {
+        const latestText = prospecto.observaciones.split('\n---\n')[0].replace(/^\[.+?\]\s*/, '');
+        if (finalObs !== latestText) {
+          const dateStr = new Date().toLocaleString('es-PE', { timeZone: 'America/Lima' });
+          finalObs = `[${dateStr}] ${finalObs}\n---\n${prospecto.observaciones}`;
+        } else {
+          finalObs = prospecto.observaciones;
+        }
+      }
+      const updated = await flotaProspectoUpdate(prospecto.id, { ...otherData, observaciones: finalObs });
       if (operador !== prospecto.operador) {
         try {
           await api(`/flota-prospectos/${prospecto.id}/operador`, {
@@ -451,50 +557,113 @@ export default function FlotaProspectoDetail() {
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="mb-6 flex items-center justify-between">
-            <TabsList className="bg-surface-elevated p-1 border border-border/50">
-              <TabsTrigger value="historial" className="px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm">Historial</TabsTrigger>
-              <TabsTrigger value="notas" className="px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm">Notas</TabsTrigger>
-              <TabsTrigger value="archivos" className="px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm">Archivos</TabsTrigger>
+          <div className="mb-1">
+            <TabsList variant="line" className="w-full overflow-x-auto justify-start">
+              <TabsTrigger value="historial" className="text-xs px-2 sm:text-sm sm:px-4">Historial</TabsTrigger>
+              <TabsTrigger value="notas" className="text-xs px-2 sm:text-sm sm:px-4">Observaciones</TabsTrigger>
+              <TabsTrigger value="archivos" className="text-xs px-2 sm:text-sm sm:px-4">Archivos</TabsTrigger>
+              <TabsTrigger value="llamadas" className="text-xs px-2 sm:text-sm sm:px-4">Llamadas</TabsTrigger>
             </TabsList>
           </div>
 
-          <TabsContent value="historial" className="mt-0 focus-visible:outline-none">
-            {loadingHistory ? (
-              <div className="py-8 text-center text-sm text-muted-foreground">Cargando historial...</div>
-            ) : historyEvents.length > 0 ? (
-              <TimelinePanel
-                events={historyEvents}
-                onEventClick={handleEventClick}
-              />
-            ) : (
-              <div className="py-12 text-center">
-                <Clock className="mx-auto mb-2 size-8 text-muted-foreground/20" />
-                <p className="text-sm text-muted-foreground">No hay actividad registrada aún.</p>
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="notas" className="mt-0">
-            <Card className="border-border/50 bg-surface-elevated/50">
-              <CardContent className="py-6">
-                {prospecto.observaciones ? (
-                  <div className="mb-4 rounded-lg bg-background p-4 border border-border/50">
-                    <p className="text-sm italic text-muted-foreground">"{prospecto.observaciones}"</p>
-                    <div className="mt-3 flex items-center justify-between border-t border-border/30 pt-3">
-                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Nota inicial de registro</span>
-                      <span className="text-[10px] text-muted-foreground">{formatDate(prospecto.createdAt)}</span>
-                    </div>
+          <TabsContent value="historial" className="mt-4">
+            <Card>
+              <CardContent className="p-4 sm:p-5">
+                {loadingHistory ? (
+                  <div className="flex justify-center py-10 text-muted-foreground">
+                    <Loader2 className="size-6 animate-spin" />
+                  </div>
+                ) : historyEvents.length > 0 ? (
+                  <div className="space-y-4">
+                    <TimelinePanel
+                      events={paginatedEvents}
+                      onEventClick={handleEventClick}
+                    />
+                    {historyEvents.length > TIMELINE_PAGE_SIZE && (
+                      <div className="-mx-4 flex flex-col gap-3 border-t border-border/60 px-4 pt-4 sm:-mx-5 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                        <p className="text-xs text-muted-foreground">
+                          Mostrando {(timelinePage - 1) * TIMELINE_PAGE_SIZE + 1} a {Math.min(timelinePage * TIMELINE_PAGE_SIZE, historyEvents.length)} de {historyEvents.length} eventos
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setTimelinePage((p) => Math.max(1, p - 1))}
+                            disabled={timelinePage === 1}
+                          >
+                            <ChevronLeft className="size-4" />
+                            Anterior
+                          </Button>
+                          <span className="min-w-[72px] text-center text-xs text-muted-foreground">
+                            {timelinePage} / {totalTimelinePages}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setTimelinePage((p) => Math.min(totalTimelinePages, p + 1))}
+                            disabled={timelinePage === totalTimelinePages}
+                          >
+                            Siguiente
+                            <ChevronRight className="size-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
-                  <p className="text-center py-6 text-sm text-muted-foreground">Sin notas registradas</p>
+                  <div className="py-12 text-center">
+                    <Clock className="mx-auto mb-2 size-8 text-muted-foreground/20" />
+                    <p className="text-sm text-muted-foreground">No hay actividad registrada aún.</p>
+                  </div>
                 )}
-                <Button variant="outline" size="sm" className="w-full">Agregar nueva nota</Button>
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="archivos" className="mt-0">
+          <TabsContent value="notas" className="mt-4">
+            <Card>
+              <CardContent className="py-6 space-y-4">
+                <div className="space-y-2">
+                  <textarea
+                    className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    placeholder="Escribe una observación..."
+                    value={newNoteText}
+                    onChange={(e) => setNewNoteText(e.target.value)}
+                    rows={3}
+                  />
+                  <Button size="sm" onClick={handleAddNote} disabled={!newNoteText.trim() || savingNote}>
+                    {savingNote ? <Loader2 className="size-4 animate-spin" /> : null}
+                    {savingNote ? 'Guardando...' : 'Agregar observación'}
+                  </Button>
+                </div>
+                {(() => {
+                  const entries = (prospecto.observaciones || '').split('\n---\n').filter(Boolean);
+                  if (entries.length === 0) {
+                    return <p className="text-center py-6 text-sm text-muted-foreground">Sin observaciones registradas</p>;
+                  }
+                  return (
+                    <div className="space-y-3">
+                      {entries.map((entry, i) => {
+                        const match = entry.match(/^\[(.+?)\]\s*(.*)/s);
+                        const dateStr = match?.[1] || '';
+                        const text = match?.[2] || entry;
+                        return (
+                          <div key={i} className="rounded-lg border p-4">
+                            <p className="text-sm whitespace-pre-wrap">{text}</p>
+                            {dateStr && (
+                              <div className="mt-2 text-xs text-muted-foreground">{dateStr}</div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="archivos" className="mt-4">
             <div className="mb-4 flex items-center justify-between">
               <p className="text-sm text-muted-foreground">
                 {files.length > 0 ? `${files.length} archivo${files.length !== 1 ? 's' : ''}` : 'Sin archivos'}
@@ -510,7 +679,7 @@ export default function FlotaProspectoDetail() {
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
             ) : files.length === 0 ? (
-              <Card className="border-border/50 bg-surface-elevated/50">
+              <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                   <FileArchive className="mb-4 size-12 text-muted-foreground/20" />
                   <h3 className="text-lg font-medium">Sin archivos adjuntos</h3>
@@ -552,6 +721,28 @@ export default function FlotaProspectoDetail() {
                 ))}
               </div>
             )}
+          </TabsContent>
+
+          <TabsContent value="llamadas" className="mt-4">
+            <Card>
+              <CardContent className="p-4 sm:p-5">
+                {llamadas.length === 0 ? (
+                  <p className="text-center py-8 text-sm text-muted-foreground">No hay llamadas registradas</p>
+                ) : (
+                  <div className="space-y-3">
+                    {llamadas.map((ll) => (
+                      <div key={ll.id} className="rounded-lg border p-4">
+                        <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground mb-2">
+                          <span className="font-medium text-foreground">{ll.userName}</span>
+                          <span>{new Date(ll.createdAt).toLocaleString('es-PE', { timeZone: 'America/Lima' })}</span>
+                        </div>
+                        {ll.notas && <p className="text-sm whitespace-pre-wrap">{ll.notas}</p>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
@@ -738,6 +929,53 @@ export default function FlotaProspectoDetail() {
                 {updatingEstado ? 'Guardando...' : 'Confirmar cambio'}
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={llamadaModalOpen} onOpenChange={setLlamadaModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Registrar llamada</DialogTitle>
+            <DialogDescription>Fecha y hora de la llamada</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Fecha</Label>
+                <Input
+                  type="date"
+                  value={llamadaFecha}
+                  onChange={(e) => setLlamadaFecha(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Hora</Label>
+                <Input
+                  type="time"
+                  value={llamadaHora}
+                  onChange={(e) => setLlamadaHora(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label>Notas / Comentarios</Label>
+              <textarea
+                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                placeholder="Comentarios sobre la llamada..."
+                value={llamadaNotas}
+                onChange={(e) => setLlamadaNotas(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLlamadaModalOpen(false)} disabled={llamadaSaving}>
+              Cancelar
+            </Button>
+            <Button onClick={handleAddLlamada} disabled={!llamadaNotas.trim() || llamadaSaving}>
+              {llamadaSaving ? <Loader2 className="size-4 animate-spin" /> : <Phone className="size-4" />}
+              {llamadaSaving ? 'Guardando...' : 'Registrar llamada'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

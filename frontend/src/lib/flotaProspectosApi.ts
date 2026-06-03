@@ -276,3 +276,39 @@ export interface OperadorStats {
 export async function fetchOperadorStats(fecini: string, fecfin: string): Promise<OperadorStats[]> {
   return api(`/flota-prospectos/operador-stats?fecini=${fecini}&fecfin=${fecfin}`);
 }
+
+export interface FlotaLlamada {
+  id: string;
+  prospectoId: string;
+  userName: string;
+  notas: string | null;
+  createdAt: string;
+}
+
+export async function flotaLlamadasList(prospectoId: string): Promise<FlotaLlamada[]> {
+  return api(`/flota-prospectos/${prospectoId}/llamadas`);
+}
+
+export async function flotaLlamadaCreate(prospectoId: string, data: { notas?: string | null; createdAt?: string | null }): Promise<FlotaLlamada> {
+  return api(`/flota-prospectos/${prospectoId}/llamadas`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export interface CalendarCita {
+  id: string;
+  nombreCompleto: string;
+  celular: string | null;
+  fechaCita: string;
+  distrito: string | null;
+  redSocial: string | null;
+  modalidad: string | null;
+  anioVehiculo: number | null;
+  operador: string | null;
+  asistencia: string | null;
+}
+
+export async function flotaCalendarCitas(): Promise<CalendarCita[]> {
+  return api('/flota/calendario-citas');
+}

@@ -84,6 +84,7 @@ const navItemsFlota: NavDef[] = [
   { to: '/flota/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'flota_dashboard.ver' },
   { to: '/flota/prospectos', label: 'Prospectos', icon: UserCheck, permission: 'flota_prospectos.ver' },
   { to: '/flota/conductores', label: 'Conductores', icon: Car, permission: 'flota_conductores.ver' },
+  { to: '/flota/calendario', label: 'Calendario', icon: Calendar, permission: 'flota_prospectos.ver' },
   { to: '/flota/reportes', label: 'Reportes', icon: BarChart3, permission: 'flota_reportes.ver' },
   { to: '/flota/mensajes', label: 'Mensajes', icon: MessageCircle, permission: 'flota_mensajes.ver' },
 ];

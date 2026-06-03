@@ -114,6 +114,7 @@ import {
   getOperatorDisplayName,
   flotaProspectoCreate,
   flotaProspectosList,
+  flotaLlamadaCreate,
 } from '@/lib/flotaProspectosApi';
 import {
   fetchSharedConnection,
@@ -765,7 +766,75 @@ function EvoGoModal({
           </div>
         </DialogContent>
       </Dialog>
-    </>
+
+      <Dialog open={llamadaModalOpen} onOpenChange={(open) => { if (!open) setLlamadaModalOpen(false); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Registrar llamada</DialogTitle>
+            <DialogDescription>
+              {llamadaProspecto?.nombre ? `Prospecto: ${llamadaProspecto.nombre}` : 'Fecha y hora de la llamada'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Fecha</label>
+                <Input
+                  type="date"
+                  value={llamadaFecha}
+                  onChange={(e) => setLlamadaFecha(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Hora</label>
+                <Input
+                  type="time"
+                  value={llamadaHora}
+                  onChange={(e) => setLlamadaHora(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">Notas / Comentarios</label>
+              <textarea
+                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                placeholder="Comentarios sobre la llamada..."
+                value={llamadaNotas}
+                onChange={(e) => setLlamadaNotas(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLlamadaModalOpen(false)} disabled={llamadaSaving}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!llamadaProspecto) return;
+                setLlamadaSaving(true);
+                try {
+                  const fechaHora = `${llamadaFecha}T${llamadaHora}:00`;
+                  await flotaLlamadaCreate(llamadaProspecto.id, {
+                    notas: llamadaNotas.trim() || null,
+                    createdAt: new Date(fechaHora).toISOString(),
+                  });
+                  toast.success('Llamada registrada');
+                  setLlamadaModalOpen(false);
+                } catch {
+                  toast.error('No se pudo registrar la llamada');
+                } finally {
+                  setLlamadaSaving(false);
+                }
+              }}
+              disabled={!llamadaNotas.trim() || llamadaSaving}
+            >
+              {llamadaSaving ? <Loader2 className="size-4 animate-spin" /> : <Phone className="size-4" />}
+              {llamadaSaving ? 'Guardando...' : 'Registrar llamada'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
 
@@ -1294,6 +1363,13 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [mediaPanelOpen, setMediaPanelOpen] = useState(false);
   const [editData, setEditData] = useState<Record<string, string>>({});
+  const [llamadaModalOpen, setLlamadaModalOpen] = useState(false);
+  const [llamadaProspecto, setLlamadaProspecto] = useState<{ id: string; nombre: string } | null>(null);
+  const [llamadaFecha, setLlamadaFecha] = useState('');
+  const [llamadaHora, setLlamadaHora] = useState('');
+  const [llamadaNotas, setLlamadaNotas] = useState('');
+  const [llamadaSaving, setLlamadaSaving] = useState(false);
+  const originalObsRef = useRef('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const convo = conversations.find((c) => c.id === contactId);
   const currentUser = useAppStore((s) => s.currentUser);
@@ -1464,9 +1540,17 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
   async function loadProspectoDetail() {
     try {
       const data = await api<Record<string, unknown>>(`/flota-prospectos/${contactId}`);
+      const originalObs = String(data.observaciones || '');
+      originalObsRef.current = originalObs;
       const fields: Record<string, string> = {};
       for (const [k, v] of Object.entries(data)) {
-        if (v != null) fields[k] = String(v);
+        if (v == null) continue;
+        if (k === 'observaciones') {
+          const entries = originalObs.split('\n---\n');
+          fields[k] = entries[0].replace(/^\[.+?\]\s*/, '');
+        } else {
+          fields[k] = String(v);
+        }
       }
       if (fields.operador) {
         fields.operador = getOperatorDisplayName(fields.operador, operadores);
@@ -1743,10 +1827,16 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
         if (!isNaN(num)) body[k] = num;
       } else if (k === 'esDuplicado') {
         body[k] = v === 'true' ? true : v === 'false' ? false : undefined;
+      } else if (k === 'observaciones') {
+        const currentLatest = originalObsRef.current.split('\n---\n')[0].replace(/^\[.+?\]\s*/, '');
+        if (v?.trim() && v.trim() !== currentLatest) {
+          const dateStr = new Date().toLocaleString('es-PE', { timeZone: 'America/Lima' });
+          body[k] = `[${dateStr}] ${v.trim()}\n---\n${originalObsRef.current}`;
+        } else {
+          body[k] = originalObsRef.current || v?.trim() || null;
+        }
       } else if (v?.trim()) {
         body[k] = v.trim();
-      } else if (k === 'observaciones' && v === '') {
-        body[k] = '';
       }
     }
     try {
@@ -1811,8 +1901,16 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={() => setMediaPanelOpen(!mediaPanelOpen)} className={mediaPanelOpen ? 'bg-muted' : ''}>
-              <PanelRight className="h-4 w-4" />
+            <Button variant="ghost" size="icon" onClick={() => {
+              if (!contactId) return;
+              const now = new Date();
+              setLlamadaProspecto({ id: contactId, nombre: convo?.name || prospectoData?.name || '' });
+              setLlamadaFecha(now.toISOString().split('T')[0]);
+              setLlamadaHora(now.toTimeString().split(' ')[0].substring(0, 5));
+              setLlamadaNotas('');
+              setLlamadaModalOpen(true);
+            }}>
+              <Phone className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="icon" onClick={() => setEditModalOpen(true)}>
               <Edit2 className="h-4 w-4" />
@@ -1869,6 +1967,9 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+            <Button variant="ghost" size="icon" onClick={() => setMediaPanelOpen(!mediaPanelOpen)} className={mediaPanelOpen ? 'bg-muted' : ''}>
+              <PanelRight className="h-4 w-4" />
+            </Button>
         </div>
       </div>
 

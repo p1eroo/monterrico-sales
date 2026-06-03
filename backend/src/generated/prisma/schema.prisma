@@ -815,7 +815,7 @@ model FlotaProspecto {
   anioVehiculo    Int?
   placa           String?
   distrito        String?
-  fechaCita       DateTime? @db.Date
+  fechaCita       DateTime?
   asistencia      String?
   fechaAfiliacion DateTime? @db.Date
   movil           String?
@@ -829,9 +829,21 @@ model FlotaProspecto {
   updatedAt       DateTime  @updatedAt
 
   whatsappMessages CrmWhatsappMessage[]
+  llamadas         FlotaLlamada[]
 
   @@index([celular])
   @@index([estado])
   @@index([esDuplicado])
   @@index([createdAt])
+}
+
+model FlotaLlamada {
+  id          String         @id @default(cuid())
+  prospectoId String
+  prospecto   FlotaProspecto @relation(fields: [prospectoId], references: [id], onDelete: Cascade)
+  userName    String
+  notas       String?        @db.Text
+  createdAt   DateTime       @default(now())
+
+  @@index([prospectoId])
 }

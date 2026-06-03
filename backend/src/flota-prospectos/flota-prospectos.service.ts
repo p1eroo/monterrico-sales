@@ -79,6 +79,12 @@ function parseInt10(raw: string): number | null {
   return isNaN(n) ? null : n;
 }
 
+function latestObservacionText(obs: string | null | undefined): string {
+  if (!obs) return '';
+  const first = obs.split('\n---\n')[0];
+  return first.replace(/^\[.+?\]\s*/, '');
+}
+
 const ESTADOS_VALIDOS = ['Nuevo', 'Afiliado', 'Citado', 'Seguimiento', 'Informacion', 'Sin Requisitos', 'No Responde'];
 
 function normalizeEstado(raw: string): string {
@@ -341,13 +347,16 @@ if (params.mes) {
       });
     } else if (data.observaciones && data.observaciones !== existing.observaciones) {
       // Si solo cambian observaciones sin cambiar estado
+      const oldText = latestObservacionText(existing.observaciones);
+      const newText = latestObservacionText(data.observaciones as string);
+      const diff = oldText && newText && oldText !== newText ? `${oldText} → ${newText}` : newText || '—';
       await this.activityLogs.record(actor || null, {
         action: 'actualizar',
         module: 'flota',
         entityType: 'flota-prospecto',
         entityId: id,
         entityName: updated.nombreCompleto,
-        description: `Actualización de observaciones: ${data.observaciones}`,
+        description: `Observación actualizada: ${diff}`,
       });
     }
 
@@ -1311,5 +1320,43 @@ if (params.mes) {
     );
 
     return rows;
+  }
+
+  async getLlamadas(prospectoId: string) {
+    return this.prisma.flotaLlamada.findMany({
+      where: { prospectoId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async getCalendarCitas() {
+    const rows = await this.prisma.flotaProspecto.findMany({
+      where: { fechaCita: { not: null } },
+      select: {
+        id: true,
+        nombreCompleto: true,
+        celular: true,
+        fechaCita: true,
+        distrito: true,
+        redSocial: true,
+        modalidad: true,
+        anioVehiculo: true,
+        operador: true,
+        asistencia: true,
+      },
+      orderBy: { fechaCita: 'asc' },
+    });
+    return rows;
+  }
+
+  async createLlamada(prospectoId: string, data: { userName: string; notas?: string | null; createdAt?: string | null }) {
+    return this.prisma.flotaLlamada.create({
+      data: {
+        prospectoId,
+        userName: data.userName,
+        notas: data.notas ?? null,
+        createdAt: data.createdAt ? new Date(data.createdAt) : undefined,
+      },
+    });
   }
 }

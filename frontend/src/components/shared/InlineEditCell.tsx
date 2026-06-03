@@ -22,7 +22,7 @@ interface InlineEditCellProps {
   value: string | number | null | undefined;
   fieldId: string;
   fieldKey: string;
-  type?: 'text' | 'number' | 'select' | 'date' | 'readonly';
+  type?: 'text' | 'number' | 'select' | 'date' | 'datetime-local' | 'readonly';
   options?: SelectOption[];
   onSaved?: (fieldKey: string, newValue: string | null) => void;
   onNavigate?: () => void;
@@ -30,6 +30,8 @@ interface InlineEditCellProps {
   /** Renderiza el display sin editarlo — viaja al detalle con onNavigate */
   linkToDetail?: boolean;
   children?: React.ReactNode;
+  /** Reemplaza el guardado por defecto (PATCH al backend). Recibe el valor editado crudo. */
+  onSaveOverride?: (rawValue: string) => Promise<void>;
 }
 
 export function InlineEditCell({
@@ -43,6 +45,7 @@ export function InlineEditCell({
   className,
   linkToDetail,
   children,
+  onSaveOverride,
 }: InlineEditCellProps) {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
@@ -51,6 +54,8 @@ export function InlineEditCell({
   const processingRef = useRef(false);
   const onSavedRef = useRef(onSaved);
   onSavedRef.current = onSaved;
+  const onSaveOverrideRef = useRef(onSaveOverride);
+  onSaveOverrideRef.current = onSaveOverride;
 
   useEffect(() => {
     if (editing && inputRef.current && type !== 'select') {
@@ -99,25 +104,32 @@ export function InlineEditCell({
       }
       setSaving(true);
       try {
-        const body: Record<string, unknown> = {};
-        const numericValue = type === 'number' ? parseInt(trimmed, 10) : undefined;
-        if (type === 'number') {
-          body[fieldKey] = isNaN(numericValue!) ? null : numericValue;
-        } else if (fieldKey === 'operador') {
-          body.operador = trimmed || null;
+        if (onSaveOverrideRef.current) {
+          await onSaveOverrideRef.current(trimmed);
+          toast.success('Actualizado');
+          setEditing(false);
+          onSavedRef.current?.(fieldKey, trimmed || null);
         } else {
-          body[fieldKey] = trimmed || null;
+          const body: Record<string, unknown> = {};
+          const numericValue = type === 'number' ? parseInt(trimmed, 10) : undefined;
+          if (type === 'number') {
+            body[fieldKey] = isNaN(numericValue!) ? null : numericValue;
+          } else if (fieldKey === 'operador') {
+            body.operador = trimmed || null;
+          } else {
+            body[fieldKey] = trimmed || null;
+          }
+          await api(saveUrl, {
+            method: 'PATCH',
+            body: JSON.stringify(body),
+          });
+          toast.success('Actualizado');
+          setEditing(false);
+          const savedValue = type === 'number'
+            ? (isNaN(numericValue!) ? null : String(numericValue))
+            : trimmed || null;
+          onSavedRef.current?.(fieldKey, savedValue);
         }
-        await api(saveUrl, {
-          method: 'PATCH',
-          body: JSON.stringify(body),
-        });
-        toast.success('Actualizado');
-        setEditing(false);
-        const savedValue = type === 'number'
-          ? (isNaN(numericValue!) ? null : String(numericValue))
-          : trimmed || null;
-        onSavedRef.current?.(fieldKey, savedValue);
       } catch (err) {
         toast.error(
           err instanceof Error ? err.message : 'Error al actualizar',
@@ -242,7 +254,7 @@ export function InlineEditCell({
             onChange={(e) => setEditValue(e.target.value)}
             onKeyDown={handleKeyDown}
             onBlur={() => { if (!processingRef.current) void save(); }}
-            type={type === 'number' ? 'number' : type === 'date' ? 'date' : 'text'}
+            type={type === 'number' ? 'number' : type === 'date' ? 'date' : type === 'datetime-local' ? 'datetime-local' : 'text'}
             className="h-8 text-sm w-full"
             style={{ minWidth: `${Math.max(editValue?.length || 1, 10)}ch` }}
             disabled={saving}

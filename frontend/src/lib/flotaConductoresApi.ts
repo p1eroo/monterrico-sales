@@ -49,7 +49,7 @@ export async function getConductores(): Promise<Conductor[]> {
 }
 
 export async function getConductorTelefonos(): Promise<{ telefonos: string[]; codigoByTelefono: Record<string, string> }> {
-  const res = await fetch(`${API_URL}?idestado=-98`);
+  const res = await fetch(`${API_URL}?idestado=0`);
   if (!res.ok) {
     throw new Error(`Error fetching telefonos: ${res.statusText}`);
   }
