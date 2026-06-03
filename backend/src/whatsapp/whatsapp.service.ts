@@ -55,6 +55,7 @@ type WhatsappListItemRow = {
   evoInstanceName: string | null;
   waOutboundStatus: string | null;
   payloadJson: Prisma.JsonValue | null;
+  senderName: string | null;
 };
 type WhatsappListItemDto = Omit<WhatsappListItemRow, 'createdAt' | 'payloadJson'> & {
   createdAt: string;
@@ -103,6 +104,7 @@ const WHATSAPP_LIST_SELECT = {
   evoInstanceName: true,
   waOutboundStatus: true,
   payloadJson: true,
+  createdBy: { select: { name: true } },
 } as const;
 
 const WHATSAPP_INSTANCE_SELECT = {
@@ -433,6 +435,7 @@ export class WhatsappService {
       return this.updateInstance(instance.id, {
         status: normalized,
         lastError: null,
+        displayLineId: remote.wid?.replace(/\D/g, '') || instance.displayLineId,
         ...(normalized === 'open'
           ? {
               qrCode: null,
@@ -892,11 +895,14 @@ export class WhatsappService {
       }),
     );
     return rows.map((row) => {
+      const rowRaw = row as any;
+      const createdByName: string | null = rowRaw.createdBy?.name ?? null;
       const stored = attachmentsByMessage.get(row.id) ?? [];
       if (stored.length > 0) {
         return {
           ...row,
           createdAt: row.createdAt.toISOString(),
+          senderName: createdByName,
           attachments: stored,
         };
       }
@@ -934,6 +940,7 @@ export class WhatsappService {
       return {
         ...row,
         createdAt: row.createdAt.toISOString(),
+        senderName: createdByName,
         attachments: fallbackAttachments,
       };
     });
@@ -1040,7 +1047,7 @@ export class WhatsappService {
       select: WHATSAPP_LIST_SELECT,
     });
     if (!row) return;
-    const [item] = await this.buildMessageItems([row as WhatsappListItemRow]);
+    const [item] = await this.buildMessageItems([row as unknown as WhatsappListItemRow]);
     if (!item) return;
     this.gateway.emitToContact(contactId, {
       type: 'message',
@@ -1219,7 +1226,7 @@ export class WhatsappService {
       select: WHATSAPP_LIST_SELECT,
     });
     return {
-      items: await this.buildMessageItems(rows.reverse() as WhatsappListItemRow[]),
+      items: await this.buildMessageItems(rows.reverse() as unknown as WhatsappListItemRow[]),
     };
   }
 
@@ -1237,7 +1244,7 @@ export class WhatsappService {
     });
     const hasMore = rows.length === take;
     return {
-      items: await this.buildMessageItems(rows.reverse() as WhatsappListItemRow[]),
+      items: await this.buildMessageItems(rows.reverse() as unknown as WhatsappListItemRow[]),
       hasMore,
     };
   }
@@ -2085,7 +2092,7 @@ export class WhatsappService {
           existingEntry.lastTime = row.createdAt;
           existingEntry.lastMessage = row.body.slice(0, 100);
           existingEntry.lastDirection = row.direction;
-          existingEntry.lastSender = row.direction === 'outbound' ? (row as any).createdBy?.name : undefined;
+          existingEntry.lastSender = row.direction === 'outbound' ? (row as any).createdBy?.name : row.flotaProspecto?.nombreCompleto;
         }
         if (row.direction === 'inbound' && (!existingEntry.lastReadAt || row.createdAt > existingEntry.lastReadAt)) {
           existingEntry.unread++;

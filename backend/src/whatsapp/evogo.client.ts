@@ -31,6 +31,7 @@ export type EvogoInstanceCreateResult = {
 export type EvogoConnectionStateResult = {
   instanceName: string;
   state: string | null;
+  wid?: string | null;
 };
 
 export type EvogoConnectResult = {
@@ -371,6 +372,7 @@ export class EvogoClient {
     return {
       instanceName: parsed.instanceName || params.instanceName,
       state: parsed.state,
+      wid: parsed.wid || undefined,
     };
   }
 
@@ -596,6 +598,7 @@ export class EvogoClient {
     instanceName: string | null;
     state: string | null;
     connected: boolean | null;
+    wid: string | null;
   } {
     const root = this.asRecord(node);
     const instance = this.asRecord(root?.instance);
@@ -629,40 +632,33 @@ export class EvogoClient {
       instanceUpper?.connected,
       root?.connected,
     ];
+
     const connected =
       connectedCandidates.find(
         (candidate): candidate is boolean => typeof candidate === 'boolean',
       ) ?? null;
 
     const state =
-      connected === true
-        ? 'open'
-        : connected === false
-          ? 'close'
-          : this.asString(instance?.state) ||
-            this.asString(instance?.status) ||
-            this.asString(instance?.connectionStatus) ||
-            this.asString(instanceUpper?.state) ||
-            this.asString(instanceUpper?.status) ||
-            this.asString(instanceUpper?.connectionStatus) ||
-            this.asString(dataInstance?.state) ||
-            this.asString(dataInstance?.status) ||
-            this.asString(dataInstance?.connectionStatus) ||
-            this.asString(dataInstanceUpper?.state) ||
-            this.asString(dataInstanceUpper?.status) ||
-            this.asString(dataInstanceUpper?.connectionStatus) ||
-            this.asString(data?.state) ||
-            this.asString(data?.status) ||
-            this.asString(data?.connectionStatus) ||
-            this.asString(dataUpper?.state) ||
-            this.asString(dataUpper?.status) ||
-            this.asString(dataUpper?.connectionStatus) ||
-            this.asString(root?.state) ||
-            this.asString(root?.status) ||
-            this.asString(root?.connectionStatus) ||
-            null;
+      this.asString(instance?.state) ||
+      this.asString(instanceUpper?.state) ||
+      this.asString(dataInstance?.state) ||
+      this.asString(dataInstanceUpper?.state) ||
+      this.asString(data?.state) ||
+      this.asString(dataUpper?.state) ||
+      this.asString(root?.state) ||
+      this.asString(root?.status) ||
+      (connected !== null ? (connected ? 'open' : 'close') : null);
 
-    return { instanceName, state, connected };
+    const rawWid =
+      this.asString(root?.jid) ||
+      this.asString(root?.Jid) ||
+      this.asString(root?.wid) ||
+      this.asString(root?.Wid) ||
+      null;
+
+    const wid = rawWid ? rawWid.split('@')[0]?.replace(/:\d+$/, '') || null : null;
+
+    return { instanceName, state, connected, wid };
   }
 
   private pickQrBase64(qrcode: Record<string, unknown> | null): string | null {

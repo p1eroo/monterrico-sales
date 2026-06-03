@@ -63,6 +63,7 @@ import {
   PanelRight,
   Lock,
   Link2,
+  Calendar,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -94,6 +95,7 @@ import {
 } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { api, API_BASE } from '@/lib/api';
@@ -148,6 +150,7 @@ import {
   type FlotaBulkCampaign,
   type FlotaBulkProgress,
 } from '@/lib/flotaWhatsappApi';
+import FlotaCalendario from '@/pages/flota/FlotaCalendario';
 
 /* ==================== TIPOS ==================== */
 
@@ -304,7 +307,7 @@ function MessageAttachment({
 
 export default function FlotaMensajes() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [tab, setTab] = useState<'inbox' | 'masivo' | 'pipeline' | 'automatizacion' | 'conexiones'>(
+  const [tab, setTab] = useState<'inbox' | 'masivo' | 'pipeline' | 'automatizacion' | 'conexiones' | 'calendario'>(
     () => {
       const t = searchParams.get('tab');
       if (t === 'inbox' || t === 'masivo' || t === 'pipeline' || t === 'automatizacion' || t === 'conexiones') return t;
@@ -433,13 +436,27 @@ export default function FlotaMensajes() {
         <div className="[&_button]:text-sidebar-foreground [&_button:hover]:bg-sidebar-accent [&_button:hover]:text-sidebar-accent-foreground [&_button]:size-9 [&_svg]:size-5">
           <ThemeToggle />
         </div>
+        <button
+          onClick={() => setEvoModalOpen(true)}
+          className={cn(
+            'flex flex-col items-center justify-center rounded-md border px-4 py-1 text-xs leading-tight transition-colors',
+            tabStatusConnected
+              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20'
+              : 'border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20',
+          )}
+        >
+          <span className="font-medium">{instance?.displayLineId || instance?.instanceName || 'WhatsApp'}</span>
+          <span className="opacity-70">{tabStatusConnected ? 'Conectado' : 'Desconectado'}</span>
+        </button>
       </header>
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Left icon sidebar */}
         <aside className="flex flex-col items-center gap-3 border-r border-muted bg-card px-1.5 py-4 w-[54px] shrink-0">
+          <TooltipProvider>
           {([
             { key: 'inbox', icon: Inbox, label: 'Inbox' },
+            { key: 'calendario', icon: Calendar, label: 'Calendario' },
             { key: 'masivo', icon: Send, label: 'Masivo' },
             { key: 'pipeline', icon: LayoutList, label: 'Pipeline' },
             { key: 'conexiones', icon: Link2, label: 'Conexiones' },
@@ -447,36 +464,26 @@ export default function FlotaMensajes() {
           ] as const).map((item) => {
             const Icon = item.icon;
             return (
-              <button
-                key={item.key}
-                onClick={() => { setTab(item.key as any); setSearchParams({ tab: item.key }, { replace: true }); }}
-                className={cn(
-                  'flex items-center justify-center rounded-lg w-9 h-9 transition-colors',
-                  tab === item.key ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                )}
-                title={item.label}
-              >
-                {Icon ? <Icon className="h-4 w-4" /> : <span dangerouslySetInnerHTML={{ __html: item.customIcon || '' }} />}
-              </button>
+                <Tooltip key={item.key}>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => { setTab(item.key as any); setSearchParams({ tab: item.key }, { replace: true }); }}
+                      className={cn(
+                        'flex items-center justify-center rounded-lg w-9 h-9 transition-colors',
+                        tab === item.key ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                      )}
+                    >
+                      {Icon ? <Icon className="h-4 w-4" /> : <span dangerouslySetInnerHTML={{ __html: item.customIcon || '' }} />}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    {item.label}
+                  </TooltipContent>
+                </Tooltip>
             );
           })}
+          </TooltipProvider>
           <div className="flex-1" />
-          <button
-            onClick={() => setEvoModalOpen(true)}
-            className={cn(
-              'flex items-center justify-center rounded-lg w-9 h-9 transition-colors',
-              tabStatusConnected
-                ? 'text-emerald-600 hover:bg-emerald-50'
-                : 'text-destructive hover:bg-destructive/10',
-            )}
-            title={tabStatusConnected ? 'Conectado' : 'Desconectado'}
-          >
-            {loadingConn ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Radio className={cn('h-4 w-4', tabStatusConnected ? 'fill-emerald-500 text-emerald-500' : 'fill-destructive text-destructive')} />
-            )}
-          </button>
         </aside>
 
         {/* Main content */}
@@ -494,6 +501,10 @@ export default function FlotaMensajes() {
               <FlotaPipelineView onSelect={pipelineSelect} />
             ) : tab === 'conexiones' ? (
               <ConexionesView onConnectInstance={(inst) => setConnectingInstance(inst)} key={conexionesReloadTick} />
+            ) : tab === 'calendario' ? (
+              <div className="flex-1 min-h-0 overflow-auto p-4">
+                <FlotaCalendario />
+              </div>
             ) : (
               <AutomationLayout />
             )}
@@ -766,75 +777,7 @@ function EvoGoModal({
           </div>
         </DialogContent>
       </Dialog>
-
-      <Dialog open={llamadaModalOpen} onOpenChange={(open) => { if (!open) setLlamadaModalOpen(false); }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Registrar llamada</DialogTitle>
-            <DialogDescription>
-              {llamadaProspecto?.nombre ? `Prospecto: ${llamadaProspecto.nombre}` : 'Fecha y hora de la llamada'}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <label className="text-sm font-medium">Fecha</label>
-                <Input
-                  type="date"
-                  value={llamadaFecha}
-                  onChange={(e) => setLlamadaFecha(e.target.value)}
-                />
-              </div>
-              <div className="grid gap-2">
-                <label className="text-sm font-medium">Hora</label>
-                <Input
-                  type="time"
-                  value={llamadaHora}
-                  onChange={(e) => setLlamadaHora(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <label className="text-sm font-medium">Notas / Comentarios</label>
-              <textarea
-                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                placeholder="Comentarios sobre la llamada..."
-                value={llamadaNotas}
-                onChange={(e) => setLlamadaNotas(e.target.value)}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setLlamadaModalOpen(false)} disabled={llamadaSaving}>
-              Cancelar
-            </Button>
-            <Button
-              onClick={async () => {
-                if (!llamadaProspecto) return;
-                setLlamadaSaving(true);
-                try {
-                  const fechaHora = `${llamadaFecha}T${llamadaHora}:00`;
-                  await flotaLlamadaCreate(llamadaProspecto.id, {
-                    notas: llamadaNotas.trim() || null,
-                    createdAt: new Date(fechaHora).toISOString(),
-                  });
-                  toast.success('Llamada registrada');
-                  setLlamadaModalOpen(false);
-                } catch {
-                  toast.error('No se pudo registrar la llamada');
-                } finally {
-                  setLlamadaSaving(false);
-                }
-              }}
-              disabled={!llamadaNotas.trim() || llamadaSaving}
-            >
-              {llamadaSaving ? <Loader2 className="size-4 animate-spin" /> : <Phone className="size-4" />}
-              {llamadaSaving ? 'Guardando...' : 'Registrar llamada'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+    </>
   );
 }
 
@@ -941,15 +884,15 @@ const ConversationItem = memo(({
           <p className={cn('mt-0.5 line-clamp-1 text-sm', conversation.unread > 0 ? 'font-medium text-foreground' : 'text-muted-foreground')}>{conversation.preview}</p>
           <div className="mt-1.5 flex items-center gap-2">
             <span className="text-[11px] text-muted-foreground">{conversation.phone}</span>
-            <span className="flex-1" />
-            {conversation.lastSender && conversation.lastSender !== conversation.name && (
-              <span className="truncate text-[11px] font-medium text-emerald-600/70 max-w-[100px]">
-                {conversation.lastSender?.split(' ')[0]}
-              </span>
-            )}
             {conversation.unread > 0 && (
               <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
                 {conversation.unread}
+              </span>
+            )}
+            <span className="flex-1" />
+            {conversation.lastSender && conversation.lastSender !== conversation.name && (
+              <span className="truncate text-[11px] font-medium text-emerald-600/70 shrink-0 max-w-[140px]">
+                {conversation.lastSender?.split(' ')[0]}
               </span>
             )}
           </div>
@@ -1053,9 +996,10 @@ function InboxView({ activeId: externalActiveId, onActiveChange, isConnected }: 
           const now = new Date().toISOString();
           const body = (payload as any).item?.body ?? '';
           const dir = (payload as any).item?.direction ?? 'inbound';
+          const senderName = (payload as any).item?.senderName ?? (payload as any).item?.fromName ?? '';
           setConversations(prev => prev.map(c =>
             c.id === payload.contactId
-              ? { ...c, preview: String(body).slice(0, 100), time: now, direction: dir, unread: 0 }
+              ? { ...c, preview: String(body).slice(0, 100), time: now, direction: dir, unread: 0, lastSender: senderName || c.lastSender }
               : c
           ).sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()));
           if (dir === 'inbound') {
@@ -1080,6 +1024,7 @@ function InboxView({ activeId: externalActiveId, onActiveChange, isConnected }: 
         const now = new Date().toISOString();
         const body = (payload as any).item?.body ?? '';
         const direction = (payload as any).item?.direction || 'inbound';
+        const senderName = (payload as any).item?.senderName ?? (payload as any).item?.fromName ?? '';
         setConversations(prev => {
           const exists = prev.some(c => c.id === payload.contactId);
           if (!exists) {
@@ -1088,7 +1033,7 @@ function InboxView({ activeId: externalActiveId, onActiveChange, isConnected }: 
           }
           return prev.map(c =>
             c.id === payload.contactId
-              ? { ...c, preview: body.slice(0, 100), time: now, lastDirection: direction, unread: direction === 'inbound' ? c.unread + 1 : c.unread }
+              ? { ...c, preview: body.slice(0, 100), time: now, lastDirection: direction, unread: direction === 'inbound' ? c.unread + 1 : c.unread, lastSender: senderName || c.lastSender }
               : c
           ).sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
         });
@@ -2365,6 +2310,74 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={llamadaModalOpen} onOpenChange={(open) => { if (!open) setLlamadaModalOpen(false); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Registrar llamada</DialogTitle>
+            <DialogDescription>
+              {llamadaProspecto?.nombre ? `Prospecto: ${llamadaProspecto.nombre}` : 'Fecha y hora de la llamada'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Fecha</label>
+                <Input
+                  type="date"
+                  value={llamadaFecha}
+                  onChange={(e) => setLlamadaFecha(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Hora</label>
+                <Input
+                  type="time"
+                  value={llamadaHora}
+                  onChange={(e) => setLlamadaHora(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">Notas / Comentarios</label>
+              <textarea
+                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                placeholder="Comentarios sobre la llamada..."
+                value={llamadaNotas}
+                onChange={(e) => setLlamadaNotas(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLlamadaModalOpen(false)} disabled={llamadaSaving}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!llamadaProspecto) return;
+                setLlamadaSaving(true);
+                try {
+                  const fechaHora = `${llamadaFecha}T${llamadaHora}:00`;
+                  await flotaLlamadaCreate(llamadaProspecto.id, {
+                    notas: llamadaNotas.trim() || null,
+                    createdAt: new Date(fechaHora).toISOString(),
+                  });
+                  toast.success('Llamada registrada');
+                  setLlamadaModalOpen(false);
+                } catch {
+                  toast.error('No se pudo registrar la llamada');
+                } finally {
+                  setLlamadaSaving(false);
+                }
+              }}
+              disabled={!llamadaNotas.trim() || llamadaSaving}
+            >
+              {llamadaSaving ? <Loader2 className="size-4 animate-spin" /> : <Phone className="size-4" />}
+              {llamadaSaving ? 'Guardando...' : 'Registrar llamada'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -3396,20 +3409,23 @@ function ConexionesView({ onConnectInstance }: { onConnectInstance?: (inst: Flot
         <table className="w-full text-sm">
           <thead className="bg-muted/50 text-xs text-muted-foreground">
             <tr>
-              <th className="px-4 py-3 text-left font-medium">Nombre</th><th className="px-4 py-3 text-left font-medium">Estado</th>
+              <th className="px-4 py-3 text-left font-medium">Nombre</th>
+              <th className="px-4 py-3 text-left font-medium">Número</th>
+              <th className="px-4 py-3 text-left font-medium">Estado</th>
               <th className="px-4 py-3 text-center font-medium">Inbox</th><th className="px-4 py-3 text-center font-medium">Masivo</th>
               <th className="px-4 py-3 text-left font-medium">Último error</th><th className="px-4 py-3"></th>
             </tr>
           </thead>
           <tbody>
             {instancias.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-12 text-center text-sm text-muted-foreground">No hay conexiones</td></tr>
+              <tr><td colSpan={7} className="px-4 py-12 text-center text-sm text-muted-foreground">No hay conexiones</td></tr>
             ) : instancias.map((inst) => {
               const sl = inst.isConnected ? 'connected' : inst.status === 'qr_ready' ? 'qr_ready' : 'disconnected';
               const ib = busyId === inst.id;
               return (
                 <tr key={inst.id} className="border-t">
                   <td className="px-4 py-3 font-medium">{inst.instanceName}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{inst.displayLineId || '—'}</td>
                   <td className="px-4 py-3">
                     <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
                       sl === 'connected' ? 'bg-emerald-100 text-emerald-700' : sl === 'qr_ready' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700')}>

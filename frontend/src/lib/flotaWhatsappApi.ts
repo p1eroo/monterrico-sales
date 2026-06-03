@@ -23,6 +23,7 @@ export type FlotaWhatsappConnection = {
   evoInstanceId: string | null;
   status: string;
   isConnected: boolean;
+  displayLineId: string | null;
   qrCode: string | null;
   qrText: string | null;
   pairingCode: string | null;
