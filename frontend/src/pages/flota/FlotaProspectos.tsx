@@ -22,7 +22,12 @@ import {
   Upload,
   MoreVertical,
   Phone,
+  Calendar as CalendarIcon,
 } from "lucide-react";
+import {
+  DateRangeCalendar,
+  type DateRangeValue,
+} from "@/components/shared/DateRangeCalendar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -77,7 +82,8 @@ import {
   flotaProspectosSpreadsheets,
   flotaProspectosByPhone,
   flotaLlamadaCreate,
-  fetchOperadores, getOperatorDisplayName,
+  fetchOperadores,
+  getOperatorDisplayName,
   type FlotaProspectoRow,
   type FlotaProspectosCounts,
   type OperadorUser,
@@ -105,11 +111,11 @@ const ASISTENCIA_OPTIONS = [
 ];
 
 const estadoColors: Record<string, string> = {
-  "Nuevo": "text-gray-700 dark:text-gray-300",
-  "Afiliado": "text-purple-700 dark:text-purple-300",
-  "Citado": "text-blue-700 dark:text-blue-300",
-  "Seguimiento": "text-green-700 dark:text-green-300",
-  "Informacion": "text-cyan-700 dark:text-cyan-300",
+  Nuevo: "text-gray-700 dark:text-gray-300",
+  Afiliado: "text-purple-700 dark:text-purple-300",
+  Citado: "text-blue-700 dark:text-blue-300",
+  Seguimiento: "text-green-700 dark:text-green-300",
+  Informacion: "text-cyan-700 dark:text-cyan-300",
   "Sin Requisitos": "text-red-700 dark:text-red-300",
   "No Responde": "text-yellow-700 dark:text-yellow-300",
 };
@@ -125,20 +131,30 @@ export default function FlotaProspectos() {
   const [importingFile, setImportingFile] = useState(false);
   const [citadoDialogOpen, setCitadoDialogOpen] = useState(false);
   const [citadoProspectId, setCitadoProspectId] = useState<string | null>(null);
-  const [citadoDate, setCitadoDate] = useState('');
-  const [citadoTime, setCitadoTime] = useState('');
+  const [citadoDate, setCitadoDate] = useState("");
+  const [citadoTime, setCitadoTime] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [llamadaProspecto, setLlamadaProspecto] = useState<{ id: string; nombre: string } | null>(null);
-  const [llamadaFecha, setLlamadaFecha] = useState('');
-  const [llamadaHora, setLlamadaHora] = useState('');
-  const [llamadaNotas, setLlamadaNotas] = useState('');
+  const [llamadaProspecto, setLlamadaProspecto] = useState<{
+    id: string;
+    nombre: string;
+  } | null>(null);
+  const [llamadaFecha, setLlamadaFecha] = useState("");
+  const [llamadaHora, setLlamadaHora] = useState("");
+  const [llamadaNotas, setLlamadaNotas] = useState("");
   const [llamadaSaving, setLlamadaSaving] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [searchDebounced, setSearchDebounced] = useState("");
   const [estadoFilter, setEstadoFilter] = useState("all");
-  const [mesFilter, setMesFilter] = useState("all");
+  const [fechaRegistroRange, setFechaRegistroRange] = useState<
+    DateRangeValue | undefined
+  >();
+  const [mesImportRange, setMesImportRange] = useState<
+    DateRangeValue | undefined
+  >();
+  const [fechaRegistroOpen, setFechaRegistroOpen] = useState(false);
+  const [mesImportOpen, setMesImportOpen] = useState(false);
   const [redSocialFilter, setRedSocialFilter] = useState("all");
   const [operadorFilter, setOperadorFilter] = useState("all");
   const [duplicadosFilter, setDuplicadosFilter] = useState(false);
@@ -148,14 +164,25 @@ export default function FlotaProspectos() {
 
   const [sheetNames, setSheetNames] = useState<string[]>([]);
   const [spreadsheets, setSpreadsheets] = useState<SheetsSpreadsheet[]>([]);
-  const [selectedSpreadsheetId, setSelectedSpreadsheetId] = useState<string | undefined>(undefined);
-  const [selectedSheet, setSelectedSheet] = useState<string | undefined>(undefined);
+  const [selectedSpreadsheetId, setSelectedSpreadsheetId] = useState<
+    string | undefined
+  >(undefined);
+  const [selectedSheet, setSelectedSheet] = useState<string | undefined>(
+    undefined,
+  );
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [previewData, setPreviewData] = useState<SheetPreviewResponse | null>(null);
+  const [previewData, setPreviewData] = useState<SheetPreviewResponse | null>(
+    null,
+  );
   const [previewLoading, setPreviewLoading] = useState(false);
-  const [previewSource, setPreviewSource] = useState<'sheets' | 'file'>('sheets');
+  const [previewSource, setPreviewSource] = useState<"sheets" | "file">(
+    "sheets",
+  );
   const rawImportRowsRef = useRef<any[][] | null>(null);
-  const [conductorTelefonos, setConductorTelefonos] = useState<{ phones: Set<string>; codigoByPhone: Record<string, string> }>({
+  const [conductorTelefonos, setConductorTelefonos] = useState<{
+    phones: Set<string>;
+    codigoByPhone: Record<string, string>;
+  }>({
     phones: new Set(),
     codigoByPhone: {},
   });
@@ -175,13 +202,18 @@ export default function FlotaProspectos() {
     observaciones: "",
   });
 
-  const [duplicateAlert, setDuplicateAlert] = useState<{ nombreCompleto: string; operador: string | null } | null>(null);
+  const [duplicateAlert, setDuplicateAlert] = useState<{
+    nombreCompleto: string;
+    operador: string | null;
+  } | null>(null);
 
   const { hasPermission } = usePermissions();
   const currentUser = useAppStore((s) => s.currentUser);
-  const hasVerTodos = hasPermission('flota_prospectos.ver_todos');
+  const hasVerTodos = hasPermission("flota_prospectos.ver_todos");
   const enqueueJob = useImportJobsStore((s) => s.enqueueJob);
-  const completionTick = useImportJobsStore((s) => s.completionTickByEntity['flota-prospecto']);
+  const completionTick = useImportJobsStore(
+    (s) => s.completionTickByEntity["flota-prospecto"],
+  );
 
   const filterOperadores = useMemo(() => {
     if (hasVerTodos) return operadores;
@@ -224,7 +256,6 @@ export default function FlotaProspectos() {
     void loadSpreadsheets();
   }, [loadSpreadsheets]);
 
-
   useEffect(() => {
     if (selectedSpreadsheetId) {
       setSheetNames([]);
@@ -238,7 +269,10 @@ export default function FlotaProspectos() {
     async function loadConductorTelefonos() {
       try {
         const { telefonos, codigoByTelefono } = await getConductorTelefonos();
-        setConductorTelefonos({ phones: new Set(telefonos), codigoByPhone: codigoByTelefono });
+        setConductorTelefonos({
+          phones: new Set(telefonos),
+          codigoByPhone: codigoByTelefono,
+        });
       } catch (e) {
         console.error("Error loading conductor telefonos:", e);
       }
@@ -247,7 +281,9 @@ export default function FlotaProspectos() {
   }, []);
 
   useEffect(() => {
-    fetchOperadores().then(setOperadores).catch(() => {});
+    fetchOperadores()
+      .then(setOperadores)
+      .catch(() => {});
   }, []);
 
   // Debounce search
@@ -260,13 +296,23 @@ export default function FlotaProspectos() {
   const lastCheckedSearchRef = useRef("");
   useEffect(() => {
     const phone = searchDebounced.trim();
-    if (!phone || !/^\d{7,}$/.test(phone) || phone === lastCheckedSearchRef.current) return;
+    if (
+      !phone ||
+      !/^\d{7,}$/.test(phone) ||
+      phone === lastCheckedSearchRef.current
+    )
+      return;
     lastCheckedSearchRef.current = phone;
-    flotaProspectosByPhone(phone).then((res) => {
-      if (res.found && res.prospecto?.operador) {
-        toast.warning(`El número ${phone} ya existe y está asignado a ${res.prospecto.operador} (${res.prospecto.nombreCompleto})`, { duration: 6000 });
-      }
-    }).catch(() => {});
+    flotaProspectosByPhone(phone)
+      .then((res) => {
+        if (res.found && res.prospecto?.operador) {
+          toast.warning(
+            `El número ${phone} ya existe y está asignado a ${res.prospecto.operador} (${res.prospecto.nombreCompleto})`,
+            { duration: 6000 },
+          );
+        }
+      })
+      .catch(() => {});
   }, [searchDebounced]);
 
   // Load data
@@ -279,30 +325,51 @@ export default function FlotaProspectos() {
         search: searchDebounced || undefined,
         estado: estadoFilter === "all" ? undefined : estadoFilter,
         duplicados: duplicadosFilter || undefined,
-        mes: mesFilter === "all" ? undefined : mesFilter,
+        fechaRegistroDesde: fechaRegistroRange?.from
+          ?.toISOString()
+          .split("T")[0],
+        fechaRegistroHasta: fechaRegistroRange?.to?.toISOString().split("T")[0],
+        mesImportDesde: mesImportRange?.from?.toISOString().split("T")[0],
+        mesImportHasta: mesImportRange?.to?.toISOString().split("T")[0],
         redSocial: redSocialFilter === "all" ? undefined : redSocialFilter,
-        operador: operadorFilter === "all" ? undefined : operadorFilter === "__unassigned__" ? "__unassigned__" : (() => {
-          const op = operadores.find(o => o.name === operadorFilter);
-          if (!op) return operadorFilter;
-          const firstName = op.name.split(' ')[0];
-          const aliases = [op.name, op.username];
-          if (firstName !== op.name && firstName.toLowerCase() !== op.username.toLowerCase()) {
-            aliases.push(firstName);
-          }
-          return aliases.join(',');
-        })(),
+        operador:
+          operadorFilter === "all"
+            ? undefined
+            : operadorFilter === "__unassigned__"
+              ? "__unassigned__"
+              : (() => {
+                  const op = operadores.find((o) => o.name === operadorFilter);
+                  if (!op) return operadorFilter;
+                  const firstName = op.name.split(" ")[0];
+                  const aliases = [op.name, op.username];
+                  if (
+                    firstName !== op.name &&
+                    firstName.toLowerCase() !== op.username.toLowerCase()
+                  ) {
+                    aliases.push(firstName);
+                  }
+                  return aliases.join(",");
+                })(),
       });
-      
+
       setProspectos(res.data);
       setTotalProspectos(res.total);
     } catch (e) {
-      toast.error(
-        e instanceof Error ? e.message : "Error cargando prospectos",
-      );
+      toast.error(e instanceof Error ? e.message : "Error cargando prospectos");
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, searchDebounced, estadoFilter, duplicadosFilter, mesFilter, redSocialFilter, operadorFilter]);
+  }, [
+    page,
+    pageSize,
+    searchDebounced,
+    estadoFilter,
+    duplicadosFilter,
+    fechaRegistroRange,
+    mesImportRange,
+    redSocialFilter,
+    operadorFilter,
+  ]);
 
   const loadCounts = useCallback(async () => {
     try {
@@ -345,33 +412,47 @@ export default function FlotaProspectos() {
   // Reset page on filter change
   useEffect(() => {
     setPage(1);
-  }, [searchDebounced, estadoFilter, duplicadosFilter, mesFilter, redSocialFilter, operadorFilter, pageSize]);
+  }, [
+    searchDebounced,
+    estadoFilter,
+    duplicadosFilter,
+    fechaRegistroRange,
+    mesImportRange,
+    redSocialFilter,
+    operadorFilter,
+    pageSize,
+  ]);
 
   const totalPages = Math.ceil(totalProspectos / pageSize);
 
   const getConductorCodigo = (celular: string | null): string | null => {
     if (!celular) return null;
-    const normalized = celular.replace(/\D/g, '').replace(/^51/, '');
+    const normalized = celular.replace(/\D/g, "").replace(/^51/, "");
     if (!conductorTelefonos.phones.has(normalized)) return null;
     return conductorTelefonos.codigoByPhone[normalized] ?? null;
   };
 
   const getLatestObservacion = (obs: string | null | undefined): string => {
-    if (!obs) return '';
-    return obs.split('\n---\n')[0].replace(/^\[.+?\]\s*/, '');
+    if (!obs) return "";
+    return obs.split("\n---\n")[0].replace(/^\[.+?\]\s*/, "");
   };
 
   const toLocalDatetimeValue = (iso: string | null | undefined): string => {
-    if (!iso) return '';
+    if (!iso) return "";
     const d = new Date(iso);
-    const date = d.toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
-    const time = d.toLocaleTimeString('en-GB', { timeZone: 'America/Lima', hour: '2-digit', minute: '2-digit', hour12: false });
+    const date = d.toLocaleDateString("en-CA", { timeZone: "America/Lima" });
+    const time = d.toLocaleTimeString("en-GB", {
+      timeZone: "America/Lima",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
     return `${date}T${time}`;
   };
 
   const isConductor = (celular: string | null): boolean => {
     if (!celular) return false;
-    const normalized = celular.replace(/\D/g, '').replace(/^51/, '');
+    const normalized = celular.replace(/\D/g, "").replace(/^51/, "");
     return conductorTelefonos.phones.has(normalized);
   };
 
@@ -381,8 +462,9 @@ export default function FlotaProspectos() {
         prev.map((p) => {
           if (p.id !== id) return p;
           const updated = { ...p };
-          if (field === 'edad' || field === 'anioVehiculo') {
-            (updated as any)[field] = newValue != null ? parseInt(newValue, 10) : null;
+          if (field === "edad" || field === "anioVehiculo") {
+            (updated as any)[field] =
+              newValue != null ? parseInt(newValue, 10) : null;
           } else {
             (updated as any)[field] = newValue;
           }
@@ -420,10 +502,22 @@ export default function FlotaProspectos() {
 
   const handleDownloadTemplate = useCallback(() => {
     const headers = [
-      "FECHA_REGISTRO", "RED_SOCIAL", "CELULAR", "NOMBRE_COMPLETO",
-      "EDAD", "OPERADOR", "ESTADO", "MODALIDAD", "PLACA", "ANIO_VEHICULO",
-      "DISTRITO", "FECHA_CITA", "ASISTENCIA", "FECHA_AFILIACION",
-      "MOVIL", "OBSERVACIONES",
+      "FECHA_REGISTRO",
+      "RED_SOCIAL",
+      "CELULAR",
+      "NOMBRE_COMPLETO",
+      "EDAD",
+      "OPERADOR",
+      "ESTADO",
+      "MODALIDAD",
+      "PLACA",
+      "ANIO_VEHICULO",
+      "DISTRITO",
+      "FECHA_CITA",
+      "ASISTENCIA",
+      "FECHA_AFILIACION",
+      "MOVIL",
+      "OBSERVACIONES",
     ];
     const ws = XLSX.utils.aoa_to_sheet([headers]);
     const wb = XLSX.utils.book_new();
@@ -432,43 +526,57 @@ export default function FlotaProspectos() {
     toast.success("Plantilla descargada");
   }, []);
 
-  const handleFileImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setImportingFile(true);
-    try {
-      const data = await file.arrayBuffer();
-      const wb = XLSX.read(data, { type: 'array' });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const json = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' }) as any[][];
-      if (json.length < 2) {
-        toast.error('El archivo no tiene datos');
-        return;
-      }
-      const rows = json.slice(1).filter((r) => r.some((c) => c != null && String(c).trim() !== ''));
-      if (rows.length === 0) {
-        toast.error('El archivo no tiene datos');
-        return;
-      }
-      const headers = (json[0] || []).map((h: any) => String(h || '').trim()).filter(Boolean);
-      const previewRows = rows.map((r: any[]) => {
-        const obj: Record<string, string> = {};
-        headers.forEach((h: string, i: number) => {
-          if (h) obj[h] = String(r[i] || '');
+  const handleFileImport = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      setImportingFile(true);
+      try {
+        const data = await file.arrayBuffer();
+        const wb = XLSX.read(data, { type: "array" });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json(ws, {
+          header: 1,
+          defval: "",
+        }) as any[][];
+        if (json.length < 2) {
+          toast.error("El archivo no tiene datos");
+          return;
+        }
+        const rows = json
+          .slice(1)
+          .filter((r) => r.some((c) => c != null && String(c).trim() !== ""));
+        if (rows.length === 0) {
+          toast.error("El archivo no tiene datos");
+          return;
+        }
+        const headers = (json[0] || [])
+          .map((h: any) => String(h || "").trim())
+          .filter(Boolean);
+        const previewRows = rows.map((r: any[]) => {
+          const obj: Record<string, string> = {};
+          headers.forEach((h: string, i: number) => {
+            if (h) obj[h] = String(r[i] || "");
+          });
+          return obj;
         });
-        return obj;
-      });
-      rawImportRowsRef.current = [json[0] as any[], ...rows as any[][]];
-      setPreviewData({ headers, rows: previewRows, totalRows: previewRows.length });
-      setPreviewSource('file');
-      setPreviewOpen(true);
-    } catch {
-      toast.error('Error al leer el archivo');
-    } finally {
-      setImportingFile(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  }, []);
+        rawImportRowsRef.current = [json[0] as any[], ...(rows as any[][])];
+        setPreviewData({
+          headers,
+          rows: previewRows,
+          totalRows: previewRows.length,
+        });
+        setPreviewSource("file");
+        setPreviewOpen(true);
+      } catch {
+        toast.error("Error al leer el archivo");
+      } finally {
+        setImportingFile(false);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      }
+    },
+    [],
+  );
 
   async function handleOpenImportPreview() {
     if (!selectedSheet) {
@@ -477,12 +585,17 @@ export default function FlotaProspectos() {
     }
     setPreviewLoading(true);
     try {
-      const data = await flotaProspectosSheetPreview(selectedSheet, selectedSpreadsheetId);
+      const data = await flotaProspectosSheetPreview(
+        selectedSheet,
+        selectedSpreadsheetId,
+      );
       setPreviewData(data);
-      setPreviewSource('sheets');
+      setPreviewSource("sheets");
       setPreviewOpen(true);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Error cargando vista previa");
+      toast.error(
+        e instanceof Error ? e.message : "Error cargando vista previa",
+      );
     } finally {
       setPreviewLoading(false);
     }
@@ -491,28 +604,33 @@ export default function FlotaProspectos() {
   function closePreview() {
     setPreviewOpen(false);
     setPreviewData(null);
-    setPreviewSource('sheets');
+    setPreviewSource("sheets");
     rawImportRowsRef.current = null;
   }
 
   async function handleConfirmImport() {
-    const rows = previewSource === 'file' ? rawImportRowsRef.current : null;
+    const rows = previewSource === "file" ? rawImportRowsRef.current : null;
     closePreview();
     setImporting(true);
     try {
       if (rows) {
         const job = await flotaProspectosImportRows(rows);
         enqueueJob(job);
-        toast.success("Importación iniciada. Revisá el progreso en la tarjeta de importación.");
+        toast.success(
+          "Importación iniciada. Revisá el progreso en la tarjeta de importación.",
+        );
       } else {
-        const job = await flotaProspectosImportSheets(selectedSheet, selectedSpreadsheetId);
+        const job = await flotaProspectosImportSheets(
+          selectedSheet,
+          selectedSpreadsheetId,
+        );
         enqueueJob(job);
-        toast.success("Importación iniciada. Revisá el progreso en la tarjeta de importación.");
+        toast.success(
+          "Importación iniciada. Revisá el progreso en la tarjeta de importación.",
+        );
       }
     } catch (e) {
-      toast.error(
-        e instanceof Error ? e.message : "Error al importar",
-      );
+      toast.error(e instanceof Error ? e.message : "Error al importar");
     } finally {
       setImporting(false);
     }
@@ -550,7 +668,9 @@ export default function FlotaProspectos() {
         modalidad: newProspecto.modalidad.trim() || null,
         distrito: newProspecto.distrito.trim() || null,
         edad: newProspecto.edad ? parseInt(newProspecto.edad, 10) : null,
-        anioVehiculo: newProspecto.anioVehiculo ? parseInt(newProspecto.anioVehiculo, 10) : null,
+        anioVehiculo: newProspecto.anioVehiculo
+          ? parseInt(newProspecto.anioVehiculo, 10)
+          : null,
         placa: newProspecto.placa.trim() || null,
         observaciones: newProspecto.observaciones.trim() || null,
         estado: "Nuevo",
@@ -575,10 +695,15 @@ export default function FlotaProspectos() {
       if (existing) {
         toast.error((e as Error).message, { duration: 6000 });
         if (existing.operador) {
-          toast.warning(`Este número ya está asignado a ${existing.operador} (${existing.nombreCompleto})`, { duration: 6000 });
+          toast.warning(
+            `Este número ya está asignado a ${existing.operador} (${existing.nombreCompleto})`,
+            { duration: 6000 },
+          );
         }
       } else {
-        toast.error(e instanceof Error ? e.message : "Error al crear prospecto");
+        toast.error(
+          e instanceof Error ? e.message : "Error al crear prospecto",
+        );
       }
     } finally {
       setCreating(false);
@@ -612,7 +737,9 @@ export default function FlotaProspectos() {
             </PopoverTrigger>
             <PopoverContent align="end" className="w-72 space-y-4 p-4">
               <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground">Spreadsheet</label>
+                <label className="text-xs font-medium text-muted-foreground">
+                  Spreadsheet
+                </label>
                 <Select
                   value={selectedSpreadsheetId ?? ""}
                   onValueChange={(v) => {
@@ -633,7 +760,9 @@ export default function FlotaProspectos() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground">Hoja</label>
+                <label className="text-xs font-medium text-muted-foreground">
+                  Hoja
+                </label>
                 <Select
                   value={selectedSheet ?? ""}
                   onValueChange={(v) => setSelectedSheet(v)}
@@ -692,7 +821,11 @@ export default function FlotaProspectos() {
             disabled={importingFile}
             onClick={() => fileInputRef.current?.click()}
           >
-            {importingFile ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+            {importingFile ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Upload className="size-4" />
+            )}
             {importingFile ? "Importando…" : "Importar"}
           </Button>
           <Button className="gap-1.5" onClick={() => setCreateModalOpen(true)}>
@@ -712,10 +845,7 @@ export default function FlotaProspectos() {
             className="pl-9 bg-card"
           />
         </div>
-        <Select
-          value={estadoFilter}
-          onValueChange={(v) => setEstadoFilter(v)}
-        >
+        <Select value={estadoFilter} onValueChange={(v) => setEstadoFilter(v)}>
           <SelectTrigger className="w-32 bg-card shadow-none gap-1.5">
             <Filter className="size-3.5 text-muted-foreground" />
             <SelectValue placeholder="Estado" />
@@ -731,7 +861,7 @@ export default function FlotaProspectos() {
             <SelectItem value="No Responde">No Responde</SelectItem>
           </SelectContent>
         </Select>
-        
+
         <Select
           value={redSocialFilter}
           onValueChange={(v) => setRedSocialFilter(v)}
@@ -769,27 +899,45 @@ export default function FlotaProspectos() {
           </SelectContent>
         </Select>
 
-        <Select value={mesFilter} onValueChange={(v) => setMesFilter(v)}>
-          <SelectTrigger className="w-28 bg-card shadow-none gap-1.5">
-            <Calendar className="size-3.5 text-muted-foreground" />
-            <SelectValue placeholder="Mes" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Mes</SelectItem>
-            <SelectItem value="2026-01">Ene 2026</SelectItem>
-            <SelectItem value="2026-02">Feb 2026</SelectItem>
-            <SelectItem value="2026-03">Mar 2026</SelectItem>
-            <SelectItem value="2026-04">Abr 2026</SelectItem>
-            <SelectItem value="2026-05">May 2026</SelectItem>
-            <SelectItem value="2026-06">Jun 2026</SelectItem>
-            <SelectItem value="2026-07">Jul 2026</SelectItem>
-            <SelectItem value="2026-08">Ago 2026</SelectItem>
-            <SelectItem value="2026-09">Sep 2026</SelectItem>
-            <SelectItem value="2026-10">Oct 2026</SelectItem>
-            <SelectItem value="2026-11">Nov 2026</SelectItem>
-            <SelectItem value="2026-12">Dic 2026</SelectItem>
-          </SelectContent>
-        </Select>
+        <Popover open={fechaRegistroOpen} onOpenChange={setFechaRegistroOpen}>
+          <PopoverTrigger asChild>
+            <button className="flex w-32 items-center gap-1.5 rounded-md border border-input bg-card px-3 py-2 text-sm">
+              <CalendarIcon className="size-3.5 shrink-0 text-muted-foreground" />
+              <span className="truncate">
+                {fechaRegistroRange
+                  ? `${fechaRegistroRange.from?.toLocaleDateString("es-PE")}${fechaRegistroRange.to && fechaRegistroRange.to.getTime() !== fechaRegistroRange.from?.getTime() ? ` - ${fechaRegistroRange.to.toLocaleDateString("es-PE")}` : ""}`
+                  : "F. Registro"}
+              </span>
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-3" align="start">
+            <DateRangeCalendar
+              value={fechaRegistroRange}
+              onChange={setFechaRegistroRange}
+              onClose={() => setFechaRegistroOpen(false)}
+            />
+          </PopoverContent>
+        </Popover>
+
+        <Popover open={mesImportOpen} onOpenChange={setMesImportOpen}>
+          <PopoverTrigger asChild>
+            <button className="flex w-32 items-center gap-1.5 rounded-md border border-input bg-card px-3 py-2 text-sm">
+              <CalendarIcon className="size-3.5 shrink-0 text-muted-foreground" />
+              <span className="truncate">
+                {mesImportRange
+                  ? `${mesImportRange.from?.toLocaleDateString("es-PE")}${mesImportRange.to && mesImportRange.to.getTime() !== mesImportRange.from?.getTime() ? ` - ${mesImportRange.to.toLocaleDateString("es-PE")}` : ""}`
+                  : "F. Import"}
+              </span>
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-3" align="start">
+            <DateRangeCalendar
+              value={mesImportRange}
+              onChange={setMesImportRange}
+              onClose={() => setMesImportOpen(false)}
+            />
+          </PopoverContent>
+        </Popover>
 
         <Button
           variant={duplicadosFilter ? "default" : "outline"}
@@ -822,36 +970,40 @@ export default function FlotaProspectos() {
 
       <TableWithStickyScroll maxHeight="calc(100vh - 20rem)">
         {loading ? (
-            <CrmDataTableSkeleton
-              columns={[
-                { label: "" },
-                { label: "F.Registro" },
-                { label: "Red Social" },
-                { label: "Celular" },
-                { label: "Nombres y Apellidos" },
-                { label: "Edad" },
-                { label: "Operador" },
-                { label: "Estado" },
-                { label: "Modalidad" },
-                { label: "Placa" },
-                { label: "Año Veh." },
-                { label: "Distrito" },
-                { label: "F. Cita" },
-                { label: "Asistencia" },
-                { label: "F. Afiliacion" },
-                { label: "Movil" },
-                { label: "Observaciones" },
-                { label: "" },
-              ]}
-              rows={5}
-              aria-label="Cargando prospectos"
-              className="bg-card"
-            />
+          <CrmDataTableSkeleton
+            columns={[
+              { label: "" },
+              { label: "F.Registro" },
+              { label: "Red Social" },
+              { label: "Celular" },
+              { label: "Nombres y Apellidos" },
+              { label: "Edad" },
+              { label: "Operador" },
+              { label: "Estado" },
+              { label: "Modalidad" },
+              { label: "Placa" },
+              { label: "Año Veh." },
+              { label: "Distrito" },
+              { label: "F. Cita" },
+              { label: "Asistencia" },
+              { label: "F. Afiliacion" },
+              { label: "Movil" },
+              { label: "Observaciones" },
+              { label: "" },
+            ]}
+            rows={5}
+            aria-label="Cargando prospectos"
+            className="bg-card"
+          />
         ) : (
-            <Table containerClassName="overflow-visible" className="min-w-[1300px] [&_td]:border [&_th]:border [&_td]:border-border/50 [&_th]:border-border/50 [&_td]:px-2 [&_th]:px-2 [&_td]:py-2 [&_th]:py-2 bg-transparent border-collapse">
-              <TableHeader className="bg-muted sticky top-0 z-10">
-                <TableRow>
-                  <TableHead className="w-10">
+          <Table
+            containerClassName="overflow-visible"
+            className="min-w-[1300px] [&_td]:border [&_th]:border [&_td]:border-border/50 [&_th]:border-border/50 [&_td]:px-2 [&_th]:px-2 [&_td]:py-2 [&_th]:py-2 bg-transparent border-collapse"
+          >
+            <TableHeader className="bg-muted sticky top-0 z-10">
+              <TableRow>
+                <TableHead style={{ width: 40, minWidth: 40 }}>
+                  <div className="flex justify-center">
                     <Checkbox
                       checked={
                         selectedIds.size === prospectos.length &&
@@ -859,328 +1011,429 @@ export default function FlotaProspectos() {
                       }
                       onCheckedChange={toggleSelectAll}
                     />
-                  </TableHead>
-                  <TableHead>F.Registro</TableHead>
-                  <TableHead>Red Social</TableHead>
-                  <TableHead>Celular</TableHead>
-                  <TableHead>Nombres y Apellidos</TableHead>
-                  <TableHead>Edad</TableHead>
-                  <TableHead>Operador</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Modalidad</TableHead>
-                  <TableHead>Placa</TableHead>
-                  <TableHead>Año Veh.</TableHead>
-                  <TableHead>Distrito</TableHead>
-                  <TableHead>F. Cita</TableHead>
-                  <TableHead>Asistencia</TableHead>
-                  <TableHead>F. Afiliacion</TableHead>
-                  <TableHead>Movil</TableHead>
-                  <TableHead className="max-w-[200px]">
-                    Observaciones
-                  </TableHead>
-                  <TableHead className="w-10"></TableHead>
+                  </div>
+                </TableHead>
+                <TableHead>F.Registro</TableHead>
+                <TableHead>Red Social</TableHead>
+                <TableHead>Celular</TableHead>
+                <TableHead>Nombres y Apellidos</TableHead>
+                <TableHead>Edad</TableHead>
+                <TableHead>Operador</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead>Modalidad</TableHead>
+                <TableHead>Placa</TableHead>
+                <TableHead>Año Veh.</TableHead>
+                <TableHead>Distrito</TableHead>
+                <TableHead>F. Cita</TableHead>
+                <TableHead>Asistencia</TableHead>
+                <TableHead>F. Afiliacion</TableHead>
+                <TableHead>Movil</TableHead>
+                <TableHead className="max-w-[200px]">Observaciones</TableHead>
+                <TableHead className="w-10"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {prospectos.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={18}
+                    className="py-12 text-center text-muted-foreground"
+                  >
+                    {duplicadosFilter
+                      ? "No hay prospectos duplicados."
+                      : "No se encontraron prospectos con los filtros aplicados."}
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {prospectos.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={18}
-                      className="py-12 text-center text-muted-foreground"
-                    >
-                      {duplicadosFilter
-                        ? "No hay prospectos duplicados."
-                        : "No se encontraron prospectos con los filtros aplicados."}
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  prospectos.map((prospecto) => (
-                    <TableRow
-                      key={prospecto.id}
-                      className={isConductor(prospecto.celular) ? "bg-green-50/50 border-l-4 border-l-green-500 dark:bg-green-950/40 dark:border-l-green-400" : ""}
-                    >
-                      <TableCell onClick={(e) => e.stopPropagation()}>
+              ) : (
+                prospectos.map((prospecto) => (
+                  <TableRow
+                    key={prospecto.id}
+                    className={
+                      isConductor(prospecto.celular)
+                        ? "bg-green-50/50 border-l-4 border-l-green-500 dark:bg-green-950/40 dark:border-l-green-400"
+                        : ""
+                    }
+                  >
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <div className="flex justify-center">
                         <Checkbox
                           checked={selectedIds.has(prospecto.id)}
                           onCheckedChange={() => toggleSelectOne(prospecto.id)}
                         />
-                      </TableCell>
-                      <TableCell>
-                        <InlineEditCell
-                          value={prospecto.fechaRegistro ? formatDateDMY(prospecto.fechaRegistro) : "—"}
-                          fieldId={prospecto.id}
-                          fieldKey="fechaRegistro"
-                          type="readonly"
-                        >
-                          <div>
-                            <div>{prospecto.fechaRegistro ? formatDateDMY(prospecto.fechaRegistro) : "—"}</div>
-                            {prospecto.createdAt && (
-                              <div className="text-[10px] text-muted-foreground mt-0.5">
-                                Importado: {new Date(prospecto.createdAt).toLocaleDateString('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: '2-digit', year: 'numeric' })}
-                              </div>
-                            )}
-                          </div>
-                        </InlineEditCell>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        <InlineEditCell
-                          value={prospecto.redSocial || ""}
-                          fieldId={prospecto.id}
-                          fieldKey="redSocial"
-                          onSaved={(f, v) => handleOptimisticSave(prospecto.id, f, v)}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <InlineEditCell
-                          value={prospecto.celular || ""}
-                          fieldId={prospecto.id}
-                          fieldKey="celular"
-                          onSaved={(f, v) => handleOptimisticSave(prospecto.id, f, v)}
-                        >
-                          <div>
-                            <span>{prospecto.celular || "—"}</span>
-                            {(() => {
-                              const codigo = getConductorCodigo(prospecto.celular);
-                              if (!codigo) return null;
-                              return (
-                                <span className="block text-[10px] text-emerald-600 font-medium">
-                                  {codigo}
-                                </span>
-                              );
-                            })()}
-                          </div>
-                        </InlineEditCell>
-                      </TableCell>
-                      <TableCell>
-                        <InlineEditCell
-                          value={prospecto.nombreCompleto}
-                          fieldId={prospecto.id}
-                          fieldKey="nombreCompleto"
-                          onSaved={(f, v) => handleOptimisticSave(prospecto.id, f, v)}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`font-medium ${prospecto.esDuplicado ? "text-red-600" : ""}`}
-                            >
-                              {prospecto.nombreCompleto}
-                            </span>
-                            {prospecto.esDuplicado && (
-                              <Badge
-                                variant="outline"
-                                className="border-red-200 bg-red-50 text-[10px] text-red-600"
-                              >
-                                Duplicado
-                              </Badge>
-        )}
                       </div>
-                        </InlineEditCell>
-                      </TableCell>
-                      <TableCell>
-                        <InlineEditCell
-                          value={prospecto.edad != null ? String(prospecto.edad) : ""}
-                          fieldId={prospecto.id}
-                          fieldKey="edad"
-                          type="number"
-                          onSaved={(f, v) => handleOptimisticSave(prospecto.id, f, v)}
-                        />
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        <InlineEditCell
-                          value={getOperatorDisplayName(prospecto.operador, operadores) || ""}
-                          fieldId={prospecto.id}
-                          fieldKey="operador"
-                          type="select"
-                          options={operadorOptions}
-                          onSaved={(f, v) => handleOptimisticSave(prospecto.id, f, v)}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <InlineEditCell
-                          value={prospecto.estado}
-                          fieldId={prospecto.id}
-                          fieldKey="estado"
-                          type="select"
-                          options={ESTADO_OPTIONS}
-                          onSaved={(f, v) => {
-                            handleOptimisticSave(prospecto.id, f, v);
-                            if (v === 'Citado') {
-                              setCitadoProspectId(prospecto.id);
-                              setCitadoDate(prospecto.fechaCita ? toLocalDatetimeValue(prospecto.fechaCita).split('T')[0] : '');
-                              setCitadoTime(prospecto.fechaCita ? toLocalDatetimeValue(prospecto.fechaCita).split('T')[1] : '');
-                              setCitadoDialogOpen(true);
-                            }
-                          }}
-                        >
-                          <span className={`text-xs ${estadoColors[prospecto.estado] || ""}`}>
-                            {prospecto.estado || "—"}
-                          </span>
-                        </InlineEditCell>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        <InlineEditCell
-                          value={prospecto.modalidad || ""}
-                          fieldId={prospecto.id}
-                          fieldKey="modalidad"
-                          onSaved={(f, v) => handleOptimisticSave(prospecto.id, f, v)}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <InlineEditCell
-                          value={prospecto.placa || ""}
-                          fieldId={prospecto.id}
-                          fieldKey="placa"
-                          onSaved={(f, v) => handleOptimisticSave(prospecto.id, f, v)}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <InlineEditCell
-                          value={prospecto.anioVehiculo != null ? String(prospecto.anioVehiculo) : ""}
-                          fieldId={prospecto.id}
-                          fieldKey="anioVehiculo"
-                          type="number"
-                          onSaved={(f, v) => handleOptimisticSave(prospecto.id, f, v)}
-                        />
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        <InlineEditCell
-                          value={prospecto.distrito || ""}
-                          fieldId={prospecto.id}
-                          fieldKey="distrito"
-                          onSaved={(f, v) => handleOptimisticSave(prospecto.id, f, v)}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <InlineEditCell
-                          value={toLocalDatetimeValue(prospecto.fechaCita)}
-                          fieldId={prospecto.id}
-                          fieldKey="fechaCita"
-                          type="datetime-local"
-                          onSaved={(f, v) => handleOptimisticSave(prospecto.id, f, v)}
-                        >
-                          {prospecto.fechaCita ? (
-                            <div>
-                              <div>{formatDateDMY(prospecto.fechaCita)}</div>
-                              <div className="text-[10px] text-muted-foreground mt-0.5">
-                                {new Date(prospecto.fechaCita).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Lima' })}
-                              </div>
+                    </TableCell>
+                    <TableCell>
+                      <InlineEditCell
+                        value={
+                          prospecto.fechaRegistro
+                            ? formatDateDMY(prospecto.fechaRegistro)
+                            : "—"
+                        }
+                        fieldId={prospecto.id}
+                        fieldKey="fechaRegistro"
+                        type="readonly"
+                      >
+                        <div>
+                          <div>
+                            {prospecto.fechaRegistro
+                              ? formatDateDMY(prospecto.fechaRegistro)
+                              : "—"}
+                          </div>
+                          {prospecto.createdAt && (
+                            <div className="text-[10px] text-muted-foreground mt-0.5">
+                              Importado:{" "}
+                              {new Date(prospecto.createdAt).toLocaleDateString(
+                                "es-PE",
+                                {
+                                  timeZone: "America/Lima",
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                  year: "numeric",
+                                },
+                              )}
                             </div>
-                          ) : "—"}
-                        </InlineEditCell>
-                      </TableCell>
-                      <TableCell>
-                        <InlineEditCell
-                          value={prospecto.asistencia || ""}
-                          fieldId={prospecto.id}
-                          fieldKey="asistencia"
-                          type="select"
-                          options={ASISTENCIA_OPTIONS}
-                          onSaved={(f, v) => handleOptimisticSave(prospecto.id, f, v)}
-                        >
-                          {prospecto.asistencia ? (
+                          )}
+                        </div>
+                      </InlineEditCell>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      <InlineEditCell
+                        value={prospecto.redSocial || ""}
+                        fieldId={prospecto.id}
+                        fieldKey="redSocial"
+                        onSaved={(f, v) =>
+                          handleOptimisticSave(prospecto.id, f, v)
+                        }
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <InlineEditCell
+                        value={prospecto.celular || ""}
+                        fieldId={prospecto.id}
+                        fieldKey="celular"
+                        onSaved={(f, v) =>
+                          handleOptimisticSave(prospecto.id, f, v)
+                        }
+                      >
+                        <div>
+                          <span>{prospecto.celular || "—"}</span>
+                          {(() => {
+                            const codigo = getConductorCodigo(
+                              prospecto.celular,
+                            );
+                            if (!codigo) return null;
+                            return (
+                              <span className="block text-[10px] text-emerald-600 font-medium">
+                                {codigo}
+                              </span>
+                            );
+                          })()}
+                        </div>
+                      </InlineEditCell>
+                    </TableCell>
+                    <TableCell>
+                      <InlineEditCell
+                        value={prospecto.nombreCompleto}
+                        fieldId={prospecto.id}
+                        fieldKey="nombreCompleto"
+                        onSaved={(f, v) =>
+                          handleOptimisticSave(prospecto.id, f, v)
+                        }
+                      >
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`font-medium ${prospecto.esDuplicado ? "text-red-600" : ""}`}
+                          >
+                            {prospecto.nombreCompleto}
+                          </span>
+                          {prospecto.esDuplicado && (
                             <Badge
                               variant="outline"
-                              className={`text-xs ${
-                                prospecto.asistencia === "Asistió" ||
-                                prospecto.asistencia === "ASISTIO"
-                                  ? "bg-emerald-100 text-emerald-700"
-                                  : "bg-red-100 text-red-700"
-                              }`}
+                              className="border-red-200 bg-red-50 text-[10px] text-red-600"
                             >
-                              {prospecto.asistencia}
+                              Duplicado
                             </Badge>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
                           )}
-                        </InlineEditCell>
-                      </TableCell>
-                      <TableCell>
-                        <InlineEditCell
-                          value={prospecto.fechaAfiliacion || ""}
-                          fieldId={prospecto.id}
-                          fieldKey="fechaAfiliacion"
-                          type="date"
-                          onSaved={(f, v) => handleOptimisticSave(prospecto.id, f, v)}
+                        </div>
+                      </InlineEditCell>
+                    </TableCell>
+                    <TableCell>
+                      <InlineEditCell
+                        value={
+                          prospecto.edad != null ? String(prospecto.edad) : ""
+                        }
+                        fieldId={prospecto.id}
+                        fieldKey="edad"
+                        type="number"
+                        onSaved={(f, v) =>
+                          handleOptimisticSave(prospecto.id, f, v)
+                        }
+                      />
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      <InlineEditCell
+                        value={
+                          getOperatorDisplayName(
+                            prospecto.operador,
+                            operadores,
+                          ) || ""
+                        }
+                        fieldId={prospecto.id}
+                        fieldKey="operador"
+                        type="select"
+                        options={operadorOptions}
+                        onSaved={(f, v) =>
+                          handleOptimisticSave(prospecto.id, f, v)
+                        }
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <InlineEditCell
+                        value={prospecto.estado}
+                        fieldId={prospecto.id}
+                        fieldKey="estado"
+                        type="select"
+                        options={ESTADO_OPTIONS}
+                        onSaved={(f, v) => {
+                          handleOptimisticSave(prospecto.id, f, v);
+                          if (v === "Citado") {
+                            setCitadoProspectId(prospecto.id);
+                            setCitadoDate(
+                              prospecto.fechaCita
+                                ? toLocalDatetimeValue(
+                                    prospecto.fechaCita,
+                                  ).split("T")[0]
+                                : "",
+                            );
+                            setCitadoTime(
+                              prospecto.fechaCita
+                                ? toLocalDatetimeValue(
+                                    prospecto.fechaCita,
+                                  ).split("T")[1]
+                                : "",
+                            );
+                            setCitadoDialogOpen(true);
+                          }
+                        }}
+                      >
+                        <span
+                          className={`text-xs ${estadoColors[prospecto.estado] || ""}`}
                         >
-                          {prospecto.fechaAfiliacion
-                            ? formatDateDMY(prospecto.fechaAfiliacion)
-                            : "—"}
-                        </InlineEditCell>
-                      </TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground">
-                        <InlineEditCell
-                          value={prospecto.movil || ""}
-                          fieldId={prospecto.id}
-                          fieldKey="movil"
-                          onSaved={(f, v) => handleOptimisticSave(prospecto.id, f, v)}
-                        />
-                      </TableCell>
-                      <TableCell className="max-w-[200px]">
-                        <InlineEditCell
-                          value={getLatestObservacion(prospecto.observaciones)}
-                          fieldId={prospecto.id}
-                          fieldKey="observaciones"
-                          onSaveOverride={async (rawValue) => {
-                            const fullObs = prospecto.observaciones || '';
-                            const entries = fullObs.split('\n---\n').filter(Boolean);
-                            let newObs: string;
-                            if (entries.length > 0) {
-                              const latest = entries[0];
-                              const datePrefix = latest.match(/^\[.+?\]\s*/)?.[0] || '';
-                              entries[0] = datePrefix ? `${datePrefix}${rawValue}` : rawValue;
-                              newObs = entries.join('\n---\n');
-                            } else {
-                              newObs = rawValue;
+                          {prospecto.estado || "—"}
+                        </span>
+                      </InlineEditCell>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      <InlineEditCell
+                        value={prospecto.modalidad || ""}
+                        fieldId={prospecto.id}
+                        fieldKey="modalidad"
+                        onSaved={(f, v) =>
+                          handleOptimisticSave(prospecto.id, f, v)
+                        }
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <InlineEditCell
+                        value={prospecto.placa || ""}
+                        fieldId={prospecto.id}
+                        fieldKey="placa"
+                        onSaved={(f, v) =>
+                          handleOptimisticSave(prospecto.id, f, v)
+                        }
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <InlineEditCell
+                        value={
+                          prospecto.anioVehiculo != null
+                            ? String(prospecto.anioVehiculo)
+                            : ""
+                        }
+                        fieldId={prospecto.id}
+                        fieldKey="anioVehiculo"
+                        type="number"
+                        onSaved={(f, v) =>
+                          handleOptimisticSave(prospecto.id, f, v)
+                        }
+                      />
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      <InlineEditCell
+                        value={prospecto.distrito || ""}
+                        fieldId={prospecto.id}
+                        fieldKey="distrito"
+                        onSaved={(f, v) =>
+                          handleOptimisticSave(prospecto.id, f, v)
+                        }
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <InlineEditCell
+                        value={toLocalDatetimeValue(prospecto.fechaCita)}
+                        fieldId={prospecto.id}
+                        fieldKey="fechaCita"
+                        type="datetime-local"
+                        onSaved={(f, v) =>
+                          handleOptimisticSave(prospecto.id, f, v)
+                        }
+                      >
+                        {prospecto.fechaCita ? (
+                          <div>
+                            <div>{formatDateDMY(prospecto.fechaCita)}</div>
+                            <div className="text-[10px] text-muted-foreground mt-0.5">
+                              {new Date(prospecto.fechaCita).toLocaleTimeString(
+                                "es-PE",
+                                {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                  timeZone: "America/Lima",
+                                },
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          "—"
+                        )}
+                      </InlineEditCell>
+                    </TableCell>
+                    <TableCell>
+                      <InlineEditCell
+                        value={prospecto.asistencia || ""}
+                        fieldId={prospecto.id}
+                        fieldKey="asistencia"
+                        type="select"
+                        options={ASISTENCIA_OPTIONS}
+                        onSaved={(f, v) =>
+                          handleOptimisticSave(prospecto.id, f, v)
+                        }
+                      >
+                        {prospecto.asistencia ? (
+                          <Badge
+                            variant="outline"
+                            className={`text-xs ${
+                              prospecto.asistencia === "Asistió" ||
+                              prospecto.asistencia === "ASISTIO"
+                                ? "bg-emerald-100 text-emerald-700"
+                                : "bg-red-100 text-red-700"
+                            }`}
+                          >
+                            {prospecto.asistencia}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </InlineEditCell>
+                    </TableCell>
+                    <TableCell>
+                      <InlineEditCell
+                        value={prospecto.fechaAfiliacion || ""}
+                        fieldId={prospecto.id}
+                        fieldKey="fechaAfiliacion"
+                        type="date"
+                        onSaved={(f, v) =>
+                          handleOptimisticSave(prospecto.id, f, v)
+                        }
+                      >
+                        {prospecto.fechaAfiliacion
+                          ? formatDateDMY(prospecto.fechaAfiliacion)
+                          : "—"}
+                      </InlineEditCell>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      <InlineEditCell
+                        value={prospecto.movil || ""}
+                        fieldId={prospecto.id}
+                        fieldKey="movil"
+                        onSaved={(f, v) =>
+                          handleOptimisticSave(prospecto.id, f, v)
+                        }
+                      />
+                    </TableCell>
+                    <TableCell className="max-w-[200px]">
+                      <InlineEditCell
+                        value={getLatestObservacion(prospecto.observaciones)}
+                        fieldId={prospecto.id}
+                        fieldKey="observaciones"
+                        onSaveOverride={async (rawValue) => {
+                          const fullObs = prospecto.observaciones || "";
+                          const entries = fullObs
+                            .split("\n---\n")
+                            .filter(Boolean);
+                          let newObs: string;
+                          if (entries.length > 0) {
+                            const latest = entries[0];
+                            const datePrefix =
+                              latest.match(/^\[.+?\]\s*/)?.[0] || "";
+                            entries[0] = datePrefix
+                              ? `${datePrefix}${rawValue}`
+                              : rawValue;
+                            newObs = entries.join("\n---\n");
+                          } else {
+                            newObs = rawValue;
+                          }
+                          await api(`/flota-prospectos/${prospecto.id}`, {
+                            method: "PATCH",
+                            body: JSON.stringify({ observaciones: newObs }),
+                          });
+                        }}
+                        onSaved={(f, v) =>
+                          handleOptimisticSave(prospecto.id, f, v)
+                        }
+                        className="max-w-[180px] truncate"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreVertical className="size-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-44">
+                          <DropdownMenuItem
+                            className="cursor-pointer gap-2"
+                            onClick={() =>
+                              navigate(`/flota/prospectos/${prospecto.id}`)
                             }
-                            await api(`/flota-prospectos/${prospecto.id}`, {
-                              method: 'PATCH',
-                              body: JSON.stringify({ observaciones: newObs }),
-                            });
-                          }}
-                          onSaved={(f, v) => handleOptimisticSave(prospecto.id, f, v)}
-                          className="max-w-[180px] truncate"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <MoreVertical className="size-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-44">
-                            <DropdownMenuItem
-                              className="cursor-pointer gap-2"
-                              onClick={() => navigate(`/flota/prospectos/${prospecto.id}`)}
-                            >
-                              <Info className="size-4" />
-                              Vista detallada
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="cursor-pointer gap-2"
-                              onClick={() => {
-                                const now = new Date();
-                                setLlamadaProspecto({ id: prospecto.id, nombre: prospecto.nombreCompleto });
-                                setLlamadaFecha(now.toISOString().split('T')[0]);
-                                setLlamadaHora(now.toTimeString().split(' ')[0].substring(0, 5));
-                                setLlamadaNotas('');
-                              }}
-                            >
-                              <Phone className="size-4" />
-                              Registrar llamada
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                          >
+                            <Info className="size-4" />
+                            Vista detallada
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="cursor-pointer gap-2"
+                            onClick={() => {
+                              const now = new Date();
+                              setLlamadaProspecto({
+                                id: prospecto.id,
+                                nombre: prospecto.nombreCompleto,
+                              });
+                              setLlamadaFecha(now.toISOString().split("T")[0]);
+                              setLlamadaHora(
+                                now
+                                  .toTimeString()
+                                  .split(" ")[0]
+                                  .substring(0, 5),
+                              );
+                              setLlamadaNotas("");
+                            }}
+                          >
+                            <Phone className="size-4" />
+                            Registrar llamada
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
         )}
       </TableWithStickyScroll>
 
@@ -1203,20 +1456,32 @@ export default function FlotaProspectos() {
         </div>
       )}
 
-      <Dialog open={previewOpen} onOpenChange={(open) => !open && closePreview()}>
+      <Dialog
+        open={previewOpen}
+        onOpenChange={(open) => !open && closePreview()}
+      >
         <DialogContent className="flex h-[min(92vh,880px)] max-h-[92vh] w-[min(96vw,calc(100vw-2rem))] max-w-[min(96vw,87.5rem)] flex-col gap-0 p-0 sm:max-w-[min(96vw,87.5rem)]">
           <DialogHeader className="shrink-0 border-b px-6 py-4">
-            <h2 className="text-lg font-semibold">Vista previa de importación</h2>
+            <h2 className="text-lg font-semibold">
+              Vista previa de importación
+            </h2>
             {previewData ? (
               <p className="text-sm text-muted-foreground mt-1">
-                {previewData.totalRows} fila(s) total(es) &middot; Confirma para importar.
+                {previewData.totalRows} fila(s) total(es) &middot; Confirma para
+                importar.
               </p>
             ) : null}
           </DialogHeader>
           <div className="flex-1 min-h-0 overflow-hidden px-6 py-3">
-            <div className="h-full overflow-auto rounded-md border" style={{ scrollbarWidth: 'thin' }}>
+            <div
+              className="h-full overflow-auto rounded-md border"
+              style={{ scrollbarWidth: "thin" }}
+            >
               {previewData && previewData.rows.length > 0 ? (
-                <table className="table-fixed border-collapse [&_td]:border [&_th]:border [&_td]:border-border/50 [&_th]:border-border/50 [&_td]:px-2 [&_th]:px-2 [&_td]:py-2 [&_th]:py-2" style={{ width: 'max-content', minWidth: 'max-content' }}>
+                <table
+                  className="table-fixed border-collapse [&_td]:border [&_th]:border [&_td]:border-border/50 [&_th]:border-border/50 [&_td]:px-2 [&_th]:px-2 [&_td]:py-2 [&_th]:py-2"
+                  style={{ width: "max-content", minWidth: "max-content" }}
+                >
                   <thead>
                     <tr>
                       {previewData.headers.map((header) => (
@@ -1233,7 +1498,10 @@ export default function FlotaProspectos() {
                   </thead>
                   <tbody>
                     {previewData.rows.map((row, idx) => (
-                      <tr key={idx} className="border-b border-transparent transition-colors hover:bg-muted/50">
+                      <tr
+                        key={idx}
+                        className="border-b border-transparent transition-colors hover:bg-muted/50"
+                      >
                         {previewData.headers.map((header) => (
                           <td
                             key={`${idx}-${header}`}
@@ -1275,7 +1543,10 @@ export default function FlotaProspectos() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={createModalOpen} onOpenChange={(open) => !open && setCreateModalOpen(open)}>
+      <Dialog
+        open={createModalOpen}
+        onOpenChange={(open) => !open && setCreateModalOpen(open)}
+      >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Nuevo Prospecto</DialogTitle>
@@ -1288,7 +1559,12 @@ export default function FlotaProspectos() {
               <label className="text-sm font-medium">Nombre completo *</label>
               <Input
                 value={newProspecto.nombreCompleto}
-                onChange={(e) => setNewProspecto({ ...newProspecto, nombreCompleto: e.target.value })}
+                onChange={(e) =>
+                  setNewProspecto({
+                    ...newProspecto,
+                    nombreCompleto: e.target.value,
+                  })
+                }
                 placeholder="Nombres y Apellidos"
               />
             </div>
@@ -1298,7 +1574,7 @@ export default function FlotaProspectos() {
                 <Input
                   value={newProspecto.celular}
                   onChange={(e) => {
-                    const raw = e.target.value.replace(/\D/g, '').slice(0, 9);
+                    const raw = e.target.value.replace(/\D/g, "").slice(0, 9);
                     setNewProspecto({ ...newProspecto, celular: raw });
                     if (duplicateAlert) setDuplicateAlert(null);
                   }}
@@ -1309,7 +1585,8 @@ export default function FlotaProspectos() {
                   <p className="text-xs text-amber-600 flex items-center gap-1">
                     <span className="size-1.5 rounded-full bg-amber-500 shrink-0" />
                     Ya existe: {duplicateAlert.nombreCompleto}
-                    {duplicateAlert.operador && ` · Asignado a ${duplicateAlert.operador}`}
+                    {duplicateAlert.operador &&
+                      ` · Asignado a ${duplicateAlert.operador}`}
                   </p>
                 )}
               </div>
@@ -1318,7 +1595,9 @@ export default function FlotaProspectos() {
                 <Input
                   type="number"
                   value={newProspecto.edad}
-                  onChange={(e) => setNewProspecto({ ...newProspecto, edad: e.target.value })}
+                  onChange={(e) =>
+                    setNewProspecto({ ...newProspecto, edad: e.target.value })
+                  }
                   placeholder="18"
                 />
               </div>
@@ -1329,8 +1608,14 @@ export default function FlotaProspectos() {
                 <Input
                   value={newProspecto.placa}
                   onChange={(e) => {
-                    const raw = e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 6);
-                    const formatted = raw.length > 3 ? `${raw.slice(0, 3)}-${raw.slice(3)}` : raw;
+                    const raw = e.target.value
+                      .replace(/[^a-zA-Z0-9]/g, "")
+                      .toUpperCase()
+                      .slice(0, 6);
+                    const formatted =
+                      raw.length > 3
+                        ? `${raw.slice(0, 3)}-${raw.slice(3)}`
+                        : raw;
                     setNewProspecto({ ...newProspecto, placa: formatted });
                   }}
                   placeholder="ABC-123"
@@ -1342,7 +1627,12 @@ export default function FlotaProspectos() {
                 <Input
                   type="number"
                   value={newProspecto.anioVehiculo}
-                  onChange={(e) => setNewProspecto({ ...newProspecto, anioVehiculo: e.target.value })}
+                  onChange={(e) =>
+                    setNewProspecto({
+                      ...newProspecto,
+                      anioVehiculo: e.target.value,
+                    })
+                  }
                   placeholder="2024"
                 />
               </div>
@@ -1352,15 +1642,25 @@ export default function FlotaProspectos() {
                 <label className="text-sm font-medium">Red Social</label>
                 <Input
                   value={newProspecto.redSocial}
-                  onChange={(e) => setNewProspecto({ ...newProspecto, redSocial: e.target.value })}
+                  onChange={(e) =>
+                    setNewProspecto({
+                      ...newProspecto,
+                      redSocial: e.target.value,
+                    })
+                  }
                   placeholder="Facebook, Instagram..."
                 />
               </div>
               <div className="grid gap-2">
                 <label className="text-sm font-medium">Operador</label>
                 <Select
-                  value={newProspecto.operador || '__none__'}
-                  onValueChange={(v) => setNewProspecto({ ...newProspecto, operador: v === '__none__' ? '' : v })}
+                  value={newProspecto.operador || "__none__"}
+                  onValueChange={(v) =>
+                    setNewProspecto({
+                      ...newProspecto,
+                      operador: v === "__none__" ? "" : v,
+                    })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Sin operador" />
@@ -1381,7 +1681,12 @@ export default function FlotaProspectos() {
                 <label className="text-sm font-medium">Modalidad</label>
                 <Input
                   value={newProspecto.modalidad}
-                  onChange={(e) => setNewProspecto({ ...newProspecto, modalidad: e.target.value })}
+                  onChange={(e) =>
+                    setNewProspecto({
+                      ...newProspecto,
+                      modalidad: e.target.value,
+                    })
+                  }
                   placeholder="Flota propia"
                 />
               </div>
@@ -1389,7 +1694,12 @@ export default function FlotaProspectos() {
                 <label className="text-sm font-medium">Distrito</label>
                 <Input
                   value={newProspecto.distrito}
-                  onChange={(e) => setNewProspecto({ ...newProspecto, distrito: e.target.value })}
+                  onChange={(e) =>
+                    setNewProspecto({
+                      ...newProspecto,
+                      distrito: e.target.value,
+                    })
+                  }
                   placeholder="Lima, Callao..."
                 />
               </div>
@@ -1398,7 +1708,12 @@ export default function FlotaProspectos() {
               <label className="text-sm font-medium">Observaciones</label>
               <Input
                 value={newProspecto.observaciones}
-                onChange={(e) => setNewProspecto({ ...newProspecto, observaciones: e.target.value })}
+                onChange={(e) =>
+                  setNewProspecto({
+                    ...newProspecto,
+                    observaciones: e.target.value,
+                  })
+                }
                 placeholder="Notas adicionales..."
               />
             </div>
@@ -1407,7 +1722,10 @@ export default function FlotaProspectos() {
             <Button variant="outline" onClick={() => setCreateModalOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={() => handleCreateProspecto()} disabled={creating || !!duplicateAlert}>
+            <Button
+              onClick={() => handleCreateProspecto()}
+              disabled={creating || !!duplicateAlert}
+            >
               {creating ? (
                 <>
                   <Loader2 className="mr-2 size-4 animate-spin" />
@@ -1425,7 +1743,9 @@ export default function FlotaProspectos() {
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Programar cita</DialogTitle>
-            <DialogDescription>Indica la fecha y hora de la cita para el prospecto.</DialogDescription>
+            <DialogDescription>
+              Indica la fecha y hora de la cita para el prospecto.
+            </DialogDescription>
           </DialogHeader>
           <div className="py-4 space-y-3">
             <Input
@@ -1442,41 +1762,62 @@ export default function FlotaProspectos() {
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCitadoDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={async () => {
-              if (!citadoProspectId || !citadoDate) {
-                toast.error('Selecciona una fecha');
-                return;
-              }
-              try {
-                const fechaHora = new Date(`${citadoDate}T${citadoTime || '12:00'}:00`).toISOString();
-                await api(`/flota-prospectos/${citadoProspectId}`, {
-                  method: 'PATCH',
-                  body: JSON.stringify({ fechaCita: fechaHora }),
-                });
-                setCitadoDialogOpen(false);
-                await Promise.all([loadProspectos(), loadCounts()]);
-                toast.success('Cita programada');
-              } catch (e) {
-                toast.error(e instanceof Error ? e.message : 'Error al guardar');
-              }
-            }} disabled={!citadoDate}>
+            <Button
+              variant="outline"
+              onClick={() => setCitadoDialogOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!citadoProspectId || !citadoDate) {
+                  toast.error("Selecciona una fecha");
+                  return;
+                }
+                try {
+                  const fechaHora = new Date(
+                    `${citadoDate}T${citadoTime || "12:00"}:00`,
+                  ).toISOString();
+                  await api(`/flota-prospectos/${citadoProspectId}`, {
+                    method: "PATCH",
+                    body: JSON.stringify({ fechaCita: fechaHora }),
+                  });
+                  setCitadoDialogOpen(false);
+                  await Promise.all([loadProspectos(), loadCounts()]);
+                  toast.success("Cita programada");
+                } catch (e) {
+                  toast.error(
+                    e instanceof Error ? e.message : "Error al guardar",
+                  );
+                }
+              }}
+              disabled={!citadoDate}
+            >
               Guardar cita
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={deleteDialogOpen} onOpenChange={(open) => !open && setDeleteDialogOpen(false)}>
+      <Dialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => !open && setDeleteDialogOpen(false)}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Eliminar prospectos</DialogTitle>
             <DialogDescription>
-              ¿Estás seguro de eliminar <strong>{selectedIds.size}</strong> prospecto(s)? Esta acción no se puede deshacer.
+              ¿Estás seguro de eliminar <strong>{selectedIds.size}</strong>{" "}
+              prospecto(s)? Esta acción no se puede deshacer.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={deleting}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={deleting}
+            >
               Cancelar
             </Button>
             <Button
@@ -1493,25 +1834,38 @@ export default function FlotaProspectos() {
                   void loadProspectos();
                   void loadCounts();
                 } catch (e) {
-                  toast.error(e instanceof Error ? e.message : "Error eliminando");
+                  toast.error(
+                    e instanceof Error ? e.message : "Error eliminando",
+                  );
                 } finally {
                   setDeleting(false);
                 }
               }}
             >
-              {deleting ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+              {deleting ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Trash2 className="size-4" />
+              )}
               {deleting ? "Eliminando..." : "Eliminar"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!llamadaProspecto} onOpenChange={(open) => { if (!open) setLlamadaProspecto(null); }}>
+      <Dialog
+        open={!!llamadaProspecto}
+        onOpenChange={(open) => {
+          if (!open) setLlamadaProspecto(null);
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Registrar llamada</DialogTitle>
             <DialogDescription>
-              {llamadaProspecto?.nombre ? `Prospecto: ${llamadaProspecto.nombre}` : 'Fecha y hora de la llamada'}
+              {llamadaProspecto?.nombre
+                ? `Prospecto: ${llamadaProspecto.nombre}`
+                : "Fecha y hora de la llamada"}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -1544,7 +1898,11 @@ export default function FlotaProspectos() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setLlamadaProspecto(null)} disabled={llamadaSaving}>
+            <Button
+              variant="outline"
+              onClick={() => setLlamadaProspecto(null)}
+              disabled={llamadaSaving}
+            >
               Cancelar
             </Button>
             <Button
@@ -1552,23 +1910,29 @@ export default function FlotaProspectos() {
                 if (!llamadaProspecto) return;
                 setLlamadaSaving(true);
                 try {
-                  const fechaHora = new Date(`${llamadaFecha}T${llamadaHora}:00`);
+                  const fechaHora = new Date(
+                    `${llamadaFecha}T${llamadaHora}:00`,
+                  );
                   await flotaLlamadaCreate(llamadaProspecto.id, {
                     notas: llamadaNotas.trim() || null,
                     createdAt: fechaHora.toISOString(),
                   });
-                  toast.success('Llamada registrada');
+                  toast.success("Llamada registrada");
                   setLlamadaProspecto(null);
                 } catch {
-                  toast.error('No se pudo registrar la llamada');
+                  toast.error("No se pudo registrar la llamada");
                 } finally {
                   setLlamadaSaving(false);
                 }
               }}
               disabled={!llamadaNotas.trim() || llamadaSaving}
             >
-              {llamadaSaving ? <Loader2 className="size-4 animate-spin" /> : <Phone className="size-4" />}
-              {llamadaSaving ? 'Guardando...' : 'Registrar llamada'}
+              {llamadaSaving ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Phone className="size-4" />
+              )}
+              {llamadaSaving ? "Guardando..." : "Registrar llamada"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1576,4 +1940,3 @@ export default function FlotaProspectos() {
     </div>
   );
 }
-

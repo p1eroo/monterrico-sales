@@ -256,7 +256,7 @@ export function InlineEditCell({
             onBlur={() => { if (!processingRef.current) void save(); }}
             type={type === 'number' ? 'number' : type === 'date' ? 'date' : type === 'datetime-local' ? 'datetime-local' : 'text'}
             className="h-8 text-sm w-full"
-            style={{ minWidth: `${Math.max(editValue?.length || 1, 10)}ch` }}
+            style={{ minWidth: `${Math.max(editValue?.length || 1, 15)}ch` }}
             disabled={saving}
           />
         </div>

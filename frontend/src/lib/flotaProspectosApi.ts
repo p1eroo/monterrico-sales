@@ -57,6 +57,11 @@ export async function flotaProspectosList(params: {
   estado?: string;
   duplicados?: boolean;
   mes?: string;
+  mesImport?: string;
+  fechaRegistroDesde?: string;
+  fechaRegistroHasta?: string;
+  mesImportDesde?: string;
+  mesImportHasta?: string;
   redSocial?: string;
   operador?: string;
 }): Promise<FlotaProspectosListResponse> {
@@ -67,6 +72,11 @@ export async function flotaProspectosList(params: {
   if (params.estado) qs.set('estado', params.estado);
   if (params.duplicados) qs.set('duplicados', 'true');
   if (params.mes) qs.set('mes', params.mes);
+  if (params.mesImport) qs.set('mesImport', params.mesImport);
+  if (params.fechaRegistroDesde) qs.set('fechaRegistroDesde', params.fechaRegistroDesde);
+  if (params.fechaRegistroHasta) qs.set('fechaRegistroHasta', params.fechaRegistroHasta);
+  if (params.mesImportDesde) qs.set('mesImportDesde', params.mesImportDesde);
+  if (params.mesImportHasta) qs.set('mesImportHasta', params.mesImportHasta);
   if (params.redSocial) qs.set('redSocial', params.redSocial);
   if (params.operador) qs.set('operador', params.operador);
   return api<FlotaProspectosListResponse>(

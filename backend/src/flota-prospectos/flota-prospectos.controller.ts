@@ -51,6 +51,11 @@ export class FlotaProspectosController {
     @Query('estado') estado?: string,
     @Query('duplicados') duplicados?: string,
     @Query('mes') mes?: string,
+    @Query('mesImport') mesImport?: string,
+    @Query('fechaRegistroDesde') fechaRegistroDesde?: string,
+    @Query('fechaRegistroHasta') fechaRegistroHasta?: string,
+    @Query('mesImportDesde') mesImportDesde?: string,
+    @Query('mesImportHasta') mesImportHasta?: string,
     @Query('redSocial') redSocial?: string,
     @Query('operador') operador?: string,
   ) {
@@ -65,6 +70,11 @@ export class FlotaProspectosController {
       estado: estado || undefined,
       duplicados: duplicados === 'true',
       mes: mes || undefined,
+      mesImport: mesImport || undefined,
+      fechaRegistroDesde: fechaRegistroDesde || undefined,
+      fechaRegistroHasta: fechaRegistroHasta || undefined,
+      mesImportDesde: mesImportDesde || undefined,
+      mesImportHasta: mesImportHasta || undefined,
       redSocial: redSocial || undefined,
       operador: operador || undefined,
     }, scope);

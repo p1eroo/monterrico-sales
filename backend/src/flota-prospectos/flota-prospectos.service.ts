@@ -228,6 +228,11 @@ export class FlotaProspectosService {
     estado?: string;
     duplicados?: boolean;
     mes?: string;
+    mesImport?: string;
+    fechaRegistroDesde?: string;
+    fechaRegistroHasta?: string;
+    mesImportDesde?: string;
+    mesImportHasta?: string;
     redSocial?: string;
     operador?: string;
   }, scope?: CrmDataScope) {
@@ -276,7 +281,7 @@ export class FlotaProspectosService {
       where.esDuplicado = true;
     }
 
-if (params.mes) {
+    if (params.mes) {
       const [yearStr, monthStr] = params.mes.split('-');
       const year = parseInt(yearStr, 10);
       const month = parseInt(monthStr, 10);
@@ -286,6 +291,44 @@ if (params.mes) {
       where.fechaRegistro = {
         gte: startDate,
         lt: endDate,
+      };
+    }
+
+    if (params.mesImport) {
+      const [yearStr, monthStr] = params.mesImport.split('-');
+      const year = parseInt(yearStr, 10);
+      const month = parseInt(monthStr, 10);
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 1);
+      
+      where.createdAt = {
+        gte: startDate,
+        lt: endDate,
+      };
+    }
+
+    if (params.fechaRegistroDesde) {
+      where.fechaRegistro = {
+        ...(where.fechaRegistro as object || {}),
+        gte: new Date(params.fechaRegistroDesde),
+      };
+    }
+    if (params.fechaRegistroHasta) {
+      where.fechaRegistro = {
+        ...(where.fechaRegistro as object || {}),
+        lte: new Date(params.fechaRegistroHasta),
+      };
+    }
+    if (params.mesImportDesde) {
+      where.createdAt = {
+        ...(where.createdAt as object || {}),
+        gte: new Date(params.mesImportDesde),
+      };
+    }
+    if (params.mesImportHasta) {
+      where.createdAt = {
+        ...(where.createdAt as object || {}),
+        lte: new Date(params.mesImportHasta),
       };
     }
 

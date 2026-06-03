@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo, useCallback, memo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import {
@@ -1288,6 +1288,7 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
   messagesCache: Record<string, WhatsappMessageItem[]>;
   setMessagesCache: React.Dispatch<React.SetStateAction<Record<string, WhatsappMessageItem[]>>>;
 }) {
+  const navigate = useNavigate();
   const [draft, setDraft] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -1856,6 +1857,9 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
               setLlamadaModalOpen(true);
             }}>
               <Phone className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => navigate(`/flota/prospectos/${contactId}`)}>
+              <Info className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="icon" onClick={() => setEditModalOpen(true)}>
               <Edit2 className="h-4 w-4" />
