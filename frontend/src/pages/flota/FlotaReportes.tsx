@@ -1,6 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { BarChart3, Car, UserPlus, Download, Loader2, ChevronLeft, ChevronRight, CheckCircle, XCircle, AlertTriangle, ClipboardList, Hash, CheckCircle2, Maximize2 } from 'lucide-react';
-import type { DateRange } from 'react-day-picker';
+import { BarChart3, Car, UserPlus, Download, Loader2, ChevronLeft, ChevronRight, CheckCircle, XCircle, AlertTriangle, ClipboardList, Hash, CheckCircle2, Maximize2, CalendarDays } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -24,7 +23,15 @@ import { es } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { PageHeader } from '@/components/shared/PageHeader';
-import { DateRangePicker } from '@/components/ui/date-range-picker';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  DateRangeCalendar,
+  type DateRangeValue,
+} from '@/components/shared/DateRangeCalendar';
 import { useChartTheme } from '@/hooks/useChartTheme';
 import {
   TooltipProvider as UITooltipProvider,
@@ -69,7 +76,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function FlotaReportes() {
-  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+  const [dateRange, setDateRange] = useState<DateRangeValue | undefined>({
     from: startOfMonth(new Date()),
     to: endOfMonth(new Date()),
   });
@@ -79,13 +86,13 @@ export default function FlotaReportes() {
   const [loadingProspectos, setLoadingProspectos] = useState(true);
   const chartTheme = useChartTheme();
 
-  const [sunatDateRange, setSunatDateRange] = useState<DateRange | undefined>({
+  const [sunatDateRange, setSunatDateRange] = useState<DateRangeValue | undefined>({
     from: startOfWeek(new Date(), { weekStartsOn: 1 }),
     to: endOfWeek(new Date(), { weekStartsOn: 1 }),
   });
   const [sunatHistory, setSunatHistory] = useState<any[]>([]);
   const [loadingSunatReal, setLoadingSunatReal] = useState(false);
-  const [conductoresDateRange, setConductoresDateRange] = useState<DateRange | undefined>({
+  const [conductoresDateRange, setConductoresDateRange] = useState<DateRangeValue | undefined>({
     from: startOfWeek(subWeeks(new Date(), 3), { weekStartsOn: 1 }),
     to: endOfWeek(new Date(), { weekStartsOn: 1 }),
   });
@@ -445,11 +452,24 @@ export default function FlotaReportes() {
         description="Métricas de prospectos y conductores"
       >
         <div className="flex items-center gap-2">
-          <DateRangePicker 
-            value={dateRange} 
-            onChange={setDateRange} 
-            className="w-[260px]"
-          />
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="w-[260px] justify-start gap-1.5 font-normal">
+                <CalendarDays className="size-4" />
+                <span className={!dateRange?.from ? 'text-muted-foreground' : ''}>
+                  {dateRange?.from
+                    ? `${format(dateRange.from, "d MMM yyyy", { locale: es })}${dateRange.to && dateRange.to.getTime() !== dateRange.from.getTime() ? ` - ${format(dateRange.to, "d MMM yyyy", { locale: es })}` : ''}`
+                    : 'Seleccionar fechas'}
+                </span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-3" align="start">
+              <DateRangeCalendar
+                value={dateRange}
+                onChange={setDateRange}
+              />
+            </PopoverContent>
+          </Popover>
           <Button variant="outline" size="sm" className="gap-1.5">
             <Download className="size-4" />
             Exportar
@@ -514,11 +534,24 @@ export default function FlotaReportes() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <DateRangePicker 
-                  value={conductoresDateRange} 
-                  onChange={setConductoresDateRange} 
-                  className="w-[260px]"
-                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-[260px] justify-start gap-1.5 font-normal">
+                      <CalendarDays className="size-4" />
+                      <span className={!conductoresDateRange?.from ? 'text-muted-foreground' : ''}>
+                        {conductoresDateRange?.from
+                          ? `${format(conductoresDateRange.from, "d MMM yyyy", { locale: es })}${conductoresDateRange.to && conductoresDateRange.to.getTime() !== conductoresDateRange.from.getTime() ? ` - ${format(conductoresDateRange.to, "d MMM yyyy", { locale: es })}` : ''}`
+                          : 'Seleccionar fechas'}
+                      </span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-3" align="start">
+                    <DateRangeCalendar
+                      value={conductoresDateRange}
+                      onChange={setConductoresDateRange}
+                    />
+                  </PopoverContent>
+                </Popover>
                 <Button
                 type="button"
                 variant="ghost"
@@ -733,11 +766,24 @@ export default function FlotaReportes() {
                 <CardDescription>Cumplimiento y métricas de autorización</CardDescription>
               </div>
               <div className="flex items-center gap-2">
-                <DateRangePicker 
-                  value={sunatDateRange} 
-                  onChange={setSunatDateRange} 
-                  className="w-[260px]"
-                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-[260px] justify-start gap-1.5 font-normal">
+                      <CalendarDays className="size-4" />
+                      <span className={!sunatDateRange?.from ? 'text-muted-foreground' : ''}>
+                        {sunatDateRange?.from
+                          ? `${format(sunatDateRange.from, "d MMM yyyy", { locale: es })}${sunatDateRange.to && sunatDateRange.to.getTime() !== sunatDateRange.from.getTime() ? ` - ${format(sunatDateRange.to, "d MMM yyyy", { locale: es })}` : ''}`
+                          : 'Seleccionar fechas'}
+                      </span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-3" align="start">
+                    <DateRangeCalendar
+                      value={sunatDateRange}
+                      onChange={setSunatDateRange}
+                    />
+                  </PopoverContent>
+                </Popover>
                 <Button
                   type="button"
                   variant="ghost"

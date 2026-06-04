@@ -1306,9 +1306,7 @@ export class FlotaProspectosService {
     const startDate = new Date(fecini + 'T00:00:00.000Z');
     const endDate = new Date(fecfin + 'T23:59:59.999Z');
 
-    const baseWhere: any = {
-      fechaRegistro: { gte: startDate, lte: endDate },
-    };
+    const baseWhere: any = {};
 
     if (scope && !scope.unrestricted) {
       const operadorFilter = await this.getScopeOperadorFilter(scope.viewerUserId);
