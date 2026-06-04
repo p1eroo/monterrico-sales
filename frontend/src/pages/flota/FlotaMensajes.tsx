@@ -118,6 +118,7 @@ import {
   flotaProspectosList,
   flotaLlamadaCreate,
 } from '@/lib/flotaProspectosApi';
+import { getConductorTelefonos } from '@/lib/flotaConductoresApi';
 import {
   fetchSharedConnection,
   connectSharedWhatsapp,
@@ -819,6 +820,7 @@ const ConversationItem = memo(({
   start,
   measureElement,
   onClick,
+  conductorCodigosInbox,
 }: {
   conversation: FlotaConversation;
   isActive: boolean;
@@ -826,6 +828,7 @@ const ConversationItem = memo(({
   start: number;
   measureElement: (element: HTMLElement | null) => void;
   onClick: (id: string) => void;
+  conductorCodigosInbox: Record<string, string>;
 }) => {
   const dateStr = useMemo(() => {
     if (!conversation.time) return '';
@@ -883,7 +886,13 @@ const ConversationItem = memo(({
           </div>
           <p className={cn('mt-0.5 line-clamp-1 text-sm', conversation.unread > 0 ? 'font-medium text-foreground' : 'text-muted-foreground')}>{conversation.preview}</p>
           <div className="mt-1.5 flex items-center gap-2">
-            <span className="text-[11px] text-muted-foreground">{conversation.phone}</span>
+            <span className="text-[11px] text-muted-foreground">
+              {conversation.phone}
+              {(() => {
+                const codigo = getConductorCodigo(conversation.phone, conductorCodigosInbox);
+                return codigo ? <span className="text-emerald-600 font-medium"> [{codigo}]</span> : null;
+              })()}
+            </span>
             {conversation.unread > 0 && (
               <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
                 {conversation.unread}
@@ -922,6 +931,7 @@ function InboxView({ activeId: externalActiveId, onActiveChange, isConnected }: 
   const [newPhone, setNewPhone] = useState('');
   const [newName, setNewName] = useState('');
   const [creatingChat, setCreatingChat] = useState(false);
+  const [conductorCodigosInbox, setConductorCodigosInbox] = useState<Record<string, string>>({});
   const firstLoad = useRef(true);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const activeIdRef = useRef(activeId);
@@ -949,6 +959,10 @@ function InboxView({ activeId: externalActiveId, onActiveChange, isConnected }: 
 
   useEffect(() => {
     void loadConversations();
+  }, []);
+
+  useEffect(() => {
+    getConductorTelefonos().then((r) => setConductorCodigosInbox(r.codigoByTelefono)).catch(() => {});
   }, []);
 
   /** Socket.IO unificado: actualizar sidebar + mensajes del chat activo en tiempo real */
@@ -1214,6 +1228,7 @@ function InboxView({ activeId: externalActiveId, onActiveChange, isConnected }: 
                     start={vi.start}
                     measureElement={virtualizer.measureElement}
                     onClick={setActiveId}
+                    conductorCodigosInbox={conductorCodigosInbox}
                   />
                 );
               })}
@@ -1774,7 +1789,7 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
       } else if (k === 'esDuplicado') {
         body[k] = v === 'true' ? true : v === 'false' ? false : undefined;
       } else if (k === 'observaciones') {
-        const currentLatest = originalObsRef.current.split('\n---\n')[0].replace(/^\[.+?\]\s*/, '');
+        const currentLatest = originalObsRef.current.split('\n---\n')[0].replace(/^(?:\[.+?\]\s*)+/, '');
         if (v?.trim() && v.trim() !== currentLatest) {
           const dateStr = new Date().toLocaleString('es-PE', { timeZone: 'America/Lima' });
           body[k] = `[${dateStr}] ${v.trim()}\n---\n${originalObsRef.current}`;
@@ -3612,6 +3627,7 @@ function FlotaPipelineView({ onSelect }: { onSelect: (contactId: string) => void
   const [searchTerm, setSearchTerm] = useState('');
   const [operadorFilter, setOperadorFilter] = useState('all');
   const [operadores, setOperadores] = useState<OperadorUser[]>([]);
+  const [conductorCodigos, setConductorCodigos] = useState<Record<string, string>>({});
 
   const { hasPermission } = usePermissions();
   const currentUser = useAppStore((s) => s.currentUser);
@@ -3620,6 +3636,7 @@ function FlotaPipelineView({ onSelect }: { onSelect: (contactId: string) => void
   useEffect(() => {
     void loadConversations();
     fetchOperadores().then(setOperadores).catch(() => {});
+    getConductorTelefonos().then((r) => setConductorCodigos(r.codigoByTelefono)).catch(() => {});
   }, []);
 
   async function loadConversations() {
@@ -3629,7 +3646,13 @@ function FlotaPipelineView({ onSelect }: { onSelect: (contactId: string) => void
         fetchConversations(),
         flotaProspectosList({ limit: 10000 }),
       ]);
-      const convoMap = new Map(convs.map((c) => [c.id, c]));
+      let convsFiltered = convs;
+      if (!hasVerTodos) {
+        convsFiltered = convs.filter(
+          (c) => !c.operador || c.operador === currentUser?.name,
+        );
+      }
+      const convoMap = new Map(convsFiltered.map((c) => [c.id, c]));
       const prospectos: FlotaConversation[] = prospectosRes.data
         .filter((p) => !convoMap.has(p.id))
         .map((p) => ({
@@ -3643,7 +3666,7 @@ function FlotaPipelineView({ onSelect }: { onSelect: (contactId: string) => void
           estado: p.estado || 'Nuevo',
           operador: p.operador ?? undefined,
         }));
-      setConversations([...convs, ...prospectos]);
+      setConversations([...convsFiltered, ...prospectos]);
     } catch {
       toast.error('No se pudieron cargar los prospectos');
     } finally {
@@ -3778,6 +3801,7 @@ function FlotaPipelineView({ onSelect }: { onSelect: (contactId: string) => void
               estado={estado}
               conversations={grouped[estado]}
               onSelect={onSelect}
+              conductorCodigos={conductorCodigos}
             />
           ))}
         </div>
@@ -3798,9 +3822,10 @@ interface FlotaKanbanColumnProps {
   estado: string;
   conversations: FlotaConversation[];
   onSelect: (contactId: string) => void;
+  conductorCodigos: Record<string, string>;
 }
 
-const FlotaKanbanColumn = memo(function FlotaKanbanColumn({ estado, conversations, onSelect }: FlotaKanbanColumnProps) {
+const FlotaKanbanColumn = memo(function FlotaKanbanColumn({ estado, conversations, onSelect, conductorCodigos }: FlotaKanbanColumnProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const { setNodeRef } = useDroppable({ id: estado });
   const accentColor = ACCENT_COLORS[estado] ?? '#6b7280';
@@ -3854,14 +3879,14 @@ const FlotaKanbanColumn = memo(function FlotaKanbanColumn({ estado, conversation
                   className="absolute left-0 top-0 w-full"
                   style={{ transform: `translateY(${v.start}px)` }}
                 >
-                  <FlotaPipelineCard conversation={c} onSelect={onSelect} />
+                  <FlotaPipelineCard conversation={c} onSelect={onSelect} conductorCodigos={conductorCodigos} />
                 </div>
               );
             })}
           </div>
         ) : (
           conversations.map((c) => (
-            <FlotaPipelineCard key={c.id} conversation={c} onSelect={onSelect} />
+            <FlotaPipelineCard key={c.id} conversation={c} onSelect={onSelect} conductorCodigos={conductorCodigos} />
           ))
         )}
       </div>
@@ -3872,9 +3897,16 @@ const FlotaKanbanColumn = memo(function FlotaKanbanColumn({ estado, conversation
 interface FlotaPipelineCardProps {
   conversation: FlotaConversation;
   onSelect: (contactId: string) => void;
+  conductorCodigos: Record<string, string>;
 }
 
-const FlotaPipelineCard = memo(function FlotaPipelineCard({ conversation: c, onSelect }: FlotaPipelineCardProps) {
+function getConductorCodigo(phone: string, codigos: Record<string, string>): string | null {
+  if (!phone) return null;
+  const normalized = phone.replace(/\D/g, '').replace(/^51/, '');
+  return codigos[normalized] ?? null;
+}
+
+const FlotaPipelineCard = memo(function FlotaPipelineCard({ conversation: c, onSelect, conductorCodigos }: FlotaPipelineCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: c.id });
 
   const style: React.CSSProperties | undefined = transform
@@ -3907,6 +3939,11 @@ const FlotaPipelineCard = memo(function FlotaPipelineCard({ conversation: c, onS
           <Phone className="size-3 shrink-0" />
           <span className="truncate">{c.phone}</span>
         </div>
+        {(() => {
+          const codigo = getConductorCodigo(c.phone, conductorCodigos);
+          if (!codigo) return null;
+          return <span className="block text-[10px] text-emerald-600 font-medium truncate ml-5">{codigo}</span>;
+        })()}
         {c.operador && (
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Users className="size-3 shrink-0" />

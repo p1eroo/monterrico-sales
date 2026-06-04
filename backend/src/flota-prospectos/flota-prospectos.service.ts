@@ -81,8 +81,8 @@ function parseInt10(raw: string): number | null {
 
 function latestObservacionText(obs: string | null | undefined): string {
   if (!obs) return '';
-  const first = obs.split('\n---\n')[0];
-  return first.replace(/^\[.+?\]\s*/, '');
+  const first = obs.split(/\n?---\n?/)[0];
+  return first.replace(/^(?:\[.+?\]\s*)+/, '').trim();
 }
 
 const ESTADOS_VALIDOS = ['Nuevo', 'Afiliado', 'Citado', 'Seguimiento', 'Informacion', 'Sin Requisitos', 'No Responde'];

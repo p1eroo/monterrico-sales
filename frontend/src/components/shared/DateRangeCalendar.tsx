@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { Calendar } from 'primereact/calendar';
 import { addLocale } from 'primereact/api';
 import { X } from 'lucide-react';
@@ -27,7 +27,7 @@ interface Props {
   onClose?: () => void;
 }
 
-export function DateRangeCalendar({ value, onChange, onClose }: Props) {
+export const DateRangeCalendar = memo(function DateRangeCalendar({ value, onChange, onClose }: Props) {
   const [dates, setDates] = useState<(Date | null)[] | null>(() => {
     if (!value?.from) return null;
     if (value.to) return [value.from, value.to];
@@ -37,11 +37,9 @@ export function DateRangeCalendar({ value, onChange, onClose }: Props) {
   const handleDateChange = (e: any) => {
     const val = e.value as (Date | null)[] | null;
     setDates(val);
-    if (Array.isArray(val) && val.length >= 2 && val[0]) {
-      onChange?.({ from: val[0], to: val[1] || val[0] });
-      if (val[1]) onClose?.();
-    } else if (!val) {
-      onChange?.(undefined);
+    if (Array.isArray(val) && val.length >= 2 && val[0] && val[1]) {
+      onChange?.({ from: val[0], to: val[1] });
+      onClose?.();
     }
   };
 
@@ -122,4 +120,4 @@ export function DateRangeCalendar({ value, onChange, onClose }: Props) {
       `}</style>
     </div>
   );
-}
+});

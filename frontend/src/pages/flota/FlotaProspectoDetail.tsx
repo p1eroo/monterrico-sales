@@ -102,6 +102,7 @@ function ProspectoInformacionAside({ prospecto, operadores }: { prospecto: Flota
         { icon: MessageSquare, value: `Modalidad: ${prospecto.modalidad || '—'}` },
         { icon: ClipboardList, value: `Móvil: ${prospecto.movil || '—'}` },
         ...(prospecto.fechaAfiliacion ? [{ icon: Calendar, value: `Afiliación: ${formatDate(prospecto.fechaAfiliacion)}` }] : []),
+        { icon: FileText, value: `Obs.: ${(prospecto.observaciones || '').split('\n---\n')[0].replace(/^(?:\[.+?\]\s*)+/, '').trim() || '—'}` },
       ]}
     />
   );
@@ -155,8 +156,6 @@ export default function FlotaProspectoDetail() {
   const [fileLightboxUrl, setFileLightboxUrl] = useState<string | null>(null);
   const [fileUrls, setFileUrls] = useState<Record<string, string>>({});
   const [operadores, setOperadores] = useState<OperadorUser[]>([]);
-  const [newNoteText, setNewNoteText] = useState('');
-  const [savingNote, setSavingNote] = useState(false);
   const [llamadaModalOpen, setLlamadaModalOpen] = useState(false);
   const [llamadaFecha, setLlamadaFecha] = useState('');
   const [llamadaHora, setLlamadaHora] = useState('');
@@ -327,25 +326,6 @@ export default function FlotaProspectoDetail() {
     e.target.value = '';
   }, [prospecto?.id, fetchFiles]);
 
-  const handleAddNote = useCallback(async () => {
-    if (!prospecto || !newNoteText.trim()) return;
-    setSavingNote(true);
-    try {
-      const dateStr = new Date().toLocaleString('es-PE', { timeZone: 'America/Lima' });
-      const currentObs = prospecto.observaciones || '';
-      const sep = currentObs ? '\n---\n' : '';
-      const newObs = `[${dateStr}] ${newNoteText.trim()}${sep}${currentObs}`;
-      const updated = await flotaProspectoUpdate(prospecto.id, { observaciones: newObs });
-      setProspecto(updated);
-      setNewNoteText('');
-      toast.success('Observación agregada');
-      void fetchHistory();
-    } catch {
-      toast.error('No se pudo agregar la observación');
-    } finally {
-      setSavingNote(false);
-    }
-  }, [prospecto, newNoteText, fetchHistory]);
 
   const handleAddLlamada = useCallback(async () => {
     if (!prospecto?.id) return;
@@ -488,7 +468,7 @@ export default function FlotaProspectoDetail() {
         onClick={() => {
           setEditData({
             ...prospecto,
-            observaciones: (prospecto.observaciones || '').split('\n---\n')[0].replace(/^\[.+?\]\s*/, ''),
+            observaciones: (prospecto.observaciones || '').split('\n---\n')[0].replace(/^(?:\[.+?\]\s*)+/, ''),
             operador: getOperatorDisplayName(prospecto.operador, operadores),
           });
           setEditModalOpen(true);
@@ -506,7 +486,7 @@ export default function FlotaProspectoDetail() {
       const { operador, observaciones, ...otherData } = editData;
       let finalObs = observaciones || null;
       if (finalObs !== undefined && prospecto.observaciones) {
-        const latestText = prospecto.observaciones.split('\n---\n')[0].replace(/^\[.+?\]\s*/, '');
+        const latestText = prospecto.observaciones.split('\n---\n')[0].replace(/^(?:\[.+?\]\s*)+/, '');
         if (finalObs !== latestText) {
           const dateStr = new Date().toLocaleString('es-PE', { timeZone: 'America/Lima' });
           finalObs = `[${dateStr}] ${finalObs}\n---\n${prospecto.observaciones}`;
@@ -560,7 +540,7 @@ export default function FlotaProspectoDetail() {
           <div className="mb-1">
             <TabsList variant="line" className="w-full overflow-x-auto justify-start">
               <TabsTrigger value="historial" className="text-xs px-2 sm:text-sm sm:px-4">Historial</TabsTrigger>
-              <TabsTrigger value="notas" className="text-xs px-2 sm:text-sm sm:px-4">Observaciones</TabsTrigger>
+
               <TabsTrigger value="archivos" className="text-xs px-2 sm:text-sm sm:px-4">Archivos</TabsTrigger>
               <TabsTrigger value="llamadas" className="text-xs px-2 sm:text-sm sm:px-4">Llamadas</TabsTrigger>
             </TabsList>
@@ -620,48 +600,7 @@ export default function FlotaProspectoDetail() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="notas" className="mt-4">
-            <Card>
-              <CardContent className="py-6 space-y-4">
-                <div className="space-y-2">
-                  <textarea
-                    className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                    placeholder="Escribe una observación..."
-                    value={newNoteText}
-                    onChange={(e) => setNewNoteText(e.target.value)}
-                    rows={3}
-                  />
-                  <Button size="sm" onClick={handleAddNote} disabled={!newNoteText.trim() || savingNote}>
-                    {savingNote ? <Loader2 className="size-4 animate-spin" /> : null}
-                    {savingNote ? 'Guardando...' : 'Agregar observación'}
-                  </Button>
-                </div>
-                {(() => {
-                  const entries = (prospecto.observaciones || '').split('\n---\n').filter(Boolean);
-                  if (entries.length === 0) {
-                    return <p className="text-center py-6 text-sm text-muted-foreground">Sin observaciones registradas</p>;
-                  }
-                  return (
-                    <div className="space-y-3">
-                      {entries.map((entry, i) => {
-                        const match = entry.match(/^\[(.+?)\]\s*(.*)/s);
-                        const dateStr = match?.[1] || '';
-                        const text = match?.[2] || entry;
-                        return (
-                          <div key={i} className="rounded-lg border p-4">
-                            <p className="text-sm whitespace-pre-wrap">{text}</p>
-                            {dateStr && (
-                              <div className="mt-2 text-xs text-muted-foreground">{dateStr}</div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })()}
-              </CardContent>
-            </Card>
-          </TabsContent>
+
 
           <TabsContent value="archivos" className="mt-4">
             <div className="mb-4 flex items-center justify-between">

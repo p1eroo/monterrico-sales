@@ -7,22 +7,14 @@ import { useAppStore } from "@/store";
 import { useImportJobsStore } from "@/store/importJobsStore";
 import * as XLSX from "xlsx";
 import {
-  Search,
   UserPlus,
   FileSpreadsheet,
   Loader2,
-  AlertTriangle,
   Trash2,
-  XCircle,
   Info,
-  Filter,
-  Globe,
-  Users,
-  Calendar,
   Upload,
   MoreVertical,
   Phone,
-  Calendar as CalendarIcon,
 } from "lucide-react";
 import {
   DateRangeCalendar,
@@ -92,6 +84,7 @@ import {
 } from "@/lib/flotaProspectosApi";
 import { getConductorTelefonos } from "@/lib/flotaConductoresApi";
 import { InlineEditCell } from "@/components/shared/InlineEditCell";
+import { DataTable, type ColumnDef } from "@/components/shared/DataTable";
 import { TableWithStickyScroll } from "@/components/shared/TableWithStickyScroll";
 import { Pagination } from "@/components/shared/Pagination";
 
@@ -155,12 +148,9 @@ export default function FlotaProspectos() {
   >();
   const [fechaRegistroOpen, setFechaRegistroOpen] = useState(false);
   const [mesImportOpen, setMesImportOpen] = useState(false);
-  const [redSocialFilter, setRedSocialFilter] = useState("all");
-  const [operadorFilter, setOperadorFilter] = useState("all");
-  const [duplicadosFilter, setDuplicadosFilter] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [tempFechaRegistro, setTempFechaRegistro] = useState<DateRangeValue | undefined>();
+  const [tempMesImport, setTempMesImport] = useState<DateRangeValue | undefined>();
+  const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
 
   const [sheetNames, setSheetNames] = useState<string[]>([]);
   const [spreadsheets, setSpreadsheets] = useState<SheetsSpreadsheet[]>([]);
@@ -206,6 +196,13 @@ export default function FlotaProspectos() {
     nombreCompleto: string;
     operador: string | null;
   } | null>(null);
+
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [redSocialFilter, setRedSocialFilter] = useState("all");
+  const [operadorFilter, setOperadorFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [duplicadosFilter, setDuplicadosFilter] = useState(false);
 
   const { hasPermission } = usePermissions();
   const currentUser = useAppStore((s) => s.currentUser);
@@ -296,12 +293,11 @@ export default function FlotaProspectos() {
   const lastCheckedSearchRef = useRef("");
   useEffect(() => {
     const phone = searchDebounced.trim();
-    if (
-      !phone ||
-      !/^\d{7,}$/.test(phone) ||
-      phone === lastCheckedSearchRef.current
-    )
+    if (!phone || !/^\d{7,}$/.test(phone)) {
+      lastCheckedSearchRef.current = "";
       return;
+    }
+    if (phone === lastCheckedSearchRef.current) return;
     lastCheckedSearchRef.current = phone;
     flotaProspectosByPhone(phone)
       .then((res) => {
@@ -315,16 +311,17 @@ export default function FlotaProspectos() {
       .catch(() => {});
   }, [searchDebounced]);
 
-  // Load data
-  const loadProspectos = useCallback(async () => {
+  const LOAD_LIMIT = 25;
+
+  const loadProspectos = useCallback(async (pageNum = 1) => {
     setLoading(true);
     try {
       const res = await flotaProspectosList({
-        page,
-        limit: pageSize,
+        page: pageNum,
+        limit: LOAD_LIMIT,
         search: searchDebounced || undefined,
         estado: estadoFilter === "all" ? undefined : estadoFilter,
-        duplicados: duplicadosFilter || undefined,
+        duplicados: duplicadosFilter ? true : undefined,
         fechaRegistroDesde: fechaRegistroRange?.from
           ?.toISOString()
           .split("T")[0],
@@ -354,14 +351,13 @@ export default function FlotaProspectos() {
 
       setProspectos(res.data);
       setTotalProspectos(res.total);
+      setPage(pageNum);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error cargando prospectos");
     } finally {
       setLoading(false);
     }
   }, [
-    page,
-    pageSize,
     searchDebounced,
     estadoFilter,
     duplicadosFilter,
@@ -371,6 +367,23 @@ export default function FlotaProspectos() {
     operadorFilter,
   ]);
 
+  useEffect(() => {
+    void loadProspectos(page);
+  }, [loadProspectos, page]);
+
+  const filteredProspectos = useMemo(() => {
+    if (Object.keys(columnFilters).length === 0) return prospectos;
+    let data = prospectos;
+    for (const [colId, filterVal] of Object.entries(columnFilters)) {
+      if (!filterVal) continue;
+      data = data.filter((p) => {
+        const val = String((p as any)[colId] ?? '').toLowerCase();
+        return val.includes(filterVal.toLowerCase());
+      });
+    }
+    return data;
+  }, [prospectos, columnFilters]);
+
   const loadCounts = useCallback(async () => {
     try {
       const c = await flotaProspectosCounts();
@@ -379,6 +392,10 @@ export default function FlotaProspectos() {
       /* silently fail */
     }
   }, []);
+
+  useEffect(() => {
+    void loadCounts();
+  }, [loadCounts]);
 
   // Auto-recargar cuando una importación finaliza
   useEffect(() => {
@@ -402,28 +419,8 @@ export default function FlotaProspectos() {
   }, [loadProspectos, loadCounts]);
 
   useEffect(() => {
-    void loadProspectos();
-  }, [loadProspectos]);
-
-  useEffect(() => {
     void loadCounts();
   }, [loadCounts]);
-
-  // Reset page on filter change
-  useEffect(() => {
-    setPage(1);
-  }, [
-    searchDebounced,
-    estadoFilter,
-    duplicadosFilter,
-    fechaRegistroRange,
-    mesImportRange,
-    redSocialFilter,
-    operadorFilter,
-    pageSize,
-  ]);
-
-  const totalPages = Math.ceil(totalProspectos / pageSize);
 
   const getConductorCodigo = (celular: string | null): string | null => {
     if (!celular) return null;
@@ -434,7 +431,7 @@ export default function FlotaProspectos() {
 
   const getLatestObservacion = (obs: string | null | undefined): string => {
     if (!obs) return "";
-    return obs.split("\n---\n")[0].replace(/^\[.+?\]\s*/, "");
+    return obs.split(/\n?---\n?/)[0].replace(/^(?:\[.+?\]\s*)+/, "").trim();
   };
 
   const toLocalDatetimeValue = (iso: string | null | undefined): string => {
@@ -835,127 +832,6 @@ export default function FlotaProspectos() {
         </div>
       </PageHeader>
 
-      <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center">
-        <div className="relative w-full min-w-0 max-w-[580px]">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por nombre, celular o distrito..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 bg-card"
-          />
-        </div>
-        <Select value={estadoFilter} onValueChange={(v) => setEstadoFilter(v)}>
-          <SelectTrigger className="w-32 bg-card shadow-none gap-1.5">
-            <Filter className="size-3.5 text-muted-foreground" />
-            <SelectValue placeholder="Estado" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Estado</SelectItem>
-            <SelectItem value="Nuevo">Nuevo</SelectItem>
-            <SelectItem value="Afiliado">Afiliado</SelectItem>
-            <SelectItem value="Citado">Citado</SelectItem>
-            <SelectItem value="Seguimiento">Seguimiento</SelectItem>
-            <SelectItem value="Informacion">Información</SelectItem>
-            <SelectItem value="Sin Requisitos">Sin Requisitos</SelectItem>
-            <SelectItem value="No Responde">No Responde</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select
-          value={redSocialFilter}
-          onValueChange={(v) => setRedSocialFilter(v)}
-        >
-          <SelectTrigger className="w-32 bg-card shadow-none gap-1.5">
-            <Globe className="size-3.5 text-muted-foreground" />
-            <SelectValue placeholder="Red Social" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Red Social</SelectItem>
-            {counts?.redesSociales.map((rs) => (
-              <SelectItem key={rs} value={rs}>
-                {rs}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select
-          value={operadorFilter}
-          onValueChange={(v) => setOperadorFilter(v)}
-        >
-          <SelectTrigger className="w-32 bg-card shadow-none gap-1.5">
-            <Users className="size-3.5 text-muted-foreground" />
-            <SelectValue placeholder="Operador" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Operador</SelectItem>
-            {filterOperadores.map((op) => (
-              <SelectItem key={op.id} value={op.name}>
-                {op.name}
-              </SelectItem>
-            ))}
-            <SelectItem value="__unassigned__">Sin asignar</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Popover open={fechaRegistroOpen} onOpenChange={setFechaRegistroOpen}>
-          <PopoverTrigger asChild>
-            <button className="flex w-32 items-center gap-1.5 rounded-md border border-input bg-card px-3 py-2 text-sm">
-              <CalendarIcon className="size-3.5 shrink-0 text-muted-foreground" />
-              <span className="truncate">
-                {fechaRegistroRange
-                  ? `${fechaRegistroRange.from?.toLocaleDateString("es-PE")}${fechaRegistroRange.to && fechaRegistroRange.to.getTime() !== fechaRegistroRange.from?.getTime() ? ` - ${fechaRegistroRange.to.toLocaleDateString("es-PE")}` : ""}`
-                  : "F. Registro"}
-              </span>
-            </button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-3" align="start">
-            <DateRangeCalendar
-              value={fechaRegistroRange}
-              onChange={setFechaRegistroRange}
-              onClose={() => setFechaRegistroOpen(false)}
-            />
-          </PopoverContent>
-        </Popover>
-
-        <Popover open={mesImportOpen} onOpenChange={setMesImportOpen}>
-          <PopoverTrigger asChild>
-            <button className="flex w-32 items-center gap-1.5 rounded-md border border-input bg-card px-3 py-2 text-sm">
-              <CalendarIcon className="size-3.5 shrink-0 text-muted-foreground" />
-              <span className="truncate">
-                {mesImportRange
-                  ? `${mesImportRange.from?.toLocaleDateString("es-PE")}${mesImportRange.to && mesImportRange.to.getTime() !== mesImportRange.from?.getTime() ? ` - ${mesImportRange.to.toLocaleDateString("es-PE")}` : ""}`
-                  : "F. Import"}
-              </span>
-            </button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-3" align="start">
-            <DateRangeCalendar
-              value={mesImportRange}
-              onChange={setMesImportRange}
-              onClose={() => setMesImportOpen(false)}
-            />
-          </PopoverContent>
-        </Popover>
-
-        <Button
-          variant={duplicadosFilter ? "default" : "outline"}
-          className={`gap-1.5 ${duplicadosFilter ? "bg-red-600 hover:bg-red-700 text-white" : ""}`}
-          onClick={() => setDuplicadosFilter((v) => !v)}
-        >
-          <AlertTriangle className="size-4" />
-          Duplicados
-          {counts && counts.duplicados > 0 && (
-            <Badge
-              variant="secondary"
-              className={`ml-1 text-xs ${duplicadosFilter ? "bg-white/20 text-white" : "bg-red-100 text-red-700"}`}
-            >
-              {counts.duplicados}
-            </Badge>
-          )}
-        </Button>
-
         {selectedIds.size > 0 && (
           <Button
             variant="destructive"
@@ -966,11 +842,8 @@ export default function FlotaProspectos() {
             Eliminar ({selectedIds.size})
           </Button>
         )}
-      </div>
-
-      <TableWithStickyScroll maxHeight="calc(100vh - 20rem)">
-        {loading ? (
-          <CrmDataTableSkeleton
+      {loading ? (
+        <CrmDataTableSkeleton
             columns={[
               { label: "" },
               { label: "F.Registro" },
@@ -995,447 +868,390 @@ export default function FlotaProspectos() {
             aria-label="Cargando prospectos"
             className="bg-card"
           />
-        ) : (
-          <Table
-            containerClassName="overflow-visible"
-            className="min-w-[1300px] [&_td]:border [&_th]:border [&_td]:border-border/50 [&_th]:border-border/50 [&_td]:px-2 [&_th]:px-2 [&_td]:py-2 [&_th]:py-2 bg-transparent border-collapse"
-          >
-            <TableHeader className="bg-muted sticky top-0 z-10">
-              <TableRow>
-                <TableHead style={{ width: 40, minWidth: 40 }}>
-                  <div className="flex justify-center">
+      ) : (
+        <>
+        <div className="text-xs">
+        <DataTable
+            columns={[
+              {
+                id: 'select',
+                header: '',
+                enableSorting: false,
+                enableColumnFilter: false,
+                size: 40,
+                minSize: 40,
+                maxSize: 40,
+                cell: ({ row }) => (
+                  <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
                     <Checkbox
-                      checked={
-                        selectedIds.size === prospectos.length &&
-                        prospectos.length > 0
-                      }
-                      onCheckedChange={toggleSelectAll}
+                      checked={selectedIds.has(row.original.id)}
+                      onCheckedChange={() => toggleSelectOne(row.original.id)}
                     />
                   </div>
-                </TableHead>
-                <TableHead>F.Registro</TableHead>
-                <TableHead>Red Social</TableHead>
-                <TableHead>Celular</TableHead>
-                <TableHead>Nombres y Apellidos</TableHead>
-                <TableHead>Edad</TableHead>
-                <TableHead>Operador</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Modalidad</TableHead>
-                <TableHead>Placa</TableHead>
-                <TableHead>Año Veh.</TableHead>
-                <TableHead>Distrito</TableHead>
-                <TableHead>F. Cita</TableHead>
-                <TableHead>Asistencia</TableHead>
-                <TableHead>F. Afiliacion</TableHead>
-                <TableHead>Movil</TableHead>
-                <TableHead className="max-w-[200px]">Observaciones</TableHead>
-                <TableHead className="w-10"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {prospectos.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={18}
-                    className="py-12 text-center text-muted-foreground"
-                  >
-                    {duplicadosFilter
-                      ? "No hay prospectos duplicados."
-                      : "No se encontraron prospectos con los filtros aplicados."}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                prospectos.map((prospecto) => (
-                  <TableRow
-                    key={prospecto.id}
-                    className={
-                      isConductor(prospecto.celular)
-                        ? "bg-green-50/50 border-l-4 border-l-green-500 dark:bg-green-950/40 dark:border-l-green-400"
-                        : ""
-                    }
-                  >
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <div className="flex justify-center">
-                        <Checkbox
-                          checked={selectedIds.has(prospecto.id)}
-                          onCheckedChange={() => toggleSelectOne(prospecto.id)}
-                        />
+                ),
+              },
+              {
+                id: 'fechaRegistro',
+                header: 'F.Registro',
+                enableSorting: false,
+                enableColumnFilter: false,
+                cell: ({ row }) => (
+                <div>
+                  <div>{row.original.fechaRegistro ? formatDateDMY(row.original.fechaRegistro) : '—'}</div>
+                  {row.original.createdAt && (
+                    <div className="text-[9px] text-muted-foreground mt-0.5">
+                      FI: {new Date(row.original.createdAt).toLocaleDateString('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: '2-digit', year: 'numeric' })}
+                    </div>
+                  )}
+                </div>
+                ),
+              },
+              {
+                accessorKey: 'redSocial',
+                id: 'redSocial',
+                header: 'Red Social',
+                size: 90,
+                cell: ({ getValue }) => (
+                  <span className="truncate block max-w-[80px]" title={String(getValue() ?? '')}>
+                    {String(getValue() ?? '') || '—'}
+                  </span>
+                ),
+              },
+              {
+                accessorKey: 'celular',
+                id: 'celular',
+                header: 'Celular',
+                size: 110,
+                cell: ({ getValue, row }) => (
+                  <div>
+                    <span className="truncate block max-w-[100px]" title={String(getValue() ?? '')}>{String(getValue() ?? '') || '—'}</span>
+                    {(() => {
+                      const codigo = getConductorCodigo(row.original.celular);
+                      if (!codigo) return null;
+                      return <span className="block text-[10px] text-emerald-600 font-medium truncate max-w-[100px]">{codigo}</span>;
+                    })()}
+                  </div>
+                ),
+              },
+              {
+                accessorKey: 'nombreCompleto',
+                id: 'nombreCompleto',
+                header: 'Nombres y Apellidos',
+                cell: ({ getValue, row }) => (
+                  <div className="flex items-center gap-2">
+                    <span className={`font-medium ${row.original.esDuplicado ? 'text-red-600' : ''}`}>
+                      {String(getValue() ?? '')}
+                    </span>
+                    {row.original.esDuplicado && (
+                      <Badge variant="outline" className="border-red-200 bg-red-50 text-[10px] text-red-600">Duplicado</Badge>
+                    )}
+                  </div>
+                ),
+              },
+              {
+                accessorKey: 'edad',
+                id: 'edad',
+                header: 'Edad',
+                size: 60,
+                cell: ({ getValue }) => getValue() != null ? String(getValue()) : '—',
+              },
+              {
+                accessorFn: (r) => getOperatorDisplayName(r.operador, operadores) || r.operador || '',
+                id: 'operador',
+                header: 'Operador',
+                size: 110,
+                enableColumnFilter: false,
+                cell: ({ getValue }) => (
+                  <span className="truncate block max-w-[100px]" title={String(getValue() ?? '')}>
+                    {String(getValue() ?? '') || '—'}
+                  </span>
+                ),
+              },
+              {
+                accessorKey: 'estado',
+                id: 'estado',
+                header: 'Estado',
+                size: 90,
+                enableColumnFilter: false,
+                cell: ({ getValue }) => {
+                  const val = String(getValue() ?? '');
+                  return <span className={`text-xs truncate block max-w-[80px] ${val ? (estadoColors[val] || '') : ''}`}>{val || '—'}</span>;
+                },
+              },
+              {
+                accessorKey: 'modalidad',
+                id: 'modalidad',
+                header: 'Modalidad',
+                size: 100,
+                cell: ({ getValue }) => (
+                  <span className="truncate block max-w-[90px]" title={String(getValue() ?? '')}>{String(getValue() ?? '') || '—'}</span>
+                ),
+              },
+              {
+                accessorKey: 'placa',
+                id: 'placa',
+                header: 'Placa',
+                size: 90,
+                cell: ({ getValue }) => (
+                  <span className="truncate block max-w-[80px]" title={String(getValue() ?? '')}>{String(getValue() ?? '') || '—'}</span>
+                ),
+              },
+              {
+                accessorKey: 'anioVehiculo',
+                id: 'anioVehiculo',
+                header: 'Año Veh.',
+                size: 65,
+                cell: ({ getValue }) => getValue() != null ? String(getValue()) : '—',
+              },
+              {
+                accessorKey: 'distrito',
+                id: 'distrito',
+                header: 'Distrito',
+                size: 100,
+                cell: ({ getValue }) => (
+                  <span className="truncate block max-w-[90px]" title={String(getValue() ?? '')}>{String(getValue() ?? '') || '—'}</span>
+                ),
+              },
+              {
+                accessorKey: 'fechaCita',
+                id: 'fechaCita',
+                header: 'F. Cita',
+                size: 130,
+                cell: ({ getValue, row }) => {
+                  const val = row.original.fechaCita;
+                  return val ? (
+                    <div>
+                      <div>{formatDateDMY(val)}</div>
+                      <div className="text-[10px] text-muted-foreground mt-0.5">
+                        {new Date(val).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Lima' })}
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <InlineEditCell
-                        value={
-                          prospecto.fechaRegistro
-                            ? formatDateDMY(prospecto.fechaRegistro)
-                            : "—"
-                        }
-                        fieldId={prospecto.id}
-                        fieldKey="fechaRegistro"
-                        type="readonly"
-                      >
-                        <div>
-                          <div>
-                            {prospecto.fechaRegistro
-                              ? formatDateDMY(prospecto.fechaRegistro)
-                              : "—"}
-                          </div>
-                          {prospecto.createdAt && (
-                            <div className="text-[10px] text-muted-foreground mt-0.5">
-                              Importado:{" "}
-                              {new Date(prospecto.createdAt).toLocaleDateString(
-                                "es-PE",
-                                {
-                                  timeZone: "America/Lima",
-                                  day: "2-digit",
-                                  month: "2-digit",
-                                  year: "numeric",
-                                },
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </InlineEditCell>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      <InlineEditCell
-                        value={prospecto.redSocial || ""}
-                        fieldId={prospecto.id}
-                        fieldKey="redSocial"
-                        onSaved={(f, v) =>
-                          handleOptimisticSave(prospecto.id, f, v)
-                        }
+                    </div>
+                  ) : '—';
+                },
+              },
+              {
+                accessorKey: 'asistencia',
+                id: 'asistencia',
+                header: 'Asistencia',
+                size: 80,
+                cell: ({ getValue }) => {
+                  const val = String(getValue() ?? '');
+                  return val ? (
+                    <Badge variant="outline" className={`text-xs ${val === 'Asistió' || val === 'ASISTIO' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                      {val}
+                    </Badge>
+                  ) : <span className="text-muted-foreground">—</span>;
+                },
+              },
+              {
+                accessorKey: 'fechaAfiliacion',
+                id: 'fechaAfiliacion',
+                header: 'F. Afiliacion',
+                size: 110,
+                cell: ({ getValue }) => getValue() ? formatDateDMY(String(getValue())) : '—',
+              },
+              {
+                accessorKey: 'movil',
+                id: 'movil',
+                header: 'Movil',
+                size: 100,
+                cell: ({ getValue }) => (
+                  <span className="truncate block max-w-[90px]" title={String(getValue() ?? '')}>{String(getValue() ?? '') || '—'}</span>
+                ),
+              },
+              {
+                accessorKey: 'observaciones',
+                id: 'observaciones',
+                header: 'Observaciones',
+                size: 170,
+                cell: ({ getValue }) => getLatestObservacion(String(getValue() ?? '')),
+              },
+              {
+                id: 'actions',
+                header: '',
+                enableSorting: false,
+                enableColumnFilter: false,
+                size: 40,
+                minSize: 40,
+                maxSize: 40,
+                cell: ({ row }) => {
+                  const p = row.original;
+                  return (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
+                          <MoreVertical className="size-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-44">
+                        <DropdownMenuItem className="cursor-pointer gap-2" onClick={() => navigate(`/flota/prospectos/${p.id}`)}>
+                          <Info className="size-4" /> Vista detallada
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="cursor-pointer gap-2" onClick={() => {
+                          const now = new Date();
+                          setLlamadaProspecto({ id: p.id, nombre: p.nombreCompleto });
+                          setLlamadaFecha(now.toISOString().split('T')[0]);
+                          setLlamadaHora(now.toTimeString().split(' ')[0].substring(0, 5));
+                          setLlamadaNotas('');
+                        }}>
+                          <Phone className="size-4" /> Registrar llamada
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  );
+                },
+              },
+            ]}
+          maxHeight="calc(100vh - 16rem)"
+          data={filteredProspectos}
+          getId={(r) => r.id}
+          filterComponents={{
+            fechaRegistro: (
+              <Popover
+                onOpenChange={(open) => {
+                  if (open) {
+                    setTempFechaRegistro(fechaRegistroRange);
+                    setTempMesImport(mesImportRange);
+                  } else {
+                    setFechaRegistroRange(tempFechaRegistro);
+                    setMesImportRange(tempMesImport);
+                  }
+                }}
+              >
+                <PopoverTrigger asChild>
+                  <button className="w-full h-7 rounded border border-input bg-background px-2 text-xs text-left text-muted-foreground">
+                    Fechas
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-3" align="start">
+                  <div className="flex gap-4">
+                    <div>
+                      <p className="text-xs font-medium mb-1 text-foreground">F. Registro</p>
+                      <DateRangeCalendar
+                        value={tempFechaRegistro}
+                        onChange={setTempFechaRegistro}
                       />
-                    </TableCell>
-                    <TableCell>
-                      <InlineEditCell
-                        value={prospecto.celular || ""}
-                        fieldId={prospecto.id}
-                        fieldKey="celular"
-                        onSaved={(f, v) =>
-                          handleOptimisticSave(prospecto.id, f, v)
-                        }
-                      >
-                        <div>
-                          <span>{prospecto.celular || "—"}</span>
-                          {(() => {
-                            const codigo = getConductorCodigo(
-                              prospecto.celular,
-                            );
-                            if (!codigo) return null;
-                            return (
-                              <span className="block text-[10px] text-emerald-600 font-medium">
-                                {codigo}
-                              </span>
-                            );
-                          })()}
-                        </div>
-                      </InlineEditCell>
-                    </TableCell>
-                    <TableCell>
-                      <InlineEditCell
-                        value={prospecto.nombreCompleto}
-                        fieldId={prospecto.id}
-                        fieldKey="nombreCompleto"
-                        onSaved={(f, v) =>
-                          handleOptimisticSave(prospecto.id, f, v)
-                        }
-                      >
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`font-medium ${prospecto.esDuplicado ? "text-red-600" : ""}`}
-                          >
-                            {prospecto.nombreCompleto}
-                          </span>
-                          {prospecto.esDuplicado && (
-                            <Badge
-                              variant="outline"
-                              className="border-red-200 bg-red-50 text-[10px] text-red-600"
-                            >
-                              Duplicado
-                            </Badge>
-                          )}
-                        </div>
-                      </InlineEditCell>
-                    </TableCell>
-                    <TableCell>
-                      <InlineEditCell
-                        value={
-                          prospecto.edad != null ? String(prospecto.edad) : ""
-                        }
-                        fieldId={prospecto.id}
-                        fieldKey="edad"
-                        type="number"
-                        onSaved={(f, v) =>
-                          handleOptimisticSave(prospecto.id, f, v)
-                        }
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium mb-1 text-foreground">F. Import</p>
+                      <DateRangeCalendar
+                        value={tempMesImport}
+                        onChange={setTempMesImport}
                       />
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      <InlineEditCell
-                        value={
-                          getOperatorDisplayName(
-                            prospecto.operador,
-                            operadores,
-                          ) || ""
-                        }
-                        fieldId={prospecto.id}
-                        fieldKey="operador"
-                        type="select"
-                        options={operadorOptions}
-                        onSaved={(f, v) =>
-                          handleOptimisticSave(prospecto.id, f, v)
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <InlineEditCell
-                        value={prospecto.estado}
-                        fieldId={prospecto.id}
-                        fieldKey="estado"
-                        type="select"
-                        options={ESTADO_OPTIONS}
-                        onSaved={(f, v) => {
-                          handleOptimisticSave(prospecto.id, f, v);
-                          if (v === "Citado") {
-                            setCitadoProspectId(prospecto.id);
-                            setCitadoDate(
-                              prospecto.fechaCita
-                                ? toLocalDatetimeValue(
-                                    prospecto.fechaCita,
-                                  ).split("T")[0]
-                                : "",
-                            );
-                            setCitadoTime(
-                              prospecto.fechaCita
-                                ? toLocalDatetimeValue(
-                                    prospecto.fechaCita,
-                                  ).split("T")[1]
-                                : "",
-                            );
-                            setCitadoDialogOpen(true);
-                          }
-                        }}
-                      >
-                        <span
-                          className={`text-xs ${estadoColors[prospecto.estado] || ""}`}
-                        >
-                          {prospecto.estado || "—"}
-                        </span>
-                      </InlineEditCell>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      <InlineEditCell
-                        value={prospecto.modalidad || ""}
-                        fieldId={prospecto.id}
-                        fieldKey="modalidad"
-                        onSaved={(f, v) =>
-                          handleOptimisticSave(prospecto.id, f, v)
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <InlineEditCell
-                        value={prospecto.placa || ""}
-                        fieldId={prospecto.id}
-                        fieldKey="placa"
-                        onSaved={(f, v) =>
-                          handleOptimisticSave(prospecto.id, f, v)
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <InlineEditCell
-                        value={
-                          prospecto.anioVehiculo != null
-                            ? String(prospecto.anioVehiculo)
-                            : ""
-                        }
-                        fieldId={prospecto.id}
-                        fieldKey="anioVehiculo"
-                        type="number"
-                        onSaved={(f, v) =>
-                          handleOptimisticSave(prospecto.id, f, v)
-                        }
-                      />
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      <InlineEditCell
-                        value={prospecto.distrito || ""}
-                        fieldId={prospecto.id}
-                        fieldKey="distrito"
-                        onSaved={(f, v) =>
-                          handleOptimisticSave(prospecto.id, f, v)
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <InlineEditCell
-                        value={toLocalDatetimeValue(prospecto.fechaCita)}
-                        fieldId={prospecto.id}
-                        fieldKey="fechaCita"
-                        type="datetime-local"
-                        onSaved={(f, v) =>
-                          handleOptimisticSave(prospecto.id, f, v)
-                        }
-                      >
-                        {prospecto.fechaCita ? (
-                          <div>
-                            <div>{formatDateDMY(prospecto.fechaCita)}</div>
-                            <div className="text-[10px] text-muted-foreground mt-0.5">
-                              {new Date(prospecto.fechaCita).toLocaleTimeString(
-                                "es-PE",
-                                {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                  timeZone: "America/Lima",
-                                },
-                              )}
-                            </div>
-                          </div>
-                        ) : (
-                          "—"
-                        )}
-                      </InlineEditCell>
-                    </TableCell>
-                    <TableCell>
-                      <InlineEditCell
-                        value={prospecto.asistencia || ""}
-                        fieldId={prospecto.id}
-                        fieldKey="asistencia"
-                        type="select"
-                        options={ASISTENCIA_OPTIONS}
-                        onSaved={(f, v) =>
-                          handleOptimisticSave(prospecto.id, f, v)
-                        }
-                      >
-                        {prospecto.asistencia ? (
-                          <Badge
-                            variant="outline"
-                            className={`text-xs ${
-                              prospecto.asistencia === "Asistió" ||
-                              prospecto.asistencia === "ASISTIO"
-                                ? "bg-emerald-100 text-emerald-700"
-                                : "bg-red-100 text-red-700"
-                            }`}
-                          >
-                            {prospecto.asistencia}
-                          </Badge>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </InlineEditCell>
-                    </TableCell>
-                    <TableCell>
-                      <InlineEditCell
-                        value={prospecto.fechaAfiliacion || ""}
-                        fieldId={prospecto.id}
-                        fieldKey="fechaAfiliacion"
-                        type="date"
-                        onSaved={(f, v) =>
-                          handleOptimisticSave(prospecto.id, f, v)
-                        }
-                      >
-                        {prospecto.fechaAfiliacion
-                          ? formatDateDMY(prospecto.fechaAfiliacion)
-                          : "—"}
-                      </InlineEditCell>
-                    </TableCell>
-                    <TableCell className="font-mono text-xs text-muted-foreground">
-                      <InlineEditCell
-                        value={prospecto.movil || ""}
-                        fieldId={prospecto.id}
-                        fieldKey="movil"
-                        onSaved={(f, v) =>
-                          handleOptimisticSave(prospecto.id, f, v)
-                        }
-                      />
-                    </TableCell>
-                    <TableCell className="max-w-[200px]">
-                      <InlineEditCell
-                        value={getLatestObservacion(prospecto.observaciones)}
-                        fieldId={prospecto.id}
-                        fieldKey="observaciones"
-                        onSaveOverride={async (rawValue) => {
-                          const fullObs = prospecto.observaciones || "";
-                          const entries = fullObs
-                            .split("\n---\n")
-                            .filter(Boolean);
-                          let newObs: string;
-                          if (entries.length > 0) {
-                            const latest = entries[0];
-                            const datePrefix =
-                              latest.match(/^\[.+?\]\s*/)?.[0] || "";
-                            entries[0] = datePrefix
-                              ? `${datePrefix}${rawValue}`
-                              : rawValue;
-                            newObs = entries.join("\n---\n");
-                          } else {
-                            newObs = rawValue;
-                          }
-                          await api(`/flota-prospectos/${prospecto.id}`, {
-                            method: "PATCH",
-                            body: JSON.stringify({ observaciones: newObs }),
-                          });
-                        }}
-                        onSaved={(f, v) =>
-                          handleOptimisticSave(prospecto.id, f, v)
-                        }
-                        className="max-w-[180px] truncate"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <MoreVertical className="size-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-44">
-                          <DropdownMenuItem
-                            className="cursor-pointer gap-2"
-                            onClick={() =>
-                              navigate(`/flota/prospectos/${prospecto.id}`)
-                            }
-                          >
-                            <Info className="size-4" />
-                            Vista detallada
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="cursor-pointer gap-2"
-                            onClick={() => {
-                              const now = new Date();
-                              setLlamadaProspecto({
-                                id: prospecto.id,
-                                nombre: prospecto.nombreCompleto,
-                              });
-                              setLlamadaFecha(now.toISOString().split("T")[0]);
-                              setLlamadaHora(
-                                now
-                                  .toTimeString()
-                                  .split(" ")[0]
-                                  .substring(0, 5),
-                              );
-                              setLlamadaNotas("");
-                            }}
-                          >
-                            <Phone className="size-4" />
-                            Registrar llamada
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        )}
-      </TableWithStickyScroll>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            ),
+            estado: (
+              <select
+                value={estadoFilter}
+                onChange={(e) => setEstadoFilter(e.target.value)}
+                className="w-full h-7 rounded border border-input bg-background px-1 text-xs outline-none text-muted-foreground"
+              >
+                <option value="all">Estado</option>
+                <option value="Nuevo">Nuevo</option>
+                <option value="Afiliado">Afiliado</option>
+                <option value="Citado">Citado</option>
+                <option value="Seguimiento">Seguimiento</option>
+                <option value="Informacion">Información</option>
+                <option value="Sin Requisitos">Sin Requisitos</option>
+                <option value="No Responde">No Responde</option>
+              </select>
+            ),
+            operador: (
+              <select
+                value={operadorFilter}
+                onChange={(e) => setOperadorFilter(e.target.value)}
+                className="w-full h-7 rounded border border-input bg-background px-1 text-xs outline-none text-muted-foreground"
+              >
+                <option value="all">Operador</option>
+                {filterOperadores.map((op) => (
+                  <option key={op.id} value={op.name}>{op.name}</option>
+                ))}
+                <option value="__unassigned__">Sin asignar</option>
+              </select>
+            ),
+          }}
+          readOnlyColumns={['select', 'actions', 'fechaRegistro']}
+          editTypes={{
+            edad: 'number',
+            anioVehiculo: 'number',
+            operador: 'select',
+            estado: 'select',
+            asistencia: 'select',
+            fechaCita: 'datetime-local',
+            fechaAfiliacion: 'date',
+          }}
+          editOptions={{
+            operador: operadorOptions,
+            estado: ESTADO_OPTIONS,
+            asistencia: ASISTENCIA_OPTIONS,
+          }}
+          onEditStart={(row, columnId) => {
+            if (columnId === 'estado') return false;
+            if (columnId === 'operador') return false;
+            return false;
+          }}
+          onRowSelectionChange={(ids) => setSelectedIds(new Set(ids))}
+          onCellEdit={async (row, columnId, newValue) => {
+            const body: Record<string, unknown> = {};
+            if (columnId === 'edad' || columnId === 'anioVehiculo') {
+              const num = parseInt(newValue, 10);
+              body[columnId] = isNaN(num) ? null : num;
+            } else if (columnId === 'observaciones') {
+              const fullObs = (row as any).observaciones || '';
+              const entries = fullObs.split(/\n?---\n?/).filter(Boolean);
+              const cleanValue = newValue.replace(/^\[.+?\]\s*/g, '').trim();
+              if (entries.length > 0) {
+                const latest = entries[0];
+                const datePrefix = latest.match(/^\[.+?\]\s*/)?.[0] || '';
+                entries[0] = datePrefix ? `${datePrefix}${cleanValue}` : cleanValue;
+                body[columnId] = entries.join('\n---\n');
+              } else {
+                body[columnId] = cleanValue;
+              }
+            } else if (columnId === 'estado' && newValue === 'Citado') {
+              const p = row as any;
+              setCitadoProspectId(p.id);
+              setCitadoDate(p.fechaCita ? p.fechaCita.split('T')[0] : '');
+              setCitadoTime(p.fechaCita ? new Date(p.fechaCita).toTimeString().split(' ')[0].substring(0, 5) : '');
+              setCitadoDialogOpen(true);
+              return;
+            } else {
+              body[columnId] = newValue;
+            }
+            if (Object.keys(body).length === 0) return;
+            setProspectos((prev) => prev.map((p) =>
+              p.id === (row as any).id
+                ? { ...p, ...body }
+                : p
+            ));
+            await api(`/flota-prospectos/${(row as any).id}`, {
+              method: 'PATCH',
+              body: JSON.stringify(body),
+            }).catch(() => {
+              setProspectos((prev) => [...prev]);
+            });
+          }}
+          onFilterChange={(columnId, value) => {
+            setColumnFilters((prev) => ({ ...prev, [columnId]: value }));
+            setPage(1);
+            if (columnId === 'nombreCompleto' || columnId === 'celular' || columnId === 'distrito') {
+              setSearchTerm(value);
+            } else if (columnId === 'estado') {
+              setEstadoFilter(value || 'all');
+            } else if (columnId === 'redSocial') {
+              setRedSocialFilter(value || 'all');
+            } else if (columnId === 'operador') {
+              setOperadorFilter(value || 'all');
+            }
+          }}
+          filterValues={columnFilters}
+        />
+        </div>
+        </>
+      )}
 
       {!loading && (
         <div>
@@ -1446,11 +1262,11 @@ export default function FlotaProspectos() {
           )}
           <Pagination
             page={page}
-            totalPages={totalPages}
+            totalPages={Math.ceil(totalProspectos / pageSize)}
             totalItems={totalProspectos}
             pageSize={pageSize}
-            onPageChange={setPage}
-            onPageSizeChange={setPageSize}
+            onPageChange={(p) => { setPage(p); }}
+            onPageSizeChange={(s) => { setPageSize(s); setPage(1); }}
             pageSizeOptions={[10, 25, 50, 100]}
           />
         </div>
