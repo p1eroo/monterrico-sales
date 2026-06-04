@@ -373,6 +373,16 @@ export class FlotaProspectosService {
       }
     }
 
+    // Normalize estado before comparing or saving
+    if (safeData.estado && typeof safeData.estado === 'string') {
+      safeData.estado = normalizeEstado(safeData.estado as string);
+    }
+
+    // Auto-set fechaAfiliacion cuando el estado cambia a Afiliado
+    if (safeData.estado === 'Afiliado' && existing.estado !== 'Afiliado' && !safeData.fechaAfiliacion) {
+      safeData.fechaAfiliacion = new Date();
+    }
+
     const updated = await this.prisma.flotaProspecto.update({
       where: { id },
       data: safeData as any,
@@ -414,7 +424,7 @@ export class FlotaProspectosService {
     const val = operador?.trim() || null;
     const updated = await this.prisma.flotaProspecto.update({
       where: { id },
-      data: { operador: val },
+      data: { operador: val, asignadoAt: val ? new Date() : null },
     });
 
     await this.activityLogs.record(actor || null, {
@@ -451,6 +461,7 @@ export class FlotaProspectosService {
         fechaRegistro: data.fechaRegistro ? new Date(data.fechaRegistro as string) : null,
         fechaCita: data.fechaCita ? new Date(data.fechaCita as string) : null,
         fechaAfiliacion: data.fechaAfiliacion ? new Date(data.fechaAfiliacion as string) : null,
+        asignadoAt: data.operador ? new Date() : null,
       },
     });
   }
@@ -1315,40 +1326,71 @@ export class FlotaProspectosService {
       }
     }
 
-    const operadores = await this.prisma.flotaProspecto.findMany({
+    // Operadores desde prospectos (con scope)
+    const prospectOperators = await this.prisma.flotaProspecto.findMany({
       where: { ...baseWhere, operador: { not: null } },
       select: { operador: true },
       distinct: ['operador'],
     });
 
-    const operatorNames = operadores.map((o) => o.operador).filter(Boolean) as string[];
+    // Senders desde mensajes salientes en el rango
+    const senderWhere: any = {
+      direction: 'outbound',
+      createdAt: { gte: startDate, lte: endDate },
+      createdByUserId: { not: null },
+    };
+    if (scope && !scope.unrestricted) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: scope.viewerUserId },
+        select: { name: true },
+      });
+      if (user?.name) senderWhere.createdBy.name = user.name;
+    }
+    const senders = await this.prisma.crmWhatsappMessage.findMany({
+      where: senderWhere,
+      select: { createdBy: { select: { name: true } } },
+      distinct: ['createdByUserId'],
+    });
+
+    // Unir ambos sets de nombres
+    const operatorNamesSet = new Set<string>();
+    for (const o of prospectOperators) if (o.operador) operatorNamesSet.add(o.operador);
+    for (const s of senders) if (s.createdBy?.name) operatorNamesSet.add(s.createdBy.name);
+
+    const operatorNames = Array.from(operatorNamesSet);
 
     const rows = await Promise.all(
       operatorNames.map(async (operador) => {
-        const [prospectosAsignados, mensajesData, chatsData] = await Promise.all([
+        const [prospectosAsignados, mensajesEnviados, mensajesRecibidos, chatsData] = await Promise.all([
           this.prisma.flotaProspecto.count({
-            where: { operador, fechaRegistro: { gte: startDate, lte: endDate } },
+            where: { operador, asignadoAt: { gte: startDate, lte: endDate } },
           }),
-          this.prisma.crmWhatsappMessage.groupBy({
-            by: ['direction'],
+          this.prisma.crmWhatsappMessage.count({
             where: {
-              flotaProspecto: { operador },
+              direction: 'outbound',
               createdAt: { gte: startDate, lte: endDate },
+              createdBy: { name: operador },
             },
-            _count: { id: true },
+          }),
+          this.prisma.crmWhatsappMessage.count({
+            where: {
+              direction: 'inbound',
+              createdAt: { gte: startDate, lte: endDate },
+              flotaProspecto: { operador },
+            },
           }),
           this.prisma.crmWhatsappMessage.findMany({
             where: {
-              flotaProspecto: { operador },
               createdAt: { gte: startDate, lte: endDate },
+              OR: [
+                { direction: 'inbound', flotaProspecto: { operador } },
+                { direction: 'outbound', createdBy: { name: operador } },
+              ],
             },
             select: { flotaProspectoId: true },
             distinct: ['flotaProspectoId'],
           }),
         ]);
-
-        const mensajesEnviados = mensajesData.find((m) => m.direction === 'outbound')?._count.id ?? 0;
-        const mensajesRecibidos = mensajesData.find((m) => m.direction === 'inbound')?._count.id ?? 0;
 
         return {
           operador,

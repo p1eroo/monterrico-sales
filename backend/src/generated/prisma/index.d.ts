@@ -52388,6 +52388,7 @@ export namespace Prisma {
     nombreCompleto: string | null
     edad: number | null
     operador: string | null
+    asignadoAt: Date | null
     estado: string | null
     modalidad: string | null
     anioVehiculo: number | null
@@ -52412,6 +52413,7 @@ export namespace Prisma {
     nombreCompleto: string | null
     edad: number | null
     operador: string | null
+    asignadoAt: Date | null
     estado: string | null
     modalidad: string | null
     anioVehiculo: number | null
@@ -52436,6 +52438,7 @@ export namespace Prisma {
     nombreCompleto: number
     edad: number
     operador: number
+    asignadoAt: number
     estado: number
     modalidad: number
     anioVehiculo: number
@@ -52472,6 +52475,7 @@ export namespace Prisma {
     nombreCompleto?: true
     edad?: true
     operador?: true
+    asignadoAt?: true
     estado?: true
     modalidad?: true
     anioVehiculo?: true
@@ -52496,6 +52500,7 @@ export namespace Prisma {
     nombreCompleto?: true
     edad?: true
     operador?: true
+    asignadoAt?: true
     estado?: true
     modalidad?: true
     anioVehiculo?: true
@@ -52520,6 +52525,7 @@ export namespace Prisma {
     nombreCompleto?: true
     edad?: true
     operador?: true
+    asignadoAt?: true
     estado?: true
     modalidad?: true
     anioVehiculo?: true
@@ -52631,6 +52637,7 @@ export namespace Prisma {
     nombreCompleto: string
     edad: number | null
     operador: string | null
+    asignadoAt: Date | null
     estado: string
     modalidad: string | null
     anioVehiculo: number | null
@@ -52674,6 +52681,7 @@ export namespace Prisma {
     nombreCompleto?: boolean
     edad?: boolean
     operador?: boolean
+    asignadoAt?: boolean
     estado?: boolean
     modalidad?: boolean
     anioVehiculo?: boolean
@@ -52701,6 +52709,7 @@ export namespace Prisma {
     nombreCompleto?: boolean
     edad?: boolean
     operador?: boolean
+    asignadoAt?: boolean
     estado?: boolean
     modalidad?: boolean
     anioVehiculo?: boolean
@@ -52725,6 +52734,7 @@ export namespace Prisma {
     nombreCompleto?: boolean
     edad?: boolean
     operador?: boolean
+    asignadoAt?: boolean
     estado?: boolean
     modalidad?: boolean
     anioVehiculo?: boolean
@@ -52749,6 +52759,7 @@ export namespace Prisma {
     nombreCompleto?: boolean
     edad?: boolean
     operador?: boolean
+    asignadoAt?: boolean
     estado?: boolean
     modalidad?: boolean
     anioVehiculo?: boolean
@@ -52765,7 +52776,7 @@ export namespace Prisma {
     updatedAt?: boolean
   }
 
-  export type FlotaProspectoOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "fechaRegistro" | "redSocial" | "celular" | "nombreCompleto" | "edad" | "operador" | "estado" | "modalidad" | "anioVehiculo" | "placa" | "distrito" | "fechaCita" | "asistencia" | "fechaAfiliacion" | "movil" | "observaciones" | "esDuplicado" | "lastReadAt" | "createdAt" | "updatedAt", ExtArgs["result"]["flotaProspecto"]>
+  export type FlotaProspectoOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "fechaRegistro" | "redSocial" | "celular" | "nombreCompleto" | "edad" | "operador" | "asignadoAt" | "estado" | "modalidad" | "anioVehiculo" | "placa" | "distrito" | "fechaCita" | "asistencia" | "fechaAfiliacion" | "movil" | "observaciones" | "esDuplicado" | "lastReadAt" | "createdAt" | "updatedAt", ExtArgs["result"]["flotaProspecto"]>
   export type FlotaProspectoInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     whatsappMessages?: boolean | FlotaProspecto$whatsappMessagesArgs<ExtArgs>
     llamadas?: boolean | FlotaProspecto$llamadasArgs<ExtArgs>
@@ -52788,6 +52799,7 @@ export namespace Prisma {
       nombreCompleto: string
       edad: number | null
       operador: string | null
+      asignadoAt: Date | null
       estado: string
       modalidad: string | null
       anioVehiculo: number | null
@@ -53237,6 +53249,7 @@ export namespace Prisma {
     readonly nombreCompleto: FieldRef<"FlotaProspecto", 'String'>
     readonly edad: FieldRef<"FlotaProspecto", 'Int'>
     readonly operador: FieldRef<"FlotaProspecto", 'String'>
+    readonly asignadoAt: FieldRef<"FlotaProspecto", 'DateTime'>
     readonly estado: FieldRef<"FlotaProspecto", 'String'>
     readonly modalidad: FieldRef<"FlotaProspecto", 'String'>
     readonly anioVehiculo: FieldRef<"FlotaProspecto", 'Int'>
@@ -55379,6 +55392,7 @@ export namespace Prisma {
     nombreCompleto: 'nombreCompleto',
     edad: 'edad',
     operador: 'operador',
+    asignadoAt: 'asignadoAt',
     estado: 'estado',
     modalidad: 'modalidad',
     anioVehiculo: 'anioVehiculo',
@@ -58652,6 +58666,7 @@ export namespace Prisma {
     nombreCompleto?: StringFilter<"FlotaProspecto"> | string
     edad?: IntNullableFilter<"FlotaProspecto"> | number | null
     operador?: StringNullableFilter<"FlotaProspecto"> | string | null
+    asignadoAt?: DateTimeNullableFilter<"FlotaProspecto"> | Date | string | null
     estado?: StringFilter<"FlotaProspecto"> | string
     modalidad?: StringNullableFilter<"FlotaProspecto"> | string | null
     anioVehiculo?: IntNullableFilter<"FlotaProspecto"> | number | null
@@ -58678,6 +58693,7 @@ export namespace Prisma {
     nombreCompleto?: SortOrder
     edad?: SortOrderInput | SortOrder
     operador?: SortOrderInput | SortOrder
+    asignadoAt?: SortOrderInput | SortOrder
     estado?: SortOrder
     modalidad?: SortOrderInput | SortOrder
     anioVehiculo?: SortOrderInput | SortOrder
@@ -58707,6 +58723,7 @@ export namespace Prisma {
     nombreCompleto?: StringFilter<"FlotaProspecto"> | string
     edad?: IntNullableFilter<"FlotaProspecto"> | number | null
     operador?: StringNullableFilter<"FlotaProspecto"> | string | null
+    asignadoAt?: DateTimeNullableFilter<"FlotaProspecto"> | Date | string | null
     estado?: StringFilter<"FlotaProspecto"> | string
     modalidad?: StringNullableFilter<"FlotaProspecto"> | string | null
     anioVehiculo?: IntNullableFilter<"FlotaProspecto"> | number | null
@@ -58733,6 +58750,7 @@ export namespace Prisma {
     nombreCompleto?: SortOrder
     edad?: SortOrderInput | SortOrder
     operador?: SortOrderInput | SortOrder
+    asignadoAt?: SortOrderInput | SortOrder
     estado?: SortOrder
     modalidad?: SortOrderInput | SortOrder
     anioVehiculo?: SortOrderInput | SortOrder
@@ -58765,6 +58783,7 @@ export namespace Prisma {
     nombreCompleto?: StringWithAggregatesFilter<"FlotaProspecto"> | string
     edad?: IntNullableWithAggregatesFilter<"FlotaProspecto"> | number | null
     operador?: StringNullableWithAggregatesFilter<"FlotaProspecto"> | string | null
+    asignadoAt?: DateTimeNullableWithAggregatesFilter<"FlotaProspecto"> | Date | string | null
     estado?: StringWithAggregatesFilter<"FlotaProspecto"> | string
     modalidad?: StringNullableWithAggregatesFilter<"FlotaProspecto"> | string | null
     anioVehiculo?: IntNullableWithAggregatesFilter<"FlotaProspecto"> | number | null
@@ -62199,6 +62218,7 @@ export namespace Prisma {
     nombreCompleto: string
     edad?: number | null
     operador?: string | null
+    asignadoAt?: Date | string | null
     estado?: string
     modalidad?: string | null
     anioVehiculo?: number | null
@@ -62225,6 +62245,7 @@ export namespace Prisma {
     nombreCompleto: string
     edad?: number | null
     operador?: string | null
+    asignadoAt?: Date | string | null
     estado?: string
     modalidad?: string | null
     anioVehiculo?: number | null
@@ -62251,6 +62272,7 @@ export namespace Prisma {
     nombreCompleto?: StringFieldUpdateOperationsInput | string
     edad?: NullableIntFieldUpdateOperationsInput | number | null
     operador?: NullableStringFieldUpdateOperationsInput | string | null
+    asignadoAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     estado?: StringFieldUpdateOperationsInput | string
     modalidad?: NullableStringFieldUpdateOperationsInput | string | null
     anioVehiculo?: NullableIntFieldUpdateOperationsInput | number | null
@@ -62277,6 +62299,7 @@ export namespace Prisma {
     nombreCompleto?: StringFieldUpdateOperationsInput | string
     edad?: NullableIntFieldUpdateOperationsInput | number | null
     operador?: NullableStringFieldUpdateOperationsInput | string | null
+    asignadoAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     estado?: StringFieldUpdateOperationsInput | string
     modalidad?: NullableStringFieldUpdateOperationsInput | string | null
     anioVehiculo?: NullableIntFieldUpdateOperationsInput | number | null
@@ -62303,6 +62326,7 @@ export namespace Prisma {
     nombreCompleto: string
     edad?: number | null
     operador?: string | null
+    asignadoAt?: Date | string | null
     estado?: string
     modalidad?: string | null
     anioVehiculo?: number | null
@@ -62327,6 +62351,7 @@ export namespace Prisma {
     nombreCompleto?: StringFieldUpdateOperationsInput | string
     edad?: NullableIntFieldUpdateOperationsInput | number | null
     operador?: NullableStringFieldUpdateOperationsInput | string | null
+    asignadoAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     estado?: StringFieldUpdateOperationsInput | string
     modalidad?: NullableStringFieldUpdateOperationsInput | string | null
     anioVehiculo?: NullableIntFieldUpdateOperationsInput | number | null
@@ -62351,6 +62376,7 @@ export namespace Prisma {
     nombreCompleto?: StringFieldUpdateOperationsInput | string
     edad?: NullableIntFieldUpdateOperationsInput | number | null
     operador?: NullableStringFieldUpdateOperationsInput | string | null
+    asignadoAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     estado?: StringFieldUpdateOperationsInput | string
     modalidad?: NullableStringFieldUpdateOperationsInput | string | null
     anioVehiculo?: NullableIntFieldUpdateOperationsInput | number | null
@@ -64671,6 +64697,7 @@ export namespace Prisma {
     nombreCompleto?: SortOrder
     edad?: SortOrder
     operador?: SortOrder
+    asignadoAt?: SortOrder
     estado?: SortOrder
     modalidad?: SortOrder
     anioVehiculo?: SortOrder
@@ -64700,6 +64727,7 @@ export namespace Prisma {
     nombreCompleto?: SortOrder
     edad?: SortOrder
     operador?: SortOrder
+    asignadoAt?: SortOrder
     estado?: SortOrder
     modalidad?: SortOrder
     anioVehiculo?: SortOrder
@@ -64724,6 +64752,7 @@ export namespace Prisma {
     nombreCompleto?: SortOrder
     edad?: SortOrder
     operador?: SortOrder
+    asignadoAt?: SortOrder
     estado?: SortOrder
     modalidad?: SortOrder
     anioVehiculo?: SortOrder
@@ -71359,6 +71388,7 @@ export namespace Prisma {
     nombreCompleto: string
     edad?: number | null
     operador?: string | null
+    asignadoAt?: Date | string | null
     estado?: string
     modalidad?: string | null
     anioVehiculo?: number | null
@@ -71384,6 +71414,7 @@ export namespace Prisma {
     nombreCompleto: string
     edad?: number | null
     operador?: string | null
+    asignadoAt?: Date | string | null
     estado?: string
     modalidad?: string | null
     anioVehiculo?: number | null
@@ -71604,6 +71635,7 @@ export namespace Prisma {
     nombreCompleto?: StringFieldUpdateOperationsInput | string
     edad?: NullableIntFieldUpdateOperationsInput | number | null
     operador?: NullableStringFieldUpdateOperationsInput | string | null
+    asignadoAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     estado?: StringFieldUpdateOperationsInput | string
     modalidad?: NullableStringFieldUpdateOperationsInput | string | null
     anioVehiculo?: NullableIntFieldUpdateOperationsInput | number | null
@@ -71629,6 +71661,7 @@ export namespace Prisma {
     nombreCompleto?: StringFieldUpdateOperationsInput | string
     edad?: NullableIntFieldUpdateOperationsInput | number | null
     operador?: NullableStringFieldUpdateOperationsInput | string | null
+    asignadoAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     estado?: StringFieldUpdateOperationsInput | string
     modalidad?: NullableStringFieldUpdateOperationsInput | string | null
     anioVehiculo?: NullableIntFieldUpdateOperationsInput | number | null
@@ -75308,6 +75341,7 @@ export namespace Prisma {
     nombreCompleto: string
     edad?: number | null
     operador?: string | null
+    asignadoAt?: Date | string | null
     estado?: string
     modalidad?: string | null
     anioVehiculo?: number | null
@@ -75333,6 +75367,7 @@ export namespace Prisma {
     nombreCompleto: string
     edad?: number | null
     operador?: string | null
+    asignadoAt?: Date | string | null
     estado?: string
     modalidad?: string | null
     anioVehiculo?: number | null
@@ -75374,6 +75409,7 @@ export namespace Prisma {
     nombreCompleto?: StringFieldUpdateOperationsInput | string
     edad?: NullableIntFieldUpdateOperationsInput | number | null
     operador?: NullableStringFieldUpdateOperationsInput | string | null
+    asignadoAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     estado?: StringFieldUpdateOperationsInput | string
     modalidad?: NullableStringFieldUpdateOperationsInput | string | null
     anioVehiculo?: NullableIntFieldUpdateOperationsInput | number | null
@@ -75399,6 +75435,7 @@ export namespace Prisma {
     nombreCompleto?: StringFieldUpdateOperationsInput | string
     edad?: NullableIntFieldUpdateOperationsInput | number | null
     operador?: NullableStringFieldUpdateOperationsInput | string | null
+    asignadoAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     estado?: StringFieldUpdateOperationsInput | string
     modalidad?: NullableStringFieldUpdateOperationsInput | string | null
     anioVehiculo?: NullableIntFieldUpdateOperationsInput | number | null

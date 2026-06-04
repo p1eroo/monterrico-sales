@@ -154,13 +154,33 @@ function MessageAttachment({
 
   if (attachment.mediaType === 'image') {
     return (
-      <a href={attachment.url} target="_blank" rel="noreferrer" className="block">
-        <img
-          src={attachment.url}
-          alt={attachment.name}
-          className="max-h-72 w-full rounded-md object-cover"
-        />
-      </a>
+      <div className="relative">
+        <a href={attachment.url} target="_blank" rel="noreferrer" className="block">
+          <img
+            src={attachment.url}
+            alt={attachment.name}
+            className="max-h-72 w-full rounded-md object-cover"
+          />
+        </a>
+        <button
+          type="button"
+          onClick={async () => {
+            if (downloading) return;
+            setDownloading(true);
+            try {
+              await downloadWhatsappAttachment({ id: attachment.id, name: attachment.name, url: attachment.url });
+            } catch (error) {
+              toast.error(error instanceof Error ? error.message : 'Error al descargar');
+            } finally {
+              setDownloading(false);
+            }
+          }}
+          className="absolute top-2 right-2 rounded-full bg-black/50 p-1.5 text-white hover:bg-black/70 transition-colors"
+          title="Descargar imagen"
+        >
+          {downloading ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+        </button>
+      </div>
     );
   }
 

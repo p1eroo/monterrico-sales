@@ -719,6 +719,7 @@ model FlotaProspecto {
   nombreCompleto  String
   edad            Int?
   operador        String?
+  asignadoAt      DateTime? @db.Date
   estado          String    @default("Nuevo")
   modalidad       String?
   anioVehiculo    Int?

@@ -589,6 +589,7 @@ exports.Prisma.FlotaProspectoScalarFieldEnum = {
   nombreCompleto: 'nombreCompleto',
   edad: 'edad',
   operador: 'operador',
+  asignadoAt: 'asignadoAt',
   estado: 'estado',
   modalidad: 'modalidad',
   anioVehiculo: 'anioVehiculo',

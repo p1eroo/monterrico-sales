@@ -1218,6 +1218,22 @@ export default function FlotaProspectos() {
               setCitadoTime(p.fechaCita ? new Date(p.fechaCita).toTimeString().split(' ')[0].substring(0, 5) : '');
               setCitadoDialogOpen(true);
               return;
+            } else if (columnId === 'operador') {
+              const opName = newValue || 'Sin operador';
+              setProspectos((prev) => prev.map((p) =>
+                p.id === (row as any).id ? { ...p, operador: newValue || null } : p,
+              ));
+              try {
+                await api(`/flota-prospectos/${(row as any).id}/operador`, {
+                  method: 'PATCH',
+                  body: JSON.stringify({ operador: newValue || null }),
+                });
+                toast.success(`Operador cambiado a ${opName}`);
+              } catch {
+                setProspectos((prev) => [...prev]);
+                toast.error('Error al cambiar operador');
+              }
+              return;
             } else {
               body[columnId] = newValue;
             }
@@ -1227,12 +1243,14 @@ export default function FlotaProspectos() {
                 ? { ...p, ...body }
                 : p
             ));
-            await api(`/flota-prospectos/${(row as any).id}`, {
-              method: 'PATCH',
-              body: JSON.stringify(body),
-            }).catch(() => {
+            try {
+              await api(`/flota-prospectos/${(row as any).id}`, {
+                method: 'PATCH',
+                body: JSON.stringify(body),
+              });
+            } catch {
               setProspectos((prev) => [...prev]);
-            });
+            }
           }}
           onFilterChange={(columnId, value) => {
             setColumnFilters((prev) => ({ ...prev, [columnId]: value }));

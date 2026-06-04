@@ -214,10 +214,12 @@ function MessageAttachment({
   attachment,
   mine,
   setLightboxUrl,
+  setLightboxAttachment,
 }: {
   attachment: NonNullable<WhatsappMessageItem['attachments']>[number];
   mine: boolean;
   setLightboxUrl: (url: string) => void;
+  setLightboxAttachment?: (info: { id: string; name: string }) => void;
 }) {
   const [downloading, setDownloading] = useState(false);
   const src = (attachment.url ?? attachment.downloadUrl ?? attachment.proxyUrl ?? '').trim();
@@ -231,15 +233,37 @@ function MessageAttachment({
     );
   }
 
+  async function downloadImage() {
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      await downloadWhatsappAttachment({ id: attachment.id, name: attachment.name, url: src });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Error al descargar');
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   if (attachment.mediaType === 'image' || attachment.mimeType?.startsWith('image/')) {
     return (
-      <button type="button" onClick={() => setLightboxUrl(src)} className="block w-full">
-        <img
-          src={src}
-          alt={attachment.name}
-          className="mb-2 max-h-60 w-full rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity"
-        />
-      </button>
+      <div className="relative w-full">
+        <button type="button" onClick={() => { setLightboxUrl(src); setLightboxAttachment?.({ id: attachment.id, name: attachment.name }); }} className="block w-full">
+          <img
+            src={src}
+            alt={attachment.name}
+            className="mb-2 max-h-60 w-full rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity"
+          />
+        </button>
+        <button
+          type="button"
+          onClick={downloadImage}
+          className="absolute top-2 right-2 rounded-full bg-black/50 p-1.5 text-white hover:bg-black/70 transition-colors"
+          title="Descargar imagen"
+        >
+          {downloading ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+        </button>
+      </div>
     );
   }
 
@@ -1322,6 +1346,7 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
   const [citadoDate, setCitadoDate] = useState('');
   const [saving, setSaving] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [lightboxAttachment, setLightboxAttachment] = useState<{ id: string; name: string } | null>(null);
   const [mediaPanelOpen, setMediaPanelOpen] = useState(false);
   const [editData, setEditData] = useState<Record<string, string>>({});
   const [llamadaModalOpen, setLlamadaModalOpen] = useState(false);
@@ -1829,6 +1854,7 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
       });
       toast.success(`Estado actualizado a ${formatStatus(nuevoEstado)}`);
       onContactUpdated();
+      try { new BroadcastChannel("flota-prospectos").postMessage({ type: "refresh" }); } catch {}
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'No se pudo actualizar el estado');
     }
@@ -1843,6 +1869,7 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
       });
       toast.success(nuevoOperador ? `Operador asignado: ${nuevoOperador}` : 'Operador removido');
       onContactUpdated();
+      try { new BroadcastChannel("flota-prospectos").postMessage({ type: "refresh" }); } catch {}
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'No se pudo asignar operador');
     }
@@ -2243,14 +2270,33 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!lightboxUrl} onOpenChange={() => setLightboxUrl(null)}>
+      <Dialog open={!!lightboxUrl} onOpenChange={() => { setLightboxUrl(null); setLightboxAttachment(null); }}>
         <DialogContent className="max-w-[90vw] max-h-[90vh] p-2 border-0 bg-black/95">
           <button
             type="button"
-            onClick={() => setLightboxUrl(null)}
+            onClick={() => { setLightboxUrl(null); setLightboxAttachment(null); }}
             className="absolute right-3 top-3 z-10 rounded-full bg-white/10 p-1.5 text-white hover:bg-white/20 transition-colors"
           >
             <X className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={async () => {
+              if (!lightboxAttachment) return;
+              try {
+                await downloadWhatsappAttachment({
+                  id: lightboxAttachment.id,
+                  name: lightboxAttachment.name,
+                  url: lightboxUrl ?? undefined,
+                });
+              } catch (error) {
+                toast.error(error instanceof Error ? error.message : 'Error al descargar');
+              }
+            }}
+            className="absolute right-12 top-3 z-10 rounded-full bg-white/10 p-1.5 text-white hover:bg-white/20 transition-colors"
+            title="Descargar imagen"
+          >
+            <Download className="h-5 w-5" />
           </button>
           {lightboxUrl && (
             <img

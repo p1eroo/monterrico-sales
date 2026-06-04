@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
-import { BarChart3, Car, UserPlus, Download, Loader2, ChevronLeft, ChevronRight, CheckCircle, XCircle, AlertTriangle, ClipboardList, Hash, CheckCircle2, Maximize2, CalendarDays } from 'lucide-react';
+import { toast } from 'sonner';
+import { BarChart3, Car, UserPlus, Download, Loader2, ChevronLeft, ChevronRight, CheckCircle, XCircle, AlertTriangle, ClipboardList, Hash, CheckCircle2, Maximize2, CalendarDays, FileText, FileSpreadsheet } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -41,6 +42,9 @@ import { flotaProspectosList, type FlotaProspectoRow, fetchOperadorStats, fetchO
 import { getSunatHistorial, type SunatHistorialItem } from '@/lib/flotaSunatApi';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area, ComposedChart, Line, Tooltip } from 'recharts';
 import { ChartCardBody } from '@/components/shared/ChartCardBody';
+import * as XLSX from 'xlsx';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const PIE_COLORS_FUENTE = ['#13944C', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];
 const PIE_COLORS_ZONA = ['#13944C', '#22c55e', '#3b82f6', '#06b6d4', '#8b5cf6'];
@@ -102,6 +106,7 @@ export default function FlotaReportes() {
   const [zonaModalOpen, setZonaModalOpen] = useState(false);
   const [actividadModalOpen, setActividadModalOpen] = useState(false);
   const [sunatModalOpen, setSunatModalOpen] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
 
   const STORAGE_KEY = 'flota-por-autorizar';
   const [porAutorizarCount, setPorAutorizarCount] = useState(() => {
@@ -130,27 +135,43 @@ export default function FlotaReportes() {
     };
   }, []);
 
-  useEffect(() => {
-    async function load() {
-      setLoadingSunat(true);
-      setLoadingProspectos(true);
-      try {
-        const [conds, pros] = await Promise.all([
-          getConductores(),
-          flotaProspectosList({ limit: 10000 })
-        ]);
-        setConductores(Array.isArray(conds) ? conds : []);
-        setProspectos(Array.isArray(pros.data) ? pros.data : []);
-      } catch (err) {
-        console.error("Error loading report data:", err);
-        setConductores([]);
-        setProspectos([]);
-      } finally {
-        setLoadingSunat(false);
-        setLoadingProspectos(false);
-      }
+  async function loadData() {
+    setLoadingSunat(true);
+    setLoadingProspectos(true);
+    try {
+      const [conds, pros] = await Promise.all([
+        getConductores(),
+        flotaProspectosList({ limit: 10000 })
+      ]);
+      setConductores(Array.isArray(conds) ? conds : []);
+      setProspectos(Array.isArray(pros.data) ? pros.data : []);
+    } catch (err) {
+      console.error("Error loading report data:", err);
+      setConductores([]);
+      setProspectos([]);
+    } finally {
+      setLoadingSunat(false);
+      setLoadingProspectos(false);
     }
-    void load();
+  }
+
+  useEffect(() => {
+    void loadData();
+  }, []);
+
+  // Auto-recargar cuando se actualiza un prospecto desde otra pestaña/sección
+  useEffect(() => {
+    try {
+      const bc = new BroadcastChannel("flota-prospectos");
+      bc.onmessage = (event) => {
+        if (event.data?.type === "refresh") {
+          void loadData();
+        }
+      };
+      return () => bc.close();
+    } catch {
+      /* BroadcastChannel no soportado */
+    }
   }, []);
 
   useEffect(() => {
@@ -368,7 +389,7 @@ export default function FlotaReportes() {
       }).length;
 
       const conversion = prospectos.filter(p => {
-        if (p.estado !== 'AFILIADO') return false;
+        if (p.estado?.toLowerCase() !== 'afiliado') return false;
         const d = p.fechaAfiliacion ? parseISO(p.fechaAfiliacion) : null;
         if (!d) return false;
         return isWithinInterval(d, { start: monthStart, end: monthEnd });
@@ -444,6 +465,178 @@ export default function FlotaReportes() {
       .slice(0, 6);
   }, [prospectos, dateRange]);
 
+  function padExportStamp(d: Date) {
+    const p = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`;
+  }
+
+  function handleExportXlsx() {
+    const baseName = `reporte-flota_${padExportStamp(new Date())}`;
+    const wb = XLSX.utils.book_new();
+
+    const overview: (string | number)[][] = [
+      ['Reporte Flota'],
+      ['Periodo desde', dateRange?.from ? format(dateRange.from, 'dd/MM/yyyy') : '—'],
+      ['Periodo hasta', dateRange?.to ? format(dateRange.to, 'dd/MM/yyyy') : '—'],
+      [],
+      ['Métrica', 'Valor'],
+      ['Total prospectos', prospectos.length],
+      ['Total conductores', conductores.length],
+      ['Servicios SUNAT', sunatMetrics.servicios],
+      ['Autorizados', sunatMetrics.autorizados],
+      ['No autorizados', sunatMetrics.noAutorizados],
+      ['Penalizados', sunatMetrics.penalizados],
+      ['Nuevos ingresos', sunatMetrics.nuevosIngresos],
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(overview), 'Resumen');
+
+    const addSheet = (name: string, rows: Record<string, string | number>[]) => {
+      if (!rows.length) {
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Sin datos']]), name.slice(0, 31));
+        return;
+      }
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), name.slice(0, 31));
+    };
+
+    addSheet('Conversión Mensual', monthlyProspectsData.map((x) => ({ Mes: x.name, Nuevos: x.nuevos, Conversiones: x.conversion })));
+    addSheet('Nuevos Conductores', filteredWeeklyData.map((x) => ({ Semana: x.semana, Nuevos: x.nuevos, Activos: x.nuevosActivos })));
+    addSheet('Prospectos por Fuente', prospectosByFuente.map((x) => ({ Fuente: x.name, Cantidad: x.count, Porcentaje: `${x.value}%` })));
+    addSheet('Prospectos por Zona', prospectosByZona.map((x) => ({ Distrito: x.name, Cantidad: x.count, Porcentaje: `${x.value}%` })));
+    addSheet('Actividad por Operador', operadorStats.map((x) => ({ Operador: x.operador, Asignados: x.prospectosAsignados, 'Chats Activos': x.chatsActivos, 'Mensajes Enviados': x.mensajesEnviados, 'Mensajes Recibidos': x.mensajesRecibidos })));
+    addSheet('SUNAT Diario', sunatChartData.map((x) => ({ Fecha: x.name, Servicios: x.servicios, Autorizados: x.autorizados })));
+
+    XLSX.writeFile(wb, `${baseName}.xlsx`);
+    toast.success('Reporte Excel exportado');
+  }
+
+  async function handleExportPdf() {
+    setExportingPdf(true);
+    try {
+      const baseName = `reporte-flota_${padExportStamp(new Date())}`;
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+      const chartIds: Record<string, string> = {
+        conversion: 'chart-conversion',
+        conductores: 'chart-conductores',
+        fuente: 'chart-fuente',
+        zona: 'chart-zona',
+        operador: 'chart-operador',
+        sunat: 'chart-sunat',
+      };
+      const chartImages: Record<string, string> = {};
+
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      for (const [key, id] of Object.entries(chartIds)) {
+        const cardEl = document.getElementById(id);
+        if (!cardEl) continue;
+        try {
+          const allSvgs = Array.from(cardEl.querySelectorAll('svg'));
+          if (allSvgs.length === 0) continue;
+          const svgEl = allSvgs.reduce((prev, current) =>
+            current.clientHeight > prev.clientHeight ? current : prev,
+          );
+          if (!svgEl || svgEl.clientHeight < 50) continue;
+
+          const clonedSvg = svgEl.cloneNode(true) as SVGElement;
+          const width = svgEl.clientWidth || 800;
+          const height = svgEl.clientHeight || 400;
+          clonedSvg.setAttribute('width', width.toString());
+          clonedSvg.setAttribute('height', height.toString());
+
+          const svgData = new XMLSerializer().serializeToString(clonedSvg);
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          const img = new Image();
+          canvas.width = width * 2;
+          canvas.height = height * 2;
+
+          const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+          const url = URL.createObjectURL(svgBlob);
+
+          await new Promise<void>((resolve, reject) => {
+            img.onload = () => {
+              if (ctx) {
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                chartImages[key] = canvas.toDataURL('image/png');
+              }
+              URL.revokeObjectURL(url);
+              resolve();
+            };
+            img.onerror = reject;
+            img.src = url;
+          });
+        } catch (e) {
+          console.error(`Error capturando gráfico ${id}:`, e);
+        }
+      }
+
+      const contentWidth = 182;
+      let y = 14;
+
+      doc.setFontSize(16);
+      doc.text('Reporte Flota', 14, y);
+      y += 8;
+      doc.setFontSize(10);
+      doc.text(`Periodo: ${dateRange?.from ? format(dateRange.from, 'dd/MM/yyyy') : '—'} — ${dateRange?.to ? format(dateRange.to, 'dd/MM/yyyy') : '—'}`, 14, y);
+      y += 10;
+
+      const kpiBody = [
+        ['Total prospectos', prospectos.length],
+        ['Total conductores', conductores.length],
+        ['Servicios SUNAT', sunatMetrics.servicios],
+        ['Autorizados', sunatMetrics.autorizados],
+        ['No autorizados', sunatMetrics.noAutorizados],
+        ['Penalizados', sunatMetrics.penalizados],
+        ['Nuevos ingresos', sunatMetrics.nuevosIngresos],
+      ];
+      autoTable(doc, { startY: y, head: [['Métrica', 'Valor']], body: kpiBody, styles: { fontSize: 9 }, headStyles: { fillColor: [19, 148, 76] }, margin: { left: 14, right: 14 } });
+      y = (doc as any).lastAutoTable.finalY + 12;
+
+      const sections: { key: string; title: string; head: string[][]; body: (string | number)[][] }[] = [
+        { key: 'conversion', title: 'Conversión Mensual', head: [['Mes', 'Nuevos', 'Conversiones']], body: monthlyProspectsData.map((x) => [x.name, x.nuevos, x.conversion]) },
+        { key: 'conductores', title: 'Nuevos Conductores', head: [['Semana', 'Nuevos', 'Activos']], body: filteredWeeklyData.map((x) => [x.semana, x.nuevos, x.nuevosActivos]) },
+        { key: 'fuente', title: 'Prospectos por Fuente', head: [['Fuente', 'Cantidad', '%']], body: prospectosByFuente.map((x) => [x.name, x.count, `${x.value}%`]) },
+        { key: 'zona', title: 'Prospectos por Zona', head: [['Distrito', 'Cantidad', '%']], body: prospectosByZona.map((x) => [x.name, x.count, `${x.value}%`]) },
+        { key: 'operador', title: 'Actividad por Operador', head: [['Operador', 'Asignados', 'Chats', 'Enviados', 'Recibidos']], body: operadorStats.map((x) => [x.operador, x.prospectosAsignados, x.chatsActivos, x.mensajesEnviados, x.mensajesRecibidos]) },
+        { key: 'sunat', title: 'SUNAT', head: [['Fecha', 'Servicios', 'Autorizados']], body: sunatChartData.map((x) => [x.name, x.servicios, x.autorizados]) },
+      ];
+
+      for (const sec of sections) {
+        if (!sec.body.length) continue;
+        doc.addPage();
+        y = 20;
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text(sec.title, 14, y);
+        doc.setFont('helvetica', 'normal');
+        y += 10;
+
+        const chartImg = chartImages[sec.key];
+        if (chartImg) {
+          const imgProps = doc.getImageProperties(chartImg);
+          const imgHeight = (imgProps.height * contentWidth) / imgProps.width;
+          const maxH = 110;
+          const h = Math.min(imgHeight, maxH);
+          doc.addImage(chartImg, 'PNG', 14, y, contentWidth, h);
+          y += h + 10;
+        }
+
+        autoTable(doc, { startY: y, head: sec.head, body: sec.body, theme: 'striped', styles: { fontSize: 8 }, headStyles: { fillColor: [19, 148, 76] }, margin: { left: 14, right: 14 } });
+        y = (doc as any).lastAutoTable.finalY + 12;
+      }
+
+      doc.save(`${baseName}.pdf`);
+      toast.success('Reporte PDF exportado');
+    } catch {
+      toast.error('Error al generar PDF');
+    } finally {
+      setExportingPdf(false);
+    }
+  }
+
   return (
     <UITooltipProvider delayDuration={0}>
       <div className="space-y-6">
@@ -470,16 +663,20 @@ export default function FlotaReportes() {
               />
             </PopoverContent>
           </Popover>
-          <Button variant="outline" size="sm" className="gap-1.5">
-            <Download className="size-4" />
-            Exportar
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={handleExportXlsx}>
+            <FileSpreadsheet className="size-4" />
+            Excel
+          </Button>
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={handleExportPdf} disabled={exportingPdf}>
+            {exportingPdf ? <Loader2 className="size-4 animate-spin" /> : <FileText className="size-4" />}
+            {exportingPdf ? 'Generando...' : 'PDF'}
           </Button>
         </div>
       </PageHeader>
 
       {/* Conversión & Nuevos Conductores */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card>
+        <Card id="chart-conversion">
           <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2">
             <div className="min-w-0 space-y-1">
               <CardTitle className="text-base">Conversión Mensual</CardTitle>
@@ -524,7 +721,7 @@ export default function FlotaReportes() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card id="chart-conductores">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -606,7 +803,7 @@ export default function FlotaReportes() {
 
       {/* Row 1: Fuente & Zona */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card>
+        <Card id="chart-fuente">
           <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2">
             <div className="min-w-0 space-y-1">
               <CardTitle className="text-base">Prospectos por Fuente</CardTitle>
@@ -653,7 +850,7 @@ export default function FlotaReportes() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card id="chart-zona">
           <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2">
             <div className="min-w-0 space-y-1">
               <CardTitle className="text-base">Prospectos por Zona</CardTitle>
@@ -703,7 +900,7 @@ export default function FlotaReportes() {
 
       {/* Actividad & SUNAT */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card className="flex flex-col">
+        <Card id="chart-operador" className="flex flex-col">
           <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2">
             <div className="min-w-0 space-y-1">
               <CardTitle className="text-base">Actividad por Operador</CardTitle>
@@ -756,7 +953,7 @@ export default function FlotaReportes() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card id="chart-sunat">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <div className="space-y-1">

@@ -509,6 +509,7 @@ export default function FlotaProspectoDetail() {
       setProspecto(updated);
       setEditModalOpen(false);
       toast.success('Prospecto actualizado');
+      try { new BroadcastChannel("flota-prospectos").postMessage({ type: "refresh" }); } catch {}
     } catch (e) {
       toast.error('No se pudo actualizar');
     } finally {
