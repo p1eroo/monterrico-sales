@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-// import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx';
 import {
   Search, Building2, Users, Briefcase,
   FileSpreadsheet, Upload, Download, Plus, List, Grid3X3, Loader2,
@@ -64,8 +64,8 @@ import {
   isLikelyCompanyCuid,
 } from '@/lib/companyApi';
 import { isLikelyContactCuid, contactCreate } from '@/lib/contactApi';
-// import { contactListAll } from '@/lib/contactApi';
-// import { opportunityListAll } from '@/lib/opportunityApi';
+import { contactListAll } from '@/lib/contactApi';
+import { opportunityListAll } from '@/lib/opportunityApi';
 import { companyDetailHref, contactDetailHref } from '@/lib/detailRoutes';
 import {
   Dialog,
@@ -315,7 +315,7 @@ export default function EmpresasPage() {
     null,
   );
   const [exportBusy, setExportBusy] = useState(false);
-  // const [fullExportBusy, setFullExportBusy] = useState(false);
+  const [fullExportBusy, setFullExportBusy] = useState(false);
   const { activeAdvisors } = useUsers();
   const { hasPermission } = usePermissions();
   const [previewEmpresa, setPreviewEmpresa] = useState<EmpresaSummaryRow | null>(null);
@@ -843,7 +843,7 @@ export default function EmpresasPage() {
     }
   }
 
-  /* async function handleFullExport() {
+  async function handleFullExport() {
     try {
       setFullExportBusy(true);
       const params: Record<string, string> = {};
@@ -862,8 +862,63 @@ export default function EmpresasPage() {
         opportunityListAll(params),
       ]);
 
-      const wsEmpresas = XLSX.utils.json_to_sheet(
-        companies.data.map((c) => ({
+      // Index contacts by company
+      const contactsByCompany = new Map<string, typeof contacts>();
+      for (const c of contacts) {
+        const comps = (c as any).companies;
+        if (comps) {
+          for (const cc of comps) {
+            const cid = cc.company?.id;
+            if (cid) {
+              const arr = contactsByCompany.get(cid) || [];
+              arr.push(c);
+              contactsByCompany.set(cid, arr);
+            }
+          }
+        }
+      }
+
+      // Index opportunities by company
+      const oppsByCompany = new Map<string, typeof opportunities>();
+      for (const o of opportunities) {
+        const comps = (o as any).companies;
+        if (comps) {
+          for (const oc of comps) {
+            const cid = oc.company?.id;
+            if (cid) {
+              const arr = oppsByCompany.get(cid) || [];
+              arr.push(o);
+              oppsByCompany.set(cid, arr);
+            }
+          }
+        }
+      }
+
+      // Determine max contacts and opps per company for dynamic columns
+      let maxContacts = 0;
+      let maxOpps = 0;
+      for (const c of companies.data) {
+        const cs = contactsByCompany.get(c.id)?.length ?? 0;
+        const os = oppsByCompany.get(c.id)?.length ?? 0;
+        if (cs > maxContacts) maxContacts = cs;
+        if (os > maxOpps) maxOpps = os;
+      }
+
+      // Build column headers
+      const fixedHeaders = ['Empresa', 'RUC', 'Etapa', 'Asesor', 'Teléfono', 'Rubro', 'Fuente', 'Última interacción'];
+      const contactHeaders: string[] = [];
+      for (let i = 0; i < maxContacts; i++) {
+        contactHeaders.push(`Contacto ${i + 1}`, `Email ${i + 1}`, `Teléfono ${i + 1}`);
+      }
+      const oppHeaders: string[] = [];
+      for (let i = 0; i < maxOpps; i++) {
+        oppHeaders.push(`Oportunidad ${i + 1}`, `Monto ${i + 1}`, `Etapa ${i + 1}`);
+      }
+      const headers = [...fixedHeaders, ...contactHeaders, ...oppHeaders];
+
+      // Build rows: one per company
+      const rows = companies.data.map((c) => {
+        const row: Record<string, string> = {
           Empresa: c.name,
           RUC: c.ruc || '',
           Etapa: c.displayEtapa,
@@ -872,39 +927,30 @@ export default function EmpresasPage() {
           Rubro: c.rubro || '',
           Fuente: c.fuente || '',
           'Última interacción': c.lastInteractionAt ? new Date(c.lastInteractionAt).toLocaleDateString('es-PE') : '',
-        })),
-      );
+        };
 
-      const wsContactos = XLSX.utils.json_to_sheet(
-        contacts.flatMap((c) =>
-          (c.companies || []).map((cc) => ({
-            Empresa: cc.company.name,
-            Contacto: c.name,
-            Email: c.correo,
-            Teléfono: c.telefono,
-            Etapa: c.etapa,
-            Cargo: c.cargo || '',
-          })),
-        ),
-      );
+        const cs = contactsByCompany.get(c.id) || [];
+        for (let i = 0; i < maxContacts; i++) {
+          const contact = cs[i];
+          row[`Contacto ${i + 1}`] = contact?.name || '';
+          row[`Email ${i + 1}`] = (contact as any)?.correo || '';
+          row[`Teléfono ${i + 1}`] = (contact as any)?.telefono || '';
+        }
 
-      const wsOportunidades = XLSX.utils.json_to_sheet(
-        opportunities.flatMap((o) =>
-          (o.companies || []).map((oc) => ({
-            Empresa: oc.company.name,
-            Oportunidad: o.title,
-            Monto: o.amount,
-            Etapa: o.etapa,
-            Estado: o.status,
-            'Fecha cierre': o.expectedCloseDate ? new Date(o.expectedCloseDate).toLocaleDateString('es-PE') : '',
-          })),
-        ),
-      );
+        const os = oppsByCompany.get(c.id) || [];
+        for (let i = 0; i < maxOpps; i++) {
+          const opp = os[i];
+          row[`Oportunidad ${i + 1}`] = opp?.title || '';
+          row[`Monto ${i + 1}`] = opp?.amount != null ? String(opp.amount) : '';
+          row[`Etapa ${i + 1}`] = (opp as any)?.etapa || '';
+        }
 
+        return row;
+      });
+
+      const ws = XLSX.utils.json_to_sheet(rows, { header: headers });
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, wsEmpresas, 'Empresas');
-      XLSX.utils.book_append_sheet(wb, wsContactos, 'Contactos');
-      XLSX.utils.book_append_sheet(wb, wsOportunidades, 'Oportunidades');
+      XLSX.utils.book_append_sheet(wb, ws, 'Exportación Completa');
       XLSX.writeFile(wb, `export_full_empresas_${new Date().toISOString().slice(0, 10)}.xlsx`);
       toast.success('Exportación completa descargada');
     } catch (e) {
@@ -912,7 +958,7 @@ export default function EmpresasPage() {
     } finally {
       setFullExportBusy(false);
     }
-  } */
+  }
 
   function openCompanyImport() {
     importInputRef.current?.click();
@@ -1165,7 +1211,7 @@ export default function EmpresasPage() {
             Exportar
           </Button>
         )}
-        {/* hasPermission('empresas.exportar') && (
+        {hasPermission('empresas.exportar') && (
           <Button
             variant="outline"
             disabled={fullExportBusy}
@@ -1175,7 +1221,7 @@ export default function EmpresasPage() {
             {fullExportBusy ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}{' '}
             Full Exp
           </Button>
-        ) */}
+        )}
         <Button className="bg-[#13944C] hover:bg-[#0f7a3d]" onClick={() => setNewEmpresaOpen(true)}>
           <Plus className="size-4" /> Nueva Empresa
         </Button>

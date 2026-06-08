@@ -15,6 +15,7 @@ import {
   Upload,
   MoreVertical,
   Phone,
+  Download,
 } from "lucide-react";
 import {
   DateRangeCalendar,
@@ -203,6 +204,7 @@ export default function FlotaProspectos() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [duplicadosFilter, setDuplicadosFilter] = useState(false);
+  const [exportBusy, setExportBusy] = useState(false);
 
   const { hasPermission } = usePermissions();
   const currentUser = useAppStore((s) => s.currentUser);
@@ -707,6 +709,86 @@ export default function FlotaProspectos() {
     }
   }
 
+  async function handleExport() {
+    setExportBusy(true);
+    try {
+      const operadorParam =
+        operadorFilter === "all"
+          ? undefined
+          : operadorFilter === "__unassigned__"
+            ? "__unassigned__"
+            : (() => {
+                const op = operadores.find((o) => o.name === operadorFilter);
+                if (!op) return operadorFilter;
+                const firstName = op.name.split(" ")[0];
+                const aliases = [op.name, op.username];
+                if (
+                  firstName !== op.name &&
+                  firstName.toLowerCase() !== op.username.toLowerCase()
+                ) {
+                  aliases.push(firstName);
+                }
+                return aliases.join(",");
+              })();
+
+      const res = await flotaProspectosList({
+        page: 1,
+        limit: 10000,
+        search: searchDebounced || undefined,
+        estado: estadoFilter === "all" ? undefined : estadoFilter,
+        duplicados: duplicadosFilter ? true : undefined,
+        fechaRegistroDesde: fechaRegistroRange?.from
+          ?.toISOString()
+          .split("T")[0],
+        fechaRegistroHasta: fechaRegistroRange?.to?.toISOString().split("T")[0],
+        mesImportDesde: mesImportRange?.from?.toISOString().split("T")[0],
+        mesImportHasta: mesImportRange?.to?.toISOString().split("T")[0],
+        redSocial: redSocialFilter === "all" ? undefined : redSocialFilter,
+        operador: operadorParam,
+      });
+
+      const rows = res.data.map((p) => ({
+        "F. Registro": p.fechaRegistro
+          ? new Date(p.fechaRegistro).toLocaleDateString("es-PE")
+          : "",
+        "Red Social": p.redSocial ?? "",
+        Celular: p.celular ?? "",
+        "Nombres y Apellidos": p.nombreCompleto,
+        Edad: p.edad != null ? String(p.edad) : "",
+        Operador: p.operador ?? "",
+        Estado: p.estado,
+        Modalidad: p.modalidad ?? "",
+        Placa: p.placa ?? "",
+        "Año Veh.": p.anioVehiculo != null ? String(p.anioVehiculo) : "",
+        Distrito: p.distrito ?? "",
+        "F. Cita": p.fechaCita
+          ? new Date(p.fechaCita).toLocaleDateString("es-PE")
+          : "",
+        Asistencia: p.asistencia ?? "",
+        "F. Afiliación": p.fechaAfiliacion
+          ? new Date(p.fechaAfiliacion).toLocaleDateString("es-PE")
+          : "",
+        Móvil: p.movil ?? "",
+        Observaciones: p.observaciones ?? "",
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Prospectos");
+      XLSX.writeFile(
+        wb,
+        `prospectos_export_${new Date().toISOString().slice(0, 10)}.xlsx`,
+      );
+      toast.success("Exportación descargada");
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "Error al exportar prospectos",
+      );
+    } finally {
+      setExportBusy(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -824,6 +906,19 @@ export default function FlotaProspectos() {
               <Upload className="size-4" />
             )}
             {importingFile ? "Importando…" : "Importar"}
+          </Button>
+          <Button
+            variant="outline"
+            className="gap-1.5"
+            disabled={exportBusy}
+            onClick={() => void handleExport()}
+          >
+            {exportBusy ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Download className="size-4" />
+            )}
+            Exportar
           </Button>
           <Button className="gap-1.5" onClick={() => setCreateModalOpen(true)}>
             <UserPlus className="size-4" />
