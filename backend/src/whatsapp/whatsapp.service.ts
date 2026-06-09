@@ -16,6 +16,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { FilesService } from '../files/files.service';
 import { S3StorageService } from '../files/s3-storage.service';
 import { EvogoClient, type EvogoSendTextResult } from './evogo.client';
+import { MediaUploadService } from '../media/media-upload.service';
 import { SendWhatsappDto } from './dto/send-whatsapp.dto';
 import { digitsOnly, normalizePeWaNumber } from './wa-number.util';
 import {
@@ -142,6 +143,7 @@ export class WhatsappService {
     private readonly files: FilesService,
     private readonly s3: S3StorageService,
     private readonly gateway: WhatsappGateway,
+    private readonly mediaUpload: MediaUploadService,
   ) {}
 
   private defaultInstanceKey(): string {
@@ -2042,7 +2044,7 @@ export class WhatsappService {
         waOutboundStatus: true,
         flotaProspectoId: true,
         flotaProspecto: {
-          select: { id: true, nombreCompleto: true, celular: true, estado: true, lastReadAt: true, operador: true },
+          select: { id: true, nombreCompleto: true, celular: true, estado: true, lastReadAt: true, operador: true, _count: { select: { llamadas: true } } },
         },
         createdBy: { select: { name: true } },
       },
@@ -2062,6 +2064,7 @@ export class WhatsappService {
       estado?: string;
       operador?: string | null;
       lastSender?: string;
+      llamadaCount: number;
     }>();
 
     for (const row of rows) {
@@ -2086,6 +2089,7 @@ export class WhatsappService {
           estado: row.flotaProspecto?.estado ?? undefined,
           operador: row.flotaProspecto?.operador ?? null,
           lastSender: row.direction === 'outbound' ? (row as any).createdBy?.name : row.flotaProspecto?.nombreCompleto,
+          llamadaCount: row.flotaProspecto?._count?.llamadas ?? 0,
         });
       } else {
         if (row.createdAt.getTime() > existingEntry.lastTime.getTime()) {
@@ -2126,6 +2130,7 @@ export class WhatsappService {
       estado: c.estado,
       operador: c.operador ?? undefined,
       lastSender: c.lastSender ?? c.name,
+      llamadaCount: c.llamadaCount,
     }));
   }
 
@@ -2136,7 +2141,7 @@ export class WhatsappService {
     });
   }
 
-  async uploadFlotaAudio(buffer: Buffer, originalName: string, mimeType: string, userId: string): Promise<string> {
+  async uploadFlotaAudio(buffer: Buffer, originalName: string, mimeType: string, _userId: string): Promise<string> {
     let audioBuffer = buffer;
     let audioMime = mimeType;
     let audioName = originalName;
@@ -2150,17 +2155,12 @@ export class WhatsappService {
       }
     }
     const authHeader = this.config.get<string>('MEDIA_UPLOAD_AUTHORIZATION')?.trim();
-    const url = await this.files.create(userId, {
-      buffer: audioBuffer,
-      originalName: audioName,
-      mimeType: audioMime,
-      entityType: 'flota-prospecto',
-      entityId: userId,
-      entityName: 'audio-upload',
-      relatedEntityType: 'whatsapp-message',
-      relatedEntityName: 'audio-enviado',
-      authorizationHeader: authHeader,
-    }).then((file) => this.files.presignGet(file.id, 'inline')).then((r) => r.url);
+    const url = await this.mediaUpload.uploadToMediaProxy(
+      audioBuffer,
+      audioName,
+      audioMime,
+      { authorizationHeader: authHeader },
+    );
     this.logger.log(`Audio subido: ${url} (${audioBuffer.length} bytes, ${audioMime})`);
     return url;
   }
@@ -2192,7 +2192,19 @@ export class WhatsappService {
     });
   }
 
-  async sendFromFlotaProspecto(prospectoId: string, text: string, imageUrl: string | undefined, audioUrl: string | undefined, userId: string) {
+  async uploadFlotaDocument(buffer: Buffer, originalName: string, mimeType: string, _userId: string): Promise<string> {
+    const authHeader = this.config.get<string>('MEDIA_UPLOAD_AUTHORIZATION')?.trim();
+    const url = await this.mediaUpload.uploadToMediaProxy(
+      buffer,
+      originalName,
+      mimeType,
+      { authorizationHeader: authHeader },
+    );
+    this.logger.log(`Documento subido: ${url} (${buffer.length} bytes, ${mimeType})`);
+    return url;
+  }
+
+  async sendFromFlotaProspecto(prospectoId: string, text: string, imageUrl: string | undefined, audioUrl: string | undefined, userId: string, documentUrl?: string, documentName?: string, documentMimeType?: string) {
     // Try inbox instance first, then fall back to shared
     let instance = await this.prisma.whatsappInstance.findFirst({
       where: { useForInbox: true, status: 'open' },
@@ -2240,6 +2252,16 @@ export class WhatsappService {
         mimeType: 'audio/mpeg',
         caption,
       });
+    } else if (documentUrl) {
+      sent = await this.evogo.sendMedia({
+        instanceApiKey: instance.instanceApiKey,
+        number: to,
+        mediaUrl: documentUrl,
+        mediatype: 'document',
+        caption,
+        mimeType: documentMimeType,
+        fileName: documentName || 'documento',
+      });
     } else {
       sent = await this.evogo.sendText({
         instanceApiKey: instance.instanceApiKey,
@@ -2254,7 +2276,7 @@ export class WhatsappService {
       throw new ServiceUnavailableException(`No se pudo enviar: ${msg}`);
     }
 
-    const body = imageUrl ? (caption || '') : audioUrl ? (caption || '') : text.trim();
+    const body = imageUrl ? (caption || '') : audioUrl ? (caption || '') : documentUrl ? (caption || '') : text.trim();
 
     const created = await this.prisma.crmWhatsappMessage.create({
       data: {
@@ -2273,21 +2295,46 @@ export class WhatsappService {
       },
     });
 
-    if (imageUrl || audioUrl) {
+    const attachmentPayload: {
+      id: string; name: string; mimeType: string; size: number; mediaType: string; url: string; downloadUrl: string;
+    }[] = [];
+    if (imageUrl || audioUrl || documentUrl) {
       try {
-        const isAudio = !!audioUrl;
+        let storageKey = '';
+        let originalName = '';
+        let fileMimeType = '';
+        let relName = '';
+        if (imageUrl) {
+          storageKey = imageUrl;
+          originalName = 'imagen-enviada.jpg';
+          fileMimeType = 'image/jpeg';
+          relName = 'imagen-enviada';
+          attachmentPayload.push({ id: `sent:${created.id}:img`, name: 'imagen.jpg', mimeType: 'image/jpeg', size: 0, mediaType: 'image', url: imageUrl, downloadUrl: imageUrl });
+        } else if (audioUrl) {
+          storageKey = audioUrl;
+          originalName = 'audio-enviado.mp3';
+          fileMimeType = 'audio/mpeg';
+          relName = 'audio-enviado';
+          attachmentPayload.push({ id: `sent:${created.id}:aud`, name: 'audio.mp3', mimeType: 'audio/mpeg', size: 0, mediaType: 'audio', url: audioUrl, downloadUrl: audioUrl });
+        } else if (documentUrl) {
+          storageKey = documentUrl;
+          originalName = documentName || 'documento-enviado';
+          fileMimeType = documentMimeType || 'application/octet-stream';
+          relName = 'documento-enviado';
+          attachmentPayload.push({ id: `sent:${created.id}:doc`, name: documentName || 'documento', mimeType: documentMimeType || 'application/octet-stream', size: 0, mediaType: 'document', url: documentUrl, downloadUrl: documentUrl });
+        }
         await this.prisma.crmFile.create({
           data: {
-            storageKey: imageUrl || audioUrl || '',
-            originalName: isAudio ? 'audio-enviado.mp3' : 'imagen-enviada.jpg',
-            mimeType: isAudio ? 'audio/mpeg' : 'image/jpeg',
+            storageKey,
+            originalName,
+            mimeType: fileMimeType,
             size: 0,
             entityType: 'flota-prospecto',
             entityId: prospectoId,
             entityName: prospecto.nombreCompleto?.trim() || null,
             relatedEntityType: 'whatsapp-message',
             relatedEntityId: created.id,
-            relatedEntityName: isAudio ? 'audio-enviado' : 'imagen-enviada',
+            relatedEntityName: relName,
             uploadedBy: userId,
           },
         });
@@ -2297,6 +2344,12 @@ export class WhatsappService {
     }
 
     await this.emitListItemById(prospectoId, created.id);
+
+    this.gateway.emitToContact(prospectoId, {
+      type: 'message',
+      contactId: prospectoId,
+      item: { ...created, attachments: attachmentPayload } as unknown as Record<string, unknown>,
+    });
 
     // Auto-asignar al operador que envía el primer mensaje
     if (!prospecto.operador?.trim()) {

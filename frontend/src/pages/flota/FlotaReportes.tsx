@@ -6,7 +6,10 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   startOfWeek,
   endOfWeek,
@@ -107,6 +110,17 @@ export default function FlotaReportes() {
   const [actividadModalOpen, setActividadModalOpen] = useState(false);
   const [sunatModalOpen, setSunatModalOpen] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [exportPdfDialogOpen, setExportPdfDialogOpen] = useState(false);
+  const [exportPdfSections, setExportPdfSections] = useState<Set<string>>(new Set(['conversion', 'conductores', 'fuente', 'zona', 'operador', 'sunat']));
+
+  const EXPORT_SECTIONS_CONFIG = [
+    { key: 'conversion', label: 'Conversión Mensual' },
+    { key: 'conductores', label: 'Nuevos Conductores' },
+    { key: 'fuente', label: 'Prospectos por Fuente' },
+    { key: 'zona', label: 'Prospectos por Zona' },
+    { key: 'operador', label: 'Actividad por Operador' },
+    { key: 'sunat', label: 'SUNAT - Gestión de Flota' },
+  ] as const;
 
   const STORAGE_KEY = 'flota-por-autorizar';
   const [porAutorizarCount, setPorAutorizarCount] = useState(() => {
@@ -502,14 +516,14 @@ export default function FlotaReportes() {
     addSheet('Nuevos Conductores', filteredWeeklyData.map((x) => ({ Semana: x.semana, Nuevos: x.nuevos, Activos: x.nuevosActivos })));
     addSheet('Prospectos por Fuente', prospectosByFuente.map((x) => ({ Fuente: x.name, Cantidad: x.count, Porcentaje: `${x.value}%` })));
     addSheet('Prospectos por Zona', prospectosByZona.map((x) => ({ Distrito: x.name, Cantidad: x.count, Porcentaje: `${x.value}%` })));
-    addSheet('Actividad por Operador', operadorStats.map((x) => ({ Operador: x.operador, Asignados: x.prospectosAsignados, 'Chats Activos': x.chatsActivos, 'Mensajes Enviados': x.mensajesEnviados, 'Mensajes Recibidos': x.mensajesRecibidos })));
+    addSheet('Actividad por Operador', operadorStats.map((x) => ({ Operador: x.operador, Asignados: x.prospectosAsignados, 'Chats Activos': x.chatsActivos, 'Mensajes Enviados': x.mensajesEnviados, 'Mensajes Recibidos': x.mensajesRecibidos, Llamadas: x.llamadas })));
     addSheet('SUNAT Diario', sunatChartData.map((x) => ({ Fecha: x.name, Servicios: x.servicios, Autorizados: x.autorizados })));
 
     XLSX.writeFile(wb, `${baseName}.xlsx`);
     toast.success('Reporte Excel exportado');
   }
 
-  async function handleExportPdf() {
+  async function handleExportPdf(selectedSections: Set<string>) {
     setExportingPdf(true);
     try {
       const baseName = `reporte-flota_${padExportStamp(new Date())}`;
@@ -528,6 +542,7 @@ export default function FlotaReportes() {
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       for (const [key, id] of Object.entries(chartIds)) {
+        if (!selectedSections.has(key)) continue;
         const cardEl = document.getElementById(id);
         if (!cardEl) continue;
         try {
@@ -600,12 +615,13 @@ export default function FlotaReportes() {
         { key: 'conductores', title: 'Nuevos Conductores', head: [['Semana', 'Nuevos', 'Activos']], body: filteredWeeklyData.map((x) => [x.semana, x.nuevos, x.nuevosActivos]) },
         { key: 'fuente', title: 'Prospectos por Fuente', head: [['Fuente', 'Cantidad', '%']], body: prospectosByFuente.map((x) => [x.name, x.count, `${x.value}%`]) },
         { key: 'zona', title: 'Prospectos por Zona', head: [['Distrito', 'Cantidad', '%']], body: prospectosByZona.map((x) => [x.name, x.count, `${x.value}%`]) },
-        { key: 'operador', title: 'Actividad por Operador', head: [['Operador', 'Asignados', 'Chats', 'Enviados', 'Recibidos']], body: operadorStats.map((x) => [x.operador, x.prospectosAsignados, x.chatsActivos, x.mensajesEnviados, x.mensajesRecibidos]) },
+        { key: 'operador', title: 'Actividad por Operador', head: [['Operador', 'Asignados', 'Chats', 'Enviados', 'Recibidos', 'Llamadas']], body: operadorStats.map((x) => [x.operador, x.prospectosAsignados, x.chatsActivos, x.mensajesEnviados, x.mensajesRecibidos, x.llamadas]) },
         { key: 'sunat', title: 'SUNAT', head: [['Fecha', 'Servicios', 'Autorizados']], body: sunatChartData.map((x) => [x.name, x.servicios, x.autorizados]) },
       ];
 
       for (const sec of sections) {
         if (!sec.body.length) continue;
+        if (!selectedSections.has(sec.key)) continue;
         doc.addPage();
         y = 20;
         doc.setFontSize(14);
@@ -667,7 +683,7 @@ export default function FlotaReportes() {
             <FileSpreadsheet className="size-4" />
             Excel
           </Button>
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={handleExportPdf} disabled={exportingPdf}>
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setExportPdfDialogOpen(true)} disabled={exportingPdf}>
             {exportingPdf ? <Loader2 className="size-4 animate-spin" /> : <FileText className="size-4" />}
             {exportingPdf ? 'Generando...' : 'PDF'}
           </Button>
@@ -721,83 +737,58 @@ export default function FlotaReportes() {
           </CardContent>
         </Card>
 
-        <Card id="chart-conductores">
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div>
-                  <CardTitle className="text-base">Nuevos Conductores</CardTitle>
-                  <CardDescription>Registros nuevos vs activos por semana</CardDescription>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="w-[260px] justify-start gap-1.5 font-normal">
-                      <CalendarDays className="size-4" />
-                      <span className={!conductoresDateRange?.from ? 'text-muted-foreground' : ''}>
-                        {conductoresDateRange?.from
-                          ? `${format(conductoresDateRange.from, "d MMM yyyy", { locale: es })}${conductoresDateRange.to && conductoresDateRange.to.getTime() !== conductoresDateRange.from.getTime() ? ` - ${format(conductoresDateRange.to, "d MMM yyyy", { locale: es })}` : ''}`
-                          : 'Seleccionar fechas'}
-                      </span>
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-3" align="start">
-                    <DateRangeCalendar
-                      value={conductoresDateRange}
-                      onChange={setConductoresDateRange}
-                    />
-                  </PopoverContent>
-                </Popover>
-                <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 shrink-0 text-muted-foreground"
-                onClick={() => setConductoresModalOpen(true)}
-                disabled={loadingSunat || filteredWeeklyData.length === 0}
-                aria-label="Ampliar nuevos conductores"
-              >
-                <Maximize2 className="h-4 w-4" />
-              </Button>
+        <Card id="chart-operador" className="flex flex-col">
+          <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2">
+            <div className="min-w-0 space-y-1">
+              <CardTitle className="text-base">Actividad por Operador</CardTitle>
+              <CardDescription>Prospectos asignados, chats activos y mensajes en el periodo</CardDescription>
             </div>
-            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0 text-muted-foreground"
+              onClick={() => setActividadModalOpen(true)}
+              disabled={loadingOperadorStats || operadorStats.length === 0}
+              aria-label="Ampliar actividad por operador"
+            >
+              <Maximize2 className="h-4 w-4" />
+            </Button>
           </CardHeader>
-          <CardContent>
-            <ChartCardBody loading={loadingSunat} isEmpty={filteredWeeklyData.length === 0} variant="area" className="h-80" emptyMessage="Sin datos de conductores en el periodo">
+          <CardContent className="flex flex-col flex-1 pb-4">
+            <ChartCardBody loading={loadingOperadorStats} isEmpty={operadorStats.length === 0} variant="stackedBar" className="flex-1 min-h-0" emptyMessage="Sin datos de operadores en el periodo">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={filteredWeeklyData}>
-                      <defs>
-                        <linearGradient id="gradNuevos" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                        </linearGradient>
-                        <linearGradient id="gradActivos" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#13944C" stopOpacity={0.3} />
-                          <stop offset="95%" stopColor="#13944C" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartTheme.gridStroke} opacity={0.4} />
-                      <XAxis dataKey="semana" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} dy={8} />
-                      <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} allowDecimals={false} />
-                      <Tooltip
-                        contentStyle={{
-                          borderRadius: '8px',
-                          border: `1px solid ${chartTheme.tooltipBorder}`,
-                          backgroundColor: chartTheme.tooltipBg,
-                          color: chartTheme.tooltipText,
-                          fontSize: '13px',
-                        }}
-                        itemStyle={{ color: chartTheme.tooltipText }}
-                        labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
-                      />
-                      <Legend verticalAlign="top" align="center" height={24} iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
-                      <Area type="monotone" dataKey="nuevos" name="Nuevos" stroke="#3b82f6" strokeWidth={2} fill="url(#gradNuevos)" dot={{ r: 3, fill: '#3b82f6', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 5, strokeWidth: 0 }} />
-                      <Area type="monotone" dataKey="nuevosActivos" name="Activos" stroke="#13944C" strokeWidth={2} fill="url(#gradActivos)" dot={{ r: 3, fill: '#13944C', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 5, strokeWidth: 0 }} />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </ChartCardBody>
-              </CardContent>
+                <BarChart data={operadorStats} barSize={32} barGap={2}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartTheme.gridStroke} opacity={0.4} />
+                  <XAxis
+                    dataKey="operador"
+                    tick={{ fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(v: string) => v.split(' ')[0]}
+                  />
+                  <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} allowDecimals={false} />
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: '8px',
+                      border: `1px solid ${chartTheme.tooltipBorder}`,
+                      backgroundColor: chartTheme.tooltipBg,
+                      color: chartTheme.tooltipText,
+                      fontSize: '13px',
+                    }}
+                    itemStyle={{ color: chartTheme.tooltipText }}
+                    labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
+                  />
+                  <Legend verticalAlign="top" align="center" height={24} iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
+                  <Bar dataKey="prospectosAsignados" name="Asignados" fill="#13944C" radius={[0, 3, 3, 0]} stackId="a" />
+                  <Bar dataKey="chatsActivos" name="Chats" fill="#3b82f6" radius={[0, 3, 3, 0]} stackId="a" />
+                  <Bar dataKey="mensajesEnviados" name="Enviados" fill="#8b5cf6" radius={[0, 3, 3, 0]} stackId="a" />
+                  <Bar dataKey="mensajesRecibidos" name="Recibidos" fill="#f59e0b" radius={[0, 3, 3, 0]} stackId="a" />
+                  <Bar dataKey="llamadas" name="Llamadas" fill="#ec4899" radius={[0, 3, 3, 0]} stackId="a" />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartCardBody>
+          </CardContent>
         </Card>
       </div>
 
@@ -898,59 +889,85 @@ export default function FlotaReportes() {
         </Card>
       </div>
 
-      {/* Actividad & SUNAT */}
+      {/* Nuevos Conductores & SUNAT */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card id="chart-operador" className="flex flex-col">
-          <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2">
-            <div className="min-w-0 space-y-1">
-              <CardTitle className="text-base">Actividad por Operador</CardTitle>
-              <CardDescription>Prospectos asignados, chats activos y mensajes en el periodo</CardDescription>
+        <Card id="chart-conductores">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div>
+                  <CardTitle className="text-base">Nuevos Conductores</CardTitle>
+                  <CardDescription>Registros nuevos vs activos por semana</CardDescription>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-[260px] justify-start gap-1.5 font-normal">
+                      <CalendarDays className="size-4" />
+                      <span className={!conductoresDateRange?.from ? 'text-muted-foreground' : ''}>
+                        {conductoresDateRange?.from
+                          ? `${format(conductoresDateRange.from, "d MMM yyyy", { locale: es })}${conductoresDateRange.to && conductoresDateRange.to.getTime() !== conductoresDateRange.from.getTime() ? ` - ${format(conductoresDateRange.to, "d MMM yyyy", { locale: es })}` : ''}`
+                          : 'Seleccionar fechas'}
+                      </span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-3" align="start">
+                    <DateRangeCalendar
+                      value={conductoresDateRange}
+                      onChange={setConductoresDateRange}
+                    />
+                  </PopoverContent>
+                </Popover>
+                <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0 text-muted-foreground"
+                onClick={() => setConductoresModalOpen(true)}
+                disabled={loadingSunat || filteredWeeklyData.length === 0}
+                aria-label="Ampliar nuevos conductores"
+              >
+                <Maximize2 className="h-4 w-4" />
+              </Button>
             </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 shrink-0 text-muted-foreground"
-              onClick={() => setActividadModalOpen(true)}
-              disabled={loadingOperadorStats || operadorStats.length === 0}
-              aria-label="Ampliar actividad por operador"
-            >
-              <Maximize2 className="h-4 w-4" />
-            </Button>
+            </div>
           </CardHeader>
-          <CardContent className="flex flex-col flex-1 pb-4">
-            <ChartCardBody loading={loadingOperadorStats} isEmpty={operadorStats.length === 0} variant="stackedBar" className="flex-1 min-h-0" emptyMessage="Sin datos de operadores en el periodo">
+          <CardContent>
+            <ChartCardBody loading={loadingSunat} isEmpty={filteredWeeklyData.length === 0} variant="area" className="h-80" emptyMessage="Sin datos de conductores en el periodo">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={operadorStats} barSize={32} barGap={2}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartTheme.gridStroke} opacity={0.4} />
-                  <XAxis
-                    dataKey="operador"
-                    tick={{ fontSize: 12 }}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(v: string) => v.split(' ')[0]}
-                  />
-                  <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} allowDecimals={false} />
-                  <Tooltip
-                    contentStyle={{
-                      borderRadius: '8px',
-                      border: `1px solid ${chartTheme.tooltipBorder}`,
-                      backgroundColor: chartTheme.tooltipBg,
-                      color: chartTheme.tooltipText,
-                      fontSize: '13px',
-                    }}
-                    itemStyle={{ color: chartTheme.tooltipText }}
-                    labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
-                  />
-                  <Legend verticalAlign="top" align="center" height={24} iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
-                  <Bar dataKey="prospectosAsignados" name="Asignados" fill="#13944C" radius={[0, 3, 3, 0]} stackId="a" />
-                  <Bar dataKey="chatsActivos" name="Chats" fill="#3b82f6" radius={[0, 3, 3, 0]} stackId="a" />
-                  <Bar dataKey="mensajesEnviados" name="Enviados" fill="#8b5cf6" radius={[0, 3, 3, 0]} stackId="a" />
-                  <Bar dataKey="mensajesRecibidos" name="Recibidos" fill="#f59e0b" radius={[0, 3, 3, 0]} stackId="a" />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartCardBody>
-          </CardContent>
+                <AreaChart data={filteredWeeklyData}>
+                      <defs>
+                        <linearGradient id="gradNuevos" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                        </linearGradient>
+                        <linearGradient id="gradActivos" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#13944C" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#13944C" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartTheme.gridStroke} opacity={0.4} />
+                      <XAxis dataKey="semana" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} dy={8} />
+                      <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} allowDecimals={false} />
+                      <Tooltip
+                        contentStyle={{
+                          borderRadius: '8px',
+                          border: `1px solid ${chartTheme.tooltipBorder}`,
+                          backgroundColor: chartTheme.tooltipBg,
+                          color: chartTheme.tooltipText,
+                          fontSize: '13px',
+                        }}
+                        itemStyle={{ color: chartTheme.tooltipText }}
+                        labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
+                      />
+                      <Legend verticalAlign="top" align="center" height={24} iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
+                      <Area type="monotone" dataKey="nuevos" name="Nuevos" stroke="#3b82f6" strokeWidth={2} fill="url(#gradNuevos)" dot={{ r: 3, fill: '#3b82f6', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 5, strokeWidth: 0 }} />
+                      <Area type="monotone" dataKey="nuevosActivos" name="Activos" stroke="#13944C" strokeWidth={2} fill="url(#gradActivos)" dot={{ r: 3, fill: '#13944C', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 5, strokeWidth: 0 }} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </ChartCardBody>
+              </CardContent>
         </Card>
 
         <Card id="chart-sunat">
@@ -1262,6 +1279,7 @@ export default function FlotaReportes() {
                   <Bar dataKey="chatsActivos" name="Chats" fill="#3b82f6" radius={[0, 3, 3, 0]} stackId="a" />
                   <Bar dataKey="mensajesEnviados" name="Enviados" fill="#8b5cf6" radius={[0, 3, 3, 0]} stackId="a" />
                   <Bar dataKey="mensajesRecibidos" name="Recibidos" fill="#f59e0b" radius={[0, 3, 3, 0]} stackId="a" />
+                  <Bar dataKey="llamadas" name="Llamadas" fill="#ec4899" radius={[0, 3, 3, 0]} stackId="a" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -1292,6 +1310,43 @@ export default function FlotaReportes() {
             </div>
           )}
         </div>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog open={exportPdfDialogOpen} onOpenChange={setExportPdfDialogOpen}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Exportar PDF</DialogTitle>
+          <DialogDescription>Selecciona las secciones que quieres incluir en el reporte</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 py-2">
+          {EXPORT_SECTIONS_CONFIG.map((sec) => (
+            <label key={sec.key} className="flex items-center gap-3 cursor-pointer">
+              <Checkbox
+                checked={exportPdfSections.has(sec.key)}
+                onCheckedChange={(checked) => {
+                  setExportPdfSections((prev) => {
+                    const next = new Set(prev);
+                    if (checked) next.add(sec.key);
+                    else next.delete(sec.key);
+                    return next;
+                  });
+                }}
+              />
+              <span className="text-sm font-medium">{sec.label}</span>
+            </label>
+          ))}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setExportPdfDialogOpen(false)}>Cancelar</Button>
+          <Button onClick={() => {
+            setExportPdfDialogOpen(false);
+            void handleExportPdf(exportPdfSections);
+          }} disabled={exportPdfSections.size === 0 || exportingPdf}>
+            {exportingPdf ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
+            Exportar ({exportPdfSections.size})
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
     </UITooltipProvider>

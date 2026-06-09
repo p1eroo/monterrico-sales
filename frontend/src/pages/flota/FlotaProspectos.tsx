@@ -1056,11 +1056,21 @@ export default function FlotaProspectos() {
                 header: 'Operador',
                 size: 110,
                 enableColumnFilter: false,
-                cell: ({ getValue }) => (
-                  <span className="truncate block max-w-[100px]" title={String(getValue() ?? '')}>
-                    {String(getValue() ?? '') || '—'}
-                  </span>
-                ),
+                cell: ({ getValue, row }) => {
+                  const name = String(getValue() ?? '') || '—';
+                  const llamadas = row.original._count?.llamadas ?? 0;
+                  return (
+                    <div className="min-w-0">
+                      <span className="truncate block max-w-[100px] text-xs" title={name}>{name}</span>
+                      {llamadas > 0 && (
+                        <span className="flex items-center gap-0.5 text-[10px] text-blue-600 dark:text-blue-400">
+                          <Phone className="h-2.5 w-2.5" />
+                          {llamadas}
+                        </span>
+                      )}
+                    </div>
+                  );
+                },
               },
               {
                 accessorKey: 'estado',

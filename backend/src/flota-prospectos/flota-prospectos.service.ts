@@ -347,6 +347,9 @@ export class FlotaProspectosService {
         orderBy: { createdAt: 'desc' },
         skip,
         take: limit,
+        include: {
+          _count: { select: { llamadas: true } },
+        },
       }),
       this.prisma.flotaProspecto.count({ where: where as any }),
     ]);
@@ -1340,14 +1343,19 @@ export class FlotaProspectosService {
     const senderWhere: any = {
       direction: 'outbound',
       createdAt: { gte: startDate, lte: endDate },
-      createdByUserId: { not: null },
     };
     if (scope && !scope.unrestricted) {
       const user = await this.prisma.user.findUnique({
         where: { id: scope.viewerUserId },
         select: { name: true },
       });
-      if (user?.name) senderWhere.createdBy.name = user.name;
+      if (user?.name) {
+        senderWhere.createdBy = { name: user.name };
+      } else {
+        senderWhere.createdByUserId = { not: null };
+      }
+    } else {
+      senderWhere.createdByUserId = { not: null };
     }
     const senders = await this.prisma.crmWhatsappMessage.findMany({
       where: senderWhere,
@@ -1364,7 +1372,7 @@ export class FlotaProspectosService {
 
     const rows = await Promise.all(
       operatorNames.map(async (operador) => {
-        const [prospectosAsignados, mensajesEnviados, mensajesRecibidos, chatsData] = await Promise.all([
+        const [prospectosAsignados, mensajesEnviados, mensajesRecibidos, chatsData, llamadas] = await Promise.all([
           this.prisma.flotaProspecto.count({
             where: { operador, asignadoAt: { gte: startDate, lte: endDate } },
           }),
@@ -1392,6 +1400,13 @@ export class FlotaProspectosService {
             },
             select: { flotaProspectoId: true },
             distinct: ['flotaProspectoId'],
+            orderBy: { flotaProspectoId: 'asc' },
+          }),
+          this.prisma.flotaLlamada.count({
+            where: {
+              prospecto: { operador },
+              createdAt: { gte: startDate, lte: endDate },
+            },
           }),
         ]);
 
@@ -1401,6 +1416,7 @@ export class FlotaProspectosService {
           chatsActivos: chatsData.length,
           mensajesEnviados,
           mensajesRecibidos,
+          llamadas,
         };
       }),
     );

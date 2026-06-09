@@ -231,16 +231,19 @@ export class WhatsappController {
   @RequirePermissions('flota_mensajes.editar')
   async flotaSend(
     @Req() req: AuthedReq,
-    @Body() body: { prospectoId: string; text?: string; imageUrl?: string; audioUrl?: string },
+    @Body() body: { prospectoId: string; text?: string; imageUrl?: string; audioUrl?: string; documentUrl?: string; documentName?: string; documentMimeType?: string },
   ) {
     const prospectoId = body.prospectoId?.trim();
     const text = body.text?.trim();
     const imageUrl = body.imageUrl?.trim();
     const audioUrl = body.audioUrl?.trim();
-    if (!prospectoId || (!text && !imageUrl && !audioUrl)) {
-      throw new BadRequestException('prospectoId y text, imageUrl o audioUrl son obligatorios');
+    const documentUrl = body.documentUrl?.trim();
+    const documentName = body.documentName?.trim();
+    const documentMimeType = body.documentMimeType?.trim();
+    if (!prospectoId || (!text && !imageUrl && !audioUrl && !documentUrl)) {
+      throw new BadRequestException('prospectoId y text, imageUrl, audioUrl o documentUrl son obligatorios');
     }
-    return this.whatsapp.sendFromFlotaProspecto(prospectoId, text || '', imageUrl || undefined, audioUrl || undefined, req.user.userId);
+    return this.whatsapp.sendFromFlotaProspecto(prospectoId, text || '', imageUrl || undefined, audioUrl || undefined, req.user.userId, documentUrl || undefined, documentName || undefined, documentMimeType || undefined);
   }
 
   @Post('send-bulk')
@@ -311,6 +314,20 @@ export class WhatsappController {
     }
     this.logger.log(`Subiendo audio: ${file.originalname}, ${file.mimetype}, ${file.size} bytes`);
     const url = await this.whatsapp.uploadFlotaAudio(file.buffer, file.originalname, file.mimetype, req.user.userId);
+    return { url };
+  }
+
+  @Post('flota/upload-document')
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } }))
+  async uploadFlotaDocument(
+    @Req() req: AuthedReq,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    if (!file?.buffer?.length) {
+      throw new BadRequestException('Adjunta un archivo (max 50MB)');
+    }
+    this.logger.log(`Subiendo documento: ${file.originalname}, ${file.mimetype}, ${file.size} bytes`);
+    const url = await this.whatsapp.uploadFlotaDocument(file.buffer, file.originalname, file.mimetype, req.user.userId);
     return { url };
   }
 

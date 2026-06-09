@@ -50,6 +50,7 @@ export type FlotaConversation = {
   estado?: string;
   operador?: string;
   lastSender?: string;
+  llamadaCount?: number;
 };
 
 export type FlotaBulkResult = {
@@ -123,10 +124,21 @@ export async function sendFlotaWhatsappMessage(
   text: string,
   imageUrl?: string,
   audioUrl?: string,
+  documentUrl?: string,
+  documentName?: string,
+  documentMimeType?: string,
 ): Promise<{ ok: boolean; waMessageId: string | null }> {
   return api<{ ok: boolean; waMessageId: string | null }>('/api/whatsapp/flota/send', {
     method: 'POST',
-    body: JSON.stringify({ prospectoId, text: text || undefined, imageUrl: imageUrl || undefined, audioUrl: audioUrl || undefined }),
+    body: JSON.stringify({
+      prospectoId,
+      text: text || undefined,
+      imageUrl: imageUrl || undefined,
+      audioUrl: audioUrl || undefined,
+      documentUrl: documentUrl || undefined,
+      documentName: documentName || undefined,
+      documentMimeType: documentMimeType || undefined,
+    }),
   });
 }
 
@@ -163,6 +175,24 @@ export async function uploadFlotaAudio(file: File): Promise<string> {
   }
   const data = await res.json() as { url?: string };
   if (!data.url) throw new Error('No se recibió URL del audio');
+  return data.url;
+}
+
+export async function uploadFlotaDocument(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const token = getAccessToken();
+  const res = await fetch(`${API_BASE}/api/whatsapp/flota/upload-document`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Error subiendo documento: ${text}`);
+  }
+  const data = await res.json() as { url?: string };
+  if (!data.url) throw new Error('No se recibió URL del documento');
   return data.url;
 }
 

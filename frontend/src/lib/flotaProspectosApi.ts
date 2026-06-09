@@ -22,6 +22,7 @@ export interface FlotaProspectoRow {
   esDuplicado: boolean;
   createdAt: string;
   updatedAt: string;
+  _count?: { llamadas: number };
 }
 
 export interface FlotaProspectosListResponse {
@@ -281,6 +282,7 @@ export interface OperadorStats {
   chatsActivos: number;
   mensajesEnviados: number;
   mensajesRecibidos: number;
+  llamadas: number;
 }
 
 export async function fetchOperadorStats(fecini: string, fecfin: string): Promise<OperadorStats[]> {

@@ -131,6 +131,7 @@ import {
   sendFlotaWhatsappMessage,
   uploadFlotaImage,
   uploadFlotaAudio,
+  uploadFlotaDocument,
   importExcelPreview,
   sendFlotaBulk,
   getFlotaBulkProgress,
@@ -923,6 +924,12 @@ const ConversationItem = memo(({
               </span>
             )}
             <span className="flex-1" />
+            {conversation.llamadaCount != null && conversation.llamadaCount > 0 && (
+              <span className="shrink-0 flex items-center gap-0.5 text-[10px] text-blue-600 dark:text-blue-400">
+                <Phone className="h-3 w-3" />
+                {conversation.llamadaCount}
+              </span>
+            )}
             {conversation.lastSender && conversation.lastSender !== conversation.name && (
               <span className="truncate text-[11px] font-medium text-emerald-600/70 shrink-0 max-w-[140px]">
                 {conversation.lastSender?.split(' ')[0]}
@@ -1190,7 +1197,7 @@ function InboxView({ activeId: externalActiveId, onActiveChange, isConnected }: 
 
   return (
     <div className="flex flex-col h-full">
-      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[400px_minmax(0,1fr)]">
+      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[420px_minmax(0,1fr)]">
       <aside className="flex flex-col overflow-hidden bg-card border-r border-muted">
         <div className="border-b border-muted px-3 pb-1 pt-3">
           <div className="flex gap-1">
@@ -1319,6 +1326,13 @@ function InboxView({ activeId: externalActiveId, onActiveChange, isConnected }: 
   );
 }
 
+type PendingAttachment = {
+  type: 'image' | 'audio' | 'document';
+  file: File;
+  previewUrl?: string;
+  caption: string;
+};
+
 function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, messagesCache, setMessagesCache }: {
   contactId: string;
   conversations: FlotaConversation[];
@@ -1329,13 +1343,8 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
 }) {
   const navigate = useNavigate();
   const [draft, setDraft] = useState('');
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [uploadingImage, setUploadingImage] = useState(false);
-  const [audioFile, setAudioFile] = useState<File | null>(null);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const [uploadingAudio, setUploadingAudio] = useState(false);
+  const [pendingAttachment, setPendingAttachment] = useState<PendingAttachment | null>(null);
+  const [sendingAttachment, setSendingAttachment] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -1383,59 +1392,38 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
   }, [contactId, !!convo]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const audioFileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const [operadores, setOperadores] = useState<OperadorUser[]>([]);
 
   useEffect(() => {
     fetchOperadores().then((users) => setOperadores(users)).catch(() => {});
   }, []);
 
-  async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file) return;
-    setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
-    setUploadingImage(true);
-    try {
-      const url = await uploadFlotaImage(file);
-      setImageUrl(url);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error al subir la imagen');
-      setImageFile(null);
-      setImagePreview(null);
-    } finally {
-      setUploadingImage(false);
-    }
     e.target.value = '';
-  }
-
-  function handleRemoveImage() {
-    if (imagePreview) URL.revokeObjectURL(imagePreview);
-    setImageFile(null);
-    setImagePreview(null);
-    setImageUrl(null);
-  }
-
-  async function handleAudioSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
     if (!file) return;
-    setAudioFile(file);
-    setUploadingAudio(true);
-    try {
-      const url = await uploadFlotaAudio(file);
-      setAudioUrl(url);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error al subir el audio');
-      setAudioFile(null);
-    } finally {
-      setUploadingAudio(false);
-    }
-    e.target.value = '';
+    const isImage = file.type.startsWith('image/');
+    const isAudioFile = file.type.startsWith('audio/');
+    pendingAttachmentCleanup();
+    const att: PendingAttachment = {
+      type: isImage ? 'image' : isAudioFile ? 'audio' : 'document',
+      file,
+      previewUrl: isImage ? URL.createObjectURL(file) : undefined,
+      caption: '',
+    };
+    setPendingAttachment(att);
   }
 
-  function handleRemoveAudio() {
-    setAudioFile(null);
-    setAudioUrl(null);
+  function pendingAttachmentCleanup() {
+    setPendingAttachment((prev) => {
+      if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl);
+      return null;
+    });
+  }
+
+  function handleCancelAttachment() {
+    pendingAttachmentCleanup();
   }
 
   async function startRecording() {
@@ -1477,15 +1465,14 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
   }
 
   async function sendAudioBlob(blob: Blob) {
-    const file = new File([blob], 'audio.webm', { type: blob.type });
-    setUploadingAudio(true);
+    const file = new File([blob], 'audio.mp3', { type: blob.type });
     try {
       const url = await uploadFlotaAudio(file);
       const optimisticId = `opt:${Date.now()}`;
       const optimistic: WhatsappMessageItem = {
         id: optimisticId,
         direction: 'outbound',
-        body: draft.trim() || '',
+        body: '',
         fromWaId: '',
         toWaId: convo?.phone ?? '',
         createdAt: new Date().toISOString(),
@@ -1506,14 +1493,11 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
         const existing = prev[contactId] ?? [];
         return { ...prev, [contactId]: [...existing, optimistic] };
       });
-      setDraft('');
-      const savedDraft = draft;
-      await sendFlotaWhatsappMessage(contactId, savedDraft, undefined, url);
+      await sendFlotaWhatsappMessage(contactId, '', undefined, url);
+      markConversationAsRead(contactId).catch(() => {});
+      onMarkRead(contactId);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error al enviar el audio');
-    } finally {
-      setUploadingAudio(false);
-      setAudioUrl(null);
     }
   }
 
@@ -1629,74 +1613,97 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
   }, [loadOlderMessages, hasMore]);
 
   async function send() {
-    if (!draft.trim() && !imageUrl && !audioUrl) return;
     const body = draft.trim();
+    if (!body) return;
     const optimisticId = `opt:${Date.now()}`;
     setDraft('');
-    const finalImageUrl = imageUrl;
-    const finalAudioUrl = audioUrl;
-    if (imagePreview) URL.revokeObjectURL(imagePreview);
-    setImageFile(null);
-    setImagePreview(null);
-    setImageUrl(null);
-    setAudioFile(null);
-    setAudioUrl(null);
-    const optimisticAttachments: WhatsappMessageItem['attachments'] = [];
-    if (finalImageUrl) {
-      optimisticAttachments.push({
-        id: `opt-att:${Date.now()}`,
-        name: imageFile?.name || 'imagen.jpg',
-        mimeType: imageFile?.type || 'image/jpeg',
-        size: imageFile?.size || 0,
-        mediaType: 'image' as const,
-        url: finalImageUrl,
-        downloadUrl: finalImageUrl,
-      });
-    }
-    if (finalAudioUrl) {
-      optimisticAttachments.push({
-        id: `opt-att:${Date.now() + 1}`,
-        name: audioFile?.name || 'audio.ogg',
-        mimeType: audioFile?.type || 'audio/ogg',
-        size: audioFile?.size || 0,
-        mediaType: 'audio' as const,
-        url: finalAudioUrl,
-        downloadUrl: finalAudioUrl,
-      });
-    }
     const optimistic: WhatsappMessageItem = {
       id: optimisticId,
       direction: 'outbound',
-      body: body || '',
+      body,
       fromWaId: '',
       toWaId: convo?.phone ?? '',
       createdAt: new Date().toISOString(),
       waMessageId: null,
       evoInstanceName: null,
       waOutboundStatus: 'sent',
-      attachments: optimisticAttachments,
+      attachments: [],
     };
     setMessagesCache((prev) => {
       const existing = prev[contactId] ?? [];
-      const next = [...existing, optimistic];
-      return { ...prev, [contactId]: next };
+      return { ...prev, [contactId]: [...existing, optimistic] };
     });
     try {
-      await sendFlotaWhatsappMessage(contactId, body || '', finalImageUrl || undefined, finalAudioUrl || undefined);
+      await sendFlotaWhatsappMessage(contactId, body);
     } catch (e) {
       setMessagesCache((prev) => {
         const existing = prev[contactId] ?? [];
-        const withoutOpt = existing.filter((x) => x.id !== optimisticId);
-        return { ...prev, [contactId]: withoutOpt };
+        return { ...prev, [contactId]: existing.filter((x) => x.id !== optimisticId) };
       });
       setDraft(body);
-      setImageUrl(finalImageUrl);
-      setAudioUrl(finalAudioUrl);
       toast.error(e instanceof Error ? e.message : 'No se pudo enviar el mensaje');
       return;
     }
     markConversationAsRead(contactId).catch(() => {});
     onMarkRead(contactId);
+  }
+
+  async function handleSendAttachment() {
+    const att = pendingAttachment;
+    if (!att) return;
+    const caption = att.caption.trim();
+    setSendingAttachment(true);
+    try {
+      let url: string;
+      if (att.type === 'image') {
+        url = await uploadFlotaImage(att.file);
+      } else if (att.type === 'audio') {
+        url = await uploadFlotaAudio(att.file);
+      } else {
+        url = await uploadFlotaDocument(att.file);
+      }
+      const optimisticId = `opt:${Date.now()}`;
+      const optimistic: WhatsappMessageItem = {
+        id: optimisticId,
+        direction: 'outbound',
+        body: caption || '',
+        fromWaId: '',
+        toWaId: convo?.phone ?? '',
+        createdAt: new Date().toISOString(),
+        waMessageId: null,
+        evoInstanceName: null,
+        waOutboundStatus: 'sent',
+        attachments: [{
+          id: `opt-att:${Date.now()}`,
+          name: att.file.name,
+          mimeType: att.file.type,
+          size: att.file.size,
+          mediaType: att.type === 'image' ? 'image' as const : att.type === 'audio' ? 'audio' as const : 'document' as const,
+          url,
+          downloadUrl: url,
+        }],
+      };
+      setMessagesCache((prev) => {
+        const existing = prev[contactId] ?? [];
+        return { ...prev, [contactId]: [...existing, optimistic] };
+      });
+      await sendFlotaWhatsappMessage(
+        contactId,
+        caption || '',
+        att.type === 'image' ? url : undefined,
+        att.type === 'audio' ? url : undefined,
+        att.type === 'document' ? url : undefined,
+        att.type === 'document' ? att.file.name : undefined,
+        att.type === 'document' ? att.file.type : undefined,
+      );
+      markConversationAsRead(contactId).catch(() => {});
+      onMarkRead(contactId);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'No se pudo enviar el archivo');
+    } finally {
+      setSendingAttachment(false);
+      pendingAttachmentCleanup();
+    }
   }
 
   const messages = messagesCache[contactId] ?? [];
@@ -1885,7 +1892,15 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate font-semibold leading-tight">{convo?.name || prospectoData?.name || 'Desconocido'}</p>
-              <p className="truncate text-xs text-muted-foreground">{convo?.phone || prospectoData?.phone || ''}</p>
+              <p className="truncate text-xs text-muted-foreground">
+                {convo?.phone || prospectoData?.phone || ''}
+                {convo?.llamadaCount != null && convo.llamadaCount > 0 && (
+                  <span className="ml-2 inline-flex items-center gap-0.5 text-[10px]">
+                    <Phone className="h-2.5 w-2.5" />
+                    {convo.llamadaCount}
+                  </span>
+                )}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -2046,62 +2061,108 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
         </button>
       )}
 
-      <div className="border-t border-muted bg-background/60 p-3">
+      {pendingAttachment ? (
+        <div className="border-t border-muted bg-background/60">
+          <div className="flex items-center justify-between border-b border-muted/50 px-4 py-2">
+            <span className="text-sm font-medium">
+              {pendingAttachment.type === 'image' ? 'Enviar foto' : pendingAttachment.type === 'audio' ? 'Enviar audio' : 'Enviar documento'}
+            </span>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleCancelAttachment} disabled={sendingAttachment}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="flex flex-col items-center justify-center gap-3 px-4 py-4">
+            {pendingAttachment.type === 'image' && pendingAttachment.previewUrl && (
+              <img src={pendingAttachment.previewUrl} alt="Preview" className="max-h-64 rounded-lg object-contain" />
+            )}
+            {pendingAttachment.type === 'audio' && (
+              <div className="flex items-center gap-3 rounded-lg bg-muted/30 px-4 py-3">
+                <Music2 className="h-8 w-8 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">{pendingAttachment.file.name}</span>
+              </div>
+            )}
+            {pendingAttachment.type === 'document' && (
+              <div className="flex items-center gap-3 rounded-lg bg-muted/30 px-4 py-3">
+                <FileText className="h-8 w-8 text-muted-foreground" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate max-w-[300px]">{pendingAttachment.file.name}</p>
+                  <p className="text-xs text-muted-foreground">{formatBytes(pendingAttachment.file.size)}</p>
+                </div>
+              </div>
+            )}
+            <div className="flex w-full items-end gap-2">
+              <Textarea
+                value={pendingAttachment.caption}
+                onChange={(e) => setPendingAttachment((prev) => prev ? { ...prev, caption: e.target.value } : null)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    void handleSendAttachment();
+                  }
+                }}
+                placeholder="Añade un mensaje..."
+                className="min-h-[44px] max-h-32 resize-none flex-1"
+                rows={1}
+                disabled={sendingAttachment}
+              />
+              <Button onClick={() => void handleSendAttachment()} disabled={sendingAttachment} className="shrink-0">
+                {sendingAttachment ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : (
+      <div
+        className="border-t border-muted bg-background/60 p-3"
+        onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+        onDrop={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const file = e.dataTransfer.files?.[0];
+          if (!file) return;
+          handleCancelAttachment();
+          const isImage = file.type.startsWith('image/');
+          const isAudioFile = file.type.startsWith('audio/');
+          setPendingAttachment({
+            type: isImage ? 'image' : isAudioFile ? 'audio' : 'document',
+            file,
+            previewUrl: isImage ? URL.createObjectURL(file) : undefined,
+            caption: '',
+          });
+        }}
+      >
         <input
-          ref={fileInputRef}
+          ref={imageInputRef}
           type="file"
           accept="image/*"
           className="hidden"
-          onChange={handleImageSelect}
+          onChange={handleFileSelect}
         />
         <input
-          ref={audioFileInputRef}
+          ref={fileInputRef}
           type="file"
-          accept="audio/*"
           className="hidden"
-          onChange={handleAudioSelect}
+          onChange={handleFileSelect}
         />
-        {imagePreview && (
-          <div className="mb-2 relative inline-block">
-            <img src={imagePreview} alt="Preview" className="max-h-24 rounded-lg object-cover" />
-            {uploadingImage && (
-              <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/40">
-                <Loader2 className="h-5 w-5 animate-spin text-white" />
-              </div>
-            )}
-            <button
-              type="button"
-              onClick={handleRemoveImage}
-              className="absolute -right-1 -top-1 rounded-full bg-destructive p-0.5 text-white hover:bg-destructive/90"
-            >
-              <X className="h-3 w-3" />
-            </button>
-          </div>
-        )}
-        {audioFile && (
-          <div className="mb-2 flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-2 text-sm">
-            <Music2 className="h-4 w-4 text-muted-foreground" />
-            <span className="flex-1 truncate">{audioFile.name}</span>
-            {uploadingAudio ? (
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-            ) : (
-              <button
-                type="button"
-                onClick={handleRemoveAudio}
-                className="rounded-full bg-destructive p-0.5 text-white hover:bg-destructive/90"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            )}
-          </div>
-        )}
         <div className="flex items-end gap-2">
-          <Button variant="ghost" size="icon" className="shrink-0" onClick={() => fileInputRef.current?.click()} disabled={uploadingImage}>
-            <Paperclip className="h-5 w-5" />
-          </Button>
-          <Button variant="ghost" size="icon" className="shrink-0" onClick={() => audioFileInputRef.current?.click()} disabled={uploadingAudio}>
-            <Music2 className="h-5 w-5" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="shrink-0">
+                <Paperclip className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" side="top">
+              <DropdownMenuItem onClick={() => imageInputRef.current?.click()}>
+                <ImageIcon className="mr-2 h-4 w-4" /> Foto
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { if (fileInputRef.current) { fileInputRef.current.accept = 'audio/*'; fileInputRef.current.click(); fileInputRef.current.accept = ''; } }}>
+                <Music2 className="mr-2 h-4 w-4" /> Audio
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                <FileText className="mr-2 h-4 w-4" /> Documento
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           {isRecording ? (
             <div className="flex flex-1 items-center gap-2 rounded-lg border bg-destructive/5 px-3 py-2">
               <div className="flex items-center gap-2 text-sm font-medium text-destructive">
@@ -2124,7 +2185,7 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
             </div>
           ) : (
             <>
-              <Button variant="ghost" size="icon" className="shrink-0" onClick={() => void startRecording()} disabled={uploadingAudio || uploadingImage}>
+              <Button variant="ghost" size="icon" className="shrink-0" onClick={() => void startRecording()}>
                 <Mic className="h-5 w-5" />
               </Button>
               <Popover>
@@ -2148,13 +2209,14 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
                 className="min-h-[44px] max-h-32 resize-none"
                 rows={1}
               />
-              <Button onClick={() => void send()} disabled={!draft.trim() && !imageUrl && !audioUrl} className="shrink-0">
+              <Button onClick={() => void send()} disabled={!draft.trim()} className="shrink-0">
                 <Send className="h-4 w-4" />
               </Button>
               </>
               )}
             </div>
           </div>
+        )}
 
       <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
         <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
