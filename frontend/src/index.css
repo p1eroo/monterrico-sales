@@ -384,3 +384,15 @@
 .campaign-email-editor .tiptap [data-resize-handle='bottom-right'] {
     cursor: nwse-resize;
 }
+
+@utility font-emoji {
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Android Emoji", EmojiSymbols, sans-serif;
+}
+
+.EmojiPickerReact .epr-body {
+    overflow-y: auto !important;
+}
+
+@utility text-message {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Android Emoji", EmojiSymbols;
+}

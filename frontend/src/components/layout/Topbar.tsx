@@ -32,6 +32,7 @@ import { initialsFromName } from '@/lib/utils';
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { AssistantLauncherButton } from '@/components/assistant/AiAssistantDrawer';
+import FlotaNotificationBell from '@/components/flota/FlotaNotificationBell';
 
 const routeLabels: Record<string, string> = {
   '/dashboard': 'Dashboard',
@@ -95,6 +96,7 @@ export function Topbar() {
             <AssistantLauncherButton />
           </>
         )}
+        {area === 'flota' && <FlotaNotificationBell />}
 
         <ThemeToggle />
 

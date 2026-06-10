@@ -55,7 +55,7 @@ function readStringField(
 
 function pickMediaNode(
   msg: JsonRecord,
-  lowerKey: 'imageMessage' | 'videoMessage' | 'audioMessage' | 'documentMessage',
+  lowerKey: 'imageMessage' | 'videoMessage' | 'audioMessage' | 'documentMessage' | 'stickerMessage',
 ): JsonRecord | null {
   const upperKey = `${lowerKey[0]!.toUpperCase()}${lowerKey.slice(1)}`;
   return asRecord(msg[lowerKey]) ?? asRecord(msg[upperKey]);
@@ -353,13 +353,14 @@ export function parseMessageEventData(data: JsonRecord): {
 export function parseMessageMedia(data: JsonRecord): WhatsappParsedMedia | null {
   const msg = rootMessageNode(data);
   const mappings: Array<{
-    key: 'imageMessage' | 'videoMessage' | 'audioMessage' | 'documentMessage';
+    key: 'imageMessage' | 'videoMessage' | 'audioMessage' | 'documentMessage' | 'stickerMessage';
     mediaType: WhatsappParsedMedia['mediaType'];
   }> = [
     { key: 'imageMessage', mediaType: 'image' as const },
     { key: 'videoMessage', mediaType: 'video' as const },
     { key: 'audioMessage', mediaType: 'audio' as const },
     { key: 'documentMessage', mediaType: 'document' as const },
+    { key: 'stickerMessage', mediaType: 'image' as const },
   ];
   for (const mapping of mappings) {
     const node = pickMediaNode(msg, mapping.key);

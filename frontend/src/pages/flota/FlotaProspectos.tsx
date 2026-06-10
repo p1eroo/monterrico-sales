@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -13,9 +13,10 @@ import {
   Trash2,
   Info,
   Upload,
-  MoreVertical,
   Phone,
   Download,
+  Edit2,
+  Lock,
 } from "lucide-react";
 import {
   DateRangeCalendar,
@@ -41,12 +42,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+
 import {
   Popover,
   PopoverContent,
@@ -60,9 +56,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import ChatPanelStandalone from "@/components/flota/ChatPanelStandalone";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { CrmDataTableSkeleton } from "@/components/shared/CrmListPageSkeleton";
 import { formatDateDMY } from "@/lib/formatters";
+import { markConversationAsRead } from "@/lib/flotaWhatsappApi";
 import {
   flotaProspectosList,
   flotaProspectosImportSheets,
@@ -119,7 +118,9 @@ export default function FlotaProspectos() {
   const [prospectos, setProspectos] = useState<FlotaProspectoRow[]>([]);
   const [totalProspectos, setTotalProspectos] = useState(0);
   const [counts, setCounts] = useState<FlotaProspectosCounts | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const isFirstLoad = useRef(true);
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importingFile, setImportingFile] = useState(false);
@@ -149,9 +150,15 @@ export default function FlotaProspectos() {
   >();
   const [fechaRegistroOpen, setFechaRegistroOpen] = useState(false);
   const [mesImportOpen, setMesImportOpen] = useState(false);
-  const [tempFechaRegistro, setTempFechaRegistro] = useState<DateRangeValue | undefined>();
-  const [tempMesImport, setTempMesImport] = useState<DateRangeValue | undefined>();
-  const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
+  const [tempFechaRegistro, setTempFechaRegistro] = useState<
+    DateRangeValue | undefined
+  >();
+  const [tempMesImport, setTempMesImport] = useState<
+    DateRangeValue | undefined
+  >();
+  const [columnFilters, setColumnFilters] = useState<Record<string, string>>(
+    {},
+  );
 
   const [sheetNames, setSheetNames] = useState<string[]>([]);
   const [spreadsheets, setSpreadsheets] = useState<SheetsSpreadsheet[]>([]);
@@ -180,6 +187,42 @@ export default function FlotaProspectos() {
   const [operadores, setOperadores] = useState<OperadorUser[]>([]);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [editProspectoId, setEditProspectoId] = useState<string | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editData, setEditData] = useState({
+    nombreCompleto: "",
+    celular: "",
+    redSocial: "",
+    distrito: "",
+    operador: "",
+    edad: "",
+    modalidad: "",
+    anioVehiculo: "",
+    placa: "",
+    observaciones: "",
+  });
+
+  useEffect(() => {
+    if (!editProspectoId) return;
+    api<Record<string, unknown>>(`/flota-prospectos/${editProspectoId}`)
+      .then((data) => {
+        const fullObs = String(data.observaciones || "");
+        const latest = fullObs.split(/\n?---\n?/)[0].replace(/^(?:\[.+?\]\s*)+/, "").trim();
+        setEditData({
+          nombreCompleto: String(data.nombreCompleto || ""),
+          celular: String(data.celular || ""),
+          redSocial: String(data.redSocial || ""),
+          distrito: String(data.distrito || ""),
+          operador: String(data.operador || ""),
+          edad: data.edad != null ? String(data.edad) : "",
+          modalidad: String(data.modalidad || ""),
+          anioVehiculo: data.anioVehiculo != null ? String(data.anioVehiculo) : "",
+          placa: String(data.placa || ""),
+          observaciones: latest,
+        });
+      })
+      .catch(() => toast.error("No se pudo cargar el prospecto"));
+  }, [editProspectoId]);
   const [newProspecto, setNewProspecto] = useState({
     nombreCompleto: "",
     celular: "",
@@ -199,12 +242,16 @@ export default function FlotaProspectos() {
   } | null>(null);
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [blockedProspects, setBlockedProspects] = useState<FlotaProspectoRow[]>([]);
   const [redSocialFilter, setRedSocialFilter] = useState("all");
   const [operadorFilter, setOperadorFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [duplicadosFilter, setDuplicadosFilter] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
+  const [conLlamadasFilter, setConLlamadasFilter] = useState("all");
+  const [chatProspectoId, setChatProspectoId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const { hasPermission } = usePermissions();
   const currentUser = useAppStore((s) => s.currentUser);
@@ -223,6 +270,10 @@ export default function FlotaProspectos() {
     () => filterOperadores.map((op) => ({ label: op.name, value: op.name })),
     [filterOperadores],
   );
+
+  const redSocialOptions = useMemo(() => {
+    return (counts?.redesSociales ?? []).filter(Boolean).sort();
+  }, [counts?.redesSociales]);
 
   const loadSheetNames = useCallback(async (spreadsheetId?: string) => {
     try {
@@ -303,88 +354,135 @@ export default function FlotaProspectos() {
     lastCheckedSearchRef.current = phone;
     flotaProspectosByPhone(phone)
       .then((res) => {
-        if (res.found && res.prospecto?.operador) {
-          toast.warning(
-            `El número ${phone} ya existe y está asignado a ${res.prospecto.operador} (${res.prospecto.nombreCompleto})`,
-            { duration: 6000 },
-          );
+        if (res.found && res.prospecto) {
+          const isOwn = hasVerTodos || res.prospecto.operador === null || currentUser.name === res.prospecto.operador;
+          if (!isOwn) {
+            toast.warning(
+              `El número ${phone} está asignado a ${res.prospecto.operador} (${res.prospecto.nombreCompleto}). Solo lectura.`,
+              { duration: 5000 },
+            );
+            setBlockedProspects((prev) => {
+              const p = res.prospecto;
+              if (!p || prev.some((bp) => bp.id === p.id)) return prev;
+              return [...prev, {
+                id: p.id,
+                fechaRegistro: null, redSocial: null, celular: p.celular,
+                nombreCompleto: p.nombreCompleto, edad: null,
+                operador: p.operador, estado: p.estado || '',
+                modalidad: null, anioVehiculo: null, placa: null, distrito: null,
+                fechaCita: null, asistencia: null, fechaAfiliacion: null, movil: null,
+                observaciones: null, esDuplicado: false, createdAt: '', updatedAt: '',
+                _count: { llamadas: 0 },
+              }];
+            });
+          }
         }
       })
       .catch(() => {});
-  }, [searchDebounced]);
+  }, [searchDebounced, hasVerTodos, currentUser.name]);
 
   const LOAD_LIMIT = 25;
 
-  const loadProspectos = useCallback(async (pageNum = 1) => {
-    setLoading(true);
-    try {
-      const res = await flotaProspectosList({
-        page: pageNum,
-        limit: LOAD_LIMIT,
-        search: searchDebounced || undefined,
-        estado: estadoFilter === "all" ? undefined : estadoFilter,
-        duplicados: duplicadosFilter ? true : undefined,
-        fechaRegistroDesde: fechaRegistroRange?.from
-          ?.toISOString()
-          .split("T")[0],
-        fechaRegistroHasta: fechaRegistroRange?.to?.toISOString().split("T")[0],
-        mesImportDesde: mesImportRange?.from?.toISOString().split("T")[0],
-        mesImportHasta: mesImportRange?.to?.toISOString().split("T")[0],
-        redSocial: redSocialFilter === "all" ? undefined : redSocialFilter,
-        operador:
-          operadorFilter === "all"
-            ? undefined
-            : operadorFilter === "__unassigned__"
-              ? "__unassigned__"
-              : (() => {
-                  const op = operadores.find((o) => o.name === operadorFilter);
-                  if (!op) return operadorFilter;
-                  const firstName = op.name.split(" ")[0];
-                  const aliases = [op.name, op.username];
-                  if (
-                    firstName !== op.name &&
-                    firstName.toLowerCase() !== op.username.toLowerCase()
-                  ) {
-                    aliases.push(firstName);
-                  }
-                  return aliases.join(",");
-                })(),
-      });
+  const loadProspectos = useCallback(
+    async (pageNum = 1) => {
+      if (isFirstLoad.current) {
+        isFirstLoad.current = false;
+        setInitialLoading(true);
+      } else {
+        setRefreshing(true);
+      }
+      try {
+        const res = await flotaProspectosList({
+          page: pageNum,
+          limit: LOAD_LIMIT,
+          search: searchDebounced || undefined,
+          estado: estadoFilter === "all" ? undefined : estadoFilter,
+          duplicados: duplicadosFilter ? true : undefined,
+          fechaRegistroDesde: fechaRegistroRange?.from
+            ?.toISOString()
+            .split("T")[0],
+          fechaRegistroHasta: fechaRegistroRange?.to
+            ?.toISOString()
+            .split("T")[0],
+          mesImportDesde: mesImportRange?.from?.toISOString().split("T")[0],
+          mesImportHasta: mesImportRange?.to?.toISOString().split("T")[0],
+          redSocial: redSocialFilter === "all" ? undefined : redSocialFilter,
+          operador:
+            operadorFilter === "all"
+              ? undefined
+              : operadorFilter === "__unassigned__"
+                ? "__unassigned__"
+                : (() => {
+                    const op = operadores.find(
+                      (o) => o.name === operadorFilter,
+                    );
+                    if (!op) return operadorFilter;
+                    const firstName = op.name.split(" ")[0];
+                    const aliases = [op.name, op.username];
+                    if (
+                      firstName !== op.name &&
+                      firstName.toLowerCase() !== op.username.toLowerCase()
+                    ) {
+                      aliases.push(firstName);
+                    }
+                    return aliases.join(",");
+                  })(),
+          filters:
+            Object.keys(columnFilters).length > 0 ? columnFilters : undefined,
+          conLlamadas:
+            conLlamadasFilter === "all" ? undefined : conLlamadasFilter,
+        });
 
-      setProspectos(res.data);
-      setTotalProspectos(res.total);
-      setPage(pageNum);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Error cargando prospectos");
-    } finally {
-      setLoading(false);
-    }
-  }, [
-    searchDebounced,
-    estadoFilter,
-    duplicadosFilter,
-    fechaRegistroRange,
-    mesImportRange,
-    redSocialFilter,
-    operadorFilter,
-  ]);
+        setProspectos(res.data);
+        setTotalProspectos(res.total);
+        setPage(pageNum);
+      } catch (e) {
+        toast.error(
+          e instanceof Error ? e.message : "Error cargando prospectos",
+        );
+      } finally {
+        setInitialLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [
+      searchDebounced,
+      estadoFilter,
+      duplicadosFilter,
+      fechaRegistroRange,
+      mesImportRange,
+      redSocialFilter,
+      operadorFilter,
+      conLlamadasFilter,
+      columnFilters,
+    ],
+  );
 
   useEffect(() => {
     void loadProspectos(page);
   }, [loadProspectos, page]);
 
   const filteredProspectos = useMemo(() => {
-    if (Object.keys(columnFilters).length === 0) return prospectos;
+    const blocked = blockedProspects.filter((bp) => {
+      if (Object.keys(columnFilters).length === 0) return true;
+      for (const [colId, filterVal] of Object.entries(columnFilters)) {
+        if (!filterVal) continue;
+        const val = String((bp as any)[colId] ?? "").toLowerCase();
+        if (!val.includes(filterVal.toLowerCase())) return false;
+      }
+      return true;
+    });
+    if (Object.keys(columnFilters).length === 0) return [...blocked, ...prospectos];
     let data = prospectos;
     for (const [colId, filterVal] of Object.entries(columnFilters)) {
       if (!filterVal) continue;
       data = data.filter((p) => {
-        const val = String((p as any)[colId] ?? '').toLowerCase();
+        const val = String((p as any)[colId] ?? "").toLowerCase();
         return val.includes(filterVal.toLowerCase());
       });
     }
-    return data;
-  }, [prospectos, columnFilters]);
+    return [...blocked, ...data];
+  }, [prospectos, columnFilters, blockedProspects]);
 
   const loadCounts = useCallback(async () => {
     try {
@@ -424,6 +522,22 @@ export default function FlotaProspectos() {
     void loadCounts();
   }, [loadCounts]);
 
+  // Handle chat notification from URL (?chat=prospectoId)
+  useEffect(() => {
+    const chatId = searchParams.get("chat");
+    if (!chatId) return;
+    setSearchParams({}, { replace: true });
+    setChatProspectoId(chatId);
+    markConversationAsRead(chatId).catch(() => {});
+    try { new BroadcastChannel("flota-notificaciones").postMessage({ type: "refresh" }); } catch {}
+    api<Record<string, unknown>>(`/flota-prospectos/${chatId}`)
+      .then((data) => {
+        const phone = String(data.celular || data.movil || "");
+        if (phone) setSearchTerm(phone);
+      })
+      .catch(() => {});
+  }, [searchParams]);
+
   const getConductorCodigo = (celular: string | null): string | null => {
     if (!celular) return null;
     const normalized = celular.replace(/\D/g, "").replace(/^51/, "");
@@ -433,7 +547,10 @@ export default function FlotaProspectos() {
 
   const getLatestObservacion = (obs: string | null | undefined): string => {
     if (!obs) return "";
-    return obs.split(/\n?---\n?/)[0].replace(/^(?:\[.+?\]\s*)+/, "").trim();
+    return obs
+      .split(/\n?---\n?/)[0]
+      .replace(/^(?:\[.+?\]\s*)+/, "")
+      .trim();
   };
 
   const toLocalDatetimeValue = (iso: string | null | undefined): string => {
@@ -789,6 +906,44 @@ export default function FlotaProspectos() {
     }
   }
 
+  async function handleEditSave() {
+    if (!editProspectoId || !editData.nombreCompleto.trim()) {
+      toast.error("El nombre es obligatorio");
+      return;
+    }
+    setEditSaving(true);
+    try {
+      const body: Record<string, unknown> = {};
+      if (editData.nombreCompleto.trim()) body.nombreCompleto = editData.nombreCompleto.trim();
+      if (editData.celular.trim()) body.celular = editData.celular.trim();
+      if (editData.redSocial.trim()) body.redSocial = editData.redSocial.trim();
+      if (editData.distrito.trim()) body.distrito = editData.distrito.trim();
+      if (editData.operador.trim()) body.operador = editData.operador.trim();
+      if (editData.modalidad.trim()) body.modalidad = editData.modalidad.trim();
+      if (editData.placa.trim()) body.placa = editData.placa.trim();
+      const edad = parseInt(editData.edad, 10);
+      if (!isNaN(edad)) body.edad = edad;
+      const anio = parseInt(editData.anioVehiculo, 10);
+      if (!isNaN(anio)) body.anioVehiculo = anio;
+      if (editData.observaciones.trim()) {
+        const dateStr = new Date().toLocaleString("es-PE", { timeZone: "America/Lima" });
+        body.observaciones = `[${dateStr}] ${editData.observaciones.trim()}`;
+      }
+      await api(`/flota-prospectos/${editProspectoId}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      });
+      toast.success("Prospecto actualizado");
+      setEditProspectoId(null);
+      void loadProspectos();
+      void loadCounts();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error al actualizar");
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -927,456 +1082,639 @@ export default function FlotaProspectos() {
         </div>
       </PageHeader>
 
-        {selectedIds.size > 0 && (
-          <Button
-            variant="destructive"
-            className="gap-1.5"
-            onClick={() => setDeleteDialogOpen(true)}
-          >
-            <Trash2 className="size-4" />
-            Eliminar ({selectedIds.size})
-          </Button>
-        )}
-      {loading ? (
-        <CrmDataTableSkeleton
-            columns={[
-              { label: "" },
-              { label: "F.Registro" },
-              { label: "Red Social" },
-              { label: "Celular" },
-              { label: "Nombres y Apellidos" },
-              { label: "Edad" },
-              { label: "Operador" },
-              { label: "Estado" },
-              { label: "Modalidad" },
-              { label: "Placa" },
-              { label: "Año Veh." },
-              { label: "Distrito" },
-              { label: "F. Cita" },
-              { label: "Asistencia" },
-              { label: "F. Afiliacion" },
-              { label: "Movil" },
-              { label: "Observaciones" },
-              { label: "" },
-            ]}
-            rows={5}
-            aria-label="Cargando prospectos"
-            className="bg-card"
-          />
-      ) : (
-        <>
-        <div className="text-xs">
-        <DataTable
-            columns={[
-              {
-                id: 'select',
-                header: '',
-                enableSorting: false,
-                enableColumnFilter: false,
-                size: 40,
-                minSize: 40,
-                maxSize: 40,
-                cell: ({ row }) => (
-                  <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
-                    <Checkbox
-                      checked={selectedIds.has(row.original.id)}
-                      onCheckedChange={() => toggleSelectOne(row.original.id)}
-                    />
-                  </div>
-                ),
-              },
-              {
-                id: 'fechaRegistro',
-                header: 'F.Registro',
-                enableSorting: false,
-                enableColumnFilter: false,
-                cell: ({ row }) => (
-                <div>
-                  <div>{row.original.fechaRegistro ? formatDateDMY(row.original.fechaRegistro) : '—'}</div>
-                  {row.original.createdAt && (
-                    <div className="text-[9px] text-muted-foreground mt-0.5">
-                      FI: {new Date(row.original.createdAt).toLocaleDateString('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: '2-digit', year: 'numeric' })}
-                    </div>
-                  )}
-                </div>
-                ),
-              },
-              {
-                accessorKey: 'redSocial',
-                id: 'redSocial',
-                header: 'Red Social',
-                size: 90,
-                cell: ({ getValue }) => (
-                  <span className="truncate block max-w-[80px]" title={String(getValue() ?? '')}>
-                    {String(getValue() ?? '') || '—'}
-                  </span>
-                ),
-              },
-              {
-                accessorKey: 'celular',
-                id: 'celular',
-                header: 'Celular',
-                size: 110,
-                cell: ({ getValue, row }) => (
-                  <div>
-                    <span className="truncate block max-w-[100px]" title={String(getValue() ?? '')}>{String(getValue() ?? '') || '—'}</span>
-                    {(() => {
-                      const codigo = getConductorCodigo(row.original.celular);
-                      if (!codigo) return null;
-                      return <span className="block text-[10px] text-emerald-600 font-medium truncate max-w-[100px]">{codigo}</span>;
-                    })()}
-                  </div>
-                ),
-              },
-              {
-                accessorKey: 'nombreCompleto',
-                id: 'nombreCompleto',
-                header: 'Nombres y Apellidos',
-                cell: ({ getValue, row }) => (
-                  <div className="flex items-center gap-2">
-                    <span className={`font-medium ${row.original.esDuplicado ? 'text-red-600' : ''}`}>
-                      {String(getValue() ?? '')}
-                    </span>
-                    {row.original.esDuplicado && (
-                      <Badge variant="outline" className="border-red-200 bg-red-50 text-[10px] text-red-600">Duplicado</Badge>
-                    )}
-                  </div>
-                ),
-              },
-              {
-                accessorKey: 'edad',
-                id: 'edad',
-                header: 'Edad',
-                size: 60,
-                cell: ({ getValue }) => getValue() != null ? String(getValue()) : '—',
-              },
-              {
-                accessorFn: (r) => getOperatorDisplayName(r.operador, operadores) || r.operador || '',
-                id: 'operador',
-                header: 'Operador',
-                size: 110,
-                enableColumnFilter: false,
-                cell: ({ getValue, row }) => {
-                  const name = String(getValue() ?? '') || '—';
-                  const llamadas = row.original._count?.llamadas ?? 0;
-                  return (
-                    <div className="min-w-0">
-                      <span className="truncate block max-w-[100px] text-xs" title={name}>{name}</span>
-                      {llamadas > 0 && (
-                        <span className="flex items-center gap-0.5 text-[10px] text-blue-600 dark:text-blue-400">
-                          <Phone className="h-2.5 w-2.5" />
-                          {llamadas}
-                        </span>
-                      )}
-                    </div>
-                  );
-                },
-              },
-              {
-                accessorKey: 'estado',
-                id: 'estado',
-                header: 'Estado',
-                size: 90,
-                enableColumnFilter: false,
-                cell: ({ getValue }) => {
-                  const val = String(getValue() ?? '');
-                  return <span className={`text-xs truncate block max-w-[80px] ${val ? (estadoColors[val] || '') : ''}`}>{val || '—'}</span>;
-                },
-              },
-              {
-                accessorKey: 'modalidad',
-                id: 'modalidad',
-                header: 'Modalidad',
-                size: 100,
-                cell: ({ getValue }) => (
-                  <span className="truncate block max-w-[90px]" title={String(getValue() ?? '')}>{String(getValue() ?? '') || '—'}</span>
-                ),
-              },
-              {
-                accessorKey: 'placa',
-                id: 'placa',
-                header: 'Placa',
-                size: 90,
-                cell: ({ getValue }) => (
-                  <span className="truncate block max-w-[80px]" title={String(getValue() ?? '')}>{String(getValue() ?? '') || '—'}</span>
-                ),
-              },
-              {
-                accessorKey: 'anioVehiculo',
-                id: 'anioVehiculo',
-                header: 'Año Veh.',
-                size: 65,
-                cell: ({ getValue }) => getValue() != null ? String(getValue()) : '—',
-              },
-              {
-                accessorKey: 'distrito',
-                id: 'distrito',
-                header: 'Distrito',
-                size: 100,
-                cell: ({ getValue }) => (
-                  <span className="truncate block max-w-[90px]" title={String(getValue() ?? '')}>{String(getValue() ?? '') || '—'}</span>
-                ),
-              },
-              {
-                accessorKey: 'fechaCita',
-                id: 'fechaCita',
-                header: 'F. Cita',
-                size: 130,
-                cell: ({ getValue, row }) => {
-                  const val = row.original.fechaCita;
-                  return val ? (
-                    <div>
-                      <div>{formatDateDMY(val)}</div>
-                      <div className="text-[10px] text-muted-foreground mt-0.5">
-                        {new Date(val).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Lima' })}
-                      </div>
-                    </div>
-                  ) : '—';
-                },
-              },
-              {
-                accessorKey: 'asistencia',
-                id: 'asistencia',
-                header: 'Asistencia',
-                size: 80,
-                cell: ({ getValue }) => {
-                  const val = String(getValue() ?? '');
-                  return val ? (
-                    <Badge variant="outline" className={`text-xs ${val === 'Asistió' || val === 'ASISTIO' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                      {val}
-                    </Badge>
-                  ) : <span className="text-muted-foreground">—</span>;
-                },
-              },
-              {
-                accessorKey: 'fechaAfiliacion',
-                id: 'fechaAfiliacion',
-                header: 'F. Afiliacion',
-                size: 110,
-                cell: ({ getValue }) => getValue() ? formatDateDMY(String(getValue())) : '—',
-              },
-              {
-                accessorKey: 'movil',
-                id: 'movil',
-                header: 'Movil',
-                size: 100,
-                cell: ({ getValue }) => (
-                  <span className="truncate block max-w-[90px]" title={String(getValue() ?? '')}>{String(getValue() ?? '') || '—'}</span>
-                ),
-              },
-              {
-                accessorKey: 'observaciones',
-                id: 'observaciones',
-                header: 'Observaciones',
-                size: 170,
-                cell: ({ getValue }) => getLatestObservacion(String(getValue() ?? '')),
-              },
-              {
-                id: 'actions',
-                header: '',
-                enableSorting: false,
-                enableColumnFilter: false,
-                size: 40,
-                minSize: 40,
-                maxSize: 40,
-                cell: ({ row }) => {
-                  const p = row.original;
-                  return (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
-                          <MoreVertical className="size-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-44">
-                        <DropdownMenuItem className="cursor-pointer gap-2" onClick={() => navigate(`/flota/prospectos/${p.id}`)}>
-                          <Info className="size-4" /> Vista detallada
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="cursor-pointer gap-2" onClick={() => {
-                          const now = new Date();
-                          setLlamadaProspecto({ id: p.id, nombre: p.nombreCompleto });
-                          setLlamadaFecha(now.toISOString().split('T')[0]);
-                          setLlamadaHora(now.toTimeString().split(' ')[0].substring(0, 5));
-                          setLlamadaNotas('');
-                        }}>
-                          <Phone className="size-4" /> Registrar llamada
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  );
-                },
-              },
-            ]}
-          maxHeight="calc(100vh - 16rem)"
-          data={filteredProspectos}
-          getId={(r) => r.id}
-          filterComponents={{
-            fechaRegistro: (
-              <Popover
-                onOpenChange={(open) => {
-                  if (open) {
-                    setTempFechaRegistro(fechaRegistroRange);
-                    setTempMesImport(mesImportRange);
-                  } else {
-                    setFechaRegistroRange(tempFechaRegistro);
-                    setMesImportRange(tempMesImport);
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-2">
+          {selectedIds.size === 1 && (
+            <>
+              <Button
+                variant="outline"
+                className="gap-1.5"
+                onClick={() => {
+                  const id = Array.from(selectedIds)[0];
+                  navigate(`/flota/prospectos/${id}`);
+                }}
+              >
+                <Info className="size-4" />
+                Vista detallada
+              </Button>
+              <Button
+                variant="outline"
+                className="gap-1.5"
+                onClick={() => {
+                  const id = Array.from(selectedIds)[0];
+                  setEditProspectoId(id);
+                }}
+              >
+                <Edit2 className="size-4" />
+                Editar
+              </Button>
+              <Button
+                variant="outline"
+                className="gap-1.5"
+                onClick={() => {
+                  const id = Array.from(selectedIds)[0];
+                  const row = prospectos.find((p) => p.id === id);
+                  if (row) {
+                    const now = new Date();
+                    setLlamadaProspecto({ id: row.id, nombre: row.nombreCompleto });
+                    setLlamadaFecha(now.toISOString().split("T")[0]);
+                    setLlamadaHora(now.toTimeString().split(" ")[0].substring(0, 5));
+                    setLlamadaNotas("");
                   }
                 }}
               >
-                <PopoverTrigger asChild>
-                  <button className="w-full h-7 rounded border border-input bg-background px-2 text-xs text-left text-muted-foreground">
-                    Fechas
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-3" align="start">
-                  <div className="flex gap-4">
-                    <div>
-                      <p className="text-xs font-medium mb-1 text-foreground">F. Registro</p>
-                      <DateRangeCalendar
-                        value={tempFechaRegistro}
-                        onChange={setTempFechaRegistro}
-                      />
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium mb-1 text-foreground">F. Import</p>
-                      <DateRangeCalendar
-                        value={tempMesImport}
-                        onChange={setTempMesImport}
-                      />
-                    </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
-            ),
-            estado: (
-              <select
-                value={estadoFilter}
-                onChange={(e) => setEstadoFilter(e.target.value)}
-                className="w-full h-7 rounded border border-input bg-background px-1 text-xs outline-none text-muted-foreground"
-              >
-                <option value="all">Estado</option>
-                <option value="Nuevo">Nuevo</option>
-                <option value="Afiliado">Afiliado</option>
-                <option value="Citado">Citado</option>
-                <option value="Seguimiento">Seguimiento</option>
-                <option value="Informacion">Información</option>
-                <option value="Sin Requisitos">Sin Requisitos</option>
-                <option value="No Responde">No Responde</option>
-              </select>
-            ),
-            operador: (
-              <select
-                value={operadorFilter}
-                onChange={(e) => setOperadorFilter(e.target.value)}
-                className="w-full h-7 rounded border border-input bg-background px-1 text-xs outline-none text-muted-foreground"
-              >
-                <option value="all">Operador</option>
-                {filterOperadores.map((op) => (
-                  <option key={op.id} value={op.name}>{op.name}</option>
-                ))}
-                <option value="__unassigned__">Sin asignar</option>
-              </select>
-            ),
-          }}
-          readOnlyColumns={['select', 'actions', 'fechaRegistro']}
-          editTypes={{
-            edad: 'number',
-            anioVehiculo: 'number',
-            operador: 'select',
-            estado: 'select',
-            asistencia: 'select',
-            fechaCita: 'datetime-local',
-            fechaAfiliacion: 'date',
-          }}
-          editOptions={{
-            operador: operadorOptions,
-            estado: ESTADO_OPTIONS,
-            asistencia: ASISTENCIA_OPTIONS,
-          }}
-          onEditStart={(row, columnId) => {
-            if (columnId === 'estado') return false;
-            if (columnId === 'operador') return false;
-            return false;
-          }}
-          onRowSelectionChange={(ids) => setSelectedIds(new Set(ids))}
-          onCellEdit={async (row, columnId, newValue) => {
-            const body: Record<string, unknown> = {};
-            if (columnId === 'edad' || columnId === 'anioVehiculo') {
-              const num = parseInt(newValue, 10);
-              body[columnId] = isNaN(num) ? null : num;
-            } else if (columnId === 'observaciones') {
-              const fullObs = (row as any).observaciones || '';
-              const entries = fullObs.split(/\n?---\n?/).filter(Boolean);
-              const cleanValue = newValue.replace(/^\[.+?\]\s*/g, '').trim();
-              if (entries.length > 0) {
-                const latest = entries[0];
-                const datePrefix = latest.match(/^\[.+?\]\s*/)?.[0] || '';
-                entries[0] = datePrefix ? `${datePrefix}${cleanValue}` : cleanValue;
-                body[columnId] = entries.join('\n---\n');
-              } else {
-                body[columnId] = cleanValue;
-              }
-            } else if (columnId === 'estado' && newValue === 'Citado') {
-              const p = row as any;
-              setCitadoProspectId(p.id);
-              setCitadoDate(p.fechaCita ? p.fechaCita.split('T')[0] : '');
-              setCitadoTime(p.fechaCita ? new Date(p.fechaCita).toTimeString().split(' ')[0].substring(0, 5) : '');
-              setCitadoDialogOpen(true);
-              return;
-            } else if (columnId === 'operador') {
-              const opName = newValue || 'Sin operador';
-              setProspectos((prev) => prev.map((p) =>
-                p.id === (row as any).id ? { ...p, operador: newValue || null } : p,
-              ));
-              try {
-                await api(`/flota-prospectos/${(row as any).id}/operador`, {
-                  method: 'PATCH',
-                  body: JSON.stringify({ operador: newValue || null }),
-                });
-                toast.success(`Operador cambiado a ${opName}`);
-              } catch {
-                setProspectos((prev) => [...prev]);
-                toast.error('Error al cambiar operador');
-              }
-              return;
-            } else {
-              body[columnId] = newValue;
-            }
-            if (Object.keys(body).length === 0) return;
-            setProspectos((prev) => prev.map((p) =>
-              p.id === (row as any).id
-                ? { ...p, ...body }
-                : p
-            ));
-            try {
-              await api(`/flota-prospectos/${(row as any).id}`, {
-                method: 'PATCH',
-                body: JSON.stringify(body),
-              });
-            } catch {
-              setProspectos((prev) => [...prev]);
-            }
-          }}
-          onFilterChange={(columnId, value) => {
-            setColumnFilters((prev) => ({ ...prev, [columnId]: value }));
-            setPage(1);
-            if (columnId === 'nombreCompleto' || columnId === 'celular' || columnId === 'distrito') {
-              setSearchTerm(value);
-            } else if (columnId === 'estado') {
-              setEstadoFilter(value || 'all');
-            } else if (columnId === 'redSocial') {
-              setRedSocialFilter(value || 'all');
-            } else if (columnId === 'operador') {
-              setOperadorFilter(value || 'all');
-            }
-          }}
-          filterValues={columnFilters}
-        />
+                <Phone className="size-4" />
+                Registrar llamada
+              </Button>
+            </>
+          )}
+          {hasPermission("flota_prospectos.eliminar") && (
+            <Button
+              variant="destructive"
+              className="gap-1.5"
+              onClick={() => setDeleteDialogOpen(true)}
+            >
+              <Trash2 className="size-4" />
+              Eliminar ({selectedIds.size})
+            </Button>
+          )}
         </div>
+      )}
+      {initialLoading ? (
+        <CrmDataTableSkeleton
+          columns={[
+            { label: "" },
+            { label: "F.Registro" },
+            { label: "Red Social" },
+            { label: "Celular" },
+            { label: "Nombres y Apellidos" },
+            { label: "Edad" },
+            { label: "Operador" },
+            { label: "Estado" },
+            { label: "Modalidad" },
+            { label: "Placa" },
+            { label: "Año Veh." },
+            { label: "Distrito" },
+            { label: "F. Cita" },
+            { label: "Asistencia" },
+            { label: "F. Afiliacion" },
+            { label: "Movil" },
+            { label: "Observaciones" },
+            { label: "Llamadas" },
+          ]}
+          rows={5}
+          aria-label="Cargando prospectos"
+          className="bg-card"
+        />
+      ) : (
+        <>
+          {refreshing && (
+            <div className="flex items-center gap-2 py-1.5 text-xs text-muted-foreground border-b border-muted mb-2">
+              <Loader2 className="size-3 animate-spin" /> Actualizando...
+            </div>
+          )}
+          <div className="text-xs">
+            <DataTable
+              columns={[
+                {
+                  id: "select",
+                  header: "",
+                  enableSorting: false,
+                  enableColumnFilter: false,
+                  size: 40,
+                  minSize: 40,
+                  maxSize: 40,
+                   cell: ({ row }) => {
+                    const isBlocked = blockedProspects.some((bp) => bp.id === row.original.id);
+                    return (
+                      <div
+                        className="flex justify-center"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {isBlocked ? (
+                          <Lock className="size-3.5 text-muted-foreground" />
+                        ) : (
+                          <Checkbox
+                            checked={selectedIds.has(row.original.id)}
+                            onCheckedChange={() => toggleSelectOne(row.original.id)}
+                          />
+                        )}
+                      </div>
+                    );
+                  },
+                },
+                {
+                  id: "fechaRegistro",
+                  header: "F.Registro",
+                  enableSorting: false,
+                  enableColumnFilter: false,
+                  cell: ({ row }) => (
+                    <div>
+                      <div>
+                        {row.original.fechaRegistro
+                          ? formatDateDMY(row.original.fechaRegistro)
+                          : "—"}
+                      </div>
+                      {row.original.createdAt && (
+                        <div className="text-[9px] text-muted-foreground mt-0.5">
+                          FI:{" "}
+                          {new Date(row.original.createdAt).toLocaleDateString(
+                            "es-PE",
+                            {
+                              timeZone: "America/Lima",
+                              day: "2-digit",
+                              month: "2-digit",
+                              year: "numeric",
+                            },
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ),
+                },
+                {
+                  accessorKey: "redSocial",
+                  id: "redSocial",
+                  header: "Red Social",
+                  size: 90,
+                  enableColumnFilter: false,
+                  cell: ({ getValue }) => (
+                    <span
+                      className="truncate block max-w-[80px] text-[10px]"
+                      title={String(getValue() ?? "")}
+                    >
+                      {String(getValue() ?? "") || "—"}
+                    </span>
+                  ),
+                },
+                {
+                  accessorKey: "celular",
+                  id: "celular",
+                  header: "Celular",
+                  size: 110,
+                   cell: ({ getValue, row }) => {
+                    const phone = String(getValue() ?? "");
+                    const codigo = getConductorCodigo(row.original.celular);
+                    const isBlocked = blockedProspects.some((bp) => bp.id === row.original.id);
+                    return (
+                      <div className="relative">
+                        <span
+                          className="truncate block max-w-[90px]"
+                          title={phone}
+                        >
+                          {phone || "—"}
+                        </span>
+                        {phone && (
+                          <div
+                            className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-background/70 rounded cursor-pointer z-10"
+                            onClick={(e) => { e.stopPropagation(); setChatProspectoId(row.original.id); }}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#25D366" className="size-6">
+                              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                            </svg>
+                          </div>
+                        )}
+                        {isBlocked && (
+                          <span className="block text-[10px] text-muted-foreground italic">Solo lectura</span>
+                        )}
+                        {codigo && (
+                          <span className="block text-[10px] text-emerald-600 font-medium truncate max-w-[100px]">
+                            {codigo}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  },
+                },
+                {
+                  accessorKey: "nombreCompleto",
+                  id: "nombreCompleto",
+                  header: "Nombres y Apellidos",
+                  cell: ({ getValue, row }) => (
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`text-[10px] font-medium ${row.original.esDuplicado ? "text-red-600" : ""}`}
+                      >
+                        {String(getValue() ?? "")}
+                      </span>
+                      {row.original.esDuplicado && (
+                        <Badge
+                          variant="outline"
+                          className="border-red-200 bg-red-50 text-[10px] text-red-600"
+                        >
+                          Duplicado
+                        </Badge>
+                      )}
+                    </div>
+                  ),
+                },
+                {
+                   accessorKey: "edad",
+                   id: "edad",
+                   header: "Edad",
+                   size: 60,
+                   cell: ({ getValue }) =>
+                     getValue() != null ? <span className="text-[10px]">{String(getValue())}</span> : <span className="text-[10px]">—</span>,
+                 },
+                 {
+                   accessorFn: (r) =>
+                     getOperatorDisplayName(r.operador, operadores) ||
+                     r.operador ||
+                     "",
+                   id: "operador",
+                   header: "Operador",
+                   size: 110,
+                   enableColumnFilter: false,
+                   cell: ({ getValue }) => {
+                     const name = String(getValue() ?? "") || "—";
+                     return (
+                       <span
+                         className="truncate block max-w-[100px] text-[10px]"
+                         title={name}
+                       >
+                         {name}
+                       </span>
+                     );
+                   },
+                 },
+                {
+                  accessorFn: (r) => r._count?.llamadas ?? 0,
+                  id: "llamadas",
+                  header: "Llamadas",
+                  size: 70,
+                  enableColumnFilter: false,
+                  cell: ({ getValue }) => {
+                    const count = Number(getValue() ?? 0);
+                    return count > 0 ? (
+                      <span className="flex items-center gap-0.5 text-xs text-blue-600 dark:text-blue-400">
+                        <Phone className="h-3 w-3" />
+                        {count}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    );
+                  },
+                },
+                {
+                  accessorKey: "estado",
+                  id: "estado",
+                  header: "Estado",
+                  size: 90,
+                  enableColumnFilter: false,
+                   cell: ({ getValue }) => {
+                    const val = String(getValue() ?? "");
+                    return (
+                      <span
+                        className={`text-[10px] truncate block max-w-[80px] ${val ? estadoColors[val] || "" : ""}`}
+                      >
+                        {val || "—"}
+                      </span>
+                    );
+                  },
+                },
+                {
+                  accessorKey: "modalidad",
+                  id: "modalidad",
+                  header: "Modalidad",
+                  size: 100,
+                  cell: ({ getValue }) => (
+                    <span
+                      className="truncate block max-w-[90px] text-[10px]"
+                      title={String(getValue() ?? "")}
+                    >
+                      {String(getValue() ?? "") || "—"}
+                    </span>
+                  ),
+                },
+                {
+                  accessorKey: "placa",
+                  id: "placa",
+                  header: "Placa",
+                  size: 90,
+                  cell: ({ getValue }) => (
+                    <span
+                      className="truncate block max-w-[80px] text-[10px]"
+                      title={String(getValue() ?? "")}
+                    >
+                      {String(getValue() ?? "") || "—"}
+                    </span>
+                  ),
+                },
+                {
+                  accessorKey: "anioVehiculo",
+                  id: "anioVehiculo",
+                  header: "Año Veh.",
+                  size: 65,
+                  cell: ({ getValue }) =>
+                    getValue() != null ? <span className="text-[10px]">{String(getValue())}</span> : <span className="text-[10px]">—</span>,
+                },
+                {
+                  accessorKey: "distrito",
+                  id: "distrito",
+                  header: "Distrito",
+                  size: 100,
+                  cell: ({ getValue }) => (
+                    <span
+                      className="truncate block max-w-[90px] text-[10px]"
+                      title={String(getValue() ?? "")}
+                    >
+                      {String(getValue() ?? "") || "—"}
+                    </span>
+                  ),
+                },
+                {
+                  accessorKey: "fechaCita",
+                  id: "fechaCita",
+                  header: "F. Cita",
+                  size: 130,
+                  cell: ({ getValue, row }) => {
+                    const val = row.original.fechaCita;
+                    return val ? (
+                      <div>
+                        <div>{formatDateDMY(val)}</div>
+                        <div className="text-[10px] text-muted-foreground mt-0.5">
+                          {new Date(val).toLocaleTimeString("es-PE", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            timeZone: "America/Lima",
+                          })}
+                        </div>
+                      </div>
+                    ) : (
+                      "—"
+                    );
+                  },
+                },
+                {
+                  accessorKey: "asistencia",
+                  id: "asistencia",
+                  header: "Asistencia",
+                  size: 80,
+                  cell: ({ getValue }) => {
+                    const val = String(getValue() ?? "");
+                    return val ? (
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] ${val === "Asistió" || val === "ASISTIO" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}
+                      >
+                        {val}
+                      </Badge>
+                    ) : (
+                      <span className="text-[10px] text-muted-foreground">—</span>
+                    );
+                  },
+                },
+                {
+                  accessorKey: "fechaAfiliacion",
+                  id: "fechaAfiliacion",
+                  header: "F. Afiliacion",
+                  size: 110,
+                  cell: ({ getValue }) =>
+                    getValue() ? formatDateDMY(String(getValue())) : "—",
+                },
+                {
+                  accessorKey: "movil",
+                  id: "movil",
+                  header: "Movil",
+                  size: 100,
+                  cell: ({ getValue }) => (
+                    <span
+                      className="truncate block max-w-[90px]"
+                      title={String(getValue() ?? "")}
+                    >
+                      {String(getValue() ?? "") || "—"}
+                    </span>
+                  ),
+                },
+                {
+                  accessorKey: "observaciones",
+                  id: "observaciones",
+                  header: "Observaciones",
+                  size: 170,
+                   cell: ({ getValue }) =>
+                    <span className="text-[10px]">{getLatestObservacion(String(getValue() ?? ""))}</span>,
+                },
+               ]}
+              maxHeight="calc(100vh - 16rem)"
+              data={filteredProspectos}
+              getId={(r) => r.id}
+              filterComponents={{
+                fechaRegistro: (
+                  <Popover
+                    onOpenChange={(open) => {
+                      if (open) {
+                        setTempFechaRegistro(fechaRegistroRange);
+                        setTempMesImport(mesImportRange);
+                      } else {
+                        setFechaRegistroRange(tempFechaRegistro);
+                        setMesImportRange(tempMesImport);
+                      }
+                    }}
+                  >
+                    <PopoverTrigger asChild>
+                      <button className="w-full h-6 rounded border border-input bg-background px-1.5 text-[10px] outline-none text-left text-muted-foreground">
+                        Fechas
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-3" align="start">
+                      <div className="flex gap-4">
+                        <div>
+                          <p className="text-xs font-medium mb-1 text-foreground">
+                            F. Registro
+                          </p>
+                          <DateRangeCalendar
+                            value={tempFechaRegistro}
+                            onChange={setTempFechaRegistro}
+                          />
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium mb-1 text-foreground">
+                            F. Import
+                          </p>
+                          <DateRangeCalendar
+                            value={tempMesImport}
+                            onChange={setTempMesImport}
+                          />
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                ),
+                estado: (
+                  <select
+                    value={estadoFilter}
+                    onChange={(e) => setEstadoFilter(e.target.value)}
+                    className="w-full h-6 rounded border border-input bg-background px-1.5 text-[10px] outline-none text-muted-foreground"
+                  >
+                    <option value="all">Estado</option>
+                    <option value="Nuevo">Nuevo</option>
+                    <option value="Afiliado">Afiliado</option>
+                    <option value="Citado">Citado</option>
+                    <option value="Seguimiento">Seguimiento</option>
+                    <option value="Informacion">Información</option>
+                    <option value="Sin Requisitos">Sin Requisitos</option>
+                    <option value="No Responde">No Responde</option>
+                  </select>
+                ),
+                operador: (
+                  <select
+                    value={operadorFilter}
+                    onChange={(e) => setOperadorFilter(e.target.value)}
+                    className="w-full h-6 rounded border border-input bg-background px-1.5 text-[10px] outline-none text-muted-foreground"
+                  >
+                    <option value="all">Operador</option>
+                    {filterOperadores.map((op) => (
+                      <option key={op.id} value={op.name}>
+                        {op.name}
+                      </option>
+                    ))}
+                    <option value="__unassigned__">Sin asignar</option>
+                  </select>
+                ),
+                redSocial: (
+                  <select
+                    value={redSocialFilter}
+                    onChange={(e) => setRedSocialFilter(e.target.value)}
+                    className="w-full h-6 rounded border border-input bg-background px-1.5 text-[10px] outline-none text-muted-foreground"
+                  >
+                    <option value="all">Filtrar...</option>
+                    {redSocialOptions.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                ),
+                llamadas: (
+                  <select
+                    value={conLlamadasFilter}
+                    onChange={(e) => setConLlamadasFilter(e.target.value)}
+                    className="w-full h-6 rounded border border-input bg-background px-1.5 text-[10px] outline-none text-muted-foreground"
+                  >
+                    <option value="all">Llamadas</option>
+                    <option value="true">Con llamadas</option>
+                    <option value="false">Sin llamadas</option>
+                  </select>
+                ),
+              }}
+              readOnlyColumns={["select", "actions", "fechaRegistro"]}
+              editTypes={{
+                edad: "number",
+                anioVehiculo: "number",
+                operador: "select",
+                estado: "select",
+                asistencia: "select",
+                fechaCita: "datetime-local",
+                fechaAfiliacion: "date",
+              }}
+              editOptions={{
+                operador: operadorOptions,
+                estado: ESTADO_OPTIONS,
+                asistencia: ASISTENCIA_OPTIONS,
+              }}
+              onEditStart={(row, columnId) => {
+                if (columnId === "estado") return false;
+                if (columnId === "operador") return false;
+                return false;
+              }}
+              onRowSelectionChange={(ids) => setSelectedIds(new Set(ids))}
+              onCellEdit={async (row, columnId, newValue) => {
+                const body: Record<string, unknown> = {};
+                if (columnId === "edad" || columnId === "anioVehiculo") {
+                  const num = parseInt(newValue, 10);
+                  body[columnId] = isNaN(num) ? null : num;
+                } else if (columnId === "observaciones") {
+                  const fullObs = (row as any).observaciones || "";
+                  const entries = fullObs.split(/\n?---\n?/).filter(Boolean);
+                  const cleanValue = newValue
+                    .replace(/^\[.+?\]\s*/g, "")
+                    .trim();
+                  if (entries.length > 0) {
+                    const latest = entries[0];
+                    const datePrefix = latest.match(/^\[.+?\]\s*/)?.[0] || "";
+                    entries[0] = datePrefix
+                      ? `${datePrefix}${cleanValue}`
+                      : cleanValue;
+                    body[columnId] = entries.join("\n---\n");
+                  } else {
+                    body[columnId] = cleanValue;
+                  }
+                } else if (columnId === "estado" && newValue === "Citado") {
+                  const p = row as any;
+                  setCitadoProspectId(p.id);
+                  setCitadoDate(p.fechaCita ? p.fechaCita.split("T")[0] : "");
+                  setCitadoTime(
+                    p.fechaCita
+                      ? new Date(p.fechaCita)
+                          .toTimeString()
+                          .split(" ")[0]
+                          .substring(0, 5)
+                      : "",
+                  );
+                  setCitadoDialogOpen(true);
+                  return;
+                } else if (columnId === "operador") {
+                  const opName = newValue || "Sin operador";
+                  setProspectos((prev) =>
+                    prev.map((p) =>
+                      p.id === (row as any).id
+                        ? { ...p, operador: newValue || null }
+                        : p,
+                    ),
+                  );
+                  try {
+                    await api(`/flota-prospectos/${(row as any).id}/operador`, {
+                      method: "PATCH",
+                      body: JSON.stringify({ operador: newValue || null }),
+                    });
+                    toast.success(`Operador cambiado a ${opName}`);
+                  } catch {
+                    setProspectos((prev) => [...prev]);
+                    toast.error("Error al cambiar operador");
+                  }
+                  return;
+                } else {
+                  body[columnId] = newValue;
+                }
+                if (Object.keys(body).length === 0) return;
+                setProspectos((prev) =>
+                  prev.map((p) =>
+                    p.id === (row as any).id ? { ...p, ...body } : p,
+                  ),
+                );
+                try {
+                  await api(`/flota-prospectos/${(row as any).id}`, {
+                    method: "PATCH",
+                    body: JSON.stringify(body),
+                  });
+                } catch {
+                  setProspectos((prev) => [...prev]);
+                }
+              }}
+              onFilterChange={(columnId, value) => {
+                setColumnFilters((prev) => ({ ...prev, [columnId]: value }));
+                setPage(1);
+                if (
+                  columnId === "nombreCompleto" ||
+                  columnId === "celular" ||
+                  columnId === "distrito"
+                ) {
+                  setSearchTerm(value);
+                } else if (columnId === "estado") {
+                  setEstadoFilter(value || "all");
+                } else if (columnId === "redSocial") {
+                  setRedSocialFilter(value || "all");
+                } else if (columnId === "operador") {
+                  setOperadorFilter(value || "all");
+                }
+              }}
+              filterValues={columnFilters}
+            />
+          </div>
         </>
       )}
 
-      {!loading && (
+      {!initialLoading && (
         <div>
           {selectedIds.size > 0 && (
             <p className="text-xs text-muted-foreground mb-1 text-left italic">
@@ -1388,8 +1726,13 @@ export default function FlotaProspectos() {
             totalPages={Math.ceil(totalProspectos / pageSize)}
             totalItems={totalProspectos}
             pageSize={pageSize}
-            onPageChange={(p) => { setPage(p); }}
-            onPageSizeChange={(s) => { setPageSize(s); setPage(1); }}
+            onPageChange={(p) => {
+              setPage(p);
+            }}
+            onPageSizeChange={(s) => {
+              setPageSize(s);
+              setPage(1);
+            }}
             pageSizeOptions={[10, 25, 50, 100]}
           />
         </div>
@@ -1509,7 +1852,7 @@ export default function FlotaProspectos() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <label className="text-sm font-medium">Celular *</label>
+                <label className="text-sm font-muted-forer">Celular *</label>
                 <Input
                   value={newProspecto.celular}
                   onChange={(e) => {
@@ -1876,6 +2219,101 @@ export default function FlotaProspectos() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!editProspectoId} onOpenChange={(open) => { if (!open) setEditProspectoId(null); }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Editar Prospecto</DialogTitle>
+            <DialogDescription>Modifica los datos del prospecto</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">Nombre completo *</label>
+              <Input value={editData.nombreCompleto} onChange={(e) => setEditData((p) => ({ ...p, nombreCompleto: e.target.value }))} placeholder="Nombres y Apellidos" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Celular</label>
+                <Input value={editData.celular} onChange={(e) => setEditData((p) => ({ ...p, celular: e.target.value }))} placeholder="999999999" />
+              </div>
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Edad</label>
+                <Input type="number" value={editData.edad} onChange={(e) => setEditData((p) => ({ ...p, edad: e.target.value }))} placeholder="18" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Red Social</label>
+                <Input value={editData.redSocial} onChange={(e) => setEditData((p) => ({ ...p, redSocial: e.target.value }))} placeholder="Facebook, Instagram..." />
+              </div>
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Distrito</label>
+                <Input value={editData.distrito} onChange={(e) => setEditData((p) => ({ ...p, distrito: e.target.value }))} placeholder="Lima" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Modalidad</label>
+                <Input value={editData.modalidad} onChange={(e) => setEditData((p) => ({ ...p, modalidad: e.target.value }))} placeholder="Flota propia" />
+              </div>
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Placa</label>
+                <Input value={editData.placa} onChange={(e) => setEditData((p) => ({ ...p, placa: e.target.value }))} placeholder="ABC-123" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Año Vehículo</label>
+                <Input type="number" value={editData.anioVehiculo} onChange={(e) => setEditData((p) => ({ ...p, anioVehiculo: e.target.value }))} placeholder="2024" />
+              </div>
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Operador</label>
+                <Input value={editData.operador} onChange={(e) => setEditData((p) => ({ ...p, operador: e.target.value }))} placeholder="Nombre del operador" />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">Observaciones</label>
+              <textarea className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" value={editData.observaciones} onChange={(e) => setEditData((p) => ({ ...p, observaciones: e.target.value }))} placeholder="Notas adicionales..." />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditProspectoId(null)} disabled={editSaving}>Cancelar</Button>
+            <Button onClick={() => void handleEditSave()} disabled={editSaving || !editData.nombreCompleto.trim()}>
+              {editSaving && <Loader2 className="mr-2 size-4 animate-spin" />}
+              Guardar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {blockedProspects.length > 0 && (
+        <style>{blockedProspects.map((bp) => `
+tr[data-row-id="${bp.id}"] {
+  opacity: 0.55;
+  pointer-events: none;
+}
+tr[data-row-id="${bp.id}"] td:nth-child(4) {
+  pointer-events: auto;
+}
+tr[data-row-id="${bp.id}"] td:nth-child(4) * {
+  pointer-events: auto;
+}
+`).join('')}</style>
+      )}
+
+      <Sheet open={!!chatProspectoId} onOpenChange={(open) => { if (!open) setChatProspectoId(null); }}>
+        <SheetContent side="right" showCloseButton={false} overlayClassName="bg-black/0" className="w-full sm:max-w-none sm:w-[600px] p-0 flex flex-col">
+          <SheetHeader className="sr-only">
+            <SheetTitle>Chat</SheetTitle>
+          </SheetHeader>
+          {chatProspectoId && (
+            <ChatPanelStandalone
+              prospectoId={chatProspectoId}
+              onClose={() => setChatProspectoId(null)}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

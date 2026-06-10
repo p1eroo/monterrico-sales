@@ -18,6 +18,12 @@ export type WhatsappSocketPayload =
       contactId: string;
       id: string;
       waOutboundStatus: string;
+    }
+  | {
+      type: 'delete';
+      contactId: string;
+      messageId: string;
+      forEveryone?: boolean;
     };
 
 export type FlotaBulkProgressPayload = {

@@ -65,6 +65,8 @@ export async function flotaProspectosList(params: {
   mesImportHasta?: string;
   redSocial?: string;
   operador?: string;
+  filters?: Record<string, string>;
+  conLlamadas?: string;
 }): Promise<FlotaProspectosListResponse> {
   const qs = new URLSearchParams();
   if (params.page) qs.set('page', String(params.page));
@@ -80,6 +82,8 @@ export async function flotaProspectosList(params: {
   if (params.mesImportHasta) qs.set('mesImportHasta', params.mesImportHasta);
   if (params.redSocial) qs.set('redSocial', params.redSocial);
   if (params.operador) qs.set('operador', params.operador);
+  if (params.filters) qs.set('filters', JSON.stringify(params.filters));
+  if (params.conLlamadas) qs.set('conLlamadas', params.conLlamadas);
   return api<FlotaProspectosListResponse>(
     `/flota-prospectos?${qs.toString()}`,
   );

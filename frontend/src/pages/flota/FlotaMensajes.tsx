@@ -64,6 +64,7 @@ import {
   Lock,
   Link2,
   Calendar,
+  Trash2,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -132,6 +133,7 @@ import {
   uploadFlotaImage,
   uploadFlotaAudio,
   uploadFlotaDocument,
+  deleteFlotaWhatsappMessage,
   importExcelPreview,
   sendFlotaBulk,
   getFlotaBulkProgress,
@@ -1050,6 +1052,21 @@ function InboxView({ activeId: externalActiveId, onActiveChange, isConnected }: 
           if (dir === 'inbound') {
             markConversationAsRead(payload.contactId).catch(() => {});
           }
+        } else if (payload.type === 'delete') {
+          setMessagesCache((prev) => {
+            const existing = prev[payload.contactId] ?? [];
+            if (payload.forEveryone) {
+              return {
+                ...prev,
+                [payload.contactId]: existing.map((m) =>
+                  m.id === payload.messageId
+                    ? { ...m, body: 'Este mensaje fue eliminado', attachments: [], waOutboundStatus: null }
+                    : m
+                ),
+              };
+            }
+            return { ...prev, [payload.contactId]: existing.filter((m) => m.id !== payload.messageId) };
+          });
         } else if (payload.type === 'status') {
           setMessagesCache((prev) => {
             const existing = prev[payload.contactId] ?? [];
@@ -1882,6 +1899,38 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
     }
   }
 
+  async function handleDeleteMessage(messageId: string, forEveryone: boolean) {
+    const allMsgs = messagesCache[contactId] ?? [];
+    const msg = allMsgs.find((m) => m.id === messageId);
+    if (!msg || msg.direction !== 'outbound') return;
+    if (!forEveryone) {
+      try {
+        await deleteFlotaWhatsappMessage(messageId, false);
+        setMessagesCache((prev) => {
+          const updated = prev[contactId]?.filter((m) => m.id !== messageId) ?? [];
+          return { ...prev, [contactId]: updated };
+        });
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'No se pudo eliminar el mensaje');
+      }
+      return;
+    }
+    try {
+      await deleteFlotaWhatsappMessage(messageId, true);
+      setMessagesCache((prev) => {
+        const current = prev[contactId] ?? [];
+        const updated = current.map((m) =>
+          m.id === messageId
+            ? { ...m, body: 'Este mensaje fue eliminado', attachments: [], waOutboundStatus: null }
+            : m
+        );
+        return { ...prev, [contactId]: updated };
+      });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'No se pudo eliminar el mensaje');
+    }
+  }
+
   return (
     <div className="flex h-full min-h-0 min-w-0">
       <section className={cn("flex flex-col flex-1 min-w-0 overflow-hidden bg-card relative transition-all", mediaPanelOpen ? "hidden xl:flex" : "")}>
@@ -2013,7 +2062,26 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
                       <div className="h-px flex-1 border-t border-muted/40" />
                     </div>
                   ) : (
-                    <div className={cn('flex mb-2 w-full', item.mine ? 'justify-end' : 'justify-start')}>
+                    <div className={cn('flex mb-1 w-full group', item.mine ? 'justify-end' : 'justify-start')}>
+                      {item.mine && (
+                        <div className="flex items-center mr-1 opacity-0 group-hover:opacity-100 transition-opacity self-end">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className="rounded-full p-0.5 text-[#8696a0] dark:text-[#667781] hover:bg-[#e9edef] dark:hover:bg-[#2a3942]">
+                                <MoreVertical className="size-3.5" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="min-w-40">
+                              <DropdownMenuItem onClick={() => void handleDeleteMessage(item.msg.id, false)} className="text-xs gap-2 cursor-pointer">
+                                <Trash2 className="size-3.5" /> Eliminar para mí
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => void handleDeleteMessage(item.msg.id, true)} className="text-xs text-red-600 gap-2 cursor-pointer">
+                                <Trash2 className="size-3.5" /> Eliminar para todos
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      )}
                       <div
                         className={cn(
                           'max-w-[85%] min-w-0 rounded-2xl px-4 py-2.5 text-sm shadow-sm',
@@ -2030,14 +2098,37 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
                             setLightboxUrl={setLightboxUrl}
                           />
                         ))}
-                        {item.msg.body && (!item.msg.attachments?.length || !['[Imagen]', '[Documento]', '[Video]', '[Audio]'].includes(item.msg.body.trim())) && (
-                          <p className="whitespace-pre-wrap break-words">{item.msg.body}</p>
+                        {item.msg.body && (!item.msg.attachments?.length || !['[Imagen]', '[Documento]', '[Video]', '[Audio]', '[Sticker]'].includes(item.msg.body.trim())) && (
+                          item.msg.body === 'Este mensaje fue eliminado' ? (
+                            <p className="whitespace-pre-wrap break-words text-[10px] italic text-[#8696a0] dark:text-[#667781]">{item.msg.body}</p>
+                          ) : (
+                            <p className="whitespace-pre-wrap break-words font-emoji">{item.msg.body}</p>
+                          )
                         )}
                         <div className={cn('mt-1 flex items-center justify-end gap-1 text-[10px]', item.mine ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
                           <span>{new Date(item.msg.createdAt).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}</span>
                           {item.mine && <CheckCheck className={cn('h-3 w-3', item.msg.waOutboundStatus === 'read' ? 'text-sky-300' : '')} />}
                         </div>
                       </div>
+                      {!item.mine && (
+                        <div className="flex items-center ml-1 opacity-0 group-hover:opacity-100 transition-opacity self-end">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className="rounded-full p-0.5 text-[#8696a0] dark:text-[#667781] hover:bg-[#e9edef] dark:hover:bg-[#2a3942]">
+                                <MoreVertical className="size-3.5" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="min-w-40">
+                              <DropdownMenuItem onClick={() => void handleDeleteMessage(item.msg.id, false)} className="text-xs gap-2 cursor-pointer">
+                                <Trash2 className="size-3.5" /> Eliminar para mí
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => void handleDeleteMessage(item.msg.id, true)} className="text-xs text-red-600 gap-2 cursor-pointer">
+                                <Trash2 className="size-3.5" /> Eliminar para todos
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -2193,7 +2284,7 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
                   <Button variant="ghost" size="icon" className="shrink-0"><Smile className="h-5 w-5" /></Button>
                 </PopoverTrigger>
                 <PopoverContent side="top" align="start" className="w-auto p-0 border-0">
-                  <EmojiGrid onSelect={(emoji) => setDraft((prev) => prev + emoji)} />
+                  <EmojiGrid onSelect={(emoji) => setDraft((prev) => prev + emoji.replace(/\uFE0F/g, ''))} />
                 </PopoverContent>
               </Popover>
               <Textarea

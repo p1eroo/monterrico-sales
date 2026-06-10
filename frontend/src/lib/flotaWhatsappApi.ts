@@ -142,6 +142,10 @@ export async function sendFlotaWhatsappMessage(
   });
 }
 
+export async function deleteFlotaWhatsappMessage(messageId: string, forEveryone = true): Promise<void> {
+  return api(`/api/whatsapp/flota/messages/${messageId}?forEveryone=${forEveryone}`, { method: 'DELETE' });
+}
+
 export async function uploadFlotaImage(file: File): Promise<string> {
   const formData = new FormData();
   formData.append('file', file);

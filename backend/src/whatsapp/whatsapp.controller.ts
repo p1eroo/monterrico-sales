@@ -418,4 +418,15 @@ export class WhatsappController {
     if (!ok) throw new NotFoundException('Job no encontrado o ya finalizó');
     return { ok: true };
   }
+
+  @Delete('flota/messages/:id')
+  @RequirePermissions('flota_mensajes.editar')
+  async deleteFlotaMessage(
+    @Param('id') id: string,
+    @Req() req: AuthedReq,
+    @Query('forEveryone') forEveryone?: string,
+  ) {
+    await this.whatsapp.deleteFlotaMessage(id, req.user.userId, forEveryone !== 'false');
+    return { ok: true };
+  }
 }

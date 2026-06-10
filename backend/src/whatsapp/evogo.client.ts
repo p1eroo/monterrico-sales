@@ -509,6 +509,22 @@ export class EvogoClient {
     return { ok: true, status: res.status, raw: res.raw, waMessageId };
   }
 
+  async deleteMessage(params: {
+    instanceApiKey: string;
+    waMessageId: string;
+    chat: string;
+  }): Promise<EvogoSendTextResult> {
+    const res = await this.requestJsonWithManagerFallback('/message/delete', {
+      method: 'POST',
+      apiKey: params.instanceApiKey,
+      body: JSON.stringify({ messageId: params.waMessageId, chat: params.chat }),
+    });
+    if (!res.ok) {
+      this.logger.warn(`Evogo deleteMessage HTTP ${res.status}: ${JSON.stringify(res.raw)?.slice(0, 500)}`);
+    }
+    return { ok: res.ok, status: res.status, raw: res.raw };
+  }
+
   async downloadMedia(params: {
     instanceApiKey: string;
     message: Record<string, unknown>;

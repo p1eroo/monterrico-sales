@@ -235,6 +235,8 @@ export class FlotaProspectosService {
     mesImportHasta?: string;
     redSocial?: string;
     operador?: string;
+    filters?: string;
+    conLlamadas?: string;
   }, scope?: CrmDataScope) {
     const page = params.page ?? 1;
     const limit = params.limit ?? 25;
@@ -279,6 +281,12 @@ export class FlotaProspectosService {
 
     if (params.duplicados) {
       where.esDuplicado = true;
+    }
+
+    if (params.conLlamadas === 'true') {
+      where.llamadas = { some: {} };
+    } else if (params.conLlamadas === 'false') {
+      where.llamadas = { none: {} };
     }
 
     if (params.mes) {
@@ -339,6 +347,17 @@ export class FlotaProspectosService {
         { celular: { contains: s, mode: 'insensitive' } },
         { distrito: { contains: s, mode: 'insensitive' } },
       ];
+    }
+
+    if (params.filters) {
+      try {
+        const parsed = JSON.parse(params.filters) as Record<string, string>;
+        for (const [key, value] of Object.entries(parsed)) {
+          if (value && key !== 'filters') {
+            (where as any)[key] = { contains: value, mode: 'insensitive' };
+          }
+        }
+      } catch { /* ignore invalid JSON */ }
     }
 
     const [data, total] = await Promise.all([
@@ -1358,7 +1377,7 @@ export class FlotaProspectosService {
       senderWhere.createdByUserId = { not: null };
     }
     const senders = await this.prisma.crmWhatsappMessage.findMany({
-      where: senderWhere,
+      where: { ...senderWhere, createdBy: { ...senderWhere.createdBy, role: { slug: 'operador' } } },
       select: { createdBy: { select: { name: true } } },
       distinct: ['createdByUserId'],
     });

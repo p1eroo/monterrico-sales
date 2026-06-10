@@ -54,6 +54,12 @@ export type WhatsappSocketPayload =
       contactId: string;
       id: string;
       waOutboundStatus: string;
+    }
+  | {
+      type: 'delete';
+      contactId: string;
+      messageId: string;
+      forEveryone?: boolean;
     };
 
 export async function fetchWhatsappMessages(

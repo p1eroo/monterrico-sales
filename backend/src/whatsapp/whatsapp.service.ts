@@ -918,7 +918,7 @@ export class WhatsappService {
       const mediaType = fallbackMedia?.mediaType;
       const useProxy = mediaType === 'image' || mediaType === 'video' || mediaType === 'audio' || mediaType === 'document';
       const fallbackAttachments: WhatsappMessageAttachmentDto[] =
-        fallbackMedia && fallbackUrl
+        fallbackMedia
           ? [
               {
                 id: `payload:${row.id}`,
@@ -933,8 +933,8 @@ export class WhatsappService {
                   fallbackMedia.mimeType || 'application/octet-stream',
                 size: fallbackMedia.size ?? 0,
                 mediaType: fallbackMedia.mediaType,
-                url: fallbackUrl,
-                downloadUrl: fallbackUrl,
+                url: fallbackUrl || (useProxy ? proxyUrl : null),
+                downloadUrl: fallbackUrl || (useProxy ? proxyUrl : null),
                 proxyUrl: useProxy ? proxyUrl : null,
               },
             ]
@@ -2139,6 +2139,70 @@ export class WhatsappService {
       where: { id: prospectoId },
       data: { lastReadAt: new Date() },
     });
+  }
+
+  async deleteFlotaMessage(messageId: string, userId: string, forEveryone = true) {
+    const msg = await this.prisma.crmWhatsappMessage.findUnique({
+      where: { id: messageId },
+      select: {
+        id: true, flotaProspectoId: true, createdByUserId: true, direction: true,
+        waMessageId: true, toWaId: true, evoInstanceName: true,
+        whatsappInstance: { select: { instanceApiKey: true } },
+      },
+    });
+    if (!msg) throw new NotFoundException('Mensaje no encontrado');
+    if (msg.direction !== 'outbound') throw new BadRequestException('Solo se pueden eliminar mensajes enviados');
+    if (msg.createdByUserId && msg.createdByUserId !== userId) {
+      const perm = await this.prisma.authority.findFirst({
+        where: { permission: 'flota_mensajes.eliminar', role: { users: { some: { id: userId } } } },
+      });
+      if (!perm) throw new UnauthorizedException('No tienes permiso para eliminar este mensaje');
+    }
+
+    if (forEveryone) {
+      // Eliminar de WhatsApp/Evolution GO (fire-and-forget)
+      if (msg.waMessageId) {
+        const apiKey = msg.whatsappInstance?.instanceApiKey || this.defaultInstanceKey();
+        const chat = msg.toWaId?.includes('@') ? msg.toWaId : `${msg.toWaId}@s.whatsapp.net`;
+        this.evogo.deleteMessage({ instanceApiKey: apiKey, waMessageId: msg.waMessageId, chat })
+          .then((r) => {
+            if (!r.ok) this.logger.warn(`Evolution GO no pudo eliminar mensaje ${messageId} (wa: ${msg.waMessageId})`);
+          })
+          .catch((e) => this.logger.warn(`Error llamando a Evolution GO deleteMessage: ${String(e)}`));
+      }
+      // Reemplazar body por placeholder y limpiar adjuntos
+      await this.prisma.crmFile.deleteMany({
+        where: { relatedEntityType: 'whatsapp-message', relatedEntityId: messageId },
+      });
+      await this.prisma.crmWhatsappMessage.update({
+        where: { id: messageId },
+        data: { body: 'Este mensaje fue eliminado', waOutboundStatus: null, payloadJson: Prisma.JsonNull },
+      });
+      if (msg.flotaProspectoId) {
+        this.gateway.emitToContact(msg.flotaProspectoId, {
+          type: 'delete',
+          contactId: msg.flotaProspectoId,
+          messageId: messageId,
+          forEveryone: true,
+        } as any);
+      }
+      this.logger.log(`Mensaje ${messageId} eliminado para todos por usuario ${userId}`);
+    } else {
+      // Eliminar solo de la BD (para mí)
+      await this.prisma.crmFile.deleteMany({
+        where: { relatedEntityType: 'whatsapp-message', relatedEntityId: messageId },
+      });
+      await this.prisma.crmWhatsappMessage.delete({ where: { id: messageId } });
+      if (msg.flotaProspectoId) {
+        this.gateway.emitToContact(msg.flotaProspectoId, {
+          type: 'delete',
+          contactId: msg.flotaProspectoId,
+          messageId: messageId,
+          forEveryone: false,
+        } as any);
+      }
+      this.logger.log(`Mensaje ${messageId} eliminado para sí mismo por usuario ${userId}`);
+    }
   }
 
   async uploadFlotaAudio(buffer: Buffer, originalName: string, mimeType: string, _userId: string): Promise<string> {

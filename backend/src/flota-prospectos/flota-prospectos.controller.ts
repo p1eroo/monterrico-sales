@@ -58,6 +58,8 @@ export class FlotaProspectosController {
     @Query('mesImportHasta') mesImportHasta?: string,
     @Query('redSocial') redSocial?: string,
     @Query('operador') operador?: string,
+    @Query('filters') filters?: string,
+    @Query('conLlamadas') conLlamadas?: string,
   ) {
     const scope = await this.buildFlotaScope(
       req.user.userId,
@@ -77,6 +79,8 @@ export class FlotaProspectosController {
       mesImportHasta: mesImportHasta || undefined,
       redSocial: redSocial || undefined,
       operador: operador || undefined,
+      filters: filters || undefined,
+      conLlamadas: conLlamadas || undefined,
     }, scope);
   }
 

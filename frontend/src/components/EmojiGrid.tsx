@@ -1,33 +1,23 @@
-import { cn } from '@/lib/utils';
-
-const EMOJIS = [
-  '😀','😂','🤣','😊','😍','🥰','😘','😜','🤪','😎',
-  '🤩','🥳','😢','😭','😤','😡','🤬','😱','😨','😰',
-  '👍','👎','👏','🙌','🤝','💪','🙏','✌️','🤞','👌',
-  '❤️','🧡','💛','💚','💙','💜','🖤','🤍','💔','💕',
-  '🔥','⭐','✨','🎉','🎊','🏆','💰','📢','✅','❌',
-  '🚕','🚗','📍','📱','💻','⏰','📅','📋','🛑','⚠️',
-  '🍗','☕','🎂','🍕','🌮','🥤','🍺',
-];
+import EmojiPicker, { type EmojiClickData, type Theme } from 'emoji-picker-react';
+import { useTheme } from 'next-themes';
 
 interface EmojiGridProps {
   onSelect: (emoji: string) => void;
-  className?: string;
 }
 
-export function EmojiGrid({ onSelect, className }: EmojiGridProps) {
+export function EmojiGrid({ onSelect }: EmojiGridProps) {
+  const { resolvedTheme } = useTheme();
+
   return (
-    <div className={cn('grid grid-cols-10 gap-1 p-2', className)}>
-      {EMOJIS.map((emoji) => (
-        <button
-          key={emoji}
-          type="button"
-          onClick={() => onSelect(emoji)}
-          className="flex h-8 w-8 items-center justify-center rounded text-lg hover:bg-muted transition-colors"
-        >
-          {emoji}
-        </button>
-      ))}
+    <div className="overflow-hidden" style={{ width: 300, height: 380 }}>
+      <EmojiPicker
+        onEmojiClick={(emojiData: EmojiClickData) => onSelect(emojiData.emoji)}
+        theme={(resolvedTheme === 'dark' ? 'dark' : 'light') as Theme}
+        skinTonesDisabled
+        searchDisabled={false}
+        width={300}
+        height={380}
+      />
     </div>
   );
 }
