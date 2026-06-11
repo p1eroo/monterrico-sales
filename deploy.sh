@@ -4,7 +4,8 @@ set -o pipefail
 
 # ============================================================
 #  Monterrico Sales - Deploy Script
-#  Actualiza codigo, dependencias, compila y reinicia PM2
+#  Frontend → /var/www/crm-client/
+#  Backend  → PM2 monterrico-api
 # ============================================================
 
 BOLD='\033[1m'
@@ -26,7 +27,6 @@ header() {
 
 ok()   { echo -e "  ${GREEN}✔${NC} $1"; }
 warn() { echo -e "  ${YELLOW}⚠${NC} $1"; }
-fail() { echo -e "  ${RED}✖${NC} $1"; }
 info() { echo -e "  ${GRAY}→${NC} $1"; }
 
 # ============================================================
@@ -47,28 +47,21 @@ fi
 ok "PM2 disponible"
 
 # ============================================================
-header "Actualizando codigo"
+header "Frontend - dependencias y compilacion"
 
-if command -v git &>/dev/null && [ -d ".git" ]; then
-  BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
-  info "Rama: $BRANCH"
+cd "$SCRIPT_DIR/frontend"
 
-  git fetch origin 2>/dev/null || true
+info "Instalando dependencias..."
+npm install 2>&1 | tail -1
+ok "Frontend dependencias instaladas"
 
-  LOCAL=$(git rev-parse HEAD 2>/dev/null)
-  REMOTE=$(git rev-parse "origin/$BRANCH" 2>/dev/null || echo "")
+info "Compilando..."
+npm run build 2>&1 | tail -5
+ok "Frontend compilado"
 
-  if [ -n "$REMOTE" ] && [ "$LOCAL" != "$REMOTE" ]; then
-    git stash --include-untracked 2>/dev/null || true
-    git pull origin "$BRANCH"
-    git stash pop 2>/dev/null || true
-    ok "Codigo actualizado"
-  else
-    ok "Codigo ya esta al dia"
-  fi
-else
-  warn "No es un repositorio git, saltando pull"
-fi
+info "Copiando a /var/www/crm-client/..."
+cp -r dist/* /var/www/crm-client/
+ok "Frontend desplegado en /var/www/crm-client/"
 
 # ============================================================
 header "Backend - dependencias y compilacion"
@@ -77,79 +70,34 @@ cd "$SCRIPT_DIR/backend"
 
 info "Instalando dependencias..."
 npm install 2>&1 | tail -1
-ok "Dependencias instaladas"
+ok "Backend dependencias instaladas"
 
-info "Generando Prisma client..."
-npx prisma generate 2>&1 | tail -3
-ok "Prisma client generado"
-
-info "Compilando TypeScript (aumentando memoria)..."
+info "Compilando con memoria extendida..."
 NODE_OPTIONS="--max-old-space-size=4096" npm run build 2>&1 | tail -5
 ok "Backend compilado"
 
 # ============================================================
-header "Frontend - dependencias y compilacion"
+header "Reiniciando servicio"
 
-cd "$SCRIPT_DIR/frontend"
-
-info "Instalando dependencias..."
-npm install 2>&1 | tail -1
-ok "Dependencias instaladas"
-
-info "Compilando (tsc + vite)..."
-NODE_OPTIONS="--max-old-space-size=4096" npm run build 2>&1 | tail -5
-ok "Frontend compilado"
+pm2 restart monterrico-api
+ok "monterrico-api reiniciado"
 
 # ============================================================
-header "Desplegando frontend"
+header "Verificando"
 
-rm -rf "$SCRIPT_DIR/backend/public"
-cp -r "$SCRIPT_DIR/frontend/dist" "$SCRIPT_DIR/backend/public"
-ok "Frontend copiado a backend/public/"
-
-# ============================================================
-header "Reiniciando servicio PM2"
-
-if pm2 describe monterrico-api &>/dev/null; then
-  pm2 restart monterrico-api
-  ok "monterrico-api reiniciado"
-else
-  info "Proceso monterrico-api no encontrado en PM2, iniciando..."
-  cd "$SCRIPT_DIR/backend"
-  pm2 start dist/main.js \
-    --name monterrico-api \
-    --cwd "$SCRIPT_DIR/backend" \
-    --max-memory-restart 500M \
-    --time \
-    2>&1 | tail -5
-  pm2 save 2>/dev/null
-  ok "monterrico-api iniciado"
-fi
-
-# ============================================================
-header "Verificando servicio"
-
-sleep 3
+sleep 2
 
 PORT=$(grep -oP '^PORT=\K\d+' "$SCRIPT_DIR/backend/.env" 2>/dev/null || echo "3000")
 
 if curl -sf "http://127.0.0.1:${PORT}/" >/dev/null 2>&1; then
   ok "Backend respondiendo en puerto $PORT"
 else
-  warn "Backend no responde aun, puede tardar unos segundos"
-  info "Verifica con: curl http://127.0.0.1:${PORT}/"
+  warn "Backend no responde aun"
   info "Logs: pm2 logs monterrico-api"
 fi
 
 # ============================================================
-header "Despliegue completado"
-
+header "Listo"
 echo ""
-echo -e "  ${GREEN}${BOLD}Monterrico Sales actualizado exitosamente${NC}"
+echo -e "  ${GREEN}${BOLD}Monterrico Sales actualizado${NC}"
 echo ""
-echo -e "  ${BOLD}Comandos utiles:${NC}"
-echo -e "  ${GRAY}├${NC} pm2 logs monterrico-api     ${GRAY}# Ver logs${NC}"
-echo -e "  ${GRAY}├${NC} pm2 restart monterrico-api  ${GRAY}# Reiniciar${NC}"
-echo -e "  ${GRAY}└${NC} pm2 status                  ${GRAY}# Estado${NC}"
-echo ""
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
