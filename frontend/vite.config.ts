@@ -1,5 +1,5 @@
 import { execSync } from 'node:child_process'
-import { writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineConfig, type Plugin } from 'vite'
@@ -27,7 +27,9 @@ function versionManifestPlugin(buildId: string): Plugin {
       outDir = config.build.outDir
     },
     closeBundle() {
-      const file = path.join(outDir, 'version.json')
+      const dir = path.resolve(outDir)
+      if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
+      const file = path.join(dir, 'version.json')
       writeFileSync(
         file,
         `${JSON.stringify({ buildId, builtAt: new Date().toISOString() })}\n`,

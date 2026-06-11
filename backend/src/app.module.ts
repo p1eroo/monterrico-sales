@@ -27,6 +27,7 @@ import { AuditDetailModule } from './audit-detail/audit-detail.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { WhatsappModule } from './whatsapp/whatsapp.module';
 import { FlotaProspectosModule } from './flota-prospectos/flota-prospectos.module';
+import { ApolloModule } from './apollo/apollo.module';
 
 @Module({
   imports: [
@@ -67,6 +68,7 @@ import { FlotaProspectosModule } from './flota-prospectos/flota-prospectos.modul
     NotificationsModule,
     WhatsappModule,
     FlotaProspectosModule,
+    ApolloModule,
   ],
   controllers: [AppController],
   providers: [
