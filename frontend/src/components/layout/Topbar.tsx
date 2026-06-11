@@ -1,7 +1,5 @@
-import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { User, Settings, LogOut, Car, LayoutDashboard, Search } from 'lucide-react';
-import ApolloSearchModal from '@/components/comercial/ApolloSearchModal';
+import { User, Settings, LogOut, Car, LayoutDashboard } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -60,7 +58,6 @@ export function Topbar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { currentUser, logout, area, setArea } = useAppStore();
-  const [apolloOpen, setApolloOpen] = useState(false);
   const isAdmin = currentUser.role === 'Administrador' || currentUser.role === 'admin';
 
   const currentRoute = Object.keys(routeLabels).find((route) =>
@@ -80,26 +77,17 @@ export function Topbar() {
       <SidebarTrigger className="-ml-1 text-text-secondary hover:bg-surface-hover hover:text-foreground md:hidden" />
       <Separator orientation="vertical" className="h-5 bg-border/80 md:hidden" />
 
-      {area === 'comercial' ? (
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setApolloOpen(true)} className="gap-1.5 shrink-0">
-            <Search className="size-4" />
-            Buscar con Apollo
-          </Button>
-        </div>
-      ) : (
-        <Breadcrumb className="hidden min-w-0 flex-1 text-base sm:flex">
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbPage className="text-text-secondary">Taxi Monterrico</BreadcrumbPage>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage className="text-foreground">{pageTitle}</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-      )}
+      <Breadcrumb className="hidden min-w-0 flex-1 text-base sm:flex">
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbPage className="text-text-secondary">Taxi Monterrico</BreadcrumbPage>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage className="text-foreground">{pageTitle}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
 
       <div className="ml-auto flex items-center gap-2">
         {area === 'comercial' && (
@@ -156,7 +144,6 @@ export function Topbar() {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <ApolloSearchModal open={apolloOpen} onOpenChange={setApolloOpen} />
     </header>
   );
 }

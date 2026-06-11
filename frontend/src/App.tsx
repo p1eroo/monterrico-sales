@@ -36,6 +36,7 @@ const Settings = lazy(() => import('@/pages/comercial/Settings'));
 const Files = lazy(() => import('@/pages/comercial/Files'));
 const AgentesIa = lazy(() => import('@/pages/comercial/AgentesIa'));
 const AgentesIaWorkflow = lazy(() => import('@/pages/comercial/AgentesIaWorkflow'));
+const ApolloPage = lazy(() => import('@/pages/comercial/ApolloPage'));
 const FlotaDashboard = lazy(() => import('@/pages/flota/FlotaDashboard'));
 const FlotaProspectos = lazy(() => import('@/pages/flota/FlotaProspectos'));
 const FlotaProspectoDetail = lazy(() => import('@/pages/flota/FlotaProspectoDetail'));
@@ -145,6 +146,7 @@ function MainRoutes() {
         <Route path="/settings" element={<Settings />} />
         <Route path="/archivos" element={<Files />} />
         <Route path="/agentes-ia" element={<AgentesIa />} />
+        <Route path="/integraciones/apollo" element={<ApolloPage />} />
         <Route path="/flota" element={<Navigate to="/flota/dashboard" replace />} />
         <Route path="/flota/dashboard" element={<FlotaDashboard />} />
         <Route path="/flota/prospectos" element={<FlotaProspectos />} />

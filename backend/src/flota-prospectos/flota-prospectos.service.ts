@@ -1284,7 +1284,7 @@ export class FlotaProspectosService {
       }
     }
 
-    const [total, duplicados, estados, redes, operadores, nuevosEsteMes, nuevosMesPasado] = await Promise.all([
+    const [total, duplicados, estados, redes, operadores, modalidades, nuevosEsteMes, nuevosMesPasado] = await Promise.all([
       this.prisma.flotaProspecto.count({ where: baseWhere as any }),
       this.prisma.flotaProspecto.count({ where: { esDuplicado: true, ...baseWhere } as any }),
       this.prisma.$queryRawUnsafe<Array<{ estado: string; count: bigint }>>(
@@ -1299,6 +1299,11 @@ export class FlotaProspectosService {
         where: { operador: { not: null } },
         select: { operador: true },
         distinct: ['operador'],
+      }),
+      this.prisma.flotaProspecto.findMany({
+        where: { modalidad: { not: null } },
+        select: { modalidad: true },
+        distinct: ['modalidad'],
       }),
       this.prisma.flotaProspecto.count({
         where: {
@@ -1326,6 +1331,7 @@ export class FlotaProspectosService {
 
     const redesSociales = redes.map((r) => r.redSocial).filter(Boolean).sort();
     const operadoresList = operadores.map((r) => r.operador).filter(Boolean).sort();
+    const modalidadList = modalidades.map((r) => r.modalidad).filter(Boolean).sort();
 
     return {
       total,
@@ -1333,6 +1339,7 @@ export class FlotaProspectosService {
       estadoCounts,
       redesSociales,
       operadores: operadoresList,
+      modalidades: modalidadList,
       nuevosEsteMes,
       nuevosMesPasado,
     };

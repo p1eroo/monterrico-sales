@@ -124,10 +124,11 @@ export default function MainLayout() {
 
   return (
     <div className="h-svh overflow-hidden">
+    <style>{`[data-slot="sidebar-wrapper"][data-collapsible="icon"] { --sidebar-width: 11rem !important; }`}</style>
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset
-        className="min-w-0 max-w-full md:z-20 md:min-h-0 md:h-[calc(100svh-1rem)]"
+        className="min-w-0 max-w-full md:z-20 md:min-h-0 md:h-[calc(100svh-1rem)] md:!ml-0"
         style={{
           backgroundImage: `url(${isDark ? bgOscuro : bgClaro})`,
           backgroundSize: 'cover',
@@ -141,7 +142,7 @@ export default function MainLayout() {
           <Topbar />
           <div
             className={cn(
-              'min-h-0 min-w-0 max-w-full flex-1 flex-1 overflow-y-auto overflow-x-hidden px-4 md:px-6',
+              'min-h-0 min-w-0 max-w-full flex-1 flex-1 overflow-y-auto overflow-x-hidden px-4',
               compactMainTop
                 ? 'pt-0 pb-4 md:pt-0.5 md:pb-5'
                 : 'pt-1 pb-5 md:pt-2 md:pb-6',

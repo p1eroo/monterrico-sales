@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -22,6 +23,9 @@ import {
   UserCheck,
   ArrowRightLeft,
   MessageCircle,
+  Search,
+  Puzzle,
+  ChevronDown,
 } from 'lucide-react';
 import type { PermissionKey } from '@/types';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -35,9 +39,17 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
   SidebarSeparator,
+  useSidebar,
 } from '@/components/ui/sidebar';
+
 import { useAppStore } from '@/store';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 import logoMark from '@/assets/logo.png';
 import tmWordmark from '@/assets/TM.png';
 
@@ -47,6 +59,7 @@ type NavDef = {
   icon: typeof LayoutDashboard;
   permission?: PermissionKey;
   anyOf?: readonly PermissionKey[];
+  children?: { to: string; label: string; icon: typeof LayoutDashboard }[];
 };
 
 const navItems: NavDef[] = [
@@ -62,7 +75,15 @@ const navItems: NavDef[] = [
   { to: '/clients', label: 'Clientes', icon: Building2, permission: 'clientes.ver' },
   { to: '/reports', label: 'Reportes', icon: BarChart3, permission: 'reportes.ver' },
   { to: '/archivos', label: 'Archivos', icon: FileArchive, permission: 'archivos.ver' },
-  { to: '/agentes-ia', label: 'Agentes IA', icon: Bot },
+  {
+    to: '/integraciones',
+    label: 'Integraciones',
+    icon: Puzzle,
+    children: [
+      { to: '/integraciones/apollo', label: 'Apollo', icon: Search },
+      { to: '/agentes-ia', label: 'Agentes IA', icon: Bot },
+    ],
+  },
   { to: '/team', label: 'Equipo', icon: Users, permission: 'equipo.ver' },
   { to: '/settings', label: 'Configuración', icon: Settings, permission: 'configuracion.ver' },
 ];
@@ -111,6 +132,10 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { logout, area, currentUser } = useAppStore();
+  const { state: sidebarState } = useSidebar();
+  const [openPopover, setOpenPopover] = useState<string | null>(null);
+  const isCollapsed = sidebarState === 'collapsed';
+
   const { hasPermission } = usePermissions();
   const allowedAreas = currentUser.allowedAreas || [];
   const effectiveArea = allowedAreas.length === 1 ? allowedAreas[0] : area;
@@ -156,7 +181,82 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {visibleNav.map((item) => {
-                const isActive = location.pathname.startsWith(item.to);
+                const isActive = !item.children && location.pathname.startsWith(item.to);
+                const hasActiveChild = item.children?.some((c) => location.pathname.startsWith(c.to));
+
+                if (item.children) {
+                  return isCollapsed ? (
+                    <SidebarMenuItem key={item.to}>
+                      <div
+                        onMouseEnter={() => setOpenPopover(item.to)}
+                        onMouseLeave={() => setOpenPopover(null)}
+                      >
+                        <Popover open={openPopover === item.to} onOpenChange={(open) => setOpenPopover(open ? item.to : null)}>
+                          <PopoverTrigger asChild>
+                            <SidebarMenuButton className={cn('outline-none focus-visible:outline-none focus-visible:ring-0', hasActiveChild && 'text-sidebar-accent-foreground')}>
+                              <item.icon />
+                              <span>{item.label}</span>
+                            </SidebarMenuButton>
+                          </PopoverTrigger>
+                          <PopoverContent
+                            side="right"
+                            align="start"
+                            sideOffset={12}
+                            className="w-auto p-1 min-w-40"
+                            onMouseEnter={() => setOpenPopover(item.to)}
+                            onMouseLeave={() => setOpenPopover(null)}
+                          >
+                          {item.children.map((child) => {
+                            const isChildActive = location.pathname.startsWith(child.to);
+                            return (
+                              <NavLink
+                                key={child.to}
+                                to={child.to}
+                                className={cn(
+                                  'flex items-center gap-2 rounded-sm px-3 py-1.5 text-sm hover:bg-muted transition-colors',
+                                  isChildActive && 'font-medium text-primary',
+                                )}
+                              >
+                                <child.icon className="size-4" />
+                                {child.label}
+                              </NavLink>
+                            );
+                          })}
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    </SidebarMenuItem>
+                  ) : (
+                    <Collapsible key={item.to} defaultOpen={hasActiveChild} className="group/collapsible">
+                      <SidebarMenuItem>
+                        <CollapsibleTrigger asChild>
+                          <SidebarMenuButton tooltip={item.label} className={cn(hasActiveChild && 'text-sidebar-accent-foreground')}>
+                            <item.icon />
+                            <span>{item.label}</span>
+                            <ChevronDown className="ml-auto size-3.5 shrink-0 transition-transform group-data-[state=open]/collapsible:rotate-0 -rotate-90" />
+                          </SidebarMenuButton>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <SidebarMenuSub>
+                            {item.children.map((child) => {
+                              const isChildActive = location.pathname.startsWith(child.to);
+                              return (
+                                <SidebarMenuSubItem key={child.to}>
+                                  <SidebarMenuSubButton asChild isActive={isChildActive}>
+                                    <NavLink to={child.to}>
+                                      <child.icon />
+                                      <span>{child.label}</span>
+                                    </NavLink>
+                                  </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
+                              );
+                            })}
+                          </SidebarMenuSub>
+                        </CollapsibleContent>
+                      </SidebarMenuItem>
+                    </Collapsible>
+                  );
+                }
 
                 return (
                   <SidebarMenuItem key={item.to}>

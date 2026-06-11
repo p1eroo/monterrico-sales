@@ -103,6 +103,11 @@ const ASISTENCIA_OPTIONS = [
   { label: "No Asistió", value: "No Asistió" },
 ];
 
+const MODALIDAD_OPTIONS = [
+  { label: "ATU", value: "ATU" },
+  { label: "PARTICULAR", value: "PARTICULAR" },
+];
+
 const estadoColors: Record<string, string> = {
   Nuevo: "text-gray-700 dark:text-gray-300",
   Afiliado: "text-purple-700 dark:text-purple-300",
@@ -243,6 +248,7 @@ export default function FlotaProspectos() {
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [blockedProspects, setBlockedProspects] = useState<FlotaProspectoRow[]>([]);
+  const [modalidadFilter, setModalidadFilter] = useState("all");
   const [redSocialFilter, setRedSocialFilter] = useState("all");
   const [operadorFilter, setOperadorFilter] = useState("all");
   const [page, setPage] = useState(1);
@@ -274,6 +280,10 @@ export default function FlotaProspectos() {
   const redSocialOptions = useMemo(() => {
     return (counts?.redesSociales ?? []).filter(Boolean).sort();
   }, [counts?.redesSociales]);
+
+  const modalidadOptions = useMemo(() => {
+    return MODALIDAD_OPTIONS.map((o) => o.value);
+  }, []);
 
   const loadSheetNames = useCallback(async (spreadsheetId?: string) => {
     try {
@@ -428,7 +438,9 @@ export default function FlotaProspectos() {
                     return aliases.join(",");
                   })(),
           filters:
-            Object.keys(columnFilters).length > 0 ? columnFilters : undefined,
+            Object.keys(columnFilters).length > 0 || modalidadFilter !== "all"
+              ? { ...columnFilters, ...(modalidadFilter !== "all" ? { modalidad: modalidadFilter } : {}) }
+              : undefined,
           conLlamadas:
             conLlamadasFilter === "all" ? undefined : conLlamadasFilter,
         });
@@ -453,6 +465,7 @@ export default function FlotaProspectos() {
       mesImportRange,
       redSocialFilter,
       operadorFilter,
+      modalidadFilter,
       conLlamadasFilter,
       columnFilters,
     ],
@@ -1372,11 +1385,12 @@ export default function FlotaProspectos() {
                     );
                   },
                 },
-                {
-                  accessorKey: "modalidad",
-                  id: "modalidad",
-                  header: "Modalidad",
-                  size: 100,
+                 {
+                   accessorKey: "modalidad",
+                   id: "modalidad",
+                   header: "Modalidad",
+                   size: 100,
+                   enableColumnFilter: false,
                   cell: ({ getValue }) => (
                     <span
                       className="truncate block max-w-[90px] text-[10px]"
@@ -1585,6 +1599,20 @@ export default function FlotaProspectos() {
                     ))}
                   </select>
                 ),
+                modalidad: (
+                  <select
+                    value={modalidadFilter}
+                    onChange={(e) => setModalidadFilter(e.target.value)}
+                    className="w-full h-6 rounded border border-input bg-background px-1.5 text-[10px] outline-none text-muted-foreground"
+                  >
+                    <option value="all">Modalidad</option>
+                    {modalidadOptions.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                ),
                 llamadas: (
                   <select
                     value={conLlamadasFilter}
@@ -1604,6 +1632,7 @@ export default function FlotaProspectos() {
                 operador: "select",
                 estado: "select",
                 asistencia: "select",
+                modalidad: "select",
                 fechaCita: "datetime-local",
                 fechaAfiliacion: "date",
               }}
@@ -1611,12 +1640,14 @@ export default function FlotaProspectos() {
                 operador: operadorOptions,
                 estado: ESTADO_OPTIONS,
                 asistencia: ASISTENCIA_OPTIONS,
+                modalidad: MODALIDAD_OPTIONS,
               }}
-              onEditStart={(row, columnId) => {
-                if (columnId === "estado") return false;
-                if (columnId === "operador") return false;
-                return false;
-              }}
+               onEditStart={(row, columnId) => {
+                 if (columnId === "estado") return false;
+                 if (columnId === "operador") return false;
+                 if (columnId === "modalidad") return;
+                 return false;
+               }}
               onRowSelectionChange={(ids) => setSelectedIds(new Set(ids))}
               onCellEdit={async (row, columnId, newValue) => {
                 const body: Record<string, unknown> = {};

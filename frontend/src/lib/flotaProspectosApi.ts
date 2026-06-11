@@ -38,6 +38,7 @@ export interface FlotaProspectosCounts {
   estadoCounts: Record<string, number>;
   redesSociales: string[];
   operadores: string[];
+  modalidades: string[];
   nuevosEsteMes: number;
   nuevosMesPasado: number;
 }
