@@ -83,8 +83,8 @@ info "Generando Prisma client..."
 npx prisma generate 2>&1 | tail -3
 ok "Prisma client generado"
 
-info "Compilando TypeScript..."
-npm run build 2>&1 | tail -3
+info "Compilando TypeScript (aumentando memoria)..."
+NODE_OPTIONS="--max-old-space-size=4096" npm run build 2>&1 | tail -5
 ok "Backend compilado"
 
 # ============================================================
@@ -97,7 +97,7 @@ npm install 2>&1 | tail -1
 ok "Dependencias instaladas"
 
 info "Compilando (tsc + vite)..."
-npm run build 2>&1 | tail -5
+NODE_OPTIONS="--max-old-space-size=4096" npm run build 2>&1 | tail -5
 ok "Frontend compilado"
 
 # ============================================================
