@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { io } from 'socket.io-client';
 import { MessageCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { API_BASE } from '@/lib/api';
 import { fetchConversations, type FlotaConversation } from '@/lib/flotaWhatsappApi';
 
 export default function FlotaNotificationBell() {
@@ -23,6 +25,23 @@ export default function FlotaNotificationBell() {
     }
   }, []);
 
+  // Socket en tiempo real
+  useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+    if (!token) return;
+    const socket = io(`${API_BASE}/whatsapp`, {
+      auth: { token },
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 2000,
+    });
+    socket.on('connect', () => void refresh());
+    socket.on('whatsapp', () => void refresh());
+    return () => { socket.disconnect(); };
+  }, [refresh]);
+
+  // Polling + visibilidad + BroadcastChannel
   useEffect(() => {
     void refresh();
     const interval = setInterval(refresh, 30000);

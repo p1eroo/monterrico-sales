@@ -158,7 +158,7 @@ export function DataTable<TData>({
         >
           <thead>
             {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id} className="bg-muted sticky top-0 z-10">
+              <tr key={headerGroup.id} className="bg-[#e2e6eb] dark:bg-[#2a2f33] sticky top-0 z-10">
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
@@ -199,7 +199,7 @@ export function DataTable<TData>({
                 ))}
               </tr>
             ))}
-            <tr className="bg-background sticky top-8 z-10">
+            <tr className="bg-[#e2e6eb] dark:bg-[#2a2f33] sticky top-8 z-10">
               {table.getHeaderGroups().map((headerGroup) =>
                 headerGroup.headers.map((header) => (
                   <th
