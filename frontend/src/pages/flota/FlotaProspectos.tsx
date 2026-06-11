@@ -2062,7 +2062,7 @@ export default function FlotaProspectos() {
                   ).toISOString();
                   await api(`/flota-prospectos/${citadoProspectId}`, {
                     method: "PATCH",
-                    body: JSON.stringify({ fechaCita: fechaHora }),
+                    body: JSON.stringify({ estado: "Citado", fechaCita: fechaHora }),
                   });
                   setCitadoDialogOpen(false);
                   await Promise.all([loadProspectos(), loadCounts()]);
