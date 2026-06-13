@@ -72,6 +72,10 @@ info "Instalando dependencias..."
 npm install 2>&1 | tail -1
 ok "Backend dependencias instaladas"
 
+info "Generando cliente Prisma..."
+npx prisma generate 2>&1 | tail -3
+ok "Cliente Prisma generado"
+
 info "Compilando con memoria extendida..."
 NODE_OPTIONS="--max-old-space-size=4096" npm run build 2>&1 | tail -5
 ok "Backend compilado"
