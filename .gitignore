@@ -28,3 +28,6 @@ dist-ssr
 *.sln
 *.sw?
 deploy.sh
+
+# Prisma generated client
+backend/src/generated/prisma/
