@@ -49,6 +49,7 @@ export function ImportJobsPanel() {
       }
       if (job.status === 'failed') {
         notified.current.add(job.id);
+        console.warn(`Import failed for ${entityLabel(job.entity)}:`, job.errorMessage);
         toast.error(`Falló la importación de ${entityLabel(job.entity)}`, {
           description: job.errorMessage,
         });

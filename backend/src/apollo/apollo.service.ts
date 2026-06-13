@@ -14,6 +14,44 @@ export class ApolloService {
     return key;
   }
 
+  async searchPeople(params: {
+    query?: string;
+    industry?: string;
+    location?: string;
+    page?: number;
+    perPage?: number;
+  }) {
+    const apiKey = this.getApiKey();
+    const body: Record<string, unknown> = {
+      page: params.page || 1,
+      per_page: params.perPage || 25,
+    };
+    if (params.query?.trim()) body.q_keywords = params.query.trim();
+    if (params.industry?.trim()) body.industry = params.industry.trim();
+    if (params.location?.trim()) body.q_organization_location = params.location.trim();
+
+    this.logger.log(`Apollo search: query="${params.query}" page=${body.page}`);
+
+    const res = await fetch(`${this.baseUrl}/mixed_people/search`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Api-Key': apiKey },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      this.logger.error(`Apollo error ${res.status}: ${text.slice(0, 500)}`);
+      throw new ServiceUnavailableException(`Apollo.io respondió ${res.status}`);
+    }
+
+    const data = await res.json();
+    return {
+      results: data.people || [],
+      total: data.pagination?.totalEntries ?? 0,
+      credits: data.pagination?.totalCredits ?? 0,
+    };
+  }
+
   async matchPeople(params: {
     emails: string[];
   }) {

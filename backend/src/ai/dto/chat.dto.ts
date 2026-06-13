@@ -5,6 +5,12 @@ export type ChatContextDto = {
   /** contact | company | opportunity | undefined */
   selectedEntityType?: string;
   selectedEntityId?: string;
+  crmStats?: {
+    totalContacts?: number;
+    totalCompanies?: number;
+    totalOpportunities?: number;
+    totalUsers?: number;
+  };
 };
 
 /** Turnos previos (sin el mensaje actual). Mismo orden que en pantalla. */

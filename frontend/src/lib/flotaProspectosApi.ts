@@ -20,6 +20,7 @@ export interface FlotaProspectoRow {
   movil: string | null;
   observaciones: string | null;
   esDuplicado: boolean;
+  origen: string;
   createdAt: string;
   updatedAt: string;
   _count?: { llamadas: number };

@@ -23,6 +23,7 @@ import {
   X,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -33,6 +34,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Tooltip,
@@ -47,7 +49,6 @@ import {
   fetchAiConversationById,
   fetchAiConversations,
   postAiChat,
-  streamAiChat,
   type AiChatHistoryItem,
   type AiConversationMessage,
   type AiConversationSummary,
@@ -162,6 +163,7 @@ export function AiAssistantDrawer() {
 
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
+  const [crmStats, setCrmStats] = useState<{ totalContacts?: number; totalCompanies?: number; totalOpportunities?: number; totalUsers?: number } | null>(null);
   /** Texto en vivo (SSE); null = no hay stream activo. */
   const [streamBuffer, setStreamBuffer] = useState<string | null>(null);
   const [clearing, setClearing] = useState(false);
@@ -174,7 +176,6 @@ export function AiAssistantDrawer() {
     { id: string; name: string; text: string }[]
   >([]);
 
-  const streamEnabled = import.meta.env.VITE_AI_CHAT_STREAM === 'true';
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const attachInputRef = useRef<HTMLInputElement>(null);
@@ -276,6 +277,24 @@ export function AiAssistantDrawer() {
     void bootstrapAssistant();
   }, [isOpen, isMinimized, bootstrapAssistant]);
 
+  // Fetch CRM stats for AI context
+  useEffect(() => {
+    if (!isOpen) return;
+    Promise.all([
+      api<{ data: unknown[]; total: number }>('/contacts?limit=1').catch(() => ({ total: 0 } as any)),
+      api<{ data: unknown[]; total: number }>('/companies?limit=1').catch(() => ({ total: 0 } as any)),
+      api<{ data: unknown[]; total: number }>('/opportunities?limit=1').catch(() => ({ total: 0 } as any)),
+      api<{ data: unknown[]; total: number }>('/users').catch(() => ({ data: [] } as any)),
+    ]).then(([contacts, companies, opportunities, users]) => {
+      setCrmStats({
+        totalContacts: contacts?.total ?? 0,
+        totalCompanies: companies?.total ?? 0,
+        totalOpportunities: opportunities?.total ?? 0,
+        totalUsers: Array.isArray(users?.data) ? users.data.length : 0,
+      });
+    }).catch(() => {});
+  }, [isOpen]);
+
   const refreshConversationList = useCallback(async () => {
     try {
       const list = await fetchAiConversations();
@@ -368,7 +387,7 @@ export function AiAssistantDrawer() {
     const ctx = buildAssistantContext(location.pathname, {
       id: currentUser.id,
       role: currentUser.role,
-    });
+    }, crmStats ?? undefined);
 
     const history: AiChatHistoryItem[] = messages
       .filter(
@@ -397,47 +416,7 @@ export function AiAssistantDrawer() {
     setDraft('');
     setPendingAttachments([]);
     setSending(true);
-
-    if (streamEnabled) {
-      setStreamBuffer('');
-      try {
-        await streamAiChat(fullMessage, ctx, history, {
-          onDelta: (delta) =>
-            setStreamBuffer((prev) => (prev ?? '') + delta),
-          onDone: ({ message, links, actions }) => {
-            addMessage({
-              role: 'assistant',
-              content: message,
-              links,
-              actions,
-            });
-            setStreamBuffer(null);
-          },
-          onError: (msg) => {
-            addMessage({
-              role: 'assistant',
-              content: `**Error:** ${msg}`,
-            });
-            setStreamBuffer(null);
-            toast.error(msg);
-          },
-        }, convId);
-      } catch (e) {
-        const msg =
-          e instanceof Error ? e.message : 'No se pudo contactar al asistente.';
-        addMessage({
-          role: 'assistant',
-          content: `**Error:** ${msg}`,
-        });
-        toast.error(msg);
-        setStreamBuffer(null);
-      } finally {
-        setSending(false);
-        setStreamBuffer(null);
-        void refreshConversationList();
-      }
-      return;
-    }
+    setTimeout(() => inputRef.current?.focus(), 0);
 
     try {
       const res = await postAiChat(fullMessage, ctx, history, convId);
@@ -458,6 +437,7 @@ export function AiAssistantDrawer() {
     } finally {
       setSending(false);
       void refreshConversationList();
+      setTimeout(() => inputRef.current?.focus(), 100);
     }
   };
 
@@ -527,11 +507,7 @@ export function AiAssistantDrawer() {
     }
   };
 
-  const panelWidth = isMinimized
-    ? 'w-14 min-w-14'
-    : chatPanelExpanded
-      ? 'w-full min-w-0 max-w-[min(100vw-12px,56rem)]'
-      : 'w-full min-w-0 max-w-[min(100vw-12px,560px)] sm:max-w-[600px]';
+  const panelWidth = 'w-full min-w-0 max-w-[min(100vw-12px,700px)] sm:max-w-[750px]';
 
   const bubbleMaxClass = chatPanelExpanded
     ? 'max-w-[min(100%,520px)]'
@@ -539,58 +515,35 @@ export function AiAssistantDrawer() {
 
   return (
     <>
-    {isOpen ? (
-    <div
-      className="pointer-events-none fixed inset-y-0 right-0 z-[100] flex max-h-[100dvh] flex-col"
-      aria-hidden={false}
-    >
-      <aside
-        className={cn(
-          'pointer-events-auto flex h-full flex-col border-l border-border bg-background shadow-[-8px_0_24px_-4px_rgba(0,0,0,0.12)] transition-[transform,opacity,width] duration-300 ease-out dark:shadow-[-8px_0_24px_-4px_rgba(0,0,0,0.45)]',
-          panelWidth,
-          'animate-in slide-in-from-right-4 fade-in-0 duration-300',
-        )}
-      >
-        {isMinimized ? (
-          <div className="flex h-full flex-col items-center gap-2 border-b border-border py-3">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="size-9 shrink-0"
-                  onClick={() => setMinimized(false)}
-                  aria-label="Expandir asistente"
-                >
-                  <ChevronLeft className="size-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="left">Expandir panel</TooltipContent>
-            </Tooltip>
-            <div className="flex flex-1 items-center justify-center">
-              <Sparkles className="size-5 text-[#13944C]" />
-            </div>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="size-9 shrink-0"
-                  onClick={() => setOpen(false)}
-                  aria-label="Cerrar asistente"
-                >
-                  <X className="size-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="left">Cerrar</TooltipContent>
-            </Tooltip>
-          </div>
-        ) : (
-          <div className="flex min-h-0 min-w-0 flex-1 flex-row">
+    {isMinimized && (
+      <div className="fixed inset-y-0 right-0 z-[100] flex w-14 flex-col items-center gap-2 border-l border-border bg-background py-3 shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.1)]">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button type="button" variant="ghost" size="icon" className="size-9 shrink-0" onClick={() => setMinimized(false)} aria-label="Expandir asistente">
+              <ChevronLeft className="size-5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="left">Expandir panel</TooltipContent>
+        </Tooltip>
+        <div className="flex flex-1 items-center justify-center">
+          <Sparkles className="size-5 text-[#13944C]" />
+        </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button type="button" variant="ghost" size="icon" className="size-9 shrink-0" onClick={() => setOpen(false)} aria-label="Cerrar asistente">
+              <X className="size-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="left">Cerrar</TooltipContent>
+        </Tooltip>
+      </div>
+    )}
+    {!isMinimized && (
+      <Sheet open={isOpen} onOpenChange={(open) => { setOpen(open); if (!open) setMinimized(false); }}>
+        <SheetContent side="right" showCloseButton={false} overlayClassName="bg-black/0" className={cn('flex flex-col p-0', panelWidth)}>
+          <div className={cn('flex min-h-0 flex-1', chatPanelExpanded ? 'flex-row' : 'flex-col')}>
             {chatPanelExpanded ? (
-              <div className="flex w-[156px] shrink-0 flex-col border-r border-border bg-muted/20 sm:w-[200px]">
+              <div className="flex w-[200px] shrink-0 flex-col border-r border-border bg-muted/20 sm:w-[260px]">
                 <div className="shrink-0 space-y-2 border-b border-border p-2">
                   <p className="px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                     Chats
@@ -634,7 +587,7 @@ export function AiAssistantDrawer() {
                         )}
                       >
                         <span className="line-clamp-2 break-words">
-                          {c.title}
+                          {c.title || 'Sin título'}
                         </span>
                       </button>
                     ))
@@ -1005,23 +958,13 @@ export function AiAssistantDrawer() {
                   )}
                 </Button>
               </div>
-              <p className="mt-2 text-center text-[10px] text-muted-foreground">
-                Enter envía · Shift+Enter nueva línea ·{' '}
-                <kbd className="rounded border border-border bg-muted px-1 font-mono text-[10px]">
-                  Ctrl
-                </kbd>
-                {' + '}
-                <kbd className="rounded border border-border bg-muted px-1 font-mono text-[10px]">
-                  K
-                </kbd>
-              </p>
+
             </footer>
             </div>
           </div>
-        )}
-      </aside>
-    </div>
-    ) : null}
+      </SheetContent>
+    </Sheet>
+    )}
 
     <Dialog open={confirmClearOpen} onOpenChange={setConfirmClearOpen}>
       <DialogContent

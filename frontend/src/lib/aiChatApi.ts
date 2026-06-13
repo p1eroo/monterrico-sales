@@ -46,6 +46,12 @@ export type AiChatRequestContext = {
   userRole: string;
   selectedEntityType?: string;
   selectedEntityId?: string;
+  crmStats?: {
+    totalContacts?: number;
+    totalCompanies?: number;
+    totalOpportunities?: number;
+    totalUsers?: number;
+  };
 };
 
 export type AiChatHistoryItem = {

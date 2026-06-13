@@ -318,25 +318,25 @@ export class FlotaProspectosService {
     if (params.fechaRegistroDesde) {
       where.fechaRegistro = {
         ...(where.fechaRegistro as object || {}),
-        gte: new Date(params.fechaRegistroDesde),
+        gte: new Date(params.fechaRegistroDesde + "T00:00:00.000Z"),
       };
     }
     if (params.fechaRegistroHasta) {
       where.fechaRegistro = {
         ...(where.fechaRegistro as object || {}),
-        lte: new Date(params.fechaRegistroHasta),
+        lte: new Date(params.fechaRegistroHasta + "T23:59:59.999Z"),
       };
     }
     if (params.mesImportDesde) {
       where.createdAt = {
         ...(where.createdAt as object || {}),
-        gte: new Date(params.mesImportDesde),
+        gte: new Date(params.mesImportDesde + "T00:00:00.000Z"),
       };
     }
     if (params.mesImportHasta) {
       where.createdAt = {
         ...(where.createdAt as object || {}),
-        lte: new Date(params.mesImportHasta),
+        lte: new Date(params.mesImportHasta + "T23:59:59.999Z"),
       };
     }
 
@@ -480,7 +480,7 @@ export class FlotaProspectosService {
     return this.prisma.flotaProspecto.create({
       data: {
         ...data as any,
-        fechaRegistro: data.fechaRegistro ? new Date(data.fechaRegistro as string) : null,
+        fechaRegistro: data.fechaRegistro ? new Date(data.fechaRegistro as string) : new Date(),
         fechaCita: data.fechaCita ? new Date(data.fechaCita as string) : null,
         fechaAfiliacion: data.fechaAfiliacion ? new Date(data.fechaAfiliacion as string) : null,
         asignadoAt: data.operador ? new Date() : null,
@@ -882,6 +882,7 @@ export class FlotaProspectosService {
             ? cell(row, col.OBSERVACIONES) || null
             : null,
         esDuplicado,
+        origen: "IMPORTADO",
       });
     }
 
@@ -1048,6 +1049,7 @@ export class FlotaProspectosService {
         movil: col.MOVIL !== -1 ? cell(row, col.MOVIL) || null : null,
         observaciones: col.OBSERVACIONES !== -1 ? cell(row, col.OBSERVACIONES) || null : null,
         esDuplicado,
+        origen: "IMPORTADO",
       });
 
       if ((i + 1) % 100 === 0) {
@@ -1227,6 +1229,7 @@ export class FlotaProspectosService {
         movil: col.MOVIL !== -1 ? cell(row, col.MOVIL) || null : null,
         observaciones: col.OBSERVACIONES !== -1 ? cell(row, col.OBSERVACIONES) || null : null,
         esDuplicado,
+        origen: "IMPORTADO",
       });
 
       // Report progress every 100 rows

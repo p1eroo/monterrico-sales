@@ -60,7 +60,7 @@ export const DateRangeCalendar = memo(function DateRangeCalendar({ value, onChan
       {value && (
         <button
           type="button"
-          onClick={() => { setDates(null); onChange?.(undefined); }}
+          onClick={() => { setDates(null); onChange?.(undefined); onClose?.(); }}
           className="mt-2 flex w-full items-center justify-center gap-1 rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1 text-xs font-medium text-destructive hover:bg-destructive/20 transition-colors"
         >
           <X className="size-3" />

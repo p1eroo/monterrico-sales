@@ -733,6 +733,7 @@ model FlotaProspecto {
   /** true cuando el celular ya existía en la BD al momento de importar */
   esDuplicado     Boolean   @default(false)
   lastReadAt      DateTime?
+  origen          String    @default("MANUAL")
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 

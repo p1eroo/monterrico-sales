@@ -153,14 +153,6 @@ export default function FlotaProspectos() {
   const [mesImportRange, setMesImportRange] = useState<
     DateRangeValue | undefined
   >();
-  const [fechaRegistroOpen, setFechaRegistroOpen] = useState(false);
-  const [mesImportOpen, setMesImportOpen] = useState(false);
-  const [tempFechaRegistro, setTempFechaRegistro] = useState<
-    DateRangeValue | undefined
-  >();
-  const [tempMesImport, setTempMesImport] = useState<
-    DateRangeValue | undefined
-  >();
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>(
     {},
   );
@@ -257,6 +249,7 @@ export default function FlotaProspectos() {
   const [exportBusy, setExportBusy] = useState(false);
   const [conLlamadasFilter, setConLlamadasFilter] = useState("all");
   const [chatProspectoId, setChatProspectoId] = useState<string | null>(null);
+  const [fechasOpen, setFechasOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
 
   const { hasPermission } = usePermissions();
@@ -381,7 +374,7 @@ export default function FlotaProspectos() {
                 operador: p.operador, estado: p.estado || '',
                 modalidad: null, anioVehiculo: null, placa: null, distrito: null,
                 fechaCita: null, asistencia: null, fechaAfiliacion: null, movil: null,
-                observaciones: null, esDuplicado: false, createdAt: '', updatedAt: '',
+                observaciones: null, esDuplicado: false, origen: '', createdAt: '', updatedAt: '',
                 _count: { llamadas: 0 },
               }];
             });
@@ -745,20 +738,15 @@ export default function FlotaProspectos() {
       if (rows) {
         const job = await flotaProspectosImportRows(rows);
         enqueueJob(job);
-        toast.success(
-          "Importación iniciada. Revisá el progreso en la tarjeta de importación.",
-        );
       } else {
         const job = await flotaProspectosImportSheets(
           selectedSheet,
           selectedSpreadsheetId,
         );
         enqueueJob(job);
-        toast.success(
-          "Importación iniciada. Revisá el progreso en la tarjeta de importación.",
-        );
       }
     } catch (e) {
+      console.error("Error al importar:", e);
       toast.error(e instanceof Error ? e.message : "Error al importar");
     } finally {
       setImporting(false);
@@ -881,6 +869,7 @@ export default function FlotaProspectos() {
         "F. Registro": p.fechaRegistro
           ? new Date(p.fechaRegistro).toLocaleDateString("es-PE")
           : "",
+        Origen: p.origen === "IMPORTADO" ? "Importado" : "Manual",
         "Red Social": p.redSocial ?? "",
         Celular: p.celular ?? "",
         "Nombres y Apellidos": p.nombreCompleto,
@@ -1228,7 +1217,7 @@ export default function FlotaProspectos() {
                           ? formatDateDMY(row.original.fechaRegistro)
                           : "—"}
                       </div>
-                      {row.original.createdAt && (
+                      {row.original.origen === "IMPORTADO" && row.original.createdAt && (
                         <div className="text-[9px] text-muted-foreground mt-0.5">
                           FI:{" "}
                           {new Date(row.original.createdAt).toLocaleDateString(
@@ -1514,17 +1503,7 @@ export default function FlotaProspectos() {
               getId={(r) => r.id}
               filterComponents={{
                 fechaRegistro: (
-                  <Popover
-                    onOpenChange={(open) => {
-                      if (open) {
-                        setTempFechaRegistro(fechaRegistroRange);
-                        setTempMesImport(mesImportRange);
-                      } else {
-                        setFechaRegistroRange(tempFechaRegistro);
-                        setMesImportRange(tempMesImport);
-                      }
-                    }}
-                  >
+                  <Popover open={fechasOpen} onOpenChange={setFechasOpen}>
                     <PopoverTrigger asChild>
                       <button className="w-full h-6 rounded border border-input bg-background px-1.5 text-[10px] outline-none text-left text-muted-foreground">
                         Fechas
@@ -1537,8 +1516,9 @@ export default function FlotaProspectos() {
                             F. Registro
                           </p>
                           <DateRangeCalendar
-                            value={tempFechaRegistro}
-                            onChange={setTempFechaRegistro}
+                            value={fechaRegistroRange}
+                            onChange={(v) => { setFechaRegistroRange(v); setPage(1); }}
+                            onClose={() => setFechasOpen(false)}
                           />
                         </div>
                         <div>
@@ -1546,8 +1526,9 @@ export default function FlotaProspectos() {
                             F. Import
                           </p>
                           <DateRangeCalendar
-                            value={tempMesImport}
-                            onChange={setTempMesImport}
+                            value={mesImportRange}
+                            onChange={(v) => { setMesImportRange(v); setPage(1); }}
+                            onClose={() => setFechasOpen(false)}
                           />
                         </div>
                       </div>

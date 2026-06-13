@@ -826,6 +826,7 @@ model FlotaProspecto {
    */
   esDuplicado     Boolean   @default(false)
   lastReadAt      DateTime?
+  origen          String    @default("MANUAL")
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 

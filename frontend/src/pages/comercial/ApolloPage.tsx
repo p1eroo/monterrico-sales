@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react';
-import { Search, Download, Sparkles, Building2, MapPin, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Download, Sparkles, Building2, MapPin, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { cn } from '@/lib/utils';
+import { apolloSearch, type ApolloPerson } from '@/lib/apolloApi';
 
 interface MockResult {
   id: string;
@@ -70,16 +71,35 @@ export default function ApolloPage() {
   const [industryFilter, setIndustryFilter] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
   const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [apiResults, setApiResults] = useState<ApolloPerson[] | null>(null);
+  const [apiTotal, setApiTotal] = useState(0);
+  const [usingMock, setUsingMock] = useState(true);
   const perPage = 25;
 
+  const dataSource = useMemo(() => {
+    if (apiResults) return apiResults.map((p) => ({
+      id: p.id,
+      name: p.name || '',
+      title: p.title || '',
+      email: p.email || '',
+      phone: p.phone || '',
+      company: p.organization?.name || '',
+      industry: p.organization?.industry || '',
+      location: [p.organization?.location?.city, p.organization?.location?.country].filter(Boolean).join(', '),
+    }));
+    return MOCK_RESULTS;
+  }, [apiResults]);
+
   const filteredResults = useMemo(() => {
-    return MOCK_RESULTS.filter((r) => {
+    return dataSource.filter((r) => {
       if (query && !r.name.toLowerCase().includes(query.toLowerCase()) && !r.company.toLowerCase().includes(query.toLowerCase()) && !r.title.toLowerCase().includes(query.toLowerCase())) return false;
       if (industryFilter && !r.industry.toLowerCase().includes(industryFilter.toLowerCase())) return false;
       if (locationFilter && !r.location.toLowerCase().includes(locationFilter.toLowerCase())) return false;
       return true;
     });
-  }, [query, industryFilter, locationFilter]);
+  }, [query, industryFilter, locationFilter, dataSource]);
 
   const totalPages = Math.ceil(filteredResults.length / perPage);
   const paginatedResults = filteredResults.slice((page - 1) * perPage, page * perPage);
@@ -87,6 +107,29 @@ export default function ApolloPage() {
   const industries = useMemo(() => {
     return Array.from(new Set(MOCK_RESULTS.map((r) => r.industry))).sort();
   }, []);
+
+  async function handleApiSearch(newPage = 1) {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await apolloSearch({
+        query: query || undefined,
+        industry: industryFilter || undefined,
+        location: locationFilter || undefined,
+        page: newPage,
+      });
+      setApiResults(res.results);
+      setApiTotal(res.total);
+      setUsingMock(false);
+      setPage(newPage);
+    } catch {
+      setApiResults(null);
+      setUsingMock(true);
+      setError('Usando datos mock — la API de Apollo requiere plan pago');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -108,7 +151,11 @@ export default function ApolloPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Apollo.io" description="Busca y explora prospectos en Apollo">
-        <Badge variant="outline" className="text-xs font-normal">Mock · Sin API</Badge>
+        {usingMock ? (
+          <Badge variant="outline" className="text-xs font-normal">Mock · Sin API</Badge>
+        ) : (
+          <Badge variant="outline" className="text-xs font-normal text-emerald-600 border-emerald-300">API conectada</Badge>
+        )}
       </PageHeader>
 
       {/* Search + Filters row */}
@@ -144,15 +191,29 @@ export default function ApolloPage() {
             className="text-xs"
           />
         </div>
-        <Button className="gap-1.5" onClick={() => setPage(1)}>
-          <Search className="size-4" /> Buscar
+        <Button className="gap-1.5" onClick={() => void handleApiSearch()} disabled={loading}>
+          {loading ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
+          {loading ? 'Buscando...' : 'Buscar'}
         </Button>
       </div>
+
+      {/* Error */}
+      {error && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 px-4 py-2 text-xs text-amber-700 dark:text-amber-400">
+          {error}
+        </div>
+      )}
 
       {/* Count + Actions */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
+          {loading ? (
+            <Loader2 className="size-3.5 animate-spin inline mr-1" />
+          ) : null}
           {filteredResults.length} resultado{filteredResults.length !== 1 ? 's' : ''}
+          {!usingMock && apiTotal > 0 && (
+            <span className="text-muted-foreground/50"> · {apiTotal} encontrados</span>
+          )}
         </p>
         <div className="flex items-center gap-2">
           <Button size="sm" disabled={selectedIds.size === 0} className="gap-1.5">

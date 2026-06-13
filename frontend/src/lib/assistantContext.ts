@@ -1,15 +1,27 @@
 /**
- * Contexto para el asistente: módulo actual y entidad en detalle (si aplica).
+ * Contexto para el asistente: módulo actual, entidad en detalle y stats del CRM.
  */
 export function buildAssistantContext(
   pathname: string,
   user: { id: string; role: string },
+  crmStats?: {
+    totalContacts?: number;
+    totalCompanies?: number;
+    totalOpportunities?: number;
+    totalUsers?: number;
+  },
 ): {
   userId: string;
   currentPage: string;
   userRole: string;
   selectedEntityType?: string;
   selectedEntityId?: string;
+  crmStats?: {
+    totalContacts?: number;
+    totalCompanies?: number;
+    totalOpportunities?: number;
+    totalUsers?: number;
+  };
 } {
   const segments = pathname.split('/').filter(Boolean);
   const first = segments[0] ?? 'dashboard';
@@ -53,5 +65,6 @@ export function buildAssistantContext(
     ...(selectedEntityType && selectedEntityId
       ? { selectedEntityType, selectedEntityId }
       : {}),
+    ...(crmStats ? { crmStats } : {}),
   };
 }

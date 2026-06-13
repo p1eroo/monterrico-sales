@@ -52401,6 +52401,7 @@ export namespace Prisma {
     observaciones: string | null
     esDuplicado: boolean | null
     lastReadAt: Date | null
+    origen: string | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -52426,6 +52427,7 @@ export namespace Prisma {
     observaciones: string | null
     esDuplicado: boolean | null
     lastReadAt: Date | null
+    origen: string | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -52451,6 +52453,7 @@ export namespace Prisma {
     observaciones: number
     esDuplicado: number
     lastReadAt: number
+    origen: number
     createdAt: number
     updatedAt: number
     _all: number
@@ -52488,6 +52491,7 @@ export namespace Prisma {
     observaciones?: true
     esDuplicado?: true
     lastReadAt?: true
+    origen?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -52513,6 +52517,7 @@ export namespace Prisma {
     observaciones?: true
     esDuplicado?: true
     lastReadAt?: true
+    origen?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -52538,6 +52543,7 @@ export namespace Prisma {
     observaciones?: true
     esDuplicado?: true
     lastReadAt?: true
+    origen?: true
     createdAt?: true
     updatedAt?: true
     _all?: true
@@ -52650,6 +52656,7 @@ export namespace Prisma {
     observaciones: string | null
     esDuplicado: boolean
     lastReadAt: Date | null
+    origen: string
     createdAt: Date
     updatedAt: Date
     _count: FlotaProspectoCountAggregateOutputType | null
@@ -52694,6 +52701,7 @@ export namespace Prisma {
     observaciones?: boolean
     esDuplicado?: boolean
     lastReadAt?: boolean
+    origen?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     whatsappMessages?: boolean | FlotaProspecto$whatsappMessagesArgs<ExtArgs>
@@ -52722,6 +52730,7 @@ export namespace Prisma {
     observaciones?: boolean
     esDuplicado?: boolean
     lastReadAt?: boolean
+    origen?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }, ExtArgs["result"]["flotaProspecto"]>
@@ -52747,6 +52756,7 @@ export namespace Prisma {
     observaciones?: boolean
     esDuplicado?: boolean
     lastReadAt?: boolean
+    origen?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }, ExtArgs["result"]["flotaProspecto"]>
@@ -52772,11 +52782,12 @@ export namespace Prisma {
     observaciones?: boolean
     esDuplicado?: boolean
     lastReadAt?: boolean
+    origen?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type FlotaProspectoOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "fechaRegistro" | "redSocial" | "celular" | "nombreCompleto" | "edad" | "operador" | "asignadoAt" | "estado" | "modalidad" | "anioVehiculo" | "placa" | "distrito" | "fechaCita" | "asistencia" | "fechaAfiliacion" | "movil" | "observaciones" | "esDuplicado" | "lastReadAt" | "createdAt" | "updatedAt", ExtArgs["result"]["flotaProspecto"]>
+  export type FlotaProspectoOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "fechaRegistro" | "redSocial" | "celular" | "nombreCompleto" | "edad" | "operador" | "asignadoAt" | "estado" | "modalidad" | "anioVehiculo" | "placa" | "distrito" | "fechaCita" | "asistencia" | "fechaAfiliacion" | "movil" | "observaciones" | "esDuplicado" | "lastReadAt" | "origen" | "createdAt" | "updatedAt", ExtArgs["result"]["flotaProspecto"]>
   export type FlotaProspectoInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     whatsappMessages?: boolean | FlotaProspecto$whatsappMessagesArgs<ExtArgs>
     llamadas?: boolean | FlotaProspecto$llamadasArgs<ExtArgs>
@@ -52815,6 +52826,7 @@ export namespace Prisma {
        */
       esDuplicado: boolean
       lastReadAt: Date | null
+      origen: string
       createdAt: Date
       updatedAt: Date
     }, ExtArgs["result"]["flotaProspecto"]>
@@ -53262,6 +53274,7 @@ export namespace Prisma {
     readonly observaciones: FieldRef<"FlotaProspecto", 'String'>
     readonly esDuplicado: FieldRef<"FlotaProspecto", 'Boolean'>
     readonly lastReadAt: FieldRef<"FlotaProspecto", 'DateTime'>
+    readonly origen: FieldRef<"FlotaProspecto", 'String'>
     readonly createdAt: FieldRef<"FlotaProspecto", 'DateTime'>
     readonly updatedAt: FieldRef<"FlotaProspecto", 'DateTime'>
   }
@@ -55405,6 +55418,7 @@ export namespace Prisma {
     observaciones: 'observaciones',
     esDuplicado: 'esDuplicado',
     lastReadAt: 'lastReadAt',
+    origen: 'origen',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
   };
@@ -58679,6 +58693,7 @@ export namespace Prisma {
     observaciones?: StringNullableFilter<"FlotaProspecto"> | string | null
     esDuplicado?: BoolFilter<"FlotaProspecto"> | boolean
     lastReadAt?: DateTimeNullableFilter<"FlotaProspecto"> | Date | string | null
+    origen?: StringFilter<"FlotaProspecto"> | string
     createdAt?: DateTimeFilter<"FlotaProspecto"> | Date | string
     updatedAt?: DateTimeFilter<"FlotaProspecto"> | Date | string
     whatsappMessages?: CrmWhatsappMessageListRelationFilter
@@ -58706,6 +58721,7 @@ export namespace Prisma {
     observaciones?: SortOrderInput | SortOrder
     esDuplicado?: SortOrder
     lastReadAt?: SortOrderInput | SortOrder
+    origen?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     whatsappMessages?: CrmWhatsappMessageOrderByRelationAggregateInput
@@ -58736,6 +58752,7 @@ export namespace Prisma {
     observaciones?: StringNullableFilter<"FlotaProspecto"> | string | null
     esDuplicado?: BoolFilter<"FlotaProspecto"> | boolean
     lastReadAt?: DateTimeNullableFilter<"FlotaProspecto"> | Date | string | null
+    origen?: StringFilter<"FlotaProspecto"> | string
     createdAt?: DateTimeFilter<"FlotaProspecto"> | Date | string
     updatedAt?: DateTimeFilter<"FlotaProspecto"> | Date | string
     whatsappMessages?: CrmWhatsappMessageListRelationFilter
@@ -58763,6 +58780,7 @@ export namespace Prisma {
     observaciones?: SortOrderInput | SortOrder
     esDuplicado?: SortOrder
     lastReadAt?: SortOrderInput | SortOrder
+    origen?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     _count?: FlotaProspectoCountOrderByAggregateInput
@@ -58796,6 +58814,7 @@ export namespace Prisma {
     observaciones?: StringNullableWithAggregatesFilter<"FlotaProspecto"> | string | null
     esDuplicado?: BoolWithAggregatesFilter<"FlotaProspecto"> | boolean
     lastReadAt?: DateTimeNullableWithAggregatesFilter<"FlotaProspecto"> | Date | string | null
+    origen?: StringWithAggregatesFilter<"FlotaProspecto"> | string
     createdAt?: DateTimeWithAggregatesFilter<"FlotaProspecto"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"FlotaProspecto"> | Date | string
   }
@@ -62231,6 +62250,7 @@ export namespace Prisma {
     observaciones?: string | null
     esDuplicado?: boolean
     lastReadAt?: Date | string | null
+    origen?: string
     createdAt?: Date | string
     updatedAt?: Date | string
     whatsappMessages?: CrmWhatsappMessageCreateNestedManyWithoutFlotaProspectoInput
@@ -62258,6 +62278,7 @@ export namespace Prisma {
     observaciones?: string | null
     esDuplicado?: boolean
     lastReadAt?: Date | string | null
+    origen?: string
     createdAt?: Date | string
     updatedAt?: Date | string
     whatsappMessages?: CrmWhatsappMessageUncheckedCreateNestedManyWithoutFlotaProspectoInput
@@ -62285,6 +62306,7 @@ export namespace Prisma {
     observaciones?: NullableStringFieldUpdateOperationsInput | string | null
     esDuplicado?: BoolFieldUpdateOperationsInput | boolean
     lastReadAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    origen?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     whatsappMessages?: CrmWhatsappMessageUpdateManyWithoutFlotaProspectoNestedInput
@@ -62312,6 +62334,7 @@ export namespace Prisma {
     observaciones?: NullableStringFieldUpdateOperationsInput | string | null
     esDuplicado?: BoolFieldUpdateOperationsInput | boolean
     lastReadAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    origen?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     whatsappMessages?: CrmWhatsappMessageUncheckedUpdateManyWithoutFlotaProspectoNestedInput
@@ -62339,6 +62362,7 @@ export namespace Prisma {
     observaciones?: string | null
     esDuplicado?: boolean
     lastReadAt?: Date | string | null
+    origen?: string
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -62364,6 +62388,7 @@ export namespace Prisma {
     observaciones?: NullableStringFieldUpdateOperationsInput | string | null
     esDuplicado?: BoolFieldUpdateOperationsInput | boolean
     lastReadAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    origen?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -62389,6 +62414,7 @@ export namespace Prisma {
     observaciones?: NullableStringFieldUpdateOperationsInput | string | null
     esDuplicado?: BoolFieldUpdateOperationsInput | boolean
     lastReadAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    origen?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -64710,6 +64736,7 @@ export namespace Prisma {
     observaciones?: SortOrder
     esDuplicado?: SortOrder
     lastReadAt?: SortOrder
+    origen?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -64740,6 +64767,7 @@ export namespace Prisma {
     observaciones?: SortOrder
     esDuplicado?: SortOrder
     lastReadAt?: SortOrder
+    origen?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -64765,6 +64793,7 @@ export namespace Prisma {
     observaciones?: SortOrder
     esDuplicado?: SortOrder
     lastReadAt?: SortOrder
+    origen?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -71401,6 +71430,7 @@ export namespace Prisma {
     observaciones?: string | null
     esDuplicado?: boolean
     lastReadAt?: Date | string | null
+    origen?: string
     createdAt?: Date | string
     updatedAt?: Date | string
     llamadas?: FlotaLlamadaCreateNestedManyWithoutProspectoInput
@@ -71427,6 +71457,7 @@ export namespace Prisma {
     observaciones?: string | null
     esDuplicado?: boolean
     lastReadAt?: Date | string | null
+    origen?: string
     createdAt?: Date | string
     updatedAt?: Date | string
     llamadas?: FlotaLlamadaUncheckedCreateNestedManyWithoutProspectoInput
@@ -71648,6 +71679,7 @@ export namespace Prisma {
     observaciones?: NullableStringFieldUpdateOperationsInput | string | null
     esDuplicado?: BoolFieldUpdateOperationsInput | boolean
     lastReadAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    origen?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     llamadas?: FlotaLlamadaUpdateManyWithoutProspectoNestedInput
@@ -71674,6 +71706,7 @@ export namespace Prisma {
     observaciones?: NullableStringFieldUpdateOperationsInput | string | null
     esDuplicado?: BoolFieldUpdateOperationsInput | boolean
     lastReadAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    origen?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     llamadas?: FlotaLlamadaUncheckedUpdateManyWithoutProspectoNestedInput
@@ -75354,6 +75387,7 @@ export namespace Prisma {
     observaciones?: string | null
     esDuplicado?: boolean
     lastReadAt?: Date | string | null
+    origen?: string
     createdAt?: Date | string
     updatedAt?: Date | string
     whatsappMessages?: CrmWhatsappMessageCreateNestedManyWithoutFlotaProspectoInput
@@ -75380,6 +75414,7 @@ export namespace Prisma {
     observaciones?: string | null
     esDuplicado?: boolean
     lastReadAt?: Date | string | null
+    origen?: string
     createdAt?: Date | string
     updatedAt?: Date | string
     whatsappMessages?: CrmWhatsappMessageUncheckedCreateNestedManyWithoutFlotaProspectoInput
@@ -75422,6 +75457,7 @@ export namespace Prisma {
     observaciones?: NullableStringFieldUpdateOperationsInput | string | null
     esDuplicado?: BoolFieldUpdateOperationsInput | boolean
     lastReadAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    origen?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     whatsappMessages?: CrmWhatsappMessageUpdateManyWithoutFlotaProspectoNestedInput
@@ -75448,6 +75484,7 @@ export namespace Prisma {
     observaciones?: NullableStringFieldUpdateOperationsInput | string | null
     esDuplicado?: BoolFieldUpdateOperationsInput | boolean
     lastReadAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    origen?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     whatsappMessages?: CrmWhatsappMessageUncheckedUpdateManyWithoutFlotaProspectoNestedInput
