@@ -552,7 +552,7 @@ export class FlotaProspectosService {
         const text = String(c || '').toUpperCase();
         return (
           text.includes('CELULAR') ||
-          text.includes('NOMBRES') ||
+          text.includes('NOMBRE') ||
           text.includes('APELLIDOS')
         );
       }),
@@ -567,7 +567,8 @@ export class FlotaProspectosService {
     const rawHeaders = rawRows[headerIndex].map((h) =>
       String(h || '')
         .trim()
-        .toUpperCase(),
+        .toUpperCase()
+        .replace(/_/g, ' '),
     );
 
     // Mapa dinámico de columnas
@@ -579,7 +580,7 @@ export class FlotaProspectosService {
       CELULAR: rawHeaders.findIndex((h) => h.includes('CELULAR')),
       NOMBRE_COMPLETO: rawHeaders.findIndex(
         (h) =>
-          h.includes('NOMBRES') ||
+          h.includes('NOMBRE') ||
           h.includes('APELLIDOS') ||
           h.includes('PROSPECTO'),
       ),

@@ -633,7 +633,7 @@ export default function FlotaProspectos() {
       "ESTADO",
       "MODALIDAD",
       "PLACA",
-      "ANIO_VEHICULO",
+      "AÑO_VEHICULO",
       "DISTRITO",
       "FECHA_CITA",
       "ASISTENCIA",
