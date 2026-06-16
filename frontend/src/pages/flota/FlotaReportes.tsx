@@ -309,18 +309,19 @@ export default function FlotaReportes() {
           fetchOperadores(),
         ]);
 
-        const unified = new Map<string, OperadorStats>();
-        for (const s of rawStats) {
-          const canonical =
-            getOperatorDisplayName(s.operador, operadores) || s.operador;
-          const existing = unified.get(canonical);
-          if (existing) {
-            existing.prospectosAsignados += s.prospectosAsignados;
-            existing.chatsActivos += s.chatsActivos;
-            existing.mensajesEnviados += s.mensajesEnviados;
-            existing.mensajesRecibidos += s.mensajesRecibidos;
-            existing.llamadas += s.llamadas;
-          } else {
+          const unified = new Map<string, OperadorStats>();
+          for (const s of rawStats) {
+            const canonical =
+              getOperatorDisplayName(s.operador, operadores) || s.operador;
+            const existing = unified.get(canonical);
+            if (existing) {
+              existing.prospectosAsignados += s.prospectosAsignados;
+              existing.chatsActivos += s.chatsActivos;
+              existing.mensajesEnviados += s.mensajesEnviados;
+              existing.mensajesRecibidos += s.mensajesRecibidos;
+              existing.llamadas += s.llamadas;
+              existing.citasAtendidas += s.citasAtendidas;
+            } else {
             unified.set(canonical, { ...s, operador: canonical });
           }
         }
@@ -737,6 +738,7 @@ export default function FlotaReportes() {
         "Mensajes Enviados": x.mensajesEnviados,
         "Mensajes Recibidos": x.mensajesRecibidos,
         Llamadas: x.llamadas,
+        "Citas atendidas": x.citasAtendidas,
       })),
     );
     addSheet(
@@ -907,6 +909,7 @@ export default function FlotaReportes() {
               "Enviados",
               "Recibidos",
               "Llamadas",
+              "Citas atendidas",
             ],
           ],
           body: filteredOperadorStats.map((x) => [
@@ -916,6 +919,7 @@ export default function FlotaReportes() {
             x.mensajesEnviados,
             x.mensajesRecibidos,
             x.llamadas,
+            x.citasAtendidas,
           ]),
         },
         {
@@ -1277,6 +1281,13 @@ export default function FlotaReportes() {
                       dataKey="llamadas"
                       name="Llamadas"
                       fill="#ec4899"
+                      radius={[0, 3, 3, 0]}
+                      stackId="a"
+                    />
+                    <Bar
+                      dataKey="citasAtendidas"
+                      name="Citas atendidas"
+                      fill="#06b6d4"
                       radius={[0, 3, 3, 0]}
                       stackId="a"
                     />
@@ -2164,6 +2175,13 @@ export default function FlotaReportes() {
                       dataKey="llamadas"
                       name="Llamadas"
                       fill="#ec4899"
+                      radius={[0, 3, 3, 0]}
+                      stackId="a"
+                    />
+                    <Bar
+                      dataKey="citasAtendidas"
+                      name="Citas atendidas"
+                      fill="#06b6d4"
                       radius={[0, 3, 3, 0]}
                       stackId="a"
                     />

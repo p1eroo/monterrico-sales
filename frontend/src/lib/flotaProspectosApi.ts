@@ -289,6 +289,7 @@ export interface OperadorStats {
   mensajesEnviados: number;
   mensajesRecibidos: number;
   llamadas: number;
+  citasAtendidas: number;
 }
 
 export async function fetchOperadorStats(fecini: string, fecfin: string): Promise<OperadorStats[]> {
