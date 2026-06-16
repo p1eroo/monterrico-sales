@@ -1705,6 +1705,11 @@ export default function FlotaProspectos() {
                     method: "PATCH",
                     body: JSON.stringify(body),
                   });
+                  setBlockedProspects((prev) =>
+                    prev.map((p) =>
+                      p.id === (row as any).id ? { ...p, ...body } : p,
+                    ),
+                  );
                 } catch {
                   setProspectos((prev) => [...prev]);
                 }
