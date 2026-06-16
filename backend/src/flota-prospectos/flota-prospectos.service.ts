@@ -44,6 +44,13 @@ function cell(row: string[], idx: number): string {
   return (row[idx] ?? '').toString().trim();
 }
 
+/** Retorna la fecha actual a medianoche UTC usando la fecha local de Lima.
+ *  Evita que Prisma/PostgreSQL desfase el día por la timezone del servidor. */
+function limaDate(): Date {
+  const dateStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
+  return new Date(dateStr + 'T00:00:00.000Z');
+}
+
 function parseDate(raw: string): Date | null {
   if (!raw) return null;
   // Intentar yyyy-mm-dd (ISO) primero
@@ -406,7 +413,7 @@ export class FlotaProspectosService {
 
     // Auto-set fechaAfiliacion cuando el estado cambia a Afiliado
     if (safeData.estado === 'Afiliado' && existing.estado !== 'Afiliado' && !safeData.fechaAfiliacion) {
-      safeData.fechaAfiliacion = new Date();
+      safeData.fechaAfiliacion = limaDate();
     }
 
     const updated = await this.prisma.flotaProspecto.update({
@@ -468,7 +475,7 @@ export class FlotaProspectosService {
     const val = operador?.trim() || null;
     const updated = await this.prisma.flotaProspecto.update({
       where: { id },
-      data: { operador: val, asignadoAt: val ? new Date() : null },
+      data: { operador: val, asignadoAt: val ? limaDate() : null },
     });
 
     await this.activityLogs.record(actor || null, {
@@ -502,10 +509,10 @@ export class FlotaProspectosService {
     const created = await this.prisma.flotaProspecto.create({
       data: {
         ...data as any,
-        fechaRegistro: data.fechaRegistro ? new Date(data.fechaRegistro as string) : new Date(),
+        fechaRegistro: data.fechaRegistro ? new Date(data.fechaRegistro as string) : limaDate(),
         fechaCita: data.fechaCita ? new Date(data.fechaCita as string) : null,
         fechaAfiliacion: data.fechaAfiliacion ? new Date(data.fechaAfiliacion as string) : null,
-        asignadoAt: data.operador ? new Date() : null,
+        asignadoAt: data.operador ? limaDate() : null,
       },
     });
     await this.activityLogs.record(actor || null, {
@@ -758,7 +765,7 @@ export class FlotaProspectosService {
           }
           if (col.OPERADOR !== -1) {
             const val = cell(row, col.OPERADOR);
-            if (val) { updateData.operador = val; updateData.asignadoAt = new Date(); }
+            if (val) { updateData.operador = val; updateData.asignadoAt = limaDate(); }
           }
           if (col.ESTADO !== -1) {
             const val = cell(row, col.ESTADO);
@@ -906,7 +913,7 @@ export class FlotaProspectosService {
         edad: col.EDAD !== -1 ? parseInt10(cell(row, col.EDAD)) : null,
         operador: col.OPERADOR !== -1 ? cell(row, col.OPERADOR) || null : null,
         estado,
-        asignadoAt: col.OPERADOR !== -1 && cell(row, col.OPERADOR) ? new Date() : null,
+        asignadoAt: col.OPERADOR !== -1 && cell(row, col.OPERADOR) ? limaDate() : null,
         modalidad:
           col.MODALIDAD !== -1 ? cell(row, col.MODALIDAD) || null : null,
         anioVehiculo:
@@ -1041,7 +1048,7 @@ export class FlotaProspectosService {
           if (nombre) updateData.nombreCompleto = nombre;
           if (col.RED_SOCIAL !== -1) { const val = cell(row, col.RED_SOCIAL); if (val) updateData.redSocial = val; }
           if (col.EDAD !== -1) { const val = parseInt10(cell(row, col.EDAD)); if (val !== null) updateData.edad = val; }
-          if (col.OPERADOR !== -1) { const val = cell(row, col.OPERADOR); if (val) { updateData.operador = val; updateData.asignadoAt = new Date(); } }
+          if (col.OPERADOR !== -1) { const val = cell(row, col.OPERADOR); if (val) { updateData.operador = val; updateData.asignadoAt = limaDate(); } }
           if (col.ESTADO !== -1) { const val = cell(row, col.ESTADO); if (val) updateData.estado = normalizeEstado(val); }
           if (col.MODALIDAD !== -1) { const val = cell(row, col.MODALIDAD); if (val) updateData.modalidad = val; }
           if (col.ANIO_VEHICULO !== -1) { const val = parseInt10(cell(row, col.ANIO_VEHICULO)); if (val !== null) updateData.anioVehiculo = val; }
@@ -1087,7 +1094,7 @@ export class FlotaProspectosService {
         edad: col.EDAD !== -1 ? parseInt10(cell(row, col.EDAD)) : null,
         operador: col.OPERADOR !== -1 ? cell(row, col.OPERADOR) || null : null,
         estado,
-        asignadoAt: col.OPERADOR !== -1 && cell(row, col.OPERADOR) ? new Date() : null,
+        asignadoAt: col.OPERADOR !== -1 && cell(row, col.OPERADOR) ? limaDate() : null,
         modalidad: col.MODALIDAD !== -1 ? cell(row, col.MODALIDAD) || null : null,
         anioVehiculo: col.ANIO_VEHICULO !== -1 ? parseInt10(cell(row, col.ANIO_VEHICULO)) : null,
         placa: col.PLACA !== -1 ? cell(row, col.PLACA) || null : null,
@@ -1232,7 +1239,7 @@ export class FlotaProspectosService {
           if (nombre) updateData.nombreCompleto = nombre;
           if (col.RED_SOCIAL !== -1) { const val = cell(row, col.RED_SOCIAL); if (val) updateData.redSocial = val; }
           if (col.EDAD !== -1) { const val = parseInt10(cell(row, col.EDAD)); if (val !== null) updateData.edad = val; }
-          if (col.OPERADOR !== -1) { const val = cell(row, col.OPERADOR); if (val) { updateData.operador = val; updateData.asignadoAt = new Date(); } }
+          if (col.OPERADOR !== -1) { const val = cell(row, col.OPERADOR); if (val) { updateData.operador = val; updateData.asignadoAt = limaDate(); } }
           if (col.ESTADO !== -1) { const val = cell(row, col.ESTADO); if (val) updateData.estado = normalizeEstado(val); }
           if (col.MODALIDAD !== -1) { const val = cell(row, col.MODALIDAD); if (val) updateData.modalidad = val; }
           if (col.ANIO_VEHICULO !== -1) { const val = parseInt10(cell(row, col.ANIO_VEHICULO)); if (val !== null) updateData.anioVehiculo = val; }
@@ -1278,7 +1285,7 @@ export class FlotaProspectosService {
         edad: col.EDAD !== -1 ? parseInt10(cell(row, col.EDAD)) : null,
         operador: col.OPERADOR !== -1 ? cell(row, col.OPERADOR) || null : null,
         estado,
-        asignadoAt: col.OPERADOR !== -1 && cell(row, col.OPERADOR) ? new Date() : null,
+        asignadoAt: col.OPERADOR !== -1 && cell(row, col.OPERADOR) ? limaDate() : null,
         modalidad: col.MODALIDAD !== -1 ? cell(row, col.MODALIDAD) || null : null,
         anioVehiculo: col.ANIO_VEHICULO !== -1 ? parseInt10(cell(row, col.ANIO_VEHICULO)) : null,
         placa: col.PLACA !== -1 ? cell(row, col.PLACA) || null : null,
