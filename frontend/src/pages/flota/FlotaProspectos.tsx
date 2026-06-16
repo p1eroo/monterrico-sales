@@ -358,10 +358,11 @@ export default function FlotaProspectos() {
     flotaProspectosByPhone(phone)
       .then((res) => {
         if (res.found && res.prospecto) {
-          const isOwn = hasVerTodos || res.prospecto.operador === null || currentUser.name === res.prospecto.operador;
+          const operadorDisplay = getOperatorDisplayName(res.prospecto.operador, operadores);
+          const isOwn = hasVerTodos || res.prospecto.operador === null || currentUser.name === operadorDisplay;
           if (!isOwn) {
             toast.warning(
-              `El número ${phone} está asignado a ${res.prospecto.operador} (${res.prospecto.nombreCompleto}). Solo lectura.`,
+              `El número ${phone} está asignado a ${res.prospecto.operador} (${res.prospecto.nombreCompleto}). No puedes cambiar el operador.`,
               { duration: 5000 },
             );
             setBlockedProspects((prev) => {
@@ -1277,7 +1278,7 @@ export default function FlotaProspectos() {
                           </div>
                         )}
                         {isBlocked && (
-                          <span className="block text-[10px] text-muted-foreground italic">Solo lectura</span>
+                          <span className="block text-[10px] text-muted-foreground italic">Operador no editable</span>
                         )}
                         {codigo && (
                           <span className="block text-[10px] text-emerald-600 font-medium truncate max-w-[100px]">
@@ -1630,7 +1631,12 @@ export default function FlotaProspectos() {
                  return false;
                }}
               onRowSelectionChange={(ids) => setSelectedIds(new Set(ids))}
-              onCellEdit={async (row, columnId, newValue) => {
+               onCellEdit={async (row, columnId, newValue) => {
+                const isBlocked = blockedProspects.some((bp) => bp.id === (row as any).id);
+                if (isBlocked && columnId === "operador") {
+                  toast.warning("No puedes cambiar el operador asignado a otro operador");
+                  return;
+                }
                 const body: Record<string, unknown> = {};
                 if (columnId === "edad" || columnId === "anioVehiculo") {
                   const num = parseInt(newValue, 10);
@@ -2301,14 +2307,7 @@ export default function FlotaProspectos() {
       {blockedProspects.length > 0 && (
         <style>{blockedProspects.map((bp) => `
 tr[data-row-id="${bp.id}"] {
-  opacity: 0.55;
-  pointer-events: none;
-}
-tr[data-row-id="${bp.id}"] td:nth-child(4) {
-  pointer-events: auto;
-}
-tr[data-row-id="${bp.id}"] td:nth-child(4) * {
-  pointer-events: auto;
+  opacity: 0.75;
 }
 `).join('')}</style>
       )}

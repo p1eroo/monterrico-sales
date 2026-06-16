@@ -52,3 +52,23 @@ export const OPPORTUNITY_FIELD_LABELS: Record<string, string> = {
   primaryContactId: 'Contacto principal',
   fuente: 'Fuente',
 };
+
+export const FLOTA_PROSPECTO_FIELD_LABELS: Record<string, string> = {
+  nombreCompleto: 'Nombre completo',
+  celular: 'Celular',
+  redSocial: 'Red social',
+  edad: 'Edad',
+  operador: 'Operador',
+  estado: 'Estado',
+  modalidad: 'Modalidad',
+  placa: 'Placa',
+  anioVehiculo: 'Año vehículo',
+  distrito: 'Distrito',
+  fechaRegistro: 'Fecha de registro',
+  fechaCita: 'Fecha de cita',
+  asistencia: 'Asistencia',
+  fechaAfiliacion: 'Fecha de afiliación',
+  movil: 'Móvil',
+  observaciones: 'Observaciones',
+  origen: 'Origen',
+};

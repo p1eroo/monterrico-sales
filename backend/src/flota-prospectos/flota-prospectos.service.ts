@@ -3,6 +3,9 @@ import { PrismaService } from '../prisma/prisma.service';
 import { GoogleSheetsService, type SheetsSpreadsheet } from './google-sheets.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { ActivityActor } from '../activity-logs/activity-logs.types';
+import { AuditDetailService } from '../audit-detail/audit-detail.service';
+import { FLOTA_PROSPECTO_FIELD_LABELS } from '../audit-detail/audit-field-labels';
+import { buildChangeEntries } from '../common/audit-diff.util';
 import type { CrmDataScope } from '../auth/crm-data-scope.service';
 import type { ImportJobProgressInput } from '../import-export/import-export-jobs.service';
 import type { BulkImportResultDto, BulkImportRowError } from '../import-export/import-export.service';
@@ -111,6 +114,7 @@ export class FlotaProspectosService {
     private prisma: PrismaService,
     private googleSheets: GoogleSheetsService,
     private activityLogs: ActivityLogsService,
+    private auditDetail: AuditDetailService,
   ) {}
 
   private normalizeCelular(celular?: string | null): string | null {
@@ -435,6 +439,24 @@ export class FlotaProspectosService {
       });
     }
 
+    // Registrar cambios campo a campo en auditoría detallada
+    const diffEntries = buildChangeEntries(
+      existing as any,
+      safeData as Record<string, unknown>,
+      FLOTA_PROSPECTO_FIELD_LABELS,
+      ['asignadoAt'],
+    );
+    if (diffEntries.length > 0) {
+      await this.auditDetail.record(actor || null, {
+        action: data.estado && data.estado !== existing.estado ? 'cambiar_etapa' : 'actualizar',
+        module: 'flota',
+        entityType: 'flota-prospecto',
+        entityId: id,
+        entityName: updated.nombreCompleto,
+        entries: diffEntries,
+      });
+    }
+
     return updated;
   }
 
@@ -464,7 +486,7 @@ export class FlotaProspectosService {
   }
 
   /** Crear un nuevo prospecto */
-  async createOne(data: Record<string, unknown>) {
+  async createOne(data: Record<string, unknown>, actor?: ActivityActor) {
     const rawPhone = String(data.celular || data.movil || '');
     const existingByPhone = await this.findByPhone(rawPhone);
     if (existingByPhone) {
@@ -477,7 +499,7 @@ export class FlotaProspectosService {
         existing: existingByPhone,
       });
     }
-    return this.prisma.flotaProspecto.create({
+    const created = await this.prisma.flotaProspecto.create({
       data: {
         ...data as any,
         fechaRegistro: data.fechaRegistro ? new Date(data.fechaRegistro as string) : new Date(),
@@ -486,24 +508,47 @@ export class FlotaProspectosService {
         asignadoAt: data.operador ? new Date() : null,
       },
     });
+    await this.activityLogs.record(actor || null, {
+      action: 'crear',
+      module: 'flota',
+      entityType: 'flota-prospecto',
+      entityId: created.id,
+      entityName: created.nombreCompleto,
+      description: `Prospecto creado: ${created.nombreCompleto} (${created.celular || ''})`,
+    });
+    return created;
   }
 
   /** Eliminar un prospecto */
-  async remove(id: string) {
+  async remove(id: string, actor?: ActivityActor) {
     const existing = await this.prisma.flotaProspecto.findUnique({ where: { id } });
     if (!existing) {
       throw new Error(`Prospecto no encontrado: ${id}`);
     }
-    return this.prisma.flotaProspecto.delete({ where: { id } });
+    await this.prisma.flotaProspecto.delete({ where: { id } });
+    await this.activityLogs.record(actor || null, {
+      action: 'eliminar',
+      module: 'flota',
+      entityType: 'flota-prospecto',
+      entityId: id,
+      entityName: existing.nombreCompleto,
+      description: `Prospecto eliminado: ${existing.nombreCompleto} (${existing.celular || ''})`,
+    });
   }
 
   /** Eliminar múltiples prospectos */
-  async removeMany(ids: string[]) {
+  async removeMany(ids: string[], actor?: ActivityActor) {
     if (!ids || ids.length === 0) {
       throw new Error('No se proporcionaron IDs');
     }
     const result = await this.prisma.flotaProspecto.deleteMany({
       where: { id: { in: ids } },
+    });
+    await this.activityLogs.record(actor || null, {
+      action: 'eliminar',
+      module: 'flota',
+      entityType: 'flota-prospecto',
+      description: `${result.count} prospecto(s) eliminado(s) en lote`,
     });
     return result.count;
   }
@@ -924,8 +969,10 @@ export class FlotaProspectosService {
   async importRowsWithProgress(
     rows: string[][],
     update: (progress: ImportJobProgressInput) => void,
+    actor?: ActivityActor,
   ): Promise<BulkImportResultDto> {
     const errors: BulkImportRowError[] = [];
+    const sampleNames: string[] = [];
 
     if (rows.length < 2) {
       return { totalRows: 0, created: 0, skipped: 0, errors };
@@ -969,6 +1016,7 @@ export class FlotaProspectosService {
       const nombre = col.NOMBRE_COMPLETO !== -1 ? cell(row, col.NOMBRE_COMPLETO) : '';
       const celular = col.CELULAR !== -1 ? cell(row, col.CELULAR) : cell(row, col.MOVIL);
       const celularNorm = this.normalizeCelular(celular) || '';
+      if (nombre && sampleNames.length < 5) sampleNames.push(nombre);
 
       if (!celularNorm && !nombre) {
         skipped++;
@@ -1087,6 +1135,14 @@ export class FlotaProspectosService {
 
     this.logger.log(`Importación desde archivo completada: ${created} creados, ${updated} actualizados, ${skipped} omitidos, ${errors.length} errores`);
 
+    const sampleText = sampleNames.length > 0 ? ` Ej: ${sampleNames.join(', ')}` : '';
+    await this.activityLogs.record(actor || null, {
+      action: 'importar',
+      module: 'flota',
+      entityType: 'flota-prospecto',
+      description: `Importación desde archivo: ${created} creados, ${updated} actualizados, ${skipped} omitidos, ${errors.length} errores.${sampleText}`,
+    });
+
     return { totalRows, created, skipped, errors };
   }
 
@@ -1095,8 +1151,10 @@ export class FlotaProspectosService {
     sheetName: string,
     update: (progress: ImportJobProgressInput) => void,
     spreadsheetId?: string,
+    actor?: ActivityActor,
   ): Promise<BulkImportResultDto> {
     const errors: BulkImportRowError[] = [];
+    const sampleNames: string[] = [];
 
     let rawRows: string[][];
     try {
@@ -1149,6 +1207,7 @@ export class FlotaProspectosService {
       const nombre = col.NOMBRE_COMPLETO !== -1 ? cell(row, col.NOMBRE_COMPLETO) : '';
       const celular = col.CELULAR !== -1 ? cell(row, col.CELULAR) : cell(row, col.MOVIL);
       const celularNorm = this.normalizeCelular(celular) || '';
+      if (nombre && sampleNames.length < 5) sampleNames.push(nombre);
 
       if (!celularNorm && !nombre) {
         skipped++;
@@ -1269,6 +1328,14 @@ export class FlotaProspectosService {
     }
 
     this.logger.log(`Importación completada: ${created} creados, ${updated} actualizados, ${skipped} omitidos, ${errors.length} errores`);
+
+    const sampleText = sampleNames.length > 0 ? ` Ej: ${sampleNames.join(', ')}` : '';
+    await this.activityLogs.record(actor || null, {
+      action: 'importar',
+      module: 'flota',
+      entityType: 'flota-prospecto',
+      description: `Importación desde Google Sheets (${sheetName}): ${created} creados, ${updated} actualizados, ${skipped} omitidos, ${errors.length} errores.${sampleText}`,
+    });
 
     return { totalRows, created, skipped, errors };
   }

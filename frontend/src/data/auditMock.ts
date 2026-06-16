@@ -54,6 +54,7 @@ export const actionLabels: Record<string, string> = {
   eliminar: 'Eliminar',
   asignar: 'Asignar',
   cambiar_etapa: 'Cambiar etapa',
+  importar: 'Importar',
   login: 'Inicio de sesión',
   login_fallido: 'Login fallido',
   cambiar_password: 'Cambiar contraseña',
@@ -66,8 +67,46 @@ export const moduleLabels: Record<string, string> = {
   oportunidades: 'Oportunidades',
   pipeline: 'Pipeline',
   actividades: 'Actividades',
+  flota: 'Flota',
+  'flota-prospecto': 'Prospectos',
+  campanas: 'Campañas',
   usuarios: 'Usuarios',
   roles: 'Roles y permisos',
   configuracion: 'Configuración',
   sistema: 'Sistema',
+};
+
+export const modulesByArea: Record<string, { label: string; modules: Record<string, string> }> = {
+  comercial: {
+    label: 'Comercial',
+    modules: {
+      contactos: 'Contactos',
+      empresas: 'Empresas',
+      oportunidades: 'Oportunidades',
+      pipeline: 'Pipeline',
+      actividades: 'Actividades',
+    },
+  },
+  flota: {
+    label: 'Flota',
+    modules: {
+      flota: 'General',
+      'flota-prospecto': 'Prospectos',
+    },
+  },
+  marketing: {
+    label: 'Marketing',
+    modules: {
+      campanas: 'Campañas',
+    },
+  },
+  sistema: {
+    label: 'Sistema',
+    modules: {
+      usuarios: 'Usuarios',
+      roles: 'Roles y permisos',
+      configuracion: 'Configuración',
+      sistema: 'Sistema',
+    },
+  },
 };

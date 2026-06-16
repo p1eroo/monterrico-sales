@@ -191,6 +191,7 @@ export class FlotaProspectosController {
   ) {
     try {
       const totalRows = body.rows.length > 1 ? body.rows.length - 1 : 0;
+      const actor = { userId: req.user.userId, userName: req.user.name };
 
       return this.importExportJobs.startJob(
         {
@@ -198,7 +199,7 @@ export class FlotaProspectosController {
           ownerUserId: req.user.userId,
           totalRows,
         },
-        (update) => this.service.importRowsWithProgress(body.rows, update),
+        (update) => this.service.importRowsWithProgress(body.rows, update, actor),
       );
     } catch (err) {
       throw new HttpException(
@@ -219,6 +220,7 @@ export class FlotaProspectosController {
     try {
       const preview = await this.service.getPreview(sheetName, spreadsheetId);
       const totalRows = preview.totalRows;
+      const actor = { userId: req.user.userId, userName: req.user.name };
 
       return this.importExportJobs.startJob(
         {
@@ -226,7 +228,7 @@ export class FlotaProspectosController {
           ownerUserId: req.user.userId,
           totalRows,
         },
-        (update) => this.service.importFromSheetsWithProgress(sheetName, update, spreadsheetId),
+        (update) => this.service.importFromSheetsWithProgress(sheetName, update, spreadsheetId, actor),
       );
     } catch (err) {
       throw new HttpException(
@@ -290,9 +292,10 @@ export class FlotaProspectosController {
   /** DELETE /flota-prospectos/:id — Eliminar un prospecto */
   @Delete('flota-prospectos/:id')
   @RequirePermissions('flota_prospectos.eliminar')
-  async remove(@Param('id') id: string) {
+  async remove(@Param('id') id: string, @Req() req: AuthedReq) {
     try {
-      await this.service.remove(id);
+      const actor = { userId: req.user.userId, userName: req.user.name };
+      await this.service.remove(id, actor);
       return { deleted: true };
     } catch (err) {
       console.error('Error eliminando prospecto:', err);
@@ -306,9 +309,10 @@ export class FlotaProspectosController {
   /** POST /flota-prospectos/delete-many — Eliminar múltiples prospectos */
   @Post('flota-prospectos/delete-many')
   @RequirePermissions('flota_prospectos.eliminar')
-  async removeMany(@Body() ids: string[]) {
+  async removeMany(@Body() ids: string[], @Req() req: AuthedReq) {
     try {
-      const deleted = await this.service.removeMany(ids);
+      const actor = { userId: req.user.userId, userName: req.user.name };
+      const deleted = await this.service.removeMany(ids, actor);
       return { deleted };
     } catch {
       throw new HttpException(
@@ -330,9 +334,10 @@ export class FlotaProspectosController {
   /** POST /flota-prospectos — Crear nuevo prospecto */
   @Post('flota-prospectos')
   @RequirePermissions('flota_prospectos.crear')
-  async create(@Body() body: Record<string, unknown>) {
+  async create(@Body() body: Record<string, unknown>, @Req() req: AuthedReq) {
     try {
-      return await this.service.createOne(body);
+      const actor = { userId: req.user.userId, userName: req.user.name };
+      return await this.service.createOne(body, actor);
     } catch (err) {
       if (err instanceof ConflictException) throw err;
       throw new HttpException(

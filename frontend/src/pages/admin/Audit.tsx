@@ -15,7 +15,7 @@ import {
   History,
 } from 'lucide-react';
 import type { ActivityLog, AuditLog } from '@/types';
-import { actionLabels, moduleLabels } from '@/data/auditMock';
+import { actionLabels, moduleLabels, modulesByArea } from '@/data/auditMock';
 import { useUsers } from '@/hooks/useUsers';
 import { fetchActivityLogs } from '@/lib/activityLogsApi';
 import { fetchAuditDetailLogs } from '@/lib/auditDetailApi';
@@ -94,6 +94,7 @@ export default function AuditPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [userFilter, setUserFilter] = useState<string>('todos');
   const [moduleFilter, setModuleFilter] = useState<string>('todos');
+  const [areaFilter, setAreaFilter] = useState<string>('todas');
   const [actionFilter, setActionFilter] = useState<string>('todos');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
@@ -120,7 +121,7 @@ export default function AuditPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, userFilter, moduleFilter, actionFilter, pageSize]);
+  }, [debouncedSearch, userFilter, areaFilter, moduleFilter, actionFilter, pageSize]);
 
   useEffect(() => {
     if (activeTab !== 'actividad') {
@@ -223,6 +224,13 @@ export default function AuditPage() {
     return Object.entries(groups).sort(([a], [b]) => b.localeCompare(a));
   }, [activityLogs]);
 
+  const filteredModuleEntries = useMemo(() => {
+    if (areaFilter === 'todas') return Object.entries(moduleLabels);
+    const areaModules = modulesByArea[areaFilter]?.modules;
+    if (!areaModules) return Object.entries(moduleLabels);
+    return Object.entries(areaModules).filter(([k]) => moduleLabels[k]);
+  }, [areaFilter]);
+
   function copyToClipboard(text: string) {
     navigator.clipboard.writeText(text);
   }
@@ -277,13 +285,24 @@ export default function AuditPage() {
                 ))}
               </SelectContent>
             </Select>
+            <Select value={areaFilter} onValueChange={(v) => { setAreaFilter(v); setModuleFilter('todos'); }}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Área" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todas">Todas las áreas</SelectItem>
+                {Object.entries(modulesByArea).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Select value={moduleFilter} onValueChange={setModuleFilter}>
               <SelectTrigger className="w-[160px]">
                 <SelectValue placeholder="Módulo" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Todos los módulos</SelectItem>
-                {Object.entries(moduleLabels).map(([k, v]) => (
+                {filteredModuleEntries.map(([k, v]) => (
                   <SelectItem key={k} value={k}>
                     {v}
                   </SelectItem>
