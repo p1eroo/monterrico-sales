@@ -320,7 +320,7 @@ export default function FlotaReportes() {
               existing.mensajesEnviados += s.mensajesEnviados;
               existing.mensajesRecibidos += s.mensajesRecibidos;
               existing.llamadas += s.llamadas;
-              existing.citasAtendidas += s.citasAtendidas;
+              existing.citasProgramadas += s.citasProgramadas;
             } else {
             unified.set(canonical, { ...s, operador: canonical });
           }
@@ -738,7 +738,7 @@ export default function FlotaReportes() {
         "Mensajes Enviados": x.mensajesEnviados,
         "Mensajes Recibidos": x.mensajesRecibidos,
         Llamadas: x.llamadas,
-        "Citas atendidas": x.citasAtendidas,
+        "Citas programadas": x.citasProgramadas,
       })),
     );
     addSheet(
@@ -909,7 +909,7 @@ export default function FlotaReportes() {
               "Enviados",
               "Recibidos",
               "Llamadas",
-              "Citas atendidas",
+              "Citas programadas",
             ],
           ],
           body: filteredOperadorStats.map((x) => [
@@ -919,7 +919,7 @@ export default function FlotaReportes() {
             x.mensajesEnviados,
             x.mensajesRecibidos,
             x.llamadas,
-            x.citasAtendidas,
+            x.citasProgramadas,
           ]),
         },
         {
@@ -1285,8 +1285,8 @@ export default function FlotaReportes() {
                       stackId="a"
                     />
                     <Bar
-                      dataKey="citasAtendidas"
-                      name="Citas atendidas"
+                      dataKey="citasProgramadas"
+                      name="Citas programadas"
                       fill="#06b6d4"
                       radius={[0, 3, 3, 0]}
                       stackId="a"
@@ -2179,8 +2179,8 @@ export default function FlotaReportes() {
                       stackId="a"
                     />
                     <Bar
-                      dataKey="citasAtendidas"
-                      name="Citas atendidas"
+                      dataKey="citasProgramadas"
+                      name="Citas programadas"
                       fill="#06b6d4"
                       radius={[0, 3, 3, 0]}
                       stackId="a"

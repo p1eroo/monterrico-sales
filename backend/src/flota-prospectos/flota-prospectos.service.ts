@@ -1476,7 +1476,7 @@ export class FlotaProspectosService {
 
     const rows = await Promise.all(
       operatorNames.map(async (operador) => {
-        const [prospectosAsignados, mensajesEnviados, mensajesRecibidos, chatsData, llamadas, citasAtendidas] = await Promise.all([
+        const [prospectosAsignados, mensajesEnviados, mensajesRecibidos, chatsData, llamadas, citasProgramadas] = await Promise.all([
           this.prisma.flotaProspecto.count({
             where: { operador, asignadoAt: { gte: startDate, lte: endDate } },
           }),
@@ -1515,7 +1515,6 @@ export class FlotaProspectosService {
           this.prisma.flotaProspecto.count({
             where: {
               operador,
-              asistencia: { equals: 'Asistió', mode: 'insensitive' },
               fechaCita: { gte: startDate, lte: endDate },
             },
           }),
@@ -1528,7 +1527,7 @@ export class FlotaProspectosService {
           mensajesEnviados,
           mensajesRecibidos,
           llamadas,
-          citasAtendidas,
+          citasProgramadas,
         };
       }),
     );
