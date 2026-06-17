@@ -10,6 +10,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogClose,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { API_BASE } from '@/lib/api';
 import {
   fetchFacebookAccounts, connectFacebookAccount, disconnectFacebookAccount,
   syncFacebookForms, syncFacebookLeads, type FacebookAccount, type ConnectAccountDto,
@@ -66,7 +67,7 @@ function AccountCard({ account, onUpdate }: { account: FacebookAccount; onUpdate
     }
   };
 
-  const webhookUrl = `${window.location.origin}/api/webhooks/facebook`;
+  const webhookUrl = `${API_BASE}/api/webhooks/facebook`;
 
   return (
     <Card>

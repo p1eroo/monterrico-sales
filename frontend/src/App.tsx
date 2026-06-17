@@ -44,6 +44,8 @@ const FlotaConductores = lazy(() => import('@/pages/flota/FlotaConductores'));
 const FlotaReportes = lazy(() => import('@/pages/flota/FlotaReportes'));
 const FlotaMensajes = lazy(() => import('@/pages/flota/FlotaMensajes'));
 const FlotaCalendario = lazy(() => import('@/pages/flota/FlotaCalendario'));
+const PrivacyPolicy = lazy(() => import('@/pages/PrivacyPolicy'));
+const TermsOfService = lazy(() => import('@/pages/TermsOfService'));
 const MarketingDashboard = lazy(() => import('@/pages/marketing/MarketingDashboard'));
 const MarketingLeads = lazy(() => import('@/pages/marketing/MarketingLeads'));
 const MarketingIntegrations = lazy(() => import('@/pages/marketing/MarketingIntegrations'));
@@ -107,6 +109,14 @@ function MainRoutes() {
             <Register />
           </PublicRoute>
         }
+      />
+      <Route
+        path="/privacy-policy"
+        element={<PrivacyPolicy />}
+      />
+      <Route
+        path="/terms-of-service"
+        element={<TermsOfService />}
       />
       <Route
         path="/area-select"

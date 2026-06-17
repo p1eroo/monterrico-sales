@@ -1,4 +1,4 @@
-import { api } from '@/lib/api';
+import { api, API_BASE } from '@/lib/api';
 
 // ─── Tipos Facebook ───
 
@@ -212,7 +212,7 @@ export async function fetchIntegrations(): Promise<MarketingIntegration[]> {
     name: a.pageName,
     icon: 'facebook',
     status: a.active ? 'active' : 'inactive' as const,
-    webhookUrl: `${window.location.origin}/api/webhooks/facebook`,
+    webhookUrl: `${API_BASE}/api/webhooks/facebook`,
     campaigns: a.forms.map((f) => ({
       id: f.id,
       name: f.name,
