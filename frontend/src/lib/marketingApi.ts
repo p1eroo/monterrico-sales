@@ -36,7 +36,7 @@ export interface FacebookLead {
   id: string;
   facebookLeadId: string;
   formId: string;
-  fieldData: Record<string, string[]>[];
+  fieldData: { name: string; values: string[] }[];
   fullName: string | null;
   phone: string | null;
   email: string | null;

@@ -30,7 +30,7 @@ function LeadDetailModal({ lead, open, onOpenChange, onSent }: { lead: FacebookL
 
   if (!lead) return null;
 
-  const fieldData = (lead.fieldData || []) as Array<{ name: string; values: string[] }>;
+  const fieldData = lead.fieldData || [];
 
   const handleSendComercial = async () => {
     setSendingComercial(true);
