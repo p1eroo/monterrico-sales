@@ -1036,6 +1036,19 @@ export class WhatsappService {
         // Si falla la detección, usar lo que reportó Evolution
       }
 
+      // Convertir WebP/AVIF a JPEG para compatibilidad universal
+      if (realMimeType === 'image/webp' || realMimeType === 'image/avif') {
+        try {
+          const sharp = require('sharp');
+          const converted = await (sharp(bytes).jpeg({ quality: 90 }).toBuffer() as Promise<Buffer>);
+          bytes = converted;
+          realMimeType = 'image/jpeg';
+          realExtension = 'jpg';
+        } catch {
+          // Si sharp falla, mantener el formato original
+        }
+      }
+
       const originalName =
         media.fileName?.trim() ||
         `whatsapp-${media.mediaType}-${messageId.slice(0, 8)}.${realExtension}`;

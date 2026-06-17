@@ -756,13 +756,19 @@ export default function ChatPanelStandalone({ prospectoId, onClose }: ChatPanelS
           <button
             type="button"
             onClick={async () => {
-              if (!lightboxAttachment) return;
+              if (!lightboxUrl) return;
               try {
-                await downloadWhatsappAttachment({
-                  id: lightboxAttachment.id,
-                  name: lightboxAttachment.name,
-                  url: lightboxUrl ?? undefined,
-                });
+                const res = await fetch(lightboxUrl);
+                if (!res.ok) throw new Error(`Error ${res.status}`);
+                const blob = await res.blob();
+                const objectUrl = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = objectUrl;
+                link.download = lightboxAttachment?.name || 'imagen';
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                window.setTimeout(() => window.URL.revokeObjectURL(objectUrl), 1000);
               } catch (error) {
                 toast.error(error instanceof Error ? error.message : 'Error al descargar');
               }
