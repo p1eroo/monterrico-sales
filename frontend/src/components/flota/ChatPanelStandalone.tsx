@@ -11,8 +11,10 @@ import { cn } from '@/lib/utils';
 import { fetchFlotaProspectoMessages, sendFlotaWhatsappMessage, uploadFlotaImage, uploadFlotaAudio, uploadFlotaDocument, deleteFlotaWhatsappMessage } from '@/lib/flotaWhatsappApi';
 import { fetchOperadores, getOperatorDisplayName, type OperadorUser } from '@/lib/flotaProspectosApi';
 import type { WhatsappMessageItem } from '@/lib/whatsappApi';
+import { downloadWhatsappAttachment } from '@/lib/whatsappApi';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useAppStore } from '@/store';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 interface ChatPanelStandaloneProps {
   prospectoId: string;
@@ -51,12 +53,14 @@ function attachmentMetaLine(name: string, mimeType: string, size: number): strin
   return parts.join(' · ');
 }
 
-function MessageAttachment({ attachment, mine, setLightboxUrl }: {
+function MessageAttachment({ attachment, mine, setLightboxUrl, onLightboxOpen }: {
   attachment: NonNullable<WhatsappMessageItem['attachments']>[number];
   mine: boolean;
   setLightboxUrl: (url: string) => void;
+  onLightboxOpen?: (id: string, name: string) => void;
 }) {
   const [downloading, setDownloading] = useState(false);
+  const [imgError, setImgError] = useState(false);
   const src = (attachment.url ?? attachment.downloadUrl ?? attachment.proxyUrl ?? '').trim();
 
   if (!src) {
@@ -69,10 +73,18 @@ function MessageAttachment({ attachment, mine, setLightboxUrl }: {
   }
 
   if (attachment.mediaType === 'image' || attachment.mimeType?.startsWith('image/')) {
+    if (imgError) {
+      return (
+        <div className={cn("mb-2 flex items-center gap-2 rounded-lg px-3 py-2 text-xs", mine ? "bg-[#0000001a] text-[#111b21] dark:text-[#e9edef]" : "bg-[#0000000d] text-[#667781] dark:text-[#aebac1]")}>
+          <ImageIcon className="h-4 w-4 shrink-0" />
+          <span className="truncate">{attachment.name || 'Imagen no disponible'}</span>
+        </div>
+      );
+    }
     return (
       <div className="relative w-full">
-        <button type="button" onClick={() => setLightboxUrl(src)} className="block w-full">
-          <img src={src} alt={attachment.name} className="mb-2 max-h-60 w-full rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity" />
+        <button type="button" onClick={() => { setLightboxUrl(src); onLightboxOpen?.(attachment.id, attachment.name); }} className="block w-full">
+          <img src={src} alt={attachment.name} onError={() => setImgError(true)} className="mb-2 max-h-60 w-full rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity" />
         </button>
       </div>
     );
@@ -125,6 +137,7 @@ export default function ChatPanelStandalone({ prospectoId, onClose }: ChatPanelS
   const [pendingAttachment, setPendingAttachment] = useState<PendingAttachment | null>(null);
   const [sendingAttachment, setSendingAttachment] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [lightboxAttachment, setLightboxAttachment] = useState<{ id: string; name: string } | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [newMessagesCount, setNewMessagesCount] = useState(0);
@@ -578,7 +591,7 @@ export default function ChatPanelStandalone({ prospectoId, onClose }: ChatPanelS
                       )}
                       <div className={cn('max-w-[85%] min-w-0 rounded-2xl px-4 py-2.5 text-sm shadow-sm', item.mine ? 'rounded-br-sm bg-[#d9fdd3] dark:bg-[#005c4b] text-[#111b21] dark:text-[#e9edef]' : 'rounded-bl-sm bg-white dark:bg-[#1f2c33] text-[#111b21] dark:text-[#e9edef]')}>
                         {item.msg.attachments?.map((att) => (
-                          <MessageAttachment key={att.id} attachment={att} mine={item.mine} setLightboxUrl={setLightboxUrl} />
+                          <MessageAttachment key={att.id} attachment={att} mine={item.mine} setLightboxUrl={setLightboxUrl} onLightboxOpen={(id, name) => setLightboxAttachment({ id, name })} />
                         ))}
                         {item.msg.body && (!item.msg.attachments?.length || !['[Imagen]', '[Documento]', '[Video]', '[Audio]', '[Sticker]'].includes(item.msg.body.trim())) && (
                           item.msg.body === 'Este mensaje fue eliminado' ? (
@@ -731,11 +744,43 @@ export default function ChatPanelStandalone({ prospectoId, onClose }: ChatPanelS
       )}
 
       {/* Lightbox */}
-      {lightboxUrl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80" onClick={() => setLightboxUrl(null)}>
-          <img src={lightboxUrl} alt="Vista ampliada" className="max-h-[90vh] max-w-[90vw] object-contain" />
-        </div>
-      )}
+      <Dialog open={!!lightboxUrl} onOpenChange={() => { setLightboxUrl(null); setLightboxAttachment(null); }}>
+        <DialogContent className="max-w-[90vw] max-h-[90vh] p-2 border-0 bg-black/95">
+          <button
+            type="button"
+            onClick={() => { setLightboxUrl(null); setLightboxAttachment(null); }}
+            className="absolute right-3 top-3 z-10 rounded-full bg-white/10 p-1.5 text-white hover:bg-white/20 transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={async () => {
+              if (!lightboxAttachment) return;
+              try {
+                await downloadWhatsappAttachment({
+                  id: lightboxAttachment.id,
+                  name: lightboxAttachment.name,
+                  url: lightboxUrl ?? undefined,
+                });
+              } catch (error) {
+                toast.error(error instanceof Error ? error.message : 'Error al descargar');
+              }
+            }}
+            className="absolute right-12 top-3 z-10 rounded-full bg-white/10 p-1.5 text-white hover:bg-white/20 transition-colors"
+            title="Descargar imagen"
+          >
+            <Download className="h-5 w-5" />
+          </button>
+          {lightboxUrl && (
+            <img
+              src={lightboxUrl}
+              alt="Vista ampliada"
+              className="max-h-[85vh] w-full object-contain"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
 
     {mediaPanelOpen && (
@@ -755,7 +800,7 @@ export default function ChatPanelStandalone({ prospectoId, onClose }: ChatPanelS
           ) : (
             <div className="flex flex-col gap-2">
               {allAttachments.map((a) => (
-                <MessageAttachment key={a.id} attachment={a} mine={false} setLightboxUrl={setLightboxUrl} />
+                <MessageAttachment key={a.id} attachment={a} mine={false} setLightboxUrl={setLightboxUrl} onLightboxOpen={(id, name) => setLightboxAttachment({ id, name })} />
               ))}
             </div>
           )}

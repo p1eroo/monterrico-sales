@@ -225,6 +225,7 @@ function MessageAttachment({
   setLightboxAttachment?: (info: { id: string; name: string }) => void;
 }) {
   const [downloading, setDownloading] = useState(false);
+  const [imgError, setImgError] = useState(false);
   const src = (attachment.url ?? attachment.downloadUrl ?? attachment.proxyUrl ?? '').trim();
 
   if (!src) {
@@ -249,12 +250,21 @@ function MessageAttachment({
   }
 
   if (attachment.mediaType === 'image' || attachment.mimeType?.startsWith('image/')) {
+    if (imgError) {
+      return (
+        <div className={cn("mb-2 flex items-center gap-2 rounded-lg px-3 py-2 text-xs", mine ? "bg-black/10 text-primary-foreground/80" : "bg-black/5 text-muted-foreground")}>
+          <ImageIcon className="h-4 w-4 shrink-0" />
+          <span className="truncate">{attachment.name || 'Imagen no disponible'}</span>
+        </div>
+      );
+    }
     return (
       <div className="relative w-full">
         <button type="button" onClick={() => { setLightboxUrl(src); setLightboxAttachment?.({ id: attachment.id, name: attachment.name }); }} className="block w-full">
           <img
             src={src}
             alt={attachment.name}
+            onError={() => setImgError(true)}
             className="mb-2 max-h-60 w-full rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity"
           />
         </button>

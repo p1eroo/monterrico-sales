@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, XCircle, Clock, Copy, Loader2, Plus, Trash2, RefreshCw, ExternalLink, Key } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -21,6 +22,7 @@ const STATUS_CONFIG: Record<string, { label: string; icon: typeof CheckCircle2; 
 };
 
 function AccountCard({ account, onUpdate }: { account: FacebookAccount; onUpdate: () => void }) {
+  const navigate = useNavigate();
   const [syncingForms, setSyncingForms] = useState(false);
   const [syncingLeads, setSyncingLeads] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
@@ -157,6 +159,7 @@ function AccountCard({ account, onUpdate }: { account: FacebookAccount; onUpdate
                             const r = await syncFacebookLeads(account.id, f.id);
                             toast.success(`${r.imported} leads importados de "${f.name}"`);
                             onUpdate();
+                            navigate(`/marketing/leads?formId=${f.id}`);
                           } catch {
                             toast.error('Error al sincronizar');
                           }

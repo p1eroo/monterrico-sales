@@ -1021,13 +1021,28 @@ export class WhatsappService {
         );
         return;
       }
+
+      // Detectar tipo real del archivo desde los bytes (Evolution reporta mal el MIME a veces)
+      let realMimeType = media.mimeType || 'application/octet-stream';
+      let realExtension = this.extensionFromMime(realMimeType);
+      try {
+        const { fileTypeFromBuffer } = require('file-type');
+        const detected = await fileTypeFromBuffer(bytes);
+        if (detected?.mime) {
+          realMimeType = detected.mime;
+          realExtension = detected.ext || this.extensionFromMime(detected.mime);
+        }
+      } catch {
+        // Si falla la detección, usar lo que reportó Evolution
+      }
+
       const originalName =
         media.fileName?.trim() ||
-        this.fallbackMediaFilename(media.mediaType, media.mimeType, messageId);
+        `whatsapp-${media.mediaType}-${messageId.slice(0, 8)}.${realExtension}`;
       await this.files.create(uploadedById, {
         buffer: bytes,
         originalName,
-        mimeType: media.mimeType || 'application/octet-stream',
+        mimeType: realMimeType,
         entityType,
         entityId,
         entityName: entityName ?? undefined,

@@ -763,12 +763,14 @@ model FacebookLead {
   adName              String?
   createdTime         DateTime
   importedAsContactId String?
+  importedAsFlotaProspectoId String?
   importedAt          DateTime?
   createdAt           DateTime      @default(now())
 
   @@index([formId])
   @@index([createdTime])
   @@index([importedAsContactId])
+  @@index([importedAsFlotaProspectoId])
   @@index([importedAt])
 }
 

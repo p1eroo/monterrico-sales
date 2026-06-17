@@ -3,6 +3,8 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Post,
   Query,
@@ -71,5 +73,31 @@ export class FacebookLeadsController {
   @RequirePermissions('marketing.ver')
   async getFormsList(@Req() req: AuthedRequest) {
     return this.facebookLeads.getFormsList(req.user.userId);
+  }
+
+  @Post('leads/:id/send-to-comercial')
+  @RequirePermissions('marketing.ver')
+  async sendToComercial(@Param('id') id: string, @Req() req: AuthedRequest) {
+    return this.facebookLeads.sendToComercial(id, req.user.userId);
+  }
+
+  @Post('leads/:id/send-to-flota')
+  @RequirePermissions('marketing.ver')
+  async sendToFlota(@Param('id') id: string, @Req() req: AuthedRequest) {
+    return this.facebookLeads.sendToFlota(id, req.user.userId);
+  }
+
+  @Delete('leads/:id')
+  @HttpCode(HttpStatus.OK)
+  @RequirePermissions('marketing.ver')
+  async deleteLead(@Param('id') id: string, @Req() req: AuthedRequest) {
+    return this.facebookLeads.deleteLead(id, req.user.userId);
+  }
+
+  @Post('leads/bulk-delete')
+  @HttpCode(HttpStatus.OK)
+  @RequirePermissions('marketing.ver')
+  async bulkDeleteLeads(@Body() body: { ids?: string[]; selectAll?: boolean; formId?: string; search?: string; dateFrom?: string; dateTo?: string }, @Req() req: AuthedRequest) {
+    return this.facebookLeads.bulkDeleteLeads(body, req.user.userId);
   }
 }

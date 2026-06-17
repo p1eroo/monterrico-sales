@@ -44,6 +44,7 @@ export interface FacebookLead {
   adName: string | null;
   createdTime: string;
   importedAsContactId: string | null;
+  importedAsFlotaProspectoId: string | null;
   importedAt: string | null;
   createdAt: string;
   form: { id: string; name: string; facebookFormId: string };
@@ -129,6 +130,38 @@ export async function fetchFacebookStats(): Promise<FacebookStats> {
 
 export async function fetchFacebookForms(): Promise<FacebookForm[]> {
   return api<FacebookForm[]>('/facebook/forms');
+}
+
+export async function sendLeadToComercial(leadId: string): Promise<{ contactId: string }> {
+  return api<{ contactId: string }>(`/facebook/leads/${encodeURIComponent(leadId)}/send-to-comercial`, {
+    method: 'POST',
+  });
+}
+
+export async function sendLeadToFlota(leadId: string): Promise<{ flotaProspectoId: string }> {
+  return api<{ flotaProspectoId: string }>(`/facebook/leads/${encodeURIComponent(leadId)}/send-to-flota`, {
+    method: 'POST',
+  });
+}
+
+export async function deleteFacebookLead(leadId: string): Promise<{ deleted: boolean }> {
+  return api<{ deleted: boolean }>(`/facebook/leads/${encodeURIComponent(leadId)}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function bulkDeleteFacebookLeads(params: {
+  ids?: string[];
+  selectAll?: boolean;
+  formId?: string;
+  search?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}): Promise<{ deleted: number }> {
+  return api<{ deleted: number }>('/facebook/leads/bulk-delete', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
 }
 
 // ─── Mantener compatibilidad con tipos existentes ───
