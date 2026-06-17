@@ -80,6 +80,7 @@ model User {
   whatsappInstances     WhatsappInstance[]
   whatsappMessagesSent CrmWhatsappMessage[] @relation("CrmWhatsappMessageAuthor")
   allowedAreas         String[] @default([])
+  facebookAccounts     FacebookAccount[]
 }
 
 /** Instancia/línea de WhatsApp conectada (personal por asesor, o compartida de flota). */
@@ -707,6 +708,68 @@ model CrmFile {
   @@index([entityType, entityId])
   @@index([uploadedBy])
   @@index([createdAt])
+}
+
+// ─── Facebook Lead Ads (Marketing) ───
+
+model FacebookAccount {
+  id                String         @id @default(cuid())
+  pageId            String
+  pageName          String
+  pageAccessToken   String
+  pageTokenExpiresAt DateTime?
+  instagramId       String?
+  connectedById     String
+  connectedBy       User           @relation(fields: [connectedById], references: [id], onDelete: Restrict)
+  active            Boolean        @default(true)
+  lastSyncedAt      DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  forms             FacebookForm[]
+
+  @@unique([pageId])
+  @@index([connectedById])
+}
+
+model FacebookForm {
+  id              String         @id @default(cuid())
+  facebookFormId  String         @unique
+  name            String
+  pageId          String
+  accountId       String
+  account         FacebookAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  locale          String?
+  status          String         @default("active")
+  leadsCount      Int            @default(0)
+  lastLeadAt      DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  leads           FacebookLead[]
+
+  @@index([accountId])
+  @@index([pageId])
+}
+
+model FacebookLead {
+  id                  String        @id @default(cuid())
+  facebookLeadId      String        @unique
+  formId              String
+  form                FacebookForm  @relation(fields: [formId], references: [id], onDelete: Cascade)
+  fieldData           Json
+  fullName            String?
+  phone               String?
+  email               String?
+  adId                String?
+  adName              String?
+  createdTime         DateTime
+  importedAsContactId String?
+  importedAt          DateTime?
+  createdAt           DateTime      @default(now())
+
+  @@index([formId])
+  @@index([createdTime])
+  @@index([importedAsContactId])
+  @@index([importedAt])
 }
 
 // ─── Flota: Prospectos importados desde Google Sheets ───

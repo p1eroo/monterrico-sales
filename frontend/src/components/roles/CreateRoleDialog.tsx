@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ChevronLeft, ChevronRight, Briefcase, Car, Shield as ShieldIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Briefcase, Car, Shield as ShieldIcon, Megaphone } from 'lucide-react';
 import type { RBACRole, PermissionKey } from '@/types';
 import {
   ROLE_TEMPLATES,
@@ -34,7 +34,7 @@ export function CreateRoleDialog({
   const [templateId, setTemplateId] = useState<string>('');
   const [roleName, setRoleName] = useState('');
   const [roleDescription, setRoleDescription] = useState('');
-  const [selectedArea, setSelectedArea] = useState<'comercial' | 'flota' | 'general'>('comercial');
+  const [selectedArea, setSelectedArea] = useState<'comercial' | 'flota' | 'marketing' | 'general'>('comercial');
   const [permissions, setPermissions] = useState<Record<PermissionKey, boolean>>(
     () => getTemplatePermissions('personalizado')
   );
@@ -177,6 +177,15 @@ export function CreateRoleDialog({
                     onClick={() => setSelectedArea('general')}
                   >
                     <ShieldIcon className="size-4" /> General
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={selectedArea === 'marketing' ? 'default' : 'outline'}
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => setSelectedArea('marketing')}
+                  >
+                    <Megaphone className="size-4" /> Marketing
                   </Button>
                 </div>
               </div>

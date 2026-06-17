@@ -6,7 +6,7 @@ import type {
 } from '@/types';
 
 /** Módulos y acciones para construir la matriz de permisos */
-export const PERMISSION_MODULES: { id: PermissionModule; label: string; area: 'comercial' | 'flota' | 'general' }[] = [
+export const PERMISSION_MODULES: { id: PermissionModule; label: string; area: 'comercial' | 'flota' | 'marketing' | 'general' }[] = [
   { id: 'dashboard', label: 'Dashboard', area: 'comercial' },
   { id: 'contactos', label: 'Contactos', area: 'comercial' },
   { id: 'empresas', label: 'Empresas', area: 'comercial' },
@@ -29,6 +29,7 @@ export const PERMISSION_MODULES: { id: PermissionModule; label: string; area: 'c
   { id: 'auditoria', label: 'Auditoría', area: 'general' },
   { id: 'configuracion', label: 'Configuración', area: 'general' },
   { id: 'agentes_ia', label: 'Agentes IA (copiloto)', area: 'general' },
+  { id: 'marketing', label: 'Marketing', area: 'marketing' },
 ];
 
 /**
@@ -61,6 +62,7 @@ export const MODULE_ALLOWED_ACTIONS: Record<
   flota_conductores: ['ver', 'crear', 'editar', 'eliminar', 'exportar'],
   flota_reportes: ['ver', 'exportar'],
   flota_mensajes: ['ver', 'crear', 'editar', 'eliminar', 'exportar'],
+  marketing: ['ver', 'crear', 'editar', 'eliminar', 'asignar', 'exportar'],
 };
 
 export function moduleAllowsAction(
@@ -203,6 +205,7 @@ const ASESOR_PERMISSIONS = [
   'usuarios.ver',
   'agentes_ia.ver',
   'agentes_ia.editar',
+  'marketing.ver',
 ];
 const SOLO_LECTURA_PERMISSIONS = [
   ...allValidPermissionKeys().filter((k) => k.endsWith('.ver')),

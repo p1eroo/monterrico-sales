@@ -28,6 +28,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { WhatsappModule } from './whatsapp/whatsapp.module';
 import { FlotaProspectosModule } from './flota-prospectos/flota-prospectos.module';
 import { ApolloModule } from './apollo/apollo.module';
+import { FacebookLeadsModule } from './facebook-leads/facebook-leads.module';
 
 @Module({
   imports: [
@@ -69,6 +70,7 @@ import { ApolloModule } from './apollo/apollo.module';
     WhatsappModule,
     FlotaProspectosModule,
     ApolloModule,
+    FacebookLeadsModule,
   ],
   controllers: [AppController],
   providers: [

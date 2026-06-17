@@ -79,6 +79,8 @@ export function getRequiredPermissionForPath(
   if (pathname.startsWith('/flota/reportes')) return 'flota_reportes.ver';
   if (pathname.startsWith('/flota/mensajes')) return 'flota_mensajes.ver';
 
+  if (pathname === '/marketing' || pathname.startsWith('/marketing')) return 'marketing.ver';
+
   return null;
 }
 

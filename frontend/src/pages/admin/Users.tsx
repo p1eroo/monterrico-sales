@@ -16,6 +16,7 @@ import {
   Filter,
   Briefcase,
   Car,
+  Megaphone,
   Shield as ShieldIcon,
 } from 'lucide-react';
 import type { User } from '@/types';
@@ -149,7 +150,7 @@ export default function UsersPage() {
   const [roleEditDraft, setRoleEditDraft] = useState<Record<PermissionKey, boolean> | null>(null);
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
-  const [selectedArea, setSelectedArea] = useState<'comercial' | 'flota' | 'general'>('comercial');
+  const [selectedArea, setSelectedArea] = useState<'comercial' | 'flota' | 'marketing' | 'general'>('comercial');
   const [roleToDelete, setRoleToDelete] = useState<(RBACRole & { isSystem?: boolean }) | null>(null);
 
   const roleFilterOptions = useMemo(() => {
@@ -737,6 +738,15 @@ export default function UsersPage() {
                         onClick={() => setSelectedArea('general')}
                       >
                         <ShieldIcon className="size-4" /> General
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={selectedArea === 'marketing' ? 'default' : 'outline'}
+                        size="sm"
+                        className="gap-2"
+                        onClick={() => setSelectedArea('marketing')}
+                      >
+                        <Megaphone className="size-4" /> Marketing
                       </Button>
                     </div>
                   </div>

@@ -1,5 +1,138 @@
 import { api } from '@/lib/api';
 
+// ─── Tipos Facebook ───
+
+export interface FacebookAccount {
+  id: string;
+  pageId: string;
+  pageName: string;
+  pageAccessToken: string;
+  pageTokenExpiresAt: string | null;
+  instagramId: string | null;
+  connectedById: string;
+  active: boolean;
+  lastSyncedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  forms: FacebookForm[];
+}
+
+export interface FacebookForm {
+  id: string;
+  facebookFormId: string;
+  name: string;
+  pageId: string;
+  accountId: string;
+  locale: string | null;
+  status: string;
+  leadsCount: number;
+  lastLeadAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  account?: { id: string; pageName: string; lastSyncedAt: string | null };
+}
+
+export interface FacebookLead {
+  id: string;
+  facebookLeadId: string;
+  formId: string;
+  fieldData: Record<string, string[]>[];
+  fullName: string | null;
+  phone: string | null;
+  email: string | null;
+  adId: string | null;
+  adName: string | null;
+  createdTime: string;
+  importedAsContactId: string | null;
+  importedAt: string | null;
+  createdAt: string;
+  form: { id: string; name: string; facebookFormId: string };
+}
+
+export interface FacebookLeadsResponse {
+  data: FacebookLead[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface FacebookStats {
+  total: number;
+  today: number;
+  lastSync: string | null;
+  formsCount: number;
+  byForm: { id: string; name: string; leadsCount: number }[];
+}
+
+export interface ConnectAccountDto {
+  pageId: string;
+  pageName: string;
+  pageAccessToken: string;
+  pageTokenExpiresAt?: string;
+  instagramId?: string;
+}
+
+// ─── API calls ───
+
+export async function connectFacebookAccount(dto: ConnectAccountDto): Promise<FacebookAccount> {
+  return api<FacebookAccount>('/facebook/connect', {
+    method: 'POST',
+    body: JSON.stringify(dto),
+  });
+}
+
+export async function fetchFacebookAccounts(): Promise<FacebookAccount[]> {
+  return api<FacebookAccount[]>('/facebook/accounts');
+}
+
+export async function disconnectFacebookAccount(id: string): Promise<{ disconnected: boolean }> {
+  return api<{ disconnected: boolean }>(`/facebook/accounts/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function syncFacebookForms(accountId: string): Promise<FacebookForm[]> {
+  return api<FacebookForm[]>(`/facebook/accounts/${encodeURIComponent(accountId)}/sync-forms`, {
+    method: 'POST',
+  });
+}
+
+export async function syncFacebookLeads(accountId: string, formId?: string): Promise<{ imported: number }> {
+  return api<{ imported: number }>(`/facebook/accounts/${encodeURIComponent(accountId)}/sync-leads`, {
+    method: 'POST',
+    body: JSON.stringify({ formId }),
+  });
+}
+
+export async function fetchFacebookLeads(params?: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  formId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}): Promise<FacebookLeadsResponse> {
+  const searchParams = new URLSearchParams();
+  if (params?.page) searchParams.set('page', String(params.page));
+  if (params?.limit) searchParams.set('limit', String(params.limit));
+  if (params?.search) searchParams.set('search', params.search);
+  if (params?.formId) searchParams.set('formId', params.formId);
+  if (params?.dateFrom) searchParams.set('dateFrom', params.dateFrom);
+  if (params?.dateTo) searchParams.set('dateTo', params.dateTo);
+  const qs = searchParams.toString();
+  return api<FacebookLeadsResponse>(`/facebook/leads${qs ? `?${qs}` : ''}`);
+}
+
+export async function fetchFacebookStats(): Promise<FacebookStats> {
+  return api<FacebookStats>('/facebook/stats');
+}
+
+export async function fetchFacebookForms(): Promise<FacebookForm[]> {
+  return api<FacebookForm[]>('/facebook/forms');
+}
+
+// ─── Mantener compatibilidad con tipos existentes ───
+
 export interface MarketingLead {
   id: string;
   source: 'facebook' | 'tiktok';
@@ -21,50 +154,37 @@ export interface MarketingIntegration {
 }
 
 export async function fetchLeads(params?: { page?: number; campaign?: string }): Promise<{ data: MarketingLead[]; total: number }> {
-  const mockLeads: MarketingLead[] = [
-    { id: '1', source: 'facebook', fullName: 'Carlos Mendoza', phone: '51999888111', email: 'carlos@email.com', campaignName: 'Activación Bono', formId: 'form-1', createdAt: '2026-06-01T10:30:00Z' },
-    { id: '2', source: 'facebook', fullName: 'María López', phone: '51999888222', email: 'maria@email.com', campaignName: 'Captación Leads', formId: 'form-2', createdAt: '2026-06-01T11:00:00Z' },
-    { id: '3', source: 'facebook', fullName: 'Pedro García', phone: '51999888333', email: 'pedro@email.com', campaignName: 'Activación Bono', formId: 'form-1', createdAt: '2026-05-31T15:20:00Z' },
-    { id: '4', source: 'facebook', fullName: 'Ana Torres', phone: '51999888444', email: 'ana@email.com', campaignName: 'Recordatorio', formId: 'form-3', createdAt: '2026-05-30T09:15:00Z' },
-    { id: '5', source: 'facebook', fullName: 'Luis Fernández', phone: '51999888555', email: 'luis@email.com', campaignName: 'Captación Leads', formId: 'form-2', createdAt: '2026-05-29T14:00:00Z' },
-    { id: '6', source: 'facebook', fullName: 'Rosa Martínez', phone: '51999888666', email: 'rosa@email.com', campaignName: 'Activación Bono', formId: 'form-1', createdAt: '2026-05-28T16:45:00Z' },
-    { id: '7', source: 'facebook', fullName: 'Jorge Castillo', phone: '51999888777', email: 'jorge@email.com', campaignName: 'Oferta Especial', formId: 'form-4', createdAt: '2026-05-27T12:00:00Z' },
-    { id: '8', source: 'facebook', fullName: 'Sofía Vega', phone: '51999888888', email: 'sofia@email.com', campaignName: 'Activación Bono', formId: 'form-1', createdAt: '2026-05-26T08:30:00Z' },
-    { id: '9', source: 'facebook', fullName: 'Diego Rojas', phone: '51999888999', email: 'diego@email.com', campaignName: 'Captación Leads', formId: 'form-2', createdAt: '2026-05-25T17:00:00Z' },
-    { id: '10', source: 'facebook', fullName: 'Valeria Paredes', phone: '51999888000', email: 'valeria@email.com', campaignName: 'Recordatorio', formId: 'form-3', createdAt: '2026-05-24T14:20:00Z' },
-    { id: '11', source: 'facebook', fullName: 'Andrés Salazar', phone: '51999888011', email: 'andres@email.com', campaignName: 'Oferta Especial', formId: 'form-4', createdAt: '2026-05-23T11:10:00Z' },
-    { id: '12', source: 'facebook', fullName: 'Camila Núñez', phone: '51999888022', email: 'camila@email.com', campaignName: 'Activación Bono', formId: 'form-1', createdAt: '2026-05-22T09:45:00Z' },
-    { id: '13', source: 'facebook', fullName: 'Fernando Guerra', phone: '51999888033', email: 'fernando@email.com', campaignName: 'Captación Leads', formId: 'form-2', createdAt: '2026-05-21T16:30:00Z' },
-    { id: '14', source: 'facebook', fullName: 'Gabriela Ríos', phone: '51999888044', email: 'gabriela@email.com', campaignName: 'Recordatorio', formId: 'form-3', createdAt: '2026-05-20T13:00:00Z' },
-  ];
-
-  let filtered = [...mockLeads];
+  const res = await fetchFacebookLeads({ page: params?.page, limit: 50 });
+  const mapped: MarketingLead[] = res.data.map((l) => ({
+    id: l.id,
+    source: 'facebook',
+    fullName: l.fullName || 'Sin nombre',
+    phone: l.phone || '',
+    email: l.email || '',
+    campaignName: l.form.name,
+    formId: l.form.facebookFormId,
+    createdAt: l.createdTime,
+  }));
+  let filtered = mapped;
   if (params?.campaign) {
-    filtered = filtered.filter((l) => l.campaignName === params.campaign);
+    filtered = mapped.filter((l) => l.campaignName === params.campaign);
   }
   return { data: filtered, total: filtered.length };
 }
 
 export async function fetchIntegrations(): Promise<MarketingIntegration[]> {
-  return [
-    {
-      id: 'facebook',
-      name: 'Facebook',
-      icon: 'facebook',
-      status: 'active',
-      webhookUrl: `${window.location.origin}/api/leads/import`,
-      campaigns: [
-        { id: 'camp-1', name: 'Activación Bono', status: 'active', leads: 34 },
-        { id: 'camp-2', name: 'Captación Leads', status: 'active', leads: 18 },
-        { id: 'camp-3', name: 'Recordatorio', status: 'inactive', leads: 0 },
-      ],
-    },
-    {
-      id: 'tiktok',
-      name: 'TikTok',
-      icon: 'tiktok',
-      status: 'coming_soon',
-      campaigns: [],
-    },
-  ];
+  const accounts = await fetchFacebookAccounts();
+  return accounts.map((a) => ({
+    id: a.id,
+    name: a.pageName,
+    icon: 'facebook',
+    status: a.active ? 'active' : 'inactive' as const,
+    webhookUrl: `${window.location.origin}/api/webhooks/facebook`,
+    campaigns: a.forms.map((f) => ({
+      id: f.id,
+      name: f.name,
+      status: f.status as 'active' | 'inactive',
+      leads: f.leadsCount,
+    })),
+  }));
 }

@@ -1,0 +1,75 @@
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
+import { FacebookLeadsService } from './facebook-leads.service';
+import { ConnectAccountDto } from './dto/connect-account.dto';
+import { QueryLeadsDto } from './dto/query-leads.dto';
+
+type AuthedRequest = { user: { userId: string; name: string } };
+
+@Controller('facebook')
+@UseGuards(PermissionsGuard)
+export class FacebookLeadsController {
+  constructor(private readonly facebookLeads: FacebookLeadsService) {}
+
+  @Post('connect')
+  @RequirePermissions('marketing.ver')
+  async connect(@Body() dto: ConnectAccountDto, @Req() req: AuthedRequest) {
+    return this.facebookLeads.connectAccount(req.user.userId, dto);
+  }
+
+  @Get('accounts')
+  @RequirePermissions('marketing.ver')
+  async getAccounts(@Req() req: AuthedRequest) {
+    return this.facebookLeads.getAccounts(req.user.userId);
+  }
+
+  @Delete('accounts/:id')
+  @RequirePermissions('marketing.ver')
+  async disconnectAccount(@Param('id') id: string, @Req() req: AuthedRequest) {
+    return this.facebookLeads.disconnectAccount(id, req.user.userId);
+  }
+
+  @Post('accounts/:id/sync-forms')
+  @RequirePermissions('marketing.ver')
+  async syncForms(@Param('id') id: string) {
+    return this.facebookLeads.syncForms(id);
+  }
+
+  @Post('accounts/:id/sync-leads')
+  @RequirePermissions('marketing.ver')
+  async syncLeads(
+    @Param('id') id: string,
+    @Body() body: { formId?: string },
+  ) {
+    return this.facebookLeads.syncLeads(id, body.formId);
+  }
+
+  @Get('leads')
+  @RequirePermissions('marketing.ver')
+  async getLeads(@Req() req: AuthedRequest, @Query() query: QueryLeadsDto) {
+    return this.facebookLeads.getLeads(req.user.userId, query);
+  }
+
+  @Get('stats')
+  @RequirePermissions('marketing.ver')
+  async getStats(@Req() req: AuthedRequest) {
+    return this.facebookLeads.getStats(req.user.userId);
+  }
+
+  @Get('forms')
+  @RequirePermissions('marketing.ver')
+  async getFormsList(@Req() req: AuthedRequest) {
+    return this.facebookLeads.getFormsList(req.user.userId);
+  }
+}

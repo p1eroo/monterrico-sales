@@ -21,7 +21,7 @@ interface PermissionMatrixProps {
   onChange: (key: PermissionKey, value: boolean) => void;
   disabled?: boolean;
   compact?: boolean;
-  filterArea?: 'comercial' | 'flota' | 'general';
+  filterArea?: 'comercial' | 'flota' | 'marketing' | 'general';
 }
 
 export function PermissionMatrix({

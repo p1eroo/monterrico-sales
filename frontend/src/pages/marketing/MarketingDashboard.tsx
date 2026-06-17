@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Users, UserPlus, TrendingUp, BarChart3, MessageCircle } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { fetchLeads } from '@/lib/marketingApi';
+import { fetchFacebookStats, type FacebookStats } from '@/lib/marketingApi';
 import { useChartTheme } from '@/hooks/useChartTheme';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -28,12 +28,6 @@ const campaignData = [
   { name: 'Oferta Especial', leads: 8, conversion: 3 },
 ];
 
-const sourceData = [
-  { name: 'Facebook', value: 68 },
-  { name: 'Instagram', value: 22 },
-  { name: 'Google', value: 10 },
-];
-
 const monthlyData = [
   { name: 'Ene', leads: 45, importados: 38 },
   { name: 'Feb', leads: 52, importados: 44 },
@@ -44,15 +38,20 @@ const monthlyData = [
 ];
 
 export default function MarketingDashboard() {
-  const [stats, setStats] = useState({ total: 0, today: 0, facebook: 0, campaigns: 0 });
+  const [stats, setStats] = useState<FacebookStats | null>(null);
   const chartTheme = useChartTheme();
 
   useEffect(() => {
-    fetchLeads().then((res) => {
-      const today = res.data.filter((l) => l.createdAt.startsWith(new Date().toISOString().slice(0, 10))).length;
-      setStats({ total: res.total, today, facebook: res.data.filter((l) => l.source === 'facebook').length, campaigns: 4 });
-    });
+    fetchFacebookStats().then(setStats).catch(() => {});
   }, []);
+
+  const sourceData = [
+    { name: 'Facebook', value: stats?.total || 0 },
+  ];
+
+  const conversionRate = stats && stats.total > 0
+    ? ((stats.today / stats.total) * 100).toFixed(0) + '%'
+    : '0%';
 
   const tooltipStyle = {
     borderRadius: '8px',
@@ -69,10 +68,10 @@ export default function MarketingDashboard() {
       {/* KPIs */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          { label: 'Total Leads', value: stats.total, icon: Users, color: 'text-blue-600 bg-blue-100' },
-          { label: 'Leads Hoy', value: stats.today, icon: UserPlus, color: 'text-emerald-600 bg-emerald-100' },
-          { label: 'Tasa Conversión', value: '68%', icon: TrendingUp, color: 'text-violet-600 bg-violet-100' },
-          { label: 'Campañas', value: stats.campaigns, icon: BarChart3, color: 'text-amber-600 bg-amber-100' },
+          { label: 'Total Leads', value: stats?.total ?? 0, icon: Users, color: 'text-blue-600 bg-blue-100' },
+          { label: 'Leads Hoy', value: stats?.today ?? 0, icon: UserPlus, color: 'text-emerald-600 bg-emerald-100' },
+          { label: 'Tasa Conversión', value: conversionRate, icon: TrendingUp, color: 'text-violet-600 bg-violet-100' },
+          { label: 'Formularios', value: stats?.formsCount ?? 0, icon: BarChart3, color: 'text-amber-600 bg-amber-100' },
         ].map((c) => (
           <Card key={c.label}>
             <CardContent className="flex items-center gap-4 p-5">
