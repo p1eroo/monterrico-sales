@@ -68,7 +68,7 @@ import {
   fetchAgents,
   type ChatwootAgent,
 } from '@/lib/chatwootApi';
-import { fetchOperadores, getOperatorDisplayName } from '@/lib/flotaProspectosApi';
+import { fetchOperadores, getOperatorDisplayName, type OperadorUser } from '@/lib/flotaProspectosApi';
 import { api } from '@/lib/api';
 
 /* ==================== CHATWOOT INBOX VIEW ==================== */
@@ -544,7 +544,7 @@ function ChatwootChatPanel({
     additional_attributes?: Record<string, string>;
   } | null>(null);
   const [agents, setAgents] = useState<ChatwootAgent[]>([]);
-  const [operadores, setOperadores] = useState<Array<{ id: string; name: string }>>([]);
+  const [operadores, setOperadores] = useState<OperadorUser[]>([]);
   const [updating, setUpdating] = useState(false);
 
   const convo = conversations.find((c) => c.id === conversationId);
@@ -807,7 +807,7 @@ function ChatwootChatPanel({
     const optimistic: ChatwootMessage = {
       id: Date.now(),
       content: body,
-      message_type: 'outgoing',
+      message_type: CHATWOOT_MESSAGE_TYPE.OUTGOING,
       sender: { id: 0, name: 'Yo', type: 'user' },
       created_at: Math.floor(Date.now() / 1000),
       attachments: [],

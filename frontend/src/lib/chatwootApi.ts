@@ -17,6 +17,7 @@ export interface ChatwootConversation {
     message_type: number;
     sender: { id: number; name: string; type: string };
     created_at: number;
+    attachments?: ChatwootAttachment[];
   }>;
 }
 
