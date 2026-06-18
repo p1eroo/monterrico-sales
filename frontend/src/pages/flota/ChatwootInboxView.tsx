@@ -69,7 +69,6 @@ import {
   markConversationAsRead,
   type ChatwootAgent,
 } from '@/lib/chatwootApi';
-import type { ChatwootConversation } from '@/lib/chatwootApi';
 import { fetchOperadores, getOperatorDisplayName, type OperadorUser } from '@/lib/flotaProspectosApi';
 import { api } from '@/lib/api';
 
