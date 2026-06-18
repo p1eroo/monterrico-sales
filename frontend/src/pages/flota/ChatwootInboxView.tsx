@@ -66,8 +66,10 @@ import {
   updateContact,
   fetchConversation,
   fetchAgents,
+  markConversationAsRead,
   type ChatwootAgent,
 } from '@/lib/chatwootApi';
+import type { ChatwootConversation } from '@/lib/chatwootApi';
 import { fetchOperadores, getOperatorDisplayName, type OperadorUser } from '@/lib/flotaProspectosApi';
 import { api } from '@/lib/api';
 
@@ -86,6 +88,12 @@ export default function ChatwootInboxView() {
 
   useEffect(() => {
     activeIdRef.current = activeId;
+  }, [activeId]);
+
+  useEffect(() => {
+    if (activeId) {
+      markConversationAsRead(activeId).catch(() => {});
+    }
   }, [activeId]);
 
   useEffect(() => {

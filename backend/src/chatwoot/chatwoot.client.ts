@@ -180,6 +180,10 @@ export class ChatwootClient {
     return this.request('GET', '/agents');
   }
 
+  async markAsRead(conversationId: number): Promise<void> {
+    await this.request('POST', `/conversations/${conversationId}/update_last_seen`);
+  }
+
   async getConversationAttachments(
     conversationId: number,
   ): Promise<Array<{ id: number; message_id: number; file_type: string; data_url?: string; thumb_url?: string }>> {

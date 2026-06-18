@@ -24,7 +24,6 @@ export class ChatwootGateway {
   }
 
   emitMessage(conversationId: number, event: string, data: unknown) {
-    this.server.to(`conv:${conversationId}`).emit('chatwoot', { event, data });
     this.server.emit('chatwoot', { event, data, conversationId });
   }
 

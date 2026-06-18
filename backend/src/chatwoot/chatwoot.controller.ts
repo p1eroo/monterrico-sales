@@ -105,6 +105,12 @@ export class ChatwootController {
     return this.service.config();
   }
 
+  @Post('conversations/:id/read')
+  async markAsRead(@Param('id', ParseIntPipe) id: number) {
+    await this.client.markAsRead(id);
+    return { received: true };
+  }
+
   @Public()
   @Get('content')
   async content(

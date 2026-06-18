@@ -161,3 +161,7 @@ export async function fetchConversation(
 ): Promise<{ meta: { sender: ChatwootContact & { custom_attributes?: Record<string, string>; additional_attributes?: Record<string, string> }; assignee?: { id: number; name: string } }; status: string }> {
   return api(`/api/chatwoot/conversations/${id}`);
 }
+
+export async function markConversationAsRead(conversationId: number): Promise<void> {
+  await api(`/api/chatwoot/conversations/${conversationId}/read`, { method: 'POST' });
+}
