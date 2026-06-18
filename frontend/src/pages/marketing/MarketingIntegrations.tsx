@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle2, XCircle, Clock, Copy, Loader2, Plus, Trash2, RefreshCw, ExternalLink, Key } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, Copy, Loader2, Plus, Trash2, RefreshCw, ExternalLink, Key, Pencil } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,13 +16,16 @@ import {
   syncFacebookForms, syncFacebookLeads, type FacebookAccount, type ConnectAccountDto,
 } from '@/lib/marketingApi';
 
+const STORAGE_KEY_ID = 'fb_page_id';
+const STORAGE_KEY_NAME = 'fb_page_name';
+
 const STATUS_CONFIG: Record<string, { label: string; icon: typeof CheckCircle2; class: string }> = {
   active: { label: 'Activo', icon: CheckCircle2, class: 'text-emerald-600 bg-emerald-100' },
   inactive: { label: 'Inactivo', icon: XCircle, class: 'text-red-600 bg-red-100' },
   coming_soon: { label: 'Próximamente', icon: Clock, class: 'text-amber-600 bg-amber-100' },
 };
 
-function AccountCard({ account, onUpdate }: { account: FacebookAccount; onUpdate: () => void }) {
+function AccountCard({ account, onUpdate, onEdit }: { account: FacebookAccount; onUpdate: () => void; onEdit: () => void }) {
   const navigate = useNavigate();
   const [syncingForms, setSyncingForms] = useState(false);
   const [syncingLeads, setSyncingLeads] = useState(false);
@@ -58,6 +61,8 @@ function AccountCard({ account, onUpdate }: { account: FacebookAccount; onUpdate
     setDisconnecting(true);
     try {
       await disconnectFacebookAccount(account.id);
+      localStorage.removeItem(STORAGE_KEY_ID);
+      localStorage.removeItem(STORAGE_KEY_NAME);
       toast.success('Cuenta desconectada');
       onUpdate();
     } catch {
@@ -101,6 +106,9 @@ function AccountCard({ account, onUpdate }: { account: FacebookAccount; onUpdate
           <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={handleSyncForms} disabled={syncingForms}>
             {syncingForms ? <Loader2 className="size-3 animate-spin" /> : <RefreshCw className="size-3" />}
             Sinc. Formularios
+          </Button>
+          <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={onEdit} title="Editar token">
+            <Pencil className="size-3" />
           </Button>
           <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-red-600" onClick={handleDisconnect} disabled={disconnecting}>
             {disconnecting ? <Loader2 className="size-3 animate-spin" /> : <Trash2 className="size-3" />}
@@ -180,12 +188,30 @@ function AccountCard({ account, onUpdate }: { account: FacebookAccount; onUpdate
   );
 }
 
-function ConnectDialog({ onConnected }: { onConnected: () => void }) {
-  const [open, setOpen] = useState(false);
+function ConnectDialog({ open, onOpenChange, onConnected, initialValues }: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onConnected: () => void;
+  initialValues?: { pageId: string; pageName: string };
+}) {
   const [pageId, setPageId] = useState('');
   const [pageName, setPageName] = useState('');
   const [pageAccessToken, setPageAccessToken] = useState('');
   const [connecting, setConnecting] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      if (initialValues) {
+        setPageId(initialValues.pageId);
+        setPageName(initialValues.pageName);
+        setPageAccessToken('');
+      } else {
+        setPageId(localStorage.getItem(STORAGE_KEY_ID) || '');
+        setPageName(localStorage.getItem(STORAGE_KEY_NAME) || '');
+        setPageAccessToken('');
+      }
+    }
+  }, [open, initialValues]);
 
   const handleConnect = async () => {
     if (!pageId.trim() || !pageName.trim() || !pageAccessToken.trim()) {
@@ -196,11 +222,10 @@ function ConnectDialog({ onConnected }: { onConnected: () => void }) {
     try {
       const dto: ConnectAccountDto = { pageId: pageId.trim(), pageName: pageName.trim(), pageAccessToken: pageAccessToken.trim() };
       await connectFacebookAccount(dto);
+      localStorage.setItem(STORAGE_KEY_ID, pageId.trim());
+      localStorage.setItem(STORAGE_KEY_NAME, pageName.trim());
       toast.success('Cuenta de Facebook conectada');
-      setOpen(false);
-      setPageId('');
-      setPageName('');
-      setPageAccessToken('');
+      onOpenChange(false);
       onConnected();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error al conectar');
@@ -210,17 +235,14 @@ function ConnectDialog({ onConnected }: { onConnected: () => void }) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" className="gap-1.5">
-          <Plus className="size-4" /> Conectar Facebook
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Conectar página de Facebook</DialogTitle>
+          <DialogTitle>{initialValues ? 'Actualizar token' : 'Conectar página de Facebook'}</DialogTitle>
           <DialogDescription>
-            Ingresa los datos de tu página de Facebook. Necesitas un Page Access Token con permisos de leads.
+            {initialValues
+              ? 'Actualiza el Page Access Token. El Page ID y nombre ya están guardados.'
+              : 'Ingresa los datos de tu página de Facebook. El Page ID y nombre se guardarán para la próxima vez.'}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
@@ -242,7 +264,7 @@ function ConnectDialog({ onConnected }: { onConnected: () => void }) {
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium">Page Access Token</label>
-            <Input value={pageAccessToken} onChange={(e) => setPageAccessToken(e.target.value)} type="password" placeholder="EAABxxxx..." />
+            <Input value={pageAccessToken} onChange={(e) => setPageAccessToken(e.target.value)} type="password" placeholder="EAAxxxx..." />
           </div>
           <div className="flex justify-end gap-2">
             <DialogClose asChild>
@@ -250,7 +272,7 @@ function ConnectDialog({ onConnected }: { onConnected: () => void }) {
             </DialogClose>
             <Button size="sm" onClick={handleConnect} disabled={connecting}>
               {connecting && <Loader2 className="mr-1 size-4 animate-spin" />}
-              Conectar
+              {initialValues ? 'Actualizar token' : 'Conectar'}
             </Button>
           </div>
         </div>
@@ -262,6 +284,8 @@ function ConnectDialog({ onConnected }: { onConnected: () => void }) {
 export default function MarketingIntegrations() {
   const [accounts, setAccounts] = useState<FacebookAccount[]>([]);
   const [loading, setLoading] = useState(true);
+  const [connectOpen, setConnectOpen] = useState(false);
+  const [editAccount, setEditAccount] = useState<{ pageId: string; pageName: string } | undefined>(undefined);
 
   const load = async () => {
     setLoading(true);
@@ -277,10 +301,22 @@ export default function MarketingIntegrations() {
 
   useEffect(() => { load(); }, []);
 
+  const handleOpenConnect = () => {
+    setEditAccount(undefined);
+    setConnectOpen(true);
+  };
+
+  const handleEdit = (account: FacebookAccount) => {
+    setEditAccount({ pageId: account.pageId, pageName: account.pageName });
+    setConnectOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader title="Integraciones" description="Conecta tus plataformas de anuncios para importar leads automáticamente">
-        <ConnectDialog onConnected={load} />
+        <Button size="sm" className="gap-1.5" onClick={handleOpenConnect}>
+          <Plus className="size-4" /> Conectar Facebook
+        </Button>
       </PageHeader>
 
       {loading ? (
@@ -297,16 +333,25 @@ export default function MarketingIntegrations() {
             Importa leads de tus formularios de Facebook Lead Ads automáticamente.
           </p>
           <div className="mt-6">
-            <ConnectDialog onConnected={load} />
+            <Button size="sm" className="gap-1.5" onClick={handleOpenConnect}>
+              <Plus className="size-4" /> Conectar Facebook
+            </Button>
           </div>
         </div>
       ) : (
         <div className="space-y-6">
           {accounts.map((a) => (
-            <AccountCard key={a.id} account={a} onUpdate={load} />
+            <AccountCard key={a.id} account={a} onUpdate={load} onEdit={() => handleEdit(a)} />
           ))}
         </div>
       )}
+
+      <ConnectDialog
+        open={connectOpen}
+        onOpenChange={(v) => { setConnectOpen(v); if (!v) setEditAccount(undefined); }}
+        onConnected={load}
+        initialValues={editAccount}
+      />
     </div>
   );
 }

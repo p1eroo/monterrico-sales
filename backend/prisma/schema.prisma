@@ -802,6 +802,11 @@ model FlotaProspecto {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
+  /** ID del contacto en Chatwoot (para sincronización inbox Flota) */
+  chatwootContactId     Int?
+  /** ID de la conversación activa en Chatwoot */
+  chatwootConversationId Int?
+
   whatsappMessages CrmWhatsappMessage[]
   llamadas         FlotaLlamada[]
 

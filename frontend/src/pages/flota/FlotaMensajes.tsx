@@ -63,6 +63,7 @@ import {
   PanelRight,
   Lock,
   Link2,
+  Dot,
   Calendar,
   Trash2,
 } from 'lucide-react';
@@ -155,6 +156,7 @@ import {
   type FlotaBulkProgress,
 } from '@/lib/flotaWhatsappApi';
 import FlotaCalendario from '@/pages/flota/FlotaCalendario';
+import ChatwootInboxView from '@/pages/flota/ChatwootInboxView';
 
 /* ==================== TIPOS ==================== */
 
@@ -345,10 +347,10 @@ function MessageAttachment({
 
 export default function FlotaMensajes() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [tab, setTab] = useState<'inbox' | 'masivo' | 'pipeline' | 'automatizacion' | 'conexiones' | 'calendario'>(
+  const [tab, setTab] = useState<'inbox' | 'chatwoot' | 'masivo' | 'pipeline' | 'automatizacion' | 'conexiones' | 'calendario'>(
     () => {
       const t = searchParams.get('tab');
-      if (t === 'inbox' || t === 'masivo' || t === 'pipeline' || t === 'automatizacion' || t === 'conexiones') return t;
+      if (t === 'inbox' || t === 'chatwoot' || t === 'masivo' || t === 'pipeline' || t === 'automatizacion' || t === 'conexiones') return t;
       return 'inbox';
     },
   );
@@ -395,16 +397,18 @@ export default function FlotaMensajes() {
     }
   }
 
-  useEffect(() => { void loadConnection(); }, []);
+  useEffect(() => {
+    if (tab === 'inbox' || tab === 'masivo') void loadConnection();
+  }, [tab]);
 
   useEffect(() => {
-    if (!instance || instance.isConnected) return;
+    if (!instance || instance.isConnected || tab !== 'inbox') return;
     const id = window.setInterval(() => {
       if (document.visibilityState !== 'visible') return;
       void loadConnection(true);
     }, 5000);
     return () => window.clearInterval(id);
-  }, [instance?.isConnected, instance?.qrCode, instance?.qrText]);
+  }, [instance?.isConnected, instance?.qrCode, instance?.qrText, tab]);
 
   useEffect(() => {
     if (instance?.isConnected) setEvoModalOpen(false);
@@ -494,6 +498,7 @@ export default function FlotaMensajes() {
           <TooltipProvider>
           {([
             { key: 'inbox', icon: Inbox, label: 'Inbox' },
+            { key: 'chatwoot', icon: MessageCircle, label: 'Chatwoot' },
             { key: 'calendario', icon: Calendar, label: 'Calendario' },
             { key: 'masivo', icon: Send, label: 'Masivo' },
             { key: 'pipeline', icon: LayoutList, label: 'Pipeline' },
@@ -530,6 +535,8 @@ export default function FlotaMensajes() {
             {tab === 'inbox' ? (
               loadingConn ? <LoadingState /> :
               <InboxView activeId={activeConversationId} onActiveChange={handleActiveChange} isConnected={isConnected} />
+            ) : tab === 'chatwoot' ? (
+              <ChatwootInboxView />
             ) : tab === 'masivo' ? (
               loadingConn ? <LoadingState /> :
               <div className="flex flex-col min-h-0 flex-1">

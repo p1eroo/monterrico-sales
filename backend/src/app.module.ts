@@ -29,6 +29,7 @@ import { WhatsappModule } from './whatsapp/whatsapp.module';
 import { FlotaProspectosModule } from './flota-prospectos/flota-prospectos.module';
 import { ApolloModule } from './apollo/apollo.module';
 import { FacebookLeadsModule } from './facebook-leads/facebook-leads.module';
+import { ChatwootModule } from './chatwoot/chatwoot.module';
 
 @Module({
   imports: [
@@ -71,6 +72,7 @@ import { FacebookLeadsModule } from './facebook-leads/facebook-leads.module';
     FlotaProspectosModule,
     ApolloModule,
     FacebookLeadsModule,
+    ChatwootModule,
   ],
   controllers: [AppController],
   providers: [
