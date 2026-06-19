@@ -454,6 +454,27 @@ export default function EmpresasPage() {
     if (!companyImportCompletionTick) return;
     void loadSummary();
     void loadEtapaTabCounts();
+
+    const jobs = useImportJobsStore.getState().jobs;
+    const companiesJob = jobs.find(
+      (j) => j.entity === 'companies' && (j.status === 'completed' || j.status === 'failed'),
+    );
+    if (companiesJob) {
+      const ok = companiesJob.created + companiesJob.updated;
+      const errCount = companiesJob.errorCount;
+      const skipped = companiesJob.skipped;
+      toast.success(
+        <div className="flex flex-col gap-0.5">
+          <span className="font-semibold">Importación completada</span>
+          <span className="text-sm">
+            {companiesJob.created} creada(s) · {companiesJob.updated} actualizada(s)
+            {errCount > 0 ? ` · ${errCount} con error` : ''}
+            {skipped > 0 ? ` · ${skipped} omitida(s)` : ''}
+          </span>
+        </div>,
+        { duration: 6000 },
+      );
+    }
   }, [companyImportCompletionTick, loadEtapaTabCounts, loadSummary]);
 
   const filtersDefault =
@@ -994,12 +1015,7 @@ export default function EmpresasPage() {
   async function confirmCompanyImport() {
     const file = pendingImportFile;
     const preview = importPreviewData;
-    if (
-      !file ||
-      !preview ||
-      preview.okCount === 0 ||
-      preview.errorCount > 0
-    ) {
+    if (!file || !preview || preview.okCount === 0) {
       closeImportPreview();
       return;
     }
@@ -1044,9 +1060,8 @@ export default function EmpresasPage() {
                     . Los datos SUNAT/RENIEC/CEE se consultan al confirmar la importación, no en esta vista.
                   </span>
                   {importPreviewData.errorCount > 0 ? (
-                    <span className="mt-2 block text-destructive">
-                      Corrige el archivo y vuelve a elegirlo. No se importará nada mientras haya
-                      errores en la vista previa.
+                    <span className="mt-2 block text-muted-foreground">
+                      Las filas con error se omitirán durante la importación.
                     </span>
                   ) : null}
                 </>
@@ -1154,8 +1169,7 @@ export default function EmpresasPage() {
               type="button"
               disabled={
                 !importPreviewData ||
-                importPreviewData.okCount === 0 ||
-                importPreviewData.errorCount > 0
+                importPreviewData.okCount === 0
               }
               onClick={() => void confirmCompanyImport()}
             >

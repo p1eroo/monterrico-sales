@@ -878,6 +878,24 @@ export class ImportExportService {
     return out;
   }
 
+  private async companiesByDomainMap(
+    domains: string[],
+  ): Promise<Map<string, { id: string; name: string }>> {
+    const uniq = [...new Set(domains.filter((d) => d.length > 0).map((d) => d.toLowerCase()))];
+    const out = new Map<string, { id: string; name: string }>();
+    if (uniq.length === 0) return out;
+    const found = await this.prisma.company.findMany({
+      where: { domain: { in: uniq, mode: 'insensitive' } },
+      select: { id: true, name: true, domain: true },
+    });
+    for (const row of found) {
+      const k = (row.domain ?? '').toLowerCase();
+      if (!k) continue;
+      out.set(k, { id: row.id, name: row.name });
+    }
+    return out;
+  }
+
   /**
    * Mantiene la API previa (primer match por RUC) para otros flujos que aún la usan.
    */
@@ -2121,6 +2139,7 @@ export class ImportExportService {
           csvColumns: Record<string, string>;
           effectiveCompanyName: string;
           razonRowPreview: string;
+          domain: string;
           rucRaw: string;
           rucDigits: string;
           facturacionEstimada: number;
@@ -2163,6 +2182,7 @@ export class ImportExportService {
           : 0;
       const rucRaw = this.rowGetImportText(row, headerIndex, ['ruc']).trim();
       const rucDigits = rucRaw.replace(/\D/g, '');
+      const domain = this.rowGetImportText(row, headerIndex, ['domain', 'dominio']).trim().toLowerCase();
       const nombreEmpresaTrim = nombreEmpresa.trim();
       const effectiveCompanyName = this.companyImportEffectiveName(
         nombreEmpresaTrim,
@@ -2186,8 +2206,8 @@ export class ImportExportService {
           },
         });
       };
-      if (!effectiveCompanyName && !rucRaw) {
-        pushErr('Indica nombre, razón social o RUC');
+      if (!domain) {
+        pushErr('El dominio es obligatorio');
         continue;
       }
 
@@ -2237,6 +2257,7 @@ export class ImportExportService {
         csvColumns,
         effectiveCompanyName,
         razonRowPreview,
+        domain,
         rucRaw,
         rucDigits,
         facturacionEstimada,
@@ -2249,22 +2270,10 @@ export class ImportExportService {
     }
 
     const workItems = segments.filter((s): s is Extract<PreviewSeg, { kind: 'work' }> => s.kind === 'work');
-    const uniqRucDigits = [
-      ...new Set(
-        workItems.map((w) => w.rucDigits).filter((d) => d.length > 0),
-      ),
-    ];
-    const uniqNames = [
-      ...new Set(
-        workItems
-          .map((w) => w.effectiveCompanyName.trim())
-          .filter((n) => n.length > 0),
-      ),
-    ];
-    const [byRucDigits, byNameFold] = await Promise.all([
-      this.companiesByNormalizedRucDigitsGroupedMap(uniqRucDigits),
-      this.companiesByFoldedNameMap(uniqNames),
-    ]);
+    const uniqDomains = [...new Set(workItems.map((w) => w.domain).filter((d) => d.length > 0))];
+    const byDomain = uniqDomains.length > 0
+      ? await this.companiesByDomainMap(uniqDomains)
+      : new Map<string, { id: string; name: string }>();
 
     const out: CompanyImportPreviewRowDto[] = [];
     const fileCompanyContactDup = new Map<string, number>();
@@ -2280,58 +2289,20 @@ export class ImportExportService {
         continue;
       }
       const w = seg;
-      const existingRucCandidates =
-        w.rucDigits.length > 0 ? (byRucDigits.get(w.rucDigits) ?? []) : [];
-      const existingRuc = this.pickCompanyForImportByRucAndNames(
-        existingRucCandidates,
-        [
-          w.effectiveCompanyName,
-          w.razonRowPreview || undefined,
-          w.effectiveCompanyName
-            ? formatImportedCompanyName(w.effectiveCompanyName)
-            : undefined,
-          w.razonRowPreview
-            ? formatImportedCompanyName(w.razonRowPreview)
-            : undefined,
-        ],
-      );
-      const existingName =
-        existingRuc || !w.effectiveCompanyName || existingRucCandidates.length > 0
-          ? null
-          : (byNameFold.get(this.foldContactImportKey(w.effectiveCompanyName)) ??
-            null);
+      const existingDomain = w.domain ? (byDomain.get(w.domain) ?? null) : null;
 
       let empresaResumen: string;
       let companyId: string | null = null;
       let companyKeyForDup: string;
 
-      if (existingRuc) {
-        companyId = existingRuc.id;
-        empresaResumen = `Existente (RUC): ${existingRuc.name}`;
-        companyKeyForDup = existingRuc.id;
-      } else if (existingName) {
-        companyId = existingName.id;
-        empresaResumen = `Existente (nombre): ${existingName.name}`;
-        companyKeyForDup = existingName.id;
+      if (existingDomain) {
+        companyId = existingDomain.id;
+        empresaResumen = `Existente: ${existingDomain.name}`;
+        companyKeyForDup = existingDomain.id;
       } else {
-        const rd = w.rucDigits;
-        const provisionalName =
-          w.effectiveCompanyName || `Empresa RUC ${rd || w.rucRaw}`;
-        companyKeyForDup = `__new__:${rd || 'sin-ruc'}:${this.foldContactImportKey(
-          w.effectiveCompanyName || provisionalName,
-        )}`;
-        const omitirSunatPreview = this.companyImportHasUsableIdentityFields(
-          w.effectiveCompanyName,
-          w.razonRowPreview || undefined,
-        );
-        empresaResumen = w.rucRaw
-          ? omitirSunatPreview
-            ? (w.effectiveCompanyName &&
-                !this.isCompanyImportPlaceholderName(w.effectiveCompanyName)
-                ? w.effectiveCompanyName
-                : w.razonRowPreview) || provisionalName
-            : `${rd || w.rucRaw.trim()} (SUNAT)`
-          : provisionalName;
+        const name = w.effectiveCompanyName || w.domain;
+        companyKeyForDup = `__new__:${w.domain}`;
+        empresaResumen = name || w.domain;
       }
 
       if (!w.puedeContacto) {
@@ -2521,6 +2492,7 @@ export class ImportExportService {
       const fuente = this.rowGetImportText(row, headerIndex, ['fuente', 'source']);
       const normalizedFuente = fuente.trim() || 'base';
       const rucRaw = this.rowGetImportText(row, headerIndex, ['ruc']).trim();
+      const domain = this.rowGetImportText(row, headerIndex, ['domain', 'dominio']).trim().toLowerCase();
       const nombreEmpresaTrim = nombreEmpresa.trim();
       const effectiveCompanyName = this.companyImportEffectiveName(
         nombreEmpresaTrim,
@@ -2538,9 +2510,9 @@ export class ImportExportService {
         facturacionParsed > 0
           ? facturacionParsed
           : 0;
-      if (!effectiveCompanyName && !rucRaw) {
+      if (!domain) {
         errors.push(
-          importRowErr(excelRow, 'Indica nombre, razón social o RUC', undefined),
+          importRowErr(excelRow, 'El dominio es obligatorio', undefined),
         );
         continue;
       }
@@ -2614,73 +2586,24 @@ export class ImportExportService {
       } satisfies Parameters<
         ImportExportService['updateExistingCompanyFromImport']
       >[1];
-      let shouldRefreshExactCompanyFromImport = false;
 
       let companyId: string;
       try {
-        const existingRucCandidates =
-          rucRaw ? await this.findCompaniesByRucInputAll(rucRaw) : [];
-        const existingRuc = this.pickCompanyForImportByRucAndNames(
-          existingRucCandidates,
-          [
-            effectiveCompanyName,
-            razonRow || undefined,
-            effectiveCompanyName
-              ? formatImportedCompanyName(effectiveCompanyName)
-              : undefined,
-            razonRow ? formatImportedCompanyName(razonRow) : undefined,
-          ],
-        );
-        const existingName =
-          existingRuc || !effectiveCompanyName || existingRucCandidates.length > 0
-            ? null
-            : await this.findCompanyByNameInsensitive(effectiveCompanyName);
+        const existingDomain = domain
+          ? await this.prisma.company.findFirst({
+              where: { domain: { equals: domain, mode: 'insensitive' } },
+              select: { id: true, name: true, domain: true },
+            })
+          : null;
 
-        if (existingRuc) {
-          companyId = existingRuc.id;
-          const dtoForMerge: CreateCompanyDto = {
-            name: formatImportedCompanyName(
-              effectiveCompanyName || existingRuc.name || 'Empresa',
-            ),
-            razonSocial: razonRow
-              ? formatImportedCompanyName(razonRow)
-              : undefined,
-            ruc: rucRaw || undefined,
-            telefono: companyImportUpdate.telefono,
-            domain: companyImportUpdate.domain,
-            rubro: companyImportUpdate.rubro,
-            tipo: companyImportUpdate.tipo,
-            correo: companyImportUpdate.correo,
-            linkedin: companyImportUpdate.linkedin,
-            distrito: companyImportUpdate.distrito,
-            provincia: companyImportUpdate.provincia,
-            departamento: companyImportUpdate.departamento,
-            direccion: companyImportUpdate.direccion,
-            facturacionEstimada,
-            fuente: companyImportUpdate.fuente,
-            ...(clienteRecNorm
-              ? { clienteRecuperado: clienteRecNorm }
-              : {}),
-            etapa: companyImportUpdate.etapa,
-            assignedTo: companyImportUpdate.assignedTo,
-          };
-          if (rucRaw) {
-            await this.companiesService.mergeExistingByRucPayload(
-              companyId,
-              dtoForMerge,
-            );
-          }
+        if (existingDomain) {
+          companyId = existingDomain.id;
           await this.updateExistingCompanyFromImport(
             companyId,
             companyImportUpdate,
           );
-        } else if (existingName) {
-          companyId = existingName.id;
-          await this.mergeCompanyPhoneForImport(companyId, companyTelefono);
         } else {
-          const rucDigits = rucRaw.replace(/\D/g, '');
-          const nameForCreate =
-            effectiveCompanyName || `Empresa RUC ${rucDigits || rucRaw}`;
+          const nameForCreate = effectiveCompanyName || domain;
           let dto: CreateCompanyDto = {
             name: formatImportedCompanyName(nameForCreate),
             razonSocial: razonRow
@@ -2688,7 +2611,7 @@ export class ImportExportService {
               : undefined,
             ruc: rucRaw || undefined,
             telefono: companyImportUpdate.telefono,
-            domain: companyImportUpdate.domain,
+            domain,
             rubro: companyImportUpdate.rubro,
             tipo: companyImportUpdate.tipo,
             correo: companyImportUpdate.correo,
@@ -2705,33 +2628,12 @@ export class ImportExportService {
             etapa: companyImportUpdate.etapa,
             assignedTo: companyImportUpdate.assignedTo,
           };
-          dto = await this.enrichCompanyDtoFromRuc(dto);
-          const exactExistingAfterEnrich = this.pickCompanyForImportByRucAndNames(
-            existingRucCandidates,
-            [
-              dto.name,
-              dto.razonSocial,
-              dto.name ? formatImportedCompanyName(dto.name) : undefined,
-              dto.razonSocial
-                ? formatImportedCompanyName(dto.razonSocial)
-                : undefined,
-            ],
+          const createdCo = await this.companiesService.create(
+            dto,
+            undefined,
+            scope,
           );
-          if (exactExistingAfterEnrich) {
-            companyId = exactExistingAfterEnrich.id;
-            shouldRefreshExactCompanyFromImport = true;
-            await this.updateExistingCompanyFromImport(
-              companyId,
-              companyImportUpdate,
-            );
-          } else {
-            const createdCo = await this.companiesService.create(
-              dto,
-              undefined,
-              scope,
-            );
-            companyId = createdCo.id;
-          }
+          companyId = createdCo.id;
         }
       } catch (e: unknown) {
         errors.push(
@@ -2810,9 +2712,6 @@ export class ImportExportService {
         !!contactoNombreEfectivo || puedeContactoDesdeCorreoSolo;
 
       if (!puedeNombreDoc) {
-        if (shouldRefreshExactCompanyFromImport) {
-          await this.updateExistingCompanyFromImport(companyId, companyImportUpdate);
-        }
         created += 1;
         continue;
       }
@@ -2896,9 +2795,6 @@ export class ImportExportService {
             createdContact.id,
             opportunityId,
           );
-        }
-        if (shouldRefreshExactCompanyFromImport) {
-          await this.updateExistingCompanyFromImport(companyId, companyImportUpdate);
         }
         created += 1;
       } catch (e: unknown) {

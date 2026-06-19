@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useCrmConfigStore } from '@/store/crmConfigStore';
 import { Check, ChevronLeft, ChevronRight, Loader2, Search } from 'lucide-react';
 import { toast } from 'sonner';
@@ -83,6 +84,8 @@ export function NewCompanyWizard({
   const [existingCompanyId, setExistingCompanyId] = useState<string | null>(null);
   const [loadedRucDigits, setLoadedRucDigits] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [domainLookupLoading, setDomainLookupLoading] = useState(false);
+  const [domainMatches, setDomainMatches] = useState<ApiCompanyRecord[]>([]);
   const { activeAdvisors } = useUsers();
   const bundle = useCrmConfigStore((s) => s.bundle);
 
@@ -112,7 +115,7 @@ export function NewCompanyWizard({
     setCompanyNameLookupQuery('');
   }
 
-  function applyCompanyRecord(record: ApiCompanyRecord, successMessage: string) {
+  async function applyCompanyRecord(record: ApiCompanyRecord, successMessage: string) {
     const mapped = mapApiCompanyRecordToNewCompanyData(record);
     const nextRuc = (record.ruc ?? '').replace(/\D/g, '').slice(0, 11);
     setForm((s) => ({
@@ -123,6 +126,21 @@ export function NewCompanyWizard({
     setExistingCompanyId(record.id);
     setLoadedRucDigits(nextRuc || null);
     resetCompanyNameLookup();
+
+    if (nextRuc.length === 11) {
+      try {
+        const full = await companyGetByRuc(nextRuc);
+        const fullMapped = mapApiCompanyRecordToNewCompanyData(full);
+        setForm((s) => ({
+          ...s,
+          ...fullMapped,
+          ruc: fullMapped.ruc || nextRuc || s.ruc,
+        }));
+      } catch {
+        // fallback: nos quedamos con los datos parciales del listado
+      }
+    }
+
     toast.success(successMessage);
   }
 
@@ -257,8 +275,8 @@ export function NewCompanyWizard({
     setExistingCompanyId(null);
     setLoadedRucDigits(null);
     resetCompanyNameLookup();
-    // defaultValues se fija al abrir desde el padre; no incluir en deps para evitar resets por referencia nueva
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setDomainMatches([]);
+    setDomainLookupLoading(false);
   }, [open]);
 
   useEffect(() => {
@@ -299,6 +317,46 @@ export function NewCompanyWizard({
     };
   }, [companyNameLookupQuery, open, step]);
 
+  useEffect(() => {
+    if (!open || step !== 0 || existingCompanyId) {
+      setDomainMatches([]);
+      return;
+    }
+    const domain = form.dominio.trim().toLowerCase();
+    if (!domain || domain.length < 4) {
+      setDomainMatches([]);
+      return;
+    }
+
+    let cancelled = false;
+    const t = window.setTimeout(async () => {
+      setDomainLookupLoading(true);
+      try {
+        const res = await companyListPaginated({
+          page: 1,
+          limit: 5,
+          search: domain,
+        });
+        if (!cancelled) {
+          const filtered = res.data.filter(
+            (c) => c.domain?.toLowerCase() === domain,
+          );
+          setDomainMatches(filtered);
+        }
+      } catch {
+        if (!cancelled) setDomainMatches([]);
+      } finally {
+        if (!cancelled) setDomainLookupLoading(false);
+      }
+    }, COMPANY_NAME_LOOKUP_DEBOUNCE_MS);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.dominio, open, step, existingCompanyId]);
+
   function handleOpenChange(value: boolean) {
     onOpenChange(value);
     if (!value) {
@@ -308,20 +366,32 @@ export function NewCompanyWizard({
       setExistingCompanyId(null);
       setLoadedRucDigits(null);
       resetCompanyNameLookup();
+      setDomainMatches([]);
+      setDomainLookupLoading(false);
     }
   }
 
   function handleNext() {
     if (submitting) return;
-    if (step === 0 && (!form.ruc.trim() || !form.nombreComercial.trim())) {
-      toast.error('RUC y Nombre comercial son obligatorios');
-      return;
-    }
-    if (step === 1) {
+    if (step === 0) {
+      if (!form.nombreComercial.trim()) {
+        toast.error('Nombre comercial es obligatorio');
+        return;
+      }
+      if (!form.dominio.trim()) {
+        toast.error('El dominio es obligatorio');
+        return;
+      }
       if (!form.origenLead) {
         toast.error('Selecciona la fuente del lead');
         return;
       }
+      if (domainMatches.length > 0) {
+        toast.error('Este dominio ya existe. Usa otro dominio o actualiza la empresa existente.');
+        return;
+      }
+    }
+    if (step === 1) {
       setForm((s) => ({
         ...s,
         nombreNegocio: s.nombreNegocio.trim() || s.nombreComercial.trim(),
@@ -332,12 +402,20 @@ export function NewCompanyWizard({
 
   async function handleSubmit() {
     if (submitting) return;
-    if (!form.ruc.trim() || !form.nombreComercial.trim()) {
-      toast.error('RUC y Nombre comercial son obligatorios');
+    if (!form.dominio.trim()) {
+      toast.error('El dominio es obligatorio');
+      return;
+    }
+    if (!form.nombreComercial.trim()) {
+      toast.error('Nombre comercial es obligatorio');
       return;
     }
     if (!form.origenLead) {
       toast.error('Selecciona la fuente del lead');
+      return;
+    }
+    if (domainMatches.length > 0) {
+      toast.error('Este dominio ya existe. Usa otro dominio o actualiza la empresa existente.');
       return;
     }
     const nombreNegocio = form.nombreNegocio.trim() || form.nombreComercial.trim();
@@ -406,47 +484,54 @@ export function NewCompanyWizard({
   const set = <K extends keyof NewCompanyData>(key: K, value: NewCompanyData[K]) =>
     setForm((s) => ({ ...s, [key]: value }));
 
+  const showCard =
+    open &&
+    (companyNameLookupLoading ||
+      companyNameSuggestions.length > 0 ||
+      companyNameLookupQuery.trim().length >= 3);
+
   return (
+    <>
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
-        <div className="flex items-center justify-center gap-0 py-2">
-          {steps.map((s, i) => (
-            <div key={s.label} className="flex items-center">
-              <div className="flex flex-col items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => { if (i < step) setStep(i); }}
-                  className={`flex size-8 items-center justify-center rounded-full border-2 text-sm font-semibold transition-colors ${
-                    i < step
-                      ? 'border-[#13944C] bg-[#13944C] text-white'
-                      : i === step
-                        ? 'border-[#13944C] bg-white text-[#13944C]'
-                        : 'border-muted-foreground/30 bg-muted text-muted-foreground'
-                  }`}
-                >
-                  {i < step ? <Check className="size-4" /> : i + 1}
-                </button>
-                <span className={`text-xs whitespace-nowrap ${i === step ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
-                  {s.label}
-                </span>
+        <div className="flex-1 overflow-y-auto min-h-0 space-y-4">
+          <div className="flex items-center justify-center gap-0 py-2">
+            {steps.map((s, i) => (
+              <div key={s.label} className="flex items-center">
+                <div className="flex flex-col items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => { if (i < step) setStep(i); }}
+                    className={`flex size-8 items-center justify-center rounded-full border-2 text-sm font-semibold transition-colors ${
+                      i < step
+                        ? 'border-[#13944C] bg-[#13944C] text-white'
+                        : i === step
+                          ? 'border-[#13944C] bg-white text-[#13944C]'
+                          : 'border-muted-foreground/30 bg-muted text-muted-foreground'
+                    }`}
+                  >
+                    {i < step ? <Check className="size-4" /> : i + 1}
+                  </button>
+                  <span className={`text-xs whitespace-nowrap ${i === step ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
+                    {s.label}
+                  </span>
+                </div>
+                {i < steps.length - 1 && (
+                  <div className={`mx-2 mb-5 h-0.5 w-12 sm:w-16 ${i < step ? 'bg-[#13944C]' : 'bg-muted-foreground/20'}`} />
+                )}
               </div>
-              {i < steps.length - 1 && (
-                <div className={`mx-2 mb-5 h-0.5 w-12 sm:w-16 ${i < step ? 'bg-[#13944C]' : 'bg-muted-foreground/20'}`} />
-              )}
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
 
-        <div className="space-y-4">
           {step === 0 && (
             <div className="grid gap-4 grid-cols-2">
               <div className="space-y-2">
-                <Label>RUC <span className="text-destructive">*</span></Label>
+                <Label>RUC</Label>
                 <div className="relative">
                   <Input
                     className="pr-10"
@@ -532,58 +617,6 @@ export function NewCompanyWizard({
                   }}
                 />
               </div>
-              {(companyNameLookupLoading ||
-                companyNameSuggestions.length > 0 ||
-                companyNameLookupQuery.trim().length >= 3) && (
-                <div className="col-span-2 rounded-md border bg-muted/20 p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-medium">Coincidencias en el CRM</p>
-                      <p className="text-xs text-muted-foreground">
-                        Escribe al menos 3 caracteres. Pulsa Enter para cargar la primera coincidencia.
-                      </p>
-                    </div>
-                    {companyNameLookupLoading ? (
-                      <Loader2 className="size-4 animate-spin text-muted-foreground" />
-                    ) : null}
-                  </div>
-                  {companyNameSuggestions.length > 0 ? (
-                    <div className="mt-3 space-y-2">
-                      {companyNameSuggestions.map((company) => (
-                        <button
-                          key={company.id}
-                          type="button"
-                          className="flex w-full items-start justify-between rounded-md border bg-background px-3 py-2 text-left transition-colors hover:bg-accent"
-                          onClick={() =>
-                            applyCompanyRecord(
-                              company,
-                              'Empresa encontrada: datos cargados desde el sistema',
-                            )
-                          }
-                        >
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-medium">{company.name}</p>
-                            <p className="truncate text-xs text-muted-foreground">
-                              {company.razonSocial?.trim() || 'Sin razón social'}
-                            </p>
-                          </div>
-                          <div className="ml-4 shrink-0 text-right text-xs text-muted-foreground">
-                            <p>{company.ruc?.trim() || 'Sin RUC'}</p>
-                            <p>{company.domain?.trim() || 'Sin dominio'}</p>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
-                  {!companyNameLookupLoading &&
-                  companyNameLookupQuery.trim().length >= 3 &&
-                  companyNameSuggestions.length === 0 ? (
-                    <p className="mt-3 text-xs text-muted-foreground">
-                      No se encontraron coincidencias para esa búsqueda.
-                    </p>
-                  ) : null}
-                </div>
-              )}
               <div className="space-y-2">
                 <Label>Teléfono</Label>
                 <Input placeholder="+51 999 999 999" value={form.telefono} onChange={(e) => set('telefono', e.target.value)} />
@@ -610,6 +643,21 @@ export function NewCompanyWizard({
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <Label>Dominio <span className="text-destructive">*</span></Label>
+                <Input placeholder="empresa.com" value={form.dominio} onChange={(e) => set('dominio', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Fuente <span className="text-destructive">*</span></Label>
+                <Select value={form.origenLead} onValueChange={(v) => set('origenLead', v as ContactSource)}>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar fuente" /></SelectTrigger>
+                  <SelectContent>
+                    {sourceOptions.map(({ value, label }) => (
+                      <SelectItem key={value} value={value}>{label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           )}
 
@@ -632,27 +680,12 @@ export function NewCompanyWizard({
                 <Input placeholder="Ej: Av. Primavera 1234" value={form.direccion} onChange={(e) => set('direccion', e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>Dominio</Label>
-                <Input placeholder="empresa.com" value={form.dominio} onChange={(e) => set('dominio', e.target.value)} />
-              </div>
-              <div className="space-y-2">
                 <Label>LinkedIn</Label>
                 <Input placeholder="https://www.linkedin.com/company/..." value={form.linkedin} onChange={(e) => set('linkedin', e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>Correo</Label>
                 <Input type="email" placeholder="contacto@empresa.com" value={form.correo} onChange={(e) => set('correo', e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Fuente <span className="text-destructive">*</span></Label>
-                <Select value={form.origenLead} onValueChange={(v) => set('origenLead', v as ContactSource)}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar fuente" /></SelectTrigger>
-                  <SelectContent>
-                    {sourceOptions.map(({ value, label }) => (
-                      <SelectItem key={value} value={value}>{label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
               <div className="space-y-2">
                 <Label>Propietario</Label>
@@ -767,7 +800,81 @@ export function NewCompanyWizard({
             )}
           </div>
         </DialogFooter>
+
+        {showCard && (
+          <div
+            data-coincidences-card
+            className="absolute right-full top-1/2 -translate-y-1/2 mr-2 w-80"
+          >
+            <div className="rounded-lg border bg-background p-4 shadow-lg">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium">Coincidencias en el CRM</p>
+                  <p className="text-xs text-muted-foreground">
+                    Escribe al menos 3 caracteres. Pulsa Enter para cargar la primera coincidencia.
+                  </p>
+                </div>
+                {companyNameLookupLoading ? (
+                  <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                ) : null}
+              </div>
+              {companyNameSuggestions.length > 0 ? (
+                <div className="mt-3 space-y-2">
+                  {companyNameSuggestions.map((company) => (
+                    <button
+                      key={company.id}
+                      type="button"
+                      className="flex w-full items-start justify-between rounded-md border bg-background px-3 py-2 text-left transition-colors hover:bg-accent"
+                      onClick={() =>
+                        applyCompanyRecord(
+                          company,
+                          'Empresa encontrada: datos cargados desde el sistema',
+                        )
+                      }
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{company.name}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {company.razonSocial?.trim() || 'Sin razón social'}
+                        </p>
+                      </div>
+                      <div className="ml-4 shrink-0 text-right text-xs text-muted-foreground">
+                        <p>{company.ruc?.trim() || 'Sin RUC'}</p>
+                        <p>{company.domain?.trim() || 'Sin dominio'}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              {!companyNameLookupLoading &&
+              companyNameLookupQuery.trim().length >= 3 &&
+              companyNameSuggestions.length === 0 ? (
+                <p className="mt-3 text-xs text-muted-foreground">
+                  No se encontraron coincidencias para esa búsqueda.
+                </p>
+              ) : null}
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
+
+    {domainMatches.length > 0 && !domainLookupLoading && createPortal(
+      <div className="fixed left-1/2 top-14 z-50 -translate-x-1/2 animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-300 ease-out">
+        <div className="flex items-center gap-2 rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-2.5 shadow-lg">
+          <svg className="size-4 shrink-0 text-yellow-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+          </svg>
+          <div className="text-sm">
+            <span className="font-semibold text-yellow-800">Este dominio ya existe</span>
+            <span className="block text-yellow-700">
+              {domainMatches[0].name}{domainMatches[0].ruc ? ` — RUC ${domainMatches[0].ruc}` : ''}
+            </span>
+          </div>
+        </div>
+      </div>,
+      document.body,
+    )}
+    </>
   );
 }

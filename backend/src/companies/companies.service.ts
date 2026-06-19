@@ -322,10 +322,23 @@ export class CompaniesService {
     actor?: ActivityActor,
     scope?: CrmDataScope,
   ) {
-    const name = dto.name?.trim();
-    if (!name) {
-      throw new BadRequestException('El nombre de la empresa es obligatorio');
+    const domain = dto.domain?.trim();
+    if (!domain) {
+      throw new BadRequestException('El dominio de la empresa es obligatorio');
     }
+    const domainLower = domain.toLowerCase();
+
+    const existingDomain = await this.prisma.company.findFirst({
+      where: { domain: { equals: domainLower, mode: 'insensitive' } },
+      select: { id: true, name: true, user: { select: { name: true } } },
+    });
+    if (existingDomain) {
+      throw new BadRequestException(
+        `Ya existe una empresa con el mismo dominio: ${existingDomain.name}. Por: ${existingDomain.user?.name ?? 'Sistema (Sin asignar)'}`,
+      );
+    }
+
+    const name = dto.name?.trim() || domain;
 
     const facturacionEstimada =
       dto.facturacionEstimada !== undefined &&
@@ -348,32 +361,6 @@ export class CompaniesService {
     }
     await this.crmConfig.assertEtapaAssignable(etapa);
 
-    const rucDigits = this.normalizeCompanyRucDigits(dto.ruc);
-    if (rucDigits) {
-      const existing = await this.findFirstCompanyByRucDigits(rucDigits);
-      if (existing) {
-        throw new BadRequestException(
-          `La empresa ya se encuentra registrada. 
-          Por: ${existing.ownerName ?? 'Sistema (Sin asignar)'}`,
-        );
-      }
-    }
-
-    const dupName = await this.prisma.company.findFirst({
-      where: {
-        OR: [
-          { name: { equals: name, mode: 'insensitive' } },
-          { razonSocial: { equals: name, mode: 'insensitive' } },
-        ],
-      },
-      include: { user: { select: { name: true } } },
-    });
-    if (dupName) {
-      throw new BadRequestException(
-        `Ya existe una empresa con el mismo nombre. Por: ${dupName.user?.name ?? 'Sistema (Sin asignar)'}`,
-      );
-    }
-
     const rucStore = dto.ruc?.trim() || null;
     const rucForDb =
       rucStore && rucStore.replace(/\D/g, '').length === 11
@@ -388,7 +375,7 @@ export class CompaniesService {
         razonSocial: dto.razonSocial?.trim() || null,
         ruc: rucForDb,
         telefono: dto.telefono?.trim() || null,
-        domain: dto.domain?.trim() || null,
+        domain: domainLower,
         rubro: dto.rubro?.trim() || null,
         tipo: dto.tipo?.trim() || null,
         linkedin: dto.linkedin?.trim() || null,
