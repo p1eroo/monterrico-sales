@@ -68,39 +68,37 @@ export function ImportJobErrorsDialog({ job, open, onOpenChange }: ImportJobErro
         </DialogHeader>
 
         {hasErrors && job ? (
-          <ScrollArea className="max-h-[min(55vh,28rem)] px-2">
-            <div className="px-4 pb-2">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b text-xs font-medium text-muted-foreground">
-                    <th className="py-2 pr-3 align-bottom">{nameColumnLabel(job.entity)}</th>
-                    <th className="w-14 shrink-0 py-2 pr-2 align-bottom">Fila</th>
-                    <th className="py-2 align-bottom">Detalle</th>
+          <div className="flex-1 overflow-y-auto min-h-0 border-y">
+            <table className="w-full text-left text-sm">
+              <thead className="sticky top-0 bg-background">
+                <tr className="border-b text-xs font-medium text-muted-foreground">
+                  <th className="px-6 py-2 pr-3 align-bottom">{nameColumnLabel(job.entity)}</th>
+                  <th className="w-14 shrink-0 py-2 pr-2 align-bottom">Fila</th>
+                  <th className="px-6 py-2 align-bottom">Detalle</th>
+                </tr>
+              </thead>
+              <tbody>
+                {errors.map((err, idx) => (
+                  <tr
+                    key={`${err.row}-${idx}`}
+                    className="border-b border-border/60 align-top last:border-0"
+                  >
+                    <td className="max-w-[10rem] px-6 py-2.5 pr-3 font-medium text-foreground">
+                      <span className="line-clamp-3 break-words" title={err.name}>
+                        {err.name?.trim() ? err.name.trim() : '—'}
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap py-2.5 pr-2 tabular-nums text-muted-foreground">
+                      {err.row > 0 ? err.row : '—'}
+                    </td>
+                    <td className="px-6 py-2.5 text-muted-foreground">
+                      <span className="break-words text-foreground/90">{err.message}</span>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {errors.map((err, idx) => (
-                    <tr
-                      key={`${err.row}-${idx}`}
-                      className="border-b border-border/60 align-top last:border-0"
-                    >
-                      <td className="max-w-[10rem] py-2.5 pr-3 font-medium text-foreground">
-                        <span className="line-clamp-3 break-words" title={err.name}>
-                          {err.name?.trim() ? err.name.trim() : '—'}
-                        </span>
-                      </td>
-                      <td className="whitespace-nowrap py-2.5 pr-2 tabular-nums text-muted-foreground">
-                        {err.row > 0 ? err.row : '—'}
-                      </td>
-                      <td className="py-2.5 text-muted-foreground">
-                        <span className="break-words text-foreground/90">{err.message}</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </ScrollArea>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <p className="px-6 py-8 text-center text-sm text-muted-foreground">No hay errores para mostrar.</p>
         )}
