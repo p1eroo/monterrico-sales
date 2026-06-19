@@ -131,18 +131,41 @@ export class FlotaProspectosService {
   }
 
   /** Buscar prospecto por celular normalizado */
-  async findByPhone(phone: string): Promise<{ id: string; nombreCompleto: string; celular: string | null; operador: string | null; estado: string } | null> {
+  async findByPhone(phone: string): Promise<{
+    id: string; nombreCompleto: string; celular: string | null; operador: string | null; estado: string;
+    edad?: number | null; modalidad?: string | null; placa?: string | null; anioVehiculo?: number | null;
+    distrito?: string | null; fechaCita?: Date | null; movil?: string | null; observaciones?: string | null;
+    asistencia?: string | null; llamadaCount?: number;
+  } | null> {
     const norm = this.normalizeCelular(phone);
     if (!norm) return null;
-    return this.prisma.flotaProspecto.findFirst({
+    const prospecto = await this.prisma.flotaProspecto.findFirst({
       where: {
         OR: [
           { celular: { endsWith: norm } },
           { movil: { endsWith: norm } },
         ],
       },
-      select: { id: true, nombreCompleto: true, celular: true, operador: true, estado: true },
+      include: { _count: { select: { llamadas: true } } },
     });
+    if (!prospecto) return null;
+    return {
+      id: prospecto.id,
+      nombreCompleto: prospecto.nombreCompleto,
+      celular: prospecto.celular,
+      operador: prospecto.operador,
+      estado: prospecto.estado,
+      edad: prospecto.edad,
+      modalidad: prospecto.modalidad,
+      placa: prospecto.placa,
+      anioVehiculo: prospecto.anioVehiculo,
+      distrito: prospecto.distrito,
+      fechaCita: prospecto.fechaCita,
+      movil: prospecto.movil,
+      observaciones: prospecto.observaciones,
+      asistencia: prospecto.asistencia,
+      llamadaCount: prospecto._count?.llamadas ?? 0,
+    };
   }
 
 

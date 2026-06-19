@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ChatwootClient } from './chatwoot.client';
-import { ChatwootGateway } from './chatwoot.gateway';
+import { ChatwootEventService } from './chatwoot-event.service';
 import type { ChatwootWebhookPayload } from './chatwoot.types';
 
 @Injectable()
@@ -11,63 +11,82 @@ export class ChatwootWebhookService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly client: ChatwootClient,
-    private readonly gateway: ChatwootGateway,
+    private readonly events: ChatwootEventService,
   ) {}
 
-  async handle(payload: ChatwootWebhookPayload) {
-    this.logger.debug(`Webhook event: ${payload.event}`);
+  private emit(event: string, data: unknown) {
+    const ns = this.events.namespace;
+    if (!ns) {
+      this.logger.warn(`⚠️ Socket.IO /chatwoot no disponible (event=${event})`);
+      return;
+    }
+    ns.emit('chatwoot', { event, data });
+    this.logger.log(`✅ Evento emitido: ${event}`);
+  }
 
-    switch (payload.event) {
-      case 'message_created':
-        return this.handleMessageCreated(payload);
-      case 'conversation_created':
-        return this.handleConversationCreated(payload);
-      case 'conversation_status_changed':
-        return this.handleStatusChanged(payload);
-      case 'contact_created':
-      case 'contact_updated':
-        return this.handleContactSync(payload);
-      case 'conversation_updated':
-        this.gateway.emitGlobal('conversation_updated', {
-          conversationId: payload.id,
-          assignee: payload.assignee,
-          status: payload.status,
-        });
-        return { received: true };
-      default:
-        this.gateway.emitGlobal(payload.event, payload);
-        return { received: true };
+  async handle(payload: ChatwootWebhookPayload) {
+    this.logger.log(`📩 Webhook event: ${payload.event}`);
+
+    try {
+      switch (payload.event) {
+        case 'message_created':
+          return await this.handleMessageCreated(payload as unknown as Record<string, unknown>);
+        case 'conversation_created':
+          return await this.handleConversationCreated(payload);
+        case 'conversation_status_changed':
+          return this.handleStatusChanged(payload);
+        case 'contact_created':
+        case 'contact_updated':
+          return await this.handleContactSync(payload);
+        case 'conversation_updated':
+          this.emit('conversation_updated', {
+            conversationId: payload.id,
+            assignee: payload.assignee,
+            status: payload.status,
+          });
+          return { received: true };
+        default:
+          this.emit(payload.event, payload);
+          return { received: true };
+      }
+    } catch (e) {
+      this.logger.error(`❌ Error en webhook ${payload.event}: ${e instanceof Error ? e.message : e}`);
+      return { received: true };
     }
   }
 
-  private async handleMessageCreated(payload: ChatwootWebhookPayload) {
-    const message = payload.message;
-    if (!message || message.message_type === 2) return { received: true };
+  private async handleMessageCreated(payload: Record<string, unknown>) {
+    const messageType = payload.message_type as number | undefined;
+    if (messageType === 2) return { received: true };
 
-    const conversation = payload.conversation;
+    const conversation = payload.conversation as { id?: number; meta?: { sender?: { phone_number?: string } } } | undefined;
     if (!conversation) return { received: true };
 
-    const sender = message.sender;
+    const sender = payload.sender as { id?: number; name?: string; type?: string } | undefined;
     const phone = sender?.type === 'contact'
-      ? conversation.meta?.sender?.phone_number
+      ? (conversation as any)?.meta?.sender?.phone_number
       : null;
 
-    if (phone) {
-      const prospecto = await this.findOrCreateProspecto(phone, sender.name);
-      if (prospecto) {
-        await this.prisma.flotaProspecto.update({
-          where: { id: prospecto.id },
-          data: {
-            chatwootContactId: sender.id,
-            chatwootConversationId: conversation.id,
-          },
-        });
+    try {
+      if (phone) {
+        const prospecto = await this.findOrCreateProspecto(phone, sender?.name || '');
+        if (prospecto) {
+          await this.prisma.flotaProspecto.update({
+            where: { id: prospecto.id },
+            data: {
+              chatwootContactId: sender?.id ?? 0,
+              chatwootConversationId: conversation.id,
+            },
+          });
+        }
       }
+    } catch (e) {
+      this.logger.warn(`Error en BD: ${e instanceof Error ? e.message : e}`);
     }
 
-    this.gateway.emitMessage(conversation.id, 'message_created', {
+    this.emit('message_created', {
       conversationId: conversation.id,
-      message,
+      message: payload,
       phone,
     });
 
@@ -94,12 +113,12 @@ export class ChatwootWebhookService {
       }
     }
 
-    this.gateway.emitGlobal('conversation_created', conversation);
+    this.emit('conversation_created', conversation);
     return { received: true };
   }
 
   private async handleStatusChanged(payload: ChatwootWebhookPayload) {
-    this.gateway.emitGlobal('conversation_status_changed', {
+    this.emit('conversation_status_changed', {
       conversationId: payload.id,
       status: payload.status,
     });
@@ -121,10 +140,7 @@ export class ChatwootWebhookService {
     return { received: true };
   }
 
-  private async findOrCreateProspecto(
-    phone: string,
-    name?: string,
-  ) {
+  private async findOrCreateProspecto(phone: string, name?: string) {
     const cleaned = phone.replace(/\D/g, '').slice(-9);
     if (!cleaned) return null;
 
@@ -142,7 +158,7 @@ export class ChatwootWebhookService {
         prospecto = await this.prisma.flotaProspecto.create({
           data: {
             nombreCompleto: name,
-            celular: phone,
+            celular: '51' + cleaned,
             estado: 'Nuevo',
             origen: 'CHATWOOT',
           },

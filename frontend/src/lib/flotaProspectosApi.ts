@@ -225,7 +225,14 @@ export async function fetchOperadores(): Promise<OperadorUser[]> {
   return api<OperadorUser[]>('/flota-prospectos/operadores');
 }
 
-export async function flotaProspectosByPhone(phone: string): Promise<{ found: boolean; prospecto: { id: string; nombreCompleto: string; celular: string | null; operador: string | null; estado: string } | null }> {
+export interface FlotaProspectoDetalle {
+  id: string; nombreCompleto: string; celular: string | null; operador: string | null; estado: string;
+  edad?: number | null; modalidad?: string | null; placa?: string | null; anioVehiculo?: number | null;
+  distrito?: string | null; fechaCita?: string | null; movil?: string | null; observaciones?: string | null;
+  asistencia?: string | null; llamadaCount?: number;
+}
+
+export async function flotaProspectosByPhone(phone: string): Promise<{ found: boolean; prospecto: FlotaProspectoDetalle | null }> {
   return api(`/flota-prospectos/by-phone/${encodeURIComponent(phone)}`);
 }
 

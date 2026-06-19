@@ -10,6 +10,9 @@ export interface ChatwootConversation {
   };
   last_activity_at: number;
   unread_count?: number;
+  preview?: string;
+  direction?: string;
+  time?: string;
   /** Último mensaje de la conversación (incluido por la API) */
   messages?: Array<{
     id: number;
@@ -34,6 +37,8 @@ export interface ChatwootMessage {
   content: string;
   /** 0 = incoming, 1 = outgoing, 2 = activity */
   message_type: number;
+  /** "sent" | "delivered" | "read" */
+  status?: string;
   sender: {
     id: number;
     name: string;
@@ -42,6 +47,8 @@ export interface ChatwootMessage {
   created_at: number;
   attachments: ChatwootAttachment[];
   conversation_id: number;
+  /** Check azul local */
+  waOutboundStatus?: string | null;
 }
 
 export const CHATWOOT_MESSAGE_TYPE = {
@@ -160,6 +167,25 @@ export async function fetchConversation(
   id: number,
 ): Promise<{ meta: { sender: ChatwootContact & { custom_attributes?: Record<string, string>; additional_attributes?: Record<string, string> }; assignee?: { id: number; name: string } }; status: string }> {
   return api(`/api/chatwoot/conversations/${id}`);
+}
+
+export async function uploadAttachment(
+  conversationId: number,
+  file: File,
+  caption?: string,
+): Promise<ChatwootMessage> {
+  const base64 = await new Promise<string>((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.split(',')[1]);
+    };
+    reader.readAsDataURL(file);
+  });
+  return api(`/api/chatwoot/conversations/${conversationId}/upload`, {
+    method: 'POST',
+    body: JSON.stringify({ file: base64, fileName: file.name, mimeType: file.type, caption }),
+  });
 }
 
 export async function markConversationAsRead(conversationId: number): Promise<void> {

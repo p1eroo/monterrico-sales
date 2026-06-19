@@ -351,12 +351,13 @@ export default function FlotaMensajes() {
     () => {
       const t = searchParams.get('tab');
       if (t === 'inbox' || t === 'chatwoot' || t === 'masivo' || t === 'pipeline' || t === 'automatizacion' || t === 'conexiones') return t;
-      return 'inbox';
+      return 'chatwoot';
     },
   );
   const [connection, setConnection] = useState<FlotaWhatsappConnectionResponse | null>(null);
   const [evoModalOpen, setEvoModalOpen] = useState(false);
   const [loadingConn, setLoadingConn] = useState(true);
+  const [calModalOpen, setCalModalOpen] = useState(false);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(
     () => searchParams.get('chat') || null,
 );
@@ -433,12 +434,13 @@ export default function FlotaMensajes() {
   );
 
   useEffect(() => {
+    if (tab !== 'inbox' && tab !== 'conexiones' && tab !== 'masivo') return;
     fetchFlotaInstances().then(setFlotaInstances).catch(() => {});
     const interval = setInterval(() => {
       fetchFlotaInstances().then(setFlotaInstances).catch(() => {});
     }, 15000);
     return () => clearInterval(interval);
-  }, [conexionesReloadTick]);
+  }, [conexionesReloadTick, tab]);
 
   const tabStatusConnected = useMemo(() => {
     if (tab === 'inbox') return inboxConnected;
@@ -475,20 +477,27 @@ export default function FlotaMensajes() {
           Volver
         </button>
         <div className="flex-1" />
-        <div className="[&_button]:text-sidebar-foreground [&_button:hover]:bg-sidebar-accent [&_button:hover]:text-sidebar-accent-foreground [&_button]:size-9 [&_svg]:size-5">
+        <div className="[&_button]:text-sidebar-foreground [&_button:hover]:bg-sidebar-accent [&_button:hover]:text-sidebar-accent-foreground [&_button]:size-9 [&_svg]:size-5 flex items-center gap-0">
+          <button onClick={() => setCalModalOpen(true)}>
+            <Calendar />
+          </button>
           <ThemeToggle />
         </div>
         <button
-          onClick={() => setEvoModalOpen(true)}
+          onClick={() => { if (tab !== 'chatwoot') setEvoModalOpen(true); }}
           className={cn(
             'flex flex-col items-center justify-center rounded-md border px-4 py-1 text-xs leading-tight transition-colors',
-            tabStatusConnected
+            tab === 'chatwoot' || tabStatusConnected
               ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20'
               : 'border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20',
           )}
         >
-          <span className="font-medium">{instance?.displayLineId || instance?.instanceName || 'WhatsApp'}</span>
-          <span className="opacity-70">{tabStatusConnected ? 'Conectado' : 'Desconectado'}</span>
+          <span className="font-medium">
+            {tab === 'chatwoot' ? 'Chatwoot' : instance?.displayLineId || instance?.instanceName || 'WhatsApp'}
+          </span>
+          <span className="opacity-70">
+            {tab === 'chatwoot' ? 'Conectado' : tabStatusConnected ? 'Conectado' : 'Desconectado'}
+          </span>
         </button>
       </header>
 
@@ -497,8 +506,8 @@ export default function FlotaMensajes() {
         <aside className="flex flex-col items-center gap-3 border-r border-muted bg-card px-1.5 py-4 w-[54px] shrink-0">
           <TooltipProvider>
           {([
-            { key: 'inbox', icon: Inbox, label: 'Inbox' },
             { key: 'chatwoot', icon: MessageCircle, label: 'Chatwoot' },
+            { key: 'inbox', icon: Inbox, label: 'Inbox' },
             { key: 'calendario', icon: Calendar, label: 'Calendario' },
             { key: 'masivo', icon: Send, label: 'Masivo' },
             { key: 'pipeline', icon: LayoutList, label: 'Pipeline' },
@@ -556,6 +565,22 @@ export default function FlotaMensajes() {
           </div>
         </div>
       </div>
+
+      {calModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm" onClick={() => setCalModalOpen(false)}>
+          <div className="w-[95vw] h-[90vh] rounded-lg border bg-background shadow-lg flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b px-4 py-2 shrink-0">
+              <h2 className="text-sm font-semibold">Calendario de Citas</h2>
+              <button onClick={() => setCalModalOpen(false)} className="rounded-full p-1 hover:bg-muted transition-colors">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="flex-1 min-h-0">
+              <FlotaCalendario />
+            </div>
+          </div>
+        </div>
+      )}
 
       <EvoGoModal
         open={evoModalOpen || !!connectingInstance}

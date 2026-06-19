@@ -15,6 +15,7 @@ import type { Response } from 'express';
 import { Public } from '../auth/decorators/public.decorator';
 import { ChatwootService } from './chatwoot.service';
 import { ChatwootClient } from './chatwoot.client';
+import { ChatwootEventService } from './chatwoot-event.service';
 
 @Controller('api/chatwoot')
 export class ChatwootController {
@@ -23,6 +24,7 @@ export class ChatwootController {
   constructor(
     private readonly service: ChatwootService,
     private readonly client: ChatwootClient,
+    private readonly events: ChatwootEventService,
   ) {}
 
   @Get('conversations')
@@ -85,7 +87,7 @@ export class ChatwootController {
   @Patch('contacts/:id')
   async updateContact(
     @Param('id', ParseIntPipe) id: number,
-    @Body() body: { custom_attributes?: Record<string, string> },
+    @Body() body: { name?: string; custom_attributes?: Record<string, string> },
   ) {
     return this.client.updateContact(id, body);
   }
@@ -130,5 +132,26 @@ export class ChatwootController {
       this.logger.error(`[Content] ${e instanceof Error ? e.message : e}`);
       res.status(502).json({ error: 'Error al obtener contenido de Chatwoot' });
     }
+  }
+
+  @Post('conversations/:id/upload')
+  async uploadAttachment(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { file: string; fileName: string; mimeType: string; caption?: string },
+  ) {
+    const buffer = Buffer.from(body.file, 'base64');
+    return this.client.uploadAttachment(id, buffer, body.fileName, body.mimeType, body.caption || '');
+  }
+
+  @Public()
+  @Get('test-emit')
+  async testEmit() {
+    const ns = this.events.namespace;
+    if (!ns) {
+      return { error: 'namespace null', nsReady: this.events.isReady };
+    }
+    const clientCount = (ns as unknown as { sockets?: Map<string, unknown> })?.sockets?.size ?? 0;
+    ns.emit('chatwoot', { event: 'test', data: { msg: 'test desde backend', ts: Date.now() } });
+    return { success: true, clients: clientCount };
   }
 }

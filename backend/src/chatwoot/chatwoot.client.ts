@@ -124,6 +124,46 @@ export class ChatwootClient {
     });
   }
 
+  async uploadAttachment(
+    conversationId: number,
+    fileBuffer: Buffer,
+    fileName: string,
+    mimeType: string,
+    caption: string,
+  ): Promise<ChatwootMessage> {
+    const boundary = `----FormBoundary${Date.now()}`;
+    let body = '';
+    // attachments[]
+    body += `--${boundary}\r\n`;
+    body += `Content-Disposition: form-data; name="attachments[]"; filename="${fileName}"\r\n`;
+    body += `Content-Type: ${mimeType}\r\n\r\n`;
+    body += fileBuffer.toString('binary');
+    body += `\r\n--${boundary}\r\n`;
+    body += `Content-Disposition: form-data; name="message_type"\r\n\r\n`;
+    body += `outgoing\r\n`;
+    if (caption) {
+      body += `--${boundary}\r\n`;
+      body += `Content-Disposition: form-data; name="content"\r\n\r\n`;
+      body += `${caption}\r\n`;
+    }
+    body += `--${boundary}--\r\n`;
+
+    const url = this.apiUrl(`/conversations/${conversationId}/messages`);
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'api_access_token': this.config.apiToken,
+        'Content-Type': `multipart/form-data; boundary=${boundary}`,
+      },
+      body: Buffer.from(body, 'binary'),
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`Chatwoot upload error ${res.status}: ${text.slice(0, 200)}`);
+    }
+    return res.json() as Promise<ChatwootMessage>;
+  }
+
   async updateConversation(
     conversationId: number,
     data: { status?: string },
