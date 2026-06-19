@@ -788,6 +788,9 @@ function ChatwootChatPanel({
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [prospecto, setProspecto] = useState<FlotaProspectoDetalle | null>(null);
   const [loadingProspecto, setLoadingProspecto] = useState(false);
+  const [prospectoDeleted, setProspectoDeleted] = useState(() => {
+    return !!localStorage.getItem(`chatwoot_deleted_prospect_${conversationId}`);
+  });
   const [editProspectoOpen, setEditProspectoOpen] = useState(false);
   const [editData, setEditData] = useState<Record<string, string>>({});
   const [citadoDialogOpen, setCitadoDialogOpen] = useState(false);
@@ -834,8 +837,8 @@ function ChatwootChatPanel({
           setProspecto(res.prospecto);
           const agentName = conversations.find((c) => c.id === conversationId)?.meta?.assignee?.name;
           setTimeout(() => syncOperadorConAgente(agentName), 100);
-        } else if (sender?.name) {
-          // Crear prospecto automáticamente si no existe
+        } else if (sender?.name && !localStorage.getItem(`chatwoot_deleted_prospect_${conversationId}`)) {
+          setProspectoDeleted(false);
           return flotaProspectoCreate({ nombreCompleto: sender.name, celular: cleanedPhone }).then(
             (created) => setProspecto({ id: created.id, nombreCompleto: created.nombreCompleto, celular: created.celular, operador: null, estado: 'Nuevo' }),
           );
@@ -1049,6 +1052,7 @@ function ChatwootChatPanel({
     prevLenRef.current = 0;
     setNewMessagesCount(0);
     loadingOlderRef.current = false;
+    // prospectoDeleted se mantiene: si estaba en localStorage, sigue eliminado
   }, [conversationId]);
 
   useEffect(() => {
@@ -1745,6 +1749,28 @@ function ChatwootChatPanel({
                     <Trash2 className="h-3 w-3 mr-1" /> Eliminar prospecto
                   </Button>
                 </div>
+              ) : prospectoDeleted ? (
+                <div className="flex flex-col items-center gap-2 py-2">
+                  <p className="text-xs text-muted-foreground">Prospecto eliminado</p>
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={async () => {
+                    if (!sender?.name || !sender?.phone_number) return;
+                    setUpdating(true);
+                    try {
+                      const cleaned = sender.phone_number.replace(/\D/g, '');
+                      const created = await flotaProspectoCreate({ nombreCompleto: sender.name, celular: cleaned });
+                      localStorage.removeItem(`chatwoot_deleted_prospect_${conversationId}`);
+                      setProspectoDeleted(false);
+                      setProspecto({ id: created.id, nombreCompleto: created.nombreCompleto, celular: created.celular, operador: null, estado: 'Nuevo' });
+                      toast.success('Prospecto recreado');
+                    } catch (e) {
+                      toast.error(e instanceof Error ? e.message : 'Error al crear prospecto');
+                    } finally {
+                      setUpdating(false);
+                    }
+                  }} disabled={updating}>
+                    <Plus className="h-3 w-3 mr-1" /> Volver a crear
+                  </Button>
+                </div>
               ) : (
                 <p className="text-xs text-muted-foreground py-2 text-center">
                   {sender?.name ? 'Creando prospecto...' : 'Sin datos de contacto'}
@@ -1830,8 +1856,9 @@ function ChatwootChatPanel({
             <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)} disabled={updating}>Cancelar</Button>
             <Button variant="destructive" onClick={async () => {
               if (!prospecto?.id) return;
-              setUpdating(true);
               try {
+                localStorage.setItem(`chatwoot_deleted_prospect_${conversationId}`, 'true');
+                setProspectoDeleted(true);
                 await api(`/flota-prospectos/${prospecto.id}`, { method: 'DELETE' });
                 setProspecto(null);
                 setDeleteConfirmOpen(false);
