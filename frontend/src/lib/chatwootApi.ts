@@ -147,7 +147,7 @@ export async function createContact(data: {
 
 export async function updateContact(
   contactId: number,
-  data: { custom_attributes?: Record<string, string> },
+  data: { name?: string; custom_attributes?: Record<string, string> },
 ): Promise<unknown> {
   return api(`/api/chatwoot/contacts/${contactId}`, {
     method: 'PATCH',

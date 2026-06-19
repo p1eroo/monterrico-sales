@@ -1233,7 +1233,7 @@ function ChatwootChatPanel({
     } catch (e) {
       setMessagesCache((prev) => ({
         ...prev,
-        [conversationId]: (prev[conversationId] ?? []).filter((m) => m.id !== optimisticId),
+        [conversationId]: (prev[conversationId] ?? []).filter((m) => String(m.id) !== optimisticId),
       }));
       setDraft(body);
       toast.error(e instanceof Error ? e.message : 'No se pudo enviar el mensaje');
@@ -1288,7 +1288,7 @@ function ChatwootChatPanel({
               <p className="truncate text-xs text-muted-foreground">
                 {sender?.phone_number ?? ''}
                 {(() => {
-                  const cod = getConductorCodigo(sender?.phone_number, conductorCodes);
+                  const cod = getConductorCodigo(sender?.phone_number, conductorCodes ?? {});
                   return cod ? <span className="ml-1 text-emerald-600 font-medium">{cod}</span> : null;
                 })()}
               </p>
