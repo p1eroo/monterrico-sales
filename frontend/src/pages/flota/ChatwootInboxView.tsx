@@ -1469,6 +1469,20 @@ function ChatwootChatPanel({
                 className="min-h-[44px] max-h-32 resize-none"
                 rows={1}
                 onFocus={() => markConversationAsRead(conversationId).catch(() => {})}
+                onPaste={(e) => {
+                  const items = e.clipboardData?.items;
+                  if (!items) return;
+                  for (const item of items) {
+                    if (item.type.startsWith('image/')) {
+                      e.preventDefault();
+                      const file = item.getAsFile();
+                      if (!file) continue;
+                      cancelPendingAtt();
+                      setPendingAtt({ type: 'image', file, previewUrl: URL.createObjectURL(file) });
+                      return;
+                    }
+                  }
+                }}
               />
               <Button
                 onClick={() => void handleSend()}
