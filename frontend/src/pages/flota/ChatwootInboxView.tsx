@@ -972,6 +972,7 @@ function ChatwootChatPanel({
       loadMessages().finally(() => setInitialLoading(false));
     } else {
       setInitialLoading(false);
+      loadMessages().catch(() => {});
     }
   }, [conversationId]);
 
