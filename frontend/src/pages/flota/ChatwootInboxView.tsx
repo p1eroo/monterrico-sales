@@ -206,10 +206,25 @@ export default function ChatwootInboxView() {
 
   async function loadConversations() {
     try {
-      const items = await fetchConversations();
-      // Ordenar por última actividad descendente
-      const sorted = [...items].sort((a, b) => b.last_activity_at - a.last_activity_at);
-      setConversations(sorted);
+      // Primera página: mostrar inmediatamente
+      const page1 = await fetchConversations({ page: 1 });
+      let allItems = [...page1];
+      allItems.sort((a, b) => b.last_activity_at - a.last_activity_at);
+      setConversations(allItems);
+      setLoading(false);
+
+      // Background: cargar páginas restantes
+      let page = 2;
+      let lastCount = page1.length;
+      while (lastCount >= 25) {
+        const items = await fetchConversations({ page });
+        if (items.length === 0) break;
+        allItems = [...allItems, ...items];
+        allItems.sort((a, b) => b.last_activity_at - a.last_activity_at);
+        setConversations([...allItems]);
+        lastCount = items.length;
+        page++;
+      }
     } catch {
       // silent
     } finally {
