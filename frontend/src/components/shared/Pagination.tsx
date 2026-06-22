@@ -95,7 +95,7 @@ export function Pagination({
               value={String(pageSize)}
               onValueChange={(val) => onPageSizeChange(Number(val))}
             >
-              <SelectTrigger size="sm" className="h-8 w-[75px] bg-white border-[#e3e9ef] shadow-[0_2px_6px_rgba(15,23,42,0.06)]">
+              <SelectTrigger size="sm" className="h-8 w-[75px] bg-card border-border shadow-[0_2px_6px_rgba(15,23,42,0.06)]">
                 <SelectValue placeholder={String(pageSize)} />
               </SelectTrigger>
               <SelectContent>
@@ -116,7 +116,7 @@ export function Pagination({
             size="sm"
             disabled={page <= 1}
             onClick={() => onPageChange(page - 1)}
-            className="h-8 px-3 text-xs font-normal border-[#e3e9ef] text-[#111827] hover:bg-muted/40 bg-white shadow-[0_2px_6px_rgba(15,23,42,0.06)]"
+            className="h-8 px-3 text-xs font-normal border-border text-foreground hover:bg-muted/40 bg-card shadow-[0_2px_6px_rgba(15,23,42,0.06)]"
           >
             Anterior
           </Button>
@@ -144,7 +144,7 @@ export function Pagination({
                 className={`h-8 w-8 p-0 text-xs rounded-lg ${
                   isPageActive
                     ? 'bg-primary text-primary-foreground hover:bg-primary/90 font-medium shadow-[0_2px_6px_rgba(15,23,42,0.06)]'
-                    : 'font-normal border-[#e3e9ef] text-[#111827] hover:bg-muted/40 bg-white shadow-[0_2px_6px_rgba(15,23,42,0.06)]'
+                    : 'font-normal border-border text-foreground hover:bg-muted/40 bg-card shadow-[0_2px_6px_rgba(15,23,42,0.06)]'
                 }`}
               >
                 {num}
@@ -157,7 +157,7 @@ export function Pagination({
             size="sm"
             disabled={page >= totalPages}
             onClick={() => onPageChange(page + 1)}
-            className="h-8 px-3 text-xs font-normal border-[#e3e9ef] text-[#111827] hover:bg-muted/40 bg-white shadow-[0_2px_6px_rgba(15,23,42,0.06)]"
+            className="h-8 px-3 text-xs font-normal border-border text-foreground hover:bg-muted/40 bg-card shadow-[0_2px_6px_rgba(15,23,42,0.06)]"
           >
             Siguiente
           </Button>

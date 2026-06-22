@@ -348,10 +348,10 @@ const LeadCard = memo(function LeadCard({
   return (
     <div
       className={cn(
-        'group relative select-none rounded-[14px] border border-[#e7ecf2] bg-white p-3.5 text-[#0f172a] shadow-[0_1px_4px_rgba(15,23,42,0.04)]',
+        'group relative select-none rounded-[14px] border border-border bg-card p-3.5 text-card-foreground shadow-[0_1px_4px_rgba(15,23,42,0.04)]',
         !overlay && [
           'transition-all duration-150',
-          'hover:border-[#d0d7e0] hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)] hover:-translate-y-0.5',
+          'hover:border-border/80 hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)] hover:-translate-y-0.5',
         ],
         isDragging && 'opacity-40',
         overlay && 'pointer-events-none rotate-2 shadow-xl border-primary/40',
@@ -374,7 +374,7 @@ const LeadCard = memo(function LeadCard({
       <div className="space-y-2.5">
         <div>
           {overlay ? (
-            <span className="block w-full truncate text-left text-sm font-semibold text-[#0f172a]">
+            <span className="block w-full truncate text-left text-sm font-semibold text-foreground">
               {opportunity?.title ?? lead.name}
             </span>
           ) : (
@@ -382,36 +382,36 @@ const LeadCard = memo(function LeadCard({
               type="button"
               onClick={handleNameClick}
               className={cn(
-                'block w-full truncate text-left text-sm font-semibold text-[#0f172a]',
+                'block w-full truncate text-left text-sm font-semibold text-foreground',
                 (opportunity || onCardClick) && 'hover:text-primary',
               )}
             >
               {opportunity?.title ?? lead.name}
             </button>
           )}
-          <p className="flex items-center gap-1 truncate text-xs text-[#64748b] mt-1">
+          <p className="flex items-center gap-1 truncate text-xs text-muted-foreground mt-1">
             <Building2 className="size-3 shrink-0" />
             {company?.name ?? '—'}
           </p>
-          <p className="flex items-center gap-1 truncate text-xs text-[#64748b]">
+          <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
             <User className="size-3 shrink-0" />
             {lead.name}
           </p>
           {(company?.rubro || company?.tipo) && (
             <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              {company?.rubro && <span className="rounded-md bg-[#f1f5f9] px-1.5 py-0.5 text-[10px] font-medium text-[#64748b]">{companyRubroLabels[company.rubro]}</span>}
-              {company?.tipo && <span className="rounded-md bg-[#f1f5f9] px-1.5 py-0.5 text-[10px] font-medium text-[#64748b]">Tipo {company.tipo}</span>}
+              {company?.rubro && <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{companyRubroLabels[company.rubro]}</span>}
+              {company?.tipo && <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">Tipo {company.tipo}</span>}
             </p>
           )}
         </div>
 
         <div className="flex items-center justify-between pt-0.5">
-          <span className="text-base font-bold text-[#0f172a]">
+          <span className="text-base font-bold text-foreground">
             {formatCurrencyShort(opportunity?.amount ?? lead.estimatedValue)}
           </span>
         </div>
 
-        <div className="flex items-center justify-between text-xs text-[#94a3b8]">
+        <div className="flex items-center justify-between text-xs text-muted-foreground/60">
           <span className="flex items-center gap-1 truncate">
             <User className="size-3 shrink-0" />
             <span className="truncate">{lead.assignedToName.split(' ')[0]}</span>
@@ -456,10 +456,10 @@ const OpportunityCard = memo(function OpportunityCard({
   return (
     <div
       className={cn(
-        'group relative select-none rounded-[14px] border border-[#e7ecf2] bg-white p-3.5 text-[#0f172a] shadow-[0_1px_4px_rgba(15,23,42,0.04)]',
+        'group relative select-none rounded-[14px] border border-border bg-card p-3.5 text-card-foreground shadow-[0_1px_4px_rgba(15,23,42,0.04)]',
         !overlay && [
           'transition-all duration-150',
-          'hover:border-[#d0d7e0] hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)] hover:-translate-y-0.5',
+          'hover:border-border/80 hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)] hover:-translate-y-0.5',
         ],
         isDragging && 'opacity-40',
         overlay && 'pointer-events-none rotate-2 shadow-xl border-primary/40',
@@ -483,24 +483,24 @@ const OpportunityCard = memo(function OpportunityCard({
       <div className="space-y-2.5">
         <div>
           {overlay ? (
-            <span className="block w-full truncate text-left text-sm font-semibold text-[#0f172a]">
+            <span className="block w-full truncate text-left text-sm font-semibold text-foreground">
               {opportunity.title}
             </span>
           ) : (
             <button
               type="button"
               onClick={handleNameClick}
-              className="block w-full truncate text-left text-sm font-semibold text-[#0f172a] hover:text-primary"
+              className="block w-full truncate text-left text-sm font-semibold text-foreground hover:text-primary"
             >
               {opportunity.title}
             </button>
           )}
-          <p className="flex items-center gap-1 truncate text-xs text-[#64748b] mt-1">
+          <p className="flex items-center gap-1 truncate text-xs text-muted-foreground mt-1">
             <Building2 className="size-3 shrink-0" />
             {opportunity.clientName ?? '—'}
           </p>
           {opportunity.contactName && (
-            <p className="flex items-center gap-1 truncate text-xs text-[#64748b]">
+            <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
               <User className="size-3 shrink-0" />
               {opportunity.contactName}
             </p>
@@ -508,12 +508,12 @@ const OpportunityCard = memo(function OpportunityCard({
         </div>
 
         <div className="flex items-center justify-between pt-0.5">
-          <span className="text-base font-bold text-[#0f172a]">
+          <span className="text-base font-bold text-foreground">
             {formatCurrencyShort(opportunity.amount ?? 0)}
           </span>
         </div>
 
-        <div className="flex items-center justify-between text-xs text-[#94a3b8]">
+        <div className="flex items-center justify-between text-xs text-muted-foreground/60">
           <span className="flex items-center gap-1 truncate">
             <User className="size-3 shrink-0" />
             <span className="truncate">{(opportunity.assignedToName ?? '').split(' ')[0]}</span>
@@ -761,14 +761,14 @@ function PipelineKanbanSkeleton({ columns }: { columns: PipelineStageColumnConfi
           className="flex h-full min-h-0 min-w-[260px] flex-1 flex-col"
         >
           <div className="h-1.5 rounded-t-[16px] opacity-70" style={{ backgroundColor: col.accentColor }} />
-          <div className="flex items-center justify-between gap-3 rounded-t-none border-x border-t border-[#e8edf2] bg-[var(--pipeline-kanban-column-header)] px-4 py-3.5">
+          <div className="flex items-center justify-between gap-3 rounded-t-none border-x border-t border-border bg-[var(--pipeline-kanban-column-header)] px-4 py-3.5">
             <div className="flex min-w-0 flex-1 items-center gap-2.5">
               <Skeleton className="h-5 max-w-[9rem] flex-1" />
               <Skeleton className="h-6 w-6 shrink-0 rounded-full" />
             </div>
             <Skeleton className="h-4 w-[4.5rem] shrink-0" />
           </div>
-          <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden rounded-b-[16px] border-x border-b border-[#e8edf2] bg-[#f8fafc] p-3">
+          <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden rounded-b-[16px] border-x border-b border-border bg-muted/30 p-3">
             {Array.from({ length: 4 }, (_, i) => (
               <Skeleton key={i} className="h-28 w-full shrink-0 rounded-[14px] bg-white" />
             ))}
@@ -812,24 +812,24 @@ const KanbanColumn = memo(function KanbanColumn({
   });
 
   return (
-    <div className="flex h-full min-h-0 min-w-[260px] flex-1 flex-col rounded-[16px] border border-[#e8edf2] bg-white shadow-[0_2px_12px_rgba(15,23,42,0.06)]">
+    <div className="flex h-full min-h-0 min-w-[260px] flex-1 flex-col rounded-[16px] border border-border bg-card shadow-[0_2px_12px_rgba(15,23,42,0.06)]">
       <div className="h-1.5 rounded-t-[16px]" style={{ backgroundColor: accentColor }} />
 
       <div className="flex items-center justify-between gap-3 px-4 py-3.5">
         <div className="flex min-w-0 flex-1 items-center gap-2.5">
-          <h3 className="min-w-0 truncate text-sm font-semibold text-[#0f172a]">{column.title}</h3>
-          <span className="flex size-6 items-center justify-center rounded-full bg-[#f1f5f9] text-[11px] font-bold text-[#64748b] tabular-nums">
+          <h3 className="min-w-0 truncate text-sm font-semibold text-foreground">{column.title}</h3>
+          <span className="flex size-6 items-center justify-center rounded-full bg-muted text-[11px] font-bold text-muted-foreground tabular-nums">
             {items.length}
           </span>
         </div>
-        <span className="shrink-0 text-xs font-semibold text-[#64748b]">
+        <span className="shrink-0 text-xs font-semibold text-muted-foreground">
           {formatCurrencyShort(column.totalValue)}
         </span>
       </div>
 
       <div
         ref={setScrollAndDropRef}
-        className="scrollbar-thin flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto rounded-b-[16px] bg-[#f8fafc] px-3 pb-3 pt-1"
+        className="scrollbar-thin flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto rounded-b-[16px] bg-muted/30 px-3 pb-3 pt-1"
       >
         {showDropPlaceholder && <ColumnDropSlot accentColor={accentColor} />}
 
@@ -1324,8 +1324,8 @@ const handlePipelineCardClick = useCallback((o: Opportunity) => {
     <div className="flex h-full min-h-0 min-w-0 flex-col gap-5">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold tracking-tight text-[#0f172a]">Pipeline Comercial</h1>
-          <p className="mt-0.5 text-sm text-[#64748b]">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Pipeline Comercial</h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">
             Arrastra las tarjetas entre columnas para cambiar la etapa de la oportunidad.
           </p>
         </div>
