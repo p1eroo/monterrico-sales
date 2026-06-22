@@ -358,12 +358,12 @@ export default function OpportunitiesPage() {
         }),
       });
       // Reconcile with API response
-      setApiRows((prev) => prev.map((r) => (r.id === oppId ? result : r)));
+      useOpportunityCacheStore.getState().updateRow(oppId, () => result);
       toast.success('Oportunidad actualizada', { id: `save-${oppId}` });
     } catch (e) {
       // Revert on error
       if (prevRow) {
-        setApiRows((prev) => prev.map((r) => (r.id === oppId ? prevRow : r)));
+        useOpportunityCacheStore.getState().updateRow(oppId, () => prevRow);
       }
       toast.error(e instanceof Error ? e.message : 'No se pudo guardar', { id: `save-${oppId}` });
     }

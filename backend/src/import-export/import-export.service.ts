@@ -125,6 +125,25 @@ const CONTACT_HEADERS = [
   'empresa_ruc',
 ] as const;
 
+const CONTACT_TEMPLATE_HEADERS = [
+  'nombre',
+  'telefono',
+  'correo',
+  'fuente',
+  'cargo',
+  'etapa',
+  'valor_estimado',
+  'asignado_a',
+  'departamento',
+  'provincia',
+  'distrito',
+  'direccion',
+  'cliente_recuperado',
+  'domain',
+  'empresa_nombre',
+  'empresa_ruc',
+] as const;
+
 /** Plantilla / import empresa: sin id; contacto opcional por fila (mismo patrón que import contactos). */
 const COMPANY_HEADERS = [
   'nombre',
@@ -173,7 +192,6 @@ const COMPANY_TEMPLATE_HEADERS = [
   'rubro',
   'tipo',
   'correo',
-  'linkedin',
   'distrito',
   'provincia',
   'departamento',
@@ -759,7 +777,7 @@ export class ImportExportService {
   }
 
   contactsTemplateCsv(): string {
-    return UTF8_BOM + stringifyCsvRow([...CONTACT_HEADERS]);
+    return UTF8_BOM + stringifyCsvRow([...CONTACT_TEMPLATE_HEADERS]);
   }
 
   async contactsExportCsv(
@@ -1243,6 +1261,7 @@ export class ImportExportService {
   private async resolveContactImportCompany(params: {
     empresaNombre: string;
     empresaRuc: string;
+    empresaDomain?: string;
     contactFuente: string;
     contactEtapa: string;
     contactEstimatedValue: number;
@@ -1261,10 +1280,11 @@ export class ImportExportService {
   > {
     const nombre = params.empresaNombre.trim();
     const rucRaw = params.empresaRuc.trim();
+    const domain = params.empresaDomain?.trim().toLowerCase() || '';
     const dryRun = params.dryRun === true;
     const cr = params.contactClienteRecuperado;
 
-    if (!nombre && !rucRaw) {
+    if (!nombre && !rucRaw && !domain) {
       return {
         ok: true,
         empresaResumen: 'Sin empresa',
@@ -1306,6 +1326,21 @@ export class ImportExportService {
         }
       }
 
+      if (domain) {
+        const byDomain = await this.prisma.company.findFirst({
+          where: { domain: { equals: domain, mode: 'insensitive' } },
+          select: { id: true, name: true },
+        });
+        if (byDomain) {
+          return {
+            ok: true,
+            companyId: byDomain.id,
+            empresaResumen: `Existente por dominio: ${byDomain.name}`,
+            dedupeCompanyKey: byDomain.id,
+          };
+        }
+      }
+
       const digits = rucRaw.replace(/\D/g, '');
       const newName = nombre || `Empresa RUC ${digits || rucRaw}`;
       const dupPlaceholder = await this.findCompanyByNameInsensitive(newName);
@@ -1321,6 +1356,7 @@ export class ImportExportService {
       const draft: CreateCompanyDto = {
         name: formatImportedCompanyName(newName),
         ruc: digits || rucRaw,
+        domain: domain || undefined,
         facturacionEstimada: params.contactEstimatedValue,
         fuente: params.contactFuente,
         etapa: params.contactEtapa,
@@ -1374,6 +1410,21 @@ export class ImportExportService {
       };
     }
 
+    if (domain) {
+      const byDomain = await this.prisma.company.findFirst({
+        where: { domain: { equals: domain, mode: 'insensitive' } },
+        select: { id: true, name: true },
+      });
+      if (byDomain) {
+        return {
+          ok: true,
+          companyId: byDomain.id,
+          empresaResumen: `Existente por dominio: ${byDomain.name}`,
+          dedupeCompanyKey: byDomain.id,
+        };
+      }
+    }
+
     const byName = await this.findCompanyByNameInsensitive(nombre);
     if (byName) {
       return {
@@ -1384,7 +1435,8 @@ export class ImportExportService {
       };
     }
     const onlyNameCo: CreateCompanyDto = {
-      name: formatImportedCompanyName(nombre),
+      name: formatImportedCompanyName(nombre || domain),
+      domain: domain || undefined,
       facturacionEstimada: params.contactEstimatedValue,
       fuente: params.contactFuente,
       etapa: params.contactEtapa,
@@ -1445,6 +1497,7 @@ export class ImportExportService {
         'ruc_empresa',
         'company_ruc',
       ]);
+      const empresaDomain = this.rowGetImportText(row, headerIndex, ['domain', 'dominio']);
       const empresaNombreT = empresaNombre.trim();
       const empresaNombrePreview = empresaNombreT
         ? formatImportedCompanyName(empresaNombreT)
@@ -1549,10 +1602,11 @@ export class ImportExportService {
 
       let empresaResumen = empresaPreview;
       let dedupeCompanyKey: string | null = null;
-      if (empresaNombreT || empresaRucT) {
+      if (empresaNombreT || empresaRucT || empresaDomain.trim()) {
         const resolved = await this.resolveContactImportCompany({
           empresaNombre,
           empresaRuc,
+          empresaDomain,
           contactFuente: fuente,
           contactEtapa: etapaRow,
           contactEstimatedValue: estimatedValue,
@@ -1767,6 +1821,7 @@ export class ImportExportService {
           'ruc_empresa',
           'company_ruc',
         ]);
+        const empresaDomain = this.rowGetImportText(row, headerIndex, ['domain', 'dominio']);
         const legacyEmpresaId = this.rowGetImportText(row, headerIndex, [
           'empresa_id',
           'companyid',
@@ -1815,10 +1870,11 @@ export class ImportExportService {
         let newCompany: CreateCompanyDto | undefined;
         let dedupeCompanyKey: string | null = null;
 
-        if (empresaNombre.trim() || empresaRuc.trim()) {
+        if (empresaNombre.trim() || empresaRuc.trim() || empresaDomain.trim()) {
           const resolved = await this.resolveContactImportCompany({
             empresaNombre,
             empresaRuc,
+            empresaDomain,
             contactFuente: fuente,
             contactEtapa: etapaRow,
             contactEstimatedValue: estimatedValue,

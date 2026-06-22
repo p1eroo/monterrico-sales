@@ -906,7 +906,7 @@ export default function ContactosPage() {
   async function confirmContactImport() {
     const file = pendingImportFile;
     const preview = importPreviewData;
-    if (!file || !preview || preview.okCount === 0 || preview.errorCount > 0) {
+    if (!file || !preview) {
       closeImportPreview();
       return;
     }
@@ -952,10 +952,8 @@ export default function ContactosPage() {
                     se muestra el RUC si viene en el archivo; si no, el nombre.
                   </span>
                   {importPreviewData.errorCount > 0 ? (
-                    <span className="mt-2 block text-destructive">
-                      Corrige o elimina las filas con error en el archivo y
-                      vuelve a elegirlo. No se importará nada hasta que no
-                      queden errores en la vista previa.
+                    <span className="mt-2 block text-muted-foreground">
+                      Las filas con error se omitirán durante la importación.
                     </span>
                   ) : null}
                 </>
@@ -1067,15 +1065,11 @@ export default function ContactosPage() {
             </Button>
             <Button
               type="button"
-              disabled={
-                !importPreviewData ||
-                importPreviewData.okCount === 0 ||
-                importPreviewData.errorCount > 0
-              }
+              disabled={!importPreviewData}
               onClick={() => void confirmContactImport()}
             >
               Importar{" "}
-              {importPreviewData ? `(${importPreviewData.okCount})` : ""}
+              {importPreviewData ? `(${importPreviewData.okCount}/${importPreviewData.totalRows})` : ""}
             </Button>
           </DialogFooter>
         </DialogContent>

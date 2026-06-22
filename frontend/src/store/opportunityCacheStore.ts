@@ -9,6 +9,7 @@ type OpportunityCacheState = {
   loading: boolean;
   load: () => Promise<ApiOpportunityListRow[]>;
   isStale: () => boolean;
+  updateRow: (id: string, updater: (row: ApiOpportunityListRow) => ApiOpportunityListRow) => void;
 };
 
 export const useOpportunityCacheStore = create<OpportunityCacheState>((set, get) => ({
@@ -35,5 +36,13 @@ export const useOpportunityCacheStore = create<OpportunityCacheState>((set, get)
     const { loadedAt } = get();
     if (!loadedAt) return true;
     return Date.now() - loadedAt > CACHE_TTL_MS;
+  },
+
+  updateRow: (id, updater) => {
+    set((state) => ({
+      opportunities: state.opportunities.map((r) =>
+        r.id === id ? updater(r) : r,
+      ),
+    }));
   },
 }));
