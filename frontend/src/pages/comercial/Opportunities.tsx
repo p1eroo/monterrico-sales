@@ -1,8 +1,9 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
-  Plus, Search, Grid3X3, List, MoreHorizontal,
+  Plus, Search, Kanban, List,
+  MoreHorizontal,
   Eye, Pencil, Trash2,
   DollarSign, Target, TrendingUp, Trophy,
   Calendar, X, User, Loader2,
@@ -48,11 +49,9 @@ import { formatCurrency, formatDate } from '@/lib/formatters';
 import { api } from '@/lib/api';
 import { opportunityDetailHref } from '@/lib/detailRoutes';
 import {
-  type ApiOpportunityListRow,
   type ApiOpportunityDetail,
   isLikelyOpportunityCuid,
   mapApiOpportunityToOpportunity,
-  opportunityListAll,
 } from '@/lib/opportunityApi';
 import { buildOptimisticOpportunity } from '@/lib/optimisticEntities';
 import {
@@ -67,9 +66,9 @@ import {
 } from '@/lib/importExportApi';
 import { IMPORT_SPREADSHEET_ACCEPT } from '@/lib/importSpreadsheet';
 import { useImportJobsStore } from '@/store/importJobsStore';
+import { useOpportunityCacheStore } from '@/store/opportunityCacheStore';
 import {
   CrmDataTableSkeleton,
-  CrmEntityCardGridSkeleton,
   CrmFilterBarSkeleton,
   CrmStatCardsSkeleton,
   CrmTabsBarSkeleton,
@@ -157,28 +156,23 @@ export default function OpportunitiesPage() {
   const addPendingOpportunity = useOptimisticCrmStore((s) => s.addPendingOpportunity);
   const removePendingOpportunity = useOptimisticCrmStore((s) => s.removePendingOpportunity);
   const isPendingOpportunityId = useOptimisticCrmStore((s) => s.isPendingOpportunityId);
-  const [apiRows, setApiRows] = useState<ApiOpportunityListRow[]>([]);
-  /** Solo primera carga: evita vacío confundido con “sin oportunidades” y no tapa el listado en refetch. */
+  const cacheOpportunities = useOpportunityCacheStore((s) => s.opportunities);
+  const cacheLoad = useOpportunityCacheStore((s) => s.load);
+  const cacheStale = useOpportunityCacheStore((s) => s.isStale);
   const [initialOppLoad, setInitialOppLoad] = useState(true);
 
-  const loadApiOpportunities = useCallback(async () => {
-    try {
-      const list = await opportunityListAll();
-      setApiRows(list);
-    } catch {
-      setApiRows([]);
-    } finally {
+  useEffect(() => {
+    if (!cacheStale()) {
       setInitialOppLoad(false);
+      return;
     }
+    cacheLoad().finally(() => setInitialOppLoad(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    void loadApiOpportunities();
-  }, [loadApiOpportunities]);
-
   const apiOpportunities = useMemo(
-    () => apiRows.map(mapApiOpportunityToOpportunity),
-    [apiRows],
+    () => cacheOpportunities.map(mapApiOpportunityToOpportunity),
+    [cacheOpportunities],
   );
 
   const allOpportunities = useMemo(() => {
@@ -209,10 +203,7 @@ export default function OpportunitiesPage() {
     'todos',
   );
   const [activeTab, setActiveTab] = useState('todas');
-  const [viewMode, setViewMode] = useState<'table' | 'cards'>(() => {
-    if (typeof window !== 'undefined' && window.innerWidth < 768) return 'cards';
-    return 'table';
-  });
+  const [viewMode] = useState<'table'>('table');
   const [newDialogOpen, setNewDialogOpen] = useState(false);
   const [previewOpportunity, setPreviewOpportunity] = useState<Opportunity | null>(null);
   const [editOpportunity, setEditOpportunity] = useState<Opportunity | null>(null);
@@ -229,8 +220,8 @@ export default function OpportunitiesPage() {
 
   useEffect(() => {
     if (!opportunityImportCompletionTick) return;
-    void loadApiOpportunities();
-  }, [loadApiOpportunities, opportunityImportCompletionTick]);
+    void cacheLoad();
+  }, [cacheLoad, opportunityImportCompletionTick]);
 
   const filteredOpportunities = useMemo(() => {
     return allOpportunities.filter((opp) => {
@@ -251,7 +242,7 @@ export default function OpportunitiesPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [search, activeTab, etapaFilter, statusFilter, assigneeFilter, viewMode, pageSize]);
+  }, [search, activeTab, etapaFilter, statusFilter, assigneeFilter, pageSize]);
 
   const totalFiltered = filteredOpportunities.length;
   const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
@@ -335,7 +326,7 @@ export default function OpportunitiesPage() {
       throw e;
     }
     removePendingOpportunity(optId);
-    await loadApiOpportunities();
+    await cacheLoad();
     toast.success(`Oportunidad "${data.title.trim()}" creada exitosamente`, { id: 'create-opp-list' });
   }
 
@@ -457,7 +448,7 @@ export default function OpportunitiesPage() {
       }
       toast.loading('Eliminando…', { id: 'delete-opp-list' });
       await api(`/opportunities/${oppToDelete.id}`, { method: 'DELETE' });
-      await loadApiOpportunities();
+      await cacheLoad();
       toast.success('Oportunidad eliminada correctamente', { id: 'delete-opp-list' });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'No se pudo eliminar', { id: 'delete-opp-list' });
@@ -526,17 +517,13 @@ export default function OpportunitiesPage() {
           <div className="space-y-3">
             <CrmTabsBarSkeleton tabCount={4} />
             <div>
-              {viewMode === 'table' ? (
-                <CrmDataTableSkeleton
-                  columns={[...OPPORTUNITIES_TABLE_SKELETON_COLUMNS]}
-                  rows={10}
-                  aria-label="Cargando lista de oportunidades"
-                  roundedClass="rounded-lg"
-                  className="bg-card"
-                />
-              ) : (
-                <CrmEntityCardGridSkeleton count={8} aria-label="Cargando tarjetas de oportunidades" />
-              )}
+              <CrmDataTableSkeleton
+                columns={[...OPPORTUNITIES_TABLE_SKELETON_COLUMNS]}
+                rows={10}
+                aria-label="Cargando lista de oportunidades"
+                roundedClass="rounded-lg"
+                className="bg-card"
+              />
             </div>
           </div>
         </div>
@@ -591,7 +578,7 @@ export default function OpportunitiesPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2 flex-1">
           <Select value={etapaFilter} onValueChange={setEtapaFilter}>
-            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card shadow-none">
+            <SelectTrigger className="h-9 w-auto rounded-lg bg-card">
               <div className="flex items-center gap-1.5">
                 <Tag className="size-3.5" />
                 <SelectValue placeholder="Etapa" />
@@ -606,7 +593,7 @@ export default function OpportunitiesPage() {
           </Select>
 
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card shadow-none">
+            <SelectTrigger className="h-9 w-auto rounded-lg bg-card">
               <div className="flex items-center gap-1.5">
                 <Globe className="size-3.5" />
                 <SelectValue placeholder="Estado" />
@@ -625,7 +612,7 @@ export default function OpportunitiesPage() {
             onValueChange={setAssigneeFilter}
             disabled={!canSeeAllAdvisors}
           >
-            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card shadow-none">
+            <SelectTrigger className="h-9 w-auto rounded-lg bg-card">
               <div className="flex items-center gap-1.5">
                 <User className="size-3.5" />
                 <SelectValue placeholder="Asesor" />
@@ -645,22 +632,23 @@ export default function OpportunitiesPage() {
             </Button>
           )}
 
-<div className="ml-auto hidden md:flex items-center rounded-md border bg-card">
+<div className="ml-auto hidden md:flex items-center rounded-lg border bg-card p-0.5 shadow-sm">
   <Button
-    variant={viewMode === 'table' ? 'secondary' : 'ghost'}
+    variant="ghost"
     size="icon-sm"
-    onClick={() => setViewMode('table')}
-    className="rounded-r-none"
+    className="rounded-md bg-primary/10 text-primary hover:bg-primary/15"
+    title="Vista lista"
   >
     <List className="size-4" />
   </Button>
   <Button
-    variant={viewMode === 'cards' ? 'secondary' : 'ghost'}
+    variant="ghost"
     size="icon-sm"
-    onClick={() => setViewMode('cards')}
-    className="rounded-l-none"
+    onClick={() => navigate('/pipeline')}
+    className="rounded-md text-muted-foreground hover:text-foreground"
+    title="Vista pipeline"
   >
-    <Grid3X3 className="size-4" />
+    <Kanban className="size-4" />
   </Button>
 </div>
         </div>
@@ -703,19 +691,8 @@ export default function OpportunitiesPage() {
                 </Button>
               </CardContent>
             </Card>
-          ) : viewMode === 'table' ? (
-            <OpportunitiesTable
-              data={displayedOpportunities}
-              isPendingOpportunityId={isPendingOpportunityId}
-              onOpenDetail={openOpportunityDetail}
-              onOpenPreview={openOpportunityPreview}
-              onOpenEdit={openOpportunityEdit}
-              onRequestDelete={requestDeleteOpportunity}
-              canEdit={hasPermission('oportunidades.editar')}
-              canDelete={hasPermission('oportunidades.eliminar')}
-            />
           ) : (
-            <OpportunitiesGrid
+            <OpportunitiesTable
               data={displayedOpportunities}
               isPendingOpportunityId={isPendingOpportunityId}
               onOpenDetail={openOpportunityDetail}
@@ -817,7 +794,7 @@ function OpportunitiesTable({
   canDelete: boolean;
 }) {
   return (
-    <div className="overflow-auto rounded-xl bg-background scrollbar-thin max-h-[calc(100vh-22rem)] max-w-full">
+    <div className="overflow-auto rounded-[14px] bg-card shadow-[0_8px_24px_rgba(15,23,42,0.06)] scrollbar-thin max-h-[calc(100vh-22rem)] max-w-full">
       <Table>
         <TableHeader className="sticky top-0 z-10 bg-background">
           <TableRow>
@@ -952,136 +929,6 @@ function OpportunitiesTable({
           })}
         </TableBody>
       </Table>
-    </div>
-  );
-}
-
-/* ─── Card View ─── */
-
-function OpportunitiesGrid({
-  data,
-  isPendingOpportunityId,
-  onOpenDetail,
-  onOpenPreview,
-  onOpenEdit,
-  onRequestDelete,
-  canEdit,
-  canDelete,
-}: {
-  data: Opportunity[];
-  isPendingOpportunityId: (id: string) => boolean;
-  onOpenDetail: (opp: Opportunity) => void;
-  onOpenPreview: (opp: Opportunity) => void;
-  onOpenEdit: (opp: Opportunity) => void;
-  onRequestDelete: (opp: Opportunity) => void;
-  canEdit: boolean;
-  canDelete: boolean;
-}) {
-  return (
-    <div className="grid w-full grid-cols-1 gap-3 px-0 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {data.map((opp) => {
-        const pending = isPendingOpportunityId(opp.id);
-        return (
-<Card
-              key={opp.id}
-              className={
-                pending
-                  ? 'group gap-0 max-w-full overflow-hidden border-dashed bg-muted/30 py-0'
-                  : 'group cursor-pointer gap-0 max-w-full overflow-hidden py-0 transition-all hover:shadow-md hover:border-[#13944C]/30'
-              }
-              onClick={() => onOpenDetail(opp)}
-        >
-          <CardContent className="p-4">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <div className="flex min-w-0 items-center gap-2">
-                  <h3
-                    className="min-w-0 flex-1 truncate font-semibold leading-tight"
-                    title={opp.title}
-                  >
-                    {opp.title}
-                  </h3>
-                  {pending && (
-                    <Badge variant="secondary" className="shrink-0 gap-1 text-[10px] font-normal">
-                      <Loader2 className="size-3 animate-spin" />
-                      Guardando…
-                    </Badge>
-                  )}
-                </div>
-                <p
-                  className="mt-1 truncate text-xs text-muted-foreground"
-                  title={
-                    opp.contactName ?? opp.clientName ?? 'Sin contacto asignado'
-                  }
-                >
-                  {opp.contactName ?? opp.clientName ?? 'Sin contacto asignado'}
-                </p>
-              </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                  <Button variant="ghost" size="icon-xs">
-                    <MoreHorizontal className="size-3.5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onOpenPreview(opp); }}>
-                    <Eye /> Vista previa
-                  </DropdownMenuItem>
-                  {canEdit && (
-                    <DropdownMenuItem
-                      disabled={pending}
-                      onClick={(e) => { e.stopPropagation(); onOpenEdit(opp); }}
-                    >
-                      <Pencil /> Editar
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuSeparator />
-                  {canDelete && (
-                    <DropdownMenuItem
-                      variant="destructive"
-                      disabled={pending}
-                      onClick={(e) => { e.stopPropagation(); onRequestDelete(opp); }}
-                    >
-                      <Trash2 /> Eliminar
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
-            <p className="mt-3 text-2xl font-bold tracking-tight text-[#13944C]">
-              {formatCurrency(opp.amount)}
-            </p>
-
-            <div className="mt-3">
-              <ProbabilityBar value={opp.probability} />
-            </div>
-
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              <PriorityBadge priority={opp.priority ?? 'media'} />
-              <EtapaBadge etapa={opp.etapa} />
-              <OpportunityStatusBadge status={opp.status} />
-              <Badge variant="outline" className="text-[11px] font-normal text-muted-foreground">
-                {contactSourceLabels[opp.fuente ?? 'base'] ?? opp.fuente}
-              </Badge>
-            </div>
-
-            <div className="mt-3 space-y-1 border-t pt-3 text-xs text-muted-foreground">
-              <p
-                className="flex min-w-0 items-center gap-1.5 truncate"
-                title={opp.assignedToName}
-              >
-                <User className="size-3 shrink-0" />{' '}
-                <span className="min-w-0 truncate">{opp.assignedToName}</span>
-              </p>
-              <p className="flex items-center gap-1.5">
-                <Calendar className="size-3 shrink-0" /> {formatDate(opp.expectedCloseDate)}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      );
-      })}
     </div>
   );
 }

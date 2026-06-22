@@ -36,7 +36,7 @@ export function OpportunityHeader({
   const navigate = useNavigate();
 
   return (
-    <header className="-mx-4 sticky top-0 z-20 border-b border-border px-4 backdrop-blur-xl md:-mx-6 md:px-6">
+    <header className="-mx-4 sticky top-0 z-20 border-b border-border px-4 bg-[#F4F6F8] md:-mx-6 md:px-6">
       <div className="flex flex-col gap-3 py-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
           <div className="flex min-w-0 items-center gap-3">

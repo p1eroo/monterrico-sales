@@ -9,7 +9,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 function entityLabel(entity: ImportJob['entity']) {
   if (entity === 'contacts') return 'contactos';

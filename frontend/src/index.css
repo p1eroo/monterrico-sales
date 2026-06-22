@@ -86,7 +86,7 @@
     --accent: #e8f5ee;
     --accent-foreground: #0f7a3e;
     --destructive: #ef4444;
-    --border: #e2e8f0;
+    --border: #e8edf2;
     --input: #e2e8f0;
     --ring: #13944C;
     --chart-1: #13944C;
@@ -315,13 +315,13 @@
     /* Opt-in: barra fina coherente con el tema (Kanban, panel de actividades, …) */
     .scrollbar-thin {
         scrollbar-width: thin !important;
-        scrollbar-color: var(--crm-scrollbar-thumb) var(--background);
+        scrollbar-color: var(--crm-scrollbar-thumb) transparent;
     }
     .scrollbar-thin::-webkit-scrollbar {
         display: block !important;
         width: 8px !important;
         height: 8px !important;
-        background: var(--background);
+        background: transparent !important;
     }
     .scrollbar-thin::-webkit-scrollbar-button {
         display: none;
@@ -330,8 +330,9 @@
     }
     .scrollbar-thin::-webkit-scrollbar-track,
     .scrollbar-thin::-webkit-scrollbar-track-piece {
-        background-color: var(--background);
+        background-color: transparent;
         border-radius: 9999px;
+        margin-block: 3px;
     }
     .scrollbar-thin::-webkit-scrollbar-thumb {
         border-radius: 9999px;

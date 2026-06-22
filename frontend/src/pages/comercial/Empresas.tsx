@@ -1233,7 +1233,7 @@ export default function EmpresasPage() {
             />
           </div>
           <Select value={sourceFilter} onValueChange={(v) => { setSourceFilter(v); setPage(1); }}>
-            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card shadow-none">
+            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card">
               <div className="flex items-center gap-3">
                 <Globe className="size-3.5" />
                 <SelectValue placeholder="Fuente" />
@@ -1247,7 +1247,7 @@ export default function EmpresasPage() {
             </SelectContent>
           </Select>
           <Select value={etapaFilter} onValueChange={(v) => { setEtapaFilter(v); setPage(1); }}>
-            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card shadow-none">
+            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card">
               <div className="flex items-center gap-3">
                 <Tag className="size-3.5" />
                 <SelectValue placeholder="Etapa" />
@@ -1261,7 +1261,7 @@ export default function EmpresasPage() {
             </SelectContent>
           </Select>
           <Select value={rubroFilter} onValueChange={(v) => { setRubroFilter(v); setPage(1); }}>
-            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card shadow-none">
+            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card">
               <div className="flex items-center gap-3">
                 <MapPin className="size-3.5" />
                 <SelectValue placeholder="Rubro" />
@@ -1275,7 +1275,7 @@ export default function EmpresasPage() {
             </SelectContent>
           </Select>
           <Select value={tipoFilter} onValueChange={(v) => { setTipoFilter(v); setPage(1); }}>
-            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card shadow-none">
+            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card">
               <div className="flex items-center gap-3">
                 <Building2 className="size-3.5" />
                 <SelectValue placeholder="Tipo" />
@@ -1293,7 +1293,7 @@ export default function EmpresasPage() {
             onValueChange={(v) => { setAdvisorFilter(v); setPage(1); }}
             disabled={!canSeeAllAdvisors}
           >
-            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card shadow-none">
+            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card">
               <div className="flex items-center gap-3">
                 <User className="size-3.5" />
                 <SelectValue placeholder="Asesor" />
@@ -1359,7 +1359,7 @@ export default function EmpresasPage() {
             onAction={() => setNewEmpresaOpen(true)}
           />
         ) : viewMode === 'table' ? (
-          <div className="overflow-auto rounded-xl bg-background scrollbar-thin max-h-[calc(100vh-22rem)] max-w-full">
+          <div className="overflow-auto rounded-[14px] bg-card shadow-[0_8px_24px_rgba(15,23,42,0.06)] scrollbar-thin max-h-[calc(100vh-22rem)] max-w-full">
             <Table className="min-w-[1200px]">
               <TableHeader>
                 <TableRow>

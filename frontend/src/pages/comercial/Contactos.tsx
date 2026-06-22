@@ -1182,7 +1182,7 @@ export default function ContactosPage() {
               setPage(1);
             }}
           >
-            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card shadow-none">
+            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card">
               <div className="flex items-center gap-1.5">
                 <Globe className="size-3.5" />
                 <SelectValue placeholder="Fuente" />
@@ -1205,7 +1205,7 @@ export default function ContactosPage() {
               setPage(1);
             }}
           >
-            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card shadow-none">
+            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card">
               <div className="flex items-center gap-1.5">
                 <Tag className="size-3.5" />
                 <SelectValue placeholder="Etapa" />
@@ -1229,7 +1229,7 @@ export default function ContactosPage() {
             }}
             disabled={!canSeeAllAdvisors}
           >
-            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card shadow-none">
+            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card">
               <div className="flex items-center gap-1.5">
                 <User className="size-3.5" />
                 <SelectValue placeholder="Asesor" />
@@ -1299,7 +1299,7 @@ export default function ContactosPage() {
             onAction={() => setNewContactOpen(true)}
           />
         ) : viewMode === "table" ? (
-           <div className="overflow-auto rounded-xl bg-background scrollbar-thin max-h-[calc(100vh-22rem)] max-w-full">
+           <div className="overflow-auto rounded-[14px] bg-card shadow-[0_8px_24px_rgba(15,23,42,0.06)] scrollbar-thin max-h-[calc(100vh-22rem)] max-w-full">
             <ContactsTable
               contacts={displayedContacts}
               selectedContacts={selectedContacts}

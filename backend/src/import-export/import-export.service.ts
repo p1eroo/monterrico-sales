@@ -164,6 +164,31 @@ const COMPANY_HEADERS = [
   'contacto_cliente_recuperado',
 ] as const;
 
+const COMPANY_TEMPLATE_HEADERS = [
+  'nombre',
+  'razon_social',
+  'ruc',
+  'telefono_1',
+  'domain',
+  'rubro',
+  'tipo',
+  'correo',
+  'linkedin',
+  'distrito',
+  'provincia',
+  'departamento',
+  'direccion',
+  'facturacion_estimada',
+  'fuente',
+  'cliente_recuperado',
+  'etapa',
+  'asignado_a',
+  'contacto_nombre',
+  'contacto_telefono',
+  'contacto_correo',
+  'contacto_cargo',
+] as const;
+
 const OPPORTUNITY_HEADERS = [
   'id',
   'titulo',
@@ -1917,7 +1942,7 @@ export class ImportExportService {
   }
 
   companiesTemplateCsv(): string {
-    return UTF8_BOM + stringifyCsvRow([...COMPANY_HEADERS]);
+    return UTF8_BOM + stringifyCsvRow([...COMPANY_TEMPLATE_HEADERS]);
   }
 
   /**

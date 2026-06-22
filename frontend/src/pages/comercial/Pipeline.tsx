@@ -19,6 +19,8 @@ import {
 import { useNavigate } from 'react-router-dom';
 import {
   Filter,
+  Kanban,
+  List,
   Plus,
   Calendar,
   User,
@@ -57,9 +59,9 @@ import {
 import {
   type ApiOpportunityListRow,
   mapApiOpportunityToOpportunity,
-  opportunityListAll,
   opportunityUpdate,
 } from '@/lib/opportunityApi';
+import { useOpportunityCacheStore } from '@/store/opportunityCacheStore';
 import {
   NewOpportunityFormDialog,
   buildOpportunityCreateBody,
@@ -346,11 +348,10 @@ const LeadCard = memo(function LeadCard({
   return (
     <div
       className={cn(
-        'group relative select-none rounded-lg border border-border bg-[var(--pipeline-kanban-surface)] p-3.5 text-card-foreground shadow-none',
+        'group relative select-none rounded-[14px] border border-[#e7ecf2] bg-white p-3.5 text-[#0f172a] shadow-[0_1px_4px_rgba(15,23,42,0.04)]',
         !overlay && [
-          'transition-[box-shadow,border-color,opacity] duration-150',
-          'dark:shadow-md dark:shadow-black/35',
-          'hover:border-primary/30 dark:hover:shadow-lg dark:hover:shadow-black/40',
+          'transition-all duration-150',
+          'hover:border-[#d0d7e0] hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)] hover:-translate-y-0.5',
         ],
         isDragging && 'opacity-40',
         overlay && 'pointer-events-none rotate-2 shadow-xl border-primary/40',
@@ -373,7 +374,7 @@ const LeadCard = memo(function LeadCard({
       <div className="space-y-2.5">
         <div>
           {overlay ? (
-            <span className="block w-full truncate text-left text-sm font-semibold text-foreground">
+            <span className="block w-full truncate text-left text-sm font-semibold text-[#0f172a]">
               {opportunity?.title ?? lead.name}
             </span>
           ) : (
@@ -381,36 +382,36 @@ const LeadCard = memo(function LeadCard({
               type="button"
               onClick={handleNameClick}
               className={cn(
-                'block w-full truncate text-left text-sm font-semibold text-foreground',
-                (opportunity || onCardClick) && 'cursor-pointer hover:underline hover:text-primary',
+                'block w-full truncate text-left text-sm font-semibold text-[#0f172a]',
+                (opportunity || onCardClick) && 'hover:text-primary',
               )}
             >
               {opportunity?.title ?? lead.name}
             </button>
           )}
-          <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+          <p className="flex items-center gap-1 truncate text-xs text-[#64748b] mt-1">
             <Building2 className="size-3 shrink-0" />
             {company?.name ?? '—'}
           </p>
-          <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+          <p className="flex items-center gap-1 truncate text-xs text-[#64748b]">
             <User className="size-3 shrink-0" />
             {lead.name}
           </p>
           {(company?.rubro || company?.tipo) && (
             <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              {company?.rubro && <Badge variant="outline" className="text-[10px] px-1 py-0">{companyRubroLabels[company.rubro]}</Badge>}
-              {company?.tipo && <Badge variant="secondary" className="text-[10px] px-1 py-0">Tipo {company.tipo}</Badge>}
+              {company?.rubro && <span className="rounded-md bg-[#f1f5f9] px-1.5 py-0.5 text-[10px] font-medium text-[#64748b]">{companyRubroLabels[company.rubro]}</span>}
+              {company?.tipo && <span className="rounded-md bg-[#f1f5f9] px-1.5 py-0.5 text-[10px] font-medium text-[#64748b]">Tipo {company.tipo}</span>}
             </p>
           )}
         </div>
 
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-bold text-foreground">
+        <div className="flex items-center justify-between pt-0.5">
+          <span className="text-base font-bold text-[#0f172a]">
             {formatCurrencyShort(opportunity?.amount ?? lead.estimatedValue)}
           </span>
         </div>
 
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <div className="flex items-center justify-between text-xs text-[#94a3b8]">
           <span className="flex items-center gap-1 truncate">
             <User className="size-3 shrink-0" />
             <span className="truncate">{lead.assignedToName.split(' ')[0]}</span>
@@ -455,11 +456,10 @@ const OpportunityCard = memo(function OpportunityCard({
   return (
     <div
       className={cn(
-        'group relative select-none rounded-lg border border-border bg-[var(--pipeline-kanban-surface)] p-3.5 text-card-foreground shadow-none',
+        'group relative select-none rounded-[14px] border border-[#e7ecf2] bg-white p-3.5 text-[#0f172a] shadow-[0_1px_4px_rgba(15,23,42,0.04)]',
         !overlay && [
-          'transition-[box-shadow,border-color,opacity] duration-150',
-          'dark:shadow-md dark:shadow-black/35',
-          'hover:border-primary/30 dark:hover:shadow-lg dark:hover:shadow-black/40',
+          'transition-all duration-150',
+          'hover:border-[#d0d7e0] hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)] hover:-translate-y-0.5',
         ],
         isDragging && 'opacity-40',
         overlay && 'pointer-events-none rotate-2 shadow-xl border-primary/40',
@@ -483,37 +483,37 @@ const OpportunityCard = memo(function OpportunityCard({
       <div className="space-y-2.5">
         <div>
           {overlay ? (
-            <span className="block w-full truncate text-left text-sm font-semibold text-foreground">
+            <span className="block w-full truncate text-left text-sm font-semibold text-[#0f172a]">
               {opportunity.title}
             </span>
           ) : (
             <button
               type="button"
               onClick={handleNameClick}
-              className="block w-full truncate text-left text-sm font-semibold text-foreground hover:underline hover:text-primary"
+              className="block w-full truncate text-left text-sm font-semibold text-[#0f172a] hover:text-primary"
             >
               {opportunity.title}
             </button>
           )}
-          <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+          <p className="flex items-center gap-1 truncate text-xs text-[#64748b] mt-1">
             <Building2 className="size-3 shrink-0" />
             {opportunity.clientName ?? '—'}
           </p>
           {opportunity.contactName && (
-            <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+            <p className="flex items-center gap-1 truncate text-xs text-[#64748b]">
               <User className="size-3 shrink-0" />
               {opportunity.contactName}
             </p>
           )}
         </div>
 
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-bold text-foreground">
+        <div className="flex items-center justify-between pt-0.5">
+          <span className="text-base font-bold text-[#0f172a]">
             {formatCurrencyShort(opportunity.amount ?? 0)}
           </span>
         </div>
 
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <div className="flex items-center justify-between text-xs text-[#94a3b8]">
           <span className="flex items-center gap-1 truncate">
             <User className="size-3 shrink-0" />
             <span className="truncate">{(opportunity.assignedToName ?? '').split(' ')[0]}</span>
@@ -750,7 +750,7 @@ function ColumnDropSlot({ accentColor }: { accentColor: string }) {
 function PipelineKanbanSkeleton({ columns }: { columns: PipelineStageColumnConfig[] }) {
   return (
     <div
-      className="scrollbar-thin -mx-2 flex h-[calc(100dvh-13rem)] min-h-[32rem] w-full max-w-full min-w-0 gap-3 overflow-x-auto overflow-y-hidden px-2 pb-4"
+      className="scrollbar-thin scrollbar-rounded -mx-3 flex h-[calc(100dvh-13rem)] min-h-[32rem] w-full max-w-full min-w-0 gap-4 overflow-x-auto overflow-y-hidden px-3 pb-4"
       aria-busy="true"
       aria-live="polite"
       aria-label="Cargando datos del pipeline"
@@ -758,19 +758,19 @@ function PipelineKanbanSkeleton({ columns }: { columns: PipelineStageColumnConfi
       {columns.map((col) => (
         <div
           key={col.id}
-          className="flex h-full min-h-0 min-w-[280px] max-w-[320px] shrink-0 flex-col"
+          className="flex h-full min-h-0 min-w-[260px] flex-1 flex-col"
         >
-          <div className="h-1 rounded-t-lg opacity-70" style={{ backgroundColor: col.accentColor }} />
-          <div className="flex items-center justify-between gap-3 rounded-t-none border-x border-t border-border bg-[var(--pipeline-kanban-column-header)] px-3.5 py-3 backdrop-blur-sm">
-            <div className="flex min-w-0 flex-1 items-center gap-3">
+          <div className="h-1.5 rounded-t-[16px] opacity-70" style={{ backgroundColor: col.accentColor }} />
+          <div className="flex items-center justify-between gap-3 rounded-t-none border-x border-t border-[#e8edf2] bg-[var(--pipeline-kanban-column-header)] px-4 py-3.5">
+            <div className="flex min-w-0 flex-1 items-center gap-2.5">
               <Skeleton className="h-5 max-w-[9rem] flex-1" />
-              <Skeleton className="h-5 w-9 shrink-0 rounded-full" />
+              <Skeleton className="h-6 w-6 shrink-0 rounded-full" />
             </div>
             <Skeleton className="h-4 w-[4.5rem] shrink-0" />
           </div>
-          <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden rounded-b-lg border-x border-b bg-muted/30 p-2">
+          <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden rounded-b-[16px] border-x border-b border-[#e8edf2] bg-[#f8fafc] p-3">
             {Array.from({ length: 4 }, (_, i) => (
-              <Skeleton key={i} className="h-28 w-full shrink-0 rounded-lg" />
+              <Skeleton key={i} className="h-28 w-full shrink-0 rounded-[14px] bg-white" />
             ))}
           </div>
         </div>
@@ -812,24 +812,24 @@ const KanbanColumn = memo(function KanbanColumn({
   });
 
   return (
-    <div className="flex h-full min-h-0 min-w-[280px] max-w-[320px] shrink-0 flex-col">
-      <div className="h-1 rounded-t-lg" style={{ backgroundColor: accentColor }} />
+    <div className="flex h-full min-h-0 min-w-[260px] flex-1 flex-col rounded-[16px] border border-[#e8edf2] bg-white shadow-[0_2px_12px_rgba(15,23,42,0.06)]">
+      <div className="h-1.5 rounded-t-[16px]" style={{ backgroundColor: accentColor }} />
 
-      <div className="flex items-center justify-between gap-3 rounded-t-none border-x border-t border-border bg-[var(--pipeline-kanban-column-header)] px-3.5 py-3 backdrop-blur-sm">
-        <div className="flex min-w-0 flex-1 items-center gap-3">
-          <h3 className="min-w-0 truncate text-sm font-semibold text-foreground">{column.title}</h3>
-          <Badge variant="secondary" className="shrink-0 font-bold tabular-nums">
+      <div className="flex items-center justify-between gap-3 px-4 py-3.5">
+        <div className="flex min-w-0 flex-1 items-center gap-2.5">
+          <h3 className="min-w-0 truncate text-sm font-semibold text-[#0f172a]">{column.title}</h3>
+          <span className="flex size-6 items-center justify-center rounded-full bg-[#f1f5f9] text-[11px] font-bold text-[#64748b] tabular-nums">
             {items.length}
-          </Badge>
+          </span>
         </div>
-        <span className="shrink-0 text-xs font-medium text-muted-foreground">
+        <span className="shrink-0 text-xs font-semibold text-[#64748b]">
           {formatCurrencyShort(column.totalValue)}
         </span>
       </div>
 
       <div
         ref={setScrollAndDropRef}
-        className="scrollbar-thin flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto rounded-b-lg border-x border-b bg-muted/30 p-2"
+        className="scrollbar-thin flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto rounded-b-[16px] bg-[#f8fafc] px-3 pb-3 pt-1"
       >
         {showDropPlaceholder && <ColumnDropSlot accentColor={accentColor} />}
 
@@ -943,6 +943,7 @@ function buildOpportunityByContactId(rows: ApiOpportunityListRow[]): Map<string,
 }
 
 export default function Pipeline() {
+  const navigate = useNavigate();
   const { hasPermission } = usePermissions();
   const currentUserId = useAppStore((s) => s.currentUser.id);
   const canSeeAllAdvisors = hasPermission('equipo.datos_completos');
@@ -951,6 +952,7 @@ export default function Pipeline() {
   const setBundle = useCrmConfigStore((s) => s.setBundle);
 
   useEffect(() => {
+    if (bundle) return;
     let cancelled = false;
     void fetchCrmConfig()
       .then((b) => {
@@ -960,32 +962,32 @@ export default function Pipeline() {
     return () => {
       cancelled = true;
     };
-  }, [setBundle]);
+  }, [setBundle, bundle]);
 
   const [apiRows, setApiRows] = useState<ApiContactListRow[]>([]);
   const [oppsApiRows, setOppsApiRows] = useState<ApiOpportunityListRow[]>([]);
   /** Solo la primera carga: refetch tras crear oportunidad no vuelve a tapar el tablero. */
   const [initialPipelineLoad, setInitialPipelineLoad] = useState(true);
   const [activeId, setActiveId] = useState<string | null>(null);
-  /** Columna bajo el puntero durante el drag: solo feedback visual (tipo HubSpot). */
   const [dropTargetColumnId, setDropTargetColumnId] = useState<Etapa | null>(null);
 
-  const loadPipelineData = useCallback(async () => {
-    try {
-      const opps = await opportunityListAll();
-      setOppsApiRows(opps);
-      setApiRows([]);
-    } catch {
-      setApiRows([]);
-      setOppsApiRows([]);
-    } finally {
+  useEffect(() => {
+    if (!useOpportunityCacheStore.getState().isStale()) {
+      setOppsApiRows(useOpportunityCacheStore.getState().opportunities);
       setInitialPipelineLoad(false);
+      return;
     }
+    useOpportunityCacheStore.getState().load().then((list) => {
+      setOppsApiRows(list);
+    }).finally(() => {
+      setInitialPipelineLoad(false);
+    });
   }, []);
 
-  useEffect(() => {
-    void loadPipelineData();
-  }, [loadPipelineData]);
+  const reloadFromCache = useCallback(async () => {
+    const list = await useOpportunityCacheStore.getState().load();
+    setOppsApiRows(list);
+  }, []);
 
   const opportunityByContactId = useMemo(
     () => buildOpportunityByContactId(oppsApiRows),
@@ -1021,7 +1023,7 @@ export default function Pipeline() {
         method: 'POST',
         body: JSON.stringify(body),
       });
-      await loadPipelineData();
+      await reloadFromCache();
       toast.success(`Oportunidad "${data.title.trim()}" creada exitosamente`);
     } catch (e) {
       toast.error(
@@ -1059,7 +1061,7 @@ export default function Pipeline() {
       setOppsApiRows((prev) => {
         const idx = prev.findIndex((r) => r.id === oppId);
         if (idx === -1) {
-          void loadPipelineData();
+          void reloadFromCache();
           return prev;
         }
         return prev.map((r, i) =>
@@ -1126,7 +1128,7 @@ export default function Pipeline() {
       setApiRows((prev) => {
         const idx = prev.findIndex((r) => r.id === contactId);
         if (idx === -1) {
-          void loadPipelineData();
+          void reloadFromCache();
           return prev;
         }
         return prev.map((r, i) =>
@@ -1171,7 +1173,7 @@ export default function Pipeline() {
       setApiRows((prev) => {
         const idx = prev.findIndex((r) => r.id === contactId);
         if (idx === -1) {
-          void loadPipelineData();
+          void reloadFromCache();
           return prev;
         }
         return prev.map((r, i) =>
@@ -1319,15 +1321,15 @@ const handlePipelineCardClick = useCallback((o: Opportunity) => {
   }
 
   return (
-    <div className="flex h-full min-h-0 min-w-0 flex-col gap-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+    <div className="flex h-full min-h-0 min-w-0 flex-col gap-5">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold tracking-tight">Pipeline Comercial</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <h1 className="text-2xl font-bold tracking-tight text-[#0f172a]">Pipeline Comercial</h1>
+          <p className="mt-0.5 text-sm text-[#64748b]">
             Arrastra las tarjetas entre columnas para cambiar la etapa de la oportunidad.
           </p>
         </div>
-<div className="flex shrink-0 flex-wrap items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
           <span className="text-sm font-medium text-muted-foreground">
             Valor total:{' '}
             {initialPipelineLoad ? (
@@ -1444,6 +1446,25 @@ const handlePipelineCardClick = useCallback((o: Opportunity) => {
             <Plus className="size-4" />
             Nueva Oportunidad
           </Button>
+          <div className="hidden md:flex items-center rounded-lg border bg-card p-0.5 shadow-sm">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => navigate('/opportunities')}
+              className="rounded-md text-muted-foreground hover:text-foreground"
+              title="Vista lista"
+            >
+              <List className="size-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="rounded-md bg-primary/10 text-primary hover:bg-primary/15"
+              title="Vista pipeline"
+            >
+              <Kanban className="size-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -1459,7 +1480,7 @@ const handlePipelineCardClick = useCallback((o: Opportunity) => {
           onDragEnd={handleDragEnd}
           onDragCancel={handleDragCancel}
         >
-          <div className="scrollbar-thin -mx-2 flex h-[calc(100dvh-13rem)] min-h-[32rem] w-full max-w-full min-w-0 gap-3 overflow-x-auto overflow-y-hidden px-2 pb-4">
+          <div className="scrollbar-thin scrollbar-rounded -mx-3 flex h-[calc(100dvh-13rem)] min-h-[32rem] w-full max-w-full min-w-0 gap-4 overflow-x-auto overflow-y-hidden px-3 pb-4">
             {pipeline.map((column) => {
               const colConfig = displayColumns.find((c) => c.id === column.id)!;
               const sourceCol = activeId ? findColumnByOppId(activeId) : undefined;

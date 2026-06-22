@@ -21,9 +21,6 @@ import { fetchAnalyticsGoalProgress } from '@/lib/analyticsApi';
 import { useAnalyticsGoalStore } from '@/store/analyticsGoalStore';
 import { AiAssistantDrawer } from '@/components/assistant/AiAssistantDrawer';
 import { ImportJobsPanel } from './ImportJobsPanel';
-import { useTheme } from 'next-themes';
-import bgClaro from '@/assets/select_claro.webp';
-import bgOscuro from '@/assets/select_oscuro.webp';
 
 /** Toggle en la costura sidebar / contenido (solo desktop; fuera del topbar). */
 function SidebarDividerToggle() {
@@ -55,8 +52,6 @@ function SidebarDividerToggle() {
 export default function MainLayout() {
   const { pathname } = useLocation();
   const compactMainTop = isCrmEntityDetailPath(pathname);
-  const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === 'dark';
 
   useUsers(); // Precarga usuarios de la API para selects de asignación
   const [showBriefing, setShowBriefing] = useState(false);
@@ -128,21 +123,14 @@ export default function MainLayout() {
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset
-        className="min-w-0 max-w-full md:z-20 md:min-h-0 md:h-[calc(100svh-1rem)] md:!ml-0"
-        style={{
-          backgroundImage: `url(${isDark ? bgOscuro : bgClaro})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-          backgroundAttachment: 'fixed',
-        }}
+        className="min-w-0 max-w-full bg-[#F4F6F8] dark:bg-neutral-950 md:z-20 md:min-h-0 md:h-[calc(100svh-1rem)] md:!ml-0"
       >
         {/* overflow aquí recorta el card; el toggle es hermano para no cortarlo */}
         <div className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-hidden md:rounded-xl">
           <Topbar />
           <div
             className={cn(
-              'min-h-0 min-w-0 max-w-full flex-1 flex-1 overflow-y-auto overflow-x-hidden px-4',
+              'min-h-0 min-w-0 max-w-full flex-1 flex-1 overflow-y-auto overflow-x-hidden px-8',
               compactMainTop
                 ? 'pt-0 pb-4 md:pt-0.5 md:pb-5'
                 : 'pt-1 pb-5 md:pt-2 md:pb-6',

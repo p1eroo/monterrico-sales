@@ -869,7 +869,7 @@ export default function TareasPage() {
                 />
               ) : (
                 <>
-                <div className="min-w-0 overflow-auto rounded-xl bg-background scrollbar-thin max-h-[calc(100vh-22rem)] max-w-full">"
+                <div className="min-w-0 overflow-auto rounded-[14px] bg-card shadow-[0_8px_24px_rgba(15,23,42,0.06)] scrollbar-thin max-h-[calc(100vh-22rem)] max-w-full">
                   <Table
                     className="table-fixed w-full min-w-[1040px]"
                     containerClassName="min-w-0 overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]"
