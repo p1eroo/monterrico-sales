@@ -334,16 +334,17 @@ export default function OpportunitiesPage() {
     const targetOpp = editOpportunity;
     if (!targetOpp) return;
     const oppId = targetOpp.id;
-    const prevRow = apiRows.find((r) => r.id === oppId);
+    const prevRow = useOpportunityCacheStore.getState().opportunities.find((r) => r.id === oppId);
 
     // Close modal and update optimistically
     setEditOpportunity(null);
     if (prevRow) {
-      setApiRows((prev) => prev.map((r) =>
-        r.id === oppId
-          ? { ...r, title: payload.title, amount: payload.amount, status: payload.status }
-          : r,
-      ));
+      useOpportunityCacheStore.getState().updateRow(oppId, (r) => ({
+        ...r,
+        title: payload.title,
+        amount: payload.amount,
+        status: payload.status,
+      }));
     }
 
     toast.loading('Guardando cambios…', { id: `save-${oppId}` });
