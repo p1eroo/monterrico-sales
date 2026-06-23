@@ -497,7 +497,7 @@ type ActivityRow = { slug: string; name: string; enabled: boolean };
 
 export default function Settings() {
   const [searchParams] = useSearchParams();
-  const gmailConnected = useAppStore((s) => s.gmailConnected);
+  const googleConnected = useAppStore((s) => s.googleConnected);
   const { hasPermission } = usePermissions();
   const canEdit = hasPermission('configuracion.editar');
 
@@ -935,14 +935,14 @@ export default function Settings() {
                       </svg>
                     </div>
                     <div>
-                      <p className="font-medium">Gmail</p>
+                      <p className="font-medium">Google</p>
                       <p className="text-sm text-muted-foreground">
-                        Sincronización de correos con el módulo de Correo del CRM
+                        Sincronización de correos y calendario con Google
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {gmailConnected ? (
+                    {googleConnected ? (
                       <span className="flex items-center gap-1.5 text-sm text-[#13944C] font-medium">
                         <CheckCircle2 className="size-4" />
                         Conectado
@@ -955,7 +955,7 @@ export default function Settings() {
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Cada usuario conecta su propia cuenta de Gmail desde Mi perfil → Integraciones.
+                  Cada usuario conecta su propia cuenta de Google desde Mi perfil → Integraciones.
                 </p>
               </CardContent>
             </Card>

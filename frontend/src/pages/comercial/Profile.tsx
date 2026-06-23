@@ -121,8 +121,8 @@ export default function ProfilePage() {
     setPermissionKeys,
     preferences,
     updatePreferences,
-    gmailConnected,
-    setGmailConnected,
+    googleConnected,
+    setGoogleConnected,
     area,
   } = useAppStore();
   const allowedAreas = currentUser.allowedAreas || [];
@@ -773,28 +773,36 @@ export default function ProfilePage() {
                         </div>
                         <div>
                           <div className="flex flex-wrap items-center gap-2">
-                            <p className="font-medium">Gmail</p>
+                            <p className="font-medium">Google</p>
                             <Badge
                               variant="outline"
                               className={
-                                gmailConnected
+                                googleConnected
                                   ? 'border-[#13944C]/30 bg-[#13944C]/10 text-[#13944C]'
                                   : 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300'
                               }
                             >
-                              {gmailConnected ? 'Conectado' : 'Demo'}
+                              {googleConnected ? 'Conectado' : 'Demo'}
                             </Badge>
                           </div>
                           <p className="mt-1 text-sm text-muted-foreground">
-                            Ver y enviar correos
+                            Gmail y Google Calendar
                           </p>
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        {gmailConnected ? (
+                        {googleConnected ? (
                           <Button
                             variant="outline"
-                            onClick={() => setGmailConnected(false)}
+                            onClick={async () => {
+                              try {
+                                await api('/auth/google/disconnect', { method: 'POST' });
+                                setGoogleConnected(false);
+                                toast.success('Google desconectado');
+                              } catch {
+                                toast.error('Error al desconectar Google');
+                              }
+                            }}
                           >
                             <CheckCircle2 className="size-4 text-[#13944C]" />
                             Desconectar
@@ -802,38 +810,47 @@ export default function ProfilePage() {
                         ) : (
                           <Button
                             className="bg-[#13944C] hover:bg-[#0f7a3d]"
-                            onClick={() => setGmailConnected(true)}
+                            onClick={async () => {
+                              try {
+                                const token = localStorage.getItem('accessToken');
+                                if (!token) { toast.error('No hay sesión activa'); return; }
+                                const res = await api<{ state: string }>('/auth/google/init', {
+                                  method: 'POST',
+                                  body: JSON.stringify({ token }),
+                                });
+                                window.location.href = `${import.meta.env.VITE_API_URL ?? 'http://localhost:3000'}/auth/google?state=${res.state}`;
+                              } catch {
+                                toast.error('Error al iniciar conexión con Google');
+                              }
+                            }}
                           >
                             <Link2 className="size-4" />
-                            Conectar Gmail
+                            Conectar Google
                           </Button>
                         )}
                       </div>
                     </div>
 
                     <div className="mt-4 flex flex-1 flex-col gap-4 rounded-xl border bg-muted/20 p-4">
-                      <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
-                        Gmail sigue en modo demostración. La conexión real de esta integración se implementará más adelante.
-                      </div>
-
                       <div className="grid gap-3 sm:grid-cols-2">
                         <div className="rounded-lg bg-background/40 p-3">
                           <p className="text-xs text-muted-foreground">Estado</p>
                           <p className="mt-1 text-sm font-medium">
-                            {gmailConnected ? 'Conectado' : 'Pendiente de conexión'}
+                            {googleConnected ? 'Conectado' : 'Pendiente de conexión'}
                           </p>
                         </div>
                         <div className="rounded-lg bg-background/40 p-3">
                           <p className="text-xs text-muted-foreground">Disponibilidad</p>
-                          <p className="mt-1 text-sm font-medium">Módulo de correo CRM</p>
+                          <p className="mt-1 text-sm font-medium">Gmail + Google Calendar</p>
                         </div>
                       </div>
 
                       <div className="rounded-lg bg-background/40 p-4">
                         <p className="text-sm font-medium">Qué incluye</p>
                         <ul className="mt-2 space-y-2 text-sm text-muted-foreground">
-                          <li>Ver correos relacionados desde el CRM.</li>
-                          <li>Enviar mensajes usando tu cuenta conectada.</li>
+                          <li>Ver y enviar correos desde el CRM.</li>
+                          <li>Sincronizar eventos de Google Calendar.</li>
+                          <li>Crear y gestionar tareas desde Google Tasks.</li>
                           <li>Sincronización segura tras autorización de Google.</li>
                         </ul>
                       </div>

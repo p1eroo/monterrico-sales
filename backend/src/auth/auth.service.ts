@@ -413,4 +413,178 @@ export class AuthService {
       },
     };
   }
+
+  async googleLogin(googleProfile: {
+    googleId: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    accessToken: string;
+    refreshToken: string;
+  }) {
+    const email = googleProfile.email.toLowerCase().trim();
+    if (!email) {
+      throw new UnauthorizedException('Google no proporcionó un email');
+    }
+
+    // Check if account exists
+    let account = await this.prisma.account.findUnique({
+      where: {
+        provider_providerId: { provider: 'google', providerId: googleProfile.googleId },
+      },
+      include: { user: { include: { role: true } } },
+    });
+
+    if (account) {
+      // Update tokens
+      await this.prisma.account.update({
+        where: { id: account.id },
+        data: {
+          tokens: {
+            access_token: googleProfile.accessToken,
+            refresh_token: googleProfile.refreshToken,
+          },
+        },
+      });
+
+      await this.prisma.user.update({
+        where: { id: account.user.id },
+        data: { lastActivity: new Date() },
+      });
+
+      return this.buildAuthResponse(account.user, email);
+    }
+
+    // Check if user exists by email
+    let user = await this.prisma.user.findFirst({
+      where: { accounts: { some: { provider: 'google', providerId: googleProfile.googleId } } },
+      include: { role: true },
+    });
+
+    if (!user) {
+      // Find default role
+      const defaultRole = await this.prisma.role.findFirst({
+        where: { slug: 'admin' },
+      }) ?? await this.prisma.role.findFirst();
+
+      if (!defaultRole) {
+        throw new BadRequestException('No hay roles configurados. Contacta al administrador.');
+      }
+
+      const newUser = await this.prisma.user.create({
+        data: {
+          name: `${googleProfile.firstName} ${googleProfile.lastName}`.trim() || email,
+          roleId: defaultRole.id,
+          status: 'activo',
+          allowedAreas: ['comercial'],
+          accounts: {
+            create: {
+              provider: 'google',
+              providerId: googleProfile.googleId,
+              tokens: {
+                access_token: googleProfile.accessToken,
+                refresh_token: googleProfile.refreshToken,
+              },
+            },
+          },
+        },
+        include: { role: true },
+      });
+
+      return this.buildAuthResponse(newUser, email);
+    } else {
+      // Update tokens for existing account
+      await this.prisma.account.updateMany({
+        where: { userId: user.id, provider: 'google' },
+        data: {
+          tokens: {
+            access_token: googleProfile.accessToken,
+            refresh_token: googleProfile.refreshToken,
+          },
+        },
+      });
+
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { lastActivity: new Date() },
+      });
+    }
+
+    return this.buildAuthResponse(user, email);
+  }
+
+  async getGoogleStatus(userId: string) {
+    const account = await this.prisma.account.findFirst({
+      where: { userId, provider: 'google' },
+      select: { providerId: true, tokens: true },
+    });
+    return {
+      connected: !!account?.tokens,
+      email: account?.providerId ?? null,
+    };
+  }
+
+  async disconnectGoogle(userId: string) {
+    await this.prisma.account.deleteMany({
+      where: { userId, provider: 'google' },
+    });
+  }
+
+  // In-memory store for pending OAuth states (userId by state token)
+  private readonly pendingGoogleStates = new Map<string, { userId: string; expiresAt: number }>();
+
+  async createPendingGoogleState(token: string): Promise<string> {
+    let payload: any;
+    try {
+      payload = this.jwtService.verify(token);
+    } catch {
+      throw new UnauthorizedException('Token inválido o expirado');
+    }
+    const state = require('crypto').randomBytes(32).toString('hex');
+    this.pendingGoogleStates.set(state, {
+      userId: payload.sub,
+      expiresAt: Date.now() + 5 * 60 * 1000, // 5 min
+    });
+    return state;
+  }
+
+  async linkGoogleAccountWithCode(state: string, code: string): Promise<boolean> {
+    const pending = this.pendingGoogleStates.get(state);
+    if (!pending || pending.expiresAt < Date.now()) {
+      this.pendingGoogleStates.delete(state);
+      return false;
+    }
+    this.pendingGoogleStates.delete(state);
+
+    try {
+      const { google } = require('googleapis');
+      const oauth2Client = new google.auth.OAuth2(
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET,
+        process.env.GOOGLE_REDIRECT_URI,
+      );
+      const { tokens } = await oauth2Client.getToken(code);
+      const googleId = `google_${pending.userId}`;
+
+      await this.prisma.account.upsert({
+        where: {
+          provider_providerId: { provider: 'google', providerId: googleId },
+        },
+        update: {
+          userId: pending.userId,
+          tokens: tokens as any,
+        },
+        create: {
+          userId: pending.userId,
+          provider: 'google',
+          providerId: googleId,
+          tokens: tokens as any,
+        },
+      });
+
+      return true;
+    } catch {
+      return false;
+    }
+  }
 }

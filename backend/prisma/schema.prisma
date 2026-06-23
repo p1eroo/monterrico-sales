@@ -39,12 +39,14 @@ model Authority {
 model Account {
   id           String   @id @default(cuid())
   userId       String
-  provider     String   // "credentials" | "google" | "saml" | etc.
-  providerId   String   // username para credentials; sub/email para oauth
-  passwordHash String?  // solo para provider "credentials"
+  provider     String // "credentials" | "google" | "saml" | etc.
+  providerId   String // username para credentials; sub/email para oauth
+  passwordHash String? // solo para provider "credentials"
+  tokens       Json?   // OAuth tokens: { access_token, refresh_token, expiry_date }
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([provider, providerId])
 }
 

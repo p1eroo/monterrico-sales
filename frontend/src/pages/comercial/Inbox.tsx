@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import {
   Search,
   PenSquare,
@@ -13,13 +14,17 @@ import {
   Forward,
   Paperclip,
   ChevronLeft,
+  ChevronDown,
   MoreHorizontal,
   User,
   Building2,
   Target,
   Link2,
+  Loader2,
+  X,
+  Maximize2,
 } from 'lucide-react';
-import type { EmailThread, EmailFolder } from '@/types';
+import type { EmailThread, EmailFolder, EmailMessage } from '@/types';
 import { emailThreads, folderLabels, entityTypeLabels } from '@/data/emailMock';
 import { useAppStore } from '@/store';
 import {
@@ -27,26 +32,19 @@ import {
   contactDetailHref,
   opportunityDetailHref,
 } from '@/lib/detailRoutes';
+import { fetchGmailMessages, fetchGmailMessage, sendGmailMessage } from '@/lib/gmailApi';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import DOMPurify from 'dompurify';
 
 const FOLDERS: { id: EmailFolder; icon: typeof Inbox; label: string }[] = [
   { id: 'inbox', icon: Inbox, label: 'Recibidos' },
@@ -94,17 +92,167 @@ function getEntityIcon(type: string) {
 
 export default function InboxPage() {
   const navigate = useNavigate();
-  const gmailConnected = useAppStore((s) => s.gmailConnected);
+  const googleConnected = useAppStore((s) => s.googleConnected);
   const [activeFolder, setActiveFolder] = useState<EmailFolder>('inbox');
   const [search, setSearch] = useState('');
   const [selectedThread, setSelectedThread] = useState<EmailThread | null>(null);
   const [composeOpen, setComposeOpen] = useState(false);
-  const [starredThreads, setStarredThreads] = useState<Set<string>>(new Set(['thread1', 'thread3']));
-  const [readThreads, setReadThreads] = useState<Set<string>>(new Set(['thread4', 'thread5']));
+  const [starredThreads, setStarredThreads] = useState<Set<string>>(new Set());
+  const [readThreads, setReadThreads] = useState<Set<string>>(new Set());
+  // Compose state
+  const [composeTo, setComposeTo] = useState('');
+  const [composeCc, setComposeCc] = useState('');
+  const [composeBcc, setComposeBcc] = useState('');
+  const [composeSubject, setComposeSubject] = useState('');
+  const [composeBody, setComposeBody] = useState('');
+  const [composeAttachments, setComposeAttachments] = useState<File[]>([]);
+  const [composeEmojiOpen, setComposeEmojiOpen] = useState(false);
+  const [composeFormatOpen, setComposeFormatOpen] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [composeMinimized, setComposeMinimized] = useState(false);
+  const [composeFullscreen, setComposeFullscreen] = useState(false);
+  const [composeShowCc, setComposeShowCc] = useState(false);
+  const [composeShowBcc, setComposeShowBcc] = useState(false);
+  const composeFileRef = useRef<HTMLInputElement>(null);
+  const composeBodyRef = useRef<HTMLDivElement>(null);
+  const composeHasAttachments = composeAttachments.length > 0;
+
+  const composeAttachmentsPreview = composeHasAttachments ? (
+    <div className="flex items-center gap-1 overflow-x-auto px-1 py-1 border-t">
+      {composeAttachments.map((file, i) => (
+        <span key={i} className="flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-[10px] text-muted-foreground whitespace-nowrap">
+          <Paperclip className="size-3" />
+          <span className="truncate max-w-[100px]">{file.name}</span>
+          <button type="button" className="ml-0.5 hover:text-foreground" onClick={() => setComposeAttachments((prev) => prev.filter((_, j) => j !== i))}>
+            <X className="size-3" />
+          </button>
+        </span>
+      ))}
+    </div>
+  ) : null;
+  // Gmail state
+  const [gmailMessages, setGmailMessages] = useState<any[]>([]);
+  const [gmailLoading, setGmailLoading] = useState(false);
+  const [gmailCategory, setGmailCategory] = useState<string>('PRIMARY');
+  const [nextPageToken, setNextPageToken] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [selectedGmailId, setSelectedGmailId] = useState<string | null>(null);
+  const [selectedGmailDetail, setSelectedGmailDetail] = useState<any>(null);
+  const [gmailDetailLoading, setGmailDetailLoading] = useState(false);
+
+  const gmailCategoryLabels: Record<string, string> = {
+    PRIMARY: 'Principal',
+    CATEGORY_SOCIAL: 'Social',
+    CATEGORY_PROMOTIONS: 'Promociones',
+    CATEGORY_UPDATES: 'Notificaciones',
+  };
+
+  const gmailFolderParams = useMemo(() => {
+    if (!googleConnected) return { labelIds: undefined, q: undefined };
+    switch (activeFolder) {
+      case 'sent':
+        return { q: 'in:sent' };
+      case 'drafts':
+        return { q: 'in:drafts' };
+      case 'starred':
+        return { q: 'is:starred' };
+      case 'trash':
+        return { q: 'in:trash' };
+      default: // inbox
+        return {
+          labelIds: gmailCategory === 'PRIMARY' ? undefined : ['INBOX', gmailCategory],
+          q: gmailCategory === 'PRIMARY' ? 'in:inbox category:primary' : undefined,
+        };
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [googleConnected, activeFolder, gmailCategory]);
+
+  // Fetch Gmail messages
+  useEffect(() => {
+    if (!googleConnected) return;
+    setGmailLoading(true);
+    fetchGmailMessages(50, undefined, gmailFolderParams.labelIds, gmailFolderParams.q)
+      .then((res) => {
+        setGmailMessages(res.messages);
+        setNextPageToken(res.nextPageToken);
+        // Messages with UNREAD label are unread; the rest are read
+        setReadThreads(new Set(res.messages.filter((m) => !m.labelIds?.includes('UNREAD')).map((m) => m.id)));
+        // Populate starred set
+        setStarredThreads(new Set(res.messages.filter((m) => m.labelIds?.includes('STARRED')).map((m) => m.id)));
+      })
+      .catch(() => toast.error('Error al cargar correos'))
+      .finally(() => setGmailLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [googleConnected, gmailCategory, gmailFolderParams]);
+
+  const loadMoreMessages = async () => {
+    if (!nextPageToken || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const res = await fetchGmailMessages(50, nextPageToken, gmailFolderParams.labelIds, gmailFolderParams.q);
+      setGmailMessages((prev) => [...prev, ...res.messages]);
+      setNextPageToken(res.nextPageToken);
+      setStarredThreads((prev) => {
+        const next = new Set(prev);
+        res.messages.filter((m) => m.labelIds?.includes('STARRED')).forEach((m) => next.add(m.id));
+        return next;
+      });
+    } catch {
+      toast.error('Error al cargar más correos');
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  // Fetch Gmail detail when a message is selected
+  useEffect(() => {
+    if (!selectedGmailId) { setSelectedGmailDetail(null); return; }
+    setGmailDetailLoading(true);
+    const timeout = setTimeout(() => setGmailDetailLoading(false), 10000);
+    fetchGmailMessage(selectedGmailId)
+      .then((detail) => {
+        clearTimeout(timeout);
+        setSelectedGmailDetail(detail);
+      })
+      .catch((err) => {
+        clearTimeout(timeout);
+        console.error('Error fetching Gmail message:', err);
+      })
+      .finally(() => setGmailDetailLoading(false));
+    return () => clearTimeout(timeout);
+  }, [selectedGmailId]);
+
+  // Convert Gmail message to EmailThread shape
+  const gmailThreads: EmailThread[] = useMemo(() => {
+    return gmailMessages.map((msg) => {
+      const msgObj: EmailMessage = {
+        id: msg.id,
+        from: msg.from,
+        fromName: msg.from.replace(/<.*>/, '').trim() || msg.from,
+        to: msg.to ? (Array.isArray(msg.to) ? msg.to : [msg.to]) : [],
+        subject: msg.subject,
+        body: msg.snippet || '',
+        timestamp: msg.date ? new Date(msg.date).toISOString() : new Date().toISOString(),
+        folder: msg.labelIds?.includes('SENT') ? 'sent' : msg.labelIds?.includes('DRAFT') ? 'drafts' : msg.labelIds?.includes('TRASH') ? 'trash' : 'inbox',
+        isRead: !msg.labelIds?.includes('UNREAD'),
+        isStarred: msg.labelIds?.includes('STARRED') ?? false,
+        threadId: msg.threadId ?? msg.id,
+        attachments: [],
+      };
+      return {
+        id: msg.id,
+        subject: msg.subject,
+        messages: [msgObj],
+      } as EmailThread;
+    });
+  }, [gmailMessages]);
+
+  const displayThreads = googleConnected ? gmailThreads : emailThreads;
 
   const filteredThreads = useMemo(() => {
-    return emailThreads.filter((thread) => {
+    return displayThreads.filter((thread) => {
       const lastMsg = thread.messages[0];
+      if (!lastMsg) return false;
       const inFolder =
         activeFolder === 'starred'
           ? starredThreads.has(thread.id)
@@ -112,11 +260,10 @@ export default function InboxPage() {
       const matchSearch =
         !search ||
         thread.subject.toLowerCase().includes(search.toLowerCase()) ||
-        lastMsg.fromName.toLowerCase().includes(search.toLowerCase()) ||
-        (thread.relatedEntityName ?? '').toLowerCase().includes(search.toLowerCase());
+        lastMsg.fromName.toLowerCase().includes(search.toLowerCase());
       return inFolder && matchSearch;
     });
-  }, [activeFolder, search, starredThreads]);
+  }, [displayThreads, activeFolder, search, starredThreads]);
 
   const toggleStar = (threadId: string) => {
     setStarredThreads((prev) => {
@@ -134,7 +281,59 @@ export default function InboxPage() {
   const isThreadUnread = (thread: EmailThread) => !readThreads.has(thread.id);
   const isThreadStarred = (thread: EmailThread) => starredThreads.has(thread.id);
 
-  if (!gmailConnected) {
+  const handleSelectThread = (thread: EmailThread) => {
+    setSelectedThread(thread);
+    markAsRead(thread.id);
+    if (googleConnected) {
+      setSelectedGmailId(thread.id);
+    }
+  };
+
+  const handleSendEmail = async () => {
+    const bodyHtml = composeBodyRef.current?.innerHTML.trim() || composeBody;
+    const bodyText = bodyHtml.replace(/<[^>]*>/g, '').trim();
+    if (!composeTo.trim() || !composeSubject.trim() || !bodyText) {
+      if (!composeTo.trim()) toast.error('Indica el destinatario');
+      else if (!composeSubject.trim()) toast.error('El asunto es obligatorio');
+      else toast.error('El mensaje no puede estar vacío');
+      return;
+    }
+    setSendingEmail(true);
+    try {
+      const cc = composeShowCc ? composeCc.trim() : undefined;
+      const bcc = composeShowBcc ? composeBcc.trim() : undefined;
+      await sendGmailMessage(composeTo, composeSubject, bodyHtml, cc || undefined);
+      toast.success('Correo enviado');
+      setComposeOpen(false);
+      setComposeMinimized(false);
+      setComposeFullscreen(false);
+      setComposeTo('');
+      setComposeCc('');
+      setComposeBcc('');
+      setComposeSubject('');
+      setComposeBody('');
+      setComposeFormatOpen(false);
+      setComposeEmojiOpen(false);
+      if (composeBodyRef.current) composeBodyRef.current.innerHTML = '';
+      setComposeShowCc(false);
+      setComposeShowBcc(false);
+      // Refresh after a short delay to let Gmail index the message
+      setTimeout(async () => {
+        try {
+          const res = await fetchGmailMessages(50, undefined, gmailFolderParams.labelIds, gmailFolderParams.q);
+          setGmailMessages(res.messages);
+        } catch {
+          // silently fail
+        }
+      }, 2000);
+    } catch (e) {
+      console.error('Error sending email:', e);
+      toast.error(e instanceof Error ? e.message : 'Error al enviar el correo');
+      setSendingEmail(false);
+    }
+  };
+
+  if (!googleConnected) {
     return (
       <div className="flex flex-col items-center justify-center gap-6 rounded-lg border-2 border-dashed border-muted-foreground/20 bg-muted/20 p-12">
         <div className="flex size-20 items-center justify-center rounded-full bg-[#ea4335]/10">
@@ -162,7 +361,7 @@ export default function InboxPage() {
   }
 
   return (
-    <div className="flex -m-4 h-[calc(100vh-3.5rem)] min-h-0 md:-m-6">
+    <div className="flex h-[calc(100vh-7rem)] min-h-0 rounded-xl border bg-card overflow-hidden">
       {/* Sidebar */}
       <aside className="hidden min-h-0 w-56 shrink-0 flex-col border-r bg-muted/30 lg:flex">
         <div className="p-3">
@@ -197,7 +396,7 @@ export default function InboxPage() {
       </aside>
 
       {/* Email list */}
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col border-r">
+      <div className="flex min-h-0 flex-col border-r" style={{ flex: '0 0 620px' }}>
         {/* Mobile folder tabs */}
         <div className="flex gap-1 overflow-x-auto border-b p-2 lg:hidden">
           {FOLDERS.map((f) => {
@@ -230,7 +429,24 @@ export default function InboxPage() {
             />
           </div>
         </div>
-        <ScrollArea className="flex-1">
+        {googleConnected && activeFolder === 'inbox' && (          <div className="flex gap-0.5 border-b px-2 py-1.5">
+            {Object.entries(gmailCategoryLabels).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setGmailCategory(key)}
+                className={cn(
+                  'rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
+                  gmailCategory === key
+                    ? 'bg-[#13944C]/10 text-[#13944C]'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin">
           <div className="divide-y">
             {filteredThreads.map((thread) => {
               const lastMsg = thread.messages[0];
@@ -266,7 +482,7 @@ export default function InboxPage() {
                     <div className="flex items-center justify-between gap-2">
                       <span
                         className={cn(
-                          'truncate',
+                          'truncate text-xs',
                           unread ? 'font-semibold' : 'font-medium'
                         )}
                       >
@@ -278,8 +494,8 @@ export default function InboxPage() {
                     </div>
                     <p
                       className={cn(
-                        'truncate text-sm',
-                        unread ? 'font-medium' : 'text-muted-foreground'
+                        'truncate text-xs',
+                        unread ? 'font-semibold text-foreground' : 'text-muted-foreground'
                       )}
                     >
                       {thread.subject}
@@ -295,7 +511,7 @@ export default function InboxPage() {
               );
             })}
           </div>
-          {filteredThreads.length === 0 && (
+          {filteredThreads.length === 0 && !gmailLoading && (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <Inbox className="size-12 text-muted-foreground" />
               <p className="mt-2 text-sm font-medium">No hay correos</p>
@@ -304,13 +520,27 @@ export default function InboxPage() {
               </p>
             </div>
           )}
-        </ScrollArea>
+          {gmailLoading && (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <Loader2 className="size-8 animate-spin text-primary" />
+              <p className="mt-2 text-sm text-muted-foreground">Cargando correos…</p>
+            </div>
+          )}
+          {googleConnected && nextPageToken && !gmailLoading && (
+            <div className="flex justify-center border-t p-4">
+              <Button variant="outline" size="sm" disabled={loadingMore} onClick={() => void loadMoreMessages()}>
+                {loadingMore ? <Loader2 className="size-4 animate-spin" /> : null}
+                {loadingMore ? 'Cargando…' : 'Cargar más correos'}
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Email detail */}
       <div
         className={cn(
-          'hidden min-h-0 flex-1 flex-col border-l bg-background md:flex',
+          'hidden min-h-0 flex-1 flex-col bg-background md:flex',
           !selectedThread && 'md:hidden lg:flex lg:items-center lg:justify-center'
         )}
       >
@@ -322,7 +552,10 @@ export default function InboxPage() {
                   variant="ghost"
                   size="icon"
                   className="lg:hidden"
-                  onClick={() => setSelectedThread(null)}
+                  onClick={() => {
+                    setSelectedThread(null);
+                    setSelectedGmailId(null);
+                  }}
                 >
                   <ChevronLeft className="size-4" />
                 </Button>
@@ -333,14 +566,18 @@ export default function InboxPage() {
                   <Reply className="size-4" />
                   Responder
                 </Button>
-                <Button variant="ghost" size="sm">
-                  <ReplyAll className="size-4" />
-                  Responder a todos
-                </Button>
-                <Button variant="ghost" size="sm">
-                  <Forward className="size-4" />
-                  Reenviar
-                </Button>
+                {!googleConnected && (
+                  <>
+                    <Button variant="ghost" size="sm">
+                      <ReplyAll className="size-4" />
+                      Responder a todos
+                    </Button>
+                    <Button variant="ghost" size="sm">
+                      <Forward className="size-4" />
+                      Reenviar
+                    </Button>
+                  </>
+                )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon">
@@ -387,52 +624,146 @@ export default function InboxPage() {
                 })()}
               </div>
             )}
-            <ScrollArea className="flex-1">
-              <div className="space-y-6 p-4">
-                {[...selectedThread.messages].reverse().map((msg) => (
-                  <div
-                    key={msg.id}
-                    className="rounded-lg border bg-card p-4"
-                  >
+        <div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin">
+          <div className="space-y-6 p-4">
+            {googleConnected && gmailDetailLoading && selectedGmailId && (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="size-5 animate-spin text-primary" />
+                <span className="ml-2 text-sm text-muted-foreground">Cargando contenido…</span>
+              </div>
+            )}
+                {googleConnected && selectedGmailDetail && !gmailDetailLoading && (
+                  <div className="rounded-lg border bg-card p-4">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex items-center gap-3">
                         <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#13944C]/10 text-[#13944C] font-semibold">
-                          {msg.fromName.charAt(0)}
+                          {(selectedGmailDetail.from || '?').charAt(0)}
                         </div>
                         <div>
-                          <p className="font-medium">{msg.fromName}</p>
+                          <p className="font-medium">{selectedGmailDetail.from}</p>
                           <p className="text-xs text-muted-foreground">
-                            {msg.from}
+                            Para: {selectedGmailDetail.to}
                           </p>
                         </div>
                       </div>
-                      <span className="text-xs text-muted-foreground">
-                        {formatFullDate(msg.timestamp)}
-                      </span>
-                    </div>
-                    <div className="mt-4 whitespace-pre-wrap text-sm">
-                      {msg.body}
-                    </div>
-                    {msg.attachments && msg.attachments.length > 0 && (
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        {msg.attachments.map((att) => (
-                          <div
-                            key={att.id}
-                            className="flex items-center gap-2 rounded border bg-muted/50 px-3 py-2 text-sm"
-                          >
-                            <Paperclip className="size-4" />
-                            {att.name}
-                            <span className="text-xs text-muted-foreground">
-                              ({(att.size / 1024).toFixed(1)} KB)
-                            </span>
-                          </div>
-                        ))}
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">
+                          {formatFullDate(selectedGmailDetail.date)}
+                        </span>
+                        <a
+                          href={`https://mail.google.com/mail/u/0/#inbox/${selectedGmailDetail.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-primary hover:underline shrink-0"
+                        >
+                          Ver en Gmail
+                        </a>
                       </div>
-                    )}
+                    </div>
+                    {(() => {
+                      const rawBody = selectedGmailDetail.body || '';
+                      const hasHtml = /<[a-z][\s\S]*>/i.test(rawBody);
+                      const safeHtml = DOMPurify.sanitize(rawBody, { ADD_ATTR: ['target'] });
+                      return (
+                        <>
+                          {/* Debug: mostrar si tiene HTML */}
+                          <details className="mb-2 text-xs text-muted-foreground">
+                            <summary className="cursor-pointer">
+                              Debug: body length={rawBody.length}, hasHtml={String(hasHtml)}
+                            </summary>
+                            <pre className="mt-1 max-h-32 overflow-auto rounded border bg-muted p-2 text-[10px] whitespace-pre-wrap break-words">
+                              {rawBody.slice(0, 2000)}
+                            </pre>
+                          </details>
+                          <iframe
+                            sandbox="allow-same-origin"
+                            srcDoc={`
+                              <html>
+                                <head>
+                                  <style>
+                                    body {
+                                      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                                      padding: 0; margin: 0; color: #111827; font-size: 14px; line-height: 1.6;
+                                    }
+                                    img { max-width: 100%; height: auto; }
+                                    a { color: #13944C; }
+                                    table { max-width: 100%; }
+                                    * { max-width: 100%; }
+                                  </style>
+                                </head>
+                                <body>${safeHtml}</body>
+                              </html>
+                            `.trim()}
+                            title="Contenido del correo"
+                            className="w-full min-h-[400px] rounded border-0"
+                            style={{ height: 'auto', minHeight: '400px' }}
+                          />
+                        </>
+                      );
+                    })()}
+                    {selectedGmailDetail.attachments?.length > 0 && (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {selectedGmailDetail.attachments.map((att: any, i: number) => (
+                      <div key={i} className="flex items-center gap-2 rounded border bg-muted/50 px-3 py-2 text-sm">
+                        <Paperclip className="size-4" />
+                        {att.filename}
+                        <span className="text-xs text-muted-foreground">
+                          ({(att.size / 1024).toFixed(1)} KB)
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
-            </ScrollArea>
+            )}
+            {selectedThread && !(googleConnected && selectedGmailDetail && !gmailDetailLoading) ? (
+              [...selectedThread.messages].reverse().map((msg) => (
+                    <div key={msg.id} className="rounded-lg border bg-card p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#13944C]/10 text-[#13944C] font-semibold">
+                            {msg.fromName.charAt(0)}
+                          </div>
+                          <div>
+                            <p className="font-medium">{msg.fromName}</p>
+                            <p className="text-xs text-muted-foreground">{msg.from}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-xs text-muted-foreground">
+                            {formatFullDate(msg.timestamp)}
+                          </span>
+        {googleConnected && activeFolder === 'inbox' && (
+                            <a
+                              href={`https://mail.google.com/mail/u/0/#inbox/${msg.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-primary hover:underline"
+                            >
+                              Ver en Gmail
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                      <div className="mt-4 whitespace-pre-wrap text-sm">{msg.body}</div>
+                      {msg.attachments && msg.attachments.length > 0 && (
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {msg.attachments.map((att: any) => (
+                            <div key={att.id} className="flex items-center gap-2 rounded border bg-muted/50 px-3 py-2 text-sm">
+                              <Paperclip className="size-4" />
+                              {att.name}
+                              <span className="text-xs text-muted-foreground">
+                                ({(att.size / 1024).toFixed(1)} KB)
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                ) : null}
+              </div>
+              </div>
           </>
         ) : (
           <div className="flex flex-col items-center justify-center text-center">
@@ -460,77 +791,420 @@ export default function InboxPage() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setSelectedThread(null)}
+              onClick={() => {
+                setSelectedThread(null);
+                setSelectedGmailId(null);
+              }}
             >
               <ChevronLeft className="size-4" />
             </Button>
             <span className="truncate font-semibold">{selectedThread.subject}</span>
           </div>
-          <ScrollArea className="flex-1">
+          <div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin">
             <div className="space-y-6 p-4">
-              {[...selectedThread.messages].reverse().map((msg) => (
-                <div key={msg.id} className="rounded-lg border p-4">
-                  <p className="font-medium">{msg.fromName}</p>
+              {googleConnected && selectedGmailDetail ? (
+                <div className="rounded-lg border p-4">
+                  <p className="font-medium">{selectedGmailDetail.from}</p>
                   <p className="text-xs text-muted-foreground">
-                    {formatFullDate(msg.timestamp)}
+                    {formatFullDate(selectedGmailDetail.date)}
                   </p>
-                  <div className="mt-3 whitespace-pre-wrap text-sm">{msg.body}</div>
+                  {(() => {
+                    const safeHtml = DOMPurify.sanitize(selectedGmailDetail.body || '<p>Sin contenido</p>', { ADD_ATTR: ['target'] });
+                    return (
+                      <iframe
+                        sandbox="allow-same-origin"
+                        srcDoc={`
+                          <html>
+                            <head>
+                              <style>
+                                body {
+                                  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                                  padding: 0; margin: 0; color: #111827; font-size: 14px; line-height: 1.6;
+                                }
+                                img { max-width: 100%; height: auto; }
+                                a { color: #13944C; }
+                                table { max-width: 100%; }
+                                * { max-width: 100%; }
+                              </style>
+                            </head>
+                            <body>${safeHtml}</body>
+                          </html>
+                        `.trim()}
+                        title="Contenido del correo"
+                        className="w-full min-h-[300px] rounded border-0"
+                      />
+                    );
+                  })()}
                 </div>
-              ))}
+              ) : (
+                [...selectedThread.messages].reverse().map((msg) => (
+                  <div key={msg.id} className="rounded-lg border p-4">
+                    <p className="font-medium">{msg.fromName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatFullDate(msg.timestamp)}
+                    </p>
+                    <div className="mt-3 whitespace-pre-wrap text-sm">{msg.body}</div>
+                  </div>
+                ))
+              )}
             </div>
-          </ScrollArea>
+            </div>
         </div>
       )}
 
-      {/* Compose Modal */}
-      <Dialog open={composeOpen} onOpenChange={setComposeOpen}>
-        <DialogContent className="h-[100dvh] max-h-[100dvh] w-full max-w-2xl sm:h-auto sm:max-h-[85vh]">
-          <DialogHeader>
-            <DialogTitle>Nuevo correo</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Para</Label>
-              <Input placeholder="correo@ejemplo.com" />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <Label>CC</Label>
-                <Input placeholder="Opcional" />
-              </div>
-              <div>
-                <Label>BCC</Label>
-                <Input placeholder="Opcional" />
+      {/* Compose floating card / fullscreen */}
+      {composeOpen && composeFullscreen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="flex h-[90vh] w-[90vw] max-w-4xl flex-col rounded-xl border border-border bg-card shadow-2xl">
+            <div className="flex shrink-0 items-center justify-between border-b px-5 py-3">
+              <span className="text-base font-semibold text-foreground">Nuevo mensaje</span>
+              <div className="flex items-center gap-1">
+                <button type="button" onClick={() => setComposeFullscreen(false)} className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" title="Vista flotante">
+                  <ChevronDown className="size-4" />
+                </button>
+                <button type="button" onClick={() => { setComposeOpen(false); setComposeMinimized(false); setComposeFullscreen(false); }} className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" title="Cerrar">
+                  <X className="size-4" />
+                </button>
               </div>
             </div>
-            <div>
-              <Label>Asunto</Label>
-              <Input placeholder="Asunto del correo" />
-            </div>
-            <div>
-              <Label>Mensaje</Label>
-              <Textarea
-                placeholder="Escribe tu mensaje..."
-                rows={8}
-                className="resize-none"
+            <div className="flex min-h-0 flex-1 flex-col">
+              {/* Recipients */}
+              <div className="shrink-0">
+                <div className="flex items-center gap-2 border-b px-5">
+                  <span className="w-10 shrink-0 text-xs font-medium text-muted-foreground">Para</span>
+                  <input className="min-w-0 flex-1 border-0 bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground/50" placeholder="Destinatarios" value={composeTo} onChange={(e) => setComposeTo(e.target.value)} />
+                </div>
+                {composeShowCc && (
+                  <div className="flex items-center gap-2 border-b px-5">
+                    <span className="w-10 shrink-0 text-xs font-medium text-muted-foreground">CC</span>
+                    <input className="min-w-0 flex-1 border-0 bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground/50" placeholder="CC" value={composeCc} onChange={(e) => setComposeCc(e.target.value)} />
+                  </div>
+                )}
+                {composeShowBcc && (
+                  <div className="flex items-center gap-2 border-b px-5">
+                    <span className="w-10 shrink-0 text-xs font-medium text-muted-foreground">CCO</span>
+                    <input className="min-w-0 flex-1 border-0 bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground/50" placeholder="CCO" value={composeBcc} onChange={(e) => setComposeBcc(e.target.value)} />
+                  </div>
+                )}
+                {(!composeShowCc || !composeShowBcc) && (
+                  <div className="flex items-center gap-3 border-b px-5 py-1.5">
+                    {!composeShowCc && <button type="button" onClick={() => setComposeShowCc(true)} className="text-xs text-primary hover:underline">CC</button>}
+                    {!composeShowBcc && <button type="button" onClick={() => setComposeShowBcc(true)} className="text-xs text-primary hover:underline">CCO</button>}
+                  </div>
+                )}
+              </div>
+              <div className="shrink-0 border-b px-5">
+                <input className="w-full border-0 bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground/50" placeholder="Asunto" value={composeSubject} onChange={(e) => setComposeSubject(e.target.value)} />
+              </div>
+              <div
+                ref={composeBodyRef}
+                contentEditable
+                suppressContentEditableWarning
+                className="min-h-0 flex-1 overflow-y-auto border-0 bg-transparent px-5 py-3 text-sm outline-none [&:empty:before]:content-[attr(data-placeholder)] [&:empty:before]:text-muted-foreground/50"
+                data-placeholder="Escribe tu mensaje..."
+                onInput={() => {
+                  if (composeBodyRef.current) {
+                    setComposeBody(composeBodyRef.current.innerHTML);
+                  }
+                }}
               />
-            </div>
-            <div className="flex items-center gap-2">
-              <Button className="bg-[#13944C] hover:bg-[#0f7a3d]">
-                <Send className="size-4" />
-                Enviar
-              </Button>
-              <Button variant="outline">
-                <Paperclip className="size-4" />
-                Adjuntar
-              </Button>
-              <Button variant="outline" onClick={() => setComposeOpen(false)}>
-                Guardar borrador
-              </Button>
+              <div className="flex shrink-0 items-center justify-between border-t px-4 py-2">
+                <div className="flex items-center gap-1">
+                  <Button className="bg-[#13944C] hover:bg-[#0f7a3d]" disabled={sendingEmail} onClick={() => void handleSendEmail()}>
+                    {sendingEmail ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+                    {sendingEmail ? 'Enviando…' : 'Enviar'}
+                  </Button>
+                  <button type="button" className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" title="Formato"><span className="text-xs font-semibold tracking-wide">Aa</span></button>
+                  <button type="button" className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" title="Adjuntar archivos"><Paperclip className="size-4" /></button>
+                  <button type="button" className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" title="Insertar emoji"><span className="text-sm">😊</span></button>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => setComposeFullscreen(false)}>Salir de pantalla completa</Button>
+              </div>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
+
+      {composeOpen && !composeFullscreen && (
+        <div
+          className={cn(
+            'fixed z-50 shadow-xl border border-border bg-card flex flex-col',
+            composeMinimized
+              ? 'bottom-4 right-4 w-72 rounded-lg'
+              : 'bottom-4 right-4 w-[640px] rounded-lg max-lg:left-4 max-lg:w-auto'
+          )}
+          style={!composeMinimized ? { maxHeight: '85vh', height: '640px' } : undefined}
+        >
+          {/* Header bar */}
+          <div
+            className={cn(
+              'flex shrink-0 items-center justify-between px-4 py-2.5',
+              composeMinimized ? 'rounded-lg' : 'rounded-t-lg border-b'
+            )}
+          >
+            <span className="text-sm font-semibold text-foreground">
+              {composeMinimized ? composeSubject || 'Nuevo mensaje' : 'Nuevo mensaje'}
+            </span>
+            <div className="flex items-center gap-0.5">
+              <button type="button" onClick={() => setComposeFullscreen(true)} className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" title="Pantalla completa">
+                <Maximize2 className="size-3.5" />
+              </button>
+              <button type="button" onClick={() => setComposeMinimized(!composeMinimized)} className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" title={composeMinimized ? 'Maximizar' : 'Minimizar'}>
+                <ChevronDown className={cn('size-3.5 transition-transform', composeMinimized && 'rotate-180')} />
+              </button>
+              <button type="button" onClick={() => { setComposeOpen(false); setComposeMinimized(false); setComposeFullscreen(false); }} className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" title="Cerrar">
+                <X className="size-3.5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Body (hidden when minimized) */}
+          {!composeMinimized && (
+            <div className="flex min-h-0 flex-1 flex-col">
+              {/* Recipients */}
+              <div className="shrink-0">
+                {/* PARA */}
+                <div className="flex items-center gap-2 px-4">
+                  <span className="w-10 shrink-0 text-xs font-medium text-muted-foreground">Para</span>
+                  <input
+                    className="min-w-0 flex-1 border-0 bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground/50"
+                    placeholder="Destinatarios"
+                    value={composeTo}
+                    onChange={(e) => setComposeTo(e.target.value)}
+                  />
+                </div>
+                <div className="mx-4 border-b" />
+                {/* CC */}
+                {composeShowCc && (
+                  <>
+                    <div className="flex items-center gap-2 px-4">
+                      <span className="w-10 shrink-0 text-xs font-medium text-muted-foreground">CC</span>
+                      <input
+                        className="min-w-0 flex-1 border-0 bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground/50"
+                        placeholder="CC"
+                        value={composeCc}
+                        onChange={(e) => setComposeCc(e.target.value)}
+                      />
+                    </div>
+                    <div className="mx-4 border-b" />
+                  </>
+                )}
+                {/* CCO */}
+                {composeShowBcc && (
+                  <>
+                    <div className="flex items-center gap-2 px-4">
+                      <span className="w-10 shrink-0 text-xs font-medium text-muted-foreground">CCO</span>
+                      <input
+                        className="min-w-0 flex-1 border-0 bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground/50"
+                        placeholder="CCO"
+                        value={composeBcc}
+                        onChange={(e) => setComposeBcc(e.target.value)}
+                      />
+                    </div>
+                    <div className="mx-4 border-b" />
+                  </>
+                )}
+                {/* CC / CCO Toggle */}
+                {(!composeShowCc || !composeShowBcc) && (
+                  <div className="flex items-center gap-3 px-4 py-1.5">
+                    {!composeShowCc && (
+                      <button type="button" onClick={() => setComposeShowCc(true)} className="text-xs text-primary hover:underline">CC</button>
+                    )}
+                    {!composeShowBcc && (
+                      <button type="button" onClick={() => setComposeShowBcc(true)} className="text-xs text-primary hover:underline">CCO</button>
+                    )}
+                  </div>
+                )}
+              </div>  {/* recipients shrink-0 */}
+
+              {/* Asunto */}
+              <div className="shrink-0">
+                <div className="px-4">
+                  <input
+                    className="w-full border-0 bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground/50"
+                    placeholder="Asunto"
+                    value={composeSubject}
+                    onChange={(e) => setComposeSubject(e.target.value)}
+                  />
+                </div>
+                <div className="mx-4 border-b" />
+              </div>  {/* asunto shrink-0 */}
+
+              {/* Rich text body */}
+              <div
+                ref={composeBodyRef}
+                contentEditable
+                suppressContentEditableWarning
+                className="min-h-0 flex-1 overflow-y-auto border-0 bg-transparent px-4 py-3 text-sm outline-none [&:empty:before]:content-[attr(data-placeholder)] [&:empty:before]:text-muted-foreground/50"
+                data-placeholder="Escribe tu mensaje..."
+                onInput={() => {
+                  if (composeBodyRef.current) {
+                    setComposeBody(composeBodyRef.current.innerHTML);
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                    e.preventDefault();
+                    void handleSendEmail();
+                  }
+                }}
+              />
+
+              {/* Toolbar */}
+              <div className="shrink-0">
+                <div className="mx-4 border-t" />
+                 <div className="flex items-center justify-between px-2 py-1.5">
+                   <div className="flex items-center gap-0.5">
+                  <Button
+                    size="sm"
+                    className="bg-[#13944C] hover:bg-[#0f7a3d]"
+                    disabled={sendingEmail}
+                    onClick={() => void handleSendEmail()}
+                  >
+                    {sendingEmail ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
+                    {sendingEmail ? 'Enviando…' : 'Enviar'}
+                  </Button>
+
+                  {/* Aa — Format popover */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                      title="Formato"
+                      onClick={() => setComposeFormatOpen(!composeFormatOpen)}
+                    >
+                      <span className="text-xs font-semibold tracking-wide">Aa</span>
+                    </button>
+                    {composeFormatOpen && (
+                      <div className="absolute bottom-full left-0 mb-1 flex gap-0.5 rounded-lg border bg-background p-1.5 shadow-xl" onMouseDown={(e) => e.preventDefault()}>
+                        <button
+                          type="button"
+                          className="rounded px-2 py-1 text-sm font-bold hover:bg-muted transition-colors"
+                          title="Negrita"
+                          onClick={() => { document.execCommand('bold'); composeBodyRef.current?.focus(); }}
+                        >B</button>
+                        <button
+                          type="button"
+                          className="rounded px-2 py-1 text-sm font-serif italic hover:bg-muted transition-colors"
+                          title="Cursiva"
+                          onClick={() => { document.execCommand('italic'); composeBodyRef.current?.focus(); }}
+                        >I</button>
+                        <button
+                          type="button"
+                          className="rounded px-2 py-1 text-sm underline hover:bg-muted transition-colors"
+                          title="Subrayado"
+                          onClick={() => { document.execCommand('underline'); composeBodyRef.current?.focus(); }}
+                        >U</button>
+                        <span className="mx-0.5 self-stretch w-px bg-border" />
+                        <button
+                          type="button"
+                          className="rounded px-2 py-1 text-sm hover:bg-muted transition-colors"
+                          title="Lista ordenada"
+                          onClick={() => { document.execCommand('insertOrderedList'); composeBodyRef.current?.focus(); }}
+                        ><span className="text-xs">1.</span></button>
+                        <button
+                          type="button"
+                          className="rounded px-2 py-1 text-sm hover:bg-muted transition-colors"
+                          title="Lista con viñetas"
+                          onClick={() => { document.execCommand('insertUnorderedList'); composeBodyRef.current?.focus(); }}
+                        ><span className="text-xs">•</span></button>
+                        <span className="mx-0.5 self-stretch w-px bg-border" />
+                        <button
+                          type="button"
+                          className="rounded px-2 py-1 text-sm hover:bg-muted transition-colors"
+                          title="Citar"
+                          onClick={() => { document.execCommand('formatBlock', false, 'blockquote'); composeBodyRef.current?.focus(); }}
+                        ><span className="text-xs">❝</span></button>
+                        <button
+                          type="button"
+                          className="rounded px-2 py-1 text-sm hover:bg-muted transition-colors"
+                          title="Enlace"
+                          onClick={() => {
+                            const url = prompt('URL del enlace:');
+                            if (url) { document.execCommand('createLink', false, url); composeBodyRef.current?.focus(); }
+                          }}
+                        ><span className="text-xs">🔗</span></button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Adjuntar archivos */}
+                  <button
+                    type="button"
+                    className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                    title="Adjuntar archivos"
+                    onClick={() => composeFileRef.current?.click()}
+                  >
+                    <Paperclip className="size-4" />
+                  </button>
+                  <input
+                    ref={composeFileRef}
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files ?? []);
+                      if (files.length > 0) {
+                        setComposeAttachments((prev) => [...prev, ...files]);
+                      }
+                      e.target.value = '';
+                    }}
+                  />
+
+                  {/* Emoji picker */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                      title="Insertar emoji"
+                      onClick={() => setComposeEmojiOpen(!composeEmojiOpen)}
+                    >
+                      <span className="text-sm">😊</span>
+                    </button>
+                    {composeEmojiOpen && (
+                      <div className="absolute bottom-full left-0 mb-1 grid w-64 grid-cols-8 gap-0.5 rounded-lg border bg-background p-2 shadow-xl">
+                        {['😀','😁','😂','🤣','😃','😄','😅','😆','😉','😊','😋','😎','😍','😘','🥰','😗','😙','😚','🙂','🤗','🤩','🤔','🤨','😐','😑','😶','🙄','😏','😣','😥','😮','🤐','😯','😪','😫','😴','😌','😛','😜','😝','🤤','😒','😓','😔','😕','🙃','🤑','😲','☹️','🙁','😖','😞','😟','😤','😢','😭','😦','😧','😨','😩','🤯','😬','😰','😱','🥵','🥶','😳','🤪','😵','😡','😠','🤬','👍','👎','👊','✊','🤛','🤜','👏','🙌','👐','🤲','🤝','🙏','✍️','💪','🎉','❤️','💔','💖','💙','💚','💛','💜','🖤','⭐','🌈','🔥','💯','✅','❌','📎','📧','📅','📁','📂','📌','🔗','🎯','💡','🚀','⭐','🎁'].map((emoji) => (
+                          <button
+                            key={emoji}
+                            type="button"
+                            className="rounded p-1 text-sm hover:bg-muted transition-colors"
+                            onClick={() => {
+                              if (composeBodyRef.current) {
+                                const sel = window.getSelection();
+                                if (sel && sel.rangeCount > 0) {
+                                  const range = sel.getRangeAt(0);
+                                  if (composeBodyRef.current.contains(range.commonAncestorContainer)) {
+                                    range.deleteContents();
+                                    range.insertNode(document.createTextNode(emoji));
+                                    range.collapse(false);
+                                  } else {
+                                    composeBodyRef.current.innerHTML += emoji;
+                                  }
+                                } else {
+                                  composeBodyRef.current.innerHTML += emoji;
+                                }
+                                setComposeBody(composeBodyRef.current.innerHTML);
+                              } else {
+                                setComposeBody((prev) => prev + emoji);
+                              }
+                              setComposeEmojiOpen(false);
+                            }}
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                  </div>  {/* toolbar content */}
+                {composeAttachmentsPreview}
+              </div>
+          </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

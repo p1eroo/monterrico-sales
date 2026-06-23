@@ -4,6 +4,7 @@ import { PassportModule } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { GoogleOauthStrategy } from './strategies/google-oauth.strategy';
 import { PermissionsGuard } from './guards/permissions.guard';
 import { JWT_SECRET } from './auth.constants';
 import { MediaModule } from '../media/media.module';
@@ -20,7 +21,7 @@ import { CrmDataScopeService } from './crm-data-scope.service';
     MediaModule,
     ActivityLogsModule,
   ],
-  providers: [AuthService, JwtStrategy, PermissionsGuard, CrmDataScopeService],
+  providers: [AuthService, JwtStrategy, GoogleOauthStrategy, PermissionsGuard, CrmDataScopeService],
   controllers: [AuthController],
   exports: [AuthService, JwtModule, PermissionsGuard, CrmDataScopeService],
 })

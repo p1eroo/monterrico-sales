@@ -50,6 +50,7 @@ const MarketingDashboard = lazy(() => import('@/pages/marketing/MarketingDashboa
 const MarketingLeads = lazy(() => import('@/pages/marketing/MarketingLeads'));
 const MarketingIntegrations = lazy(() => import('@/pages/marketing/MarketingIntegrations'));
 const AreaSelect = lazy(() => import('@/pages/AreaSelect'));
+const GoogleAuthCallback = lazy(() => import('@/pages/GoogleAuthCallback'));
 
 function LoadingFallback() {
   return (
@@ -109,6 +110,10 @@ function MainRoutes() {
             <Register />
           </PublicRoute>
         }
+      />
+      <Route
+        path="/auth/callback"
+        element={<GoogleAuthCallback />}
       />
       <Route
         path="/privacy-policy"

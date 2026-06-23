@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { User, Building2, Briefcase } from 'lucide-react';
+import { User, Building2, Briefcase, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CalendarEvent } from '@/types';
 import { eventTypeConfig } from './eventTypeConfig';
@@ -37,12 +37,12 @@ export function CalendarEventCard({ event, compact, onClick, className }: Calend
         onKeyDown={(e) => e.key === 'Enter' && onClick?.()}
         className={cn(
           'flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs transition-all hover:bg-muted/60 dark:hover:shadow-sm',
-          config.bgColor,
+          event.assignedTo === 'google' ? 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300' : config.bgColor,
           config.color,
           className,
         )}
       >
-        <Icon className="size-3.5 shrink-0" />
+        {event.assignedTo === 'google' ? <Calendar className="size-3.5 shrink-0" /> : <Icon className="size-3.5 shrink-0" />}
         <span className="truncate font-medium">{event.title}</span>
         <span className="shrink-0 text-[10px] opacity-80">{event.startTime}</span>
       </div>
@@ -61,8 +61,8 @@ export function CalendarEventCard({ event, compact, onClick, className }: Calend
       )}
     >
       <div className="flex items-start gap-2">
-        <div className={cn('flex size-8 shrink-0 items-center justify-center rounded-lg', config.bgColor, config.color)}>
-          <Icon className="size-4" />
+        <div className={cn('flex size-8 shrink-0 items-center justify-center rounded-lg', event.assignedTo === 'google' ? 'bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-300' : config.bgColor, event.assignedTo === 'google' ? 'text-blue-600' : config.color)}>
+          {event.assignedTo === 'google' ? <Calendar className="size-4" /> : <Icon className="size-4" />}
         </div>
         <div className="min-w-0 flex-1">
           <p className="font-medium text-sm truncate">{event.title}</p>
@@ -103,7 +103,16 @@ export function CalendarEventCard({ event, compact, onClick, className }: Calend
               ) : null}
             </div>
           )}
-          <p className="text-xs text-muted-foreground mt-1">{event.assignedToName}</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {event.assignedTo === 'google' ? (
+              <span className="inline-flex items-center gap-1">
+                <Calendar className="size-3" />
+                {event.assignedToName}
+              </span>
+            ) : (
+              event.assignedToName
+            )}
+          </p>
         </div>
       </div>
     </div>

@@ -68,6 +68,8 @@ export interface TaskFormDialogProps {
   defaultTitle?: string;
   /** Estado inicial al abrir (p. ej. columna Kanban desde la que se creó la tarea). */
   defaultStatus?: TaskFormStatus;
+  /** Fecha de inicio predefinida */
+  defaultStartDate?: string;
   /** Vínculos prellenados (p. ej. tarea de seguimiento tras completar otra). */
   defaultAssociations?: TaskAssociation[];
   onSave: (task: TaskFormResult) => void | Promise<void>;
@@ -89,6 +91,7 @@ export function TaskFormDialog({
   defaultAssigneeId = '',
   defaultTitle = '',
   defaultStatus,
+  defaultStartDate,
   defaultAssociations,
   onSave,
   optimisticClose = false,
@@ -96,7 +99,7 @@ export function TaskFormDialog({
   const { users, activeAdvisors } = useUsers();
 
   function getDefaultStartDate() {
-    return new Date().toISOString().slice(0, 10);
+    return defaultStartDate ?? new Date().toISOString().slice(0, 10);
   }
   /** Límite sugerida: una semana después de hoy (evita prellenar hoy en fecha límite). */
   function getDefaultDueDate() {
@@ -128,7 +131,7 @@ export function TaskFormDialog({
         defaultAssociations?.length ? defaultAssociations.map((a) => ({ ...a })) : [],
       );
     }
-  }, [open, defaultTitle, defaultStatus, defaultAssociations]);
+  }, [open, defaultTitle, defaultStatus, defaultStartDate, defaultAssociations]);
 
   const assocCounts = {
     contactos: contacts.length,

@@ -50,9 +50,9 @@ interface AppState {
     activityAlerts: boolean;
   };
   updatePreferences: (data: Partial<AppState['preferences']>) => void;
-  /** Gmail conectado (mock - luego vendrá del backend) */
-  gmailConnected: boolean;
-  setGmailConnected: (v: boolean) => void;
+  /** Google conectado (Gmail + Calendar comparten el mismo Account) */
+  googleConnected: boolean;
+  setGoogleConnected: (v: boolean) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -111,8 +111,8 @@ export const useAppStore = create<AppState>()(
         set((s) => ({
           preferences: { ...s.preferences, ...data },
         })),
-      gmailConnected: false,
-      setGmailConnected: (v) => set({ gmailConnected: v }),
+      googleConnected: false,
+      setGoogleConnected: (v) => set({ googleConnected: v }),
     }),
     {
       name: 'campaign-store',
@@ -121,7 +121,7 @@ export const useAppStore = create<AppState>()(
         currentUser: s.currentUser,
         permissionKeys: s.permissionKeys,
         preferences: s.preferences,
-        gmailConnected: s.gmailConnected,
+        googleConnected: s.googleConnected,
         isAuthenticated: s.isAuthenticated,
         area: s.area,
       }),

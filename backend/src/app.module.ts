@@ -30,6 +30,8 @@ import { FlotaProspectosModule } from './flota-prospectos/flota-prospectos.modul
 import { ApolloModule } from './apollo/apollo.module';
 import { FacebookLeadsModule } from './facebook-leads/facebook-leads.module';
 import { ChatwootModule } from './chatwoot/chatwoot.module';
+import { GmailModule } from './gmail/gmail.module';
+import { GoogleCalendarModule } from './google-calendar/google-calendar.module';
 
 @Module({
   imports: [
@@ -73,6 +75,8 @@ import { ChatwootModule } from './chatwoot/chatwoot.module';
     ApolloModule,
     FacebookLeadsModule,
     ChatwootModule,
+    GmailModule,
+    GoogleCalendarModule,
   ],
   controllers: [AppController],
   providers: [
