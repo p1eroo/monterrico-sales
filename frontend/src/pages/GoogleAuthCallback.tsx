@@ -24,7 +24,13 @@ export default function GoogleAuthCallback() {
     }
 
     if (error) {
-      setErrorMsg(error === 'no_state' ? 'Error de conexión: falta estado de verificación' : error);
+      if (error === 'no_state') {
+        setErrorMsg('Error de conexión: falta estado de verificación');
+      } else if (error === 'link_failed') {
+        setErrorMsg('No se pudo vincular tu cuenta de Google. Intenta de nuevo desde Integraciones.');
+      } else {
+        setErrorMsg(error);
+      }
       setStatus('error');
       return;
     }

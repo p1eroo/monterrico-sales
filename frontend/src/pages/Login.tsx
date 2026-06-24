@@ -315,6 +315,11 @@ export default function LoginPage() {
             {error && <p className="text-sm text-destructive">{error}</p>}
           </form>
         </div>
+        <div className="mt-8 text-center text-xs text-muted-foreground">
+          <a href="/privacy-policy" className="hover:text-foreground transition-colors">Política de Privacidad</a>
+          <span className="mx-2">·</span>
+          <a href="/terms-of-service" className="hover:text-foreground transition-colors">Términos del Servicio</a>
+        </div>
       </div>
     </div>
   );

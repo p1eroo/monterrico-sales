@@ -157,28 +157,10 @@ export class AuthController {
       if (success) {
         return res.redirect(`${frontendUrl}/auth/callback?connected=true`);
       }
-    } catch {}
-    // Fallback: create new user (existing flow)
-    const { google } = require('googleapis');
-    const oauth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-      process.env.GOOGLE_REDIRECT_URI,
-    );
-    const { tokens } = await oauth2Client.getToken(code);
-    oauth2Client.setCredentials(tokens);
-    const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
-    const profile = await gmail.users.getProfile({ userId: 'me' });
-    const googleUser = {
-      googleId: profile.data.emailAddress ?? code.slice(0, 10),
-      email: profile.data.emailAddress ?? '',
-      firstName: '',
-      lastName: '',
-      accessToken: tokens.access_token ?? '',
-      refreshToken: tokens.refresh_token ?? '',
-    };
-    const jwt = await this.authService.googleLogin(googleUser);
-    res.redirect(`${frontendUrl}/auth/callback?token=${jwt.accessToken}`);
+      return res.redirect(`${frontendUrl}/auth/callback?error=link_failed`);
+    } catch {
+      return res.redirect(`${frontendUrl}/auth/callback?error=link_failed`);
+    }
   }
 
   @Public()

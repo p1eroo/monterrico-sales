@@ -543,7 +543,7 @@ export class AuthService {
     const state = require('crypto').randomBytes(32).toString('hex');
     this.pendingGoogleStates.set(state, {
       userId: payload.sub,
-      expiresAt: Date.now() + 5 * 60 * 1000, // 5 min
+      expiresAt: Date.now() + 15 * 60 * 1000, // 15 min
     });
     return state;
   }
