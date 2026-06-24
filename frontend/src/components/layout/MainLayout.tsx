@@ -150,11 +150,6 @@ export default function MainLayout() {
         onDontShowAgainChange={setDontShowAgainToday}
       />
       <AiAssistantDrawer />
-      <footer className="shrink-0 border-t px-6 py-2 text-center text-xs text-muted-foreground">
-        <a href="/privacy-policy" className="hover:text-foreground transition-colors">Política de Privacidad</a>
-        <span className="mx-2">·</span>
-        <a href="/terms-of-service" className="hover:text-foreground transition-colors">Términos del Servicio</a>
-      </footer>
     </SidebarProvider>
     </div>
   );
