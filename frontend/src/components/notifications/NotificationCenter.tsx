@@ -35,7 +35,7 @@ export function NotificationCenter() {
     <Button
       variant="ghost"
       size="icon-sm"
-      className="relative text-muted-foreground"
+      className="relative text-muted-foreground hover:text-[#13944C] hover:bg-[#13944C]/10"
     >
       <Bell className="size-4" />
       {unreadCount > 0 && (

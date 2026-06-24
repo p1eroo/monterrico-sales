@@ -797,7 +797,7 @@ function OpportunitiesTable({
   return (
     <div className="overflow-auto rounded-[14px] bg-card shadow-[0_8px_24px_rgba(15,23,42,0.06)] scrollbar-thin max-h-[calc(100vh-22rem)] max-w-full">
       <Table>
-        <TableHeader className="sticky top-0 z-10 bg-background">
+        <TableHeader className="sticky top-0 z-10">
           <TableRow>
             <TableHead className="min-w-0 max-w-[20rem]">Nombre</TableHead>
             <TableHead className="hidden min-w-0 max-w-[16rem] md:table-cell">

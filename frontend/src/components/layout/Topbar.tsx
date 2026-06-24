@@ -1,16 +1,16 @@
-import { useLocation, useNavigate } from 'react-router-dom';
-import { User, Settings, LogOut, Car, LayoutDashboard } from 'lucide-react';
-import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Separator } from '@/components/ui/separator';
+import { useLocation, useNavigate } from "react-router-dom";
+import { User, Settings, LogOut, Car, LayoutDashboard } from "lucide-react";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { Separator } from "@/components/ui/separator";
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+} from "@/components/ui/breadcrumb";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,88 +19,100 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+} from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { useAppStore } from '@/store';
-import { initialsFromName } from '@/lib/utils';
-import { NotificationCenter } from '@/components/notifications/NotificationCenter';
-import { ThemeToggle } from '@/components/shared/ThemeToggle';
-import { AssistantLauncherButton } from '@/components/assistant/AiAssistantDrawer';
-import FlotaNotificationBell from '@/components/flota/FlotaNotificationBell';
+} from "@/components/ui/select";
+import { useAppStore } from "@/store";
+import { initialsFromName } from "@/lib/utils";
+import { AvatarImage } from "@/lib/avatar";
+import { NotificationCenter } from "@/components/notifications/NotificationCenter";
+import { ThemeToggle } from "@/components/shared/ThemeToggle";
+import { AssistantLauncherButton } from "@/components/assistant/AiAssistantDrawer";
+import FlotaNotificationBell from "@/components/flota/FlotaNotificationBell";
 
 const routeLabels: Record<string, string> = {
-  '/dashboard': 'Dashboard',
-  '/contactos': 'Contactos',
-  '/empresas': 'Empresas',
-  '/pipeline': 'Pipeline',
-  '/tareas': 'Tareas',
-  '/calendario': 'Calendario',
-  '/inbox': 'Correo',
-  '/campaigns': 'Masivo',
-  '/opportunities': 'Oportunidades',
-  '/clients': 'Clientes',
-  '/reports': 'Reportes',
-  '/team': 'Equipo',
-  '/users': 'Usuarios y Roles',
-  '/audit': 'Auditoría',
-  '/profile': 'Mi perfil',
-  '/settings': 'Configuración',
-  '/agentes-ia': 'Agentes IA',
+  "/dashboard": "Dashboard",
+  "/contactos": "Contactos",
+  "/empresas": "Empresas",
+  "/pipeline": "Pipeline",
+  "/tareas": "Tareas",
+  "/calendario": "Calendario",
+  "/inbox": "Correo",
+  "/campaigns": "Masivo",
+  "/opportunities": "Oportunidades",
+  "/clients": "Clientes",
+  "/reports": "Reportes",
+  "/team": "Equipo",
+  "/users": "Usuarios y Roles",
+  "/audit": "Auditoría",
+  "/profile": "Mi perfil",
+  "/settings": "Configuración",
+  "/agentes-ia": "Agentes IA",
+  "/integraciones/apollo": "Apollo",
 };
 
 export function Topbar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { currentUser, logout, area, setArea } = useAppStore();
-  const isAdmin = currentUser.role === 'Administrador' || currentUser.role === 'admin';
+  const isAdmin =
+    currentUser.role === "Administrador" || currentUser.role === "admin";
 
   const currentRoute = Object.keys(routeLabels).find((route) =>
     location.pathname.startsWith(route),
   );
-  const pageTitle = currentRoute ? routeLabels[currentRoute] : 'Página';
+  const pageTitle = currentRoute ? routeLabels[currentRoute] : "Página";
 
   const initials = initialsFromName(currentUser.name);
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate("/login");
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 min-w-0 shrink-0 items-center gap-3 px-6 md:px-8">
+    <header className="sticky top-0 z-30 flex h-14 min-w-0 shrink-0 items-center gap-3 border-b px-6 md:px-8">
       <SidebarTrigger className="-ml-1 text-text-secondary hover:bg-surface-hover hover:text-foreground md:hidden" />
-      <Separator orientation="vertical" className="h-5 bg-border/80 md:hidden" />
+      <Separator
+        orientation="vertical"
+        className="h-5 bg-border/80 md:hidden"
+      />
 
       <Breadcrumb className="hidden min-w-0 flex-1 text-base sm:flex">
         <BreadcrumbList>
           <BreadcrumbItem>
-            <BreadcrumbPage className="text-text-secondary">Taxi Monterrico</BreadcrumbPage>
+            <BreadcrumbPage className="text-muted-foreground">CRM</BreadcrumbPage>
           </BreadcrumbItem>
-          <BreadcrumbSeparator />
+          <BreadcrumbSeparator>/</BreadcrumbSeparator>
           <BreadcrumbItem>
-            <BreadcrumbPage className="text-foreground">{pageTitle}</BreadcrumbPage>
+            <BreadcrumbPage className="text-[#13944C] font-medium">
+              {pageTitle}
+            </BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
 
       <div className="ml-auto flex items-center gap-2">
-        {area === 'comercial' && (
+        {area === "comercial" && (
           <>
-            <NotificationCenter />
             <AssistantLauncherButton />
+            <div className="mx-1.5 h-5 w-px bg-foreground/20" />
+            <NotificationCenter />
           </>
         )}
-        {area === 'flota' && <FlotaNotificationBell />}
+        {area === "flota" && <FlotaNotificationBell />}
 
         <ThemeToggle />
 
-        <Separator orientation="vertical" className="-mx-0.5 h-5 bg-border/80" />
+        <Separator
+          orientation="vertical"
+          className="-mx-0.5 h-5 bg-border/80"
+        />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -108,12 +120,13 @@ export function Topbar() {
               variant="ghost"
               className="h-8 gap-2 px-2 text-base font-normal text-text-secondary hover:bg-surface-hover hover:text-foreground"
             >
-              <Avatar className="size-7">
-                <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">
-                  {initials}
-                </AvatarFallback>
+              <Avatar className="size-9">
+                <AvatarImage
+                  name={currentUser.name}
+                  avatar={currentUser.avatar}
+                  size={36}
+                />
               </Avatar>
-              <span className="hidden md:inline-block">{currentUser.name}</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
@@ -124,20 +137,17 @@ export function Topbar() {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem onClick={() => navigate('/profile')}>
+              <DropdownMenuItem onClick={() => navigate("/profile")}>
                 <User />
                 <span>Perfil</span>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate('/settings')}>
+              <DropdownMenuItem onClick={() => navigate("/settings")}>
                 <Settings />
                 <span>Configuración</span>
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              variant="destructive"
-              onClick={handleLogout}
-            >
+            <DropdownMenuItem variant="destructive" onClick={handleLogout}>
               <LogOut />
               <span>Cerrar sesión</span>
             </DropdownMenuItem>

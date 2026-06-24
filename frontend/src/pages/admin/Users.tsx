@@ -35,6 +35,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { AvatarImage } from '@/lib/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
@@ -492,11 +493,7 @@ export default function UsersPage() {
                     <TableRow key={u.id}>
                       <TableCell>
                         <Avatar className="size-8">
-                          <AvatarFallback
-                            className={`text-xs ${getAvatarColor(u.name)}`}
-                          >
-                            {getInitials(u.name)}
-                          </AvatarFallback>
+                          <AvatarImage name={u.name} avatar={u.avatar} size={32} />
                         </Avatar>
                       </TableCell>
                       <TableCell className="font-medium">{u.name}</TableCell>

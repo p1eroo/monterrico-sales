@@ -1054,7 +1054,7 @@ export default function EmpresasPage() {
                   containerClassName="overflow-visible"
                   className="w-max min-w-full text-sm"
                 >
-<TableHeader className="sticky top-0 z-10 bg-background">
+<TableHeader className="sticky top-0 z-10">
                     <TableRow className="hover:bg-transparent">
                       <TableHead className="sticky left-0 z-20 w-12 min-w-12 whitespace-nowrap bg-background px-2 shadow-[2px_0_6px_-4px_rgba(0,0,0,0.25)]">
                         Fila

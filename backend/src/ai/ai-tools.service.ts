@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '../generated/prisma';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmbeddingsService } from './embeddings.service';
+import { ApolloService } from '../apollo/apollo.service';
 
 function clampIntArg(
   raw: unknown,
@@ -32,6 +33,7 @@ export class AiToolsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly embeddingsService: EmbeddingsService,
+    private readonly apollo: ApolloService,
   ) {}
 
   async userHasPermission(
@@ -493,6 +495,82 @@ export class AiToolsService {
     };
   }
 
+  async apolloSearchPeople(userId: string, args: Record<string, unknown>) {
+    if (!(await this.userHasPermission(userId, 'contactos.ver'))) {
+      return { error: 'Sin permiso para buscar en Apollo' };
+    }
+    const result = await this.apollo.searchPeople({
+      query: args.query as string,
+      title: args.title as string,
+      company: args.company as string,
+      industry: args.industry as string,
+      location: args.location as string,
+      emailStatus: args.emailStatus as string,
+      employeeMin: args.employeeMin as string,
+      employeeMax: args.employeeMax as string,
+      perPage: typeof args.limit === 'number' ? Math.min(args.limit, 25) : 10,
+    });
+    const params = new URLSearchParams();
+    params.set('tab', 'personas');
+    if (args.query) params.set('query', String(args.query));
+    if (args.title) params.set('title', String(args.title));
+    if (args.company) params.set('company', String(args.company));
+    if (args.industry) params.set('industry', String(args.industry));
+    if (args.location) params.set('location', String(args.location));
+    return {
+      summary: `Se encontraron ${result.total} personas en Apollo.io. Puedes ver los resultados completos en la sección Apollo del CRM.`,
+      results: result.results.slice(0, 10).map((p) => ({
+        name: p.name,
+        title: p.title,
+        email: p.email,
+        phone: p.phone,
+        company: p.organization?.name || '',
+        industry: p.organization?.industry || '',
+        location: [p.organization?.location?.city, p.organization?.location?.country].filter(Boolean).join(', '),
+      })),
+      total: result.total,
+      _link: { label: 'Ver en Apollo', href: `/integraciones/apollo?${params.toString()}` },
+    };
+  }
+
+  async apolloSearchCompanies(userId: string, args: Record<string, unknown>) {
+    if (!(await this.userHasPermission(userId, 'contactos.ver'))) {
+      return { error: 'Sin permiso para buscar en Apollo' };
+    }
+    const result = await this.apollo.searchCompanies({
+      query: args.query as string,
+    });
+    const params = new URLSearchParams();
+    params.set('tab', 'empresas');
+    if (args.query) params.set('query', String(args.query));
+    return {
+      summary: `Se encontraron ${result.total} empresas en Apollo.io. Puedes ver los resultados completos en la sección Apollo del CRM.`,
+      results: result.results.slice(0, 10).map((c) => ({
+        name: c.name,
+        industry: c.industry,
+        city: c.city,
+        country: c.country,
+        employee_count: c.employee_count,
+        website: c.website,
+      })),
+      total: result.total,
+      actionUrl: `/integraciones/apollo?${params.toString()}`,
+    };
+  }
+
+  async apolloMatchPeople(userId: string, args: Record<string, unknown>) {
+    if (!(await this.userHasPermission(userId, 'contactos.ver'))) {
+      return { error: 'Sin permiso para buscar en Apollo' };
+    }
+    const emails = Array.isArray(args.emails) ? args.emails.map(String) : [];
+    if (emails.length === 0) return { error: 'Se requiere al menos un email' };
+    const result = await this.apollo.matchPeople({ emails });
+    return {
+      summary: `Se encontraron ${result.total} coincidencias en Apollo.io.`,
+      results: result.results.slice(0, 10),
+    };
+  }
+
   async executeTool(
     name: string,
     args: Record<string, unknown>,
@@ -554,6 +632,12 @@ export class AiToolsService {
               : '';
         return this.searchMyKnowledge(userId, q);
       }
+      case 'apollo_search_people':
+        return this.apolloSearchPeople(userId, args);
+      case 'apollo_search_companies':
+        return this.apolloSearchCompanies(userId, args);
+      case 'apollo_match_people':
+        return this.apolloMatchPeople(userId, args);
       default:
         return { error: `Herramienta desconocida: ${name}` };
     }

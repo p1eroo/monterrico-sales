@@ -1030,11 +1030,12 @@ export function AssistantLauncherButton({
       <TooltipTrigger asChild>
         <Button
           type="button"
-          variant={isOpen ? 'secondary' : 'ghost'}
+          variant="ghost"
           size="sm"
           className={cn(
-            'relative gap-1.5 px-2 text-muted-foreground',
-            isOpen && 'text-[#13944C]',
+            'gap-1.5 px-2 text-white border-0',
+            'bg-[#0d9488] hover:bg-[#0f766e]',
+            isOpen && 'text-white border-0 bg-[#0f766e]',
             className,
           )}
           onClick={() => {

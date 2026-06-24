@@ -27,6 +27,7 @@ import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { AvatarImage } from '@/lib/avatar';
 import { formatDateTime } from '@/lib/formatters';
 import {
   api,
@@ -299,13 +300,7 @@ export default function ProfilePage() {
                   className="relative group"
                 >
                   <Avatar className="size-20 border-4 border-[#13944C]/20">
-                    {currentUser.avatar ? (
-                      <img src={currentUser.avatar} alt="" className="size-full object-cover" />
-                    ) : (
-                      <AvatarFallback className="bg-[#13944C]/10 text-[#13944C] text-xl">
-                        {initials}
-                      </AvatarFallback>
-                    )}
+                    <AvatarImage name={currentUser.name} avatar={currentUser.avatar} size={80} />
                   </Avatar>
                   <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
                     <Camera className="size-6 text-white" />

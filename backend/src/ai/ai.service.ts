@@ -328,6 +328,58 @@ const CRM_TOOLS: Record<string, unknown>[] = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'apollo_search_people',
+      description: 'Busca personas/leads en Apollo.io por nombre, cargo, empresa, industria o ubicación. Útil para prospectar nuevos contactos comerciales.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'Palabras clave de búsqueda' },
+          title: { type: 'string', description: 'Cargo(s) separados por coma (ej: CEO,Gerente)' },
+          company: { type: 'string', description: 'Nombre de empresa' },
+          industry: { type: 'string', description: 'Industria' },
+          location: { type: 'string', description: 'Ubicación geográfica' },
+          employeeMin: { type: 'string', description: 'Mínimo de empleados' },
+          employeeMax: { type: 'string', description: 'Máximo de empleados' },
+          limit: { type: 'number', description: 'Cantidad de resultados (max 25)' },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'apollo_search_companies',
+      description: 'Busca empresas en Apollo.io por nombre. Devuelve industria, ubicación, empleados y web.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'Nombre de empresa a buscar' },
+        },
+        required: ['query'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'apollo_match_people',
+      description: 'Enriquece contactos existentes buscándolos en Apollo.io por email. Devuelve teléfono, cargo, LinkedIn, etc.',
+      parameters: {
+        type: 'object',
+        properties: {
+          emails: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Lista de emails a buscar en Apollo',
+          },
+        },
+        required: ['emails'],
+      },
+    },
+  },
 ];
 
 type OpenAiChatMessage = {
@@ -1066,6 +1118,7 @@ ${TECHNICAL_APPENDIX_CHAT_TOOLS}`;
 
     let toolChoice: 'auto' | 'none' = 'auto';
     let lastToolFingerprint: string | null = null;
+    const accumulatedLinks: { label: string; href: string }[] = [];
     const maxIterations = 12;
 
     for (let iter = 0; iter < maxIterations; iter++) {
@@ -1199,6 +1252,7 @@ ${TECHNICAL_APPENDIX_CHAT_TOOLS}`;
           content: msg.content ?? null,
           tool_calls: msg.tool_calls,
         });
+        const toolLinks: { label: string; href: string }[] = [];
         for (const tc of toolCalls) {
           if (tc.type !== 'function') continue;
           let args: Record<string, unknown> = {};
@@ -1215,10 +1269,14 @@ ${TECHNICAL_APPENDIX_CHAT_TOOLS}`;
             args,
             user.userId,
           );
+          if (result._link && typeof result._link === 'object') {
+            const l = result._link as { label?: string; href?: string };
+            if (l.label && l.href) accumulatedLinks.push({ label: l.label, href: l.href });
+          }
           messages.push({
             role: 'tool',
             tool_call_id: tc.id,
-            content: JSON.stringify(result),
+            content: JSON.stringify(result._link ? { ...result, _link: undefined } : result),
           });
         }
         continue;
@@ -1229,6 +1287,9 @@ ${TECHNICAL_APPENDIX_CHAT_TOOLS}`;
         throw new Error('Respuesta vacía del modelo');
       }
       const reply = this.parseAiJsonContent(content);
+      if (accumulatedLinks.length > 0) {
+        reply.links = [...(reply.links ?? []), ...accumulatedLinks];
+      }
       this.logger.log(
         JSON.stringify({
           event: 'ai.openai.response_ok',
