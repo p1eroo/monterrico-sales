@@ -80,3 +80,10 @@ export async function apolloEnrichPerson(personId: string): Promise<ApolloPerson
     body: JSON.stringify({ personId }),
   });
 }
+
+export async function batchCheckCompanies(items: { name: string; domain?: string }[]): Promise<{ results: { name: string; companyId: string; matchedBy: string }[] }> {
+  return api('/companies/batch-check', {
+    method: 'POST',
+    body: JSON.stringify({ items }),
+  });
+}

@@ -699,7 +699,7 @@ export function AiAssistantDrawer() {
                 {messages.length === 0 && !sending && (
                   <div className="rounded-xl border border-dashed border-border/80 bg-muted/30 p-4 text-center">
                     <MessageSquare className="mx-auto mb-2 size-8 text-[#13944C]/80" />
-                    <p className="text-sm font-medium text-foreground">
+                    <p className="text-xs font-medium text-foreground">
                       Hola 👋 Soy tu asistente.
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
@@ -751,7 +751,7 @@ export function AiAssistantDrawer() {
                         {m.role === 'assistant' ? (
                           <AssistantMessageBody text={disp.text} />
                         ) : (
-                          <p className="whitespace-pre-wrap break-words text-sm">
+                          <p className="whitespace-pre-wrap break-words text-xs">
                             {m.displayContent ?? m.content}
                           </p>
                         )}
@@ -764,10 +764,10 @@ export function AiAssistantDrawer() {
                                 <button
                                   key={link.href + link.label}
                                   type="button"
-                                  className="text-left text-xs font-medium text-[#13944C] underline-offset-2 hover:underline"
+                                  className="self-start rounded-md bg-[#13944C] px-3 py-1 text-xs font-medium text-white hover:bg-[#0f7a3d]"
                                   onClick={() => navigate(link.href)}
                                 >
-                                  👉 {link.label}
+                                  {link.label}
                                 </button>
                               ))}
                             </div>
@@ -843,7 +843,7 @@ export function AiAssistantDrawer() {
                       )}
                     >
                       {streamBuffer.length === 0 ? (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <Loader2 className="size-4 animate-spin text-[#13944C]" />
                           <span>Escribiendo…</span>
                         </div>

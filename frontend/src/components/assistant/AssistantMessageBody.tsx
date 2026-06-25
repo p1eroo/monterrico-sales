@@ -17,7 +17,7 @@ function renderInline(s: string): React.ReactNode {
 export function AssistantMessageBody({ text }: { text: string }) {
   const lines = text.split('\n');
   return (
-    <div className="space-y-1.5 text-sm leading-relaxed whitespace-pre-wrap break-words">
+    <div className="space-y-1.5 text-xs leading-relaxed whitespace-pre-wrap break-words">
       {lines.map((line, i) => {
         const trimmed = line.trim();
         if (trimmed.startsWith('- ') || trimmed.startsWith('• ')) {

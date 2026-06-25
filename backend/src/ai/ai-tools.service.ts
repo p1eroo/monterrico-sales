@@ -518,18 +518,12 @@ export class AiToolsService {
     if (args.industry) params.set('industry', String(args.industry));
     if (args.location) params.set('location', String(args.location));
     return {
-      summary: `Se encontraron ${result.total} personas en Apollo.io. Puedes ver los resultados completos en la sección Apollo del CRM.`,
-      results: result.results.slice(0, 10).map((p) => ({
-        name: p.name,
-        title: p.title,
-        email: p.email,
-        phone: p.phone,
-        company: p.organization?.name || '',
-        industry: p.organization?.industry || '',
-        location: [p.organization?.location?.city, p.organization?.location?.country].filter(Boolean).join(', '),
-      })),
+      summary: `Se encontraron ${result.total} personas en Apollo.io.`,
       total: result.total,
-      _link: { label: 'Ver en Apollo', href: `/integraciones/apollo?${params.toString()}` },
+      _links: [
+        { label: 'Listar', href: `/integraciones/apollo?${params.toString()}` },
+        { label: 'Guardar búsqueda', href: `/integraciones/apollo?${params.toString()}&save=true` },
+      ],
     };
   }
 
@@ -544,17 +538,12 @@ export class AiToolsService {
     params.set('tab', 'empresas');
     if (args.query) params.set('query', String(args.query));
     return {
-      summary: `Se encontraron ${result.total} empresas en Apollo.io. Puedes ver los resultados completos en la sección Apollo del CRM.`,
-      results: result.results.slice(0, 10).map((c) => ({
-        name: c.name,
-        industry: c.industry,
-        city: c.city,
-        country: c.country,
-        employee_count: c.employee_count,
-        website: c.website,
-      })),
+      summary: `Se encontraron ${result.total} empresas en Apollo.io.`,
       total: result.total,
-      actionUrl: `/integraciones/apollo?${params.toString()}`,
+      _links: [
+        { label: 'Listar', href: `/integraciones/apollo?${params.toString()}` },
+        { label: 'Guardar búsqueda', href: `/integraciones/apollo?${params.toString()}&save=true` },
+      ],
     };
   }
 

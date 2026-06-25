@@ -1273,6 +1273,11 @@ ${TECHNICAL_APPENDIX_CHAT_TOOLS}`;
             const l = result._link as { label?: string; href?: string };
             if (l.label && l.href) accumulatedLinks.push({ label: l.label, href: l.href });
           }
+          if (Array.isArray(result._links)) {
+            for (const l of result._links as Array<{ label?: string; href?: string }>) {
+              if (l.label && l.href) accumulatedLinks.push({ label: l.label, href: l.href });
+            }
+          }
           messages.push({
             role: 'tool',
             tool_call_id: tc.id,

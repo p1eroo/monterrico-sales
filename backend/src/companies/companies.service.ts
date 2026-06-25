@@ -406,6 +406,57 @@ export class CompaniesService {
     return this.findOne(company.id, scope);
   }
 
+  async batchCheckNames(
+    items: { name: string; domain?: string }[],
+    scope?: CrmDataScope,
+  ) {
+    const domains = items.map((i) => i.domain).filter(Boolean) as string[];
+    const names = items.map((i) => i.name);
+
+    const matched: { name: string; companyId: string; matchedBy: string }[] = [];
+
+    // 1. Buscar por dominio
+    if (domains.length > 0) {
+      const byDomain = await this.prisma.company.findMany({
+        where: {
+          domain: { in: domains },
+          ...(scope?.viewerUserId ? { assignedTo: scope.viewerUserId } : {}),
+        },
+        select: { id: true, name: true, domain: true },
+      });
+      for (const item of items) {
+        if (!item.domain) continue;
+        const found = byDomain.find((c) => c.domain === item.domain);
+        if (found) {
+          matched.push({ name: item.name, companyId: found.id, matchedBy: 'domain' });
+        }
+      }
+    }
+
+    // 2. Para los que no se matchearon por dominio, buscar por nombre
+    const alreadyMatched = new Set(matched.map((m) => m.name));
+    const unmatched = names.filter((n) => !alreadyMatched.has(n));
+    if (unmatched.length > 0) {
+      const byName = await this.prisma.company.findMany({
+        where: {
+          name: { in: unmatched },
+          ...(scope?.viewerUserId ? { assignedTo: scope.viewerUserId } : {}),
+        },
+        select: { id: true, name: true },
+      });
+      const byNameIds = new Set(byName.map((c) => c.name));
+      for (const item of items) {
+        if (alreadyMatched.has(item.name)) continue;
+        if (byNameIds.has(item.name)) {
+          const found = byName.find((c) => c.name === item.name)!;
+          matched.push({ name: item.name, companyId: found.id, matchedBy: 'name' });
+        }
+      }
+    }
+
+    return { results: matched };
+  }
+
   async findAll(
     opts?: {
       page?: number;

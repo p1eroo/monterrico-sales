@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, Download, Sparkles, Building2, MapPin, ChevronLeft, ChevronRight, Loader2, Check, Bookmark, Trash2, Plus, SlidersHorizontal } from 'lucide-react';
+import { Search, Download, Building2, ChevronLeft, ChevronRight, Loader2, Check, Bookmark, Trash2, Plus, SlidersHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,7 +16,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import { apolloSearch, apolloCompaniesSearch, apolloEnrichPerson, type ApolloPerson, type ApolloCompany } from '@/lib/apolloApi';
+import { apolloSearch, apolloCompaniesSearch, apolloEnrichPerson, batchCheckCompanies, type ApolloPerson, type ApolloCompany } from '@/lib/apolloApi';
 import { contactCreate } from '@/lib/contactApi';
 import { loadSavedSearches, saveSearch, removeSavedSearch, type SavedSearch } from '@/lib/savedSearches';
 
@@ -60,11 +60,16 @@ export default function ApolloPage() {
   const [saveName, setSaveName] = useState('');
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [enrichedPersons, setEnrichedPersons] = useState<Record<string, { email: string; phone: string; linkedin_url: string }>>({});
+  const [companyCheckOpen, setCompanyCheckOpen] = useState(false);
+  const [companyCheckResults, setCompanyCheckResults] = useState<{ name: string; companyId: string; matchedBy: string }[]>([]);
+  const [companyCheckResolve, setCompanyCheckResolve] = useState<(() => void) | null>(null);
+  const [enrichedPersons, setEnrichedPersons] = useState<Record<string, { name?: string; email: string; phone: string; linkedin_url: string }>>(() => {
+    try { return JSON.parse(localStorage.getItem('apollo-enriched') || '{}'); } catch { return {}; }
+  });
   const [searchParams] = useSearchParams();
   const perPage = 25;
 
-  // Load search params from URL (from AI assistant action links)
+  // Load search params from URL + auto-search
   useEffect(() => {
     const tab = searchParams.get('tab');
     const q = searchParams.get('query');
@@ -73,10 +78,10 @@ export default function ApolloPage() {
     const industry = searchParams.get('industry');
     const location = searchParams.get('location');
     if (!q && !title && !company && !industry && !location) return;
+
     if (tab === 'empresas') {
       setActiveTab('empresas');
       setCompaniesQuery(q || '');
-      setTimeout(() => void handleCompaniesSearch(), 100);
     } else {
       setActiveTab('personas');
       setQuery(q || '');
@@ -84,10 +89,52 @@ export default function ApolloPage() {
       setLocationFilter(location ? [location] : []);
       if (title) setJobTitleFilters(title.split(',').map((t) => t.trim()).filter(Boolean));
       if (company) setCompanyFilters(company.split(',').map((c) => c.trim()).filter(Boolean));
-      setTimeout(() => void searchWithParams({ query: q || undefined, title: title || undefined, company: company || undefined, industry: industry || undefined, location: location || undefined }), 100);
+    }
+
+    // Try loading from cache first
+    const cacheKey = tab === 'empresas'
+      ? `apollo-cache:${encodeURIComponent(`${q || ''}|||||||1`)}`
+      : `apollo-cache:${encodeURIComponent(`${q || ''}|${industry || ''}|${location ? [location].join() : ''}|${title ? title.split(',').join() : ''}|${company ? company.split(',').join() : ''}|all|||1`)}`;
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      try {
+        const data = JSON.parse(cached);
+        setApiResults(data.results);
+        setApiTotal(data.total);
+        setUsingMock(false);
+        setPage(1);
+      } catch { /* ignore */ }
+    } else {
+      // No cache → auto-search (AI already spent credits)
+      setLoading(true);
+      if (tab === 'empresas') {
+        setTimeout(() => void handleCompaniesSearch(), 100);
+      } else {
+        setTimeout(() => void handleApiSearch(), 100);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // only on mount
+  }, []);
+
+  // Auto-save search when arriving with ?save=true from AI assistant
+
+  // Auto-save search when arriving with ?save=true from AI assistant
+  useEffect(() => {
+    if (searchParams.get('save') !== 'true') return;
+    const tab = searchParams.get('tab') || 'personas';
+    const q = searchParams.get('query') || '';
+    const name = q ? `AI: ${q}` : `Búsqueda desde asistente`;
+    setTimeout(() => {
+      const updated = saveSearch({ name, type: tab === 'empresas' ? 'empresas' : 'personas', query: q || undefined });
+      setSavedSearches(updated);
+      toast.success(`Búsqueda guardada como "${name}"`);
+    }, 2000);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('apollo-enriched', JSON.stringify(enrichedPersons));
+  }, [enrichedPersons]);
 
   // Empresas state
   const [companiesQuery, setCompaniesQuery] = useState('');
@@ -129,38 +176,24 @@ export default function ApolloPage() {
   const totalPages = Math.ceil(filteredResults.length / perPage);
   const paginatedResults = filteredResults.slice((page - 1) * perPage, page * perPage);
 
-  async function searchWithParams(params: { query?: string; title?: string; company?: string; industry?: string; location?: string }) {
-    setLoading(true);
-    setError('');
-    try {
-      const res = await apolloSearch({
-        query: params.query || undefined,
-        industry: params.industry || undefined,
-        location: params.location || undefined,
-        title: params.title || undefined,
-        company: params.company || undefined,
-        page: 1,
-      });
-      setApiResults(res.results);
-      setApiTotal(res.total);
-      setUsingMock(false);
-      setPage(1);
-      const titles = [...new Set(res.results.map((p) => p.title).filter(Boolean))] as string[];
-      setSuggestedTitles((prev) => [...new Set([...prev, ...titles])].sort());
-      const companies = [...new Set(res.results.map((p) => p.organization?.name).filter(Boolean))] as string[];
-      setSuggestedCompanies((prev) => [...new Set([...prev, ...companies])].sort());
-      const locations = [...new Set(res.results.map((p) => [p.organization?.location?.city, p.organization?.location?.country].filter(Boolean).join(', ')).filter(Boolean))] as string[];
-      setSuggestedLocations((prev) => [...new Set([...prev, ...locations])].sort());
-    } catch (e) {
-      setApiResults(null);
-      setUsingMock(true);
-      setError(e instanceof Error ? e.message : 'Error al buscar en Apollo');
-    } finally {
-      setLoading(false);
-    }
+  function searchCacheKey(pageNum: number) {
+    const raw = `${query}|${industryFilter}|${locationFilter.join()}|${jobTitleFilters.join()}|${companyFilters.join()}|${emailStatus}|${employeeMin}|${employeeMax}|${pageNum}`;
+    return `apollo-cache:${encodeURIComponent(raw)}`;
   }
 
   async function handleApiSearch(newPage = 1) {
+    const cacheKey = searchCacheKey(newPage);
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      try {
+        const data = JSON.parse(cached);
+        setApiResults(data.results);
+        setApiTotal(data.total);
+        setPage(newPage);
+        return;
+      } catch { /* ignore cache error */ }
+    }
+
     setLoading(true);
     setError('');
     try {
@@ -175,6 +208,7 @@ export default function ApolloPage() {
         employeeMax: employeeMax || undefined,
         page: newPage,
       });
+      localStorage.setItem(cacheKey, JSON.stringify({ results: res.results, total: res.total }));
       setApiResults(res.results);
       setApiTotal(res.total);
       setUsingMock(false);
@@ -217,18 +251,58 @@ export default function ApolloPage() {
 
   async function handleImport() {
     if (selectedRows.length === 0) return;
+
+    // Check companies before importing
+    const companyMap = new Map<string, { name: string; domain?: string }>();
+    for (const row of selectedRows) {
+      if (!row.company) continue;
+      if (companyMap.has(row.company)) continue;
+      const enriched = enrichedPersons[row.id];
+      const domain = enriched?.email ? enriched.email.split('@')[1] : row.email ? row.email.split('@')[1] : undefined;
+      companyMap.set(row.company, { name: row.company, domain });
+    }
+    const items = Array.from(companyMap.values());
+    let existingCompanies: { name: string; companyId: string; matchedBy: string }[] = [];
+    if (items.length > 0) {
+      try {
+        const res = await batchCheckCompanies(items);
+        existingCompanies = res.results;
+      } catch { /* si falla, continuar sin validación */ }
+    }
+
+    if (existingCompanies.length > 0) {
+      setCompanyCheckResults(existingCompanies);
+      setCompanyCheckOpen(true);
+      setCompanyCheckResolve(() => async () => {
+        setCompanyCheckOpen(false);
+        await executeImport(existingCompanies);
+      });
+      return;
+    }
+
+    await executeImport([]);
+  }
+
+  async function executeImport(existingCompanies: { name: string; companyId: string }[]) {
+    const existingMap = new Map(existingCompanies.map((c) => [c.name, c.companyId]));
     setImporting(true);
     let success = 0;
     let failed = 0;
     for (const row of selectedRows) {
       try {
+        const enriched = enrichedPersons[row.id];
+        const companyId = row.company ? existingMap.get(row.company) : undefined;
         await contactCreate({
-          name: row.name,
-          correo: row.email || undefined,
-          telefono: row.phone || undefined,
+          name: enriched?.name || row.name,
+          correo: enriched?.email || row.email || undefined,
+          telefono: enriched?.phone || row.phone || undefined,
+          cargo: row.title || undefined,
           fuente: 'apollo',
-          etapa: 'nuevo',
-          companyName: row.company || undefined,
+          etapa: 'lead',
+          companyId: companyId || undefined,
+          newCompany: row.company && !companyId
+            ? { name: row.company }
+            : undefined,
         });
         success++;
       } catch {
@@ -251,18 +325,11 @@ export default function ApolloPage() {
       const data = await apolloEnrichPerson(personId);
       setEnrichedPersons((prev) => ({
         ...prev,
-        [personId]: { email: data.email, phone: data.phone, linkedin_url: data.linkedin_url },
+        [personId]: { name: data.name, email: data.email, phone: data.phone, linkedin_url: data.linkedin_url },
       }));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error al desbloquear contacto');
     }
-  }
-
-  function handleResearch() {
-    const row = selectedRows[0];
-    if (!row) return;
-    const q = `${row.name} ${row.company}`.trim();
-    window.open(`https://www.google.com/search?q=${encodeURIComponent(q + ' perfil')}`, '_blank');
   }
 
   async function handleCompaniesSearch() {
@@ -330,9 +397,9 @@ export default function ApolloPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col flex-1 min-h-0">
       {/* Tabs */}
-      <div className="flex gap-6">
+      <div className="flex gap-6 mb-6">
         {(['personas', 'empresas', 'listas'] as const).map((tab) => (
           <button key={tab} onClick={() => setActiveTab(tab)}
             className={cn('rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
@@ -345,7 +412,7 @@ export default function ApolloPage() {
       </div>
 
       {activeTab === 'personas' && (
-        <div className="space-y-6">
+        <div className="flex flex-col flex-1 min-h-0 space-y-6">
       {/* Search + Filters row */}
       <div className="flex flex-wrap items-start gap-4 mb-6">
         <DropdownMenu>
@@ -386,13 +453,10 @@ export default function ApolloPage() {
              onKeyDown={(e) => e.key === 'Enter' && void handleApiSearch()} />
           </div>
         <div className="flex items-center gap-2 ml-auto">
-          <Button size="sm" disabled={selectedIds.size === 0} className="gap-1.5" onClick={() => setImportDialogOpen(true)}>
-            <Download className="size-3.5" /> Importar ({selectedIds.size})
-          </Button>
-          <Button size="sm" variant="outline" disabled={selectedIds.size === 0} className="gap-1.5" onClick={handleResearch}>
-            <Sparkles className="size-3.5" /> Research IA
-          </Button>
-        </div>
+           <Button size="sm" disabled={selectedIds.size === 0} className="gap-1.5" onClick={() => setImportDialogOpen(true)}>
+             <Download className="size-3.5" /> Importar ({selectedIds.size})
+           </Button>
+         </div>
       </div>
 
       {/* Error */}
@@ -402,18 +466,10 @@ export default function ApolloPage() {
         </div>
       )}
 
-      {!usingMock && (
-        <p className="text-sm text-muted-foreground">
-          {loading && <Loader2 className="size-3.5 animate-spin inline mr-1" />}
-          {filteredResults.length} resultado{filteredResults.length !== 1 ? 's' : ''}
-          {apiTotal > 0 && <span className="text-muted-foreground/50"> · {apiTotal} encontrados</span>}
-        </p>
-      )}
-
       {/* Table + Filter panel */}
       <div className="flex gap-4 flex-1 min-h-0">
         {filterPanelOpen && (
-          <div className="w-72 shrink-0 space-y-4 rounded-xl border bg-card p-4 overflow-y-auto max-h-[calc(100vh-10rem)]">
+          <div className="w-72 shrink-0 self-start space-y-4 rounded-xl border bg-card p-4">
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium">Filtros</p>
               <button onClick={() => setFilterPanelOpen(false)} className="text-xs text-muted-foreground hover:text-foreground">Cerrar</button>
@@ -540,7 +596,7 @@ export default function ApolloPage() {
             </Button>
           </div>
         )}
-        <div className="flex-1 overflow-auto rounded-xl bg-background border">
+        <div className="flex-1 overflow-auto max-h-[calc(100vh-16rem)] scrollbar-thin rounded-xl bg-background border">
         <table className="w-full border-collapse text-xs">
           <thead>
             <tr className="bg-muted">
@@ -555,7 +611,7 @@ export default function ApolloPage() {
               <th className="px-3 py-2 text-left font-medium text-muted-foreground">Empresa</th>
               <th className="px-3 py-2 text-left font-medium text-muted-foreground">Email</th>
               <th className="px-3 py-2 text-left font-medium text-muted-foreground">Teléfono</th>
-              <th className="px-3 py-2 text-left font-medium text-muted-foreground">Ubicación</th>
+              <th className="px-3 py-2 text-left font-medium text-muted-foreground">LinkedIn</th>
             </tr>
           </thead>
           <tbody>
@@ -573,7 +629,7 @@ export default function ApolloPage() {
                     <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
                       <Checkbox checked={isSelected} onCheckedChange={() => toggleSelect(r.id)} />
                     </td>
-                    <td className="px-3 py-2.5 font-medium">{r.name}</td>
+                    <td className="px-3 py-2.5 font-medium">{enrichedPersons[r.id]?.name || r.name}</td>
                     <td className="px-3 py-2.5 text-muted-foreground">{r.title}</td>
                     <td className="px-3 py-2.5">
                       <div className="flex items-center gap-1.5">
@@ -597,18 +653,18 @@ export default function ApolloPage() {
                         <span className="text-[#13944C]">{enrichedPersons[r.id].phone}</span>
                       ) : r.phone ? (
                         r.phone
-                      ) : null}
-                      {enrichedPersons[r.id]?.linkedin_url && (
-                        <a href={enrichedPersons[r.id].linkedin_url} target="_blank" rel="noopener noreferrer" className="ml-2 text-[#13944C] hover:underline text-xs" onClick={(e) => e.stopPropagation()}>
-                          LinkedIn
-                        </a>
+                      ) : (
+                        <span className="text-muted-foreground/40">-</span>
                       )}
                     </td>
                     <td className="px-3 py-2.5">
-                      <div className="flex items-center gap-1.5">
-                        <MapPin className="size-3 shrink-0 text-muted-foreground" />
-                        <span className="truncate max-w-[140px]">{r.location}</span>
-                      </div>
+                      {enrichedPersons[r.id]?.linkedin_url ? (
+                        <a href={enrichedPersons[r.id].linkedin_url} target="_blank" rel="noopener noreferrer" className="text-[#13944C] hover:underline text-xs" onClick={(e) => e.stopPropagation()}>
+                          Perfil ↗
+                        </a>
+                      ) : (
+                        <span className="text-muted-foreground/40">-</span>
+                      )}
                     </td>
                   </tr>
                 );
@@ -616,21 +672,22 @@ export default function ApolloPage() {
             )}
           </tbody>
         </table>
+        {!usingMock && (
+          <div className="flex items-center justify-between gap-3 border-t px-3 py-2 text-xs text-muted-foreground sticky bottom-0 bg-background">
+            <span className="tabular-nums">{filteredResults.length} resultado{filteredResults.length !== 1 ? 's' : ''}</span>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon-sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+                <ChevronLeft className="size-4" />
+              </Button>
+              <span className="tabular-nums">Pág. {page} de {totalPages}</span>
+              <Button variant="ghost" size="icon-sm" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
+                <ChevronRight className="size-4" />
+              </Button>
+            </div>
+          </div>
+        )}
         </div>
       </div>
-
-      {/* Pagination */}
-      {totalPages > 1 && !usingMock && (
-        <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-          <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
-            <ChevronLeft className="size-3.5" />
-          </Button>
-          <span className="tabular-nums">Pág. {page} de {totalPages}</span>
-          <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
-            <ChevronRight className="size-3.5" />
-          </Button>
-        </div>
-      )}
 
       {/* Import Dialog */}
       <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
@@ -646,7 +703,7 @@ export default function ApolloPage() {
               <div key={row.id} className="flex items-center gap-2 rounded-md border bg-muted/20 px-3 py-2 text-xs">
                 <Check className="size-3.5 shrink-0 text-[#13944C]" />
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium truncate">{row.name}</p>
+                  <p className="font-medium truncate">{enrichedPersons[row.id]?.name || row.name}</p>
                   <p className="text-muted-foreground truncate">{row.company}{row.email ? ` · ${row.email}` : ''}</p>
                 </div>
               </div>
@@ -717,7 +774,7 @@ export default function ApolloPage() {
 
           <div className="flex gap-4 flex-1 min-h-0">
             {empresasFilterOpen && (
-              <div className="w-72 shrink-0 space-y-4 rounded-xl border bg-card p-4 overflow-y-auto max-h-[calc(100vh-10rem)]">
+              <div className="w-72 shrink-0 self-start space-y-4 rounded-xl border bg-card p-4">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-medium">Filtros</p>
                   <button onClick={() => setEmpresasFilterOpen(false)} className="text-xs text-muted-foreground hover:text-foreground">Cerrar</button>
@@ -767,7 +824,7 @@ export default function ApolloPage() {
                 </Button>
               </div>
             )}
-            <div className="flex-1 overflow-auto rounded-xl bg-background border">
+             <div className="flex-1 overflow-auto max-h-[calc(100vh-16rem)] scrollbar-thin rounded-xl bg-background border">
             <table className="w-full border-collapse text-xs">
               <thead>
                 <tr className="bg-muted">

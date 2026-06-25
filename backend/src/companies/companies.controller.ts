@@ -51,6 +51,19 @@ export class CompaniesController {
     );
   }
 
+  @Post('batch-check')
+  @RequirePermissions('empresas.ver')
+  async batchCheck(
+    @Req() req: AuthedReq,
+    @Body() body: { items: { name: string; domain?: string }[] },
+  ) {
+    const scope = await this.crmDataScope.buildScope(
+      req.user.userId,
+      req.user.roleId,
+    );
+    return this.companiesService.batchCheckNames(body.items, scope);
+  }
+
   @Get()
   @RequirePermissions('empresas.ver')
   async findAll(

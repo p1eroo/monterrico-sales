@@ -192,7 +192,7 @@ export class ApolloService {
       last_name: p.last_name || '',
       title: p.title || '',
       email: p.email || '',
-      phone: p.direct_phone || p.phone || '',
+      phone: p.direct_phone || p.phone || (p.contact as Record<string, unknown>)?.sanitized_phone as string || (Array.isArray((p.contact as Record<string, unknown>)?.phone_numbers) ? ((p.contact as Record<string, unknown>).phone_numbers as Array<Record<string, unknown>>)[0]?.sanitized_number as string : '') || '',
       linkedin_url: p.linkedin_url || '',
       organization: p.organization
         ? {
