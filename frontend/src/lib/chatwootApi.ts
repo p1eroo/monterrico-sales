@@ -191,3 +191,32 @@ export async function uploadAttachment(
 export async function markConversationAsRead(conversationId: number): Promise<void> {
   await api(`/api/chatwoot/conversations/${conversationId}/read`, { method: 'POST' });
 }
+
+export async function initiateConversation(data: {
+  name: string;
+  phone: string;
+  templateName: string;
+  templateCategory: string;
+  templateLanguage?: string;
+  templateParams?: Record<string, unknown>;
+}): Promise<{ conversationId: number; contactId: number }> {
+  return api('/api/chatwoot/initiate-conversation', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function sendTemplateToConversation(
+  conversationId: number,
+  data: {
+    templateName: string;
+    templateCategory: string;
+    templateLanguage?: string;
+    templateParams?: Record<string, unknown>;
+  },
+): Promise<unknown> {
+  return api(`/api/chatwoot/conversations/${conversationId}/messages/template`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}

@@ -94,6 +94,8 @@ export interface CalendarEvent {
   relatedCompanyName?: string;
   description?: string;
   status: CalendarEventStatus;
+  attendees?: { email: string; name?: string; organizer?: boolean }[];
+  meetLink?: string;
 }
 
 export type OpportunityStatus = 'abierta' | 'ganada' | 'perdida' | 'suspendida';

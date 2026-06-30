@@ -373,7 +373,7 @@ export default function FlotaProspectoDetail() {
       
       setTargetStatus(matchStatus?.[1] || null);
       // La fecha/hora la tomamos del evento mismo
-      const eventDate = new Date(event.date);
+      const eventDate = (() => { const [y, m, d] = event.date.split('-').map(Number); return new Date(y, m - 1, d); })();
       if (!isNaN(eventDate.getTime())) {
         setStatusDate(eventDate.toISOString().split('T')[0]);
         setStatusTime(eventDate.toTimeString().split(' ')[0].substring(0, 5));

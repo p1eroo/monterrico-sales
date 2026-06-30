@@ -112,6 +112,31 @@ export class ChatwootClient {
     });
   }
 
+  async sendTemplateMessage(
+    conversationId: number,
+    content: string,
+    templateParams: {
+      name: string;
+      category: string;
+      language: string;
+      processed_params: Record<string, unknown>;
+    },
+  ): Promise<ChatwootMessage> {
+    return this.request('POST', `/conversations/${conversationId}/messages`, {
+      content,
+      message_type: 'outgoing',
+      template_params: templateParams,
+    });
+  }
+
+  async createConversation(
+    contactId: number,
+  ): Promise<ChatwootConversation> {
+    return this.request('POST', '/conversations', {
+      contact_id: contactId,
+    });
+  }
+
   async sendAttachment(
     conversationId: number,
     fileUrl: string,

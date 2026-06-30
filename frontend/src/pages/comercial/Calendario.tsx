@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { addDays, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek, format, isSameMonth, isSameDay, addWeeks, subWeeks, parseISO, isToday, eachDayOfInterval } from 'date-fns';
+import { addDays, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek, format, isSameMonth, isSameDay, addWeeks, subWeeks, isToday, eachDayOfInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
   ChevronLeft, ChevronRight, Calendar as CalendarIcon, Search,
@@ -20,7 +20,7 @@ import {
 import { useUsers } from '@/hooks/useUsers';
 import { useActivities } from '@/hooks/useActivities';
 import { activityToCalendarEvent, type CreateActivityPayload } from '@/lib/activityApi';
-import { contactListAll, mapApiContactRowToContact } from '@/lib/contactApi';
+import { contactListAll, mapApiContactRowToContact, contactCreate } from '@/lib/contactApi';
 import { companyListAll } from '@/lib/companyApi';
 import { opportunityListAll, mapApiOpportunityToOpportunity } from '@/lib/opportunityApi';
 import { CalendarEventCard } from '@/components/calendar/CalendarEventCard';
@@ -30,6 +30,7 @@ import { eventTypeConfig } from '@/components/calendar/eventTypeConfig';
 import { cn } from '@/lib/utils';
 import { fetchGoogleEvents, type GoogleEvent } from '@/lib/calendarApi';
 import { useAppStore } from '@/store';
+import { batchCheckCompanies } from '@/lib/apolloApi';
 import type { CalendarEvent, Contact, Opportunity, TaskKind } from '@/types';
 import { TASK_KINDS } from '@/types';
 
@@ -120,6 +121,7 @@ function activityPayloadFromForm(
 
 export default function CalendarioPage() {
   const googleConnected = useAppStore((s) => s.googleConnected);
+  const currentUser = useAppStore((s) => s.currentUser);
   const { activeAdvisors } = useUsers();
   const defaultAssigneeId = activeAdvisors[0]?.id ?? '';
   const { activities, loading: activitiesLoading, createActivity, updateActivity, deleteActivity, error: activitiesError } = useActivities();
@@ -196,9 +198,9 @@ export default function CalendarioPage() {
   }, [loadCalendarEntities]);
 
   function googleEventToCalendarEvent(ge: GoogleEvent): CalendarEvent {
-    const startDate = ge.start.dateTime ? format(parseISO(ge.start.dateTime), 'yyyy-MM-dd') : ge.start.date ?? '';
-    const startTime = ge.start.dateTime ? format(parseISO(ge.start.dateTime), 'HH:mm') : '00:00';
-    const endTime = ge.end.dateTime ? format(parseISO(ge.end.dateTime), 'HH:mm') : '23:59';
+    const startDate = ge.start.dateTime ? ge.start.dateTime.slice(0, 10) : ge.start.date ?? '';
+    const startTime = ge.start.dateTime ? ge.start.dateTime.slice(11, 16) : '00:00';
+    const endTime = ge.end.dateTime ? ge.end.dateTime.slice(11, 16) : '23:59';
     return {
       id: `google-${ge.id}`,
       title: ge.summary || '(Sin título)',
@@ -211,6 +213,11 @@ export default function CalendarioPage() {
       assignedToName: 'Google Calendar',
       status: 'pendiente',
       description: ge.description,
+      meetLink: ge.hangoutLink || ge.conferenceData?.entryPoints?.find((e) => e.entryPointType === 'video')?.uri,
+      attendees: [
+        ...(ge.organizer?.email ? [{ email: ge.organizer.email, name: ge.organizer.displayName, organizer: true }] : []),
+        ...(ge.attendees?.filter((a) => a.email !== ge.organizer?.email).map((a) => ({ email: a.email })) ?? []),
+      ],
     };
   }
 
@@ -915,6 +922,7 @@ export default function CalendarioPage() {
       <EventDetailModal event={selectedEvent} open={detailOpen} onOpenChange={setDetailOpen}
         onEdit={(ev) => { setDetailOpen(false); setEditingEvent(ev); setFormOpen(true); }}
         onDelete={async (ev) => { try { await deleteActivity(ev.id); setDetailOpen(false); setSelectedEvent(null); toast.success('Actividad eliminada'); } catch (e) { toast.error(e instanceof Error ? e.message : 'Error al eliminar'); } }}
+        createActivity={createActivity}
       />
 
       <EventFormModal open={formOpen} onOpenChange={(open) => { setFormOpen(open); if (!open) setEditingEvent(null); }}

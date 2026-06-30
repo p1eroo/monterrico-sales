@@ -7,6 +7,13 @@ export type GoogleEvent = {
   start: { dateTime?: string; date?: string; timeZone?: string };
   end: { dateTime?: string; date?: string; timeZone?: string };
   attendees?: { email: string }[];
+  organizer?: { email: string; displayName?: string };
+  creator?: { email: string; displayName?: string };
+  hangoutLink?: string;
+  conferenceData?: {
+    entryPoints?: { entryPointType: string; uri: string }[];
+    conferenceSolution?: { name?: string };
+  };
 };
 
 export type TaskList = {

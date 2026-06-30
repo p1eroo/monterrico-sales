@@ -415,18 +415,18 @@ export class CompaniesService {
 
     const matched: { name: string; companyId: string; matchedBy: string }[] = [];
 
-    // 1. Buscar por dominio
+    // 1. Buscar por dominio (case-insensitive)
     if (domains.length > 0) {
       const byDomain = await this.prisma.company.findMany({
         where: {
-          domain: { in: domains },
+          OR: domains.map((d) => ({ domain: { equals: d, mode: 'insensitive' } })),
           ...(scope?.viewerUserId ? { assignedTo: scope.viewerUserId } : {}),
         },
         select: { id: true, name: true, domain: true },
       });
       for (const item of items) {
         if (!item.domain) continue;
-        const found = byDomain.find((c) => c.domain === item.domain);
+        const found = byDomain.find((c) => (c.domain ?? '').toLowerCase() === item.domain!.toLowerCase());
         if (found) {
           matched.push({ name: item.name, companyId: found.id, matchedBy: 'domain' });
         }

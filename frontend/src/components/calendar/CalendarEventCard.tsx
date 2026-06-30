@@ -103,16 +103,11 @@ export function CalendarEventCard({ event, compact, onClick, className }: Calend
               ) : null}
             </div>
           )}
-          <p className="text-xs text-muted-foreground mt-1">
-            {event.assignedTo === 'google' ? (
-              <span className="inline-flex items-center gap-1">
-                <Calendar className="size-3" />
-                {event.assignedToName}
-              </span>
-            ) : (
-              event.assignedToName
-            )}
-          </p>
+          {event.assignedTo !== 'google' && (
+            <p className="text-xs text-muted-foreground mt-1">
+              {event.assignedToName}
+            </p>
+          )}
         </div>
       </div>
     </div>

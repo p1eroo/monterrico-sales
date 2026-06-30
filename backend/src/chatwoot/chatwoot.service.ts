@@ -81,4 +81,49 @@ export class ChatwootService {
   async config() {
     return this.client.getConfig();
   }
+
+  async createConversation(contactId: number) {
+    return this.client.createConversation(contactId);
+  }
+
+  async sendTemplateMessage(
+    conversationId: number,
+    content: string,
+    templateParams: {
+      name: string;
+      category: string;
+      language: string;
+      processed_params: Record<string, unknown>;
+    },
+  ) {
+    return this.client.sendTemplateMessage(conversationId, content, templateParams);
+  }
+
+  async initiateConversation(data: {
+    name: string;
+    phone: string;
+    templateName: string;
+    templateCategory: string;
+    templateLanguage: string;
+    templateParams?: Record<string, unknown>;
+  }): Promise<{ conversationId: number; contactId: number }> {
+    // 1. Crear contacto en Chatwoot
+    const contact = await this.createContact({
+      name: data.name,
+      phone_number: data.phone,
+    });
+
+    // 2. Crear conversación
+    const conversation = await this.client.createConversation(contact.id);
+
+    // 3. Enviar mensaje template
+    await this.client.sendTemplateMessage(conversation.id, '', {
+      name: data.templateName,
+      category: data.templateCategory,
+      language: data.templateLanguage,
+      processed_params: data.templateParams ?? {},
+    });
+
+    return { conversationId: conversation.id, contactId: contact.id };
+  }
 }

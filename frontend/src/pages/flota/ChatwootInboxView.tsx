@@ -18,6 +18,7 @@ import {
   ArrowRight,
   X,
   FileText,
+  Info,
   Music2,
   ImageIcon,
   CheckCircle2,
@@ -81,6 +82,8 @@ import {
   fetchAgents,
   markConversationAsRead,
   uploadAttachment,
+  initiateConversation,
+  sendTemplateToConversation,
   type ChatwootAgent,
 } from '@/lib/chatwootApi';
 import { fetchOperadores, getOperatorDisplayName, flotaProspectosByPhone, flotaProspectoCreate, type OperadorUser, type FlotaProspectoDetalle } from '@/lib/flotaProspectosApi';
@@ -97,6 +100,10 @@ export default function ChatwootInboxView() {
   const [messagesCache, setMessagesCache] = useState<Record<number, ChatwootMessage[]>>({});
   const [filter, setFilter] = useState<'all' | 'unread' | 'open' | 'resolved'>('all');
   const [conductorCodesAll, setConductorCodesAll] = useState<Record<string, string>>({});
+  const [newChatOpen, setNewChatOpen] = useState(false);
+  const [newPhone, setNewPhone] = useState('');
+  const [newName, setNewName] = useState('');
+  const [creatingChat, setCreatingChat] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const activeIdRef = useRef(activeId);
   const socketRef = useRef<any>(null);
@@ -260,6 +267,31 @@ export default function ChatwootInboxView() {
     setActiveId(id);
   }, []);
 
+  async function handleNewChat() {
+    const phone = newPhone.trim();
+    const name = newName.trim() || phone;
+    if (!phone) return;
+    setCreatingChat(true);
+    try {
+      const result = await initiateConversation({
+        name,
+        phone,
+        templateName: 'procesar_afiliacion_atu',
+        templateCategory: 'MARKETING',
+      });
+      toast.success('Conversación iniciada');
+      setNewChatOpen(false);
+      setNewPhone('');
+      setNewName('');
+      await loadConversations();
+      setActiveId(result.conversationId);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al iniciar conversación');
+    } finally {
+      setCreatingChat(false);
+    }
+  }
+
   return (
     <div className="flex flex-col h-full">
       <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[360px_minmax(0,1fr)]">
@@ -288,7 +320,8 @@ export default function ChatwootInboxView() {
             </div>
           </div>
           <div className="border-b border-muted px-3 py-2">
-            <div className="relative">
+            <div className="flex items-center gap-2">
+            <div className="relative flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={query}
@@ -296,6 +329,10 @@ export default function ChatwootInboxView() {
                 placeholder="Buscar conversación..."
                 className="pl-9"
               />
+            </div>
+            <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground" onClick={() => setNewChatOpen(true)}>
+              <Plus className="h-4 w-4" />
+            </Button>
             </div>
           </div>
           <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto scrollbar-thin pt-1.5">
@@ -348,8 +385,47 @@ export default function ChatwootInboxView() {
           </div>
         )}
       </div>
+
+      <Dialog open={newChatOpen} onOpenChange={setNewChatOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Nuevo mensaje</DialogTitle>
+            <DialogDescription>Ingresa el número y nombre del contacto para iniciar una conversación por WhatsApp.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="cw-phone">Número de WhatsApp</Label>
+              <Input
+                id="cw-phone"
+                value={newPhone}
+                onChange={(e) => setNewPhone(e.target.value)}
+                placeholder="51987654321"
+                autoFocus
+              />
+              <p className="text-xs text-muted-foreground">Con código de país, sin + ni espacios</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cw-name">Nombre</Label>
+              <Input
+                id="cw-name"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="Nombre del contacto"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNewChatOpen(false)} disabled={creatingChat}>Cancelar</Button>
+            <Button onClick={handleNewChat} disabled={!newPhone.trim() || creatingChat}>
+              {creatingChat ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Iniciar chat
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
+
 }
 
 /* ==================== LINK RENDERER ==================== */
@@ -821,6 +897,9 @@ function ChatwootChatPanel({
   const [agents, setAgents] = useState<ChatwootAgent[]>([]);
   const [operadores, setOperadores] = useState<OperadorUser[]>([]);
   const [updating, setUpdating] = useState(false);
+  const [dismiss24h, setDismiss24h] = useState(false);
+  const [sendingTemplate, setSendingTemplate] = useState<string | null>(null);
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
 
   const convo = conversations.find((c) => c.id === conversationId);
   const sender = convo?.meta.sender;
@@ -1262,6 +1341,38 @@ function ChatwootChatPanel({
     }
   }
 
+  async function handleSendTemplate(templateName: string, templateCategory: string) {
+    setSendingTemplate(templateName);
+    try {
+      await sendTemplateToConversation(conversationId, { templateName, templateCategory });
+      toast.success('Plantilla enviada');
+      setDismiss24h(true);
+      void loadMessages();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al enviar plantilla');
+    } finally {
+      setSendingTemplate(null);
+    }
+  }
+
+  const lastMsgTime = useMemo(() => {
+    const msgs = messagesCache[conversationId];
+    if (!msgs || msgs.length === 0) return null;
+    const last = msgs[msgs.length - 1];
+    return normalizeTs(last.created_at);
+  }, [messagesCache[conversationId]]);
+
+  const isOlderThan24h = useMemo(() => {
+    if (!lastMsgTime) return false;
+    return Date.now() - lastMsgTime > 24 * 60 * 60 * 1000;
+  }, [lastMsgTime]);
+
+  const show24hWarning = useMemo(() => {
+    if (dismiss24h) return false;
+    if (!isOlderThan24h) return false;
+    return initialLoading === false;
+  }, [dismiss24h, isOlderThan24h, initialLoading]);
+
   return (
     <div
       className="flex h-full min-h-0 min-w-0 relative"
@@ -1331,6 +1442,16 @@ function ChatwootChatPanel({
             </Button>
           </div>
         </div>
+
+        {show24hWarning && (
+          <div className="mx-4 mt-2 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            <Info className="size-4 shrink-0 text-amber-500" />
+            <span className="flex-1">Han pasado más de 24h desde el último mensaje. Para retomar la conversación debes enviar una plantilla.</span>
+            <button onClick={() => setDismiss24h(true)} className="shrink-0 rounded p-0.5 hover:bg-amber-100 transition-colors">
+              <X className="size-3.5" />
+            </button>
+          </div>
+        )}
 
         <div
           ref={scrollRef}
@@ -1476,6 +1597,9 @@ function ChatwootChatPanel({
                   <EmojiGrid onSelect={(emoji) => setDraft((prev) => prev + emoji.replace(/\uFE0F/g, ''))} />
                 </PopoverContent>
               </Popover>
+              <Button variant="ghost" size="icon" className="shrink-0" title="Enviar plantilla" onClick={() => setTemplateDialogOpen(true)}>
+                <FileText className="h-5 w-5" />
+              </Button>
               <Textarea
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
@@ -1515,6 +1639,36 @@ function ChatwootChatPanel({
           )}
         </div>
       </section>
+
+      <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Enviar plantilla</DialogTitle>
+            <DialogDescription>
+              Esta plantilla se enviará al contacto para retomar la conversación.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded-lg border bg-muted/20 p-4">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Plantilla</p>
+              <p className="mt-1 text-sm font-medium">Procesar afiliación ATU</p>
+              <div className="mt-3 space-y-1 text-sm text-muted-foreground">
+                <p>Hola estimado(a), reciba un cordial saludo de parte de Taxi Monterrico.</p>
+                <p>Hemos observado su interés en formar parte de nuestra flota.</p>
+                <p>¿usted cuenta con vehiculo particular o tiene permiso de la ATU?</p>
+              </div>
+
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTemplateDialogOpen(false)} disabled={sendingTemplate !== null}>Cancelar</Button>
+            <Button onClick={() => { void handleSendTemplate('procesar_afiliacion_atu', 'MARKETING'); setTemplateDialogOpen(false); }} disabled={sendingTemplate !== null}>
+              {sendingTemplate === 'procesar_afiliacion_atu' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Enviar plantilla
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {lightboxIndex !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90" onClick={() => setLightboxIndex(null)}>

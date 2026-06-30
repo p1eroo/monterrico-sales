@@ -260,6 +260,18 @@ export class ContactsService {
       }
     }
 
+    // Verificar por dominio (case-insensitive) — evita duplicados por dominio
+    const domainTrim = dto.domain?.trim();
+    if (domainTrim) {
+      const dupDomain = await tx.company.findFirst({
+        where: { domain: { equals: domainTrim, mode: 'insensitive' } },
+        select: { id: true, name: true },
+      });
+      if (dupDomain) {
+        return { id: dupDomain.id, name: dupDomain.name };
+      }
+    }
+
     const dupName = await tx.company.findFirst({
       where: {
         name: { equals: name, mode: 'insensitive' },

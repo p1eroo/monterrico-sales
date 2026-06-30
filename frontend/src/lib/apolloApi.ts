@@ -87,3 +87,15 @@ export async function batchCheckCompanies(items: { name: string; domain?: string
     body: JSON.stringify({ items }),
   });
 }
+
+export async function apolloEnrichOrganization(domain: string): Promise<{
+  id: string; name: string; domain: string;
+  city: string; country: string; raw_address: string;
+  phone: string; industry: string; employee_count: number | null;
+  founded_year: number | null; linkedin_url: string;
+}> {
+  return api('/apollo/organizations/enrich', {
+    method: 'POST',
+    body: JSON.stringify({ domain }),
+  });
+}

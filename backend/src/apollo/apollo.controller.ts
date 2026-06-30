@@ -30,6 +30,12 @@ export class ApolloController {
     return this.apollo.searchCompanies({ query: body.query, page: body.page });
   }
 
+  @Post('organizations/enrich')
+  @RequirePermissions('contactos.ver')
+  async enrichOrganization(@Body() body: { domain: string }) {
+    return this.apollo.enrichOrganization(body.domain);
+  }
+
   @Post('match')
   @RequirePermissions('contactos.ver')
   async match(@Body() body: { emails: string[] }) {

@@ -32,17 +32,8 @@ export class ApolloService {
       per_page: params.perPage || 25,
     };
     if (params.query?.trim()) body.q_keywords = params.query.trim();
-    if (params.industry?.trim()) body.industry = params.industry.trim();
-    if (params.location?.trim()) body.q_organization_location = params.location.trim();
-    if (params.title?.trim()) body.titles = params.title.split(',').map((t) => t.trim()).filter(Boolean);
-    if (params.company?.trim()) body.q_organization_name = params.company.trim();
-    if (params.emailStatus?.trim()) body.email_status = [params.emailStatus.trim()];
-    if (params.employeeMin) body.organization_num_employees_ranges = { min: parseInt(params.employeeMin, 10) };
-    if (params.employeeMax) {
-      const range = (body.organization_num_employees_ranges as Record<string, unknown>) || {};
-      range.max = parseInt(params.employeeMax, 10);
-      body.organization_num_employees_ranges = range;
-    }
+    if (params.title?.trim()) body.person_titles = params.title.split(',').map((t) => t.trim()).filter(Boolean);
+    if (params.location?.trim()) body.organization_locations = [params.location.trim()];
 
     this.logger.log(`Apollo search: query="${params.query}" page=${body.page}`);
 
@@ -126,6 +117,39 @@ export class ApolloService {
       results,
       total: data.total_entries ?? 0,
       credits: data.pagination?.totalCredits ?? 0,
+    };
+  }
+
+  async enrichOrganization(domain: string) {
+    const apiKey = this.getApiKey();
+    const res = await fetch(`${this.baseUrl}/organizations/enrich`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Api-Key': apiKey },
+      body: JSON.stringify({ domain }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      this.logger.error(`Apollo enrich org error ${res.status}: ${text.slice(0, 500)}`);
+      throw new ServiceUnavailableException(`Apollo.io respondió ${res.status}`);
+    }
+
+    const data = await res.json();
+    const org = data.organization || null;
+    if (!org) return { error: 'Empresa no encontrada' };
+
+    return {
+      id: org.id,
+      name: org.name || '',
+      domain: org.domain || '',
+      city: org.city || '',
+      country: org.country || '',
+      raw_address: org.raw_address || '',
+      phone: org.phone || '',
+      industry: org.industry || '',
+      employee_count: org.estimated_num_employees ?? null,
+      founded_year: org.founded_year ?? null,
+      linkedin_url: org.linkedin_url || '',
     };
   }
 

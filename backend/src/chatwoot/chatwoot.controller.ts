@@ -64,6 +64,24 @@ export class ChatwootController {
     return this.service.sendMessage(id, body.content);
   }
 
+  @Post('conversations/:id/messages/template')
+  async sendTemplateMessage(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: {
+      templateName: string;
+      templateCategory: string;
+      templateLanguage?: string;
+      templateParams?: Record<string, unknown>;
+    },
+  ) {
+    return this.service.sendTemplateMessage(id, '', {
+      name: body.templateName,
+      category: body.templateCategory,
+      language: body.templateLanguage ?? 'es',
+      processed_params: body.templateParams ?? {},
+    });
+  }
+
   @Patch('conversations/:id')
   async updateConversation(
     @Param('id', ParseIntPipe) id: number,
@@ -153,5 +171,22 @@ export class ChatwootController {
     const clientCount = (ns as unknown as { sockets?: Map<string, unknown> })?.sockets?.size ?? 0;
     ns.emit('chatwoot', { event: 'test', data: { msg: 'test desde backend', ts: Date.now() } });
     return { success: true, clients: clientCount };
+  }
+
+  @Post('initiate-conversation')
+  async initiateConversation(
+    @Body() body: {
+      name: string;
+      phone: string;
+      templateName: string;
+      templateCategory: string;
+      templateLanguage?: string;
+      templateParams?: Record<string, unknown>;
+    },
+  ) {
+    return this.service.initiateConversation({
+      ...body,
+      templateLanguage: body.templateLanguage ?? 'es',
+    });
   }
 }

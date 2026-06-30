@@ -141,7 +141,7 @@ export default function MainLayout() {
         </div>
         <SidebarDividerToggle />
       </SidebarInset>
-      <Toaster position="bottom-right" richColors />
+      <Toaster position="top-center" richColors />
       <ImportJobsPanel />
       <DailyBriefingPanel
         open={showBriefing}

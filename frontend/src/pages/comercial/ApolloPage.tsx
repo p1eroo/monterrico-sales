@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useLocation } from 'react-router-dom';
 import { Search, Download, Building2, ChevronLeft, ChevronRight, Loader2, Check, Bookmark, Trash2, Plus, SlidersHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -67,6 +67,7 @@ export default function ApolloPage() {
     try { return JSON.parse(localStorage.getItem('apollo-enriched') || '{}'); } catch { return {}; }
   });
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const perPage = 25;
 
   // Load search params from URL + auto-search
@@ -105,18 +106,15 @@ export default function ApolloPage() {
         setPage(1);
       } catch { /* ignore */ }
     } else {
-      // No cache → auto-search (AI already spent credits)
-      setLoading(true);
+      // No cache → auto-search with direct params (no race condition)
       if (tab === 'empresas') {
         setTimeout(() => void handleCompaniesSearch(), 100);
       } else {
-        setTimeout(() => void handleApiSearch(), 100);
+        searchWithParams({ query: q || undefined, title: title || undefined, company: company || undefined, industry: industry || undefined, location: location || undefined });
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Auto-save search when arriving with ?save=true from AI assistant
+  }, [location.pathname, searchParams.toString()]);
 
   // Auto-save search when arriving with ?save=true from AI assistant
   useEffect(() => {
@@ -173,12 +171,56 @@ export default function ApolloPage() {
     });
   }, [industryFilter, locationFilter, dataSource, usingMock]);
 
-  const totalPages = Math.ceil(filteredResults.length / perPage);
-  const paginatedResults = filteredResults.slice((page - 1) * perPage, page * perPage);
+  const paginatedResults = filteredResults;
 
-  function searchCacheKey(pageNum: number) {
-    const raw = `${query}|${industryFilter}|${locationFilter.join()}|${jobTitleFilters.join()}|${companyFilters.join()}|${emailStatus}|${employeeMin}|${employeeMax}|${pageNum}`;
+  function searchCacheKey(pageNum: number, opts?: { query?: string; industry?: string; location?: string[]; title?: string[]; company?: string[] }) {
+    const q = opts?.query ?? query;
+    const ind = opts?.industry ?? industryFilter;
+    const loc = opts?.location ?? locationFilter;
+    const tit = opts?.title ?? jobTitleFilters;
+    const comp = opts?.company ?? companyFilters;
+    const raw = `${q}|${ind}|${loc.join()}|${tit.join()}|${comp.join()}|${emailStatus}|${employeeMin}|${employeeMax}|${pageNum}`;
     return `apollo-cache:${encodeURIComponent(raw)}`;
+  }
+
+  // Search with direct params (no state dependency — avoids race condition)
+  async function searchWithParams(opts: { query?: string; title?: string; company?: string; industry?: string; location?: string }) {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await apolloSearch({
+        query: opts.query || undefined,
+        industry: opts.industry || undefined,
+        location: opts.location || undefined,
+        title: opts.title || undefined,
+        company: opts.company || undefined,
+        page: 1,
+      });
+      const cacheKey = searchCacheKey(1, {
+        query: opts.query,
+        industry: opts.industry,
+        location: opts.location ? [opts.location] : [],
+        title: opts.title ? opts.title.split(',').map((t) => t.trim()).filter(Boolean) : [],
+        company: opts.company ? opts.company.split(',').map((c) => c.trim()).filter(Boolean) : [],
+      });
+      localStorage.setItem(cacheKey, JSON.stringify({ results: res.results, total: res.total }));
+      setApiResults(res.results);
+      setApiTotal(res.total);
+      setUsingMock(false);
+      setPage(1);
+      const titles = [...new Set(res.results.map((p) => p.title).filter(Boolean))] as string[];
+      setSuggestedTitles((prev) => [...new Set([...prev, ...titles])].sort());
+      const companies = [...new Set(res.results.map((p) => p.organization?.name).filter(Boolean))] as string[];
+      setSuggestedCompanies((prev) => [...new Set([...prev, ...companies])].sort());
+      const locations = [...new Set(res.results.map((p) => [p.organization?.location?.city, p.organization?.location?.country].filter(Boolean).join(', ')).filter(Boolean))] as string[];
+      setSuggestedLocations((prev) => [...new Set([...prev, ...locations])].sort());
+    } catch (e) {
+      setApiResults(null);
+      setUsingMock(true);
+      setError(e instanceof Error ? e.message : 'Error al buscar en Apollo');
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleApiSearch(newPage = 1) {
@@ -591,9 +633,29 @@ export default function ApolloPage() {
               </div>
             </div>
 
-            <Button size="sm" className="w-full" onClick={() => void handleApiSearch()}>
-              Aplicar filtros
-            </Button>
+            <div className="flex gap-2">
+              <Button size="sm" className="flex-1" onClick={() => void handleApiSearch()}>
+                Aplicar filtros
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => {
+                setJobTitleFilters([]);
+                setJobTitleInput('');
+                setCompanyFilters([]);
+                setCompanyInput('');
+                setLocationFilter([]);
+                setLocationInput('');
+                setIndustryFilter('');
+                setEmailStatus('all');
+                setEmployeeMin('');
+                setEmployeeMax('');
+                setApiResults(null);
+                setApiTotal(0);
+                setUsingMock(true);
+                window.history.replaceState(null, '', window.location.pathname);
+              }}>
+                Limpiar
+              </Button>
+            </div>
           </div>
         )}
         <div className="flex-1 overflow-auto max-h-[calc(100vh-16rem)] scrollbar-thin rounded-xl bg-background border">
@@ -674,13 +736,18 @@ export default function ApolloPage() {
         </table>
         {!usingMock && (
           <div className="flex items-center justify-between gap-3 border-t px-3 py-2 text-xs text-muted-foreground sticky bottom-0 bg-background">
-            <span className="tabular-nums">{filteredResults.length} resultado{filteredResults.length !== 1 ? 's' : ''}</span>
+            <span className="tabular-nums">
+              {loading && <Loader2 className="size-3.5 animate-spin inline mr-1" />}
+              {apiTotal > 0
+                ? `${(page - 1) * perPage + 1}-${Math.min(page * perPage, filteredResults.length + (page - 1) * perPage)} de ${apiTotal}`
+                : `${filteredResults.length} resultado${filteredResults.length !== 1 ? 's' : ''}`}
+            </span>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon-sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+              <Button variant="ghost" size="icon-sm" disabled={page <= 1} onClick={() => void handleApiSearch(page - 1)}>
                 <ChevronLeft className="size-4" />
               </Button>
-              <span className="tabular-nums">Pág. {page} de {totalPages}</span>
-              <Button variant="ghost" size="icon-sm" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
+              <span className="tabular-nums">Pág. {page} de {Math.ceil(apiTotal / perPage)}</span>
+              <Button variant="ghost" size="icon-sm" disabled={page >= Math.ceil(apiTotal / perPage)} onClick={() => void handleApiSearch(page + 1)}>
                 <ChevronRight className="size-4" />
               </Button>
             </div>
@@ -819,9 +886,23 @@ export default function ApolloPage() {
                   </div>
                 </div>
 
-                <Button size="sm" className="w-full" onClick={() => void handleCompaniesSearch()}>
-                  Aplicar filtros
-                </Button>
+                <div className="flex gap-2">
+                  <Button size="sm" className="flex-1" onClick={() => void handleCompaniesSearch()}>
+                    Aplicar filtros
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => {
+                    setEmpresasIndustry('');
+                    setEmpresasLocation([]);
+                    setEmpresasLocationInput('');
+                    setEmpresasEmployeeMin('');
+                    setEmpresasEmployeeMax('');
+                    setCompaniesResults(null);
+                    setCompaniesTotal(0);
+                    window.history.replaceState(null, '', window.location.pathname);
+                  }}>
+                    Limpiar
+                  </Button>
+                </div>
               </div>
             )}
              <div className="flex-1 overflow-auto max-h-[calc(100vh-16rem)] scrollbar-thin rounded-xl bg-background border">

@@ -332,18 +332,12 @@ const CRM_TOOLS: Record<string, unknown>[] = [
     type: 'function',
     function: {
       name: 'apollo_search_people',
-      description: 'Busca personas/leads en Apollo.io por nombre, cargo, empresa, industria o ubicación. Útil para prospectar nuevos contactos comerciales.',
+      description: 'Busca personas en Apollo.io por nombre, cargo o empresa. Úsala SIEMPRE que el usuario pregunte por personas, empleados, trabajadores, contactos o leads de una empresa o cargo específico, incluso si no menciona Apollo explícitamente. IMPORTANTE: los filtros de industria y ubicación no están disponibles en esta herramienta. Usa solo query (nombre/empresa) y/o title (cargo).',
       parameters: {
         type: 'object',
         properties: {
-          query: { type: 'string', description: 'Palabras clave de búsqueda' },
-          title: { type: 'string', description: 'Cargo(s) separados por coma (ej: CEO,Gerente)' },
-          company: { type: 'string', description: 'Nombre de empresa' },
-          industry: { type: 'string', description: 'Industria' },
-          location: { type: 'string', description: 'Ubicación geográfica' },
-          employeeMin: { type: 'string', description: 'Mínimo de empleados' },
-          employeeMax: { type: 'string', description: 'Máximo de empleados' },
-          limit: { type: 'number', description: 'Cantidad de resultados (max 25)' },
+          query: { type: 'string', description: 'Nombre de empresa, persona o palabras clave' },
+          title: { type: 'string', description: 'Cargo(s) separados por coma (ej: CEO,Gerente,Jefe)' },
         },
       },
     },

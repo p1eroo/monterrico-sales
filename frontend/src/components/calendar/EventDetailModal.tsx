@@ -2,13 +2,14 @@ import { useNavigate } from 'react-router-dom';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Building2, Link2, Pencil, Trash2, User, Briefcase } from 'lucide-react';
+import { CalendarClock, Users, FileText, Video, Building2, Link2, Pencil, Trash2, User, Briefcase } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CalendarEvent } from '@/types';
 import { eventTypeConfig, eventStatusConfig } from './eventTypeConfig';
 import { getCalendarEventNavPaths } from '@/lib/calendarEventLinks';
+import { GoogleEventFloatingBar } from '@/pages/comercial/GoogleEventFloatingBar';
+import type { CreateActivityPayload } from '@/lib/activityApi';
 
 interface EventDetailModalProps {
   event: CalendarEvent | null;
@@ -16,9 +17,10 @@ interface EventDetailModalProps {
   onOpenChange: (open: boolean) => void;
   onEdit?: (event: CalendarEvent) => void;
   onDelete?: (event: CalendarEvent) => void;
+  createActivity?: (data: CreateActivityPayload) => Promise<any>;
 }
 
-export function EventDetailModal({ event, open, onOpenChange, onEdit, onDelete }: EventDetailModalProps) {
+export function EventDetailModal({ event, open, onOpenChange, onEdit, onDelete, createActivity }: EventDetailModalProps) {
   const navigate = useNavigate();
 
   if (!event) return null;
@@ -42,46 +44,86 @@ export function EventDetailModal({ event, open, onOpenChange, onEdit, onDelete }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="min-w-0 max-w-[calc(100vw-2rem)] overflow-x-hidden sm:max-w-md">
+      <DialogContent className="min-w-0 max-w-[calc(100vw-2rem)] overflow-x-hidden sm:max-w-[500px] max-h-[92vh]">
         <DialogHeader>
           <div className="flex items-start gap-3">
             <div className={cn('flex size-12 shrink-0 items-center justify-center rounded-xl', config.bgColor, config.color)}>
               <Icon className="size-6" />
             </div>
-            <div className="min-w-0 flex-1">
-              <DialogTitle className="text-lg">{event.title}</DialogTitle>
-              <div className="mt-2 flex flex-wrap gap-2">
-                <Badge variant="outline" className={config.color}>
-                  {config.label}
-                </Badge>
-                <Badge variant="outline" className={statusConfig.color}>
-                  {statusConfig.label}
-                </Badge>
+              <div className="min-w-0 flex-1">
+                <DialogTitle className="text-lg">{event.title}</DialogTitle>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <Badge variant="outline" className={config.color}>
+                    {config.label}
+                  </Badge>
+                  {event.assignedTo !== 'google' && (
+                    <Badge variant="outline" className={statusConfig.color}>
+                      {statusConfig.label}
+                    </Badge>
+                  )}
+                  {event.assignedTo === 'google' && (
+                    <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50">
+                      Google Calendar
+                    </Badge>
+                  )}
+                </div>
               </div>
-            </div>
           </div>
         </DialogHeader>
 
         <div className="min-w-0 space-y-4 pt-2">
-          <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Fecha y hora</p>
-            <p className="text-sm mt-1">
-              {new Date(event.date).toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-            </p>
-            <p className="text-sm text-muted-foreground">{event.startTime} - {event.endTime}</p>
-          </div>
+          {event.meetLink && (
+            <div className="flex items-center gap-2">
+              <Video className="size-5 text-amber-500" strokeWidth={1.5} />
+              <a
+                href={event.meetLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center rounded-xl bg-[#13944C] px-4 py-2 text-sm font-medium text-white hover:bg-[#0f7a3d] transition-colors"
+              >
+                Unirse a Google Meet
+              </a>
+            </div>
+          )}
 
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Asignado a</p>
-            <p className="text-sm mt-1">{event.assignedToName}</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <CalendarClock className="size-[18px]" strokeWidth={1.5} />
+              Fecha y hora
+            </p>
+            <div className="pl-[26px]">
+              <p className="text-sm mt-1">
+                {(() => {
+                  const [y, m, d] = event.date.split('-').map(Number);
+                  return new Date(y, m - 1, d).toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+                })()}
+              </p>
+              <p className="text-sm text-muted-foreground">{event.startTime} - {event.endTime}</p>
+            </div>
           </div>
+
+          {event.assignedTo !== 'google' && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <User className="size-[18px]" strokeWidth={1.5} />
+                Asignado a
+              </p>
+            <div className="pl-[26px]">
+              <p className="text-sm mt-1">{event.assignedToName}</p>
+            </div>
+            </div>
+          )}
 
           {hasLinkedSection && (
             <div className="min-w-0">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Registro vinculado</p>
-              <div className="mt-2 min-w-0 space-y-2 rounded-lg border border-border/80 bg-muted/25 p-3 dark:bg-muted/15">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <Link2 className="size-[18px]" strokeWidth={1.5} />
+                Registro vinculado
+              </p>
+              <div className="pl-[26px]">
+                <div className="mt-2 min-w-0 space-y-2 rounded-lg border border-border/80 bg-muted/25 p-3 dark:bg-muted/15">
                 <p className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-                  <Link2 className="size-3.5 shrink-0" aria-hidden />
+                  <Link2 className="size-4 shrink-0" aria-hidden />
                   <span className="min-w-0">
                     Asociado con {recordCount} registro{recordCount === 1 ? '' : 's'}
                   </span>
@@ -120,29 +162,54 @@ export function EventDetailModal({ event, open, onOpenChange, onEdit, onDelete }
                 </div>
               </div>
             </div>
+            </div>
+          )}
+
+          {event.attendees && event.attendees.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <Users className="size-[18px]" strokeWidth={1.5} />
+                Invitados ({event.attendees.length})
+              </p>
+              <div className="pl-[26px] mt-1 space-y-1">
+                {event.attendees.map((a, i) => (
+                  <p key={i} className="text-sm flex items-center gap-2">
+                    <span className="text-muted-foreground">{a.email}</span>
+                    {a.organizer && (
+                      <span className="text-[10px] font-medium text-[#13944C] bg-[#13944C]/10 rounded px-1.5 py-0.5">Organizador</span>
+                    )}
+                  </p>
+                ))}
+              </div>
+            </div>
           )}
 
           {event.description && (
             <div>
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Descripción</p>
-              <p className="text-sm mt-1 text-muted-foreground break-words">{event.description}</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <FileText className="size-[18px]" strokeWidth={1.5} />
+                Descripción
+              </p>
+              <p className="text-sm mt-1 text-muted-foreground break-words pl-[26px]">{event.description}</p>
             </div>
           )}
         </div>
 
+        {event.assignedTo === 'google' && createActivity && (
+          <GoogleEventFloatingBar event={event} createActivity={createActivity} />
+        )}
+
         {(onEdit || onDelete) && (
-          <div className="flex justify-end gap-2 border-t pt-4">
+          <div className="flex justify-end gap-2 pt-4">
             {onDelete && (
-              <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700" onClick={() => onDelete(event)}>
-                <Trash2 className="size-4 mr-1.5" />
-                Eliminar
-              </Button>
+              <button type="button" onClick={() => onDelete(event)} className="rounded-md p-2 text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors">
+                <Trash2 className="size-[18px]" />
+              </button>
             )}
             {onEdit && (
-              <Button variant="outline" size="sm" onClick={() => onEdit(event)}>
-                <Pencil className="size-4 mr-1.5" />
-                Editar
-              </Button>
+              <button type="button" onClick={() => onEdit(event)} className="rounded-md p-2 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 transition-colors">
+                <Pencil className="size-[18px]" />
+              </button>
             )}
           </div>
         )}
