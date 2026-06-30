@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Video, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { contactListAll, contactCreate } from '@/lib/contactApi';
-import { batchCheckCompanies } from '@/lib/apolloApi';
+import { companyListAll } from '@/lib/companyApi';
 import { useAppStore } from '@/store';
 import type { CalendarEvent } from '@/types';
 import type { CreateActivityPayload } from '@/lib/activityApi';
@@ -25,6 +25,7 @@ export function GoogleEventFloatingBar({ event, createActivity }: { event: Calen
       if (attendees.length === 0) { setMessage('El evento no tiene invitados'); setState('error'); return; }
 
       const allContacts = await contactListAll();
+      const allCompanies = await companyListAll();
       let successCount = 0;
 
       for (const a of attendees) {
@@ -39,14 +40,13 @@ export function GoogleEventFloatingBar({ event, createActivity }: { event: Calen
         if (existing) {
           contactId = existing.id;
         } else {
-          const [companyMatch] = (await batchCheckCompanies([{ name: domain, domain }])).results;
-          const existingCompanyId = companyMatch?.companyId;
-          if (existingCompanyId) {
-            const created = await contactCreate({ name: a.name || a.email, correo: a.email, fuente: 'google-calendar', etapa: 'lead', companyId: existingCompanyId });
+          const existingCompany = allCompanies.find((c) => c.domain?.toLowerCase() === domain);
+          if (existingCompany) {
+            const created = await contactCreate({ name: a.name || a.email, correo: a.email, fuente: 'base', etapa: 'lead', companyId: existingCompany.id });
             contactId = created.id;
-            companyId = existingCompanyId;
+            companyId = existingCompany.id;
           } else {
-            const created = await contactCreate({ name: a.name || a.email, correo: a.email, fuente: 'google-calendar', etapa: 'lead', newCompany: { name: domain } });
+            const created = await contactCreate({ name: a.name || a.email, correo: a.email, fuente: 'base', etapa: 'lead', newCompany: { name: domain, facturacionEstimada: 2000, fuente: 'base' } });
             contactId = created.id;
           }
         }
@@ -58,9 +58,12 @@ export function GoogleEventFloatingBar({ event, createActivity }: { event: Calen
       setCount(successCount);
       setState('success');
       setMessage(`${successCount} actividad${successCount !== 1 ? 'es' : ''} creada${successCount !== 1 ? 's' : ''}`);
+      toast.dismiss('google-float-toast');
+      toast.success(`${successCount} actividad${successCount !== 1 ? 'es' : ''} vinculada${successCount !== 1 ? 's' : ''}`);
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'Error al vincular');
       setState('error');
+      toast.dismiss('google-float-toast');
       toast.error(e instanceof Error ? e.message : 'Error al vincular evento');
     }
   }

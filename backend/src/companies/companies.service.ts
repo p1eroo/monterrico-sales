@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
@@ -108,6 +109,7 @@ const COMPANY_SUMMARY_TAB_ETAPAS = [
 
 @Injectable()
 export class CompaniesService {
+  private readonly logger = new Logger(CompaniesService.name);
   constructor(
     private readonly prisma: PrismaService,
     private readonly entitySync: EntitySyncService,
@@ -393,6 +395,10 @@ export class CompaniesService {
     });
 
     await this.entitySync.propagateFromCompany(company.id);
+    // Workaround: @prisma/adapter-pg no envía facturacionEstimada en el INSERT real
+    if (facturacionEstimada > 0) {
+      await this.prisma.$executeRaw`UPDATE "Company" SET "facturacionEstimada" = ${facturacionEstimada} WHERE id = ${company.id}`;
+    }
 
     await this.activityLogs.record(actor ?? null, {
       action: 'crear',
@@ -936,6 +942,7 @@ export class CompaniesService {
     if (!company) {
       throw new NotFoundException('Empresa no encontrada');
     }
+    this.logger.log(`[findOne] company id=${company.id} facturacionEstimada: ${company.facturacionEstimada} (tipo: ${typeof company.facturacionEstimada})`);
     return {
       ...company,
       clienteRecuperado: normalizeClienteRecuperado(company.clienteRecuperado),

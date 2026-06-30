@@ -153,6 +153,25 @@ export class ChatwootWebhookService {
       },
     });
 
+    // Si existe con nombre placeholder, actualizar con el nombre real
+    if (prospecto && name && /^Contacto \d{9}$/.test(prospecto.nombreCompleto ?? '')) {
+      prospecto = await this.prisma.flotaProspecto.update({
+        where: { id: prospecto.id },
+        data: { nombreCompleto: name },
+      });
+    }
+
+    // Si existe pero está eliminado, no reactivar — solo actualizar nombre si aplica
+    if (prospecto?.eliminadoAt) {
+      if (name) {
+        prospecto = await this.prisma.flotaProspecto.update({
+          where: { id: prospecto.id },
+          data: { nombreCompleto: name },
+        });
+      }
+      return prospecto;
+    }
+
     if (!prospecto && name) {
       try {
         prospecto = await this.prisma.flotaProspecto.create({

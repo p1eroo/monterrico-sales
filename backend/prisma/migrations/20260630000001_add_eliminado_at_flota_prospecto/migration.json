@@ -1,0 +1,18 @@
+{
+  "version": "5.2",
+  "steps": [
+    {
+      "tag": "AlterTable",
+      "model": "FlotaProspecto",
+      "operation": "addColumns",
+      "columns": [
+        {
+          "name": "eliminado_at",
+          "type": "Timestamp",
+          "default": null,
+          "isRequired": false
+        }
+      ]
+    }
+  ]
+}

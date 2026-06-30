@@ -347,33 +347,14 @@ function MessageAttachment({
 
 export default function FlotaMensajes() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [tab, setTab] = useState<'inbox' | 'chatwoot' | 'masivo' | 'pipeline' | 'automatizacion' | 'conexiones' | 'calendario'>(
+  const [tab, setTab] = useState<'chatwoot' | 'automatizacion' | 'calendario' | 'inbox'>(
     () => {
       const t = searchParams.get('tab');
-      if (t === 'inbox' || t === 'chatwoot' || t === 'masivo' || t === 'pipeline' || t === 'automatizacion' || t === 'conexiones') return t;
+      if (t === 'chatwoot' || t === 'automatizacion' || t === 'inbox') return t;
       return 'chatwoot';
     },
   );
-  const [connection, setConnection] = useState<FlotaWhatsappConnectionResponse | null>(null);
-  const [evoModalOpen, setEvoModalOpen] = useState(false);
-  const [loadingConn, setLoadingConn] = useState(true);
   const [calModalOpen, setCalModalOpen] = useState(false);
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(
-    () => searchParams.get('chat') || null,
-);
-  const pipelineSelect = useCallback((id: string) => {
-    setActiveConversationId(id);
-    setTab('inbox');
-  }, []);
-
-  const handleActiveChange = useCallback((id: string | null) => {
-    setActiveConversationId(id);
-    if (id) {
-      setSearchParams({ chat: id }, { replace: true });
-    } else {
-      setSearchParams({}, { replace: true });
-    }
-  }, [setSearchParams]);
 
   useEffect(() => {
     setSearchParams((prev) => {
@@ -382,89 +363,6 @@ export default function FlotaMensajes() {
       return next;
     }, { replace: true });
   }, [tab, setSearchParams]);
-
-  const instance = connection?.instance ?? null;
-  const isConnected = instance?.isConnected ?? false;
-
-  async function loadConnection(silent = false) {
-    if (!silent) setLoadingConn(true);
-    try {
-      const next = await fetchSharedConnection();
-      setConnection(next);
-    } catch {
-      if (!silent) toast.error('No se pudo cargar el estado de la conexión');
-    } finally {
-      if (!silent) setLoadingConn(false);
-    }
-  }
-
-  useEffect(() => {
-    if (tab === 'inbox' || tab === 'masivo') void loadConnection();
-  }, [tab]);
-
-  useEffect(() => {
-    if (!instance || instance.isConnected || tab !== 'inbox') return;
-    const id = window.setInterval(() => {
-      if (document.visibilityState !== 'visible') return;
-      void loadConnection(true);
-    }, 5000);
-    return () => window.clearInterval(id);
-  }, [instance?.isConnected, instance?.qrCode, instance?.qrText, tab]);
-
-  useEffect(() => {
-    if (instance?.isConnected) setEvoModalOpen(false);
-  }, [instance?.isConnected]);
-
-  // Multi-instance state
-  const [connectingInstance, setConnectingInstance] = useState<FlotaInstanceDetail | null>(null);
-  const [conexionesReloadTick, setConexionesReloadTick] = useState(0);
-  const [flotaInstances, setFlotaInstances] = useState<FlotaInstanceDetail[]>([]);
-
-  const inboxConnected = useMemo(
-    () => flotaInstances.some((i) => i.useForInbox && i.isConnected),
-    [flotaInstances],
-  );
-  const masivoConnected = useMemo(
-    () => flotaInstances.some((i) => i.useForMasivo && i.isConnected),
-    [flotaInstances],
-  );
-  const anyFlotaConnected = useMemo(
-    () => flotaInstances.some((i) => i.isConnected),
-    [flotaInstances],
-  );
-
-  useEffect(() => {
-    if (tab !== 'inbox' && tab !== 'conexiones' && tab !== 'masivo') return;
-    fetchFlotaInstances().then(setFlotaInstances).catch(() => {});
-    const interval = setInterval(() => {
-      fetchFlotaInstances().then(setFlotaInstances).catch(() => {});
-    }, 15000);
-    return () => clearInterval(interval);
-  }, [conexionesReloadTick, tab]);
-
-  const tabStatusConnected = useMemo(() => {
-    if (tab === 'inbox') return inboxConnected;
-    if (tab === 'masivo') return masivoConnected;
-    return isConnected || anyFlotaConnected;
-  }, [tab, inboxConnected, masivoConnected, isConnected, anyFlotaConnected]);
-
-  const handleConnectInstance = useCallback(async (id: string) => {
-    const { instance: updated } = await connectFlotaInstance(id);
-    setConnectingInstance(updated);
-  }, []);
-
-  const handleDisconnectInstance = useCallback(async (id: string) => {
-    await disconnectFlotaInstance(id);
-    setConnectingInstance(null);
-    setEvoModalOpen(false);
-    setConexionesReloadTick((t) => t + 1);
-    toast.success('Instancia desconectada');
-  }, []);
-
-  const handleCloseInstanceModal = useCallback(() => {
-    setConnectingInstance(null);
-    setConexionesReloadTick((t) => t + 1);
-  }, []);
 
   return (
     <div className="flex flex-col h-svh w-full overflow-hidden">
@@ -483,22 +381,7 @@ export default function FlotaMensajes() {
           </button>
           <ThemeToggle />
         </div>
-        <button
-          onClick={() => { if (tab !== 'chatwoot') setEvoModalOpen(true); }}
-          className={cn(
-            'flex flex-col items-center justify-center rounded-md border px-4 py-1 text-xs leading-tight transition-colors',
-            tab === 'chatwoot' || tabStatusConnected
-              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20'
-              : 'border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20',
-          )}
-        >
-          <span className="font-medium">
-            {tab === 'chatwoot' ? 'Chatwoot' : instance?.displayLineId || instance?.instanceName || 'WhatsApp'}
-          </span>
-          <span className="opacity-70">
-            {tab === 'chatwoot' ? 'Conectado' : tabStatusConnected ? 'Conectado' : 'Desconectado'}
-          </span>
-        </button>
+
       </header>
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
@@ -509,9 +392,6 @@ export default function FlotaMensajes() {
             { key: 'chatwoot', icon: MessageCircle, label: 'Chatwoot' },
             { key: 'inbox', icon: Inbox, label: 'Inbox' },
             { key: 'calendario', icon: Calendar, label: 'Calendario' },
-            { key: 'masivo', icon: Send, label: 'Masivo' },
-            { key: 'pipeline', icon: LayoutList, label: 'Pipeline' },
-            { key: 'conexiones', icon: Link2, label: 'Conexiones' },
             { key: 'automatizacion', icon: null, label: 'Automatización', customIcon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg>' },
           ] as const).map((item) => {
             const Icon = item.icon;
@@ -542,19 +422,9 @@ export default function FlotaMensajes() {
         <div className="flex flex-col flex-1 min-w-0 bg-card">
           <div className="flex flex-col min-h-0 flex-1">
             {tab === 'inbox' ? (
-              loadingConn ? <LoadingState /> :
-              <InboxView activeId={activeConversationId} onActiveChange={handleActiveChange} isConnected={isConnected} />
+              <InboxView activeId={null} onActiveChange={() => {}} isConnected={false} />
             ) : tab === 'chatwoot' ? (
               <ChatwootInboxView />
-            ) : tab === 'masivo' ? (
-              loadingConn ? <LoadingState /> :
-              <div className="flex flex-col min-h-0 flex-1">
-                <MasivoView isConnected={isConnected} masivoConnected={masivoConnected} onConnectClick={() => setEvoModalOpen(true)} />
-              </div>
-            ) : tab === 'pipeline' ? (
-              <FlotaPipelineView onSelect={pipelineSelect} />
-            ) : tab === 'conexiones' ? (
-              <ConexionesView onConnectInstance={(inst) => setConnectingInstance(inst)} key={conexionesReloadTick} />
             ) : tab === 'calendario' ? (
               <div className="flex-1 min-h-0 overflow-auto p-4">
                 <FlotaCalendario />
@@ -582,38 +452,6 @@ export default function FlotaMensajes() {
         </div>
       )}
 
-      <EvoGoModal
-        open={evoModalOpen || !!connectingInstance}
-        onOpenChange={(v) => { if (!v) { setEvoModalOpen(false); handleCloseInstanceModal(); } }}
-        connection={connection}
-        loading={loadingConn}
-        onRefresh={() => loadConnection(false)}
-        instanceOverride={connectingInstance}
-        onConnectInstance={handleConnectInstance}
-        onDisconnectInstance={handleDisconnectInstance}
-        onConnect={async () => {
-          try {
-            const next = await connectSharedWhatsapp();
-            setConnection(next);
-            if (!next.instance?.isConnected) {
-              toast.success('QR generado. Escanea con WhatsApp para conectar.');
-            } else {
-              toast.success('WhatsApp ya está conectado');
-            }
-          } catch (e) {
-            toast.error(e instanceof Error ? e.message : 'No se pudo conectar');
-          }
-        }}
-        onDisconnect={async () => {
-          try {
-            const next = await disconnectSharedWhatsapp();
-            setConnection(next);
-            toast.success('WhatsApp desconectado');
-          } catch (e) {
-            toast.error(e instanceof Error ? e.message : 'No se pudo desconectar');
-          }
-        }}
-      />
     </div>
   );
 }
@@ -1423,6 +1261,10 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
   const [llamadaHora, setLlamadaHora] = useState('');
   const [llamadaNotas, setLlamadaNotas] = useState('');
   const [llamadaSaving, setLlamadaSaving] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [prospectoDeleted, setProspectoDeleted] = useState(false);
+  const [creatingProspecto, setCreatingProspecto] = useState(false);
+  const [prospectoFetchTick, setProspectoFetchTick] = useState(0);
   const originalObsRef = useRef('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const convo = conversations.find((c) => c.id === contactId);
@@ -1438,17 +1280,27 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
   useEffect(() => {
     if (!contactId || convo) {
       setProspectoData(null);
+      setProspectoDeleted(false);
       return;
     }
     api<Record<string, unknown>>(`/flota-prospectos/${contactId}`)
       .then((data) => {
-        setProspectoData({
-          name: String(data.nombreCompleto || ''),
-          phone: String(data.celular || data.movil || ''),
-        });
+        const isDeleted = !!data.eliminadoAt;
+        setProspectoDeleted(isDeleted);
+        if (!isDeleted) {
+          setProspectoData({
+            name: String(data.nombreCompleto || ''),
+            phone: String(data.celular || data.movil || ''),
+          });
+        } else {
+          setProspectoData(null);
+        }
       })
-      .catch(() => setProspectoData(null));
-  }, [contactId, !!convo]);
+      .catch(() => {
+        setProspectoData(null);
+        setProspectoDeleted(false);
+      });
+  }, [contactId, !!convo, prospectoFetchTick]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -1973,6 +1825,23 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
     }
   }
 
+  async function handleCreateProspecto() {
+    if (!contactId || !convo?.name) return;
+    setCreatingProspecto(true);
+    try {
+      const phone = convo.phone.replace(/\D/g, '');
+      const created = await flotaProspectoCreate({ nombreCompleto: convo.name, celular: phone });
+      setProspectoData({ name: created.nombreCompleto, phone: created.celular ?? '' });
+      setProspectoDeleted(false);
+      setProspectoFetchTick((t) => t + 1);
+      toast.success('Prospecto creado');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al crear prospecto');
+    } finally {
+      setCreatingProspecto(false);
+    }
+  }
+
   return (
     <div className="flex h-full min-h-0 min-w-0">
       <section className={cn("flex flex-col flex-1 min-w-0 overflow-hidden bg-card relative transition-all", mediaPanelOpen ? "hidden xl:flex" : "")}>
@@ -1995,23 +1864,49 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={() => {
-              if (!contactId) return;
-              const now = new Date();
-              setLlamadaProspecto({ id: contactId, nombre: convo?.name || prospectoData?.name || '' });
-              setLlamadaFecha(now.toISOString().split('T')[0]);
-              setLlamadaHora(now.toTimeString().split(' ')[0].substring(0, 5));
-              setLlamadaNotas('');
-              setLlamadaModalOpen(true);
-            }}>
-              <Phone className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={() => navigate(`/flota/prospectos/${contactId}`)}>
-              <Info className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={() => setEditModalOpen(true)}>
-              <Edit2 className="h-4 w-4" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" onClick={() => {
+                  if (!contactId) return;
+                  const now = new Date();
+                  setLlamadaProspecto({ id: contactId, nombre: convo?.name || prospectoData?.name || '' });
+                  setLlamadaFecha(now.toISOString().split('T')[0]);
+                  setLlamadaHora(now.toTimeString().split(' ')[0].substring(0, 5));
+                  setLlamadaNotas('');
+                  setLlamadaModalOpen(true);
+                }}>
+                  <Phone className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Registrar llamada</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" onClick={() => navigate(`/flota/prospectos/${contactId}`)}>
+                  <Info className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Ver detalle</TooltipContent>
+            </Tooltip>
+            {(!prospectoData && !convo) || prospectoDeleted ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" onClick={handleCreateProspecto} disabled={creatingProspecto}>
+                    {creatingProspecto ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Crear prospecto</TooltipContent>
+              </Tooltip>
+            ) : (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" onClick={() => setEditModalOpen(true)}>
+                    <Edit2 className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Editar prospecto</TooltipContent>
+              </Tooltip>
+            )}
             <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
@@ -2064,9 +1959,22 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-            <Button variant="ghost" size="icon" onClick={() => setMediaPanelOpen(!mediaPanelOpen)} className={mediaPanelOpen ? 'bg-muted' : ''}>
-              <PanelRight className="h-4 w-4" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" onClick={() => setDeleteConfirmOpen(true)} className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Eliminar prospecto</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" onClick={() => setMediaPanelOpen(!mediaPanelOpen)} className={mediaPanelOpen ? 'bg-muted' : ''}>
+                  <PanelRight className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Panel multimedia</TooltipContent>
+            </Tooltip>
         </div>
       </div>
 
@@ -2640,6 +2548,35 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
             >
               {llamadaSaving ? <Loader2 className="size-4 animate-spin" /> : <Phone className="size-4" />}
               {llamadaSaving ? 'Guardando...' : 'Registrar llamada'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Eliminar prospecto</DialogTitle>
+            <DialogDescription>
+              El prospecto se eliminará del CRM. Si vuelve a escribir, se reactivará automáticamente.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>Cancelar</Button>
+            <Button variant="destructive" onClick={async () => {
+              setDeleteConfirmOpen(false);
+              try {
+                await api(`/flota-prospectos/${contactId}`, { method: 'DELETE' });
+                setProspectoDeleted(true);
+                setProspectoData(null);
+                setProspectoFetchTick((t) => t + 1);
+                toast.success('Prospecto eliminado');
+                onContactUpdated();
+              } catch {
+                toast.error('No se pudo eliminar el prospecto');
+              }
+            }}>
+              <Trash2 className="h-4 w-4 mr-1" /> Eliminar
             </Button>
           </DialogFooter>
         </DialogContent>

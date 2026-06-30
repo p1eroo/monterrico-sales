@@ -167,7 +167,7 @@ export class EntitySyncService {
     await tx.company.update({
       where: { id: companyId },
       data: {
-        facturacionEstimada: fact,
+        ...(fact > 0 && { facturacionEstimada: fact }),
         fuente: fuenteForCompany,
         etapa,
         assignedTo,

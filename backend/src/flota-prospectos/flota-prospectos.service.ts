@@ -136,6 +136,7 @@ export class FlotaProspectosService {
     edad?: number | null; modalidad?: string | null; placa?: string | null; anioVehiculo?: number | null;
     distrito?: string | null; fechaCita?: Date | null; movil?: string | null; observaciones?: string | null;
     asistencia?: string | null; llamadaCount?: number;
+    eliminadoAt?: Date | null;
   } | null> {
     const norm = this.normalizeCelular(phone);
     if (!norm) return null;
@@ -165,13 +166,16 @@ export class FlotaProspectosService {
       observaciones: prospecto.observaciones,
       asistencia: prospecto.asistencia,
       llamadaCount: prospecto._count?.llamadas ?? 0,
+      eliminadoAt: prospecto.eliminadoAt,
     };
   }
 
 
   /** Lista ligera para el envío masivo desde CRM */
   async listForMasivo(search?: string, scope?: CrmDataScope, estado?: string) {
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = {
+      eliminadoAt: null,
+    };
 
     if (scope && !scope.unrestricted) {
       const operadorFilter = await this.getScopeOperadorFilter(scope.viewerUserId);
@@ -276,7 +280,9 @@ export class FlotaProspectosService {
     const limit = params.limit ?? 25;
     const skip = (page - 1) * limit;
 
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = {
+      eliminadoAt: null,
+    };
 
     // "Sin asignar" filter overrides all operador-based scoping
     if (params.operador === '__unassigned__') {
@@ -515,11 +521,43 @@ export class FlotaProspectosService {
     return updated;
   }
 
-  /** Crear un nuevo prospecto */
+  /** Crear un nuevo prospecto — si ya existe uno eliminado, lo reactiva */
   async createOne(data: Record<string, unknown>, actor?: ActivityActor) {
+    // Normalizar teléfono a E.164 (+51 + 9 dígitos)
+    if (data.celular) {
+      const digits = String(data.celular).replace(/\D/g, '');
+      data.celular = digits.length === 9 ? `+51${digits}` : digits.length === 11 && digits.startsWith('51') ? `+${digits}` : String(data.celular);
+    }
     const rawPhone = String(data.celular || data.movil || '');
     const existingByPhone = await this.findByPhone(rawPhone);
     if (existingByPhone) {
+      const prospecto = await this.prisma.flotaProspecto.findUnique({
+        where: { id: existingByPhone.id },
+        select: { eliminadoAt: true },
+      });
+      // Si el prospecto existente está eliminado, reactivarlo
+      if (prospecto?.eliminadoAt) {
+        const updated = await this.prisma.flotaProspecto.update({
+          where: { id: existingByPhone.id },
+          data: {
+            ...data as any,
+            eliminadoAt: null,
+            fechaRegistro: data.fechaRegistro ? new Date(data.fechaRegistro as string) : limaDate(),
+            fechaCita: data.fechaCita ? new Date(data.fechaCita as string) : null,
+            fechaAfiliacion: data.fechaAfiliacion ? new Date(data.fechaAfiliacion as string) : null,
+            asignadoAt: data.operador ? limaDate() : null,
+          },
+        });
+        await this.activityLogs.record(actor || null, {
+          action: 'reactivar',
+          module: 'flota',
+          entityType: 'flota-prospecto',
+          entityId: updated.id,
+          entityName: updated.nombreCompleto,
+          description: `Prospecto reactivado: ${updated.nombreCompleto} (${updated.celular || ''})`,
+        });
+        return updated;
+      }
       const operadorName = existingByPhone.operador?.trim() || null;
       const msg = operadorName
         ? `Ya existe un prospecto con el celular ${rawPhone} (${existingByPhone.nombreCompleto}) asignado a ${operadorName}`
@@ -549,13 +587,16 @@ export class FlotaProspectosService {
     return created;
   }
 
-  /** Eliminar un prospecto */
+  /** Soft delete (marcar como eliminado en vez de borrar físicamente) */
   async remove(id: string, actor?: ActivityActor) {
     const existing = await this.prisma.flotaProspecto.findUnique({ where: { id } });
     if (!existing) {
       throw new Error(`Prospecto no encontrado: ${id}`);
     }
-    await this.prisma.flotaProspecto.delete({ where: { id } });
+    await this.prisma.flotaProspecto.update({
+      where: { id },
+      data: { eliminadoAt: new Date() },
+    });
     await this.activityLogs.record(actor || null, {
       action: 'eliminar',
       module: 'flota',
@@ -566,13 +607,14 @@ export class FlotaProspectosService {
     });
   }
 
-  /** Eliminar múltiples prospectos */
+  /** Soft delete múltiples prospectos */
   async removeMany(ids: string[], actor?: ActivityActor) {
     if (!ids || ids.length === 0) {
       throw new Error('No se proporcionaron IDs');
     }
-    const result = await this.prisma.flotaProspecto.deleteMany({
+    const result = await this.prisma.flotaProspecto.updateMany({
       where: { id: { in: ids } },
+      data: { eliminadoAt: new Date() },
     });
     await this.activityLogs.record(actor || null, {
       action: 'eliminar',
@@ -1377,7 +1419,7 @@ export class FlotaProspectosService {
     const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const endOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0);
 
-    const baseWhere = {} as Record<string, unknown>;
+    const baseWhere = { eliminadoAt: null } as Record<string, unknown>;
     if (scope && !scope.unrestricted) {
       const operadorFilter = await this.getScopeOperadorFilter(scope.viewerUserId);
       if (operadorFilter) {
@@ -1389,20 +1431,20 @@ export class FlotaProspectosService {
       this.prisma.flotaProspecto.count({ where: baseWhere as any }),
       this.prisma.flotaProspecto.count({ where: { esDuplicado: true, ...baseWhere } as any }),
       this.prisma.$queryRawUnsafe<Array<{ estado: string; count: bigint }>>(
-        `SELECT estado, COUNT(*)::int as count FROM "FlotaProspecto" GROUP BY estado`,
+        `SELECT estado, COUNT(*)::int as count FROM "FlotaProspecto" WHERE "eliminadoAt" IS NULL GROUP BY estado`,
       ),
       this.prisma.flotaProspecto.findMany({
-        where: { redSocial: { not: null } },
+        where: { redSocial: { not: null }, eliminadoAt: null },
         select: { redSocial: true },
         distinct: ['redSocial'],
       }),
       this.prisma.flotaProspecto.findMany({
-        where: { operador: { not: null } },
+        where: { operador: { not: null }, eliminadoAt: null },
         select: { operador: true },
         distinct: ['operador'],
       }),
       this.prisma.flotaProspecto.findMany({
-        where: { modalidad: { not: null } },
+        where: { modalidad: { not: null }, eliminadoAt: null },
         select: { modalidad: true },
         distinct: ['modalidad'],
       }),
@@ -1450,7 +1492,7 @@ export class FlotaProspectosService {
     const startDate = new Date(fecini + 'T00:00:00.000Z');
     const endDate = new Date(fecfin + 'T23:59:59.999Z');
 
-    const baseWhere: any = {};
+    const baseWhere: any = { eliminadoAt: null };
 
     if (scope && !scope.unrestricted) {
       const operadorFilter = await this.getScopeOperadorFilter(scope.viewerUserId);

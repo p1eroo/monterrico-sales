@@ -341,6 +341,7 @@ export class FacebookLeadsService {
             correo,
             fuente: 'facebook',
             assignedTo: userId,
+            facturacionEstimada: 0,
           },
         });
         companyId = company.id;

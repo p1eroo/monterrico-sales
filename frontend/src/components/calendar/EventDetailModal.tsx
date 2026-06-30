@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CalendarClock, Users, FileText, Video, Building2, Link2, Pencil, Trash2, User, Briefcase } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -22,6 +24,7 @@ interface EventDetailModalProps {
 
 export function EventDetailModal({ event, open, onOpenChange, onEdit, onDelete, createActivity }: EventDetailModalProps) {
   const navigate = useNavigate();
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   if (!event) return null;
 
@@ -202,7 +205,7 @@ export function EventDetailModal({ event, open, onOpenChange, onEdit, onDelete, 
         {(onEdit || onDelete) && (
           <div className="flex justify-end gap-2 pt-4">
             {onDelete && (
-              <button type="button" onClick={() => onDelete(event)} className="rounded-md p-2 text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors">
+              <button type="button" onClick={() => setDeleteConfirmOpen(true)} className="rounded-md p-2 text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors">
                 <Trash2 className="size-[18px]" />
               </button>
             )}
@@ -214,6 +217,21 @@ export function EventDetailModal({ event, open, onOpenChange, onEdit, onDelete, 
           </div>
         )}
       </DialogContent>
+
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>¿Eliminar actividad?</DialogTitle>
+            <DialogDescription>
+              Esta acción no se puede deshacer. Se eliminará la actividad <strong>{event.title}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>Cancelar</Button>
+            <Button variant="destructive" onClick={() => { onDelete?.(event); setDeleteConfirmOpen(false); }}>Eliminar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

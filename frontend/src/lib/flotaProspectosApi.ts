@@ -69,6 +69,7 @@ export async function flotaProspectosList(params: {
   operador?: string;
   filters?: Record<string, string>;
   conLlamadas?: string;
+  signal?: AbortSignal;
 }): Promise<FlotaProspectosListResponse> {
   const qs = new URLSearchParams();
   if (params.page) qs.set('page', String(params.page));
@@ -88,6 +89,7 @@ export async function flotaProspectosList(params: {
   if (params.conLlamadas) qs.set('conLlamadas', params.conLlamadas);
   return api<FlotaProspectosListResponse>(
     `/flota-prospectos?${qs.toString()}`,
+    params.signal ? { signal: params.signal } : undefined,
   );
 }
 
@@ -230,6 +232,7 @@ export interface FlotaProspectoDetalle {
   edad?: number | null; modalidad?: string | null; placa?: string | null; anioVehiculo?: number | null;
   distrito?: string | null; fechaCita?: string | null; movil?: string | null; observaciones?: string | null;
   asistencia?: string | null; llamadaCount?: number;
+  eliminadoAt?: string | null;
 }
 
 export async function flotaProspectosByPhone(phone: string): Promise<{ found: boolean; prospecto: FlotaProspectoDetalle | null }> {

@@ -86,6 +86,14 @@ export class ChatwootClient {
     return this.request('GET', `/conversations/${id}`);
   }
 
+  async listContactConversations(contactId: number): Promise<ChatwootConversationListItem[]> {
+    const raw = await this.request<any>('GET', `/contacts/${contactId}/conversations`);
+    if (Array.isArray(raw)) return raw as ChatwootConversationListItem[];
+    if (raw?.data?.payload && Array.isArray(raw.data.payload)) return raw.data.payload as ChatwootConversationListItem[];
+    if (raw?.payload && Array.isArray(raw.payload)) return raw.payload as ChatwootConversationListItem[];
+    return [];
+  }
+
   async listMessages(
     conversationId: number,
     before?: number,
@@ -310,28 +318,41 @@ export class ChatwootClient {
     throw new Error('Chatwoot media fetch: too many redirects');
   }
 
-  async listTemplates(): Promise<{ name: string; language: string; category: string }[]> {
+  async listTemplates(): Promise<{ name: string; language: string; category: string; content?: string }[]> {
     const inboxId = this.config.inboxId;
-    // Intentar múltiples rutas posibles que Chatwoot pueda usar
     const routes = [
       `/inboxes/${inboxId}/whatsapp_templates`,
+      `/inboxes/${inboxId}/whatsapp_templates?page=1`,
+      `/inboxes/${inboxId}/message_templates`,
+      `/inboxes/${inboxId}/templates`,
       `/whatsapp/${inboxId}/templates`,
     ];
+    const fallbackContent = 'Hola estimado(a), reciba un cordial saludo de parte de Taxi Monterrico.\n\nHemos observado su interés en formar parte de nuestra flota. \n¿usted cuenta con vehiculo particular o tiene permiso de la ATU?';
     for (const route of routes) {
       try {
         const raw = await this.request<any>('GET', route);
-        // Intentar extraer templates de diferentes formatos de respuesta
-        const items = raw?.data ?? raw?.payload ?? raw ?? [];
-        if (Array.isArray(items) && items.length > 0) {
-          return items.map((t: any) => ({
-            name: t.name ?? t.id ?? '',
-            language: t.language ?? t.locale ?? '',
-            category: t.category ?? '',
-          }));
-        }
-        if (items?.length > 0) return items;
+        const extract = (items: any[]) => {
+          if (!Array.isArray(items) || items.length === 0) return null;
+          return items.map((t: any) => {
+            // Extraer texto del body desde components
+            const bodyComponent = t.components?.find((c: any) => c.type === 'BODY');
+            return {
+              name: t.name ?? t.id ?? '',
+              language: t.language ?? t.locale ?? '',
+              category: t.category ?? '',
+              content: bodyComponent?.text ?? bodyComponent?.content ?? fallbackContent,
+            };
+          });
+        };
+        let result =
+          extract(raw?.data?.payload) ??
+          extract(raw?.data?.data) ??
+          extract(raw?.data) ??
+          extract(raw?.payload) ??
+          extract(raw);
+        if (result && result.length > 0) return result;
       } catch {
-        // ruta no existe, probar siguiente
+        // probar siguiente ruta
       }
     }
     return [];

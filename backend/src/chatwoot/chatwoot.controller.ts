@@ -187,10 +187,11 @@ export class ChatwootController {
     @Body() body: {
       name: string;
       phone: string;
-      templateName: string;
-      templateCategory: string;
+      templateName?: string;
+      templateCategory?: string;
       templateLanguage?: string;
       templateParams?: Record<string, unknown>;
+      skipTemplate?: boolean;
     },
   ) {
     try {

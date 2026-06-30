@@ -195,10 +195,11 @@ export async function markConversationAsRead(conversationId: number): Promise<vo
 export async function initiateConversation(data: {
   name: string;
   phone: string;
-  templateName: string;
-  templateCategory: string;
+  templateName?: string;
+  templateCategory?: string;
   templateLanguage?: string;
   templateParams?: Record<string, unknown>;
+  skipTemplate?: boolean;
 }): Promise<{ conversationId: number; contactId: number }> {
   return api('/api/chatwoot/initiate-conversation', {
     method: 'POST',
@@ -228,6 +229,7 @@ export async function fetchChatwootTemplates(): Promise<{
   name: string;
   language: string;
   category: string;
+  content?: string;
 }[]> {
   return api('/api/chatwoot/templates');
 }

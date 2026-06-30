@@ -272,21 +272,24 @@ export default function ChatwootInboxView() {
     const phone = newPhone.trim();
     const name = newName.trim() || phone;
     if (!phone) return;
+    const cleaned = phone.replace(/\D/g, '');
+    const fullPhone = cleaned.length === 9 ? `51${cleaned}` : cleaned;
     setCreatingChat(true);
     try {
       const result = await initiateConversation({
         name,
-        phone,
-        templateName: 'afiliacion_atu',
-        templateCategory: 'UTILITY',
+        phone: fullPhone,
+        skipTemplate: true,
       });
-      toast.success('Conversación iniciada');
       setNewChatOpen(false);
       setNewPhone('');
       setNewName('');
       await loadConversations();
+      // Esperar a que React procese el estado actualizado de conversations
+      await new Promise((r) => setTimeout(r, 100));
       setActiveId(result.conversationId);
     } catch (e) {
+      console.error('handleNewChat error:', e);
       toast.error(e instanceof Error ? e.message : 'Error al iniciar conversación');
     } finally {
       setCreatingChat(false);
@@ -848,13 +851,15 @@ function Row({ label, value }: { label: string; value: string }) {
 
 /* ==================== CHAT PANEL ==================== */
 
-function ChatwootChatPanel({
+export function ChatwootChatPanel({
   conversationId,
   conversations,
   onConversationsUpdated,
   messagesCache,
   setMessagesCache,
   conductorCodes,
+  defaultPanelOpen,
+  onBack,
 }: {
   conversationId: number;
   conversations: ChatwootConversation[];
@@ -862,6 +867,8 @@ function ChatwootChatPanel({
   messagesCache: Record<number, ChatwootMessage[]>;
   setMessagesCache: React.Dispatch<React.SetStateAction<Record<number, ChatwootMessage[]>>>;
   conductorCodes?: Record<string, string>;
+  defaultPanelOpen?: boolean;
+  onBack?: () => void;
 }) {
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
@@ -889,7 +896,7 @@ function ChatwootChatPanel({
   const [citadoDate, setCitadoDate] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [panelOpen, setPanelOpen] = useState(true);
+  const [panelOpen, setPanelOpen] = useState(defaultPanelOpen ?? true);
   const [contactDetail, setContactDetail] = useState<{
     id?: number;
     custom_attributes?: Record<string, string>;
@@ -930,10 +937,15 @@ function ChatwootChatPanel({
       setLoadingProspecto(true);
       const cleanedPhone = phone.replace(/\D/g, '');
       flotaProspectosByPhone(cleanedPhone).then((res) => {
-        if (res.found && res.prospecto) {
+        if (res.found && res.prospecto && !res.prospecto.eliminadoAt) {
           setProspecto(res.prospecto);
           const agentName = conversations.find((c) => c.id === conversationId)?.meta?.assignee?.name;
           setTimeout(() => syncOperadorConAgente(agentName), 100);
+        } else if (res.found && res.prospecto?.eliminadoAt) {
+          // Prospecto eliminado, no mostrar
+          localStorage.setItem(`chatwoot_deleted_prospect_${conversationId}`, 'true');
+          setProspectoDeleted(true);
+          setProspecto(null);
         } else if (sender?.name && !localStorage.getItem(`chatwoot_deleted_prospect_${conversationId}`)) {
           setProspectoDeleted(false);
           return flotaProspectoCreate({ nombreCompleto: sender.name, celular: cleanedPhone }).then(
@@ -1412,7 +1424,12 @@ function ChatwootChatPanel({
       )}
       <section className="flex flex-col flex-1 min-w-0 overflow-hidden bg-card relative">
         <div className="flex items-center justify-between border-b border-muted px-5 py-3">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            {onBack && (
+              <button onClick={onBack} className="flex items-center justify-center h-8 w-8 rounded-md hover:bg-muted transition-colors -ml-1">
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+            )}
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary overflow-hidden shrink-0">
               {sender?.thumbnail ? (
                 <img

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ChatwootClient } from './chatwoot.client';
 import type {
+  ChatwootConversation,
   ChatwootConversationListItem,
   ChatwootMessage,
   ChatwootContact,
@@ -67,6 +68,8 @@ export class ChatwootService {
     return result.data ?? [];
   }
 
+
+
   async createContact(data: {
     name: string;
     phone_number?: string;
@@ -116,43 +119,106 @@ export class ChatwootService {
   async initiateConversation(data: {
     name: string;
     phone: string;
-    templateName: string;
-    templateCategory: string;
-    templateLanguage: string;
+    templateName?: string;
+    templateCategory?: string;
+    templateLanguage?: string;
     templateParams?: Record<string, unknown>;
+    skipTemplate?: boolean;
   }): Promise<{ conversationId: number; contactId: number }> {
-    this.logger.log(`initiateConversation: ${data.name} ${data.phone} template=${data.templateName} cat=${data.templateCategory} lang=${data.templateLanguage}`);
+    this.logger.log(`initiateConversation: ${data.name} ${data.phone} skipTemplate=${data.skipTemplate}`);
 
-    // 1. Crear contacto en Chatwoot
-    const contact = await this.createContact({
-      name: data.name,
-      phone_number: data.phone,
-    });
-    this.logger.log(`Contacto creado: id=${contact.id}`);
-
-    // 2. Crear conversación (sin template - igual que Chatwoot UI)
     const cleanPhone = data.phone.replace(/\D/g, '');
-    this.logger.log(`Creando conversación con source_id=${cleanPhone}, inbox_id=${this.client.getConfig().inboxId}`);
-    const conversation = await this.client.createConversation(cleanPhone, this.client.getConfig().inboxId);
-    this.logger.log(`Conversación creada: id=${conversation.id}`);
 
-    // 3. Enviar template a la conversación (igual que Chatwoot UI hace en POST /messages)
-    this.logger.log(`Enviando template a conversation ${conversation.id}`);
+    // 1. Crear o buscar contacto
+    const e164Phone = data.phone.startsWith('+') ? data.phone : `+${cleanPhone}`;
+    let contact: ChatwootContact | null = null;
+    let contactId: number | null = null;
     try {
-      const templateContent = 'Hola estimado(a), reciba un cordial saludo de parte de Taxi Monterrico.\n\nHemos observado su interés en formar parte de nuestra flota. \n¿usted cuenta con vehiculo particular o tiene permiso de la ATU?';
-      await this.client.sendTemplateMessage(conversation.id, templateContent, {
-        name: data.templateName,
-        category: data.templateCategory,
-        language: data.templateLanguage,
-        processed_params: data.templateParams ?? {},
-      });
-      this.logger.log(`Template enviado a conversation ${conversation.id}`);
-    } catch (e) {
-      this.logger.error(`Error al enviar template: ${e instanceof Error ? e.message : e}`);
-      throw e;
+      contact = await this.createContact({ name: data.name, phone_number: e164Phone });
+      contactId = contact.id;
+      this.logger.log(`Contacto creado: id=${contactId}`);
+    } catch (createErr) {
+      const msg = createErr instanceof Error ? createErr.message : '';
+      if (msg.includes('already been taken')) {
+        this.logger.log('Contacto ya existe, buscando ID...');
+        const queries = [cleanPhone, e164Phone, cleanPhone.slice(-9)];
+        for (const q of queries) {
+          try {
+            const results = await this.searchContacts(q);
+            const found = results.find((c) =>
+              c.phone_number?.replace(/\D/g, '') === cleanPhone ||
+              c.phone_number?.replace(/\D/g, '') === `51${cleanPhone.slice(-9)}`,
+            );
+            if (found) { contactId = found.id; break; }
+          } catch { /* ignorar */ }
+        }
+      } else {
+        throw createErr;
+      }
     }
 
-    return { conversationId: conversation.id, contactId: contact.id };
+    // 2. Buscar conversación existente activa para este contacto
+    let conversation: ChatwootConversation | null = null;
+    async function findConversationByPhone(phone: string): Promise<ChatwootConversation | null> {
+      const digits = phone.replace(/\D/g, '');
+      const searchIn = (items: { meta?: { sender?: { phone_number?: string } }; status: string; id: number }[]) =>
+        items.find((c) =>
+          (c.status === 'open' || c.status === 'pending') &&
+          c.meta?.sender?.phone_number?.replace(/\D/g, '') === digits,
+        ) ?? null;
+      // A) Por contacto directo
+      if (contactId) {
+        try {
+          const existing = await this.client.listContactConversations(contactId);
+          const found = searchIn(existing);
+          if (found) return found as any;
+        } catch { /* ignorar */ }
+      }
+      // B) Lista global de abiertas
+      try {
+        const all = await this.client.listConversations({ status: 'open' });
+        const found = searchIn(all);
+        if (found) return found as any;
+      } catch { /* ignorar */ }
+      // C) Búsqueda por query
+      try {
+        const byQ = await this.client.listConversations({ q: phone });
+        const found = searchIn(byQ);
+        if (found) return found as any;
+      } catch { /* ignorar */ }
+      return null;
+    }
+    conversation = await findConversationByPhone(cleanPhone);
+    if (conversation) {
+      this.logger.log(`Conversación existente encontrada: id=${conversation.id}`);
+    }
+
+    // 3. Si no hay conversación activa, crear una nueva
+    if (!conversation) {
+      this.logger.log(`Creando conversación source_id=${cleanPhone}`);
+      conversation = await this.client.createConversation(cleanPhone, this.client.getConfig().inboxId);
+      this.logger.log(`Conversación creada: id=${conversation.id}`);
+    }
+
+    // 3. Enviar template a la conversación solo si no se salta
+    if (!data.skipTemplate && data.templateName && data.templateCategory) {
+      this.logger.log(`Enviando template a conversation ${conversation.id}`);
+      try {
+        const templateContent = 'Hola estimado(a), reciba un cordial saludo de parte de Taxi Monterrico.\n\nHemos observado su interés en formar parte de nuestra flota. \n¿usted cuenta con vehiculo particular o tiene permiso de la ATU?';
+        await this.client.sendTemplateMessage(conversation.id, templateContent, {
+          name: data.templateName,
+          category: data.templateCategory,
+          language: data.templateLanguage ?? 'es_PE',
+          processed_params: data.templateParams ?? {},
+        });
+        this.logger.log(`Template enviado a conversation ${conversation.id}`);
+      } catch (e) {
+        this.logger.error(`Error al enviar template: ${e instanceof Error ? e.message : e}`);
+        throw e;
+      }
+    }
+
+    return { conversationId: conversation.id, contactId: contact?.id ?? 0 };
   }
 
   async listTemplates() {

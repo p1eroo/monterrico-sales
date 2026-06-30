@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
@@ -107,6 +108,7 @@ const contactIncludeDetail = {
 
 @Injectable()
 export class ContactsService {
+  private readonly logger = new Logger(ContactsService.name);
   constructor(
     private readonly prisma: PrismaService,
     private readonly entitySync: EntitySyncService,
@@ -218,6 +220,7 @@ export class ContactsService {
     if (!name) {
       throw new BadRequestException('El nombre de la empresa es obligatorio');
     }
+    this.logger.log(`[createCompanyInTx] facturacionEstimada recibido: ${dto.facturacionEstimada} (tipo: ${typeof dto.facturacionEstimada})`);
     if (
       dto.facturacionEstimada === undefined ||
       dto.facturacionEstimada === null ||
@@ -307,6 +310,11 @@ export class ContactsService {
         assignedTo,
       },
     });
+    this.logger.log(`[createCompanyInTx] facturacionEstimada guardado: ${company.facturacionEstimada} (tipo: ${typeof company.facturacionEstimada}) en company id=${company.id}`);
+    // Workaround: @prisma/adapter-pg no envía facturacionEstimada en el INSERT real,
+    // forzamos el valor con un UPDATE directo
+    await tx.$executeRaw`UPDATE "Company" SET "facturacionEstimada" = ${dto.facturacionEstimada} WHERE id = ${company.id}`;
+    this.logger.log(`[createCompanyInTx] facturacionEstimada forzado vía raw a ${dto.facturacionEstimada}`);
     return { id: company.id, name: company.name };
   }
 
@@ -383,6 +391,7 @@ export class ContactsService {
       async (tx) => {
         let effectiveCompanyId: string | null = requestedCompanyId || null;
         if (newCompanyPayload) {
+          this.logger.log(`[create] newCompanyPayload: ${JSON.stringify(newCompanyPayload)}`);
           const comp = await this.createCompanyInTx(tx, newCompanyPayload);
           effectiveCompanyId = comp.id;
         }

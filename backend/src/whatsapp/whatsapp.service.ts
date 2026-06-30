@@ -1564,16 +1564,23 @@ export class WhatsappService {
     }
 
     let flotaProspecto = await this.findFlotaProspectoByPhone(peerDigits);
-    if (!flotaProspecto?.id) {
-      const normalizedPhone = peerDigits.replace(/\D/g, '').replace(/^51/, '').slice(-9);
-      const createdProspecto = await this.prisma.flotaProspecto.create({
-        data: {
-          nombreCompleto: `Contacto ${normalizedPhone}`,
-          celular: normalizedPhone,
-          estado: 'Nuevo',
-        },
+    // Si existe un prospecto activo, vincular el mensaje. Si no, se guarda sin prospecto.
+    if (flotaProspecto?.id) {
+      const existing = await this.prisma.flotaProspecto.findUnique({
+        where: { id: flotaProspecto.id },
+        select: { eliminadoAt: true, nombreCompleto: true },
       });
-      flotaProspecto = { id: createdProspecto.id, nombreCompleto: createdProspecto.nombreCompleto, celular: createdProspecto.celular };
+      // Si está eliminado, actualizar nombre placeholder si aplica (sin reactivar)
+      if (existing?.eliminadoAt) {
+        const senderName = String(parsed.data['pushName'] || parsed.data['PushName'] || '').trim();
+        if (senderName && /^Contacto \d{9}$/.test(existing.nombreCompleto ?? '')) {
+          await this.prisma.flotaProspecto.update({
+            where: { id: flotaProspecto.id },
+            data: { nombreCompleto: senderName },
+          });
+        }
+        flotaProspecto = null; // no vincular mensaje a prospectos eliminados
+      }
     }
     const instance = await this.findInstanceByEvent(parsed);
     const instanceToUse = instance ?? (await this.findSharedInstance());

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
+import { initiateConversation, fetchChatwootTemplates } from "@/lib/chatwootApi";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAppStore } from "@/store";
 import { useImportJobsStore } from "@/store/importJobsStore";
@@ -17,6 +18,8 @@ import {
   Download,
   Edit2,
   Lock,
+  MessageCircle,
+  Send,
 } from "lucide-react";
 import {
   DateRangeCalendar,
@@ -24,6 +27,7 @@ import {
 } from "@/components/shared/DateRangeCalendar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -56,12 +60,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import ChatPanelStandalone from "@/components/flota/ChatPanelStandalone";
+
+
 import { PageHeader } from "@/components/shared/PageHeader";
 import { CrmDataTableSkeleton } from "@/components/shared/CrmListPageSkeleton";
+import { cn } from "@/lib/utils";
 import { formatDateDMY } from "@/lib/formatters";
-import { markConversationAsRead } from "@/lib/flotaWhatsappApi";
+
 import {
   flotaProspectosList,
   flotaProspectosImportSheets,
@@ -87,6 +92,7 @@ import { InlineEditCell } from "@/components/shared/InlineEditCell";
 import { DataTable, type ColumnDef } from "@/components/shared/DataTable";
 import { TableWithStickyScroll } from "@/components/shared/TableWithStickyScroll";
 import { Pagination } from "@/components/shared/Pagination";
+import ChatwootInboxPanel from "@/components/flota/ChatwootInboxPanel";
 
 const ESTADO_OPTIONS = [
   { label: "Nuevo", value: "Nuevo" },
@@ -124,7 +130,6 @@ export default function FlotaProspectos() {
   const [totalProspectos, setTotalProspectos] = useState(0);
   const [counts, setCounts] = useState<FlotaProspectosCounts | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const isFirstLoad = useRef(true);
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -238,19 +243,416 @@ export default function FlotaProspectos() {
     operador: string | null;
   } | null>(null);
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const abortRef = useRef<AbortController | null>(null);
+  const page = parseInt(searchParams.get('page') || '1', 10);
+  const setPage = useCallback(
+    (newPage: number) => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (newPage > 1) {
+          next.set('page', String(newPage));
+        } else {
+          next.delete('page');
+        }
+        return next;
+      }, { replace: true });
+    },
+    [setSearchParams],
+  );
+
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [blockedProspects, setBlockedProspects] = useState<FlotaProspectoRow[]>([]);
   const [modalidadFilter, setModalidadFilter] = useState("all");
   const [redSocialFilter, setRedSocialFilter] = useState("all");
   const [operadorFilter, setOperadorFilter] = useState("all");
-  const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [duplicadosFilter, setDuplicadosFilter] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
   const [conLlamadasFilter, setConLlamadasFilter] = useState("all");
-  const [chatProspectoId, setChatProspectoId] = useState<string | null>(null);
   const [fechasOpen, setFechasOpen] = useState(false);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [chatPanelOpen, setChatPanelOpen] = useState(false);
+  const [newChatOpen, setNewChatOpen] = useState(false);
+  const [newChatPhone, setNewChatPhone] = useState('');
+  const [newChatName, setNewChatName] = useState('');
+  const [newChatTemplates, setNewChatTemplates] = useState<{ name: string; language: string; category: string; content?: string }[]>([]);
+  const [newChatSelected, setNewChatSelected] = useState('');
+  const [newChatLoading, setNewChatLoading] = useState(false);
+  const [newChatSending, setNewChatSending] = useState(false);
+
+  const blockedProspectsRef = useRef(blockedProspects);
+  blockedProspectsRef.current = blockedProspects;
+  const selectedIdsRef = useRef(selectedIds);
+  selectedIdsRef.current = selectedIds;
+  const columnFiltersRef = useRef(columnFilters);
+  columnFiltersRef.current = columnFilters;
+  const operadoresRef = useRef(operadores);
+  operadoresRef.current = operadores;
+
+  const columns = useMemo<ColumnDef<FlotaProspectoRow>[]>(
+    () => [
+      {
+        id: "select",
+        header: "",
+        enableSorting: false,
+        enableColumnFilter: false,
+        size: 40,
+        minSize: 40,
+        maxSize: 40,
+        cell: ({ row }) => {
+          const isBlocked = blockedProspectsRef.current.some(
+            (bp) => bp.id === row.original.id,
+          );
+          return (
+            <div
+              className="flex justify-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {isBlocked ? (
+                <Lock className="size-3.5 text-muted-foreground" />
+              ) : (
+                <Checkbox
+                  checked={selectedIdsRef.current.has(row.original.id)}
+                  onCheckedChange={() => {
+                    const id = row.original.id;
+                    setSelectedIds((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(id)) next.delete(id);
+                      else next.add(id);
+                      return next;
+                    });
+                  }}
+                />
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        id: "fechaRegistro",
+        header: "F.Registro",
+        enableSorting: false,
+        enableColumnFilter: false,
+        cell: ({ row }) => (
+          <div>
+            <div>
+              {row.original.fechaRegistro
+                ? formatDateDMY(row.original.fechaRegistro)
+                : "—"}
+            </div>
+            {row.original.origen === "IMPORTADO" &&
+              row.original.createdAt && (
+                <div className="text-[9px] text-muted-foreground mt-0.5">
+                  FI:{" "}
+                  {new Date(row.original.createdAt).toLocaleDateString(
+                    "es-PE",
+                    {
+                      timeZone: "America/Lima",
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                    },
+                  )}
+                </div>
+              )}
+          </div>
+        ),
+      },
+      {
+        accessorKey: "redSocial",
+        id: "redSocial",
+        header: "Red Social",
+        size: 90,
+        enableColumnFilter: false,
+        cell: ({ getValue }) => (
+          <span
+            className="truncate block max-w-[80px] text-[10px]"
+            title={String(getValue() ?? "")}
+          >
+            {String(getValue() ?? "") || "—"}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "celular",
+        id: "celular",
+        header: "Celular",
+        size: 110,
+        cell: ({ getValue, row }) => {
+          const phone = String(getValue() ?? "");
+          const codigo = getConductorCodigo(row.original.celular);
+          const isBlocked = blockedProspectsRef.current.some(
+            (bp) => bp.id === row.original.id,
+          );
+          return (
+            <div className="relative">
+              <span
+                className="truncate block max-w-[90px]"
+                title={phone}
+              >
+                {phone || "—"}
+              </span>
+                {phone && (
+                <div
+                  className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-background/70 rounded cursor-pointer z-10"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const p = row.original;
+                    setNewChatPhone(p.celular || '');
+                    setNewChatName(p.nombreCompleto);
+                    setNewChatTemplates([]);
+                    setNewChatSelected('');
+                    setNewChatLoading(true);
+                    setNewChatOpen(true);
+                    setNewChatSelected('afiliacion_atu');
+                    fetchChatwootTemplates().then((tpls) => {
+                      setNewChatTemplates(tpls);
+                      if (tpls.length > 0) setNewChatSelected(tpls[0].name);
+                    }).catch(() => {}).finally(() => setNewChatLoading(false));
+                  }}
+                >
+                  <MessageCircle className="size-5 text-primary" />
+                </div>
+              )}
+              {isBlocked && (
+                <span className="block text-[10px] text-muted-foreground italic">
+                  Operador no editable
+                </span>
+              )}
+              {codigo && (
+                <span className="block text-[10px] text-emerald-600 font-medium truncate max-w-[100px]">
+                  {codigo}
+                </span>
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: "nombreCompleto",
+        id: "nombreCompleto",
+        header: "Nombres y Apellidos",
+        cell: ({ getValue, row }) => (
+          <div className="flex items-center gap-2">
+            <span
+              className={`text-[10px] font-medium ${row.original.esDuplicado ? "text-red-600" : ""}`}
+            >
+              {String(getValue() ?? "")}
+            </span>
+            {row.original.esDuplicado && (
+              <Badge
+                variant="outline"
+                className="border-red-200 bg-red-50 text-[10px] text-red-600"
+              >
+                Duplicado
+              </Badge>
+            )}
+          </div>
+        ),
+      },
+      {
+        accessorKey: "edad",
+        id: "edad",
+        header: "Edad",
+        size: 60,
+        cell: ({ getValue }) =>
+          getValue() != null ? (
+            <span className="text-[10px]">{String(getValue())}</span>
+          ) : (
+            <span className="text-[10px]">—</span>
+          ),
+      },
+      {
+        accessorFn: (r) => {
+          const ops = operadoresRef.current;
+          return getOperatorDisplayName(r.operador, ops) ||
+            r.operador ||
+            "";
+        },
+        id: "operador",
+        header: "Operador",
+        size: 110,
+        enableColumnFilter: false,
+        cell: ({ getValue }) => {
+          const name = String(getValue() ?? "") || "—";
+          return (
+            <span
+              className="truncate block max-w-[100px] text-[10px]"
+              title={name}
+            >
+              {name}
+            </span>
+          );
+        },
+      },
+      {
+        accessorFn: (r) => r._count?.llamadas ?? 0,
+        id: "llamadas",
+        header: "Llamadas",
+        size: 70,
+        enableColumnFilter: false,
+        cell: ({ getValue }) => {
+          const count = Number(getValue() ?? 0);
+          return count > 0 ? (
+            <span className="flex items-center gap-0.5 text-xs text-blue-600 dark:text-blue-400">
+              <Phone className="h-3 w-3" />
+              {count}
+            </span>
+          ) : (
+            <span className="text-xs text-muted-foreground">—</span>
+          );
+        },
+      },
+      {
+        accessorKey: "estado",
+        id: "estado",
+        header: "Estado",
+        size: 90,
+        enableColumnFilter: false,
+        cell: ({ getValue }) => {
+          const val = String(getValue() ?? "");
+          return (
+            <span
+              className={`text-[10px] truncate block max-w-[80px] ${val ? estadoColors[val] || "" : ""}`}
+            >
+              {val || "—"}
+            </span>
+          );
+        },
+      },
+      {
+        accessorKey: "modalidad",
+        id: "modalidad",
+        header: "Modalidad",
+        size: 100,
+        enableColumnFilter: false,
+        cell: ({ getValue }) => (
+          <span
+            className="truncate block max-w-[90px] text-[10px]"
+            title={String(getValue() ?? "")}
+          >
+            {String(getValue() ?? "") || "—"}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "placa",
+        id: "placa",
+        header: "Placa",
+        size: 90,
+        cell: ({ getValue }) => (
+          <span
+            className="truncate block max-w-[80px] text-[10px]"
+            title={String(getValue() ?? "")}
+          >
+            {String(getValue() ?? "") || "—"}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "anioVehiculo",
+        id: "anioVehiculo",
+        header: "Año Veh.",
+        size: 65,
+        cell: ({ getValue }) =>
+          getValue() != null ? (
+            <span className="text-[10px]">{String(getValue())}</span>
+          ) : (
+            <span className="text-[10px]">—</span>
+          ),
+      },
+      {
+        accessorKey: "distrito",
+        id: "distrito",
+        header: "Distrito",
+        size: 100,
+        cell: ({ getValue }) => (
+          <span
+            className="truncate block max-w-[90px] text-[10px]"
+            title={String(getValue() ?? "")}
+          >
+            {String(getValue() ?? "") || "—"}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "fechaCita",
+        id: "fechaCita",
+        header: "F. Cita",
+        size: 130,
+        cell: ({ getValue, row }) => {
+          const val = row.original.fechaCita;
+          return val ? (
+            <div>
+              <div>{formatDateDMY(val)}</div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">
+                {new Date(val).toLocaleTimeString("es-PE", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  timeZone: "America/Lima",
+                })}
+              </div>
+            </div>
+          ) : (
+            "—"
+          );
+        },
+      },
+      {
+        accessorKey: "asistencia",
+        id: "asistencia",
+        header: "Asistencia",
+        size: 80,
+        cell: ({ getValue }) => {
+          const val = String(getValue() ?? "");
+          return val ? (
+            <Badge
+              variant="outline"
+              className={`text-[10px] ${val === "Asistió" || val === "ASISTIO" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}
+            >
+              {val}
+            </Badge>
+          ) : (
+            <span className="text-[10px] text-muted-foreground">—</span>
+          );
+        },
+      },
+      {
+        accessorKey: "fechaAfiliacion",
+        id: "fechaAfiliacion",
+        header: "F. Afiliacion",
+        size: 110,
+        cell: ({ getValue }) =>
+          getValue() ? formatDateDMY(String(getValue())) : "—",
+      },
+      {
+        accessorKey: "movil",
+        id: "movil",
+        header: "Movil",
+        size: 100,
+        cell: ({ getValue }) => (
+          <span
+            className="truncate block max-w-[90px]"
+            title={String(getValue() ?? "")}
+          >
+            {String(getValue() ?? "") || "—"}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "observaciones",
+        id: "observaciones",
+        header: "Observaciones",
+        size: 170,
+        cell: ({ getValue }) => (
+          <span className="text-[10px]">
+            {getLatestObservacion(String(getValue() ?? ""))}
+          </span>
+        ),
+      },
+    ],
+    [],
+  );
 
   const { hasPermission } = usePermissions();
   const currentUser = useAppStore((s) => s.currentUser);
@@ -388,17 +790,20 @@ export default function FlotaProspectos() {
   const LOAD_LIMIT = 25;
 
   const loadProspectos = useCallback(
-    async (pageNum = 1) => {
+    async (pageNum: number) => {
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
       if (isFirstLoad.current) {
         isFirstLoad.current = false;
         setInitialLoading(true);
-      } else {
-        setRefreshing(true);
       }
       try {
         const res = await flotaProspectosList({
           page: pageNum,
           limit: LOAD_LIMIT,
+          signal: controller.signal,
           search: searchDebounced || undefined,
           estado: estadoFilter === "all" ? undefined : estadoFilter,
           duplicados: duplicadosFilter ? true : undefined,
@@ -441,14 +846,13 @@ export default function FlotaProspectos() {
 
         setProspectos(res.data);
         setTotalProspectos(res.total);
-        setPage(pageNum);
       } catch (e) {
+        if ((e as Error).name === 'AbortError') return;
         toast.error(
           e instanceof Error ? e.message : "Error cargando prospectos",
         );
       } finally {
         setInitialLoading(false);
-        setRefreshing(false);
       }
     },
     [
@@ -469,8 +873,9 @@ export default function FlotaProspectos() {
     void loadProspectos(page);
   }, [loadProspectos, page]);
 
-  const filteredProspectos = useMemo(() => {
-    const blocked = blockedProspects.filter((bp) => {
+  const displayData = useMemo(() => {
+    if (blockedProspects.length === 0) return prospectos;
+    const filtered = blockedProspects.filter((bp) => {
       if (Object.keys(columnFilters).length === 0) return true;
       for (const [colId, filterVal] of Object.entries(columnFilters)) {
         if (!filterVal) continue;
@@ -479,16 +884,7 @@ export default function FlotaProspectos() {
       }
       return true;
     });
-    if (Object.keys(columnFilters).length === 0) return [...blocked, ...prospectos];
-    let data = prospectos;
-    for (const [colId, filterVal] of Object.entries(columnFilters)) {
-      if (!filterVal) continue;
-      data = data.filter((p) => {
-        const val = String((p as any)[colId] ?? "").toLowerCase();
-        return val.includes(filterVal.toLowerCase());
-      });
-    }
-    return [...blocked, ...data];
+    return [...filtered, ...prospectos];
   }, [prospectos, columnFilters, blockedProspects]);
 
   const loadCounts = useCallback(async () => {
@@ -507,7 +903,7 @@ export default function FlotaProspectos() {
   // Auto-recargar cuando una importación finaliza
   useEffect(() => {
     if (!completionTick) return;
-    void Promise.all([loadProspectos(), loadCounts()]);
+    void Promise.all([loadProspectos(page), loadCounts()]);
   }, [completionTick, loadProspectos, loadCounts]);
 
   // Auto-recargar cuando otra pestaña actualiza un prospecto (BroadcastChannel)
@@ -516,7 +912,7 @@ export default function FlotaProspectos() {
       const bc = new BroadcastChannel("flota-prospectos");
       bc.onmessage = (event) => {
         if (event.data?.type === "refresh") {
-          void Promise.all([loadProspectos(), loadCounts()]);
+          void Promise.all([loadProspectos(page), loadCounts()]);
         }
       };
       return () => bc.close();
@@ -529,21 +925,7 @@ export default function FlotaProspectos() {
     void loadCounts();
   }, [loadCounts]);
 
-  // Handle chat notification from URL (?chat=prospectoId)
-  useEffect(() => {
-    const chatId = searchParams.get("chat");
-    if (!chatId) return;
-    setSearchParams({}, { replace: true });
-    setChatProspectoId(chatId);
-    markConversationAsRead(chatId).catch(() => {});
-    try { new BroadcastChannel("flota-notificaciones").postMessage({ type: "refresh" }); } catch {}
-    api<Record<string, unknown>>(`/flota-prospectos/${chatId}`)
-      .then((data) => {
-        const phone = String(data.celular || data.movil || "");
-        if (phone) setSearchTerm(phone);
-      })
-      .catch(() => {});
-  }, [searchParams]);
+
 
   const getConductorCodigo = (celular: string | null): string | null => {
     if (!celular) return null;
@@ -807,7 +1189,7 @@ export default function FlotaProspectos() {
         placa: "",
         observaciones: "",
       });
-      await Promise.all([loadProspectos(), loadCounts()]);
+      await Promise.all([loadProspectos(page), loadCounts()]);
     } catch (e) {
       const existing = (e as any).body?.existing;
       if (existing) {
@@ -938,7 +1320,7 @@ export default function FlotaProspectos() {
       });
       toast.success("Prospecto actualizado");
       setEditProspectoId(null);
-      void loadProspectos();
+      void loadProspectos(page);
       void loadCounts();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error al actualizar");
@@ -1171,336 +1553,11 @@ export default function FlotaProspectos() {
         />
       ) : (
         <>
-          {refreshing && (
-            <div className="flex items-center gap-2 py-1.5 text-xs text-muted-foreground border-b border-muted mb-2">
-              <Loader2 className="size-3 animate-spin" /> Actualizando...
-            </div>
-          )}
           <div className="text-xs">
             <DataTable
-              columns={[
-                {
-                  id: "select",
-                  header: "",
-                  enableSorting: false,
-                  enableColumnFilter: false,
-                  size: 40,
-                  minSize: 40,
-                  maxSize: 40,
-                   cell: ({ row }) => {
-                    const isBlocked = blockedProspects.some((bp) => bp.id === row.original.id);
-                    return (
-                      <div
-                        className="flex justify-center"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {isBlocked ? (
-                          <Lock className="size-3.5 text-muted-foreground" />
-                        ) : (
-                          <Checkbox
-                            checked={selectedIds.has(row.original.id)}
-                            onCheckedChange={() => toggleSelectOne(row.original.id)}
-                          />
-                        )}
-                      </div>
-                    );
-                  },
-                },
-                {
-                  id: "fechaRegistro",
-                  header: "F.Registro",
-                  enableSorting: false,
-                  enableColumnFilter: false,
-                  cell: ({ row }) => (
-                    <div>
-                      <div>
-                        {row.original.fechaRegistro
-                          ? formatDateDMY(row.original.fechaRegistro)
-                          : "—"}
-                      </div>
-                      {row.original.origen === "IMPORTADO" && row.original.createdAt && (
-                        <div className="text-[9px] text-muted-foreground mt-0.5">
-                          FI:{" "}
-                          {new Date(row.original.createdAt).toLocaleDateString(
-                            "es-PE",
-                            {
-                              timeZone: "America/Lima",
-                              day: "2-digit",
-                              month: "2-digit",
-                              year: "numeric",
-                            },
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ),
-                },
-                {
-                  accessorKey: "redSocial",
-                  id: "redSocial",
-                  header: "Red Social",
-                  size: 90,
-                  enableColumnFilter: false,
-                  cell: ({ getValue }) => (
-                    <span
-                      className="truncate block max-w-[80px] text-[10px]"
-                      title={String(getValue() ?? "")}
-                    >
-                      {String(getValue() ?? "") || "—"}
-                    </span>
-                  ),
-                },
-                {
-                  accessorKey: "celular",
-                  id: "celular",
-                  header: "Celular",
-                  size: 110,
-                   cell: ({ getValue, row }) => {
-                    const phone = String(getValue() ?? "");
-                    const codigo = getConductorCodigo(row.original.celular);
-                    const isBlocked = blockedProspects.some((bp) => bp.id === row.original.id);
-                    return (
-                      <div className="relative">
-                        <span
-                          className="truncate block max-w-[90px]"
-                          title={phone}
-                        >
-                          {phone || "—"}
-                        </span>
-                        {phone && (
-                          <div
-                            className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-background/70 rounded cursor-pointer z-10"
-                            onClick={(e) => { e.stopPropagation(); setChatProspectoId(row.original.id); }}
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#25D366" className="size-6">
-                              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                            </svg>
-                          </div>
-                        )}
-                        {isBlocked && (
-                          <span className="block text-[10px] text-muted-foreground italic">Operador no editable</span>
-                        )}
-                        {codigo && (
-                          <span className="block text-[10px] text-emerald-600 font-medium truncate max-w-[100px]">
-                            {codigo}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  },
-                },
-                {
-                  accessorKey: "nombreCompleto",
-                  id: "nombreCompleto",
-                  header: "Nombres y Apellidos",
-                  cell: ({ getValue, row }) => (
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`text-[10px] font-medium ${row.original.esDuplicado ? "text-red-600" : ""}`}
-                      >
-                        {String(getValue() ?? "")}
-                      </span>
-                      {row.original.esDuplicado && (
-                        <Badge
-                          variant="outline"
-                          className="border-red-200 bg-red-50 text-[10px] text-red-600"
-                        >
-                          Duplicado
-                        </Badge>
-                      )}
-                    </div>
-                  ),
-                },
-                {
-                   accessorKey: "edad",
-                   id: "edad",
-                   header: "Edad",
-                   size: 60,
-                   cell: ({ getValue }) =>
-                     getValue() != null ? <span className="text-[10px]">{String(getValue())}</span> : <span className="text-[10px]">—</span>,
-                 },
-                 {
-                   accessorFn: (r) =>
-                     getOperatorDisplayName(r.operador, operadores) ||
-                     r.operador ||
-                     "",
-                   id: "operador",
-                   header: "Operador",
-                   size: 110,
-                   enableColumnFilter: false,
-                   cell: ({ getValue }) => {
-                     const name = String(getValue() ?? "") || "—";
-                     return (
-                       <span
-                         className="truncate block max-w-[100px] text-[10px]"
-                         title={name}
-                       >
-                         {name}
-                       </span>
-                     );
-                   },
-                 },
-                {
-                  accessorFn: (r) => r._count?.llamadas ?? 0,
-                  id: "llamadas",
-                  header: "Llamadas",
-                  size: 70,
-                  enableColumnFilter: false,
-                  cell: ({ getValue }) => {
-                    const count = Number(getValue() ?? 0);
-                    return count > 0 ? (
-                      <span className="flex items-center gap-0.5 text-xs text-blue-600 dark:text-blue-400">
-                        <Phone className="h-3 w-3" />
-                        {count}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
-                    );
-                  },
-                },
-                {
-                  accessorKey: "estado",
-                  id: "estado",
-                  header: "Estado",
-                  size: 90,
-                  enableColumnFilter: false,
-                   cell: ({ getValue }) => {
-                    const val = String(getValue() ?? "");
-                    return (
-                      <span
-                        className={`text-[10px] truncate block max-w-[80px] ${val ? estadoColors[val] || "" : ""}`}
-                      >
-                        {val || "—"}
-                      </span>
-                    );
-                  },
-                },
-                 {
-                   accessorKey: "modalidad",
-                   id: "modalidad",
-                   header: "Modalidad",
-                   size: 100,
-                   enableColumnFilter: false,
-                  cell: ({ getValue }) => (
-                    <span
-                      className="truncate block max-w-[90px] text-[10px]"
-                      title={String(getValue() ?? "")}
-                    >
-                      {String(getValue() ?? "") || "—"}
-                    </span>
-                  ),
-                },
-                {
-                  accessorKey: "placa",
-                  id: "placa",
-                  header: "Placa",
-                  size: 90,
-                  cell: ({ getValue }) => (
-                    <span
-                      className="truncate block max-w-[80px] text-[10px]"
-                      title={String(getValue() ?? "")}
-                    >
-                      {String(getValue() ?? "") || "—"}
-                    </span>
-                  ),
-                },
-                {
-                  accessorKey: "anioVehiculo",
-                  id: "anioVehiculo",
-                  header: "Año Veh.",
-                  size: 65,
-                  cell: ({ getValue }) =>
-                    getValue() != null ? <span className="text-[10px]">{String(getValue())}</span> : <span className="text-[10px]">—</span>,
-                },
-                {
-                  accessorKey: "distrito",
-                  id: "distrito",
-                  header: "Distrito",
-                  size: 100,
-                  cell: ({ getValue }) => (
-                    <span
-                      className="truncate block max-w-[90px] text-[10px]"
-                      title={String(getValue() ?? "")}
-                    >
-                      {String(getValue() ?? "") || "—"}
-                    </span>
-                  ),
-                },
-                {
-                  accessorKey: "fechaCita",
-                  id: "fechaCita",
-                  header: "F. Cita",
-                  size: 130,
-                  cell: ({ getValue, row }) => {
-                    const val = row.original.fechaCita;
-                    return val ? (
-                      <div>
-                        <div>{formatDateDMY(val)}</div>
-                        <div className="text-[10px] text-muted-foreground mt-0.5">
-                          {new Date(val).toLocaleTimeString("es-PE", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            timeZone: "America/Lima",
-                          })}
-                        </div>
-                      </div>
-                    ) : (
-                      "—"
-                    );
-                  },
-                },
-                {
-                  accessorKey: "asistencia",
-                  id: "asistencia",
-                  header: "Asistencia",
-                  size: 80,
-                  cell: ({ getValue }) => {
-                    const val = String(getValue() ?? "");
-                    return val ? (
-                      <Badge
-                        variant="outline"
-                        className={`text-[10px] ${val === "Asistió" || val === "ASISTIO" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}
-                      >
-                        {val}
-                      </Badge>
-                    ) : (
-                      <span className="text-[10px] text-muted-foreground">—</span>
-                    );
-                  },
-                },
-                {
-                  accessorKey: "fechaAfiliacion",
-                  id: "fechaAfiliacion",
-                  header: "F. Afiliacion",
-                  size: 110,
-                  cell: ({ getValue }) =>
-                    getValue() ? formatDateDMY(String(getValue())) : "—",
-                },
-                {
-                  accessorKey: "movil",
-                  id: "movil",
-                  header: "Movil",
-                  size: 100,
-                  cell: ({ getValue }) => (
-                    <span
-                      className="truncate block max-w-[90px]"
-                      title={String(getValue() ?? "")}
-                    >
-                      {String(getValue() ?? "") || "—"}
-                    </span>
-                  ),
-                },
-                {
-                  accessorKey: "observaciones",
-                  id: "observaciones",
-                  header: "Observaciones",
-                  size: 170,
-                   cell: ({ getValue }) =>
-                    <span className="text-[10px]">{getLatestObservacion(String(getValue() ?? ""))}</span>,
-                },
-               ]}
+              columns={columns}
               maxHeight="calc(100vh - 16rem)"
-              data={filteredProspectos}
+              data={displayData}
               getId={(r) => r.id}
               filterComponents={{
                 fechaRegistro: (
@@ -2088,7 +2145,7 @@ export default function FlotaProspectos() {
                     body: JSON.stringify({ estado: "Citado", fechaCita: fechaHora }),
                   });
                   setCitadoDialogOpen(false);
-                  await Promise.all([loadProspectos(), loadCounts()]);
+                  await Promise.all([loadProspectos(page), loadCounts()]);
                   toast.success("Cita programada");
                 } catch (e) {
                   toast.error(
@@ -2136,7 +2193,7 @@ export default function FlotaProspectos() {
                   toast.success(`${selectedIds.size} eliminado(s)`);
                   setSelectedIds(new Set());
                   setDeleteDialogOpen(false);
-                  void loadProspectos();
+                  void loadProspectos(page);
                   void loadCounts();
                 } catch (e) {
                   toast.error(
@@ -2317,19 +2374,98 @@ tr[data-row-id="${bp.id}"] {
 `).join('')}</style>
       )}
 
-      <Sheet open={!!chatProspectoId} onOpenChange={(open) => { if (!open) setChatProspectoId(null); }}>
-        <SheetContent side="right" showCloseButton={false} overlayClassName="bg-black/0" className="w-full sm:max-w-none sm:w-[600px] p-0 flex flex-col">
-          <SheetHeader className="sr-only">
-            <SheetTitle>Chat</SheetTitle>
-          </SheetHeader>
-          {chatProspectoId && (
-            <ChatPanelStandalone
-              prospectoId={chatProspectoId}
-              onClose={() => setChatProspectoId(null)}
-            />
-          )}
-        </SheetContent>
-      </Sheet>
+      <ChatwootInboxPanel
+        open={chatPanelOpen}
+        onOpenChange={(v) => { if (!v) setChatPanelOpen(false); }}
+      />
+
+      <Dialog open={newChatOpen} onOpenChange={setNewChatOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Nuevo mensaje</DialogTitle>
+            <DialogDescription>Selecciona una plantilla para iniciar la conversación</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Número</Label>
+              <Input value={newChatPhone} onChange={(e) => setNewChatPhone(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Nombre</Label>
+              <Input value={newChatName} onChange={(e) => setNewChatName(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Plantilla</Label>
+              {newChatLoading ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Cargando...
+                </div>
+              ) : newChatTemplates.length === 0 && newChatSelected ? (
+                <div className="flex flex-col gap-2">
+                  <div className={cn(
+                    'rounded-lg border px-3 py-2 text-sm text-left border-primary bg-primary/10 text-primary',
+                  )}>
+                    <p className="font-medium text-xs">afiliacion_atu</p>
+                    <p className="text-[10px] text-muted-foreground">UTILITY</p>
+                    <div className="mt-2 text-[13px] leading-relaxed whitespace-pre-line text-foreground">
+                      Hola estimado(a), reciba un cordial saludo de parte de Taxi Monterrico.{'\n\n'}
+                      Hemos observado su interés en formar parte de nuestra flota.{'\n'}
+                      ¿usted cuenta con vehiculo particular o tiene permiso de la ATU?
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
+                  {newChatTemplates.map((t) => (
+                    <button key={t.name} onClick={() => setNewChatSelected(t.name)}
+                      className={cn(
+                        'rounded-lg border px-3 py-2 text-left transition-colors',
+                        newChatSelected === t.name ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:border-primary/50 hover:bg-muted',
+                      )}
+                    >
+                      <p className="font-medium text-xs">{t.name}</p>
+                      <p className="text-[10px] text-muted-foreground">{t.category}</p>
+                      {t.content && (
+                        <div className="mt-1 text-[13px] leading-relaxed whitespace-pre-line text-foreground/80">{t.content}</div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNewChatOpen(false)}>Cancelar</Button>
+            <Button onClick={async () => {
+              const phone = newChatPhone.replace(/\D/g, '');
+              const fullPhone = phone.length === 9 ? `51${phone}` : phone;
+              const template = newChatTemplates.find((t) => t.name === newChatSelected);
+              const templateName = template?.name || newChatSelected || 'afiliacion_atu';
+              const templateCategory = template?.category || 'UTILITY';
+              if (!fullPhone) return;
+              setNewChatSending(true);
+              try {
+                await initiateConversation({
+                  name: newChatName || fullPhone,
+                  phone: fullPhone,
+                  templateName,
+                  templateCategory,
+                });
+                setNewChatOpen(false);
+                setChatPanelOpen(true);
+                toast.success('Mensaje enviado');
+              } catch (e) {
+                toast.error(e instanceof Error ? e.message : 'Error al enviar');
+              } finally {
+                setNewChatSending(false);
+              }
+            }} disabled={!newChatPhone.trim() || (!newChatSelected && newChatTemplates.length > 0) || newChatSending}>
+              {newChatSending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+              {newChatSending ? 'Enviando...' : 'Enviar plantilla'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
