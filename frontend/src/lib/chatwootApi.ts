@@ -209,6 +209,7 @@ export async function initiateConversation(data: {
 export async function sendTemplateToConversation(
   conversationId: number,
   data: {
+    content?: string;
     templateName: string;
     templateCategory: string;
     templateLanguage?: string;

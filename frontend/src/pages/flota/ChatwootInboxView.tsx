@@ -1344,7 +1344,11 @@ function ChatwootChatPanel({
   async function handleSendTemplate(templateName: string, templateCategory: string) {
     setSendingTemplate(templateName);
     try {
-      await sendTemplateToConversation(conversationId, { templateName, templateCategory });
+      await sendTemplateToConversation(conversationId, {
+        content: 'Hola estimado(a), reciba un cordial saludo de parte de Taxi Monterrico. Hemos observado su interés en formar parte de nuestra flota. ¿usted cuenta con vehiculo particular o tiene permiso de la ATU?',
+        templateName,
+        templateCategory,
+      });
       toast.success('Plantilla enviada');
       setDismiss24h(true);
       void loadMessages();

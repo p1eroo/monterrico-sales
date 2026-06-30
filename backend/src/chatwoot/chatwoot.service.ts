@@ -127,8 +127,9 @@ export class ChatwootService {
     // 2. Crear conversación + enviar template en una sola llamada
     const cleanPhone = data.phone.replace(/\D/g, '');
     this.logger.log(`Creando conversación con source_id=${cleanPhone}, inbox_id=${this.client.getConfig().inboxId}`);
+    const templateContent = 'Hola estimado(a), reciba un cordial saludo de parte de Taxi Monterrico. Hemos observado su interés en formar parte de nuestra flota. ¿usted cuenta con vehiculo particular o tiene permiso de la ATU?';
     const conversation = await this.client.createConversation(cleanPhone, this.client.getConfig().inboxId, {
-      content: '',
+      content: templateContent,
       template_params: {
         name: data.templateName,
         category: data.templateCategory,

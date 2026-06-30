@@ -68,13 +68,14 @@ export class ChatwootController {
   async sendTemplateMessage(
     @Param('id', ParseIntPipe) id: number,
     @Body() body: {
+      content?: string;
       templateName: string;
       templateCategory: string;
       templateLanguage?: string;
       templateParams?: Record<string, unknown>;
     },
   ) {
-    return this.service.sendTemplateMessage(id, '', {
+    return this.service.sendTemplateMessage(id, body.content ?? '', {
       name: body.templateName,
       category: body.templateCategory,
       language: body.templateLanguage ?? 'es',
