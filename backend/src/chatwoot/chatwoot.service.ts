@@ -128,17 +128,25 @@ export class ChatwootService {
     const cleanPhone = data.phone.replace(/\D/g, '');
     this.logger.log(`Creando conversación con source_id=${cleanPhone}, inbox_id=${this.client.getConfig().inboxId}`);
     const templateContent = 'Hola estimado(a), reciba un cordial saludo de parte de Taxi Monterrico. Hemos observado su interés en formar parte de nuestra flota. ¿usted cuenta con vehiculo particular o tiene permiso de la ATU?';
-    const conversation = await this.client.createConversation(cleanPhone, this.client.getConfig().inboxId, {
-      content: templateContent,
-      template_params: {
-        name: data.templateName,
-        category: data.templateCategory,
-        language: data.templateLanguage,
-        processed_params: data.templateParams ?? {},
-      },
-    });
-    this.logger.log(`Conversación creada: id=${conversation.id}`);
+    try {
+      const conversation = await this.client.createConversation(cleanPhone, this.client.getConfig().inboxId, {
+        content: templateContent,
+        template_params: {
+          name: data.templateName,
+          category: data.templateCategory,
+          language: data.templateLanguage,
+          processed_params: data.templateParams ?? {},
+        },
+      });
+      this.logger.log(`Conversación creada: id=${conversation.id}`);
+      return { conversationId: conversation.id, contactId: contact.id };
+    } catch (e) {
+      this.logger.error(`Error al crear conversación: ${e instanceof Error ? e.message : e}`);
+      throw e;
+    }
+  }
 
-    return { conversationId: conversation.id, contactId: contact.id };
+  async listTemplates() {
+    return this.client.listTemplates();
   }
 }

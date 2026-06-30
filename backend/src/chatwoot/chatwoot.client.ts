@@ -300,4 +300,31 @@ export class ChatwootClient {
     }
     throw new Error('Chatwoot media fetch: too many redirects');
   }
+
+  async listTemplates(): Promise<{ name: string; language: string; category: string }[]> {
+    const inboxId = this.config.inboxId;
+    // Intentar múltiples rutas posibles que Chatwoot pueda usar
+    const routes = [
+      `/inboxes/${inboxId}/whatsapp_templates`,
+      `/whatsapp/${inboxId}/templates`,
+    ];
+    for (const route of routes) {
+      try {
+        const raw = await this.request<any>('GET', route);
+        // Intentar extraer templates de diferentes formatos de respuesta
+        const items = raw?.data ?? raw?.payload ?? raw ?? [];
+        if (Array.isArray(items) && items.length > 0) {
+          return items.map((t: any) => ({
+            name: t.name ?? t.id ?? '',
+            language: t.language ?? t.locale ?? '',
+            category: t.category ?? '',
+          }));
+        }
+        if (items?.length > 0) return items;
+      } catch {
+        // ruta no existe, probar siguiente
+      }
+    }
+    return [];
+  }
 }

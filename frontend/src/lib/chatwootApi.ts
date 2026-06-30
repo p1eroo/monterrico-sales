@@ -221,3 +221,11 @@ export async function sendTemplateToConversation(
     body: JSON.stringify(data),
   });
 }
+
+export async function fetchChatwootTemplates(): Promise<{
+  name: string;
+  language: string;
+  category: string;
+}[]> {
+  return api('/api/chatwoot/templates');
+}

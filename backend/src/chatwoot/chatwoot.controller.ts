@@ -197,4 +197,9 @@ export class ChatwootController {
       throw e;
     }
   }
+
+  @Get('templates')
+  async listTemplates() {
+    return this.service.listTemplates();
+  }
 }

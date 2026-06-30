@@ -84,6 +84,7 @@ import {
   uploadAttachment,
   initiateConversation,
   sendTemplateToConversation,
+  fetchChatwootTemplates,
   type ChatwootAgent,
 } from '@/lib/chatwootApi';
 import { fetchOperadores, getOperatorDisplayName, flotaProspectosByPhone, flotaProspectoCreate, type OperadorUser, type FlotaProspectoDetalle } from '@/lib/flotaProspectosApi';
@@ -900,6 +901,8 @@ function ChatwootChatPanel({
   const [dismiss24h, setDismiss24h] = useState(false);
   const [sendingTemplate, setSendingTemplate] = useState<string | null>(null);
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [availableTemplates, setAvailableTemplates] = useState<{ name: string; language: string; category: string }[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
 
   const convo = conversations.find((c) => c.id === conversationId);
   const sender = convo?.meta.sender;
@@ -1644,24 +1647,60 @@ function ChatwootChatPanel({
         </div>
       </section>
 
-      <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
+      <Dialog open={templateDialogOpen} onOpenChange={(v) => {
+        setTemplateDialogOpen(v);
+        if (v) {
+          setLoadingTemplates(true);
+          fetchChatwootTemplates().then(setAvailableTemplates).catch(() => {}).finally(() => setLoadingTemplates(false));
+        }
+      }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Enviar plantilla</DialogTitle>
             <DialogDescription>
-              Esta plantilla se enviará al contacto para retomar la conversación.
+              Selecciona una plantilla para enviar al contacto.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="rounded-lg border bg-muted/20 p-4">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Plantilla</p>
+            {loadingTemplates ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="size-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : availableTemplates.length > 0 ? (
+              <div className="space-y-2">
+                {availableTemplates.map((t, i) => (
+                  <button
+                    key={i}
+                    onClick={() => { void handleSendTemplate(t.name, t.category); setTemplateDialogOpen(false); }}
+                    disabled={sendingTemplate !== null}
+                    className="flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left text-sm hover:bg-muted transition-colors disabled:opacity-50"
+                  >
+                    <div>
+                      <p className="font-medium">{t.name}</p>
+                      <p className="text-xs text-muted-foreground">Idioma: {t.language} · Categoría: {t.category}</p>
+                    </div>
+                    {sendingTemplate === t.name ? (
+                      <Loader2 className="size-4 animate-spin shrink-0" />
+                    ) : (
+                      <Send className="size-4 shrink-0 text-muted-foreground" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-lg border bg-muted/20 p-4 text-center text-sm text-muted-foreground">
+                No se pudieron cargar los templates. Usa la plantilla predefinida.
+              </div>
+            )}
+
+            <div className="rounded-lg border bg-muted/10 p-4">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Plantilla predefinida</p>
               <p className="mt-1 text-sm font-medium">Procesar afiliación ATU</p>
               <div className="mt-3 space-y-1 text-sm text-muted-foreground">
                 <p>Hola estimado(a), reciba un cordial saludo de parte de Taxi Monterrico.</p>
                 <p>Hemos observado su interés en formar parte de nuestra flota.</p>
                 <p>¿usted cuenta con vehiculo particular o tiene permiso de la ATU?</p>
               </div>
-
             </div>
           </div>
           <DialogFooter>
