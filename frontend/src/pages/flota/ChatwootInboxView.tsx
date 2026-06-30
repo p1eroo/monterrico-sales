@@ -277,7 +277,7 @@ export default function ChatwootInboxView() {
       const result = await initiateConversation({
         name,
         phone,
-        templateName: 'procesar_afiliacion_atu',
+        templateName: 'afiliacion_atu',
         templateCategory: 'UTILITY',
       });
       toast.success('Conversación iniciada');
@@ -1348,7 +1348,7 @@ function ChatwootChatPanel({
     setSendingTemplate(templateName);
     try {
       await sendTemplateToConversation(conversationId, {
-        content: 'Hola estimado(a), reciba un cordial saludo de parte de Taxi Monterrico. Hemos observado su interés en formar parte de nuestra flota. ¿usted cuenta con vehiculo particular o tiene permiso de la ATU?',
+        content: 'Hola estimado(a), reciba un cordial saludo de parte de Taxi Monterrico.\n\nHemos observado su interés en formar parte de nuestra flota. \n¿usted cuenta con vehiculo particular o tiene permiso de la ATU?',
         templateName,
         templateCategory,
       });
@@ -1695,7 +1695,7 @@ function ChatwootChatPanel({
 
             <div className="rounded-lg border bg-muted/10 p-4">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Plantilla predefinida</p>
-              <p className="mt-1 text-sm font-medium">Procesar afiliación ATU</p>
+              <p className="mt-1 text-sm font-medium">Afiliación ATU</p>
               <div className="mt-3 space-y-1 text-sm text-muted-foreground">
                 <p>Hola estimado(a), reciba un cordial saludo de parte de Taxi Monterrico.</p>
                 <p>Hemos observado su interés en formar parte de nuestra flota.</p>
@@ -1705,7 +1705,7 @@ function ChatwootChatPanel({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setTemplateDialogOpen(false)} disabled={sendingTemplate !== null}>Cancelar</Button>
-            <Button onClick={() => { void handleSendTemplate('procesar_afiliacion_atu', 'UTILITY'); setTemplateDialogOpen(false); }} disabled={sendingTemplate !== null}>
+            <Button onClick={() => { void handleSendTemplate('afiliacion_atu', 'UTILITY'); setTemplateDialogOpen(false); }} disabled={sendingTemplate !== null}>
               {sendingTemplate === 'procesar_afiliacion_atu' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Enviar plantilla
             </Button>
