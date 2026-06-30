@@ -65,12 +65,9 @@ export class ChatwootService {
     name: string;
     phone_number?: string;
     email?: string;
-  }): Promise<{ contact: ChatwootContact; sourceId?: string }> {
+  }): Promise<ChatwootContact> {
     const result = await this.client.createContact(data);
-    return {
-      contact: result.payload.contact,
-      sourceId: result.payload.contact_inbox?.source_id,
-    };
+    return result.payload.contact;
   }
 
   async listInboxes(): Promise<ChatwootInbox[]> {
@@ -118,18 +115,16 @@ export class ChatwootService {
     templateLanguage: string;
     templateParams?: Record<string, unknown>;
   }): Promise<{ conversationId: number; contactId: number }> {
-    // 1. Crear contacto en Chatwoot (auto-crea contact_inbox con source_id)
-    const { contact, sourceId } = await this.createContact({
+    // 1. Crear contacto en Chatwoot
+    const contact = await this.createContact({
       name: data.name,
       phone_number: data.phone,
     });
 
-    if (!sourceId) {
-      throw new Error('No se pudo obtener el source_id del contacto en Chatwoot');
-    }
-
     // 2. Crear conversación + enviar template en una sola llamada
-    const conversation = await this.client.createConversation(sourceId, this.client.getConfig().inboxId, {
+    //    source_id para WhatsApp es el número de teléfono directamente
+    const cleanPhone = data.phone.replace(/\D/g, '');
+    const conversation = await this.client.createConversation(cleanPhone, this.client.getConfig().inboxId, {
       content: '',
       template_params: {
         name: data.templateName,
