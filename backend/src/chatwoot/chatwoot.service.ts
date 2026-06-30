@@ -115,15 +115,18 @@ export class ChatwootService {
     templateLanguage: string;
     templateParams?: Record<string, unknown>;
   }): Promise<{ conversationId: number; contactId: number }> {
+    this.logger.log(`initiateConversation: ${data.name} ${data.phone} template=${data.templateName} cat=${data.templateCategory} lang=${data.templateLanguage}`);
+
     // 1. Crear contacto en Chatwoot
     const contact = await this.createContact({
       name: data.name,
       phone_number: data.phone,
     });
+    this.logger.log(`Contacto creado: id=${contact.id}`);
 
     // 2. Crear conversación + enviar template en una sola llamada
-    //    source_id para WhatsApp es el número de teléfono directamente
     const cleanPhone = data.phone.replace(/\D/g, '');
+    this.logger.log(`Creando conversación con source_id=${cleanPhone}, inbox_id=${this.client.getConfig().inboxId}`);
     const conversation = await this.client.createConversation(cleanPhone, this.client.getConfig().inboxId, {
       content: '',
       template_params: {
@@ -133,6 +136,7 @@ export class ChatwootService {
         processed_params: data.templateParams ?? {},
       },
     });
+    this.logger.log(`Conversación creada: id=${conversation.id}`);
 
     return { conversationId: conversation.id, contactId: contact.id };
   }

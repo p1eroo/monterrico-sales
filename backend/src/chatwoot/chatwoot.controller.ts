@@ -184,9 +184,16 @@ export class ChatwootController {
       templateParams?: Record<string, unknown>;
     },
   ) {
-    return this.service.initiateConversation({
-      ...body,
-      templateLanguage: body.templateLanguage ?? 'es',
-    });
+    try {
+      const result = await this.service.initiateConversation({
+        ...body,
+        templateLanguage: body.templateLanguage ?? 'es',
+      });
+      return result;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Error desconocido';
+      this.logger.error(`[initiate-conversation] ${msg}`);
+      throw e;
+    }
   }
 }
