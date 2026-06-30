@@ -125,7 +125,6 @@ export class ChatwootClient {
   ): Promise<ChatwootMessage> {
     return this.request('POST', `/conversations/${conversationId}/messages`, {
       content,
-      message_type: 'outgoing',
       template_params: templateParams,
     });
   }
