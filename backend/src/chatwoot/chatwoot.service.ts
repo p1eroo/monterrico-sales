@@ -124,26 +124,29 @@ export class ChatwootService {
     });
     this.logger.log(`Contacto creado: id=${contact.id}`);
 
-    // 2. Crear conversación + enviar template en una sola llamada
+    // 2. Crear conversación (sin template - igual que Chatwoot UI)
     const cleanPhone = data.phone.replace(/\D/g, '');
     this.logger.log(`Creando conversación con source_id=${cleanPhone}, inbox_id=${this.client.getConfig().inboxId}`);
-    const templateContent = 'Hola estimado(a), reciba un cordial saludo de parte de Taxi Monterrico.\n\nHemos observado su interés en formar parte de nuestra flota. \n¿usted cuenta con vehiculo particular o tiene permiso de la ATU?';
+    const conversation = await this.client.createConversation(cleanPhone, this.client.getConfig().inboxId);
+    this.logger.log(`Conversación creada: id=${conversation.id}`);
+
+    // 3. Enviar template a la conversación (igual que Chatwoot UI hace en POST /messages)
+    this.logger.log(`Enviando template a conversation ${conversation.id}`);
     try {
-      const conversation = await this.client.createConversation(cleanPhone, this.client.getConfig().inboxId, {
-        content: templateContent,
-        template_params: {
-          name: data.templateName,
-          category: data.templateCategory,
-          language: data.templateLanguage,
-          processed_params: data.templateParams ?? {},
-        },
+      const templateContent = 'Hola estimado(a), reciba un cordial saludo de parte de Taxi Monterrico.\n\nHemos observado su interés en formar parte de nuestra flota. \n¿usted cuenta con vehiculo particular o tiene permiso de la ATU?';
+      await this.client.sendTemplateMessage(conversation.id, templateContent, {
+        name: data.templateName,
+        category: data.templateCategory,
+        language: data.templateLanguage,
+        processed_params: data.templateParams ?? {},
       });
-      this.logger.log(`Conversación creada: id=${conversation.id}`);
-      return { conversationId: conversation.id, contactId: contact.id };
+      this.logger.log(`Template enviado a conversation ${conversation.id}`);
     } catch (e) {
-      this.logger.error(`Error al crear conversación: ${e instanceof Error ? e.message : e}`);
+      this.logger.error(`Error al enviar template: ${e instanceof Error ? e.message : e}`);
       throw e;
     }
+
+    return { conversationId: conversation.id, contactId: contact.id };
   }
 
   async listTemplates() {
