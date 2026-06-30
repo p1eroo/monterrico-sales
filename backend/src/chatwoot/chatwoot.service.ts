@@ -65,9 +65,12 @@ export class ChatwootService {
     name: string;
     phone_number?: string;
     email?: string;
-  }): Promise<ChatwootContact> {
+  }): Promise<{ contact: ChatwootContact; sourceId?: string }> {
     const result = await this.client.createContact(data);
-    return result.payload.contact;
+    return {
+      contact: result.payload.contact,
+      sourceId: result.payload.contact_inbox?.source_id,
+    };
   }
 
   async listInboxes(): Promise<ChatwootInbox[]> {
@@ -82,8 +85,16 @@ export class ChatwootService {
     return this.client.getConfig();
   }
 
-  async createConversation(contactId: number) {
-    return this.client.createConversation(contactId);
+  async createConversation(sourceId: string, message?: {
+    content: string;
+    template_params?: {
+      name: string;
+      category: string;
+      language: string;
+      processed_params: Record<string, unknown>;
+    };
+  }) {
+    return this.client.createConversation(sourceId, this.client.getConfig().inboxId, message);
   }
 
   async sendTemplateMessage(
@@ -107,21 +118,25 @@ export class ChatwootService {
     templateLanguage: string;
     templateParams?: Record<string, unknown>;
   }): Promise<{ conversationId: number; contactId: number }> {
-    // 1. Crear contacto en Chatwoot
-    const contact = await this.createContact({
+    // 1. Crear contacto en Chatwoot (auto-crea contact_inbox con source_id)
+    const { contact, sourceId } = await this.createContact({
       name: data.name,
       phone_number: data.phone,
     });
 
-    // 2. Crear conversación
-    const conversation = await this.client.createConversation(contact.id);
+    if (!sourceId) {
+      throw new Error('No se pudo obtener el source_id del contacto en Chatwoot');
+    }
 
-    // 3. Enviar mensaje template
-    await this.client.sendTemplateMessage(conversation.id, '', {
-      name: data.templateName,
-      category: data.templateCategory,
-      language: data.templateLanguage,
-      processed_params: data.templateParams ?? {},
+    // 2. Crear conversación + enviar template en una sola llamada
+    const conversation = await this.client.createConversation(sourceId, this.client.getConfig().inboxId, {
+      content: '',
+      template_params: {
+        name: data.templateName,
+        category: data.templateCategory,
+        language: data.templateLanguage,
+        processed_params: data.templateParams ?? {},
+      },
     });
 
     return { conversationId: conversation.id, contactId: contact.id };

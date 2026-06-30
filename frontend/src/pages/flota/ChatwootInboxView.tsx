@@ -277,7 +277,7 @@ export default function ChatwootInboxView() {
         name,
         phone,
         templateName: 'procesar_afiliacion_atu',
-        templateCategory: 'MARKETING',
+        templateCategory: 'UTILITY',
       });
       toast.success('Conversación iniciada');
       setNewChatOpen(false);
@@ -1662,7 +1662,7 @@ function ChatwootChatPanel({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setTemplateDialogOpen(false)} disabled={sendingTemplate !== null}>Cancelar</Button>
-            <Button onClick={() => { void handleSendTemplate('procesar_afiliacion_atu', 'MARKETING'); setTemplateDialogOpen(false); }} disabled={sendingTemplate !== null}>
+            <Button onClick={() => { void handleSendTemplate('procesar_afiliacion_atu', 'UTILITY'); setTemplateDialogOpen(false); }} disabled={sendingTemplate !== null}>
               {sendingTemplate === 'procesar_afiliacion_atu' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Enviar plantilla
             </Button>

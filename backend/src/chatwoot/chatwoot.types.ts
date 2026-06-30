@@ -84,6 +84,22 @@ export interface ChatwootAgent {
   availability_status: string;
 }
 
+export interface ChatwootContactInbox {
+  source_id: string;
+  inbox: {
+    id: number;
+    name: string;
+    channel_type: string;
+  };
+}
+
+export interface ChatwootCreateContactResponse {
+  payload: {
+    contact: ChatwootContact;
+    contact_inbox?: ChatwootContactInbox;
+  };
+}
+
 export interface ChatwootWebhookPayload {
   event: string;
   id: number;

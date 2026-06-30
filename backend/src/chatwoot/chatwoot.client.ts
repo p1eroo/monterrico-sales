@@ -8,6 +8,7 @@ import type {
   ChatwootInbox,
   ChatwootAgent,
   ChatwootConversationListItem,
+  ChatwootCreateContactResponse,
 } from './chatwoot.types';
 
 @Injectable()
@@ -130,11 +131,26 @@ export class ChatwootClient {
   }
 
   async createConversation(
-    contactId: number,
+    sourceId: string,
+    inboxId: number,
+    message?: {
+      content: string;
+      template_params?: {
+        name: string;
+        category: string;
+        language: string;
+        processed_params: Record<string, unknown>;
+      };
+    },
   ): Promise<ChatwootConversation> {
-    return this.request('POST', '/conversations', {
-      contact_id: contactId,
-    });
+    const body: Record<string, unknown> = {
+      source_id: sourceId,
+      inbox_id: inboxId,
+    };
+    if (message) {
+      body.message = message;
+    }
+    return this.request('POST', '/conversations', body);
   }
 
   async sendAttachment(
@@ -221,7 +237,7 @@ export class ChatwootClient {
     name: string;
     phone_number?: string;
     email?: string;
-  }): Promise<{ payload: { contact: ChatwootContact } }> {
+  }): Promise<ChatwootCreateContactResponse> {
     return this.request('POST', '/contacts', {
       inbox_id: this.config.inboxId,
       name: data.name,
