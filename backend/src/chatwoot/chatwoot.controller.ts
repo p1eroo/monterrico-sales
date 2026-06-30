@@ -188,7 +188,7 @@ export class ChatwootController {
     try {
       const result = await this.service.initiateConversation({
         ...body,
-        templateLanguage: body.templateLanguage ?? 'es',
+        templateLanguage: body.templateLanguage ?? 'es_PE',
       });
       return result;
     } catch (e) {
