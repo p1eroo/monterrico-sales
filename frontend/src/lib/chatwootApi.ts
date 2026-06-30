@@ -209,14 +209,16 @@ export async function initiateConversation(data: {
 export async function sendTemplateToConversation(
   conversationId: number,
   data: {
-    content?: string;
-    templateName: string;
-    templateCategory: string;
-    templateLanguage?: string;
-    templateParams?: Record<string, unknown>;
+    content: string;
+    template_params: {
+      name: string;
+      category: string;
+      language: string;
+      processed_params?: Record<string, unknown>;
+    };
   },
 ): Promise<unknown> {
-  return api(`/api/chatwoot/conversations/${conversationId}/messages/template`, {
+  return api(`/api/chatwoot/conversations/${conversationId}/messages`, {
     method: 'POST',
     body: JSON.stringify(data),
   });

@@ -106,11 +106,21 @@ export class ChatwootClient {
     conversationId: number,
     content: string,
     messageType: 'outgoing' | 'incoming' = 'outgoing',
+    templateParams?: {
+      name: string;
+      category: string;
+      language: string;
+      processed_params: Record<string, unknown>;
+    },
   ): Promise<ChatwootMessage> {
-    return this.request('POST', `/conversations/${conversationId}/messages`, {
+    const body: Record<string, unknown> = {
       content,
       message_type: messageType,
-    });
+    };
+    if (templateParams) {
+      body.template_params = templateParams;
+    }
+    return this.request('POST', `/conversations/${conversationId}/messages`, body);
   }
 
   async sendTemplateMessage(

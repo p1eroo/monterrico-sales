@@ -1349,8 +1349,12 @@ function ChatwootChatPanel({
     try {
       await sendTemplateToConversation(conversationId, {
         content: 'Hola estimado(a), reciba un cordial saludo de parte de Taxi Monterrico.\n\nHemos observado su interés en formar parte de nuestra flota. \n¿usted cuenta con vehiculo particular o tiene permiso de la ATU?',
-        templateName,
-        templateCategory,
+        template_params: {
+          name: templateName,
+          category: templateCategory,
+          language: 'es_PE',
+          processed_params: {},
+        },
       });
       toast.success('Plantilla enviada');
       setDismiss24h(true);

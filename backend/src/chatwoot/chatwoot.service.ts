@@ -42,8 +42,14 @@ export class ChatwootService {
   async sendMessage(
     conversationId: number,
     content: string,
+    templateParams?: {
+      name: string;
+      category: string;
+      language: string;
+      processed_params: Record<string, unknown>;
+    },
   ): Promise<ChatwootMessage> {
-    return this.client.sendMessage(conversationId, content, 'outgoing');
+    return this.client.sendMessage(conversationId, content, 'outgoing', templateParams);
   }
 
   async updateConversation(

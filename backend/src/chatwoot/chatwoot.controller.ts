@@ -59,9 +59,17 @@ export class ChatwootController {
   @Post('conversations/:id/messages')
   async sendMessage(
     @Param('id', ParseIntPipe) id: number,
-    @Body() body: { content: string },
+    @Body() body: {
+      content?: string;
+      template_params?: {
+        name: string;
+        category: string;
+        language: string;
+        processed_params: Record<string, unknown>;
+      };
+    },
   ) {
-    return this.service.sendMessage(id, body.content);
+    return this.service.sendMessage(id, body.content ?? '', body.template_params);
   }
 
   @Post('conversations/:id/messages/template')
@@ -75,10 +83,10 @@ export class ChatwootController {
       templateParams?: Record<string, unknown>;
     },
   ) {
-    return this.service.sendTemplateMessage(id, body.content ?? '', {
+    return this.service.sendMessage(id, body.content ?? '', {
       name: body.templateName,
       category: body.templateCategory,
-      language: body.templateLanguage ?? 'es',
+      language: body.templateLanguage ?? 'es_PE',
       processed_params: body.templateParams ?? {},
     });
   }
