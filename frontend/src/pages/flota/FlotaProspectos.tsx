@@ -64,7 +64,6 @@ import {
 
 import { PageHeader } from "@/components/shared/PageHeader";
 import { CrmDataTableSkeleton } from "@/components/shared/CrmListPageSkeleton";
-import { cn } from "@/lib/utils";
 import { formatDateDMY } from "@/lib/formatters";
 
 import {
@@ -272,13 +271,13 @@ export default function FlotaProspectos() {
   const [conLlamadasFilter, setConLlamadasFilter] = useState("all");
   const [fechasOpen, setFechasOpen] = useState(false);
   const [chatPanelOpen, setChatPanelOpen] = useState(false);
-  const [newChatOpen, setNewChatOpen] = useState(false);
-  const [newChatPhone, setNewChatPhone] = useState('');
-  const [newChatName, setNewChatName] = useState('');
+  const [chatActiveId, setChatActiveId] = useState<number | null>(null);
+  const [newChatData, setNewChatData] = useState<{ phone: string; name: string; conversationId: number } | null>(null);
   const [newChatTemplates, setNewChatTemplates] = useState<{ name: string; language: string; category: string; content?: string }[]>([]);
-  const [newChatSelected, setNewChatSelected] = useState('');
-  const [newChatLoading, setNewChatLoading] = useState(false);
+  const [newChatSelected, setNewChatSelected] = useState('afiliacion_atu');
+  const [newChatLoadingTpl, setNewChatLoadingTpl] = useState(false);
   const [newChatSending, setNewChatSending] = useState(false);
+
 
   const blockedProspectsRef = useRef(blockedProspects);
   blockedProspectsRef.current = blockedProspects;
@@ -395,20 +394,22 @@ export default function FlotaProspectos() {
                 {phone && (
                 <div
                   className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-background/70 rounded cursor-pointer z-10"
-                  onClick={(e) => {
+                  onClick={async (e) => {
                     e.stopPropagation();
                     const p = row.original;
-                    setNewChatPhone(p.celular || '');
-                    setNewChatName(p.nombreCompleto);
-                    setNewChatTemplates([]);
-                    setNewChatSelected('');
-                    setNewChatLoading(true);
-                    setNewChatOpen(true);
-                    setNewChatSelected('afiliacion_atu');
-                    fetchChatwootTemplates().then((tpls) => {
-                      setNewChatTemplates(tpls);
-                      if (tpls.length > 0) setNewChatSelected(tpls[0].name);
-                    }).catch(() => {}).finally(() => setNewChatLoading(false));
+                    const phone = (p.celular || '').replace(/\D/g, '');
+                    const fullPhone = phone.length === 9 ? `+51${phone}` : `+${phone}`;
+                    try {
+                      const result = await initiateConversation({ name: p.nombreCompleto, phone: fullPhone, skipTemplate: true });
+                      if (result.isNew) {
+                        setNewChatData({ phone: fullPhone, name: p.nombreCompleto, conversationId: result.conversationId });
+                      } else {
+                        setChatActiveId(result.conversationId);
+                        setChatPanelOpen(true);
+                      }
+                    } catch {
+                      toast.error('Error al abrir el chat');
+                    }
                   }}
                 >
                   <MessageCircle className="size-5 text-primary" />
@@ -872,6 +873,16 @@ export default function FlotaProspectos() {
   useEffect(() => {
     void loadProspectos(page);
   }, [loadProspectos, page]);
+
+  useEffect(() => {
+    if (!newChatData) return;
+    setNewChatSelected('afiliacion_atu');
+    setNewChatLoadingTpl(true);
+    fetchChatwootTemplates().then((tpls) => {
+      setNewChatTemplates(tpls);
+      if (tpls.length > 0) setNewChatSelected(tpls[0].name);
+    }).catch(() => {}).finally(() => setNewChatLoadingTpl(false));
+  }, [newChatData]);
 
   const displayData = useMemo(() => {
     if (blockedProspects.length === 0) return prospectos;
@@ -2376,10 +2387,11 @@ tr[data-row-id="${bp.id}"] {
 
       <ChatwootInboxPanel
         open={chatPanelOpen}
-        onOpenChange={(v) => { if (!v) setChatPanelOpen(false); }}
+        onOpenChange={(v) => { if (!v) { setChatPanelOpen(false); setChatActiveId(null); } }}
+        initialActiveId={chatActiveId}
       />
 
-      <Dialog open={newChatOpen} onOpenChange={setNewChatOpen}>
+      <Dialog open={!!newChatData} onOpenChange={(v) => { if (!v) setNewChatData(null); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Nuevo mensaje</DialogTitle>
@@ -2388,23 +2400,21 @@ tr[data-row-id="${bp.id}"] {
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label>Número</Label>
-              <Input value={newChatPhone} onChange={(e) => setNewChatPhone(e.target.value)} />
+              <p className="text-sm font-medium">{newChatData?.phone}</p>
             </div>
             <div className="space-y-2">
               <Label>Nombre</Label>
-              <Input value={newChatName} onChange={(e) => setNewChatName(e.target.value)} />
+              <p className="text-sm font-medium">{newChatData?.name}</p>
             </div>
             <div className="space-y-2">
               <Label>Plantilla</Label>
-              {newChatLoading ? (
+              {newChatLoadingTpl ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" /> Cargando...
                 </div>
-              ) : newChatTemplates.length === 0 && newChatSelected ? (
-                <div className="flex flex-col gap-2">
-                  <div className={cn(
-                    'rounded-lg border px-3 py-2 text-sm text-left border-primary bg-primary/10 text-primary',
-                  )}>
+              ) : newChatTemplates.length === 0 ? (
+                newChatSelected === 'afiliacion_atu' ? (
+                  <div className="rounded-lg border border-primary bg-primary/10 px-3 py-2">
                     <p className="font-medium text-xs">afiliacion_atu</p>
                     <p className="text-[10px] text-muted-foreground">UTILITY</p>
                     <div className="mt-2 text-[13px] leading-relaxed whitespace-pre-line text-foreground">
@@ -2413,15 +2423,14 @@ tr[data-row-id="${bp.id}"] {
                       ¿usted cuenta con vehiculo particular o tiene permiso de la ATU?
                     </div>
                   </div>
-                </div>
+                ) : null
               ) : (
                 <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
                   {newChatTemplates.map((t) => (
                     <button key={t.name} onClick={() => setNewChatSelected(t.name)}
-                      className={cn(
-                        'rounded-lg border px-3 py-2 text-left transition-colors',
-                        newChatSelected === t.name ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:border-primary/50 hover:bg-muted',
-                      )}
+                      className={`rounded-lg border px-3 py-2 text-left transition-colors ${
+                        newChatSelected === t.name ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:border-primary/50 hover:bg-muted'
+                      }`}
                     >
                       <p className="font-medium text-xs">{t.name}</p>
                       <p className="text-[10px] text-muted-foreground">{t.category}</p>
@@ -2435,23 +2444,22 @@ tr[data-row-id="${bp.id}"] {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setNewChatOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setNewChatData(null)}>Cancelar</Button>
             <Button onClick={async () => {
-              const phone = newChatPhone.replace(/\D/g, '');
-              const fullPhone = phone.length === 9 ? `51${phone}` : phone;
+              if (!newChatData) return;
               const template = newChatTemplates.find((t) => t.name === newChatSelected);
-              const templateName = template?.name || newChatSelected || 'afiliacion_atu';
+              const templateName = template?.name || 'afiliacion_atu';
               const templateCategory = template?.category || 'UTILITY';
-              if (!fullPhone) return;
               setNewChatSending(true);
               try {
                 await initiateConversation({
-                  name: newChatName || fullPhone,
-                  phone: fullPhone,
+                  name: newChatData.name,
+                  phone: newChatData.phone,
                   templateName,
                   templateCategory,
                 });
-                setNewChatOpen(false);
+                setNewChatData(null);
+                setChatActiveId(newChatData.conversationId);
                 setChatPanelOpen(true);
                 toast.success('Mensaje enviado');
               } catch (e) {
@@ -2459,7 +2467,7 @@ tr[data-row-id="${bp.id}"] {
               } finally {
                 setNewChatSending(false);
               }
-            }} disabled={!newChatPhone.trim() || (!newChatSelected && newChatTemplates.length > 0) || newChatSending}>
+            }} disabled={newChatSending}>
               {newChatSending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
               {newChatSending ? 'Enviando...' : 'Enviar plantilla'}
             </Button>

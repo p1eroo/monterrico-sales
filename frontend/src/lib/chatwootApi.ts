@@ -200,7 +200,7 @@ export async function initiateConversation(data: {
   templateLanguage?: string;
   templateParams?: Record<string, unknown>;
   skipTemplate?: boolean;
-}): Promise<{ conversationId: number; contactId: number }> {
+}): Promise<{ conversationId: number; contactId: number; isNew?: boolean }> {
   return api('/api/chatwoot/initiate-conversation', {
     method: 'POST',
     body: JSON.stringify(data),
@@ -232,4 +232,15 @@ export async function fetchChatwootTemplates(): Promise<{
   content?: string;
 }[]> {
   return api('/api/chatwoot/templates');
+}
+
+export async function fetchChatwootContacts(params?: {
+  page?: number;
+  q?: string;
+}): Promise<ChatwootContact[]> {
+  const qs = new URLSearchParams();
+  if (params?.page) qs.set('page', String(params.page));
+  if (params?.q) qs.set('q', params.q);
+  const qsStr = qs.toString();
+  return api(`/api/chatwoot/contacts-list${qsStr ? `?${qsStr}` : ''}`);
 }

@@ -153,8 +153,8 @@ export class ChatwootWebhookService {
       },
     });
 
-    // Si existe con nombre placeholder, actualizar con el nombre real
-    if (prospecto && name && /^Contacto \d{9}$/.test(prospecto.nombreCompleto ?? '')) {
+    // Actualizar nombre con el que envía Chatwoot (siempre)
+    if (prospecto && name) {
       prospecto = await this.prisma.flotaProspecto.update({
         where: { id: prospecto.id },
         data: { nombreCompleto: name },

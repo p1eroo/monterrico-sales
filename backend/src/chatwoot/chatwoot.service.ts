@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ChatwootClient } from './chatwoot.client';
+import { PrismaService } from '../prisma/prisma.service';
 import type {
   ChatwootConversation,
   ChatwootConversationListItem,
@@ -13,7 +14,10 @@ import type {
 export class ChatwootService {
   private readonly logger = new Logger(ChatwootService.name);
 
-  constructor(private readonly client: ChatwootClient) {}
+  constructor(
+    private readonly client: ChatwootClient,
+    private readonly prisma: PrismaService,
+  ) {}
 
   getInboxId(): number {
     return this.client.getConfig().inboxId;
@@ -65,7 +69,8 @@ export class ChatwootService {
 
   async searchContacts(query: string): Promise<ChatwootContact[]> {
     const result = await this.client.searchContacts(query);
-    return result.data ?? [];
+    const items = (result as any)?.data?.payload ?? result?.data ?? (result as any)?.payload ?? result;
+    return Array.isArray(items) ? items : [];
   }
 
 
@@ -116,6 +121,10 @@ export class ChatwootService {
     return this.client.sendTemplateMessage(conversationId, content, templateParams);
   }
 
+  async listContacts(page?: number, q?: string): Promise<ChatwootContact[]> {
+    return this.client.listContacts({ page, q });
+  }
+
   async initiateConversation(data: {
     name: string;
     phone: string;
@@ -124,7 +133,7 @@ export class ChatwootService {
     templateLanguage?: string;
     templateParams?: Record<string, unknown>;
     skipTemplate?: boolean;
-  }): Promise<{ conversationId: number; contactId: number }> {
+  }): Promise<{ conversationId: number; contactId: number; isNew: boolean }> {
     this.logger.log(`initiateConversation: ${data.name} ${data.phone} skipTemplate=${data.skipTemplate}`);
 
     const cleanPhone = data.phone.replace(/\D/g, '');
@@ -141,54 +150,73 @@ export class ChatwootService {
       const msg = createErr instanceof Error ? createErr.message : '';
       if (msg.includes('already been taken')) {
         this.logger.log('Contacto ya existe, buscando ID...');
-        const queries = [cleanPhone, e164Phone, cleanPhone.slice(-9)];
-        for (const q of queries) {
-          try {
-            const results = await this.searchContacts(q);
-            const found = results.find((c) =>
-              c.phone_number?.replace(/\D/g, '') === cleanPhone ||
-              c.phone_number?.replace(/\D/g, '') === `51${cleanPhone.slice(-9)}`,
-            );
-            if (found) { contactId = found.id; break; }
-          } catch { /* ignorar */ }
+        // Buscar en nuestra base de datos primero (chatwootContactId)
+        try {
+          const prospecto = await this.prisma.flotaProspecto.findFirst({
+            where: {
+              OR: [
+                { celular: { endsWith: cleanPhone } },
+                { movil: { endsWith: cleanPhone } },
+              ],
+              chatwootContactId: { not: null },
+            },
+            select: { chatwootContactId: true },
+          });
+          if (prospecto?.chatwootContactId) {
+            contactId = Number(prospecto.chatwootContactId);
+            this.logger.log(`ID encontrado en DB: ${contactId}`);
+          }
+        } catch { /* ignorar */ }
+        // Fallback: buscar en Chatwoot API
+        if (!contactId) {
+          const queries = [cleanPhone, e164Phone, cleanPhone.slice(-9)];
+          for (const q of queries) {
+            try {
+              const results = await this.searchContacts(q);
+              const found = results.find((c) =>
+                c.phone_number?.replace(/\D/g, '') === cleanPhone ||
+                c.phone_number?.replace(/\D/g, '') === `51${cleanPhone.slice(-9)}`,
+              );
+              if (found) { contactId = found.id; break; }
+            } catch { /* ignorar */ }
+          }
         }
       } else {
         throw createErr;
       }
     }
 
-    // 2. Buscar conversación existente activa para este contacto
+    // 2. Buscar conversación existente activa
     let conversation: ChatwootConversation | null = null;
-    async function findConversationByPhone(phone: string): Promise<ChatwootConversation | null> {
-      const digits = phone.replace(/\D/g, '');
-      const searchIn = (items: { meta?: { sender?: { phone_number?: string } }; status: string; id: number }[]) =>
-        items.find((c) =>
+    let foundExisting = false;
+    if (contactId) {
+      try {
+        const existing = await this.client.listContactConversations(contactId);
+        const digits = cleanPhone.replace(/\D/g, '');
+        const found = existing.find((c) =>
           (c.status === 'open' || c.status === 'pending') &&
           c.meta?.sender?.phone_number?.replace(/\D/g, '') === digits,
-        ) ?? null;
-      // A) Por contacto directo
-      if (contactId) {
-        try {
-          const existing = await this.client.listContactConversations(contactId);
-          const found = searchIn(existing);
-          if (found) return found as any;
-        } catch { /* ignorar */ }
-      }
-      // B) Lista global de abiertas
-      try {
-        const all = await this.client.listConversations({ status: 'open' });
-        const found = searchIn(all);
-        if (found) return found as any;
+        );
+        if (found) { conversation = found as any; foundExisting = true; }
       } catch { /* ignorar */ }
-      // C) Búsqueda por query
-      try {
-        const byQ = await this.client.listConversations({ q: phone });
-        const found = searchIn(byQ);
-        if (found) return found as any;
-      } catch { /* ignorar */ }
-      return null;
     }
-    conversation = await findConversationByPhone(cleanPhone);
+    // Fallback: buscar por teléfono si no tenemos contactId
+    if (!conversation && !contactId) {
+      try {
+        let page = 1;
+        let items = await this.client.listConversations({ status: 'open', page });
+        const digits = cleanPhone.replace(/\D/g, '');
+        while (items.length > 0) {
+          const found = items.find((c) =>
+            (c.status === 'open' || c.status === 'pending') &&
+            c.meta?.sender?.phone_number?.replace(/\D/g, '') === digits,
+          );
+          if (found) { conversation = found as any; foundExisting = true; break; }
+          page++;
+          items = await this.client.listConversations({ status: 'open', page });
+        }
+      } catch { /* ignorar */ }
+    }
     if (conversation) {
       this.logger.log(`Conversación existente encontrada: id=${conversation.id}`);
     }
@@ -196,7 +224,18 @@ export class ChatwootService {
     // 3. Si no hay conversación activa, crear una nueva
     if (!conversation) {
       this.logger.log(`Creando conversación source_id=${cleanPhone}`);
-      conversation = await this.client.createConversation(cleanPhone, this.client.getConfig().inboxId);
+      try {
+        conversation = await this.client.createConversation(cleanPhone, this.client.getConfig().inboxId);
+      } catch (err) {
+        // Si el contacto no tiene contact_inbox, crearlo y reintentar
+        if (contactId && err instanceof Error && err.message.includes('404')) {
+          this.logger.log('Creando contact_inbox y reintentando...');
+          await this.client.createContactInbox(contactId);
+          conversation = await this.client.createConversation(cleanPhone, this.client.getConfig().inboxId);
+        } else {
+          throw err;
+        }
+      }
       this.logger.log(`Conversación creada: id=${conversation.id}`);
     }
 
@@ -218,7 +257,7 @@ export class ChatwootService {
       }
     }
 
-    return { conversationId: conversation.id, contactId: contact?.id ?? 0 };
+    return { conversationId: conversation.id, contactId: contact?.id ?? 0, isNew: !foundExisting };
   }
 
   async listTemplates() {

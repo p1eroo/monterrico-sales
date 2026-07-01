@@ -85,6 +85,7 @@ import {
   initiateConversation,
   sendTemplateToConversation,
   fetchChatwootTemplates,
+  fetchChatwootContacts,
   type ChatwootAgent,
 } from '@/lib/chatwootApi';
 import { fetchOperadores, getOperatorDisplayName, flotaProspectosByPhone, flotaProspectoCreate, type OperadorUser, type FlotaProspectoDetalle } from '@/lib/flotaProspectosApi';
@@ -99,7 +100,7 @@ export default function ChatwootInboxView() {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [messagesCache, setMessagesCache] = useState<Record<number, ChatwootMessage[]>>({});
-  const [filter, setFilter] = useState<'all' | 'unread' | 'open' | 'resolved'>('all');
+  const [filter, setFilter] = useState<'all' | 'unread' | 'open' | 'resolved' | 'contacts'>('all');
   const [conductorCodesAll, setConductorCodesAll] = useState<Record<string, string>>({});
   const [newChatOpen, setNewChatOpen] = useState(false);
   const [newPhone, setNewPhone] = useState('');
@@ -108,6 +109,18 @@ export default function ChatwootInboxView() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const activeIdRef = useRef(activeId);
   const socketRef = useRef<any>(null);
+  const convPageRef = useRef(1);
+  const loadingConvRef = useRef(false);
+  const [hasMoreConv, setHasMoreConv] = useState(true);
+  const [contacts, setContacts] = useState<ChatwootContact[]>([]);
+  const [loadingContacts, setLoadingContacts] = useState(false);
+  const contactPageRef = useRef(1);
+  const loadingContactRef = useRef(false);
+  const [hasMoreContacts, setHasMoreContacts] = useState(true);
+  const [newChatTemplates, setNewChatTemplates] = useState<{ name: string; language: string; category: string; content?: string }[]>([]);
+  const [newChatSelectedTemplate, setNewChatSelectedTemplate] = useState('afiliacion_atu');
+  const [newChatLoadingTpl, setNewChatLoadingTpl] = useState(false);
+  const [contactNewChatData, setContactNewChatData] = useState<{ phone: string; name: string } | null>(null);
 
   useEffect(() => {
     getConductorTelefonos().then((r) => setConductorCodesAll(r.codigoByTelefono)).catch(() => {});
@@ -214,25 +227,13 @@ export default function ChatwootInboxView() {
 
   async function loadConversations() {
     try {
-      // Primera página: mostrar inmediatamente
+      convPageRef.current = 1;
+      loadingConvRef.current = false;
       const page1 = await fetchConversations({ page: 1 });
-      let allItems = [...page1];
-      allItems.sort((a, b) => b.last_activity_at - a.last_activity_at);
-      setConversations(allItems);
+      page1.sort((a, b) => b.last_activity_at - a.last_activity_at);
+      setConversations(page1);
+      setHasMoreConv(page1.length >= 25);
       setLoading(false);
-
-      // Background: cargar páginas restantes
-      let page = 2;
-      let lastCount = page1.length;
-      while (lastCount >= 25) {
-        const items = await fetchConversations({ page });
-        if (items.length === 0) break;
-        allItems = [...allItems, ...items];
-        allItems.sort((a, b) => b.last_activity_at - a.last_activity_at);
-        setConversations([...allItems]);
-        lastCount = items.length;
-        page++;
-      }
     } catch {
       // silent
     } finally {
@@ -240,10 +241,75 @@ export default function ChatwootInboxView() {
     }
   }
 
+  // Scroll infinito: cargar más conversaciones al llegar al final
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      if (loadingConvRef.current || !hasMoreConv) return;
+      if (el.scrollHeight - el.scrollTop - el.clientHeight < 300) {
+        loadingConvRef.current = true;
+        const next = convPageRef.current + 1;
+        convPageRef.current = next;
+        fetchConversations({ page: next }).then((raw) => {
+          const items = raw as ChatwootConversation[];
+          if (items.length > 0) {
+            setConversations((prev) => {
+              const merged = [...prev, ...items];
+              merged.sort((a, b) => b.last_activity_at - a.last_activity_at);
+              return merged;
+            });
+          }
+          setHasMoreConv(items.length >= 25);
+        }).catch(() => {}).finally(() => { loadingConvRef.current = false; });
+      }
+    };
+    el.addEventListener('scroll', onScroll);
+    return () => el.removeEventListener('scroll', onScroll);
+  }, [hasMoreConv, conversations.length]);
+
+  // Efecto para cargar contactos
+  useEffect(() => {
+    if (filter !== 'contacts') return;
+    if (contacts.length > 0 && !query) return;
+    setContacts([]);
+    contactPageRef.current = 1;
+    setHasMoreContacts(true);
+    setLoadingContacts(true);
+    fetchChatwootContacts({ page: 1, q: query || undefined })
+      .then((items) => {
+        setContacts(items);
+        setHasMoreContacts(items.length > 0);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingContacts(false));
+  }, [filter, query]);
+
+  // Scroll infinito para contactos
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el || filter !== 'contacts') return;
+    const onScroll = () => {
+      if (loadingContactRef.current || !hasMoreContacts || query) return;
+      if (el.scrollHeight - el.scrollTop - el.clientHeight < 300) {
+        loadingContactRef.current = true;
+        const next = contactPageRef.current + 1;
+        contactPageRef.current = next;
+        fetchChatwootContacts({ page: next }).then((items) => {
+          if (items.length > 0) setContacts((prev) => [...prev, ...items]);
+          setHasMoreContacts(items.length > 0);
+        }).catch(() => {}).finally(() => { loadingContactRef.current = false; });
+      }
+    };
+    el.addEventListener('scroll', onScroll);
+    return () => el.removeEventListener('scroll', onScroll);
+  }, [filter, hasMoreContacts, query, contacts.length]);
+
   const queryLower = useMemo(() => query.toLowerCase(), [query]);
 
-  const filtered = useMemo(() =>
-    conversations
+  const filtered = useMemo(() => {
+    if (filter === 'contacts') return [];
+    return conversations
       .filter((c) => {
         if (filter === 'unread') return (c.unread_count ?? 0) > 0;
         if (filter === 'open') return c.status === 'open';
@@ -253,9 +319,8 @@ export default function ChatwootInboxView() {
       .filter((c) =>
         c.meta.sender.name.toLowerCase().includes(queryLower) ||
         c.meta.sender.phone_number?.includes(query),
-      ),
-    [conversations, filter, query, queryLower, conversations.length],
-  );
+      );
+  }, [conversations, filter, query, queryLower]);
 
   const virtualizer = useVirtualizer({
     count: filtered.length,
@@ -269,9 +334,13 @@ export default function ChatwootInboxView() {
   }, []);
 
   async function handleNewChat() {
-    const phone = newPhone.trim();
-    const name = newName.trim() || phone;
+    const phone = (contactNewChatData?.phone || newPhone).trim();
+    const name = (contactNewChatData?.name || newName).trim() || phone;
     if (!phone) return;
+    const templateName = newChatSelectedTemplate;
+    const template = newChatTemplates.find((t) => t.name === templateName);
+    const finalName = template?.name || templateName || 'afiliacion_atu';
+    const finalCategory = template?.category || 'UTILITY';
     const cleaned = phone.replace(/\D/g, '');
     const fullPhone = cleaned.length === 9 ? `51${cleaned}` : cleaned;
     setCreatingChat(true);
@@ -279,13 +348,14 @@ export default function ChatwootInboxView() {
       const result = await initiateConversation({
         name,
         phone: fullPhone,
-        skipTemplate: true,
+        templateName: finalName,
+        templateCategory: finalCategory,
       });
       setNewChatOpen(false);
       setNewPhone('');
       setNewName('');
+      setContactNewChatData(null);
       await loadConversations();
-      // Esperar a que React procese el estado actualizado de conversations
       await new Promise((r) => setTimeout(r, 100));
       setActiveId(result.conversationId);
     } catch (e) {
@@ -305,8 +375,7 @@ export default function ChatwootInboxView() {
               {([
                 ['all', 'Todos'],
                 ['unread', 'No leídos'],
-                ['open', 'Abiertos'],
-                ['resolved', 'Resueltos'],
+                ['contacts', 'Contactos'],
               ] as const).map(([key, label]) => (
                 <button
                   key={key}
@@ -340,10 +409,65 @@ export default function ChatwootInboxView() {
             </div>
           </div>
           <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto scrollbar-thin pt-1.5">
-            {loading ? (
+            {loading && filter !== 'contacts' ? (
               <div className="flex items-center justify-center py-16">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
+            ) : filter === 'contacts' ? (
+              loadingContacts ? (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : contacts.length === 0 ? (
+                <div className="py-16 text-center text-sm text-muted-foreground">
+                  {query ? 'Sin resultados' : 'Sin contactos'}
+                </div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {contacts.map((c) => {
+                    const existingConv = conversations.find((conv) =>
+                      conv.meta.sender.phone_number?.replace(/\D/g, '') === c.phone_number?.replace(/\D/g, ''),
+                    );
+                    return (
+                      <button key={c.id}
+                        onClick={() => {
+                          if (existingConv) {
+                            setActiveId(existingConv.id);
+                          } else if (c.phone_number) {
+                            setContactNewChatData({ phone: c.phone_number, name: c.name });
+                            setNewChatSelectedTemplate('afiliacion_atu');
+                            setNewChatLoadingTpl(true);
+                            setNewChatTemplates([]);
+                            setNewChatOpen(true);
+                            fetchChatwootTemplates().then((tpls) => {
+                              setNewChatTemplates(tpls);
+                              if (tpls.length > 0) setNewChatSelectedTemplate(tpls[0].name);
+                            }).catch(() => {}).finally(() => setNewChatLoadingTpl(false));
+                          }
+                        }}
+                        className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="h-10 w-10 shrink-0 rounded-full overflow-hidden">
+                          {c.thumbnail ? (
+                            <img src={c.thumbnail} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
+                              {c.name.slice(0, 2).toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium">{c.name}</p>
+                          <p className="truncate text-xs text-muted-foreground">{c.phone_number || ''}</p>
+                        </div>
+                        {existingConv && (
+                          <span className="shrink-0 text-[10px] text-muted-foreground">En chat</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )
             ) : filtered.length === 0 ? (
               <div className="py-16 text-center text-sm text-muted-foreground">
                 {query ? 'Sin resultados' : 'No hay conversaciones'}
@@ -390,39 +514,61 @@ export default function ChatwootInboxView() {
         )}
       </div>
 
-      <Dialog open={newChatOpen} onOpenChange={setNewChatOpen}>
-        <DialogContent className="sm:max-w-sm">
+      <Dialog open={newChatOpen} onOpenChange={(v) => { if (!v) { setNewChatOpen(false); setContactNewChatData(null); } }}>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Nuevo mensaje</DialogTitle>
-            <DialogDescription>Ingresa el número y nombre del contacto para iniciar una conversación por WhatsApp.</DialogDescription>
+            <DialogDescription>Selecciona una plantilla para iniciar la conversación</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="cw-phone">Número de WhatsApp</Label>
-              <Input
-                id="cw-phone"
-                value={newPhone}
-                onChange={(e) => setNewPhone(e.target.value)}
-                placeholder="51987654321"
-                autoFocus
-              />
-              <p className="text-xs text-muted-foreground">Con código de país, sin + ni espacios</p>
+              <Label>Número</Label>
+              <Input value={contactNewChatData?.phone || newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="+51999999999" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="cw-name">Nombre</Label>
-              <Input
-                id="cw-name"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                placeholder="Nombre del contacto"
-              />
+              <Label>Nombre</Label>
+              <Input value={contactNewChatData?.name || newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nombre del contacto" />
+            </div>
+            <div className="space-y-2">
+              <Label>Plantilla</Label>
+              {newChatLoadingTpl ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Cargando plantillas...
+                </div>
+              ) : newChatTemplates.length === 0 ? (
+                <div className="rounded-lg border border-primary bg-primary/10 px-3 py-2">
+                  <p className="font-medium text-xs">afiliacion_atu</p>
+                  <p className="text-[10px] text-muted-foreground">UTILITY</p>
+                  <div className="mt-2 text-[13px] leading-relaxed whitespace-pre-line text-foreground">
+                    Hola estimado(a), reciba un cordial saludo de parte de Taxi Monterrico.{'\n\n'}
+                    Hemos observado su interés en formar parte de nuestra flota.{'\n'}
+                    ¿usted cuenta con vehiculo particular o tiene permiso de la ATU?
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2 max-h-48 overflow-y-auto">
+                  {newChatTemplates.map((t) => (
+                    <button key={t.name} onClick={() => setNewChatSelectedTemplate(t.name)}
+                      className={`rounded-lg border px-3 py-2 text-left transition-colors ${
+                        newChatSelectedTemplate === t.name ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:border-primary/50 hover:bg-muted'
+                      }`}
+                    >
+                      <p className="font-medium text-xs">{t.name}</p>
+                      <p className="text-[10px] text-muted-foreground">{t.category}</p>
+                      {t.content && (
+                        <div className="mt-1 text-[13px] leading-relaxed whitespace-pre-line text-foreground/80">{t.content}</div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setNewChatOpen(false)} disabled={creatingChat}>Cancelar</Button>
-            <Button onClick={handleNewChat} disabled={!newPhone.trim() || creatingChat}>
-              {creatingChat ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Iniciar chat
+            <Button variant="outline" onClick={() => { setNewChatOpen(false); setContactNewChatData(null); }} disabled={creatingChat}>Cancelar</Button>
+            <Button onClick={handleNewChat} disabled={(!newPhone.trim() && !contactNewChatData) || creatingChat}>
+              {creatingChat ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+              {creatingChat ? 'Enviando...' : 'Enviar plantilla'}
             </Button>
           </DialogFooter>
         </DialogContent>

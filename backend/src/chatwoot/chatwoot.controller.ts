@@ -211,4 +211,9 @@ export class ChatwootController {
   async listTemplates() {
     return this.service.listTemplates();
   }
+
+  @Get('contacts-list')
+  async listContacts(@Query('page') page?: string, @Query('q') q?: string) {
+    return this.service.listContacts(page ? parseInt(page) : undefined, q);
+  }
 }

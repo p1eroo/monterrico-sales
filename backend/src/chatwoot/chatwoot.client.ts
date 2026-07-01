@@ -94,6 +94,41 @@ export class ChatwootClient {
     return [];
   }
 
+  async listContacts(params?: {
+    page?: number;
+    q?: string;
+  }): Promise<ChatwootContact[]> {
+    const extract = (items: any[]) => {
+      if (!Array.isArray(items)) return null;
+      return items.map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        phone_number: c.phone_number,
+        email: c.email,
+        thumbnail: c.thumbnail,
+        identifier: c.identifier ?? '',
+        additional_attributes: c.additional_attributes ?? {},
+        custom_attributes: c.custom_attributes ?? {},
+      })) as unknown as ChatwootContact[];
+    };
+    // Si hay búsqueda, usar endpoint de search
+    if (params?.q) {
+      const raw = await this.request<any>('GET', `/contacts/search?q=${encodeURIComponent(params.q)}`);
+      return extract(raw?.data?.payload) ?? extract(raw?.data) ?? extract(raw?.payload) ?? extract(raw) ?? [];
+    }
+    // Listado normal con paginación
+    const search = new URLSearchParams();
+    if (params?.page) search.set('page', String(params.page));
+    const raw = await this.request<any>('GET', `/contacts?${search.toString()}`);
+    return extract(raw?.payload) ?? extract(raw?.data) ?? extract(raw) ?? [];
+  }
+
+  async createContactInbox(contactId: number): Promise<void> {
+    await this.request('POST', `/contacts/${contactId}/inboxes`, {
+      inbox_id: this.config.inboxId,
+    });
+  }
+
   async listMessages(
     conversationId: number,
     before?: number,
