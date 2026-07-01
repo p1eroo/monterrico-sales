@@ -41,4 +41,12 @@ export class GmailController {
     await this.gmailService.sendMessage(req.user.userId, body.to, body.subject, body.body, body.cc);
     return { ok: true };
   }
+
+  @Post('link')
+  async linkEmail(
+    @Req() req: AuthedReq,
+    @Body() body: { to: string; subject: string },
+  ) {
+    return this.gmailService.linkEmail(body.to, body.subject, req.user.userId);
+  }
 }

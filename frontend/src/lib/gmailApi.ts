@@ -52,3 +52,10 @@ export async function sendGmailMessage(to: string, subject: string, body: string
 export async function fetchGmailProfile(): Promise<{ emailAddress: string; messagesTotal: number }> {
   return api('/gmail/profile');
 }
+
+export async function linkEmailToCRM(to: string, subject: string): Promise<{ linked: { email: string; contactId?: string; companyId?: string; opportunityId?: string }[] }> {
+  return api('/gmail/link', {
+    method: 'POST',
+    body: JSON.stringify({ to, subject }),
+  });
+}

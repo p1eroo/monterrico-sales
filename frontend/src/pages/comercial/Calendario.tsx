@@ -922,7 +922,6 @@ export default function CalendarioPage() {
       <EventDetailModal event={selectedEvent} open={detailOpen} onOpenChange={setDetailOpen}
         onEdit={(ev) => { setDetailOpen(false); setEditingEvent(ev); setFormOpen(true); }}
         onDelete={async (ev) => { try { await deleteActivity(ev.id); setDetailOpen(false); setSelectedEvent(null); toast.success('Actividad eliminada'); } catch (e) { toast.error(e instanceof Error ? e.message : 'Error al eliminar'); } }}
-        createActivity={createActivity}
       />
 
       <EventFormModal open={formOpen} onOpenChange={(open) => { setFormOpen(open); if (!open) setEditingEvent(null); }}

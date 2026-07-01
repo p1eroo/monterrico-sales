@@ -1,9 +1,12 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import { google } from 'googleapis';
 import { PrismaService } from '../prisma/prisma.service';
+import { EntitySyncService } from '../sync/entity-sync.service';
 
 @Injectable()
 export class GoogleCalendarService {
+  private readonly logger = new Logger(GoogleCalendarService.name);
+
   private getOAuth2Client(tokens: any) {
     const oauth2Client = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,
@@ -14,7 +17,10 @@ export class GoogleCalendarService {
     return oauth2Client;
   }
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly entitySync: EntitySyncService,
+  ) {}
 
   private async getCalendarClient(userId: string) {
     const account = await this.prisma.account.findFirst({
@@ -106,5 +112,111 @@ export class GoogleCalendarService {
       requestBody: { title, notes, due },
     });
     return res.data;
+  }
+
+  async linkEvent(data: {
+    attendees: { name?: string; email: string }[];
+    eventTitle: string;
+    eventDescription?: string;
+    eventDate: string;
+    eventStartTime?: string;
+    assignedTo: string;
+  }) {
+    const results: { email: string; contactId?: string; companyId?: string; opportunityId?: string }[] = [];
+
+    for (const a of data.attendees) {
+      if (!a.email) continue;
+      const email = a.email.trim().toLowerCase();
+      const domain = email.split('@')[1].toLowerCase();
+
+      // 1. Buscar o crear contacto
+      let contact = await this.prisma.contact.findFirst({ where: { correo: email } });
+      if (!contact) {
+        const ts = Date.now();
+        contact = await this.prisma.contact.create({
+          data: {
+            name: a.name || email,
+            correo: email,
+            telefono: '-',
+            urlSlug: `gcal-${ts}-${Math.random().toString(36).slice(2, 6)}`,
+            fuente: 'referido',
+            etapa: 'lead',
+            estimatedValue: 0,
+          },
+        });
+        this.logger.log(`Contacto creado: ${contact.id} (${email})`);
+      }
+
+      // 2. Buscar o crear empresa por dominio
+      let company = await this.prisma.company.findFirst({
+        where: { domain: { equals: domain, mode: 'insensitive' } },
+      });
+      if (!company) {
+        const ts = Date.now();
+        company = await this.prisma.company.create({
+          data: {
+            name: domain,
+            domain,
+            urlSlug: `gcal-${ts}-${Math.random().toString(36).slice(2, 6)}`,
+            fuente: 'referido',
+            facturacionEstimada: 0,
+          },
+        });
+        this.logger.log(`Empresa creada: ${company.id} (${domain})`);
+      }
+
+      // 3. Vincular contacto a empresa
+      const existingLink = await this.prisma.companyContact.findUnique({
+        where: { companyId_contactId: { companyId: company.id, contactId: contact.id } },
+      });
+      if (!existingLink) {
+        await this.prisma.companyContact.create({
+          data: { companyId: company.id, contactId: contact.id },
+        });
+      }
+
+      // 4. Crear oportunidad vinculada a empresa y contacto
+      const ts = Date.now();
+      const opp = await this.prisma.opportunity.create({
+        data: {
+          title: domain,
+          amount: 2000,
+          etapa: 'lead',
+          fuente: 'referido',
+          assignedTo: data.assignedTo || null,
+          urlSlug: `gcal-${ts}-${Math.random().toString(36).slice(2, 6)}`,
+          probability: 0,
+          companies: { create: { companyId: company.id } },
+          contacts: { create: { contactId: contact.id } },
+        },
+      });
+      this.logger.log(`Oportunidad creada: ${opp.id} (${domain})`);
+
+      // 5. Sincronizar
+      await this.entitySync.propagateFromOpportunityAllCompanies(opp.id);
+
+      // 6. Crear actividad (reunión)
+      const activityDate = new Date(data.eventDate);
+      await this.prisma.activity.create({
+        data: {
+          type: 'reunion',
+          title: data.eventTitle,
+          description: data.eventDescription ?? '',
+          assignedTo: data.assignedTo,
+          status: 'pendiente',
+          dueDate: activityDate,
+          startDate: activityDate,
+          startTime: data.eventStartTime || null,
+          contacts: { create: { contactId: contact.id } },
+          companies: { create: { companyId: company.id } },
+          opportunities: { create: { opportunityId: opp.id } },
+        },
+      });
+      this.logger.log(`Actividad creada para contacto ${contact.id}`);
+
+      results.push({ email, contactId: contact.id, companyId: company.id, opportunityId: opp.id });
+    }
+
+    return { linked: results };
   }
 }

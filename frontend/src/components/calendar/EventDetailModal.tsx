@@ -11,7 +11,6 @@ import type { CalendarEvent } from '@/types';
 import { eventTypeConfig, eventStatusConfig } from './eventTypeConfig';
 import { getCalendarEventNavPaths } from '@/lib/calendarEventLinks';
 import { GoogleEventFloatingBar } from '@/pages/comercial/GoogleEventFloatingBar';
-import type { CreateActivityPayload } from '@/lib/activityApi';
 
 interface EventDetailModalProps {
   event: CalendarEvent | null;
@@ -19,10 +18,9 @@ interface EventDetailModalProps {
   onOpenChange: (open: boolean) => void;
   onEdit?: (event: CalendarEvent) => void;
   onDelete?: (event: CalendarEvent) => void;
-  createActivity?: (data: CreateActivityPayload) => Promise<any>;
 }
 
-export function EventDetailModal({ event, open, onOpenChange, onEdit, onDelete, createActivity }: EventDetailModalProps) {
+export function EventDetailModal({ event, open, onOpenChange, onEdit, onDelete }: EventDetailModalProps) {
   const navigate = useNavigate();
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
@@ -198,8 +196,8 @@ export function EventDetailModal({ event, open, onOpenChange, onEdit, onDelete, 
           )}
         </div>
 
-        {event.assignedTo === 'google' && createActivity && (
-          <GoogleEventFloatingBar event={event} createActivity={createActivity} />
+        {event.assignedTo === 'google' && (
+          <GoogleEventFloatingBar event={event} />
         )}
 
         {(onEdit || onDelete) && (

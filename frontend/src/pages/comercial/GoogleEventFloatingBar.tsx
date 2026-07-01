@@ -1,20 +1,16 @@
 import { useState } from 'react';
 import { Video, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { contactListAll, contactCreate } from '@/lib/contactApi';
-import { companyListAll } from '@/lib/companyApi';
-import { useAppStore } from '@/store';
+import { linkGoogleCalendarEvent } from '@/lib/calendarApi';
 import type { CalendarEvent } from '@/types';
-import type { CreateActivityPayload } from '@/lib/activityApi';
 
 type LinkState = 'idle' | 'loading' | 'success' | 'error';
 const TIMEOUT_MS = 30_000;
 
-export function GoogleEventFloatingBar({ event, createActivity }: { event: CalendarEvent; createActivity: (data: CreateActivityPayload) => Promise<any> }) {
+export function GoogleEventFloatingBar({ event }: { event: CalendarEvent }) {
   const [state, setState] = useState<LinkState>('idle');
   const [message, setMessage] = useState('');
   const [count, setCount] = useState(0);
-  const currentUser = useAppStore((s) => s.currentUser);
 
   async function handleLink() {
     setState('loading');
@@ -24,37 +20,17 @@ export function GoogleEventFloatingBar({ event, createActivity }: { event: Calen
       const attendees = event.attendees ?? [];
       if (attendees.length === 0) { setMessage('El evento no tiene invitados'); setState('error'); return; }
 
-      const allContacts = await contactListAll();
-      const allCompanies = await companyListAll();
-      let successCount = 0;
+      const result = await linkGoogleCalendarEvent({
+        attendees: attendees
+          .filter((a) => a.email && !a.organizer)
+          .map((a) => ({ name: a.name, email: a.email! })),
+        eventTitle: event.title,
+        eventDescription: event.description ?? '',
+        eventDate: event.date,
+        eventStartTime: event.startTime,
+      });
 
-      for (const a of attendees) {
-        if (!a.email || a.organizer) continue;
-        const domain = a.email.split('@')[1].toLowerCase();
-        setMessage(`Procesando: ${a.name || a.email}...`);
-
-        const existing = allContacts.find((c) => c.correo === a.email);
-        let contactId: string | undefined;
-        let companyId: string | undefined;
-
-        if (existing) {
-          contactId = existing.id;
-        } else {
-          const existingCompany = allCompanies.find((c) => c.domain?.toLowerCase() === domain);
-          if (existingCompany) {
-            const created = await contactCreate({ name: a.name || a.email, correo: a.email, fuente: 'base', etapa: 'lead', companyId: existingCompany.id });
-            contactId = created.id;
-            companyId = existingCompany.id;
-          } else {
-            const created = await contactCreate({ name: a.name || a.email, correo: a.email, fuente: 'base', etapa: 'lead', newCompany: { name: domain, facturacionEstimada: 2000, fuente: 'base' } });
-            contactId = created.id;
-          }
-        }
-
-        await createActivity({ type: 'reunion', title: event.title, description: event.description ?? '', assignedTo: currentUser.id, dueDate: event.date, startDate: event.date, startTime: event.startTime, contactId, companyId });
-        successCount++;
-      }
-
+      const successCount = result.linked.length;
       setCount(successCount);
       setState('success');
       setMessage(`${successCount} actividad${successCount !== 1 ? 'es' : ''} creada${successCount !== 1 ? 's' : ''}`);

@@ -45,4 +45,21 @@ export class GoogleCalendarController {
   async createTask(@Req() req: AuthedReq, @Body() body: { taskListId: string; title: string; notes?: string; due?: string }) {
     return this.calendarService.createTask(req.user.userId, body.taskListId, body.title, body.notes, body.due);
   }
+
+  @Post('link')
+  async linkEvent(
+    @Req() req: AuthedReq,
+    @Body() body: {
+      attendees: { name?: string; email: string }[];
+      eventTitle: string;
+      eventDescription?: string;
+      eventDate: string;
+      eventStartTime?: string;
+    },
+  ) {
+    return this.calendarService.linkEvent({
+      ...body,
+      assignedTo: req.user.userId,
+    });
+  }
 }

@@ -72,3 +72,16 @@ export async function createGoogleTask(taskListId: string, title: string, notes?
     body: JSON.stringify({ taskListId, title, notes, due }),
   });
 }
+
+export async function linkGoogleCalendarEvent(data: {
+  attendees: { name?: string; email: string }[];
+  eventTitle: string;
+  eventDescription?: string;
+  eventDate: string;
+  eventStartTime?: string;
+}): Promise<{ linked: { email: string; contactId?: string; companyId?: string; opportunityId?: string }[] }> {
+  return api('/google-calendar/link', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}

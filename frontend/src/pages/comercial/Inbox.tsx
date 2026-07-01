@@ -32,11 +32,12 @@ import {
   contactDetailHref,
   opportunityDetailHref,
 } from '@/lib/detailRoutes';
-import { fetchGmailMessages, fetchGmailMessage, sendGmailMessage } from '@/lib/gmailApi';
+import { fetchGmailMessages, fetchGmailMessage, sendGmailMessage, linkEmailToCRM } from '@/lib/gmailApi';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { EmailRecipientsInput } from '@/components/shared/EmailRecipientsInput';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -304,6 +305,16 @@ export default function InboxPage() {
       const bcc = composeShowBcc ? composeBcc.trim() : undefined;
       await sendGmailMessage(composeTo, composeSubject, bodyHtml, cc || undefined);
       toast.success('Correo enviado');
+
+      // Vincular destinatarios al CRM
+      toast.loading('Vinculando destinatario(s) al CRM...', { id: 'gmail-link' });
+      try {
+        await linkEmailToCRM(composeTo, composeSubject);
+        toast.dismiss('gmail-link');
+      } catch (e) {
+        toast.dismiss('gmail-link');
+        toast.error('Error al vincular: ' + (e instanceof Error ? e.message : ''));
+      }
       setComposeOpen(false);
       setComposeMinimized(false);
       setComposeFullscreen(false);
@@ -872,7 +883,7 @@ export default function InboxPage() {
               <div className="shrink-0">
                 <div className="flex items-center gap-2 border-b px-5">
                   <span className="w-10 shrink-0 text-xs font-medium text-muted-foreground">Para</span>
-                  <input className="min-w-0 flex-1 border-0 bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground/50" placeholder="Destinatarios" value={composeTo} onChange={(e) => setComposeTo(e.target.value)} />
+                  <EmailRecipientsInput value={composeTo} onChange={setComposeTo} />
                 </div>
                 {composeShowCc && (
                   <div className="flex items-center gap-2 border-b px-5">
@@ -966,12 +977,7 @@ export default function InboxPage() {
                 {/* PARA */}
                 <div className="flex items-center gap-2 px-4">
                   <span className="w-10 shrink-0 text-xs font-medium text-muted-foreground">Para</span>
-                  <input
-                    className="min-w-0 flex-1 border-0 bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground/50"
-                    placeholder="Destinatarios"
-                    value={composeTo}
-                    onChange={(e) => setComposeTo(e.target.value)}
-                  />
+                  <EmailRecipientsInput value={composeTo} onChange={setComposeTo} />
                 </div>
                 <div className="mx-4 border-b" />
                 {/* CC */}
