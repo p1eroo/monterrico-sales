@@ -15,7 +15,7 @@ export function EmailRecipientsInput({ value, onChange, placeholder = 'Destinata
   const [showResults, setShowResults] = useState(false);
   const [loading, setLoading] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(-1);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
