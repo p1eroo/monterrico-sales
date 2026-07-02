@@ -75,10 +75,10 @@ export function Pagination({
   const pageNumbers = getPageNumbers();
 
   return (
-    <div className="flex w-full items-center justify-between border-t border-[#E5EAF0] px-6 py-4">
+    <div className="flex w-full items-center justify-between py-4">
       {/* Left side: Results count range */}
       <div>
-        <p className="text-sm text-[#64748B]">
+        <p className="text-sm text-muted-foreground font-normal">
           {start != null && end != null && totalItems != null
             ? `Mostrando ${start}–${end} de ${totalItems} resultados`
             : `Página ${page} de ${totalPages}`}
@@ -90,12 +90,12 @@ export function Pagination({
         {/* Page size select dropdown */}
         {onPageSizeChange && pageSize != null && (
           <div className="flex items-center gap-2">
-            <span className="text-sm text-[#64748B] whitespace-nowrap">Filas</span>
+            <span className="text-sm text-muted-foreground whitespace-nowrap">Filas</span>
             <Select
               value={String(pageSize)}
               onValueChange={(val) => onPageSizeChange(Number(val))}
             >
-              <SelectTrigger size="sm" className="h-9 w-[75px] rounded-xl border-[#E2E8F0] bg-white shadow-sm">
+              <SelectTrigger size="sm" className="h-8 w-[75px] bg-card border-border shadow-[0_2px_6px_rgba(15,23,42,0.06)]">
                 <SelectValue placeholder={String(pageSize)} />
               </SelectTrigger>
               <SelectContent>
@@ -116,7 +116,7 @@ export function Pagination({
             size="sm"
             disabled={page <= 1}
             onClick={() => onPageChange(page - 1)}
-            className="h-9 min-w-9 rounded-xl border-[#E2E8F0] bg-white px-3 text-xs font-normal text-[#334155] shadow-sm hover:bg-[#F1F5F9] disabled:bg-[#F1F5F9] disabled:text-[#94A3B8]"
+            className="h-8 px-3 text-xs font-normal border-border text-foreground hover:bg-muted/40 bg-card shadow-[0_2px_6px_rgba(15,23,42,0.06)]"
           >
             Anterior
           </Button>
@@ -126,7 +126,7 @@ export function Pagination({
               return (
                 <span
                   key={`ellipsis-${index}`}
-                  className="flex h-9 min-w-9 items-center justify-center px-1 text-sm text-[#64748B] select-none"
+                  className="px-2 text-sm text-muted-foreground select-none"
                 >
                   ...
                 </span>
@@ -141,10 +141,10 @@ export function Pagination({
                 variant={isPageActive ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => !isPageActive && onPageChange(Number(num))}
-                className={`h-9 min-w-9 p-0 text-xs rounded-xl ${
+                className={`h-8 w-8 p-0 text-xs rounded-lg ${
                   isPageActive
-                    ? 'bg-[#16A34A] text-white font-semibold hover:bg-[#15803D] shadow-sm'
-                    : 'border-[#E2E8F0] bg-white font-normal text-[#334155] hover:bg-[#F1F5F9] shadow-sm'
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90 font-medium shadow-[0_2px_6px_rgba(15,23,42,0.06)]'
+                    : 'font-normal border-border text-foreground hover:bg-muted/40 bg-card shadow-[0_2px_6px_rgba(15,23,42,0.06)]'
                 }`}
               >
                 {num}
@@ -157,7 +157,7 @@ export function Pagination({
             size="sm"
             disabled={page >= totalPages}
             onClick={() => onPageChange(page + 1)}
-            className="h-9 min-w-9 rounded-xl border-[#E2E8F0] bg-white px-3 text-xs font-normal text-[#334155] shadow-sm hover:bg-[#F1F5F9] disabled:bg-[#F1F5F9] disabled:text-[#94A3B8]"
+            className="h-8 px-3 text-xs font-normal border-border text-foreground hover:bg-muted/40 bg-card shadow-[0_2px_6px_rgba(15,23,42,0.06)]"
           >
             Siguiente
           </Button>

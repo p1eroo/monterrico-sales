@@ -923,7 +923,7 @@ export default function ContactosPage() {
   }
 
   return (
-    <div className="space-y-6 bg-[#F5F7FA] min-h-screen px-6 py-6">
+    <div className="space-y-6">
       <ImportInProgressDialog
         open={importPreviewInProgress}
         title="Generando vista previa"
@@ -1157,7 +1157,7 @@ export default function ContactosPage() {
       {/* Filter bar */}
       <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center">
         <div className="relative w-full min-w-0 max-w-[580px]">
-          <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#64748B]" />
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Buscar por nombre, empresa, email o teléfono..."
             value={search}
@@ -1165,7 +1165,7 @@ export default function ContactosPage() {
               setSearch(e.target.value);
               setPage(1);
             }}
-            className="h-[44px] rounded-xl border-[#E2E8F0] bg-white pl-9 text-sm placeholder:text-[#94A3B8] shadow-sm focus-visible:border-blue-400 focus-visible:ring-2 focus-visible:ring-blue-100 focus-visible:ring-offset-0 transition-all"
+            className="pl-9 bg-card"
           />
         </div>
         <div className="flex flex-wrap items-center gap-2 flex-1">
@@ -1176,9 +1176,9 @@ export default function ContactosPage() {
               setPage(1);
             }}
           >
-            <SelectTrigger className="h-[44px] w-auto rounded-xl border-[#E2E8F0] bg-white shadow-sm">
-              <div className="flex items-center gap-1.5 px-0.5">
-                <Globe className="size-3.5 text-[#64748B]" />
+            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card">
+              <div className="flex items-center gap-1.5">
+                <Globe className="size-3.5" />
                 <SelectValue placeholder="Fuente" />
               </div>
             </SelectTrigger>
@@ -1199,9 +1199,9 @@ export default function ContactosPage() {
               setPage(1);
             }}
           >
-            <SelectTrigger className="h-[44px] w-auto rounded-xl border-[#E2E8F0] bg-white shadow-sm">
-              <div className="flex items-center gap-1.5 px-0.5">
-                <Tag className="size-3.5 text-[#64748B]" />
+            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card">
+              <div className="flex items-center gap-1.5">
+                <Tag className="size-3.5" />
                 <SelectValue placeholder="Etapa" />
               </div>
             </SelectTrigger>
@@ -1223,9 +1223,9 @@ export default function ContactosPage() {
             }}
             disabled={!canSeeAllAdvisors}
           >
-            <SelectTrigger className="h-[44px] w-auto rounded-xl border-[#E2E8F0] bg-white shadow-sm">
-              <div className="flex items-center gap-1.5 px-0.5">
-                <User className="size-3.5 text-[#64748B]" />
+            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card">
+              <div className="flex items-center gap-1.5">
+                <User className="size-3.5" />
                 <SelectValue placeholder="Asesor" />
               </div>
             </SelectTrigger>
@@ -1240,17 +1240,17 @@ export default function ContactosPage() {
           </Select>
 
           {hasActiveFilters && (
-            <Button variant="ghost" size="sm" onClick={clearFilters} className="h-[44px] rounded-xl px-3 text-sm">
-              <X className="size-4 mr-1" /> Limpiar
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
+              <X className="size-4" /> Limpiar
             </Button>
           )}
 
-          <div className="ml-auto hidden md:flex items-center rounded-xl border border-[#E2E8F0] bg-white p-0.5 shadow-sm">
+          <div className="ml-auto hidden md:flex items-center rounded-md border bg-card">
             <Button
               variant={viewMode === "table" ? "secondary" : "ghost"}
               size="icon-sm"
               onClick={() => setViewMode("table")}
-              className={viewMode === "table" ? "rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200" : "rounded-lg hover:bg-gray-50"}
+              className="rounded-r-none"
             >
               <List className="size-4" />
             </Button>
@@ -1258,7 +1258,7 @@ export default function ContactosPage() {
               variant={viewMode === "cards" ? "secondary" : "ghost"}
               size="icon-sm"
               onClick={() => setViewMode("cards")}
-              className={viewMode === "cards" ? "rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200" : "rounded-lg hover:bg-gray-50"}
+              className="rounded-l-none"
             >
               <Grid3X3 className="size-4" />
             </Button>
@@ -1293,8 +1293,7 @@ export default function ContactosPage() {
             onAction={() => setNewContactOpen(true)}
           />
         ) : viewMode === "table" ? (
-           <div className="rounded-2xl border border-[#E5EAF0] bg-white shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-hidden">
-            <div className="overflow-auto scrollbar-thin max-h-[calc(100vh-22rem)] max-w-full">
+           <div className="overflow-auto rounded-[14px] bg-card shadow-[0_8px_24px_rgba(15,23,42,0.06)] scrollbar-thin max-h-[calc(100vh-22rem)] max-w-full">
             <ContactsTable
               contacts={displayedContacts}
               selectedContacts={selectedContacts}
@@ -1314,7 +1313,6 @@ export default function ContactosPage() {
               }}
             />
           </div>
-            </div>
         ) : (
           <ContactsGrid
             contacts={displayedContacts}
@@ -1433,37 +1431,37 @@ function ContactsTable({
   return (
     <Table className="min-w-[1200px]">
         <TableHeader>
-          <TableRow className="border-b border-[#E2E8F0]">
-            <TableHead className="w-12 h-12 px-5 text-[11px] font-semibold uppercase tracking-[0.04em] text-[#64748B] bg-[#F8FAFC]">
+          <TableRow>
+            <TableHead className="w-10">
               <Checkbox
                 checked={allSelected}
                 onCheckedChange={onToggleSelectAll}
               />
             </TableHead>
-            <TableHead className="min-w-0 max-w-[20rem] h-12 px-5 text-[11px] font-semibold uppercase tracking-[0.04em] text-[#64748B] bg-[#F8FAFC]">
-              <button className="flex items-center gap-1 font-semibold">
+            <TableHead className="min-w-0 max-w-[20rem]">
+              <button className="flex items-center gap-1 font-medium">
                 Nombre <ArrowUpDown className="size-3 shrink-0" />
               </button>
             </TableHead>
-            <TableHead className="hidden min-w-0 max-w-[16rem] md:table-cell h-12 px-5 text-[11px] font-semibold uppercase tracking-[0.04em] text-[#64748B] bg-[#F8FAFC]">
+            <TableHead className="hidden min-w-0 max-w-[16rem] md:table-cell">
               Empresa
             </TableHead>
-            <TableHead className="hidden lg:table-cell h-12 px-5 text-[11px] font-semibold uppercase tracking-[0.04em] text-[#64748B] bg-[#F8FAFC]">Teléfono</TableHead>
-            <TableHead className="hidden min-w-0 max-w-[14rem] xl:table-cell h-12 px-5 text-[11px] font-semibold uppercase tracking-[0.04em] text-[#64748B] bg-[#F8FAFC]">
+            <TableHead className="hidden lg:table-cell">Teléfono</TableHead>
+            <TableHead className="hidden min-w-0 max-w-[14rem] xl:table-cell">
               Email
             </TableHead>
-            <TableHead className="hidden lg:table-cell h-12 px-5 text-[11px] font-semibold uppercase tracking-[0.04em] text-[#64748B] bg-[#F8FAFC]">Fuente</TableHead>
-            <TableHead className="hidden lg:table-cell h-12 px-5 text-[11px] font-semibold uppercase tracking-[0.04em] text-[#64748B] bg-[#F8FAFC]">
+            <TableHead className="hidden lg:table-cell">Fuente</TableHead>
+            <TableHead className="hidden lg:table-cell">
               Cliente Recuperado
             </TableHead>
-            <TableHead className="h-12 px-5 text-[11px] font-semibold uppercase tracking-[0.04em] text-[#64748B] bg-[#F8FAFC]">Etapa</TableHead>
-            <TableHead className="hidden xl:table-cell h-12 px-5 text-[11px] font-semibold uppercase tracking-[0.04em] text-[#64748B] bg-[#F8FAFC]">Asesor</TableHead>
-            <TableHead className="hidden md:table-cell h-12 px-5 text-[11px] font-semibold uppercase tracking-[0.04em] text-[#64748B] bg-[#F8FAFC]">
-              <button className="flex items-center gap-1 font-semibold">
+            <TableHead>Etapa</TableHead>
+            <TableHead className="hidden xl:table-cell">Asesor</TableHead>
+            <TableHead className="hidden md:table-cell">
+              <button className="flex items-center gap-1 font-medium">
                 Fecha <ArrowUpDown className="size-3" />
               </button>
             </TableHead>
-            <TableHead className="w-12 h-12 px-5 text-[11px] font-semibold uppercase tracking-[0.04em] text-[#64748B] bg-[#F8FAFC]" />
+            <TableHead className="w-10" />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -1473,23 +1471,20 @@ function ContactsTable({
             return (
               <TableRow
                 key={contact.id}
-                className={cn(
-                  "border-b border-[#E5EAF0] transition-colors duration-150 hover:bg-[#F8FAFC]",
-                  pending && "bg-[#F8FAFC]/60"
-                )}
+                className={pending ? "bg-muted/40" : "cursor-pointer"}
                 onClick={() => onView(contact)}
               >
-                <TableCell className="px-5 py-4" onClick={(e) => e.stopPropagation()}>
+                <TableCell onClick={(e) => e.stopPropagation()}>
                   <Checkbox
                     checked={selectedContacts.includes(contact.id)}
                     onCheckedChange={() => onToggleSelect(contact.id)}
                   />
                 </TableCell>
-                <TableCell className="min-w-0 max-w-[20rem] px-5 py-4">
+                <TableCell className="min-w-0 max-w-[20rem] whitespace-normal align-top">
                   <div className="min-w-0">
                     <div className="flex min-w-0 items-center gap-2">
                       <p
-                        className="min-w-0 flex-1 truncate text-sm font-semibold text-[#0F172A]"
+                        className="min-w-0 flex-1 truncate font-medium"
                         title={contact.name}
                       >
                         {contact.name}
@@ -1506,7 +1501,7 @@ function ContactsTable({
                     </div>
                     {contact.cargo && (
                       <p
-                        className="mt-0.5 truncate text-xs text-[#64748B]"
+                        className="truncate text-xs text-muted-foreground"
                         title={contact.cargo}
                       >
                         {contact.cargo}
@@ -1514,7 +1509,7 @@ function ContactsTable({
                     )}
                   </div>
                 </TableCell>
-                <TableCell className="hidden min-w-0 max-w-[16rem] md:table-cell px-5 py-4 text-sm text-[#475569]">
+                <TableCell className="hidden min-w-0 max-w-[16rem] whitespace-normal md:table-cell align-top text-muted-foreground">
                   <span
                     className="block truncate"
                     title={companyName !== "—" ? companyName : undefined}
@@ -1522,44 +1517,42 @@ function ContactsTable({
                     {companyName}
                   </span>
                 </TableCell>
-                <TableCell className="hidden lg:table-cell px-5 py-4 text-sm text-[#475569]">
+                <TableCell className="hidden lg:table-cell text-muted-foreground">
                   {contact.telefono}
                 </TableCell>
-                <TableCell className="hidden min-w-0 max-w-[14rem] xl:table-cell px-5 py-4 text-sm text-[#475569]">
+                <TableCell className="hidden min-w-0 max-w-[14rem] whitespace-normal xl:table-cell align-top text-muted-foreground">
                   <span className="block truncate" title={contact.correo}>
                     {contact.correo}
                   </span>
                 </TableCell>
-                <TableCell className="hidden lg:table-cell px-5 py-4">
-                  <span className="inline-flex h-6 items-center rounded-full border border-[#CBD5E1] bg-white px-2.5 text-xs font-semibold text-[#0F172A]">
+                <TableCell className="hidden lg:table-cell">
+                  <Badge variant="outline" className="text-xs">
                     {contactSourceLabels[contact.fuente]}
-                  </span>
+                  </Badge>
                 </TableCell>
-                <TableCell className="hidden lg:table-cell px-5 py-4 text-sm">
-                  {contact.clienteRecuperado === "si" ? (
-                    <span className="text-[#15803D] font-medium">Sí</span>
-                  ) : contact.clienteRecuperado === "no" ? (
-                    <span className="text-[#475569]">No</span>
-                  ) : (
-                    <span className="text-[#94A3B8]">—</span>
-                  )}
+                <TableCell className="hidden lg:table-cell text-muted-foreground">
+                  {contact.clienteRecuperado === "si"
+                    ? "Sí"
+                    : contact.clienteRecuperado === "no"
+                      ? "No"
+                      : "—"}
                 </TableCell>
-                <TableCell className="px-5 py-4">
+                <TableCell>
                   <StatusBadge status={contact.etapa} />
                 </TableCell>
-                <TableCell className="hidden xl:table-cell px-5 py-4 text-sm text-[#475569]">
+                <TableCell className="hidden xl:table-cell text-muted-foreground">
                   {contact.assignedToName}
                 </TableCell>
-                <TableCell className="hidden md:table-cell px-5 py-4 text-sm text-[#475569] whitespace-nowrap">
+                <TableCell className="hidden md:table-cell text-muted-foreground">
                   {new Date(contact.createdAt).toLocaleDateString("es-PE", {
                     day: "2-digit",
                     month: "short",
                   })}
                 </TableCell>
-                <TableCell className="px-5 py-4" onClick={(e) => e.stopPropagation()}>
+                <TableCell onClick={(e) => e.stopPropagation()}>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon-sm" className="w-8 h-8 rounded-lg text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#0F172A]">
+                      <Button variant="ghost" size="icon-sm">
                         <MoreHorizontal className="size-4" />
                       </Button>
                     </DropdownMenuTrigger>
