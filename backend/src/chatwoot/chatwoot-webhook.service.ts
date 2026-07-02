@@ -102,6 +102,13 @@ export class ChatwootWebhookService {
               createdAt,
             },
           });
+          // Si el prospecto no tiene operador y el mensaje es de un agente, asignarlo
+          if (!prospecto.operador && !isInbound && sender?.name) {
+            await this.prisma.flotaProspecto.update({
+              where: { id: prospecto.id },
+              data: { operador: sender.name },
+            });
+          }
         }
       }
     } catch (e) {
