@@ -79,9 +79,22 @@ export class ChatwootWebhookService {
               chatwootConversationId: conversation.id,
             },
           });
-          // Guardar en crm_whatsapp_message para reportes
-          const content = typeof payload.content === 'string' ? payload.content.slice(0, 500) : '[sin texto]';
-          const createdAt = typeof payload.created_at === 'number' ? new Date(payload.created_at * 1000) : new Date();
+          // Asignar operador al prospecto por assignee_id de la conversación
+          const assigneeId = (conversation as any)?.assignee_id as number | undefined;
+          if (assigneeId && !prospecto.operador) {
+            try {
+              const agents = await this.client.listAgents();
+              const agent = agents.find((a: any) => a.id === assigneeId);
+              if (agent && await this.prisma.user.findFirst({ where: { name: agent.name } })) {
+                await this.prisma.flotaProspecto.update({
+                  where: { id: prospecto.id },
+                  data: { operador: agent.name },
+                });
+              }
+            } catch { /* ignorar */ }
+          }
+
+          // Identificar quién envió el mensaje para createdByUserId
           let createdByUserId: string | null = null;
           if (!isInbound && sender?.name) {
             try {
@@ -89,6 +102,10 @@ export class ChatwootWebhookService {
               if (user) createdByUserId = user.id;
             } catch { /* ignorar */ }
           }
+
+          // Guardar en crm_whatsapp_message para reportes
+          const content = typeof payload.content === 'string' ? payload.content.slice(0, 500) : '[sin texto]';
+          const createdAt = typeof payload.created_at === 'number' ? new Date(payload.created_at * 1000) : new Date();
           await this.prisma.crmWhatsappMessage.create({
             data: {
               direction: isInbound ? 'inbound' : 'outbound',
@@ -102,13 +119,6 @@ export class ChatwootWebhookService {
               createdAt,
             },
           });
-          // Si el prospecto no tiene operador y el mensaje es de un agente, asignarlo
-          if (!prospecto.operador && !isInbound && sender?.name) {
-            await this.prisma.flotaProspecto.update({
-              where: { id: prospecto.id },
-              data: { operador: sender.name },
-            });
-          }
         }
       }
     } catch (e) {
