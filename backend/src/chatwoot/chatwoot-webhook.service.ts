@@ -59,23 +59,47 @@ export class ChatwootWebhookService {
     const messageType = payload.message_type as number | undefined;
     if (messageType === 2) return { received: true };
 
-    const conversation = payload.conversation as { id?: number; meta?: { sender?: { phone_number?: string } } } | undefined;
+    const conversation = payload.conversation as { id?: number; meta?: { sender?: { phone_number?: string; id?: number; name?: string } } } | undefined;
     if (!conversation) return { received: true };
 
     const sender = payload.sender as { id?: number; name?: string; type?: string } | undefined;
-    const phone = sender?.type === 'contact'
-      ? (conversation as any)?.meta?.sender?.phone_number
-      : null;
+    const contactPhone = (conversation as any)?.meta?.sender?.phone_number as string | undefined;
+    const contactSenderId = (conversation as any)?.meta?.sender?.id as number | undefined;
 
     try {
-      if (phone) {
-        const prospecto = await this.findOrCreateProspecto(phone, sender?.name || '');
+      if (contactPhone) {
+        const isInbound = sender?.type === 'contact';
+        const name = isInbound ? (sender?.name || '') : (conversation as any)?.meta?.sender?.name || '';
+        const prospecto = await this.findOrCreateProspecto(contactPhone, name);
         if (prospecto) {
           await this.prisma.flotaProspecto.update({
             where: { id: prospecto.id },
             data: {
-              chatwootContactId: sender?.id ?? 0,
+              chatwootContactId: isInbound ? (sender?.id ?? 0) : (contactSenderId ?? 0),
               chatwootConversationId: conversation.id,
+            },
+          });
+          // Guardar en crm_whatsapp_message para reportes
+          const content = typeof payload.content === 'string' ? payload.content.slice(0, 500) : '[sin texto]';
+          const createdAt = typeof payload.created_at === 'number' ? new Date(payload.created_at * 1000) : new Date();
+          let createdByUserId: string | null = null;
+          if (!isInbound && sender?.name) {
+            try {
+              const user = await this.prisma.user.findFirst({ where: { name: sender.name } });
+              if (user) createdByUserId = user.id;
+            } catch { /* ignorar */ }
+          }
+          await this.prisma.crmWhatsappMessage.create({
+            data: {
+              direction: isInbound ? 'inbound' : 'outbound',
+              evoInstanceId: 'chatwoot',
+              evoInstanceName: 'chatwoot',
+              fromWaId: contactPhone,
+              toWaId: contactPhone,
+              body: content,
+              flotaProspectoId: prospecto.id,
+              createdByUserId,
+              createdAt,
             },
           });
         }
@@ -87,7 +111,7 @@ export class ChatwootWebhookService {
     this.emit('message_created', {
       conversationId: conversation.id,
       message: payload,
-      phone,
+      phone: contactPhone,
     });
 
     return { received: true };

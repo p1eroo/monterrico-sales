@@ -133,6 +133,7 @@ export class ChatwootService {
     templateLanguage?: string;
     templateParams?: Record<string, unknown>;
     skipTemplate?: boolean;
+    operador?: string;
   }): Promise<{ conversationId: number; contactId: number; isNew: boolean }> {
     this.logger.log(`initiateConversation: ${data.name} ${data.phone} skipTemplate=${data.skipTemplate}`);
 
@@ -239,7 +240,23 @@ export class ChatwootService {
       this.logger.log(`Conversación creada: id=${conversation.id}`);
     }
 
-    // 3. Enviar template a la conversación solo si no se salta
+    // 3. Asignar agente de Chatwoot según el operador del prospecto
+    if (conversation && data.operador) {
+      try {
+        const agents = await this.client.listAgents();
+        const agent = agents.find(
+          (a) => a.name.toLowerCase().trim() === data.operador!.toLowerCase().trim(),
+        );
+        if (agent) {
+          await this.client.assignConversation(conversation.id, agent.id);
+          this.logger.log(`Conversación asignada a agente: ${agent.name} (id=${agent.id})`);
+        }
+      } catch (e) {
+        this.logger.warn(`Error asignando agente: ${e instanceof Error ? e.message : e}`);
+      }
+    }
+
+    // 5. Enviar template a la conversación solo si no se salta
     if (!data.skipTemplate && data.templateName && data.templateCategory) {
       this.logger.log(`Enviando template a conversation ${conversation.id}`);
       try {

@@ -192,6 +192,7 @@ export class ChatwootController {
       templateLanguage?: string;
       templateParams?: Record<string, unknown>;
       skipTemplate?: boolean;
+      operador?: string;
     },
   ) {
     try {

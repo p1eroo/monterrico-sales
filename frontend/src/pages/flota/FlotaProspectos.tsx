@@ -272,7 +272,7 @@ export default function FlotaProspectos() {
   const [fechasOpen, setFechasOpen] = useState(false);
   const [chatPanelOpen, setChatPanelOpen] = useState(false);
   const [chatActiveId, setChatActiveId] = useState<number | null>(null);
-  const [newChatData, setNewChatData] = useState<{ phone: string; name: string; conversationId: number } | null>(null);
+  const [newChatData, setNewChatData] = useState<{ phone: string; name: string; conversationId: number; operador?: string } | null>(null);
   const [newChatTemplates, setNewChatTemplates] = useState<{ name: string; language: string; category: string; content?: string }[]>([]);
   const [newChatSelected, setNewChatSelected] = useState('afiliacion_atu');
   const [newChatLoadingTpl, setNewChatLoadingTpl] = useState(false);
@@ -287,6 +287,8 @@ export default function FlotaProspectos() {
   columnFiltersRef.current = columnFilters;
   const operadoresRef = useRef(operadores);
   operadoresRef.current = operadores;
+  const conductorTelefonosRef = useRef(conductorTelefonos);
+  conductorTelefonosRef.current = conductorTelefonos;
 
   const columns = useMemo<ColumnDef<FlotaProspectoRow>[]>(
     () => [
@@ -400,9 +402,9 @@ export default function FlotaProspectos() {
                     const phone = (p.celular || '').replace(/\D/g, '');
                     const fullPhone = phone.length === 9 ? `+51${phone}` : `+${phone}`;
                     try {
-                      const result = await initiateConversation({ name: p.nombreCompleto, phone: fullPhone, skipTemplate: true });
+                      const result = await initiateConversation({ name: p.nombreCompleto, phone: fullPhone, skipTemplate: true, operador: p.operador || undefined });
                       if (result.isNew) {
-                        setNewChatData({ phone: fullPhone, name: p.nombreCompleto, conversationId: result.conversationId });
+                        setNewChatData({ phone: fullPhone, name: p.nombreCompleto, conversationId: result.conversationId, operador: p.operador || undefined });
                       } else {
                         setChatActiveId(result.conversationId);
                         setChatPanelOpen(true);
@@ -941,8 +943,8 @@ export default function FlotaProspectos() {
   const getConductorCodigo = (celular: string | null): string | null => {
     if (!celular) return null;
     const normalized = celular.replace(/\D/g, "").replace(/^51/, "");
-    if (!conductorTelefonos.phones.has(normalized)) return null;
-    return conductorTelefonos.codigoByPhone[normalized] ?? null;
+    if (!conductorTelefonosRef.current.phones.has(normalized)) return null;
+    return conductorTelefonosRef.current.codigoByPhone[normalized] ?? null;
   };
 
   const getLatestObservacion = (obs: string | null | undefined): string => {
@@ -969,7 +971,7 @@ export default function FlotaProspectos() {
   const isConductor = (celular: string | null): boolean => {
     if (!celular) return false;
     const normalized = celular.replace(/\D/g, "").replace(/^51/, "");
-    return conductorTelefonos.phones.has(normalized);
+    return conductorTelefonosRef.current.phones.has(normalized);
   };
 
   const handleOptimisticSave = useCallback(
@@ -2457,6 +2459,7 @@ tr[data-row-id="${bp.id}"] {
                   phone: newChatData.phone,
                   templateName,
                   templateCategory,
+                  operador: newChatData.operador,
                 });
                 setNewChatData(null);
                 setChatActiveId(newChatData.conversationId);

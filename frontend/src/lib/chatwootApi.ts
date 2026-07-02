@@ -200,6 +200,7 @@ export async function initiateConversation(data: {
   templateLanguage?: string;
   templateParams?: Record<string, unknown>;
   skipTemplate?: boolean;
+  operador?: string;
 }): Promise<{ conversationId: number; contactId: number; isNew?: boolean }> {
   return api('/api/chatwoot/initiate-conversation', {
     method: 'POST',
