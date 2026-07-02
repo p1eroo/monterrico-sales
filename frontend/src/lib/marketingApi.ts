@@ -164,6 +164,57 @@ export async function bulkDeleteFacebookLeads(params: {
   });
 }
 
+// ─── Personal externo (Taxi Monterrico API) ───
+
+export type ExternalClientRow = {
+  idclienteempresa: number;
+  razonsocial: string;
+};
+
+type ExternalApiResponse = {
+  detalle: string;
+  ARegistrados: ExternalClientRow[];
+};
+
+export type PersonalRow = {
+  idpersonalempresa: number;
+  nombres: string;
+  apellidos: string;
+  telefonoprincipal: string;
+  empresa: string;
+};
+
+export async function fetchAllPersonal(agente: string): Promise<PersonalRow[]> {
+  const clientsUrl = `https://api.taximonterrico.com/api/WClientes/Registrados?agente=${encodeURIComponent(agente)}&condicion=1`;
+  const clientsRes = await fetch(clientsUrl);
+  if (!clientsRes.ok) throw new Error('Error al obtener las empresas');
+  const clientsData = (await clientsRes.json()) as ExternalApiResponse;
+  const clients = clientsData.ARegistrados || [];
+
+  const results = await Promise.allSettled(
+    clients.map(async (client) => {
+      const personalUrl = `https://api.taximonterrico.com/api/wpersonal/registrados?idcliente=${client.idclienteempresa}`;
+      const personalRes = await fetch(personalUrl);
+      if (!personalRes.ok) return [];
+      const personalData = await personalRes.json() as { detalle?: string; ARegistrados?: any[] };
+      const list = personalData.ARegistrados ?? [];
+      return list.map((p: any) => ({
+        idpersonalempresa: p.idpersonalempresa,
+        nombres: p.nombres ?? '',
+        apellidos: p.apellidos ?? '',
+        telefonoprincipal: p.telefonoprincipal ?? '',
+        empresa: client.razonsocial,
+      }));
+    }),
+  );
+
+  const all: PersonalRow[] = [];
+  for (const r of results) {
+    if (r.status === 'fulfilled') all.push(...r.value);
+  }
+  return all;
+}
+
 // ─── Mantener compatibilidad con tipos existentes ───
 
 export interface MarketingLead {

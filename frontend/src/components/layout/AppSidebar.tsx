@@ -124,6 +124,7 @@ const navItemsMarketing: NavDef[] = [
   { to: '/marketing', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/marketing/leads', label: 'Leads', icon: UserPlus },
   { to: '/marketing/integrations', label: 'Integraciones', icon: ArrowRightLeft },
+  { to: '/marketing/personal', label: 'Personal', icon: Users },
 ];
 
 export function AppSidebar() {

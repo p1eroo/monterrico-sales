@@ -40,7 +40,7 @@ export function StatusBadge({ status }: StatusBadgeProps) {
       className: 'border-border bg-muted text-text-secondary',
     };
     return (
-      <Badge variant="outline" className={cn('text-[11px] font-medium', config.className)}>
+      <Badge variant="outline" className={cn('rounded-full h-6 inline-flex items-center text-[11px] font-semibold border', config.className)}>
         {config.label}
       </Badge>
     );
@@ -51,7 +51,7 @@ export function StatusBadge({ status }: StatusBadgeProps) {
   return (
     <Badge
       variant="outline"
-      className={cn('text-[11px] font-medium', tone.className)}
+      className={cn('rounded-full h-6 inline-flex items-center text-[11px] font-semibold border', tone.className)}
       style={tone.style}
     >
       {label}
