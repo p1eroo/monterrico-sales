@@ -63,7 +63,9 @@ export class ChatwootWebhookService {
     if (!conversation) return { received: true };
 
     const sender = payload.sender as { id?: number; name?: string; type?: string } | undefined;
-    const contactPhone = (conversation as any)?.meta?.sender?.phone_number as string | undefined;
+    const assigneeId = (conversation as any)?.assignee_id as number | undefined;
+    const contactPhone = ((conversation as any)?.meta?.sender?.phone_number
+      || (conversation as any)?.contact_inbox?.source_id) as string | undefined;
     const contactSenderId = (conversation as any)?.meta?.sender?.id as number | undefined;
 
     try {
@@ -79,26 +81,30 @@ export class ChatwootWebhookService {
               chatwootConversationId: conversation.id,
             },
           });
-          // Asignar operador al prospecto por assignee_id de la conversación
-          const assigneeId = (conversation as any)?.assignee_id as number | undefined;
-          if (assigneeId && !prospecto.operador) {
+          // Vincular mensaje al User y asignar operador por assignee_id
+          let createdByUserId: string | null = null;
+          if (assigneeId) {
             try {
               const agents = await this.client.listAgents();
               const agent = agents.find((a: any) => a.id === assigneeId);
-              if (agent && await this.prisma.user.findFirst({ where: { name: agent.name } })) {
-                await this.prisma.flotaProspecto.update({
-                  where: { id: prospecto.id },
-                  data: { operador: agent.name },
-                });
+              if (agent) {
+                const user = await this.prisma.user.findFirst({ where: { name: agent.name } });
+                if (user) {
+                  createdByUserId = user.id;
+                  if (!prospecto.operador) {
+                    await this.prisma.flotaProspecto.update({
+                      where: { id: prospecto.id },
+                      data: { operador: agent.name },
+                    });
+                  }
+                }
               }
             } catch { /* ignorar */ }
           }
-
-          // Identificar quién envió el mensaje para createdByUserId
-          let createdByUserId: string | null = null;
-          if (!isInbound && sender?.name) {
+          // Fallback: si no hay assignee_id, usar sender.name para outbound
+          if (!assigneeId && !isInbound && sender?.name?.trim()) {
             try {
-              const user = await this.prisma.user.findFirst({ where: { name: sender.name } });
+              const user = await this.prisma.user.findFirst({ where: { name: sender.name.trim() } });
               if (user) createdByUserId = user.id;
             } catch { /* ignorar */ }
           }

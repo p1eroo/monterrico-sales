@@ -22,7 +22,9 @@
     "scripts:link-contacts-opp": "node -r ts-node/register -r tsconfig-paths/register scripts/link-contacts-to-opportunities.ts",
     "scripts:diagnose-duplicates": "node -r ts-node/register -r tsconfig-paths/register scripts/diagnose_duplicates.ts",
     "scripts:merge-duplicates": "node -r ts-node/register -r tsconfig-paths/register scripts/merge_duplicates.ts",
-    "scripts:sync-chatwoot-contacts": "node -r ts-node/register -r tsconfig-paths/register scripts/sync-chatwoot-contacts.ts"
+    "scripts:sync-chatwoot-contacts": "node -r ts-node/register -r tsconfig-paths/register scripts/sync-chatwoot-contacts.ts",
+    "scripts:sync-chatwoot-reports": "node -r ts-node/register -r tsconfig-paths/register scripts/sync-chatwoot-reports.ts",
+    "scripts:update-chatwoot-messages": "node -r ts-node/register -r tsconfig-paths/register scripts/update-existing-chatwoot-messages.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1016.0",
