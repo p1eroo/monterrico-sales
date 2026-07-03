@@ -566,7 +566,7 @@ export default function EmpresasPage() {
     setBatchDeleting(false);
     setBatchDeleteDialogOpen(false);
     setSelectedCompanies([]);
-    await loadCompanies();
+    await loadSummary();
 
     const msg = [];
     if (deleted > 0) msg.push(`${deleted} eliminada(s)`);

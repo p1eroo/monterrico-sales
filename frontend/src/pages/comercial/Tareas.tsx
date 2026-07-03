@@ -173,9 +173,8 @@ export default function TareasPage() {
   const [priorityFilter, setPriorityFilter] = useState<'todas' | ContactPriority>('todas');
   const [advisorFilter, setAdvisorFilter] = useState('todos');
   const { canSeeAllAdvisors, currentUserId } = useCrmTeamAdvisorFilter(
-    advisorFilter,
-    setAdvisorFilter,
-    'todos',
+    advisorFilter as any,
+    setAdvisorFilter as any,
   );
   const [activeTab, setActiveTab] = useState('todas');
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('kanban');

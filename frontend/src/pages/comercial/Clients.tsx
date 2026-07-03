@@ -127,9 +127,8 @@ export default function Clients() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const { canSeeAllAdvisors } = useCrmTeamAdvisorFilter(
-    assigneeFilter,
-    setAssigneeFilter,
-    'all',
+    assigneeFilter as any,
+    setAssigneeFilter as any,
   );
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
 

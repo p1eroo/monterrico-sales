@@ -151,9 +151,8 @@ export default function Reports() {
   });
   const [advisorFilter, setAdvisorFilter] = useState('all');
   const { canSeeAllAdvisors, currentUserId } = useCrmTeamAdvisorFilter(
-    advisorFilter,
-    setAdvisorFilter,
-    'all',
+    advisorFilter as any,
+    setAdvisorFilter as any,
   );
   /**
    * Sin `usuarios.ver` / `equipo.ver` el listado API puede quedar vacío, pero el filtro

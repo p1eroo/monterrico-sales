@@ -546,7 +546,7 @@ export default function OpportunitiesPage() {
         enableHiding: true,
         size: 110,
         cell: ({ getValue }) => (
-          <PriorityBadge priority={String(getValue() || 'media')} />
+          <PriorityBadge priority={(getValue() as string || 'media') as any} />
         ),
         enableSorting: false,
       },
