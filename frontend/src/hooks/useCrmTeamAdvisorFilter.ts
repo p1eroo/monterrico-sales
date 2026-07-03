@@ -7,9 +7,8 @@ import { usePermissions } from '@/hooks/usePermissions';
  * solo puede verse la cartera del usuario actual.
  */
 export function useCrmTeamAdvisorFilter(
-  filterValue: string,
-  setFilter: (v: string) => void,
-  allToken: string,
+  filterValue: string[],
+  setFilter: (v: string[]) => void,
 ) {
   const { hasPermission } = usePermissions();
   const currentUserId = useAppStore((s) => s.currentUser.id);
@@ -17,10 +16,10 @@ export function useCrmTeamAdvisorFilter(
 
   /** useLayoutEffect evita un frame con "Todos" y, junto a opciones de sesión, un Select sin ítem. */
   useLayoutEffect(() => {
-    if (!canSeeAllAdvisors && filterValue === allToken) {
-      setFilter(currentUserId);
+    if (!canSeeAllAdvisors && filterValue.length === 0) {
+      setFilter([currentUserId]);
     }
-  }, [allToken, canSeeAllAdvisors, currentUserId, filterValue, setFilter]);
+  }, [canSeeAllAdvisors, currentUserId, filterValue, setFilter]);
 
   return { canSeeAllAdvisors, currentUserId };
 }

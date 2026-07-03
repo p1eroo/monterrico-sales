@@ -1,29 +1,34 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import {
+  flexRender,
+  getCoreRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type ColumnDef,
+  type SortingState,
+} from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
   Plus,
   Search,
-  Grid3X3,
-  List,
-  MoreHorizontal,
+  MoreVertical,
   Eye,
   Pencil,
   Trash2,
   X,
-  ArrowUpDown,
+  ChevronUp,
+  ChevronDown,
+  ChevronsUpDown,
   Phone,
   Mail,
   Building2,
   Users,
-  Upload,
-  Download,
-  FileSpreadsheet,
   Loader2,
-  Globe,
-  Tag,
-  User,
 } from "lucide-react";
+import { ChartSquareIcon } from "@/components/icons/ChartSquareIcon";
+import { PaletteIcon } from "@/components/icons/PaletteIcon";
+import { UserHandIcon } from "@/components/icons/UserHandIcon";
 import { contactSourceLabels, etapaLabels } from "@/data/mock";
 import { useUsers } from "@/hooks/useUsers";
 import { useAppStore } from "@/store";
@@ -67,6 +72,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -114,9 +130,13 @@ import {
 } from "@/components/ui/dialog";
 import { useImportJobsStore } from "@/store/importJobsStore";
 import {
-  CrmDataTableSkeleton,
   CrmEntityCardGridSkeleton,
 } from "@/components/shared/CrmListPageSkeleton";
+import plantillaIcon from "@/components/icons/file-new-svgrepo-com.svg";
+import importIcon from "@/components/icons/import-3-svgrepo-com.svg";
+import exportIcon from "@/components/icons/export-2-svgrepo-com.svg";
+import columnsIcon from "@/components/icons/columns-3-svgrepo-com.svg";
+import filterIcon from "@/components/icons/filter-svgrepo-com.svg";
 
 const DEFAULT_ITEMS_PER_PAGE = 25;
 
@@ -152,7 +172,7 @@ const CONTACTOS_TABLE_SKELETON_COLUMNS = [
   { label: "Teléfono", className: "hidden lg:table-cell" },
   { label: "Email", className: "hidden min-w-0 max-w-[14rem] xl:table-cell" },
   { label: "Fuente", className: "hidden lg:table-cell" },
-  { label: "Cliente Recuperado", className: "hidden lg:table-cell" },
+  { label: "C. Recuperado", className: "hidden lg:table-cell" },
   { label: "Etapa" },
   { label: "Asesor", className: "hidden xl:table-cell" },
   { label: "Fecha", className: "hidden md:table-cell" },
@@ -188,13 +208,22 @@ export default function ContactosPage() {
 
   const [search, setSearch] = useState("");
   const [searchDebounced, setSearchDebounced] = useState("");
-  const [etapaFilter, setEtapaFilter] = useState<string>("todos");
-  const [sourceFilter, setSourceFilter] = useState<string>("todos");
-  const [advisorFilter, setAdvisorFilter] = useState<string>("todos");
+  const [etapaFilter, setEtapaFilter] = useState<string[]>([]);
+  const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({
+    empresa: true,
+    telefono: true,
+    correo: true,
+    fuente: true,
+    clienteRecuperado: true,
+    etapa: true,
+    asesor: true,
+    fecha: true,
+  });
+  const [sourceFilter, setSourceFilter] = useState<string[]>([]);
+  const [advisorFilter, setAdvisorFilter] = useState<string[]>([]);
   const { canSeeAllAdvisors, currentUserId } = useCrmTeamAdvisorFilter(
     advisorFilter,
     setAdvisorFilter,
-    "todos",
   );
   const [viewMode, setViewMode] = useState<"table" | "cards">(() => {
     if (typeof window !== "undefined" && window.innerWidth < 768)
@@ -247,9 +276,9 @@ export default function ContactosPage() {
         page,
         limit: pageSize,
         search: searchDebounced || undefined,
-        etapa: etapaFilter === "todos" ? undefined : etapaFilter,
-        fuente: sourceFilter === "todos" ? undefined : sourceFilter,
-        assignedTo: advisorFilter === "todos" ? undefined : advisorFilter,
+        etapa: etapaFilter.length > 0 ? etapaFilter.join(',') : undefined,
+        fuente: sourceFilter.length > 0 ? sourceFilter.join(',') : undefined,
+        assignedTo: advisorFilter.length > 0 ? advisorFilter.join(',') : undefined,
       });
       setApiRows(res.data);
       setTotalContacts(res.total);
@@ -271,8 +300,8 @@ export default function ContactosPage() {
     try {
       const { counts } = await contactListEtapaCounts({
         search: searchDebounced || undefined,
-        fuente: sourceFilter === "todos" ? undefined : sourceFilter,
-        assignedTo: advisorFilter === "todos" ? undefined : advisorFilter,
+        fuente: sourceFilter.length > 0 ? sourceFilter.join(',') : undefined,
+        assignedTo: advisorFilter.length > 0 ? advisorFilter.join(',') : undefined,
       });
       setEtapaTabCounts(counts);
     } catch {
@@ -313,9 +342,10 @@ export default function ContactosPage() {
 
   useEffect(() => {
     if (etapaTabCounts == null) return;
-    if (etapaFilter === "todos") return;
-    if ((effectiveEtapaTabCounts[etapaFilter] ?? 0) > 0) return;
-    setEtapaFilter("todos");
+    if (etapaFilter.length === 0) return;
+    const hasAnyResult = etapaFilter.some((e) => (effectiveEtapaTabCounts[e] ?? 0) > 0);
+    if (hasAnyResult) return;
+    setEtapaFilter([]);
     setPage(1);
   }, [etapaTabCounts, etapaFilter, effectiveEtapaTabCounts]);
 
@@ -413,19 +443,19 @@ export default function ContactosPage() {
   const endIndex = Math.min(page * pageSize, totalContacts);
 
   const advisorFilterIsActive = canSeeAllAdvisors
-    ? advisorFilter !== "todos"
+    ? advisorFilter.length > 0
     : false;
   const hasActiveFilters =
-    etapaFilter !== "todos" ||
-    sourceFilter !== "todos" ||
+    etapaFilter.length > 0 ||
+    sourceFilter.length > 0 ||
     advisorFilterIsActive ||
     search !== "";
 
   function clearFilters() {
     setSearch("");
-    setEtapaFilter("todos");
-    setSourceFilter("todos");
-    setAdvisorFilter(canSeeAllAdvisors ? "todos" : currentUserId);
+    setEtapaFilter([]);
+    setSourceFilter([]);
+    setAdvisorFilter(canSeeAllAdvisors ? [] : [currentUserId]);
     setPage(1);
   }
 
@@ -860,9 +890,29 @@ export default function ContactosPage() {
       setExportBusy(true);
       const params: Record<string, string> = {};
       if (searchDebounced) params.search = searchDebounced;
-      if (etapaFilter !== "todos") params.etapa = etapaFilter;
-      if (sourceFilter !== "todos") params.fuente = sourceFilter;
-      if (advisorFilter !== "todos") params.assignedTo = advisorFilter;
+      if (etapaFilter.length > 0) params.etapa = etapaFilter.join(',');
+      if (sourceFilter.length > 0) params.fuente = sourceFilter.join(',');
+      if (advisorFilter.length > 0) params.assignedTo = advisorFilter.join(',');
+      // Mapear columnas visibles de la tabla a nombres de columnas CSV
+      const tableToCsv: Record<string, string[]> = {
+        nombre: ["nombre"],
+        empresa: ["empresa_nombre", "empresa_ruc"],
+        telefono: ["telefono_1"],
+        correo: ["correo"],
+        fuente: ["fuente"],
+        clienteRecuperado: ["cliente_recuperado"],
+        etapa: ["etapa"],
+        asesor: ["asignado_a"],
+      };
+      // Columnas siempre visibles (no están en columnVisibility porque no se pueden ocultar)
+      const alwaysVisible = ["nombre", "cargo"];
+      const csvColumns = [
+        ...alwaysVisible.flatMap((key) => tableToCsv[key] || [key]),
+        ...Object.entries(columnVisibility)
+          .filter(([, visible]) => visible)
+          .flatMap(([key]) => tableToCsv[key] || []),
+      ];
+      if (csvColumns.length > 0) params.columns = csvColumns.join(",");
       await downloadImportExportCsv("contacts", "export", params);
       toast.success("Exportación descargada");
     } catch (e) {
@@ -923,7 +973,7 @@ export default function ContactosPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="bg-[#F3F4F6] min-h-screen pt-2 pb-8">
       <ImportInProgressDialog
         open={importPreviewInProgress}
         title="Generando vista previa"
@@ -1084,57 +1134,11 @@ export default function ContactosPage() {
       <PageHeader
         title="Contactos"
         description="Gestiona y da seguimiento a tus prospectos de venta"
+        className="mb-6"
       >
         <span className="mr-2 text-sm text-muted-foreground">
           Total: {totalContacts}
         </span>
-        {hasPermission("contactos.exportar") && (
-          <Button
-            variant="outline"
-            disabled={exportBusy}
-            title="Sin id: usa empresa_nombre y empresa_ruc para vincular o crear empresa"
-            onClick={() => void handleContactTemplate()}
-            className="bg-card"
-          >
-            {exportBusy ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <FileSpreadsheet className="size-4" />
-            )}{" "}
-            Plantilla
-          </Button>
-        )}
-        {hasPermission("contactos.crear") && (
-          <Button
-            variant="outline"
-            disabled={importBusy}
-            title="Obligatorio: valor_estimado (>0). Si indicas nombre en el archivo, prevalece sobre el de la API."
-            onClick={openContactImport}
-            className="bg-card"
-          >
-            {importBusy ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Upload className="size-4" />
-            )}{" "}
-            Importar
-          </Button>
-        )}
-        {hasPermission("contactos.exportar") && (
-          <Button
-            variant="outline"
-            disabled={exportBusy}
-            onClick={() => void handleContactExport()}
-            className="bg-card"
-          >
-            {exportBusy ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Download className="size-4" />
-            )}{" "}
-            Exportar
-          </Button>
-        )}
         {hasPermission("contactos.eliminar") && selectedContacts.length > 0 && (
           <Button
             variant="destructive"
@@ -1149,15 +1153,17 @@ export default function ContactosPage() {
             Eliminar ({selectedContacts.length})
           </Button>
         )}
-        <Button onClick={() => setNewContactOpen(true)}>
-          <Plus /> Nuevo Contacto
+        <Button onClick={() => setNewContactOpen(true)} className="h-11 w-[120px] text-base font-normal shadow-md">
+          <Plus /> Nuevo
         </Button>
       </PageHeader>
 
-      {/* Filter bar */}
-      <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center">
+      {/* Filter bar + Table + Pagination en una sola tarjeta */}
+      <div className="rounded-[14px] border border-border/40 bg-white/30 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08)] overflow-hidden">
+        {/* Filter bar */}
+        <div className="flex min-w-0 flex-col gap-3 px-5 py-4 lg:flex-row lg:items-center">
         <div className="relative w-full min-w-0 max-w-[580px]">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-[#8a9aab]" />
           <Input
             placeholder="Buscar por nombre, empresa, email o teléfono..."
             value={search}
@@ -1165,79 +1171,54 @@ export default function ContactosPage() {
               setSearch(e.target.value);
               setPage(1);
             }}
-            className="pl-9 bg-card"
+            className="!h-12 rounded-lg border border-[#e1e7ee] bg-white/60 pl-10 text-[15px] text-black placeholder:text-[#8a9aab] transition-colors hover:border-primary focus-visible:ring-1 shadow-none"
           />
         </div>
-        <div className="flex flex-wrap items-center gap-2 flex-1">
-          <Select
-            value={sourceFilter}
-            onValueChange={(v) => {
-              setSourceFilter(v);
-              setPage(1);
-            }}
-          >
-            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card">
-              <div className="flex items-center gap-1.5">
-                <Globe className="size-3.5" />
-                <SelectValue placeholder="Fuente" />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Fuentes</SelectItem>
-              {Object.entries(contactSourceLabels).map(([key, label]) => (
-                <SelectItem key={key} value={key}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select
-            value={etapaFilter}
-            onValueChange={(v) => {
-              setEtapaFilter(v);
-              setPage(1);
-            }}
-          >
-            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card">
-              <div className="flex items-center gap-1.5">
-                <Tag className="size-3.5" />
-                <SelectValue placeholder="Etapa" />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Etapas</SelectItem>
-              {Object.entries(etapaLabels).map(([key, label]) => (
-                <SelectItem key={key} value={key}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select
-            value={advisorFilter}
-            onValueChange={(v) => {
-              setAdvisorFilter(v);
-              setPage(1);
-            }}
-            disabled={!canSeeAllAdvisors}
-          >
-            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card">
-              <div className="flex items-center gap-1.5">
-                <User className="size-3.5" />
-                <SelectValue placeholder="Asesor" />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Asesores</SelectItem>
-              {activeAdvisors.map((u) => (
-                <SelectItem key={u.id} value={u.id}>
-                  {u.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <Popover>
+          <PopoverTrigger asChild>
+            <button className={`!h-12 w-[190px] rounded-lg border border-[#e1e7ee] bg-white/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left ${etapaFilter.length > 0 ? "text-black" : "text-[#8a9aab]"}`}>
+              <ChartSquareIcon className="size-5 shrink-0 text-[#8a9aab]" />
+              <span className="truncate flex-1">
+                {etapaFilter.length === 0
+                  ? "Etapa"
+                  : etapaFilter.map((k) => etapaLabels[k] || k).join(", ")}
+              </span>
+              <ChevronDown className="size-3.5 shrink-0 opacity-50" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[200px] p-0" align="start">
+            <Command>
+              <CommandList className="max-h-[260px] overflow-y-auto">
+                <CommandGroup>
+                  {Object.entries(etapaLabels).map(([key, label]) => {
+                    const selected = etapaFilter.includes(key);
+                    return (
+                      <CommandItem
+                        key={key}
+                        onSelect={() => {
+                          setEtapaFilter((prev) =>
+                            prev.includes(key)
+                              ? prev.filter((e) => e !== key)
+                              : [...prev, key],
+                          );
+                          setPage(1);
+                        }}
+                      >
+                        <span className="[&_svg]:!text-primary-foreground">
+                        <Checkbox
+                          checked={selected}
+                          className="mr-2 h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
+                        />
+                        </span>
+                        <span>{label}</span>
+                      </CommandItem>
+                    );
+                  })}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
 
           {hasActiveFilters && (
             <Button variant="ghost" size="sm" onClick={clearFilters}>
@@ -1245,37 +1226,195 @@ export default function ContactosPage() {
             </Button>
           )}
 
-          <div className="ml-auto hidden md:flex items-center rounded-md border bg-card">
-            <Button
-              variant={viewMode === "table" ? "secondary" : "ghost"}
-              size="icon-sm"
-              onClick={() => setViewMode("table")}
-              className="rounded-r-none"
-            >
-              <List className="size-4" />
-            </Button>
-            <Button
-              variant={viewMode === "cards" ? "secondary" : "ghost"}
-              size="icon-sm"
-              onClick={() => setViewMode("cards")}
-              className="rounded-l-none"
-            >
-              <Grid3X3 className="size-4" />
-            </Button>
+          <div className="ml-auto hidden sm:flex items-center gap-5">
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1f2933] transition-opacity hover:opacity-70 cursor-pointer">
+                  <img src={columnsIcon} className="size-[18px]" alt="" />
+                  Columnas
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[180px] p-0" align="end">
+                <Command>
+                  <CommandList>
+                    <CommandGroup>
+                      {[
+                        { id: "empresa", label: "Empresa" },
+                        { id: "telefono", label: "Teléfono" },
+                        { id: "correo", label: "Email" },
+                        { id: "fuente", label: "Fuente" },
+                        { id: "clienteRecuperado", label: "C. Recuperado" },
+                        { id: "etapa", label: "Etapa" },
+                        { id: "asesor", label: "Asesor" },
+                        { id: "fecha", label: "Fecha" },
+                      ].map((col) => {
+                        const visible = columnVisibility[col.id] ?? true;
+                        return (
+                          <div
+                            key={col.id}
+                            onClick={() => setColumnVisibility((prev) => ({ ...prev, [col.id]: !visible }))}
+                            className="flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm cursor-pointer hover:bg-accent"
+                          >
+                            <Checkbox
+                              checked={visible}
+                              className="h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
+                            />
+                            <span className="text-[#1f2933]">{col.label}</span>
+                          </div>
+                        );
+                      })}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1f2933] transition-opacity hover:opacity-70 cursor-pointer">
+                  <img src={filterIcon} className="size-[18px]" alt="" />
+                  Filtros
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[400px] p-3" align="end">
+                <div className="flex items-center gap-3">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className={`!h-12 flex-1 rounded-lg border border-[#e1e7ee] bg-white/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer text-left truncate flex items-center gap-1.5 ${sourceFilter.length > 0 ? "text-black" : "text-[#8a9aab]"}`}>
+                        <PaletteIcon className="size-5 shrink-0 text-[#8a9aab]" />
+                        <span className="truncate flex-1">
+                          {sourceFilter.length === 0
+                            ? "Fuente"
+                            : sourceFilter.map((k) => contactSourceLabels[k] || k).join(", ")}
+                        </span>
+                        <ChevronDown className="size-3.5 shrink-0 opacity-50" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[180px] p-0" align="start">
+                      <Command>
+                        <CommandList className="max-h-[260px] overflow-y-auto">
+                          <CommandGroup>
+                            {Object.entries(contactSourceLabels).map(([key, label]) => {
+                              const selected = sourceFilter.includes(key);
+                              return (
+                                <CommandItem
+                                  key={key}
+                                  onSelect={() => {
+                                    setSourceFilter((prev) =>
+                                      prev.includes(key)
+                                        ? prev.filter((e) => e !== key)
+                                        : [...prev, key],
+                                    );
+                                    setPage(1);
+                                  }}
+                                >
+                                  <span className="[&_svg]:!text-primary-foreground">
+                                  <Checkbox
+                                    checked={selected}
+                                    className="mr-2 h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
+                                  />
+                                  </span>
+                                  <span>{label}</span>
+                                </CommandItem>
+                              );
+                            })}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className={`!h-12 flex-1 rounded-lg border border-[#e1e7ee] bg-white/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer text-left truncate disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 ${advisorFilter.length > 0 ? "text-black" : "text-[#8a9aab]"}`} disabled={!canSeeAllAdvisors}>
+                        <UserHandIcon className="size-5 shrink-0 text-[#8a9aab]" />
+                         <span className="truncate flex-1">
+                           {advisorFilter.length === 0
+                             ? "Asesor"
+                             : advisorFilter
+                                 .map((id) => activeAdvisors.find((u) => u.id === id)?.name || id)
+                                 .join(", ")}
+                         </span>
+                         <ChevronDown className="size-3.5 shrink-0 opacity-50" />
+                       </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[180px] p-0" align="start">
+                      <Command>
+                        <CommandList className="max-h-[260px] overflow-y-auto">
+                          <CommandGroup>
+                            {activeAdvisors.map((u) => {
+                              const selected = advisorFilter.includes(u.id);
+                              return (
+                                <CommandItem
+                                  key={u.id}
+                                  onSelect={() => {
+                                    setAdvisorFilter((prev) =>
+                                      prev.includes(u.id)
+                                        ? prev.filter((e) => e !== u.id)
+                                        : [...prev, u.id],
+                                    );
+                                    setPage(1);
+                                  }}
+                                >
+                                  <span className="[&_svg]:!text-primary-foreground">
+                                  <Checkbox
+                                    checked={selected}
+                                    className="mr-2 h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
+                                  />
+                                  </span>
+                                  <span>{u.name}</span>
+                                </CommandItem>
+                              );
+                            })}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </PopoverContent>
+            </Popover>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1f2933] transition-opacity hover:opacity-70 cursor-pointer">
+                  <MoreVertical className="size-5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {hasPermission("contactos.exportar") && (
+                  <DropdownMenuItem
+                    disabled={exportBusy}
+                    onClick={() => void handleContactTemplate()}
+                  >
+                    {exportBusy ? <Loader2 className="size-3.5 animate-spin" /> : <img src={plantillaIcon} className="size-[18px]" alt="" />}
+                    Plantilla
+                  </DropdownMenuItem>
+                )}
+                {hasPermission("contactos.crear") && (
+                  <DropdownMenuItem
+                    disabled={importBusy}
+                    onClick={openContactImport}
+                  >
+                    {importBusy ? <Loader2 className="size-3.5 animate-spin" /> : <img src={importIcon} className="size-[18px]" alt="" />}
+                    Importar
+                  </DropdownMenuItem>
+                )}
+                {hasPermission("contactos.exportar") && (
+                  <DropdownMenuItem
+                    disabled={exportBusy}
+                    onClick={() => void handleContactExport()}
+                  >
+                    {exportBusy ? <Loader2 className="size-3.5 animate-spin" /> : <img src={exportIcon} className="size-[18px]" alt="" />}
+                    Exportar
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
-      </div>
 
-      {/* Content */}
-      <div className="mt-4">
+        {/* Content */}
         {loading ? (
           viewMode === "table" ? (
-            <CrmDataTableSkeleton
-              columns={CONTACTOS_TABLE_SKELETON_COLUMNS}
-              rows={10}
-              aria-label="Cargando contactos"
-              className="bg-card"
-            />
+            <p className="p-12 text-center text-sm text-[#52677a]">Cargando contactos…</p>
           ) : (
             <CrmEntityCardGridSkeleton
               count={8}
@@ -1293,7 +1432,7 @@ export default function ContactosPage() {
             onAction={() => setNewContactOpen(true)}
           />
         ) : viewMode === "table" ? (
-           <div className="overflow-auto rounded-[14px] bg-card shadow-[0_8px_24px_rgba(15,23,42,0.06)] scrollbar-thin max-h-[calc(100vh-22rem)] max-w-full">
+          <div className="border-t border-border/40 overflow-auto max-h-[calc(100vh-330px)]">
             <ContactsTable
               contacts={displayedContacts}
               selectedContacts={selectedContacts}
@@ -1311,36 +1450,42 @@ export default function ContactosPage() {
                 setContactToDelete(id);
                 setDeleteDialogOpen(true);
               }}
+              columnVisibility={columnVisibility}
+              onColumnVisibilityChange={setColumnVisibility}
             />
           </div>
         ) : (
-          <ContactsGrid
-            contacts={displayedContacts}
-            isPendingContactId={isPendingContactId}
-            onView={openContactDetail}
-            onPreview={openContactPreview}
-            onEdit={openContactEdit}
-            onDelete={(id) => {
-              setContactToDelete(id);
-              setDeleteDialogOpen(true);
-            }}
-          />
+          <div className="p-5 border-t border-border/40">
+            <ContactsGrid
+              contacts={displayedContacts}
+              isPendingContactId={isPendingContactId}
+              onView={openContactDetail}
+              onPreview={openContactPreview}
+              onEdit={openContactEdit}
+              onDelete={(id) => {
+                setContactToDelete(id);
+                setDeleteDialogOpen(true);
+              }}
+            />
+          </div>
+        )}
+
+        {!loading && totalContacts > 0 && (
+          <div className="h-14 bg-white/30 px-5 flex items-center border-t border-dashed border-[#e8ecf0]">
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              totalItems={totalContacts}
+              pageSize={pageSize}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                setPage(1);
+              }}
+            />
+          </div>
         )}
       </div>
-
-      {!loading && totalContacts > 0 && (
-        <Pagination
-          page={page}
-          totalPages={totalPages}
-          onPageChange={setPage}
-          totalItems={totalContacts}
-          pageSize={pageSize}
-          onPageSizeChange={(newSize) => {
-            setPageSize(newSize);
-            setPage(1);
-          }}
-        />
-      )}
 
       <NewContactWizard
         open={newContactOpen}
@@ -1413,6 +1558,8 @@ interface ContactsTableProps {
   onPreview: (contact: Contact) => void;
   onEdit: (contact: Contact) => void;
   onDelete: (id: string) => void;
+  columnVisibility: Record<string, boolean>;
+  onColumnVisibilityChange: (updater: Record<string, boolean> | ((prev: Record<string, boolean>) => Record<string, boolean>)) => void;
 }
 
 function ContactsTable({
@@ -1426,160 +1573,320 @@ function ContactsTable({
   onPreview,
   onEdit,
   onDelete,
+  columnVisibility,
+  onColumnVisibilityChange,
 }: ContactsTableProps) {
   const { hasPermission } = usePermissions();
-  return (
-    <Table className="min-w-[1200px]">
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-10">
-              <Checkbox
-                checked={allSelected}
-                onCheckedChange={onToggleSelectAll}
-              />
-            </TableHead>
-            <TableHead className="min-w-0 max-w-[20rem]">
-              <button className="flex items-center gap-1 font-medium">
-                Nombre <ArrowUpDown className="size-3 shrink-0" />
-              </button>
-            </TableHead>
-            <TableHead className="hidden min-w-0 max-w-[16rem] md:table-cell">
-              Empresa
-            </TableHead>
-            <TableHead className="hidden lg:table-cell">Teléfono</TableHead>
-            <TableHead className="hidden min-w-0 max-w-[14rem] xl:table-cell">
-              Email
-            </TableHead>
-            <TableHead className="hidden lg:table-cell">Fuente</TableHead>
-            <TableHead className="hidden lg:table-cell">
-              Cliente Recuperado
-            </TableHead>
-            <TableHead>Etapa</TableHead>
-            <TableHead className="hidden xl:table-cell">Asesor</TableHead>
-            <TableHead className="hidden md:table-cell">
-              <button className="flex items-center gap-1 font-medium">
-                Fecha <ArrowUpDown className="size-3" />
-              </button>
-            </TableHead>
-            <TableHead className="w-10" />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.map((contact) => {
-            const pending = isPendingContactId(contact.id);
-            const companyName = getPrimaryCompany(contact)?.name ?? "—";
-            return (
-              <TableRow
-                key={contact.id}
-                className={pending ? "bg-muted/40" : "cursor-pointer"}
-                onClick={() => onView(contact)}
+  const [sorting, setSorting] = useState<SortingState>([]);
+
+  const columns = useMemo<ColumnDef<Contact>[]>(
+    () => [
+      {
+        id: "select",
+        meta: { responsive: "" } as any,
+        header: () => (
+          <div className="inline-flex items-center justify-center rounded-full p-1.5 transition-colors hover:bg-primary/10 pl-4">
+            <Checkbox checked={allSelected} onCheckedChange={onToggleSelectAll} className="h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded" />
+          </div>
+        ),
+        cell: ({ row }) => (
+          <div className="inline-flex items-center justify-center rounded-full p-1.5 transition-colors hover:bg-primary/10 pl-4">
+            <Checkbox
+              checked={selectedContacts.includes(row.original.id)}
+              onCheckedChange={() => onToggleSelect(row.original.id)}
+              className="h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
+            />
+          </div>
+        ),
+        size: 60,
+        enableSorting: false,
+        enableResizing: false,
+      },
+      {
+        accessorKey: "name",
+        id: "nombre",
+        header: "Nombre",
+        meta: { responsive: "" } as any,
+        cell: ({ row }) => {
+          const contact = row.original;
+          const pending = isPendingContactId(contact.id);
+          return (
+            <div className="min-w-0 max-w-[20rem]">
+              <div className="flex items-center gap-2">
+                <p
+                  className="truncate text-sm font-semibold text-[#0F172A]"
+                  title={contact.name}
+                >
+                  {contact.name}
+                </p>
+                {pending && (
+                  <Badge variant="secondary" className="shrink-0 gap-1 font-normal">
+                    <Loader2 className="size-3 animate-spin" />
+                    Guardando…
+                  </Badge>
+                )}
+              </div>
+              {contact.cargo && (
+                <p className="mt-0.5 truncate text-xs text-[#64748B]">
+                  {contact.cargo}
+                </p>
+              )}
+            </div>
+          );
+        },
+        size: 280,
+      },
+      {
+        accessorFn: (row) => getPrimaryCompany(row)?.name ?? "—",
+        id: "empresa",
+        header: "Empresa",
+        enableHiding: true,
+        cell: ({ getValue }) => (
+          <span className="block max-w-[16rem] truncate text-sm text-[#475569]" title={String(getValue())}>
+            {String(getValue())}
+          </span>
+        ),
+        enableSorting: false,
+        size: 200,
+      },
+      {
+        accessorKey: "telefono",
+        id: "telefono",
+        header: "Teléfono",
+        enableHiding: true,
+        cell: ({ getValue }) => {
+          const val = String(getValue() || "");
+          return (
+            <span className="block truncate text-sm text-[#475569]" title={val || undefined}>
+              {val || "—"}
+            </span>
+          );
+        },
+        enableSorting: false,
+        size: 150,
+      },
+      {
+        accessorKey: "correo",
+        id: "correo",
+        header: "Email",
+        enableHiding: true,
+        cell: ({ getValue }) => {
+          const val = String(getValue() || "");
+          return (
+            <span className="block max-w-[14rem] truncate text-sm text-[#475569]" title={val}>
+              {val || "—"}
+            </span>
+          );
+        },
+        enableSorting: false,
+        size: 200,
+      },
+      {
+        accessorKey: "fuente",
+        id: "fuente",
+        header: "Fuente",
+        enableHiding: true,
+        cell: ({ getValue }) => (
+          <span className="inline-flex h-6 items-center rounded-full border border-gray-300 bg-white px-2.5 text-xs font-semibold text-gray-700">
+            {contactSourceLabels[String(getValue())] || String(getValue())}
+          </span>
+        ),
+        enableSorting: false,
+        size: 120,
+      },
+      {
+        accessorKey: "clienteRecuperado",
+        id: "clienteRecuperado",
+        header: "C. Recuperado",
+        size: 125,
+        maxSize: 125,
+        enableHiding: true,
+        cell: ({ getValue }) => {
+          const val = getValue();
+          return val === "si" ? (
+            <span className="text-sm font-medium text-emerald-700">Sí</span>
+          ) : val === "no" ? (
+            <span className="text-sm text-[#475569]">No</span>
+          ) : (
+            <span className="text-sm text-gray-300">—</span>
+          );
+        },
+        enableSorting: false,
+      },
+      {
+        accessorKey: "etapa",
+        id: "etapa",
+        header: "Etapa",
+        enableHiding: true,
+        cell: ({ getValue }) => <StatusBadge status={String(getValue())} />,
+        enableSorting: false,
+        size: 140,
+      },
+      {
+        accessorKey: "assignedToName",
+        id: "asesor",
+        header: "Asesor",
+        enableHiding: true,
+        cell: ({ getValue }) => {
+          const val = String(getValue() || "");
+          return (
+            <span className="block truncate text-sm text-[#475569]" title={val || undefined}>
+              {val || "—"}
+            </span>
+          );
+        },
+        enableSorting: false,
+        size: 150,
+      },
+      {
+        accessorKey: "createdAt",
+        id: "fecha",
+        header: "Fecha",
+        enableHiding: true,
+        cell: ({ getValue }) => (
+          <span className="text-sm text-[#475569]">
+            {new Date(String(getValue())).toLocaleDateString("es-PE", {
+              day: "2-digit",
+              month: "short",
+            })}
+          </span>
+        ),
+        sortingFn: "datetime",
+        size: 120,
+      },
+      {
+        id: "actions",
+        header: "",
+        meta: { responsive: "" } as any,
+        cell: ({ row }) => (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="h-8 w-8 rounded-lg text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#0F172A]"
               >
-                <TableCell onClick={(e) => e.stopPropagation()}>
-                  <Checkbox
-                    checked={selectedContacts.includes(contact.id)}
-                    onCheckedChange={() => onToggleSelect(contact.id)}
-                  />
-                </TableCell>
-                <TableCell className="min-w-0 max-w-[20rem] whitespace-normal align-top">
-                  <div className="min-w-0">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <p
-                        className="min-w-0 flex-1 truncate font-medium"
-                        title={contact.name}
-                      >
-                        {contact.name}
-                      </p>
-                      {pending && (
-                        <Badge
-                          variant="secondary"
-                          className="shrink-0 gap-1 font-normal"
-                        >
-                          <Loader2 className="size-3 animate-spin" />
-                          Guardando…
-                        </Badge>
-                      )}
-                    </div>
-                    {contact.cargo && (
-                      <p
-                        className="truncate text-xs text-muted-foreground"
-                        title={contact.cargo}
-                      >
-                        {contact.cargo}
-                      </p>
+                <MoreVertical className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onPreview(row.original)}>
+                <Eye /> Vista previa
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onEdit(row.original)}>
+                <Pencil /> Editar
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {hasPermission("contactos.eliminar") && (
+                <DropdownMenuItem variant="destructive" onClick={() => onDelete(row.original.id)}>
+                  <Trash2 /> Eliminar
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ),
+        size: 60,
+        enableSorting: false,
+        enableResizing: false,
+      },
+    ],
+    [allSelected, onToggleSelectAll, selectedContacts, onToggleSelect, isPendingContactId, onPreview, onEdit, onDelete, hasPermission],
+  );
+
+  const table = useReactTable({
+    data,
+    columns,
+    state: {
+      sorting,
+      columnVisibility,
+    },
+    onSortingChange: setSorting,
+    onColumnVisibilityChange: onColumnVisibilityChange,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    enableSorting: true,
+    enableSortingRemoval: false,
+    enableColumnResizing: true,
+    columnResizeMode: "onChange",
+    defaultColumn: { minSize: 60 },
+  });
+
+  return (
+    <table className="w-full table-fixed" style={{ minWidth: table.getTotalSize() }}>
+        <thead>
+          {table.getHeaderGroups().map((hg) => (
+            <tr key={hg.id} className="h-11 bg-[#eef1f5] text-left text-xs font-bold text-[#647789]">
+              {hg.headers.map((header: any) => (
+                <th
+                  key={header.id}
+                  colSpan={header.colSpan}
+                  className={cn(
+                    "relative px-3 align-middle overflow-hidden",
+                    header.column.getCanSort() && "cursor-pointer select-none hover:text-[#1f2933]",
+                  )}
+                  style={{ width: header.getSize() }}
+                  onClick={header.column.getToggleSortingHandler()}
+                >
+                  <div className="flex items-center gap-1">
+                    {flexRender(header.column.columnDef.header, header.getContext())}
+                    {header.column.getCanSort() && (
+                      <>
+                        {header.column.getIsSorted() === "asc" ? (
+                          <ChevronUp className="size-3 shrink-0" />
+                        ) : header.column.getIsSorted() === "desc" ? (
+                          <ChevronDown className="size-3 shrink-0" />
+                        ) : (
+                          <ChevronsUpDown className="size-3 shrink-0 text-[#94A3B8]" />
+                        )}
+                      </>
                     )}
                   </div>
-                </TableCell>
-                <TableCell className="hidden min-w-0 max-w-[16rem] whitespace-normal md:table-cell align-top text-muted-foreground">
-                  <span
-                    className="block truncate"
-                    title={companyName !== "—" ? companyName : undefined}
+                  {header.column.getCanResize() && (
+                    <div
+                      onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); header.getResizeHandler()(e); }}
+                      onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); header.getResizeHandler()(e); }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="absolute inset-y-0 right-0 flex items-center justify-center w-5 cursor-col-resize group/rez"
+                    >
+                      <div className="h-4 w-[2px] rounded-full bg-gray-200 group-hover/rez:bg-blue-500 group-active/rez:bg-blue-500 group-hover/rez:w-[5px] group-active/rez:w-[5px] transition-all select-none pointer-events-none" />
+                    </div>
+                  )}
+                </th>
+              ))}
+            </tr>
+          ))}
+        </thead>
+        <tbody>
+          {table.getRowModel().rows.map((row) => {
+            const pending = isPendingContactId(row.original.id);
+            return (
+              <tr
+                key={row.id}
+                className={cn(
+                  "h-14 border-b border-dashed border-[#e8ecf0] bg-card/30 transition-colors cursor-pointer last:border-b-0",
+                  pending ? "bg-muted/40" : "hover:bg-[#fafbfc]",
+                )}
+                onClick={() => onView(row.original)}
+              >
+                {row.getVisibleCells().map((cell: any) => (
+                  <td
+                    key={cell.id}
+                    className="px-3 align-middle overflow-hidden"
+                    style={{ width: cell.column.getSize() }}
+                    onClick={
+                      cell.column.id === "select" || cell.column.id === "actions"
+                        ? (e) => e.stopPropagation()
+                        : undefined
+                    }
                   >
-                    {companyName}
-                  </span>
-                </TableCell>
-                <TableCell className="hidden lg:table-cell text-muted-foreground">
-                  {contact.telefono}
-                </TableCell>
-                <TableCell className="hidden min-w-0 max-w-[14rem] whitespace-normal xl:table-cell align-top text-muted-foreground">
-                  <span className="block truncate" title={contact.correo}>
-                    {contact.correo}
-                  </span>
-                </TableCell>
-                <TableCell className="hidden lg:table-cell">
-                  <Badge variant="outline" className="text-xs">
-                    {contactSourceLabels[contact.fuente]}
-                  </Badge>
-                </TableCell>
-                <TableCell className="hidden lg:table-cell text-muted-foreground">
-                  {contact.clienteRecuperado === "si"
-                    ? "Sí"
-                    : contact.clienteRecuperado === "no"
-                      ? "No"
-                      : "—"}
-                </TableCell>
-                <TableCell>
-                  <StatusBadge status={contact.etapa} />
-                </TableCell>
-                <TableCell className="hidden xl:table-cell text-muted-foreground">
-                  {contact.assignedToName}
-                </TableCell>
-                <TableCell className="hidden md:table-cell text-muted-foreground">
-                  {new Date(contact.createdAt).toLocaleDateString("es-PE", {
-                    day: "2-digit",
-                    month: "short",
-                  })}
-                </TableCell>
-                <TableCell onClick={(e) => e.stopPropagation()}>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon-sm">
-                        <MoreHorizontal className="size-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => onPreview(contact)}>
-                        <Eye /> Vista previa
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onEdit(contact)}>
-                        <Pencil /> Editar
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      {hasPermission("contactos.eliminar") && (
-                        <DropdownMenuItem
-                          variant="destructive"
-                          onClick={() => onDelete(contact.id)}
-                        >
-                          <Trash2 /> Eliminar
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </td>
+                ))}
+              </tr>
             );
           })}
-        </TableBody>
-      </Table>
+        </tbody>
+      </table>
   );
 }
 
@@ -1652,7 +1959,7 @@ function ContactsGrid({
                     onClick={(e) => e.stopPropagation()}
                   >
                     <Button variant="ghost" size="icon-xs">
-                      <MoreHorizontal className="size-3.5" />
+                      <MoreVertical className="size-3.5" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
@@ -1695,7 +2002,7 @@ function ContactsGrid({
                 <StatusBadge status={contact.etapa} />
                 {contact.clienteRecuperado === "si" && (
                   <Badge variant="secondary" className="text-xs">
-                    Cliente Recuperado
+                    C. Recuperado
                   </Badge>
                 )}
               </div>

@@ -62,6 +62,7 @@ export class ImportExportController {
     @Query('search') search?: string,
     @Query('etapa') etapa?: string,
     @Query('fuente') fuente?: string,
+    @Query('columns') columns?: string,
   ) {
     const scope = await this.crmDataScope.buildScope(
       req.user.userId,
@@ -72,6 +73,7 @@ export class ImportExportController {
       search: search?.trim() || undefined,
       etapa: etapa?.trim() || undefined,
       fuente: fuente?.trim() || undefined,
+      columns: columns?.trim() || undefined,
     });
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader(

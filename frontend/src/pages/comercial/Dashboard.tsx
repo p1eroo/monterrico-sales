@@ -689,7 +689,7 @@ export default function Dashboard() {
               {latestContacts.map((contact) => (
                 <div
                   key={contact.id}
-                  className="flex items-center justify-between rounded-lg border p-3"
+                  className="flex items-center justify-between rounded-lg border border-border/40 bg-card/30 p-3"
                 >
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{contact.name}</p>
@@ -729,7 +729,7 @@ export default function Dashboard() {
                 return (
                   <div
                     key={activity.id}
-                    className="flex items-start gap-3 rounded-lg border p-3"
+                    className="flex items-start gap-3 rounded-lg border border-border/40 bg-card/30 p-3"
                   >
                     <div className={`mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg ${
                       activity.status === 'vencida'

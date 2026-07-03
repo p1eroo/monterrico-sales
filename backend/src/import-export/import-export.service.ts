@@ -787,6 +787,7 @@ export class ImportExportService {
       etapa?: string;
       fuente?: string;
       assignedTo?: string;
+      columns?: string;
     },
   ): Promise<string> {
     const where: Prisma.ContactWhereInput = {};
@@ -844,31 +845,45 @@ export class ImportExportService {
       },
     });
     const lines: string[] = [stringifyCsvRow([...CONTACT_HEADERS])];
+    
+    // Mapear columnas visibles si se especifica
+    const allowedHeaders = opts?.columns
+      ? new Set(opts.columns.split(',').map((c) => c.trim()).filter(Boolean))
+      : null;
+    const headerIndexes = allowedHeaders
+      ? CONTACT_HEADERS.map((h, i) => (allowedHeaders.has(h) ? i : -1)).filter((i) => i >= 0)
+      : CONTACT_HEADERS.map((_, i) => i);
+    
+    if (allowedHeaders) {
+      const filteredHeaders = headerIndexes.map((i) => CONTACT_HEADERS[i]);
+      lines[0] = stringifyCsvRow(filteredHeaders);
+    }
+    
     for (const c of rows) {
       const emp = c.companies[0]?.company;
-      lines.push(
-        stringifyCsvRow([
-          c.name,
-          c.telefono,
-          '',
-          '',
-          '',
-          '',
-          c.correo,
-          c.fuente,
-          c.cargo ?? '',
-          c.etapa,
-          String(c.estimatedValue),
-          c.assignedTo ?? '',
-          c.departamento ?? '',
-          c.provincia ?? '',
-          c.distrito ?? '',
-          c.direccion ?? '',
-          c.clienteRecuperado ?? '',
-          emp?.name ?? '',
-          emp?.ruc ?? '',
-        ]),
-      );
+      const row = [
+        c.name,
+        c.telefono,
+        '',
+        '',
+        '',
+        '',
+        c.correo,
+        c.fuente,
+        c.cargo ?? '',
+        c.etapa,
+        String(c.estimatedValue),
+        c.assignedTo ?? '',
+        c.departamento ?? '',
+        c.provincia ?? '',
+        c.distrito ?? '',
+        c.direccion ?? '',
+        c.clienteRecuperado ?? '',
+        emp?.name ?? '',
+        emp?.ruc ?? '',
+      ];
+      const filteredRow = headerIndexes.map((i) => row[i]);
+      lines.push(stringifyCsvRow(allowedHeaders ? filteredRow : row));
     }
     return UTF8_BOM + lines.join('\n');
   }

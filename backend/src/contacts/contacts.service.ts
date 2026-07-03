@@ -506,15 +506,35 @@ export class ContactsService {
         },
       ];
     }
-    if (opts?.etapa?.trim()) where.etapa = opts.etapa.trim();
+    if (opts?.etapa?.trim()) {
+      const etapas = opts.etapa.split(',').map((s) => s.trim()).filter(Boolean);
+      if (etapas.length > 1) {
+        where.etapa = { in: etapas };
+      } else if (etapas.length === 1) {
+        where.etapa = etapas[0];
+      }
+    }
     if (opts?.fuente?.trim()) {
-      const canon = await this.crmConfig.normalizeLeadSource(opts.fuente);
-      where.fuente = { equals: canon, mode: 'insensitive' };
+      const fuentes = opts.fuente.split(',').map((s) => s.trim()).filter(Boolean);
+      const normalized = await Promise.all(
+        fuentes.map((f) => this.crmConfig.normalizeLeadSource(f)),
+      );
+      const unique = [...new Set(normalized.filter(Boolean))];
+      if (unique.length > 1) {
+        where.fuente = { in: unique, mode: 'insensitive' };
+      } else if (unique.length === 1) {
+        where.fuente = { equals: unique[0], mode: 'insensitive' };
+      }
     }
     if (scope && !scope.unrestricted) {
       where.assignedTo = scope.viewerUserId;
     } else if (opts?.assignedTo?.trim()) {
-      where.assignedTo = opts.assignedTo.trim();
+      const assignedTos = opts.assignedTo.split(',').map((s) => s.trim()).filter(Boolean);
+      if (assignedTos.length > 1) {
+        where.assignedTo = { in: assignedTos };
+      } else if (assignedTos.length === 1) {
+        where.assignedTo = assignedTos[0];
+      }
     }
     return where;
   }
