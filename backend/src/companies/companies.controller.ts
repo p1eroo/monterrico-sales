@@ -8,14 +8,18 @@ import {
   Delete,
   Query,
   Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { CompaniesService } from './companies.service';
+import { CompanyLogoService } from './company-logo.service';
 import { CompanyStaleEtapaService } from './company-stale-etapa.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
+import { Public } from '../auth/decorators/public.decorator';
 import { CrmDataScopeService } from '../auth/crm-data-scope.service';
 
 type AuthedReq = {
@@ -29,6 +33,7 @@ export class CompaniesController {
     private readonly companiesService: CompaniesService,
     private readonly companyStaleEtapaService: CompanyStaleEtapaService,
     private readonly crmDataScope: CrmDataScopeService,
+    private readonly companyLogoService: CompanyLogoService,
   ) {}
 
   @Post()
@@ -233,5 +238,18 @@ export class CompaniesController {
           userName: req.user.name,
         }, scope),
       );
+  }
+
+  @Get(':id/logo')
+  @Public()
+  async getLogo(@Param('id') id: string, @Res() res: Response) {
+    const result = await this.companyLogoService.getLogo(id);
+    if (!result) {
+      res.status(204).end();
+      return;
+    }
+    res.setHeader('Content-Type', result.contentType);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.end(result.body);
   }
 }

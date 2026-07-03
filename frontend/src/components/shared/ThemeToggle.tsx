@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useTheme } from 'next-themes';
-import { Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { SunSvgIcon } from '@/components/icons/SunSvgIcon';
+import { MoonStarsSvgIcon } from '@/components/icons/MoonStarsSvgIcon';
 
 export function ThemeToggle() {
   const { setTheme, resolvedTheme } = useTheme();
@@ -25,9 +26,9 @@ export function ThemeToggle() {
       aria-label="Cambiar tema"
     >
       {mounted && resolvedTheme === 'dark' ? (
-        <Sun className="size-4" />
+        <SunSvgIcon className="size-7" />
       ) : (
-        <Moon className="size-4" />
+        <MoonStarsSvgIcon className="size-7" />
       )}
     </Button>
   );

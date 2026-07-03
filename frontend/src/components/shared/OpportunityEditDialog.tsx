@@ -5,25 +5,14 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
 import { toast } from 'sonner';
-import type { Opportunity, OpportunityStatus } from '@/types';
+import type { Opportunity } from '@/types';
 import { isLikelyOpportunityCuid } from '@/lib/opportunityApi';
-
-const statusLabels: Record<OpportunityStatus, string> = {
-  abierta: 'Abierta',
-  ganada: 'Ganada',
-  perdida: 'Perdida',
-  suspendida: 'Suspendida',
-};
 
 export type OpportunityEditSavePayload = {
   title: string;
   amount: number;
   expectedCloseDate: string | null;
-  status: OpportunityStatus;
 };
 
 export type OpportunityEditDialogProps = {
@@ -42,7 +31,6 @@ export function OpportunityEditDialog({
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState(0);
   const [expectedCloseDate, setExpectedCloseDate] = useState('');
-  const [status, setStatus] = useState<OpportunityStatus>('abierta');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -54,7 +42,6 @@ export function OpportunityEditDialog({
         ? opportunity.expectedCloseDate.slice(0, 10)
         : '',
     );
-    setStatus(opportunity.status);
   }, [opportunity, open]);
 
   function handleSave() {
@@ -69,7 +56,6 @@ export function OpportunityEditDialog({
       title: title.trim(),
       amount,
       expectedCloseDate: expectedCloseDate || null,
-      status,
     }).catch((e) => {
       toast.error(e instanceof Error ? e.message : 'No se pudo guardar');
     }).finally(() => setSaving(false));
@@ -108,21 +94,6 @@ export function OpportunityEditDialog({
                 onChange={(e) => setExpectedCloseDate(e.target.value)}
               />
             </div>
-          </div>
-          <div className="space-y-2">
-            <Label>Estado</Label>
-            <Select value={status} onValueChange={(v) => setStatus(v as OpportunityStatus)}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Seleccionar" />
-              </SelectTrigger>
-              <SelectContent>
-                {(Object.keys(statusLabels) as OpportunityStatus[]).map((key) => (
-                  <SelectItem key={key} value={key}>
-                    {statusLabels[key]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
         </div>
         <DialogFooter>

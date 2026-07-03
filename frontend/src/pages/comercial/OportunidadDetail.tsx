@@ -12,7 +12,7 @@ import { fetchActivityLogs, activityLogToTimelineEvent } from '@/lib/activityLog
 import { useActivities } from '@/hooks/useActivities';
 import { useUsers } from '@/hooks/useUsers';
 import { getPrimaryCompany } from '@/lib/utils';
-import type { CompanyRubro, Etapa, OpportunityStatus, TimelineEvent } from '@/types';
+import type { CompanyRubro, Etapa, TimelineEvent } from '@/types';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { DetailLayout } from '@/components/shared/DetailLayout';
 import { EntityDetailPageSkeleton } from '@/components/shared/EntityDetailPageSkeleton';
@@ -75,13 +75,6 @@ import { useStageBadgeTone } from '@/hooks/useStageBadgeTone';
 import { useCrmConfigStore, getStageLabelFromCatalog } from '@/store/crmConfigStore';
 
 const TIMELINE_PAGE_SIZE = 8;
-
-const statusLabels: Record<string, string> = {
-  abierta: 'Abierta',
-  ganada: 'Ganada',
-  perdida: 'Perdida',
-  suspendida: 'Suspendida',
-};
 
 export default function OportunidadDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -365,7 +358,6 @@ export default function OportunidadDetailPage() {
     title: '',
     amount: 0,
     expectedCloseDate: '',
-    status: '' as OpportunityStatus | '',
     assignedTo: '',
   });
 
@@ -432,7 +424,6 @@ export default function OportunidadDetailPage() {
       expectedCloseDate: opp.expectedCloseDate
         ? opp.expectedCloseDate.slice(0, 10)
         : '',
-      status: opp.status,
       assignedTo: opp.assignedTo || activeAdvisors[0]?.id || '',
     });
     setEditDialogOpen(true);
@@ -447,7 +438,6 @@ export default function OportunidadDetailPage() {
             title: editForm.title.trim(),
             amount: editForm.amount,
             expectedCloseDate: editForm.expectedCloseDate || null,
-            status: editForm.status || undefined,
           };
           if (canEditAssignee && editForm.assignedTo) {
             if (!isLikelyContactCuid(editForm.assignedTo)) {
@@ -482,7 +472,6 @@ export default function OportunidadDetailPage() {
       title: editForm.title,
       amount: editForm.amount,
       expectedCloseDate: editForm.expectedCloseDate,
-      status: (editForm.status || undefined) as OpportunityStatus | undefined,
       ...assignPatch,
     });
     toast.success('Oportunidad actualizada correctamente');
@@ -1238,17 +1227,6 @@ async function handleCreateNewContact(data: NewContactData) {
               <Label>Fecha estimada de cierre</Label>
               <Input type="date" value={editForm.expectedCloseDate} onChange={(e) => setEditForm((f) => ({ ...f, expectedCloseDate: e.target.value }))} />
             </div>
-          </div>
-          <div className="space-y-2">
-            <Label>Estado</Label>
-            <Select value={editForm.status} onValueChange={(v) => setEditForm((f) => ({ ...f, status: v as OpportunityStatus }))}>
-              <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-              <SelectContent>
-                {Object.entries(statusLabels).map(([key, label]) => (
-                  <SelectItem key={key} value={key}>{label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
           <AssignedAdvisorFormField
             htmlId="opp-edit-assigned-to"

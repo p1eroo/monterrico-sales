@@ -1,24 +1,37 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  flexRender,
+  getCoreRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type ColumnDef,
+  type SortingState,
+} from '@tanstack/react-table';
 import { toast } from 'sonner';
 import {
-  Plus, Search, Kanban, List,
-  MoreHorizontal,
+  Plus, Search,
+  MoreVertical,
   Eye, Pencil, Trash2,
-  DollarSign, Target, TrendingUp, Trophy,
-  Calendar, X, User, Loader2,
-  FileSpreadsheet, Upload, Download,
-  Globe, Tag,
+  DollarSign, Target, TrendingUp,
+  X, ChevronDown, ChevronsUpDown, ChevronUp,
+  User, Loader2,
+  Upload, Download,
+  Users,
 } from 'lucide-react';
-import type { Etapa, OpportunityStatus, Opportunity } from '@/types';
+import { ChartSquareIcon } from '@/components/icons/ChartSquareIcon';
+import { PaletteIcon } from '@/components/icons/PaletteIcon';
+import { UserHandIcon } from '@/components/icons/UserHandIcon';
+import type { Etapa, Opportunity } from '@/types';
 import { etapaLabels, contactSourceLabels } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
 import { cn } from '@/lib/utils';
 
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Pagination } from '@/components/shared/Pagination';
-import { MetricCard } from '@/components/shared/MetricCard';
 import { PriorityBadge } from '@/components/shared/PriorityBadge';
+import { GhostTableSkeleton } from '@/components/shared/GhostTableSkeleton';
+import { GlassCard } from '@/components/shared/GlassCard';
 import {
   NewOpportunityFormDialog,
   buildOpportunityCreateBody,
@@ -30,15 +43,20 @@ import { OpportunityPreviewSheet } from '@/components/shared/OpportunityPreviewS
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '@/components/ui/table';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
+  Command,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
@@ -67,47 +85,23 @@ import {
 import { IMPORT_SPREADSHEET_ACCEPT } from '@/lib/importSpreadsheet';
 import { useImportJobsStore } from '@/store/importJobsStore';
 import { useOpportunityCacheStore } from '@/store/opportunityCacheStore';
-import {
-  CrmDataTableSkeleton,
-  CrmFilterBarSkeleton,
-  CrmStatCardsSkeleton,
-  CrmTabsBarSkeleton,
-} from '@/components/shared/CrmListPageSkeleton';
+import plantillaIcon from '@/components/icons/file-new-svgrepo-com.svg';
+import importIcon from '@/components/icons/import-3-svgrepo-com.svg';
+import exportIcon from '@/components/icons/export-2-svgrepo-com.svg';
+import columnsIcon from '@/components/icons/columns-3-svgrepo-com.svg';
 
 const OPPORTUNITIES_TABLE_SKELETON_COLUMNS = [
-  { label: 'Nombre', className: 'min-w-0 max-w-[20rem]' },
-  { label: 'Contacto / Cliente', className: 'hidden min-w-0 max-w-[16rem] md:table-cell' },
-  { label: 'Fuente', className: 'hidden min-w-[6.5rem] sm:table-cell' },
-  { label: 'Prioridad', className: 'hidden lg:table-cell' },
-  { label: 'Monto' },
-  { label: 'Probabilidad', className: 'hidden sm:table-cell' },
-  { label: 'Etapa', className: 'hidden lg:table-cell' },
-  { label: 'Fecha cierre', className: 'hidden xl:table-cell' },
-  { label: 'Asesor', className: 'hidden min-w-0 max-w-[10rem] xl:table-cell' },
-  { label: 'Estado', className: 'hidden sm:table-cell' },
-  { label: '', className: 'w-10' },
+  { label: '', width: 44 },
+  { label: 'Nombre', width: 280 },
+  { label: 'Monto', width: 150 },
+  { label: 'Etapa', width: 140, className: 'hidden lg:table-cell' },
+  { label: 'Asesor', width: 150, className: 'hidden xl:table-cell' },
+  { label: 'Fuente', width: 120, className: 'hidden lg:table-cell' },
+  { label: 'Prioridad', width: 110, className: 'hidden lg:table-cell' },
+  { label: 'Probabilidad', width: 150, className: 'hidden sm:table-cell' },
+  { label: 'Fecha cierre', width: 120, className: 'hidden xl:table-cell' },
+  { label: '', width: 40 },
 ];
-
-const statusLabels: Record<OpportunityStatus, string> = {
-  abierta: 'Abierta',
-  ganada: 'Ganada',
-  perdida: 'Perdida',
-  suspendida: 'Suspendida',
-};
-
-const statusColors: Record<OpportunityStatus, string> = {
-  abierta: 'bg-blue-100 text-blue-700 border-blue-200',
-  ganada: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-  perdida: 'bg-red-100 text-red-700 border-red-200',
-  suspendida: 'bg-gray-100 text-gray-700 border-gray-200',
-};
-
-const statusTabs = [
-  { value: 'todas', label: 'Todas' },
-  { value: 'abierta', label: 'Abiertas' },
-  { value: 'ganada', label: 'Ganadas' },
-  { value: 'perdida', label: 'Perdidas' },
-] as const;
 
 const etapas: Etapa[] = [
   'lead', 'contacto', 'reunion_agendada', 'reunion_efectiva', 'propuesta_economica',
@@ -142,14 +136,6 @@ function EtapaBadge({ etapa }: { etapa: Etapa }) {
   );
 }
 
-function OpportunityStatusBadge({ status }: { status: OpportunityStatus }) {
-  return (
-    <Badge variant="outline" className={cn('text-[11px] font-medium', statusColors[status])}>
-      {statusLabels[status]}
-    </Badge>
-  );
-}
-
 export default function OpportunitiesPage() {
   const { activeAdvisors } = useUsers();
   const pendingOpportunities = useOptimisticCrmStore((s) => s.pendingOpportunities);
@@ -158,15 +144,10 @@ export default function OpportunitiesPage() {
   const isPendingOpportunityId = useOptimisticCrmStore((s) => s.isPendingOpportunityId);
   const cacheOpportunities = useOpportunityCacheStore((s) => s.opportunities);
   const cacheLoad = useOpportunityCacheStore((s) => s.load);
-  const cacheStale = useOpportunityCacheStore((s) => s.isStale);
-  const [initialOppLoad, setInitialOppLoad] = useState(true);
+  const cacheLoadedAt = useOpportunityCacheStore((s) => s.loadedAt);
 
   useEffect(() => {
-    if (!cacheStale()) {
-      setInitialOppLoad(false);
-      return;
-    }
-    cacheLoad().finally(() => setInitialOppLoad(false));
+    cacheLoad();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -192,18 +173,25 @@ export default function OpportunitiesPage() {
   }
 
   const [search, setSearch] = useState('');
-  const [etapaFilter, setEtapaFilter] = useState('todas');
-  const [statusFilter, setStatusFilter] = useState('todas');
-  const [assigneeFilter, setAssigneeFilter] = useState('todos');
+  const [etapaFilter, setEtapaFilter] = useState<string[]>([]);
+  const [sourceFilter, setSourceFilter] = useState<string[]>([]);
+  const [assigneeFilter, setAssigneeFilter] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_OPPORTUNITIES_PER_PAGE);
   const { canSeeAllAdvisors, currentUserId } = useCrmTeamAdvisorFilter(
     assigneeFilter,
     setAssigneeFilter,
-    'todos',
   );
-  const [activeTab, setActiveTab] = useState('todas');
   const [viewMode] = useState<'table'>('table');
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({
+    fuente: true,
+    priority: true,
+    probability: true,
+    expectedCloseDate: true,
+    etapa: true,
+    asesor: true,
+  });
   const [newDialogOpen, setNewDialogOpen] = useState(false);
   const [previewOpportunity, setPreviewOpportunity] = useState<Opportunity | null>(null);
   const [editOpportunity, setEditOpportunity] = useState<Opportunity | null>(null);
@@ -231,18 +219,17 @@ export default function OpportunitiesPage() {
         opp.contactName?.toLowerCase().includes(search.toLowerCase()) ||
         opp.clientName?.toLowerCase().includes(search.toLowerCase());
 
-      const matchesTab = activeTab === 'todas' || opp.status === activeTab;
-      const matchesEtapa = etapaFilter === 'todas' || opp.etapa === etapaFilter;
-      const matchesStatus = statusFilter === 'todas' || opp.status === statusFilter;
-      const matchesAssignee = assigneeFilter === 'todos' || opp.assignedTo === assigneeFilter;
+      const matchesEtapa = etapaFilter.length === 0 || etapaFilter.includes(opp.etapa);
+      const matchesAssignee = assigneeFilter.length === 0 || assigneeFilter.includes(opp.assignedTo);
+      const matchesSource = sourceFilter.length === 0 || (opp.fuente ? sourceFilter.includes(opp.fuente) : false);
 
-      return matchesSearch && matchesTab && matchesEtapa && matchesStatus && matchesAssignee;
+      return matchesSearch && matchesEtapa && matchesAssignee && matchesSource;
     });
-  }, [allOpportunities, search, activeTab, etapaFilter, statusFilter, assigneeFilter]);
+  }, [allOpportunities, search, etapaFilter, assigneeFilter, sourceFilter]);
 
   useEffect(() => {
     setPage(1);
-  }, [search, activeTab, etapaFilter, statusFilter, assigneeFilter, pageSize]);
+  }, [search, etapaFilter, assigneeFilter, sourceFilter, pageSize]);
 
   const totalFiltered = filteredOpportunities.length;
   const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
@@ -269,42 +256,24 @@ export default function OpportunitiesPage() {
     const avgProbability = allOpportunities.length > 0
       ? Math.round(allOpportunities.reduce((sum, o) => sum + o.probability, 0) / allOpportunities.length)
       : 0;
-    const wonThisMonth = allOpportunities.filter((o) => {
-      const now = new Date();
-      const closeRaw = (o.expectedCloseDate ?? '').trim();
-      const closeDate = /^\d{4}-\d{2}-\d{2}$/.test(closeRaw)
-        ? new Date(`${closeRaw}T00:00:00`)
-        : new Date(o.expectedCloseDate);
-      return o.status === 'ganada' &&
-        closeDate.getMonth() === now.getMonth() &&
-        closeDate.getFullYear() === now.getFullYear();
-    }).length;
 
-    return { total, totalValue, avgProbability, wonThisMonth };
-  }, [allOpportunities]);
-
-  const tabCounts = useMemo(() => {
-    const counts: Record<string, number> = { todas: allOpportunities.length };
-    for (const opp of allOpportunities) {
-      counts[opp.status] = (counts[opp.status] ?? 0) + 1;
-    }
-    return counts;
+    return { total, totalValue, avgProbability };
   }, [allOpportunities]);
 
   const assigneeFilterIsActive = canSeeAllAdvisors
-    ? assigneeFilter !== 'todos'
+    ? assigneeFilter.length > 0
     : false;
   const hasActiveFilters =
-    etapaFilter !== 'todas' ||
-    statusFilter !== 'todas' ||
+    etapaFilter.length > 0 ||
     assigneeFilterIsActive ||
+    sourceFilter.length > 0 ||
     search !== '';
 
   function clearFilters() {
     setSearch('');
-    setEtapaFilter('todas');
-    setStatusFilter('todas');
-    setAssigneeFilter(canSeeAllAdvisors ? 'todos' : currentUserId);
+    setEtapaFilter([]);
+    setSourceFilter([]);
+    setAssigneeFilter(canSeeAllAdvisors ? [] : [currentUserId]);
   }
 
   async function handleCreateOpportunity(data: NewOpportunityFormValues) {
@@ -330,20 +299,18 @@ export default function OpportunitiesPage() {
     toast.success(`Oportunidad "${data.title.trim()}" creada exitosamente`, { id: 'create-opp-list' });
   }
 
-  async function handleSaveOpportunity(payload: { title: string; amount: number; expectedCloseDate: string | null; status: string }) {
+  async function handleSaveOpportunity(payload: { title: string; amount: number; expectedCloseDate: string | null }) {
     const targetOpp = editOpportunity;
     if (!targetOpp) return;
     const oppId = targetOpp.id;
     const prevRow = useOpportunityCacheStore.getState().opportunities.find((r) => r.id === oppId);
 
-    // Close modal and update optimistically
     setEditOpportunity(null);
     if (prevRow) {
       useOpportunityCacheStore.getState().updateRow(oppId, (r) => ({
         ...r,
         title: payload.title,
         amount: payload.amount,
-        status: payload.status,
       }));
     }
 
@@ -355,14 +322,11 @@ export default function OpportunitiesPage() {
           title: payload.title,
           amount: payload.amount,
           expectedCloseDate: payload.expectedCloseDate,
-          status: payload.status,
         }),
       });
-      // Reconcile with API response
       useOpportunityCacheStore.getState().updateRow(oppId, () => result);
       toast.success('Oportunidad actualizada', { id: `save-${oppId}` });
     } catch (e) {
-      // Revert on error
       if (prevRow) {
         useOpportunityCacheStore.getState().updateRow(oppId, () => prevRow);
       }
@@ -387,9 +351,9 @@ export default function OpportunitiesPage() {
       setExportBusy(true);
       const params: Record<string, string> = {};
       if (search) params.search = search;
-      if (etapaFilter !== 'todas') params.etapa = etapaFilter;
-      if (statusFilter !== 'todas') params.status = statusFilter;
-      if (assigneeFilter !== 'todos') params.assignedTo = assigneeFilter;
+      if (etapaFilter.length > 0) params.etapa = etapaFilter.join(',');
+      if (assigneeFilter.length > 0) params.assignedTo = assigneeFilter.join(',');
+      if (sourceFilter.length > 0) params.fuente = sourceFilter.join(',');
       await downloadImportExportCsv('opportunities', 'export', params);
       toast.success('Exportación descargada');
     } catch (e) {
@@ -473,6 +437,196 @@ export default function OpportunitiesPage() {
     }
   }
 
+  const columns = useMemo<ColumnDef<Opportunity>[]>(
+    () => [
+      {
+        id: 'select',
+        meta: { responsive: '' } as any,
+        header: () => (
+          <div className="inline-flex items-center justify-center rounded-full p-1.5 transition-colors hover:bg-primary/10 pl-2">
+            <Checkbox className="h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded" />
+          </div>
+        ),
+        cell: () => (
+          <div className="inline-flex items-center justify-center rounded-full p-1.5 transition-colors hover:bg-primary/10 pl-2">
+            <Checkbox className="h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded" />
+          </div>
+        ),
+        size: 44,
+        maxSize: 44,
+        enableSorting: false,
+        enableResizing: false,
+      },
+      {
+        accessorKey: 'title',
+        id: 'title',
+        header: 'Nombre',
+        enableHiding: false,
+        size: 280,
+        cell: ({ row }) => {
+          const opp = row.original;
+          const pending = isPendingOpportunityId(opp.id);
+          const contactClientLabel = opp.contactName ?? opp.clientName ?? '—';
+          return (
+            <div className="min-w-0 max-w-[20rem]">
+              <div className="flex items-center gap-2">
+                <p className="truncate text-sm font-semibold text-[#0F172A]" title={opp.title}>
+                  {opp.title}
+                </p>
+                {pending && (
+                  <Badge variant="secondary" className="shrink-0 gap-1 font-normal">
+                    <Loader2 className="size-3 animate-spin" />
+                    Guardando…
+                  </Badge>
+                )}
+              </div>
+              <p className="truncate text-xs text-[#64748B]">{contactClientLabel}</p>
+            </div>
+          );
+        },
+        enableSorting: false,
+      },
+      {
+        accessorKey: 'amount',
+        id: 'amount',
+        header: 'Monto',
+        size: 150,
+        cell: ({ getValue }) => (
+          <span className="font-semibold tabular-nums text-sm text-[#0F172A]">
+            {formatCurrency(getValue() as number)}
+          </span>
+        ),
+        enableSorting: false,
+      },
+      {
+        accessorKey: 'etapa',
+        id: 'etapa',
+        header: 'Etapa',
+        enableHiding: true,
+        size: 140,
+        cell: ({ getValue }) => <EtapaBadge etapa={getValue() as Etapa} />,
+        enableSorting: false,
+      },
+      {
+        accessorKey: 'assignedToName',
+        id: 'asesor',
+        header: 'Asesor',
+        enableHiding: true,
+        size: 150,
+        cell: ({ getValue }) => {
+          const val = String(getValue() || '');
+          return (
+            <span className="block truncate text-sm text-[#475569]" title={val || undefined}>
+              {val || '—'}
+            </span>
+          );
+        },
+        enableSorting: false,
+      },
+      {
+        accessorKey: 'fuente',
+        id: 'fuente',
+        header: 'Fuente',
+        enableHiding: true,
+        size: 120,
+        cell: ({ getValue }) => {
+          const val = String(getValue() || '');
+          return (
+            <span className="text-sm text-[#475569]">
+              {contactSourceLabels[val as keyof typeof contactSourceLabels] || val || '—'}
+            </span>
+          );
+        },
+        enableSorting: false,
+      },
+      {
+        accessorKey: 'priority',
+        id: 'priority',
+        header: 'Prioridad',
+        enableHiding: true,
+        size: 110,
+        cell: ({ getValue }) => (
+          <PriorityBadge priority={String(getValue() || 'media')} />
+        ),
+        enableSorting: false,
+      },
+      {
+        accessorKey: 'probability',
+        id: 'probability',
+        header: 'Probabilidad',
+        enableHiding: true,
+        size: 150,
+        cell: ({ getValue }) => <ProbabilityBar value={getValue() as number} />,
+        enableSorting: false,
+      },
+      {
+        accessorKey: 'expectedCloseDate',
+        id: 'expectedCloseDate',
+        header: 'Fecha cierre',
+        enableHiding: true,
+        size: 120,
+        cell: ({ getValue }) => (
+          <span className="text-sm text-[#475569]">{formatDate(getValue() as string)}</span>
+        ),
+        enableSorting: false,
+      },
+      {
+        id: 'actions',
+        header: '',
+        enableResizing: false,
+        enableSorting: false,
+        enableHiding: false,
+        size: 40,
+        maxSize: 40,
+        cell: ({ row }) => {
+          const opp = row.original;
+          const pending = isPendingOpportunityId(opp.id);
+          return (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon-sm" aria-label="Acciones">
+                  <MoreVertical className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => openOpportunityPreview(opp)}>
+                  <Eye /> Vista previa
+                </DropdownMenuItem>
+                {hasPermission('oportunidades.editar') && (
+                  <DropdownMenuItem onClick={() => openOpportunityEdit(opp)} disabled={pending}>
+                    <Pencil /> Editar
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                {hasPermission('oportunidades.eliminar') && (
+                  <DropdownMenuItem variant="destructive" onClick={() => requestDeleteOpportunity(opp)} disabled={pending}>
+                    <Trash2 /> Eliminar
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          );
+        },
+      },
+    ],
+    [isPendingOpportunityId, openOpportunityPreview, openOpportunityEdit, requestDeleteOpportunity, hasPermission],
+  );
+
+  const table = useReactTable({
+    data: displayedOpportunities,
+    columns,
+    state: { sorting, columnVisibility },
+    onSortingChange: setSorting,
+    onColumnVisibilityChange: setColumnVisibility,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    enableSorting: true,
+    enableSortingRemoval: false,
+    enableColumnResizing: true,
+    columnResizeMode: 'onChange',
+    defaultColumn: { minSize: 60 },
+  });
+
   return (
     <div className="space-y-6">
       <input
@@ -483,149 +637,224 @@ export default function OpportunitiesPage() {
         onChange={onOppImportChange}
       />
       <PageHeader title="Oportunidades" description="Gestiona el pipeline de ventas y oportunidades comerciales">
-        <span className="mr-2 text-sm text-muted-foreground">Total: {allOpportunities.length}</span>
-          {hasPermission('oportunidades.crear') && (
-            <Button variant="outline" disabled={importBusy} onClick={openOppImport} className="bg-card">
-              {importBusy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}{' '}
-              Importar
-            </Button>
-          )}
-          {hasPermission('oportunidades.exportar') && (
-            <Button
-              variant="outline"
-              disabled={exportBusy}
-              onClick={() => void handleOppExport()}
-              className="bg-card"
-            >
-              {exportBusy ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}{' '}
-              Exportar
-            </Button>
-          )}
-          <Button onClick={() => setNewDialogOpen(true)}>
-            <Plus /> Nueva Oportunidad
-          </Button>
-        </PageHeader>
+        <div className="flex items-center rounded-lg border border-[#e1e7ee] bg-white/60 p-0.5">
+          <button className="rounded-md px-3 py-1.5 text-sm font-medium bg-[#e8f5e9] text-[#13944C]">
+            Lista
+          </button>
+          <button
+            className="rounded-md px-3 py-1.5 text-sm font-medium text-[#647789] hover:text-[#1f2933] transition-colors cursor-pointer"
+            onClick={() => navigate('/pipeline')}
+          >
+            Pipeline
+          </button>
+        </div>
+        <Button onClick={() => setNewDialogOpen(true)} className="h-11 w-[120px] text-base font-normal shadow-md">
+          <Plus /> Nueva
+        </Button>
+      </PageHeader>
 
-      {initialOppLoad ? (
-        <div
-          className="space-y-6"
-          aria-busy="true"
-          aria-live="polite"
-          aria-label="Cargando oportunidades"
-        >
-          <CrmStatCardsSkeleton count={4} />
-          <CrmFilterBarSkeleton />
-          <div className="space-y-3">
-            <CrmTabsBarSkeleton tabCount={4} />
-            <div>
-              <CrmDataTableSkeleton
-                columns={[...OPPORTUNITIES_TABLE_SKELETON_COLUMNS]}
-                rows={10}
-                aria-label="Cargando lista de oportunidades"
-                roundedClass="rounded-lg"
-                className="bg-card"
-              />
+      {/* Stats */}
+      <div className="flex flex-col sm:flex-row rounded-[14px] border border-border/30 bg-white/30">
+        <div className="flex-1 flex items-center justify-center gap-3 py-4 px-5 relative">
+          <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 border-2 border-emerald-200">
+            <Target className="size-7" />
+          </div>
+          <div className="space-y-0.5">
+            <p className="text-sm font-medium text-[#647789]">Total oportunidades</p>
+            <p className="text-[22px] font-bold tracking-tight text-[#0F172A]">{stats.total}</p>
+            <div className="flex items-center gap-1.5 text-xs">
+              <TrendingUp className="size-3.5 text-emerald-500" />
+              <span className="font-medium text-emerald-600">+3</span>
+              <span className="text-[#8a9aab]">este mes</span>
+            </div>
+          </div>
+          <div className="absolute right-0 top-4 bottom-4 w-px bg-border hidden sm:block" />
+        </div>
+        <div className="flex-1 flex items-center justify-center gap-3 py-4 px-5 relative">
+          <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600 border-2 border-blue-200">
+            <DollarSign className="size-7" />
+          </div>
+          <div className="space-y-0.5">
+            <p className="text-sm font-medium text-[#647789]">Valor total</p>
+            <p className="text-[22px] font-bold tracking-tight text-[#0F172A]">{formatCurrency(stats.totalValue)}</p>
+            <div className="flex items-center gap-1.5 text-xs">
+              <TrendingUp className="size-3.5 text-emerald-500" />
+              <span className="font-medium text-emerald-600">+12%</span>
+              <span className="text-[#8a9aab]">vs mes anterior</span>
+            </div>
+          </div>
+          <div className="absolute right-0 top-4 bottom-4 w-px bg-border hidden sm:block" />
+        </div>
+        <div className="flex-1 flex items-center justify-center gap-3 py-4 px-5 relative">
+          <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600 border-2 border-amber-200">
+            <TrendingUp className="size-7" />
+          </div>
+          <div className="space-y-0.5">
+            <p className="text-sm font-medium text-[#647789]">Tasa promedio de cierre</p>
+            <p className="text-[22px] font-bold tracking-tight text-[#0F172A]">{stats.avgProbability}%</p>
+            <div className="flex items-center gap-1.5 text-xs">
+              <TrendingUp className="size-3.5 text-emerald-500" />
+              <span className="font-medium text-emerald-600">+5%</span>
+              <span className="text-[#8a9aab]">tendencia</span>
             </div>
           </div>
         </div>
-      ) : (
-        <>
-      {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricCard
-          title="Total oportunidades"
-          value={stats.total}
-          icon={Target}
-          change="+3"
-          changeType="positive"
-          description="este mes"
-        />
-        <MetricCard
-          title="Valor total"
-          value={formatCurrency(stats.totalValue)}
-          icon={DollarSign}
-          changeType="positive"
-          change="+12%"
-          description="vs mes anterior"
-        />
-        <MetricCard
-          title="Tasa promedio de cierre"
-          value={`${stats.avgProbability}%`}
-          icon={TrendingUp}
-          change="+5%"
-          changeType="positive"
-          description="tendencia"
-        />
-        <MetricCard
-          title="Ganadas este mes"
-          value={stats.wonThisMonth}
-          icon={Trophy}
-          changeType="positive"
-          change={`${stats.wonThisMonth}`}
-          description="cerradas"
-        />
       </div>
 
-      {/* Filter bar */}
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-        <div className="relative w-[580px]">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por nombre, contacto o cliente..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 bg-card"
-          />
-        </div>
-        <div className="flex flex-wrap items-center gap-2 flex-1">
-          <Select value={etapaFilter} onValueChange={setEtapaFilter}>
-            <SelectTrigger className="h-9 w-auto rounded-lg bg-card">
-              <div className="flex items-center gap-1.5">
-                <Tag className="size-3.5" />
-                <SelectValue placeholder="Etapa" />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todas">Etapas</SelectItem>
-              {etapas.map((e) => (
-                <SelectItem key={e} value={e}>{etapaLabels[e]}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      <GlassCard>
+        {/* Filter bar */}
+        <div className="flex min-w-0 flex-col gap-3 px-5 py-4 lg:flex-row lg:items-center">
+          <div className="relative w-full min-w-0 max-w-[400px]">
+            <Search className="absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-[#8a9aab]" />
+            <Input
+              placeholder="Buscar por nombre, contacto o cliente..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              className="!h-12 rounded-lg border border-[#e1e7ee] bg-white/60 pl-10 text-[15px] text-black placeholder:text-[#8a9aab] transition-colors hover:border-primary focus-visible:ring-1 shadow-none"
+            />
+          </div>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className={`!h-12 w-[190px] rounded-lg border border-[#e1e7ee] bg-white/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left ${etapaFilter.length > 0 ? 'text-black' : 'text-[#8a9aab]'}`}>
+                <ChartSquareIcon className="size-5 shrink-0 text-[#8a9aab]" />
+                <span className="truncate flex-1">
+                  {etapaFilter.length === 0
+                    ? 'Etapa'
+                    : etapaFilter.map((k) => etapaLabels[k as keyof typeof etapaLabels] || k).join(', ')}
+                </span>
+                <ChevronDown className="size-3.5 shrink-0 opacity-50" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[200px] p-0" align="start">
+              <Command>
+                <CommandList className="max-h-[260px] overflow-y-auto">
+                  <CommandGroup>
+                    {Object.entries(etapaLabels).map(([key, label]) => {
+                      const selected = etapaFilter.includes(key);
+                      return (
+                        <CommandItem
+                          key={key}
+                          onSelect={() => {
+                            setEtapaFilter((prev) =>
+                              prev.includes(key)
+                                ? prev.filter((e) => e !== key)
+                                : [...prev, key],
+                            );
+                            setPage(1);
+                          }}
+                        >
+                          <span className="[&_svg]:!text-primary-foreground">
+                            <Checkbox
+                              checked={selected}
+                              className="mr-2 h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
+                            />
+                          </span>
+                          <span>{label}</span>
+                        </CommandItem>
+                      );
+                    })}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
 
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="h-9 w-auto rounded-lg bg-card">
-              <div className="flex items-center gap-1.5">
-                <Globe className="size-3.5" />
-                <SelectValue placeholder="Estado" />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todas">Estados</SelectItem>
-              {(Object.keys(statusLabels) as OpportunityStatus[]).map((s) => (
-                <SelectItem key={s} value={s}>{statusLabels[s]}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className={`!h-12 w-[190px] rounded-lg border border-[#e1e7ee] bg-white/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left disabled:opacity-50 disabled:cursor-not-allowed ${assigneeFilter.length > 0 ? 'text-black' : 'text-[#8a9aab]'}`} disabled={!canSeeAllAdvisors}>
+                <UserHandIcon className="size-5 shrink-0 text-[#8a9aab]" />
+                <span className="truncate flex-1">
+                  {assigneeFilter.length === 0
+                    ? 'Asesor'
+                    : assigneeFilter
+                        .map((id) => activeAdvisors.find((u) => u.id === id)?.name || id)
+                        .join(', ')}
+                </span>
+                <ChevronDown className="size-3.5 shrink-0 opacity-50" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[180px] p-0" align="start">
+              <Command>
+                <CommandList className="max-h-[260px] overflow-y-auto">
+                  <CommandGroup>
+                    {activeAdvisors.map((u) => {
+                      const selected = assigneeFilter.includes(u.id);
+                      return (
+                        <CommandItem
+                          key={u.id}
+                          onSelect={() => {
+                            setAssigneeFilter((prev) =>
+                              prev.includes(u.id)
+                                ? prev.filter((e) => e !== u.id)
+                                : [...prev, u.id],
+                            );
+                            setPage(1);
+                          }}
+                        >
+                          <span className="[&_svg]:!text-primary-foreground">
+                            <Checkbox
+                              checked={selected}
+                              className="mr-2 h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
+                            />
+                          </span>
+                          <span>{u.name}</span>
+                        </CommandItem>
+                      );
+                    })}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
 
-          <Select
-            value={assigneeFilter}
-            onValueChange={setAssigneeFilter}
-            disabled={!canSeeAllAdvisors}
-          >
-            <SelectTrigger className="h-9 w-auto rounded-lg bg-card">
-              <div className="flex items-center gap-1.5">
-                <User className="size-3.5" />
-                <SelectValue placeholder="Asesor" />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Asesores</SelectItem>
-              {activeAdvisors.map((u) => (
-                <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className={`!h-12 w-[190px] rounded-lg border border-[#e1e7ee] bg-white/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate ${sourceFilter.length > 0 ? 'text-black' : 'text-[#8a9aab]'}`}>
+                <PaletteIcon className="size-5 shrink-0 text-[#8a9aab]" />
+                <span className="truncate flex-1">
+                  {sourceFilter.length === 0
+                    ? 'Fuente'
+                    : sourceFilter.map((k) => contactSourceLabels[k as keyof typeof contactSourceLabels] || k).join(', ')}
+                </span>
+                <ChevronDown className="size-3.5 shrink-0 opacity-50" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[180px] p-0" align="start">
+              <Command>
+                <CommandList className="max-h-[260px] overflow-y-auto">
+                  <CommandGroup>
+                    {Object.entries(contactSourceLabels).map(([key, label]) => {
+                      const selected = sourceFilter.includes(key);
+                      return (
+                        <CommandItem
+                          key={key}
+                          onSelect={() => {
+                            setSourceFilter((prev) =>
+                              prev.includes(key)
+                                ? prev.filter((e) => e !== key)
+                                : [...prev, key],
+                            );
+                            setPage(1);
+                          }}
+                        >
+                          <span className="[&_svg]:!text-primary-foreground">
+                            <Checkbox
+                              checked={selected}
+                              className="mr-2 h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
+                            />
+                          </span>
+                          <span>{label}</span>
+                        </CommandItem>
+                      );
+                    })}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
 
           {hasActiveFilters && (
             <Button variant="ghost" size="sm" onClick={clearFilters}>
@@ -633,93 +862,205 @@ export default function OpportunitiesPage() {
             </Button>
           )}
 
-<div className="ml-auto hidden md:flex items-center rounded-lg border bg-card p-0.5 shadow-sm">
-  <Button
-    variant="ghost"
-    size="icon-sm"
-    className="rounded-md bg-primary/10 text-primary hover:bg-primary/15"
-    title="Vista lista"
-  >
-    <List className="size-4" />
-  </Button>
-  <Button
-    variant="ghost"
-    size="icon-sm"
-    onClick={() => navigate('/pipeline')}
-    className="rounded-md text-muted-foreground hover:text-foreground"
-    title="Vista pipeline"
-  >
-    <Kanban className="size-4" />
-  </Button>
-</div>
+          <div className="ml-auto hidden sm:flex items-center gap-5">
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1f2933] transition-opacity hover:opacity-70 cursor-pointer">
+                  <img src={columnsIcon} className="size-[18px]" alt="" />
+                  Columnas
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[180px] p-0" align="end">
+                <Command>
+                  <CommandList>
+                    <CommandGroup>
+                      {[
+                        { id: 'fuente', label: 'Fuente' },
+                        { id: 'priority', label: 'Prioridad' },
+                        { id: 'probability', label: 'Probabilidad' },
+                        { id: 'expectedCloseDate', label: 'Fecha cierre' },
+                        { id: 'etapa', label: 'Etapa' },
+                        { id: 'asesor', label: 'Asesor' },
+                      ].map((col) => {
+                        const visible = columnVisibility[col.id] ?? true;
+                        return (
+                          <div
+                            key={col.id}
+                            onClick={() => setColumnVisibility((prev) => ({ ...prev, [col.id]: !visible }))}
+                            className="flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm cursor-pointer hover:bg-accent"
+                          >
+                            <Checkbox
+                              checked={visible}
+                              className="h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
+                            />
+                            <span className="text-[#1f2933]">{col.label}</span>
+                          </div>
+                        );
+                      })}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1f2933] transition-opacity hover:opacity-70 cursor-pointer">
+                  <MoreVertical className="size-5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {hasPermission('oportunidades.exportar') && (
+                  <DropdownMenuItem
+                    disabled={exportBusy}
+                    onClick={() => void handleOppTemplate()}
+                  >
+                    {exportBusy ? <Loader2 className="size-3.5 animate-spin" /> : <img src={plantillaIcon} className="size-[18px]" alt="" />}
+                    Plantilla
+                  </DropdownMenuItem>
+                )}
+                {hasPermission('oportunidades.crear') && (
+                  <DropdownMenuItem
+                    disabled={importBusy}
+                    onClick={openOppImport}
+                  >
+                    {importBusy ? <Loader2 className="size-3.5 animate-spin" /> : <img src={importIcon} className="size-[18px]" alt="" />}
+                    Importar
+                  </DropdownMenuItem>
+                )}
+                {hasPermission('oportunidades.exportar') && (
+                  <DropdownMenuItem
+                    disabled={exportBusy}
+                    onClick={() => void handleOppExport()}
+                  >
+                    {exportBusy ? <Loader2 className="size-3.5 animate-spin" /> : <img src={exportIcon} className="size-[18px]" alt="" />}
+                    Exportar
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
-      </div>
 
-      {/* Tabs & Content */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList
-          variant="line"
-          className="w-full flex-nowrap gap-1 p-0"
-        >
-          {statusTabs.map((tab) => (
-            <TabsTrigger
-              key={tab.value}
-              value={tab.value}
-              className="min-w-0 flex-1 basis-0 overflow-hidden px-1.5 sm:px-2"
-            >
-              <span className="min-w-0 truncate">{tab.label}</span>
-              <Badge
-                variant="secondary"
-                className="ml-1 shrink-0 px-1.5 py-0 text-xs max-sm:ml-0.5 max-sm:px-1"
-              >
-                {tabCounts[tab.value] ?? 0}
-              </Badge>
-            </TabsTrigger>
-          ))}
-        </TabsList>
+        {/* Content */}
+        {!cacheLoadedAt ? (
+          <div className="border-t border-border/40 overflow-auto scrollbar-thin max-h-[calc(100vh-460px)]">
+            <GhostTableSkeleton columns={[...OPPORTUNITIES_TABLE_SKELETON_COLUMNS]} rows={10} />
+          </div>
+        ) : filteredOpportunities.length === 0 ? (
+          <Card className="border-0 shadow-none rounded-none">
+            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+              <Target className="mb-4 size-12 text-muted-foreground/40" />
+              <h3 className="text-lg font-semibold">No se encontraron oportunidades</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Intenta ajustar los filtros o crea una nueva oportunidad.
+              </p>
+              <Button className="mt-4" onClick={() => setNewDialogOpen(true)}>
+          <Plus /> Nueva
+              </Button>
+            </CardContent>
+          </Card>
+        ) : viewMode === 'table' ? (
+          <div className="border-t border-border/40 overflow-auto scrollbar-thin max-h-[calc(100vh-460px)]">
+            <table className="w-full table-fixed" style={{ minWidth: table.getTotalSize() }}>
+              <thead>
+                {table.getHeaderGroups().map((hg) => (
+                  <tr key={hg.id} className="h-11 bg-[#eef1f5] text-left text-xs font-bold text-[#647789]">
+                    {hg.headers.map((header: any) => (
+                      <th
+                        key={header.id}
+                        colSpan={header.colSpan}
+                        className={cn(
+                          'relative px-3 align-middle overflow-hidden',
+                          header.column.getCanSort() && 'cursor-pointer select-none hover:text-[#1f2933]',
+                          header.column.id === 'select' && 'pr-0',
+                          header.column.id === 'title' && 'pl-2',
+                        )}
+                        style={{ width: header.getSize() }}
+                        onClick={header.column.getToggleSortingHandler()}
+                      >
+                        <div className="flex items-center gap-1">
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                          {header.column.getCanSort() && (
+                            <>
+                              {header.column.getIsSorted() === 'asc' ? (
+                                <ChevronUp className="size-3 shrink-0" />
+                              ) : header.column.getIsSorted() === 'desc' ? (
+                                <ChevronDown className="size-3 shrink-0" />
+                              ) : (
+                                <ChevronsUpDown className="size-3 shrink-0 text-[#94A3B8]" />
+                              )}
+                            </>
+                          )}
+                        </div>
+                        {header.column.getCanResize() && (
+                          <div
+                            onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); header.getResizeHandler()(e); }}
+                            onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); header.getResizeHandler()(e); }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="absolute inset-y-0 right-0 flex items-center justify-center w-5 cursor-col-resize group/rez"
+                          >
+                            <div className="h-4 w-[2px] rounded-full bg-gray-200 group-hover/rez:bg-blue-500 group-active/rez:bg-blue-500 group-hover/rez:w-[5px] group-active/rez:w-[5px] transition-all select-none pointer-events-none" />
+                          </div>
+                        )}
+                      </th>
+                    ))}
+                  </tr>
+                ))}
+              </thead>
+              <tbody>
+                {table.getRowModel().rows.map((row) => {
+                  const pending = isPendingOpportunityId(row.original.id);
+                  return (
+                    <tr
+                      key={row.id}
+                      className={cn(
+                        'h-14 border-b border-dashed border-[#e8ecf0] bg-card/30 transition-colors cursor-pointer last:border-b-0',
+                        pending ? 'bg-muted/40' : 'hover:bg-[#fafbfc]',
+                      )}
+                      onClick={() => openOpportunityDetail(row.original)}
+                    >
+                      {row.getVisibleCells().map((cell: any) => (
+                        <td
+                          key={cell.id}
+                          className={cn(
+                            'px-3 align-middle overflow-hidden',
+                            cell.column.id === 'select' && 'pr-0',
+                            cell.column.id === 'title' && 'pl-2',
+                          )}
+                          style={{ width: cell.column.getSize() }}
+                          onClick={
+                            cell.column.id === 'select' || cell.column.id === 'actions'
+                              ? (e) => e.stopPropagation()
+                              : undefined
+                          }
+                        >
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
 
-        <TabsContent value={activeTab} className="mt-4">
-          {filteredOpportunities.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-                <Target className="mb-4 size-12 text-muted-foreground/40" />
-                <h3 className="text-lg font-semibold">No se encontraron oportunidades</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Intenta ajustar los filtros o crea una nueva oportunidad.
-                </p>
-                <Button className="mt-4" onClick={() => setNewDialogOpen(true)}>
-                  <Plus /> Nueva Oportunidad
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <OpportunitiesTable
-              data={displayedOpportunities}
-              isPendingOpportunityId={isPendingOpportunityId}
-              onOpenDetail={openOpportunityDetail}
-              onOpenPreview={openOpportunityPreview}
-              onOpenEdit={openOpportunityEdit}
-              onRequestDelete={requestDeleteOpportunity}
-              canEdit={hasPermission('oportunidades.editar')}
-              canDelete={hasPermission('oportunidades.eliminar')}
+        {totalFiltered > 0 && (
+          <div className="h-14 bg-white/30 px-5 flex items-center border-t border-dashed border-[#e8ecf0]">
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              totalItems={totalFiltered}
+              pageSize={pageSize}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                setPage(1);
+              }}
             />
-          )}
-        </TabsContent>
-      </Tabs>
-        </>
-      )}
-
-      {/* Pagination */}
-      {filteredOpportunities.length > 0 && (
-        <Pagination
-          page={page}
-          totalPages={totalPages}
-          onPageChange={setPage}
-          totalItems={totalFiltered}
-          pageSize={pageSize}
-          onPageSizeChange={setPageSize}
-        />
-      )}
+          </div>
+        )}
+      </GlassCard>
 
       <NewOpportunityFormDialog
         open={newDialogOpen}
@@ -769,167 +1110,6 @@ export default function OpportunitiesPage() {
         }}
         onSave={handleSaveOpportunity}
       />
-    </div>
-  );
-}
-
-/* ─── Table View ─── */
-
-function OpportunitiesTable({
-  data,
-  isPendingOpportunityId,
-  onOpenDetail,
-  onOpenPreview,
-  onOpenEdit,
-  onRequestDelete,
-  canEdit,
-  canDelete,
-}: {
-  data: Opportunity[];
-  isPendingOpportunityId: (id: string) => boolean;
-  onOpenDetail: (opp: Opportunity) => void;
-  onOpenPreview: (opp: Opportunity) => void;
-  onOpenEdit: (opp: Opportunity) => void;
-  onRequestDelete: (opp: Opportunity) => void;
-  canEdit: boolean;
-  canDelete: boolean;
-}) {
-  return (
-    <div className="overflow-auto rounded-[14px] bg-card shadow-[0_8px_24px_rgba(15,23,42,0.06)] scrollbar-thin max-h-[calc(100vh-22rem)] max-w-full">
-      <Table>
-        <TableHeader className="sticky top-0 z-10">
-          <TableRow>
-            <TableHead className="min-w-0 max-w-[20rem]">Nombre</TableHead>
-            <TableHead className="hidden min-w-0 max-w-[16rem] md:table-cell">
-              Contacto / Cliente
-            </TableHead>
-            <TableHead className="hidden min-w-[6.5rem] sm:table-cell">Fuente</TableHead>
-            <TableHead className="hidden lg:table-cell">Prioridad</TableHead>
-            <TableHead>Monto</TableHead>
-            <TableHead className="hidden sm:table-cell">Probabilidad</TableHead>
-            <TableHead className="hidden lg:table-cell">Etapa</TableHead>
-            <TableHead className="hidden xl:table-cell">Fecha cierre</TableHead>
-            <TableHead className="hidden min-w-0 max-w-[10rem] xl:table-cell">
-              Asesor
-            </TableHead>
-            <TableHead className="hidden sm:table-cell">Estado</TableHead>
-            <TableHead className="w-10" />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.map((opp) => {
-            const pending = isPendingOpportunityId(opp.id);
-            const contactClientLabel =
-              opp.contactName ?? opp.clientName ?? '—';
-            return (
-            <TableRow
-              key={opp.id}
-              className={pending ? 'group bg-muted/40' : 'group cursor-pointer hover:bg-muted/50'}
-              onClick={() => onOpenDetail(opp)}
-            >
-              <TableCell className="min-w-0 max-w-[20rem] whitespace-normal align-top">
-                <div className="min-w-0">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <p
-                      className="min-w-0 flex-1 truncate font-medium"
-                      title={opp.title}
-                    >
-                      {opp.title}
-                    </p>
-                    {pending && (
-                      <Badge
-                        variant="secondary"
-                        className="shrink-0 gap-1 font-normal"
-                      >
-                        <Loader2 className="size-3 animate-spin" />
-                        Guardando…
-                      </Badge>
-                    )}
-                  </div>
-                  <p
-                    className="truncate text-xs text-muted-foreground md:hidden"
-                    title={contactClientLabel !== '—' ? contactClientLabel : undefined}
-                  >
-                    {contactClientLabel}
-                  </p>
-                  <p className="truncate text-xs text-muted-foreground/90 sm:hidden">
-                    {contactSourceLabels[opp.fuente ?? 'base'] ?? opp.fuente}
-                  </p>
-                </div>
-              </TableCell>
-              <TableCell className="hidden min-w-0 max-w-[16rem] whitespace-normal md:table-cell align-top text-muted-foreground">
-                <span
-                  className="block truncate"
-                  title={contactClientLabel !== '—' ? contactClientLabel : undefined}
-                >
-                  {contactClientLabel}
-                </span>
-              </TableCell>
-              <TableCell className="hidden min-w-[6.5rem] sm:table-cell align-top text-muted-foreground">
-                <span className="text-sm">
-                  {contactSourceLabels[opp.fuente ?? 'base'] ?? opp.fuente ?? '—'}
-                </span>
-              </TableCell>
-              <TableCell className="hidden lg:table-cell">
-                <PriorityBadge priority={opp.priority ?? 'media'} />
-              </TableCell>
-              <TableCell className="font-semibold tabular-nums">
-                {formatCurrency(opp.amount)}
-              </TableCell>
-              <TableCell className="hidden sm:table-cell">
-                <ProbabilityBar value={opp.probability} />
-              </TableCell>
-              <TableCell className="hidden lg:table-cell">
-                <EtapaBadge etapa={opp.etapa} />
-              </TableCell>
-              <TableCell className="hidden xl:table-cell text-muted-foreground">
-                {formatDate(opp.expectedCloseDate)}
-              </TableCell>
-              <TableCell className="hidden min-w-0 max-w-[10rem] whitespace-normal xl:table-cell align-top text-muted-foreground">
-                <span className="block truncate" title={opp.assignedToName}>
-                  {opp.assignedToName}
-                </span>
-              </TableCell>
-              <TableCell className="hidden sm:table-cell">
-                <OpportunityStatusBadge status={opp.status} />
-              </TableCell>
-              <TableCell onClick={(e) => e.stopPropagation()}>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon-sm" aria-label="Acciones">
-                      <MoreHorizontal className="size-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => onOpenPreview(opp)}>
-                      <Eye /> Vista previa
-                    </DropdownMenuItem>
-                    {canEdit && (
-                      <DropdownMenuItem
-                        onClick={() => onOpenEdit(opp)}
-                        disabled={pending}
-                      >
-                        <Pencil /> Editar
-                      </DropdownMenuItem>
-                    )}
-                    <DropdownMenuSeparator />
-                    {canDelete && (
-                      <DropdownMenuItem
-                        variant="destructive"
-                        onClick={() => onRequestDelete(opp)}
-                        disabled={pending}
-                      >
-                        <Trash2 /> Eliminar
-                      </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
-          );
-          })}
-        </TableBody>
-      </Table>
     </div>
   );
 }

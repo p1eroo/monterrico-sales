@@ -1,7 +1,7 @@
-import { useState, useMemo, useEffect, useCallback, memo, useRef } from 'react';
-import { useVirtualizer } from '@tanstack/react-virtual';
-import { usePermissions } from '@/hooks/usePermissions';
-import { useAppStore } from '@/store';
+import { useState, useMemo, useEffect, useCallback, memo, useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { usePermissions } from "@/hooks/usePermissions";
+import { useAppStore } from "@/store";
 import {
   DndContext,
   closestCorners,
@@ -15,8 +15,8 @@ import {
   useDroppable,
   useSensor,
   useSensors,
-} from '@dnd-kit/core';
-import { useNavigate } from 'react-router-dom';
+} from "@dnd-kit/core";
+import { useNavigate } from "react-router-dom";
 import {
   Filter,
   Kanban,
@@ -27,6 +27,8 @@ import {
   Building2,
   X,
   ChevronRight,
+  ChevronLeft,
+  ChevronDown,
   Check,
   Info,
   RefreshCw,
@@ -37,17 +39,22 @@ import {
   MessageSquare,
   CheckSquare,
   Search,
-} from 'lucide-react';
-import { toast } from 'sonner';
-import type { Contact, Etapa, Opportunity, PipelineColumn } from '@/types';
-import { companyRubroLabels, etapaLabels, activities, activityTypeLabels } from '@/data/mock';
-import { useUsers } from '@/hooks/useUsers';
-import { api } from '@/lib/api';
-import { fetchCrmConfig } from '@/lib/crmConfigApi';
-import type { CrmCatalogDto } from '@/lib/crmConfigApi';
-import { useCrmConfigStore } from '@/store/crmConfigStore';
-import { contactDetailHref, opportunityDetailHref } from '@/lib/detailRoutes';
-import { getPrimaryCompany } from '@/lib/utils';
+} from "lucide-react";
+import { toast } from "sonner";
+import type { Contact, Etapa, Opportunity, PipelineColumn } from "@/types";
+import {
+  companyRubroLabels,
+  etapaLabels,
+  activities,
+  activityTypeLabels,
+} from "@/data/mock";
+import { useUsers } from "@/hooks/useUsers";
+import { api } from "@/lib/api";
+import { fetchCrmConfig } from "@/lib/crmConfigApi";
+import type { CrmCatalogDto } from "@/lib/crmConfigApi";
+import { useCrmConfigStore } from "@/store/crmConfigStore";
+import { contactDetailHref, opportunityDetailHref } from "@/lib/detailRoutes";
+import { getPrimaryCompany } from "@/lib/utils";
 import {
   type ApiContactDetail,
   type ApiContactListRow,
@@ -55,32 +62,55 @@ import {
   mapApiContactRowToContact,
   contactUpdate,
   contactListAll,
-} from '@/lib/contactApi';
+} from "@/lib/contactApi";
 import {
   type ApiOpportunityListRow,
   mapApiOpportunityToOpportunity,
   opportunityUpdate,
-} from '@/lib/opportunityApi';
-import { useOpportunityCacheStore } from '@/store/opportunityCacheStore';
+} from "@/lib/opportunityApi";
+import { useOpportunityCacheStore } from "@/store/opportunityCacheStore";
 import {
   NewOpportunityFormDialog,
   buildOpportunityCreateBody,
   type NewOpportunityFormValues,
-} from '@/components/shared/NewOpportunityFormDialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Skeleton } from '@/components/ui/skeleton';
-import { ChangeEtapaDialog } from '@/components/shared/ChangeEtapaDialog';
-import { AssignDialog } from '@/components/shared/AssignDialog';
-import { cn } from '@/lib/utils';
-import { formatCurrencyShort, formatDateShortLocal } from '@/lib/formatters';
-import type { ActivityType } from '@/types';
+} from "@/components/shared/NewOpportunityFormDialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Command,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ChartSquareIcon } from "@/components/icons/ChartSquareIcon";
+import { UserHandIcon } from "@/components/icons/UserHandIcon";
+import { ChangeEtapaDialog } from "@/components/shared/ChangeEtapaDialog";
+import { AssignDialog } from "@/components/shared/AssignDialog";
+import { cn } from "@/lib/utils";
+import { formatCurrencyShort, formatDateShortLocal } from "@/lib/formatters";
+import type { ActivityType } from "@/types";
 
 export type PipelineStageColumnConfig = {
   id: Etapa;
@@ -91,19 +121,27 @@ export type PipelineStageColumnConfig = {
 
 /** Orden y colores por defecto si aún no hay catálogo CRM en memoria. */
 const FALLBACK_PIPELINE_COLUMNS: PipelineStageColumnConfig[] = [
-  { id: 'lead', title: 'Lead', accentColor: '#64748b' },
-  { id: 'contacto', title: 'Contacto', accentColor: '#3b82f6' },
-  { id: 'reunion_agendada', title: 'Reunión Agendada', accentColor: '#6366f1' },
-  { id: 'reunion_efectiva', title: 'Reunión Efectiva', accentColor: '#06b6d4' },
-  { id: 'propuesta_economica', title: 'Propuesta Económica', accentColor: '#a855f7' },
-  { id: 'negociacion', title: 'Negociación', accentColor: '#f97316' },
-  { id: 'licitacion', title: 'Licitación', accentColor: '#f59e0b' },
-  { id: 'licitacion_etapa_final', title: 'Licitación Etapa Final', accentColor: '#d97706' },
-  { id: 'cierre_ganado', title: 'Cierre Ganado', accentColor: '#22c55e' },
-  { id: 'firma_contrato', title: 'Firma de Contrato', accentColor: '#16a34a' },
-  { id: 'activo', title: 'Activo', accentColor: '#15803d' },
-  { id: 'cierre_perdido', title: 'Cierre Perdido', accentColor: '#ef4444' },
-  { id: 'inactivo', title: 'Inactivo', accentColor: '#6b7280' },
+  { id: "lead", title: "Lead", accentColor: "#64748b" },
+  { id: "contacto", title: "Contacto", accentColor: "#3b82f6" },
+  { id: "reunion_agendada", title: "Reunión Agendada", accentColor: "#6366f1" },
+  { id: "reunion_efectiva", title: "Reunión Efectiva", accentColor: "#06b6d4" },
+  {
+    id: "propuesta_economica",
+    title: "Propuesta Económica",
+    accentColor: "#a855f7",
+  },
+  { id: "negociacion", title: "Negociación", accentColor: "#f97316" },
+  { id: "licitacion", title: "Licitación", accentColor: "#f59e0b" },
+  {
+    id: "licitacion_etapa_final",
+    title: "Licitación Etapa Final",
+    accentColor: "#d97706",
+  },
+  { id: "cierre_ganado", title: "Cierre Ganado", accentColor: "#22c55e" },
+  { id: "firma_contrato", title: "Firma de Contrato", accentColor: "#16a34a" },
+  { id: "activo", title: "Activo", accentColor: "#15803d" },
+  { id: "cierre_perdido", title: "Cierre Perdido", accentColor: "#ef4444" },
+  { id: "inactivo", title: "Inactivo", accentColor: "#6b7280" },
 ];
 
 function normalizeHexColor(raw: string, fallback: string): string {
@@ -113,7 +151,7 @@ function normalizeHexColor(raw: string, fallback: string): string {
 }
 
 function stagesFromCatalog(
-  stages: CrmCatalogDto['stages'] | undefined,
+  stages: CrmCatalogDto["stages"] | undefined,
 ): PipelineStageColumnConfig[] {
   if (!stages?.length) return FALLBACK_PIPELINE_COLUMNS;
   const sorted = [...stages]
@@ -123,7 +161,7 @@ function stagesFromCatalog(
   return sorted.map((s) => ({
     id: s.slug as Etapa,
     title: s.name,
-    accentColor: normalizeHexColor(s.color, '#64748b'),
+    accentColor: normalizeHexColor(s.color, "#64748b"),
   }));
 }
 
@@ -143,7 +181,7 @@ function mergePipelineColumns(
       fb ?? {
         id: e,
         title: etapaLabels[e] ?? e,
-        accentColor: '#94a3b8',
+        accentColor: "#94a3b8",
       },
     );
   }
@@ -185,7 +223,7 @@ function mergePipelineColumnsFromOpportunities(
       fb ?? {
         id: e,
         title: etapaLabels[e] ?? e,
-        accentColor: '#94a3b8',
+        accentColor: "#94a3b8",
       },
     );
   }
@@ -208,21 +246,25 @@ function buildPipeline(
 }
 
 function formatFullDate(dateStr: string): string {
-  if (!dateStr) return '—';
-  const date = new Date(dateStr + 'T00:00:00');
-  return date.toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' });
+  if (!dateStr) return "—";
+  const date = new Date(dateStr + "T00:00:00");
+  return date.toLocaleDateString("es-PE", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 function daysBetween(a: string, b: string): number {
-  const d1 = new Date(a + 'T00:00:00').getTime();
-  const d2 = new Date(b + 'T00:00:00').getTime();
+  const d1 = new Date(a + "T00:00:00").getTime();
+  const d2 = new Date(b + "T00:00:00").getTime();
   return Math.round((d2 - d1) / (1000 * 60 * 60 * 24));
 }
 
 /** Por encima de esto se virtualiza la columna (menos DOM; drag sigue con overlay + droppable en el scroll). */
 const PIPELINE_VIRTUAL_MIN_CARDS = 16;
 /** Altura base por fila (px); `measureElement` ajusta con el contenido real. */
-const PIPELINE_CARD_ESTIMATE_PX = 132;
+const PIPELINE_CARD_ESTIMATE_PX = 150;
 const PIPELINE_CARD_GAP_PX = 8;
 
 const activityTypeIconMap: Record<ActivityType, typeof Phone> = {
@@ -238,18 +280,20 @@ const activityTypeIconMap: Record<ActivityType, typeof Phone> = {
 
 interface PipelineOppCardProps {
   opportunity: Opportunity;
+  accentColor?: string;
   overlay?: boolean;
   onCardClick?: (opportunity: Opportunity) => void;
 }
 
 const PipelineOppCard = memo(function PipelineOppCard({
   opportunity,
+  accentColor,
   overlay,
   onCardClick,
 }: PipelineOppCardProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: opportunity.id,
-    data: { opportunity, type: 'opportunity' },
+    data: { opportunity, type: "opportunity" },
   });
 
   return (
@@ -257,14 +301,15 @@ const PipelineOppCard = memo(function PipelineOppCard({
       ref={setNodeRef}
       style={isDragging ? { opacity: 0.35 } : undefined}
       className={cn(
-        'touch-none cursor-grab select-none active:cursor-grabbing',
-        isDragging && 'will-change-transform',
+        "touch-none cursor-grab select-none active:cursor-grabbing",
+        isDragging && "will-change-transform",
       )}
       {...attributes}
       {...listeners}
     >
       <OpportunityCard
         opportunity={opportunity}
+        accentColor={accentColor}
         isDragging={isDragging}
         overlay={overlay}
         onCardClick={onCardClick}
@@ -289,7 +334,7 @@ const PipelineLeadCard = memo(function PipelineLeadCard({
 }: PipelineLeadCardProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: lead.id,
-    data: { lead, type: 'lead' },
+    data: { lead, type: "lead" },
   });
 
   return (
@@ -297,8 +342,8 @@ const PipelineLeadCard = memo(function PipelineLeadCard({
       ref={setNodeRef}
       style={isDragging ? { opacity: 0.35 } : undefined}
       className={cn(
-        'touch-none cursor-grab select-none active:cursor-grabbing',
-        isDragging && 'will-change-transform',
+        "touch-none cursor-grab select-none active:cursor-grabbing",
+        isDragging && "will-change-transform",
       )}
       {...attributes}
       {...listeners}
@@ -348,13 +393,13 @@ const LeadCard = memo(function LeadCard({
   return (
     <div
       className={cn(
-        'group relative select-none rounded-[14px] border border-border bg-card p-3.5 text-card-foreground shadow-[0_1px_4px_rgba(15,23,42,0.04)]',
+        "group relative select-none rounded-[14px] border border-border bg-card p-3.5 text-card-foreground shadow-[0_1px_4px_rgba(15,23,42,0.04)]",
         !overlay && [
-          'transition-all duration-150',
-          'hover:border-border/80 hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)] hover:-translate-y-0.5',
+          "transition-all duration-150",
+          "hover:border-border/80 hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)] hover:-translate-y-0.5",
         ],
-        isDragging && 'opacity-40',
-        overlay && 'pointer-events-none rotate-2 shadow-xl border-primary/40',
+        isDragging && "opacity-40",
+        overlay && "pointer-events-none rotate-2 shadow-xl border-primary/40",
       )}
     >
       {onCardClick && !overlay && (
@@ -382,25 +427,33 @@ const LeadCard = memo(function LeadCard({
               type="button"
               onClick={handleNameClick}
               className={cn(
-                'block w-full truncate text-left text-sm font-semibold text-foreground',
-                (opportunity || onCardClick) && 'hover:text-primary',
+                "block w-full truncate text-left text-sm font-semibold text-foreground",
+                (opportunity || onCardClick) && "hover:text-primary",
               )}
             >
               {opportunity?.title ?? lead.name}
             </button>
           )}
-          <p className="flex items-center gap-1 truncate text-xs text-muted-foreground mt-1">
+          <p className="flex items-center gap-1 truncate text-[13px] text-muted-foreground mt-1">
             <Building2 className="size-3 shrink-0" />
-            {company?.name ?? '—'}
+            {company?.name ?? "—"}
           </p>
-          <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+          <p className="flex items-center gap-1 truncate text-[13px] text-muted-foreground">
             <User className="size-3 shrink-0" />
             {lead.name}
           </p>
           {(company?.rubro || company?.tipo) && (
-            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              {company?.rubro && <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{companyRubroLabels[company.rubro]}</span>}
-              {company?.tipo && <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">Tipo {company.tipo}</span>}
+            <p className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
+              {company?.rubro && (
+                <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                  {companyRubroLabels[company.rubro]}
+                </span>
+              )}
+              {company?.tipo && (
+                <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                  Tipo {company.tipo}
+                </span>
+              )}
             </p>
           )}
         </div>
@@ -411,10 +464,12 @@ const LeadCard = memo(function LeadCard({
           </span>
         </div>
 
-        <div className="flex items-center justify-between text-xs text-muted-foreground/60">
+        <div className="flex items-center justify-between text-[13px] text-muted-foreground/60">
           <span className="flex items-center gap-1 truncate">
             <User className="size-3 shrink-0" />
-            <span className="truncate">{lead.assignedToName.split(' ')[0]}</span>
+            <span className="truncate">
+              {lead.assignedToName.split(" ")[0]}
+            </span>
           </span>
         </div>
       </div>
@@ -426,6 +481,7 @@ const LeadCard = memo(function LeadCard({
 
 interface OpportunityCardProps {
   opportunity: Opportunity;
+  accentColor?: string;
   isDragging?: boolean;
   overlay?: boolean;
   onCardClick?: (opp: Opportunity) => void;
@@ -433,6 +489,7 @@ interface OpportunityCardProps {
 
 const OpportunityCard = memo(function OpportunityCard({
   opportunity,
+  accentColor,
   isDragging,
   overlay,
   onCardClick,
@@ -456,16 +513,19 @@ const OpportunityCard = memo(function OpportunityCard({
   return (
     <div
       className={cn(
-        'group relative select-none rounded-[14px] border border-border bg-card p-3.5 text-card-foreground shadow-[0_1px_4px_rgba(15,23,42,0.04)]',
-        !overlay && [
-          'transition-all duration-150',
-          'hover:border-border/80 hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)] hover:-translate-y-0.5',
-        ],
-        isDragging && 'opacity-40',
-        overlay && 'pointer-events-none rotate-2 shadow-xl border-primary/40',
+        "relative select-none rounded-[4px] bg-white/40 p-3 border border-[#d0d5dd]/70",
+        !overlay && ["transition-all duration-150", "hover:border-[#d0d5dd]"],
+        isDragging && "opacity-40",
+        overlay && "pointer-events-none rotate-2 border-primary/40",
       )}
       onClick={onCardClick ? handleCardClick : undefined}
     >
+      {accentColor && (
+        <div
+          className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full"
+          style={{ backgroundColor: accentColor }}
+        />
+      )}
       {onCardClick && !overlay && (
         <button
           type="button"
@@ -480,44 +540,45 @@ const OpportunityCard = memo(function OpportunityCard({
           <Info className="size-4" />
         </button>
       )}
-      <div className="space-y-2.5">
+      <div className="space-y-2 pr-7">
         <div>
           {overlay ? (
-            <span className="block w-full truncate text-left text-sm font-semibold text-foreground">
+            <span className="block w-full truncate text-left text-[13px] font-semibold text-[#13944C]">
               {opportunity.title}
             </span>
           ) : (
             <button
               type="button"
               onClick={handleNameClick}
-              className="block w-full truncate text-left text-sm font-semibold text-foreground hover:text-primary"
+              className="block w-full truncate text-left text-[13px] font-semibold text-[#13944C] hover:text-[#0f7a3d]"
             >
               {opportunity.title}
             </button>
           )}
-          <p className="flex items-center gap-1 truncate text-xs text-muted-foreground mt-1">
+          <p className="text-sm font-bold text-foreground mt-0.5">
+            {formatCurrencyShort(opportunity.amount ?? 0)}
+          </p>
+        </div>
+
+        <div className="border-t border-[#d0d5dd]/60" />
+
+        <div className="space-y-1">
+          <p className="flex items-center gap-1 truncate text-[13px] text-muted-foreground">
             <Building2 className="size-3 shrink-0" />
-            {opportunity.clientName ?? '—'}
+            {opportunity.clientName ?? "—"}
           </p>
           {opportunity.contactName && (
-            <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+            <p className="flex items-center gap-1 truncate text-[13px] text-muted-foreground">
               <User className="size-3 shrink-0" />
               {opportunity.contactName}
             </p>
           )}
-        </div>
-
-        <div className="flex items-center justify-between pt-0.5">
-          <span className="text-base font-bold text-foreground">
-            {formatCurrencyShort(opportunity.amount ?? 0)}
-          </span>
-        </div>
-
-        <div className="flex items-center justify-between text-xs text-muted-foreground/60">
-          <span className="flex items-center gap-1 truncate">
+          <p className="flex items-center gap-1 truncate text-[13px] text-muted-foreground">
             <User className="size-3 shrink-0" />
-            <span className="truncate">{(opportunity.assignedToName ?? '').split(' ')[0]}</span>
-          </span>
+            <span className="truncate">
+              {(opportunity.assignedToName ?? "").split(" ")[0] || "—"}
+            </span>
+          </p>
         </div>
       </div>
     </div>
@@ -560,7 +621,9 @@ function CardDetailDialog({
 
   const opportunityId = opportunity?.id ?? contact?.id;
   const recentActivities = activities
-    .filter((a) => a.contactId === opportunityId || a.opportunityId === opportunityId)
+    .filter(
+      (a) => a.contactId === opportunityId || a.opportunityId === opportunityId,
+    )
     .sort((a, b) => {
       const da = a.completedAt ?? a.createdAt;
       const db = b.completedAt ?? b.createdAt;
@@ -573,50 +636,98 @@ function CardDetailDialog({
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-lg">
-            {opportunity?.title ?? contact?.name ?? ''}
+            {opportunity?.title ?? contact?.name ?? ""}
           </DialogTitle>
         </DialogHeader>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_1.2fr]">
           {/* Columna izquierda: Progreso en el pipeline */}
           <div className="border-b pb-4 sm:border-b-0 sm:border-r sm:pr-4 sm:pb-0">
-            <p className="mb-2 text-xs font-medium text-muted-foreground">Progreso en el pipeline</p>
+            <p className="mb-2 text-[13px] font-medium text-muted-foreground">
+              Progreso en el pipeline
+            </p>
             <div className="max-h-48 space-y-1.5 overflow-y-auto sm:max-h-[calc(90vh-10rem)]">
               {stageColumns.map((col, idx) => {
                 const isCurrent = col.id === currentEtapa;
                 const isPast = currentIndex >= 0 && idx < currentIndex;
-                const etapaEntry = history.find((e) => (e as { etapa: string }).etapa === col.id);
-                const nextEntry = history[(history.findIndex((e) => (e as { etapa: string }).etapa === col.id)) + 1];
-                const fecha = etapaEntry ? formatEtapaDate(etapaEntry.fecha) : (isPast || isCurrent ? '—' : 'Pendiente');
-                const dias = etapaEntry && nextEntry ? daysBetween(etapaEntry.fecha, nextEntry.fecha) : (etapaEntry && isCurrent ? daysBetween(etapaEntry.fecha, today) : null);
-                const diasLabel = dias !== null ? (dias === 0 ? '<1 día' : dias === 1 ? '1 día' : `${dias} días`) : null;
+                const etapaEntry = history.find(
+                  (e) => (e as { etapa: string }).etapa === col.id,
+                );
+                const nextEntry =
+                  history[
+                    history.findIndex(
+                      (e) => (e as { etapa: string }).etapa === col.id,
+                    ) + 1
+                  ];
+                const fecha = etapaEntry
+                  ? formatEtapaDate(etapaEntry.fecha)
+                  : isPast || isCurrent
+                    ? "—"
+                    : "Pendiente";
+                const dias =
+                  etapaEntry && nextEntry
+                    ? daysBetween(etapaEntry.fecha, nextEntry.fecha)
+                    : etapaEntry && isCurrent
+                      ? daysBetween(etapaEntry.fecha, today)
+                      : null;
+                const diasLabel =
+                  dias !== null
+                    ? dias === 0
+                      ? "<1 día"
+                      : dias === 1
+                        ? "1 día"
+                        : `${dias} días`
+                    : null;
                 return (
                   <div
                     key={col.id}
                     className={cn(
-                      'flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-xs',
-                      isCurrent && 'bg-primary/10 font-medium text-primary',
-                      isPast && 'text-muted-foreground',
-                      !isCurrent && !isPast && 'text-muted-foreground/70',
+                      "flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-[13px]",
+                      isCurrent && "bg-primary/10 font-medium text-primary",
+                      isPast && "text-muted-foreground",
+                      !isCurrent && !isPast && "text-muted-foreground/70",
                     )}
                   >
                     <div className="flex min-w-0 flex-1 items-center gap-2">
                       <div
                         className={cn(
-                          'flex size-5 shrink-0 items-center justify-center rounded-full',
-                          isPast && 'bg-primary/20 text-primary',
-                          !isPast && !isCurrent && 'bg-muted',
+                          "flex size-5 shrink-0 items-center justify-center rounded-full",
+                          isPast && "bg-primary/20 text-primary",
+                          !isPast && !isCurrent && "bg-muted",
                         )}
-                        style={isCurrent ? { backgroundColor: col.accentColor } : undefined}
+                        style={
+                          isCurrent
+                            ? { backgroundColor: col.accentColor }
+                            : undefined
+                        }
                       >
-                        {isPast ? <Check className="size-3" /> : isCurrent ? <span className="size-2 rounded-full bg-background" /> : <span className="size-1.5 rounded-full bg-current opacity-50" />}
+                        {isPast ? (
+                          <Check className="size-3" />
+                        ) : isCurrent ? (
+                          <span className="size-2 rounded-full bg-background" />
+                        ) : (
+                          <span className="size-1.5 rounded-full bg-current opacity-50" />
+                        )}
                       </div>
-                      {isCurrent && <ChevronRight className="size-3.5 shrink-0" />}
-                      <span className={cn(isCurrent && 'font-semibold')}>{col.title}</span>
+                      {isCurrent && (
+                        <ChevronRight className="size-3.5 shrink-0" />
+                      )}
+                      <span className={cn(isCurrent && "font-semibold")}>
+                        {col.title}
+                      </span>
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-0.5">
-                      <span className={cn('tabular-nums', (!isPast && !isCurrent) && 'text-muted-foreground/60')}>{fecha}</span>
+                      <span
+                        className={cn(
+                          "tabular-nums",
+                          !isPast && !isCurrent && "text-muted-foreground/60",
+                        )}
+                      >
+                        {fecha}
+                      </span>
                       {diasLabel && (isPast || isCurrent) && (
-                        <span className="text-[10px] text-muted-foreground/80">{diasLabel}</span>
+                        <span className="text-[10px] text-muted-foreground/80">
+                          {diasLabel}
+                        </span>
                       )}
                     </div>
                   </div>
@@ -627,94 +738,125 @@ function CardDetailDialog({
 
           {/* Columna derecha: Info, actividades, métricas, acciones */}
           <div className="flex flex-col gap-4">
-          <div className="space-y-1 text-sm text-muted-foreground">
-            <p className="flex items-center gap-1.5">
-              <Building2 className="size-3.5 shrink-0" />
-              {opportunity?.clientName ?? company?.name ?? '—'}
-            </p>
-            <p className="flex items-center gap-1.5">
-              <User className="size-3.5 shrink-0" />
-              {opportunity?.contactName ?? contact?.name ?? '—'}
-            </p>
-          </div>
-
-          {recentActivities.length > 0 && (
-            <div>
-              <p className="mb-2 text-xs font-medium text-muted-foreground">Actividades recientes</p>
-              <div className="space-y-1.5">
-                {recentActivities.map((act) => {
-                  const Icon = activityTypeIconMap[act.type as ActivityType] ?? Phone;
-                  return (
-                    <div key={act.id} className="flex items-center gap-2 rounded-md border bg-muted/30 px-2 py-1.5 text-xs">
-                      <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted">
-                        <Icon className="size-3.5 text-muted-foreground" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium">{act.title}</p>
-                        <p className="text-[10px] text-muted-foreground">
-                          {activityTypeLabels[act.type] ?? act.type} · {formatEtapaDate(act.completedAt ?? act.dueDate)}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+            <div className="space-y-1 text-sm text-muted-foreground">
+              <p className="flex items-center gap-1.5">
+                <Building2 className="size-3.5 shrink-0" />
+                {opportunity?.clientName ?? company?.name ?? "—"}
+              </p>
+              <p className="flex items-center gap-1.5">
+                <User className="size-3.5 shrink-0" />
+                {opportunity?.contactName ?? contact?.name ?? "—"}
+              </p>
             </div>
-          )}
 
-          <div className="flex flex-wrap gap-3 border-t pt-3">
-            <div>
-              <p className="text-[10px] text-muted-foreground">Valor</p>
-              <p className="text-sm font-semibold">{formatCurrencyShort(opportunity?.amount ?? contact?.estimatedValue ?? 0)}</p>
-            </div>
-            {opportunity && (
-              <>
-                <div>
-                  <p className="text-[10px] text-muted-foreground">Probabilidad</p>
-                  <p className="text-sm font-medium">{opportunity.probability}%</p>
+            {recentActivities.length > 0 && (
+              <div>
+                <p className="mb-2 text-[13px] font-medium text-muted-foreground">
+                  Actividades recientes
+                </p>
+                <div className="space-y-1.5">
+                  {recentActivities.map((act) => {
+                    const Icon =
+                      activityTypeIconMap[act.type as ActivityType] ?? Phone;
+                    return (
+                      <div
+                        key={act.id}
+                        className="flex items-center gap-2 rounded-md border bg-muted/30 px-2 py-1.5 text-[13px]"
+                      >
+                        <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted">
+                          <Icon className="size-3.5 text-muted-foreground" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-medium">{act.title}</p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {activityTypeLabels[act.type] ?? act.type} ·{" "}
+                            {formatEtapaDate(act.completedAt ?? act.dueDate)}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                {opportunity.expectedCloseDate && (
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-3 border-t pt-3">
+              <div>
+                <p className="text-[10px] text-muted-foreground">Valor</p>
+                <p className="text-sm font-semibold">
+                  {formatCurrencyShort(
+                    opportunity?.amount ?? contact?.estimatedValue ?? 0,
+                  )}
+                </p>
+              </div>
+              {opportunity && (
+                <>
                   <div>
-                    <p className="text-[10px] text-muted-foreground">Cierre esperado</p>
-                    <p className="flex items-center gap-1 text-sm">
-                      <Calendar className="size-3.5" />
-                      {formatFullDate(opportunity.expectedCloseDate)}
+                    <p className="text-[10px] text-muted-foreground">
+                      Probabilidad
+                    </p>
+                    <p className="text-sm font-medium">
+                      {opportunity.probability}%
                     </p>
                   </div>
-                )}
-              </>
-            )}
-            <div>
-              <p className="text-[10px] text-muted-foreground">Asignado</p>
-              <p className="text-sm">{opportunity?.assignedToName ?? contact?.assignedToName ?? '—'}</p>
+                  {opportunity.expectedCloseDate && (
+                    <div>
+                      <p className="text-[10px] text-muted-foreground">
+                        Cierre esperado
+                      </p>
+                      <p className="flex items-center gap-1 text-sm">
+                        <Calendar className="size-3.5" />
+                        {formatFullDate(opportunity.expectedCloseDate)}
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+              <div>
+                <p className="text-[10px] text-muted-foreground">Asignado</p>
+                <p className="text-sm">
+                  {opportunity?.assignedToName ??
+                    contact?.assignedToName ??
+                    "—"}
+                </p>
+              </div>
             </div>
-          </div>
 
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="flex-1" onClick={onOpenChangeEtapa}>
-              <RefreshCw className="mr-1 size-3.5" />
-              Cambiar etapa
-            </Button>
-            <Button variant="outline" size="sm" className="flex-1" onClick={onOpenAssign}>
-              <UserPlus className="mr-1 size-3.5" />
-              Asignar
-            </Button>
-          </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                onClick={onOpenChangeEtapa}
+              >
+                <RefreshCw className="mr-1 size-3.5" />
+                Cambiar etapa
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                onClick={onOpenAssign}
+              >
+                <UserPlus className="mr-1 size-3.5" />
+                Asignar
+              </Button>
+            </div>
 
-          <Button
-            size="sm"
-            className="w-full"
-            onClick={() => {
-              onOpenChange(false);
-              if (opportunity) {
-                navigate(opportunityDetailHref(opportunity));
-              } else if (contact) {
-                navigate(contactDetailHref(contact));
-              }
-            }}
-          >
-            Ver detalle completo
-          </Button>
+            <Button
+              size="sm"
+              className="w-full"
+              onClick={() => {
+                onOpenChange(false);
+                if (opportunity) {
+                  navigate(opportunityDetailHref(opportunity));
+                } else if (contact) {
+                  navigate(contactDetailHref(contact));
+                }
+              }}
+            >
+              Ver detalle completo
+            </Button>
           </div>
         </div>
       </DialogContent>
@@ -747,10 +889,14 @@ function ColumnDropSlot({ accentColor }: { accentColor: string }) {
 }
 
 /** Placeholder mientras llegan contactos y oportunidades (evita confundir con pipeline vacío). */
-function PipelineKanbanSkeleton({ columns }: { columns: PipelineStageColumnConfig[] }) {
+function PipelineKanbanSkeleton({
+  columns,
+}: {
+  columns: PipelineStageColumnConfig[];
+}) {
   return (
     <div
-      className="scrollbar-thin scrollbar-rounded -mx-3 flex h-[calc(100dvh-13rem)] min-h-[32rem] w-full max-w-full min-w-0 gap-4 overflow-x-auto overflow-y-hidden px-3 pb-4"
+      className="scrollbar-thin scrollbar-rounded -mx-3 flex h-[calc(100dvh-11rem)] min-h-[36rem] w-full max-w-full min-w-0 gap-4 overflow-x-auto overflow-y-hidden px-3 pb-4"
       aria-busy="true"
       aria-live="polite"
       aria-label="Cargando datos del pipeline"
@@ -758,9 +904,12 @@ function PipelineKanbanSkeleton({ columns }: { columns: PipelineStageColumnConfi
       {columns.map((col) => (
         <div
           key={col.id}
-          className="flex h-full min-h-0 min-w-[260px] flex-1 flex-col"
+          className="flex h-full min-h-0 min-w-[300px] flex-1 flex-col"
         >
-          <div className="h-1.5 rounded-t-[16px] opacity-70" style={{ backgroundColor: col.accentColor }} />
+          <div
+            className="h-1.5 rounded-t-[16px] opacity-70"
+            style={{ backgroundColor: col.accentColor }}
+          />
           <div className="flex items-center justify-between gap-3 rounded-t-none border-x border-t border-border bg-[var(--pipeline-kanban-column-header)] px-4 py-3.5">
             <div className="flex min-w-0 flex-1 items-center gap-2.5">
               <Skeleton className="h-5 max-w-[9rem] flex-1" />
@@ -770,7 +919,10 @@ function PipelineKanbanSkeleton({ columns }: { columns: PipelineStageColumnConfi
           </div>
           <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden rounded-b-[16px] border-x border-b border-border bg-muted/30 p-3">
             {Array.from({ length: 4 }, (_, i) => (
-              <Skeleton key={i} className="h-28 w-full shrink-0 rounded-[14px] bg-white" />
+              <Skeleton
+                key={i}
+                className="h-32 w-full shrink-0 rounded-[14px] bg-white"
+              />
             ))}
           </div>
         </div>
@@ -788,6 +940,7 @@ const KanbanColumn = memo(function KanbanColumn({
 }: KanbanColumnProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const { setNodeRef } = useDroppable({ id: column.id });
+  const [collapsed, setCollapsed] = useState(false);
 
   const setScrollAndDropRef = useCallback(
     (node: HTMLDivElement | null) => {
@@ -812,95 +965,153 @@ const KanbanColumn = memo(function KanbanColumn({
   });
 
   return (
-    <div className="flex h-full min-h-0 min-w-[260px] flex-1 flex-col rounded-[16px] border border-border bg-card shadow-[0_2px_12px_rgba(15,23,42,0.06)]">
-      <div className="h-1.5 rounded-t-[16px]" style={{ backgroundColor: accentColor }} />
-
-      <div className="flex items-center justify-between gap-3 px-4 py-3.5">
-        <div className="flex min-w-0 flex-1 items-center gap-2.5">
-          <h3 className="min-w-0 truncate text-sm font-semibold text-foreground">{column.title}</h3>
-          <span className="flex size-6 items-center justify-center rounded-full bg-muted text-[11px] font-bold text-muted-foreground tabular-nums">
-            {items.length}
-          </span>
-        </div>
-        <span className="shrink-0 text-xs font-semibold text-muted-foreground">
-          {formatCurrencyShort(column.totalValue)}
-        </span>
+    <div
+      className={cn(
+        "flex h-full min-h-0 flex-col rounded-[16px] border border-border/30 bg-white/20 shadow-[0_2px_12px_rgba(15,23,42,0.04)] transition-all duration-200",
+        collapsed ? "w-14" : "min-w-[300px] flex-1",
+      )}
+    >
+      <div
+        className={cn(
+          "cursor-pointer select-none",
+          collapsed
+            ? "flex flex-col items-center gap-2 px-2 py-3"
+            : "flex items-center justify-between gap-2 px-3 py-2.5",
+        )}
+        onClick={() => setCollapsed(!collapsed)}
+      >
+        {collapsed ? (
+          <>
+            <div
+              className="h-2.5 w-2.5 shrink-0 rounded-full"
+              style={{ backgroundColor: accentColor }}
+            />
+            <span className="text-[13px] font-bold text-muted-foreground tabular-nums [writing-mode:vertical-lr] tracking-widest">
+              {column.title}
+            </span>
+            <span className="flex size-5 items-center justify-center rounded-full bg-muted text-[10px] font-bold text-muted-foreground tabular-nums">
+              {items.length}
+            </span>
+            <ChevronLeft className="size-4 text-muted-foreground" />
+          </>
+        ) : (
+          <>
+            <div className="flex min-w-0 flex-1 items-center gap-2.5">
+              <div
+                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                style={{ backgroundColor: accentColor }}
+              />
+              <h3 className="min-w-0 truncate text-sm font-semibold text-foreground">
+                {column.title}
+              </h3>
+              <span className="flex size-5 items-center justify-center rounded-full bg-muted text-[10px] font-bold text-muted-foreground tabular-nums">
+                {items.length}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="shrink-0 text-[13px] font-semibold text-muted-foreground">
+                {formatCurrencyShort(column.totalValue)}
+              </span>
+              <ChevronLeft className="size-4 text-muted-foreground" />
+            </div>
+          </>
+        )}
       </div>
 
-      <div
-        ref={setScrollAndDropRef}
-        className="scrollbar-thin flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto rounded-b-[16px] bg-muted/30 px-3 pb-3 pt-1"
-      >
-        {showDropPlaceholder && <ColumnDropSlot accentColor={accentColor} />}
+      {!collapsed && <div className="border-t border-[#d0d5dd]/60 mx-3 mb-2" />}
 
-        {items.length === 0 && !showDropPlaceholder ? (
-          <div className="flex flex-1 items-center justify-center rounded-md border border-dashed py-8 text-xs text-muted-foreground">
-            Sin oportunidades
-          </div>
-        ) : opportunities.length > 0 ? (
-          useVirtual ? (
-            <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
+      {!collapsed && (
+        <div
+          ref={setScrollAndDropRef}
+          className="scrollbar-thin flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto rounded-b-[16px] px-2 pb-2 pt-0.5"
+        >
+          {showDropPlaceholder && <ColumnDropSlot accentColor={accentColor} />}
+
+          {items.length === 0 && !showDropPlaceholder ? (
+            <div className="flex flex-1 items-center justify-center rounded-md border border-dashed border-border/30 py-8 text-[13px] text-muted-foreground">
+              Sin oportunidades
+            </div>
+          ) : opportunities.length > 0 ? (
+            useVirtual ? (
+              <div
+                className="relative w-full"
+                style={{ height: virtualizer.getTotalSize() }}
+              >
+                {virtualizer.getVirtualItems().map((v) => {
+                  const opp = opportunities[v.index];
+                  if (!opp) return null;
+                  return (
+                    <div
+                      key={opp.id}
+                      data-index={v.index}
+                      ref={virtualizer.measureElement}
+                      className="absolute left-0 top-0 w-full"
+                      style={{ transform: `translateY(${v.start}px)` }}
+                    >
+                      <PipelineOppCard
+                        opportunity={opp}
+                        accentColor={accentColor}
+                        onCardClick={
+                          onCardClick as unknown as (opp: Opportunity) => void
+                        }
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              opportunities.map((opp) => (
+                <PipelineOppCard
+                  key={opp.id}
+                  opportunity={opp}
+                  accentColor={accentColor}
+                  onCardClick={
+                    onCardClick as unknown as (opp: Opportunity) => void
+                  }
+                />
+              ))
+            )
+          ) : useVirtual ? (
+            <div
+              className="relative w-full"
+              style={{ height: virtualizer.getTotalSize() }}
+            >
               {virtualizer.getVirtualItems().map((v) => {
-                const opp = opportunities[v.index];
-                if (!opp) return null;
+                const contact = contacts[v.index];
+                if (!contact) return null;
                 return (
                   <div
-                    key={opp.id}
+                    key={contact.id}
                     data-index={v.index}
                     ref={virtualizer.measureElement}
                     className="absolute left-0 top-0 w-full"
                     style={{ transform: `translateY(${v.start}px)` }}
                   >
-                    <PipelineOppCard
-                      opportunity={opp}
-                      onCardClick={onCardClick as unknown as (opp: Opportunity) => void}
+                    <PipelineLeadCard
+                      lead={contact}
+                      onCardClick={
+                        onCardClick as unknown as (contact: Contact) => void
+                      }
+                      pipelineOpportunity={pipelineOpportunityFor?.(contact.id)}
                     />
                   </div>
                 );
               })}
             </div>
           ) : (
-            opportunities.map((opp) => (
-              <PipelineOppCard
-                key={opp.id}
-                opportunity={opp}
-                onCardClick={onCardClick as unknown as (opp: Opportunity) => void}
+            contacts.map((contact) => (
+              <PipelineLeadCard
+                key={contact.id}
+                lead={contact}
+                onCardClick={
+                  onCardClick as unknown as (contact: Contact) => void
+                }
+                pipelineOpportunity={pipelineOpportunityFor?.(contact.id)}
               />
             ))
-          )
-        ) : useVirtual ? (
-          <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
-            {virtualizer.getVirtualItems().map((v) => {
-              const contact = contacts[v.index];
-              if (!contact) return null;
-              return (
-                <div
-                  key={contact.id}
-                  data-index={v.index}
-                  ref={virtualizer.measureElement}
-                  className="absolute left-0 top-0 w-full"
-                  style={{ transform: `translateY(${v.start}px)` }}
-                >
-                  <PipelineLeadCard
-                    lead={contact}
-                    onCardClick={onCardClick as unknown as (contact: Contact) => void}
-                    pipelineOpportunity={pipelineOpportunityFor?.(contact.id)}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          contacts.map((contact) => (
-            <PipelineLeadCard
-              key={contact.id}
-              lead={contact}
-              onCardClick={onCardClick as unknown as (contact: Contact) => void}
-              pipelineOpportunity={pipelineOpportunityFor?.(contact.id)}
-            />
-          ))
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 });
@@ -912,7 +1123,7 @@ interface PipelineFilters {
   etapas: Etapa[];
 }
 
-const emptyFilters: PipelineFilters = { assignedTo: '', etapas: [] };
+const emptyFilters: PipelineFilters = { assignedTo: "", etapas: [] };
 
 /** Fusiona PATCH de detalle en la fila de lista (evita `contactListAll` tras cada movimiento). */
 function mergeListRowFromContactDetail(
@@ -930,7 +1141,9 @@ function mergeListRowFromContactDetail(
 }
 
 /** Primera oportunidad de la lista API por contacto (orden de `opportunityListAll`). */
-function buildOpportunityByContactId(rows: ApiOpportunityListRow[]): Map<string, Opportunity> {
+function buildOpportunityByContactId(
+  rows: ApiOpportunityListRow[],
+): Map<string, Opportunity> {
   const map = new Map<string, Opportunity>();
   for (const row of rows) {
     const o = mapApiOpportunityToOpportunity(row);
@@ -946,7 +1159,7 @@ export default function Pipeline() {
   const navigate = useNavigate();
   const { hasPermission } = usePermissions();
   const currentUserId = useAppStore((s) => s.currentUser.id);
-  const canSeeAllAdvisors = hasPermission('equipo.datos_completos');
+  const canSeeAllAdvisors = hasPermission("equipo.datos_completos");
   const { activeAdvisors } = useUsers();
   const bundle = useCrmConfigStore((s) => s.bundle);
   const setBundle = useCrmConfigStore((s) => s.setBundle);
@@ -969,7 +1182,9 @@ export default function Pipeline() {
   /** Solo la primera carga: refetch tras crear oportunidad no vuelve a tapar el tablero. */
   const [initialPipelineLoad, setInitialPipelineLoad] = useState(true);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [dropTargetColumnId, setDropTargetColumnId] = useState<Etapa | null>(null);
+  const [dropTargetColumnId, setDropTargetColumnId] = useState<Etapa | null>(
+    null,
+  );
 
   useEffect(() => {
     if (!useOpportunityCacheStore.getState().isStale()) {
@@ -977,11 +1192,15 @@ export default function Pipeline() {
       setInitialPipelineLoad(false);
       return;
     }
-    useOpportunityCacheStore.getState().load().then((list) => {
-      setOppsApiRows(list);
-    }).finally(() => {
-      setInitialPipelineLoad(false);
-    });
+    useOpportunityCacheStore
+      .getState()
+      .load()
+      .then((list) => {
+        setOppsApiRows(list);
+      })
+      .finally(() => {
+        setInitialPipelineLoad(false);
+      });
   }, []);
 
   const reloadFromCache = useCallback(async () => {
@@ -1010,33 +1229,38 @@ export default function Pipeline() {
   );
 
   const displayColumns = useMemo(() => {
-    const oppsOnly = mergePipelineColumnsFromOpportunities(catalogStageColumns, allOpportunities);
+    const oppsOnly = mergePipelineColumnsFromOpportunities(
+      catalogStageColumns,
+      allOpportunities,
+    );
     return oppsOnly;
   }, [catalogStageColumns, allOpportunities]);
 
   const [newOpportunityOpen, setNewOpportunityOpen] = useState(false);
 
-  async function handleCreateOpportunityFromPipeline(data: NewOpportunityFormValues) {
+  async function handleCreateOpportunityFromPipeline(
+    data: NewOpportunityFormValues,
+  ) {
     const body = buildOpportunityCreateBody(data);
     try {
-      await api('/opportunities', {
-        method: 'POST',
+      await api("/opportunities", {
+        method: "POST",
         body: JSON.stringify(body),
       });
       await reloadFromCache();
       toast.success(`Oportunidad "${data.title.trim()}" creada exitosamente`);
     } catch (e) {
       toast.error(
-        e instanceof Error ? e.message : 'No se pudo crear la oportunidad',
+        e instanceof Error ? e.message : "No se pudo crear la oportunidad",
       );
       throw e;
     }
   }
   const [filters, setFilters] = useState<PipelineFilters>(emptyFilters);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    if (!canSeeAllAdvisors && filters.assignedTo === '') {
+    if (!canSeeAllAdvisors && filters.assignedTo === "") {
       setFilters((f) => ({ ...f, assignedTo: currentUserId }));
     }
   }, [canSeeAllAdvisors, currentUserId, filters.assignedTo]);
@@ -1045,7 +1269,10 @@ export default function Pipeline() {
   const [changeEtapaOpen, setChangeEtapaOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
 
-  async function applyOppEtapaUpdate(oppId: string, etapa: Etapa): Promise<void> {
+  async function applyOppEtapaUpdate(
+    oppId: string,
+    etapa: Etapa,
+  ): Promise<void> {
     let previousEtapa: string | undefined;
     let hadRow = false;
     setOppsApiRows((prev) => {
@@ -1071,15 +1298,20 @@ export default function Pipeline() {
     } catch (e) {
       if (hadRow && previousEtapa !== undefined) {
         setOppsApiRows((prev) =>
-          prev.map((r) => (r.id === oppId ? { ...r, etapa: previousEtapa! } : r)),
+          prev.map((r) =>
+            r.id === oppId ? { ...r, etapa: previousEtapa! } : r,
+          ),
         );
       }
-      toast.error(e instanceof Error ? e.message : 'Error al actualizar etapa');
+      toast.error(e instanceof Error ? e.message : "Error al actualizar etapa");
       throw e;
     }
   }
 
-  async function applyOppAssignUpdate(oppId: string, assignedTo: string): Promise<void> {
+  async function applyOppAssignUpdate(
+    oppId: string,
+    assignedTo: string,
+  ): Promise<void> {
     let previousAssigned: string | undefined;
     let hadRow = false;
     setOppsApiRows((prev) => {
@@ -1099,18 +1331,23 @@ export default function Pipeline() {
     } catch (e) {
       if (hadRow && previousAssigned !== undefined) {
         setOppsApiRows((prev) =>
-          prev.map((r) => (r.id === oppId ? { ...r, assignedTo: previousAssigned } : r)),
+          prev.map((r) =>
+            r.id === oppId ? { ...r, assignedTo: previousAssigned } : r,
+          ),
         );
       }
-      toast.error(e instanceof Error ? e.message : 'Error al asignar');
+      toast.error(e instanceof Error ? e.message : "Error al asignar");
       throw e;
     }
   }
 
-  async function applyEtapaUpdate(contactId: string, etapa: Etapa): Promise<void> {
+  async function applyEtapaUpdate(
+    contactId: string,
+    etapa: Etapa,
+  ): Promise<void> {
     if (!isLikelyContactCuid(contactId)) {
-      toast.error('Solo se puede actualizar la etapa de contactos guardados');
-      throw new Error('INVALID_CONTACT_ID');
+      toast.error("Solo se puede actualizar la etapa de contactos guardados");
+      throw new Error("INVALID_CONTACT_ID");
     }
 
     let previousEtapa: string | undefined;
@@ -1138,22 +1375,27 @@ export default function Pipeline() {
     } catch (e) {
       if (hadRow && previousEtapa !== undefined) {
         setApiRows((prev) =>
-          prev.map((r) => (r.id === contactId ? { ...r, etapa: previousEtapa! } : r)),
+          prev.map((r) =>
+            r.id === contactId ? { ...r, etapa: previousEtapa! } : r,
+          ),
         );
       }
-      toast.error(e instanceof Error ? e.message : 'Error al actualizar etapa');
+      toast.error(e instanceof Error ? e.message : "Error al actualizar etapa");
       throw e;
     }
   }
 
-  async function applyAssignUpdate(contactId: string, assignedTo: string): Promise<void> {
+  async function applyAssignUpdate(
+    contactId: string,
+    assignedTo: string,
+  ): Promise<void> {
     if (!isLikelyContactCuid(contactId)) {
-      toast.error('Solo se puede asignar contactos guardados');
-      throw new Error('INVALID_CONTACT_ID');
+      toast.error("Solo se puede asignar contactos guardados");
+      throw new Error("INVALID_CONTACT_ID");
     }
 
     let previousAssigned: string | null | undefined;
-    let previousUser: ApiContactListRow['user'];
+    let previousUser: ApiContactListRow["user"];
     let hadRow = false;
     setApiRows((prev) => {
       const cur = prev.find((r) => r.id === contactId);
@@ -1190,7 +1432,7 @@ export default function Pipeline() {
           ),
         );
       }
-      toast.error(e instanceof Error ? e.message : 'Error al asignar');
+      toast.error(e instanceof Error ? e.message : "Error al asignar");
       throw e;
     }
   }
@@ -1199,29 +1441,39 @@ export default function Pipeline() {
     ? Boolean(filters.assignedTo)
     : false;
   const activeFilterCount =
-    (advisorFilterIsActive ? 1 : 0) +
-    (filters.etapas.length > 0 ? 1 : 0);
+    (advisorFilterIsActive ? 1 : 0) + (filters.etapas.length > 0 ? 1 : 0);
 
   const filteredOpportunities = useMemo(() => {
     const term = searchTerm.toLowerCase();
     return allOpportunities.filter((o) => {
-      if (term && !o.title.toLowerCase().includes(term) &&
-          !o.clientName?.toLowerCase().includes(term) &&
-          !o.contactName?.toLowerCase().includes(term)) return false;
-      if (filters.assignedTo && o.assignedTo !== filters.assignedTo) return false;
-      if (filters.etapas.length > 0 && !filters.etapas.includes(o.etapa)) return false;
+      if (
+        term &&
+        !o.title.toLowerCase().includes(term) &&
+        !o.clientName?.toLowerCase().includes(term) &&
+        !o.contactName?.toLowerCase().includes(term)
+      )
+        return false;
+      if (filters.assignedTo && o.assignedTo !== filters.assignedTo)
+        return false;
+      if (filters.etapas.length > 0 && !filters.etapas.includes(o.etapa))
+        return false;
       return true;
     });
   }, [allOpportunities, filters, searchTerm]);
 
   const pipeline = useMemo(() => {
-    const all = buildPipelineFromOpportunities(filteredOpportunities, displayColumns);
-    if (filters.etapas.length > 0) return all.filter((col) => filters.etapas.includes(col.id));
+    const all = buildPipelineFromOpportunities(
+      filteredOpportunities,
+      displayColumns,
+    );
+    if (filters.etapas.length > 0)
+      return all.filter((col) => filters.etapas.includes(col.id));
     return all;
   }, [filteredOpportunities, filters.etapas, displayColumns]);
 
   const activeOpp = useMemo(
-    () => (activeId ? allOpportunities.find((o) => o.id === activeId) : undefined),
+    () =>
+      activeId ? allOpportunities.find((o) => o.id === activeId) : undefined,
     [activeId, allOpportunities],
   );
 
@@ -1253,7 +1505,7 @@ export default function Pipeline() {
     }),
   );
 
-const handlePipelineCardClick = useCallback((o: Opportunity) => {
+  const handlePipelineCardClick = useCallback((o: Opportunity) => {
     setSelectedOpp(o);
   }, []);
 
@@ -1322,198 +1574,238 @@ const handlePipelineCardClick = useCallback((o: Opportunity) => {
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col gap-5">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Pipeline Comercial</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            Arrastra las tarjetas entre columnas para cambiar la etapa de la oportunidad.
-          </p>
+      {/* Filter bar */}
+      <div className="flex flex-wrap items-center gap-2">
+
+        {/* Search */}
+        <div className="relative w-full min-w-0 max-w-[400px]">
+          <Search className="absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-[#8a9aab]" />
+          <Input
+            placeholder="Buscar..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="!h-11 rounded-lg border border-[#e1e7ee] bg-white/60 pl-10 text-[15px] text-black placeholder:text-[#8a9aab] transition-colors hover:border-primary focus-visible:ring-1 shadow-none"
+          />
         </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          <span className="text-sm font-medium text-muted-foreground">
-            Valor total:{' '}
-            {initialPipelineLoad ? (
-              <Skeleton className="inline-block h-4 w-[7.5rem] align-middle" />
-            ) : (
-              <span className="text-foreground">{formatCurrencyShort(totalPipelineValue)}</span>
-            )}
-          </span>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className={cn('bg-white dark:bg-gray-900', activeFilterCount > 0 && 'border-primary text-primary')}>
-                <Filter className="size-4" />
-                Filtros
-                {activeFilterCount > 0 && (
-                  <Badge className="ml-1 size-5 justify-center rounded-full p-0 text-[10px]">
-                    {activeFilterCount}
-                  </Badge>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-72">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-semibold">Filtros</h4>
-                  {activeFilterCount > 0 && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-auto px-2 py-1 text-xs"
-                      onClick={() =>
-                        setFilters(
-                          canSeeAllAdvisors
-                            ? emptyFilters
-                            : { ...emptyFilters, assignedTo: currentUserId },
-                        )
-                      }
-                    >
-                      <X className="mr-1 size-3" />
-                      Limpiar
-                    </Button>
-                  )}
-                </div>
 
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="h-8 pl-8 text-xs bg-white dark:bg-gray-900"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-xs">Asesor</Label>
-                  <Select
-                    value={filters.assignedTo}
-                    onValueChange={(v) =>
-                      setFilters((f) => ({
-                        ...f,
-                        assignedTo: v === '_all' ? '' : v,
-                      }))
-                    }
-                    disabled={!canSeeAllAdvisors}
-                  >
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="Todos" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="_all">Todos</SelectItem>
-                      {activeAdvisors.map((u) => (
-                        <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs">Etapa</Label>
-                    {filters.etapas.length > 0 && (
-                      <button className="text-[10px] text-muted-foreground hover:text-foreground" onClick={() => setFilters((f) => ({ ...f, etapas: [] }))}>
-                        Deseleccionar
-                      </button>
-                    )}
-                  </div>
-                  <div className="max-h-40 space-y-1 overflow-y-auto">
-                    {displayColumns.map((col) => (
-                      <label key={col.id} className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-xs hover:bg-muted">
-                        <Checkbox
-                          checked={filters.etapas.includes(col.id)}
-                          onCheckedChange={(checked) => {
-                            setFilters((f) => ({
-                              ...f,
-                              etapas: checked
-                                ? [...f.etapas, col.id]
-                                : f.etapas.filter((e) => e !== col.id),
-                            }));
-                          }}
-                        />
+        {/* Etapa */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              className={`!h-11 w-[190px] rounded-lg border border-[#e1e7ee] bg-white/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate ${filters.etapas.length > 0 ? "text-black" : "text-[#8a9aab]"}`}
+            >
+              <ChartSquareIcon className="size-5 shrink-0 text-[#8a9aab]" />
+              <span className="truncate flex-1">
+                {filters.etapas.length === 0
+                  ? "Etapa"
+                  : filters.etapas
+                      .map(
+                        (k) => etapaLabels[k as keyof typeof etapaLabels] || k,
+                      )
+                      .join(", ")}
+              </span>
+              <ChevronDown className="size-3.5 shrink-0 opacity-50" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[200px] p-0" align="start">
+            <Command>
+              <CommandList className="max-h-[260px] overflow-y-auto">
+                <CommandGroup>
+                  {displayColumns.map((col) => {
+                    const selected = filters.etapas.includes(col.id);
+                    return (
+                      <CommandItem
+                        key={col.id}
+                        onSelect={() => {
+                          setFilters((f) => ({
+                            ...f,
+                            etapas: selected
+                              ? f.etapas.filter((e) => e !== col.id)
+                              : [...f.etapas, col.id],
+                          }));
+                        }}
+                      >
+                        <span className="[&_svg]:!text-primary-foreground">
+                          <Checkbox
+                            checked={selected}
+                            className="mr-2 h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
+                          />
+                        </span>
                         <span
                           className="size-2 shrink-0 rounded-full"
                           style={{ backgroundColor: col.accentColor }}
                         />
-                        {col.title}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
-          <Button size="sm" onClick={() => setNewOpportunityOpen(true)}>
-            <Plus className="size-4" />
-            Nueva Oportunidad
+                        <span>{col.title}</span>
+                      </CommandItem>
+                    );
+                  })}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+
+        {/* Asesor */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              className={`!h-11 w-[190px] rounded-lg border border-[#e1e7ee] bg-white/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate disabled:opacity-50 disabled:cursor-not-allowed ${filters.assignedTo ? "text-black" : "text-[#8a9aab]"}`}
+              disabled={!canSeeAllAdvisors}
+            >
+              <UserHandIcon className="size-5 shrink-0 text-[#8a9aab]" />
+              <span className="truncate flex-1">
+                {filters.assignedTo
+                  ? activeAdvisors.find((u) => u.id === filters.assignedTo)
+                      ?.name || "Asesor"
+                  : "Asesor"}
+              </span>
+              <ChevronDown className="size-3.5 shrink-0 opacity-50" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[180px] p-0" align="start">
+            <Command>
+              <CommandList className="max-h-[260px] overflow-y-auto">
+                <CommandGroup>
+                  <CommandItem
+                    onSelect={() =>
+                      setFilters((f) => ({ ...f, assignedTo: "" }))
+                    }
+                  >
+                    <Checkbox
+                      checked={!filters.assignedTo}
+                      className="mr-2 h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
+                    />
+                    <span>Todos</span>
+                  </CommandItem>
+                  {activeAdvisors.map((u) => {
+                    const selected = filters.assignedTo === u.id;
+                    return (
+                      <CommandItem
+                        key={u.id}
+                        onSelect={() =>
+                          setFilters((f) => ({
+                            ...f,
+                            assignedTo: selected ? "" : u.id,
+                          }))
+                        }
+                      >
+                        <span className="[&_svg]:!text-primary-foreground">
+                          <Checkbox
+                            checked={selected}
+                            className="mr-2 h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
+                          />
+                        </span>
+                        <span>{u.name}</span>
+                      </CommandItem>
+                    );
+                  })}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+
+        {/* Limpiar */}
+        {(activeFilterCount > 0 || searchTerm) && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setSearchTerm("");
+              setFilters(
+                canSeeAllAdvisors
+                  ? emptyFilters
+                  : { ...emptyFilters, assignedTo: currentUserId },
+              );
+            }}
+          >
+            <X className="size-4" /> Limpiar
           </Button>
-          <div className="hidden md:flex items-center rounded-lg border bg-card p-0.5 shadow-sm">
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => navigate('/opportunities')}
-              className="rounded-md text-muted-foreground hover:text-foreground"
-              title="Vista lista"
+        )}
+
+        {/* Toggle + Nueva */}
+        <div className="ml-auto hidden sm:flex items-center gap-2">
+          <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+            {initialPipelineLoad ? (
+              <Skeleton className="inline-block h-4 w-[7.5rem] align-middle" />
+            ) : (
+              <span className="text-foreground">
+                {formatCurrencyShort(totalPipelineValue)}
+              </span>
+            )}
+          </span>
+          <div className="flex items-center rounded-lg border border-[#e1e7ee] bg-white/60 p-0.5">
+            <button
+              className="rounded-md px-3 py-1.5 text-sm font-medium text-[#647789] hover:text-[#1f2933] transition-colors cursor-pointer"
+              onClick={() => navigate("/opportunities")}
             >
-              <List className="size-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="rounded-md bg-primary/10 text-primary hover:bg-primary/15"
-              title="Vista pipeline"
-            >
-              <Kanban className="size-4" />
-            </Button>
+              Lista
+            </button>
+            <button className="rounded-md px-3 py-1.5 text-sm font-medium bg-[#e8f5e9] text-[#13944C]">
+              Pipeline
+            </button>
           </div>
+          <Button
+            onClick={() => setNewOpportunityOpen(true)}
+            className="h-11 w-[120px] text-base font-normal shadow-md"
+          >
+            <Plus /> Nueva
+          </Button>
         </div>
       </div>
 
-      {initialPipelineLoad ? (
-        <PipelineKanbanSkeleton columns={displayColumns} />
-      ) : (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={pipelineCollisionDetection}
-          autoScroll={{ threshold: { x: 0.16, y: 0.12 } }}
-          onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
-          onDragEnd={handleDragEnd}
-          onDragCancel={handleDragCancel}
-        >
-          <div className="scrollbar-thin scrollbar-rounded -mx-3 flex h-[calc(100dvh-13rem)] min-h-[32rem] w-full max-w-full min-w-0 gap-4 overflow-x-auto overflow-y-hidden px-3 pb-4">
-            {pipeline.map((column) => {
-              const colConfig = displayColumns.find((c) => c.id === column.id)!;
-              const sourceCol = activeId ? findColumnByOppId(activeId) : undefined;
-              const showSlot =
-                Boolean(activeId) &&
-                dropTargetColumnId === column.id &&
-                sourceCol !== undefined &&
-                dropTargetColumnId !== sourceCol;
-              return (
-                <KanbanColumn
-                  key={column.id}
-                  column={column}
-                  accentColor={colConfig.accentColor}
-                  onCardClick={handlePipelineCardClick as unknown as (opp: Opportunity) => void}
-                  showDropPlaceholder={showSlot}
-                />
-              );
-            })}
-          </div>
+      <div className="min-h-0">
+        {initialPipelineLoad ? (
+          <PipelineKanbanSkeleton columns={displayColumns} />
+        ) : (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={pipelineCollisionDetection}
+            autoScroll={{ threshold: { x: 0.16, y: 0.12 } }}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
+            onDragCancel={handleDragCancel}
+          >
+            <div className="scrollbar-thin scrollbar-rounded -mx-3 flex h-[calc(100dvh-11rem)] min-h-[36rem] w-full max-w-full min-w-0 gap-4 overflow-x-auto overflow-y-hidden px-3 pb-4">
+              {pipeline.map((column) => {
+                const colConfig = displayColumns.find(
+                  (c) => c.id === column.id,
+                )!;
+                const sourceCol = activeId
+                  ? findColumnByOppId(activeId)
+                  : undefined;
+                const showSlot =
+                  Boolean(activeId) &&
+                  dropTargetColumnId === column.id &&
+                  sourceCol !== undefined &&
+                  dropTargetColumnId !== sourceCol;
+                return (
+                  <KanbanColumn
+                    key={column.id}
+                    column={column}
+                    accentColor={colConfig.accentColor}
+                    onCardClick={
+                      handlePipelineCardClick as unknown as (
+                        opp: Opportunity,
+                      ) => void
+                    }
+                    showDropPlaceholder={showSlot}
+                  />
+                );
+              })}
+            </div>
 
-          <DragOverlay dropAnimation={null}>
-            {activeOpp ? (
-              <div className="w-[280px]">
-                <OpportunityCard
-                  opportunity={activeOpp}
-                  isDragging
-                  overlay
-                />
-              </div>
-            ) : null}
-          </DragOverlay>
-        </DndContext>
-      )}
+            <DragOverlay dropAnimation={null}>
+              {activeOpp ? (
+                <div className="w-[280px]">
+                  <OpportunityCard opportunity={activeOpp} isDragging overlay />
+                </div>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
+        )}
+      </div>
 
       <NewOpportunityFormDialog
         open={newOpportunityOpen}
@@ -1533,41 +1825,42 @@ const handlePipelineCardClick = useCallback((o: Opportunity) => {
         stageColumns={displayColumns}
       />
 
-      {selectedOpp && (() => {
-        const freshOpp = selectedOpp;
-        return (
-        <>
-          <ChangeEtapaDialog
-            open={changeEtapaOpen}
-            onOpenChange={setChangeEtapaOpen}
-            entityName={freshOpp.title}
-            currentEtapa={freshOpp.etapa}
-            onEtapaChange={(newEtapa) => {
-              void applyOppEtapaUpdate(freshOpp.id, newEtapa as Etapa)
-                .then(() => {
-                  setChangeEtapaOpen(false);
-                  toast.success('Etapa actualizada');
-                })
-                .catch(() => {});
-            }}
-          />
-          <AssignDialog
-            open={assignOpen}
-            onOpenChange={setAssignOpen}
-            entityName={freshOpp.title}
-            currentAssigneeId={freshOpp.assignedTo ?? ''}
-            onAssignChange={(newAssigneeId) => {
-              void applyOppAssignUpdate(freshOpp.id, newAssigneeId)
-                .then(() => {
-                  setAssignOpen(false);
-                  toast.success('Asesor asignado');
-                })
-                .catch(() => {});
-            }}
-          />
-        </>
-        );
-      })()}
+      {selectedOpp &&
+        (() => {
+          const freshOpp = selectedOpp;
+          return (
+            <>
+              <ChangeEtapaDialog
+                open={changeEtapaOpen}
+                onOpenChange={setChangeEtapaOpen}
+                entityName={freshOpp.title}
+                currentEtapa={freshOpp.etapa}
+                onEtapaChange={(newEtapa) => {
+                  void applyOppEtapaUpdate(freshOpp.id, newEtapa as Etapa)
+                    .then(() => {
+                      setChangeEtapaOpen(false);
+                      toast.success("Etapa actualizada");
+                    })
+                    .catch(() => {});
+                }}
+              />
+              <AssignDialog
+                open={assignOpen}
+                onOpenChange={setAssignOpen}
+                entityName={freshOpp.title}
+                currentAssigneeId={freshOpp.assignedTo ?? ""}
+                onAssignChange={(newAssigneeId) => {
+                  void applyOppAssignUpdate(freshOpp.id, newAssigneeId)
+                    .then(() => {
+                      setAssignOpen(false);
+                      toast.success("Asesor asignado");
+                    })
+                    .catch(() => {});
+                }}
+              />
+            </>
+          );
+        })()}
     </div>
   );
 }

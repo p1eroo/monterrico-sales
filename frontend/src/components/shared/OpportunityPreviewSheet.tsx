@@ -44,13 +44,6 @@ type OpportunityPreviewSheetProps = {
   onEdit: () => void;
 };
 
-const statusLabels: Record<string, string> = {
-  abierta: 'Abierta',
-  ganada: 'Ganada',
-  perdida: 'Perdida',
-  suspendida: 'Suspendida',
-};
-
 function PreviewRow({ icon: Icon, label, value }: { icon: typeof User; label: string; value: string }) {
   return (
     <div className="flex gap-3 py-2 text-sm">
@@ -158,7 +151,6 @@ export function OpportunityPreviewSheet({
     display?.priority && priorityLabels[display.priority]
       ? priorityLabels[display.priority]
       : display?.priority ?? '—';
-  const statusLabel = display ? statusLabels[display.status] ?? display.status : '—';
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -196,7 +188,6 @@ export function OpportunityPreviewSheet({
             label="Asesor"
             value={display?.assignedToName?.trim() ? display.assignedToName : 'Sin asignar'}
           />
-          <PreviewRow icon={Target} label="Estado" value={statusLabel} />
           <PreviewRow
             icon={CalendarDays}
             label="Fecha de creación"

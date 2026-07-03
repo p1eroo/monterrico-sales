@@ -1,7 +1,9 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Readable } from 'stream';
 import {
   DeleteObjectCommand,
+  GetObjectCommand,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
@@ -65,6 +67,25 @@ export class S3StorageService implements OnModuleInit {
     );
   }
 
+  async putObjectToBucket(
+    bucket: string,
+    key: string,
+    body: Buffer,
+    contentType: string,
+  ): Promise<void> {
+    if (!this.configured) {
+      throw new Error('Almacenamiento S3/MinIO no configurado');
+    }
+    await this.client.send(
+      new PutObjectCommand({
+        Bucket: bucket,
+        Key: key,
+        Body: body,
+        ContentType: contentType || 'application/octet-stream',
+      }),
+    );
+  }
+
   async deleteObject(key: string): Promise<void> {
     if (!this.configured) {
       return;
@@ -75,6 +96,41 @@ export class S3StorageService implements OnModuleInit {
         Key: key,
       }),
     );
+  }
+
+  async getObject(key: string): Promise<{ body: Readable; contentType: string } | null> {
+    if (!this.configured) return null;
+    try {
+      const result = await this.client.send(
+        new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+      );
+      if (!result.Body) return null;
+      return {
+        body: result.Body as Readable,
+        contentType: result.ContentType || 'image/png',
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  async getObjectFromBucket(
+    bucket: string,
+    key: string,
+  ): Promise<{ body: Readable; contentType: string } | null> {
+    if (!this.configured) return null;
+    try {
+      const result = await this.client.send(
+        new GetObjectCommand({ Bucket: bucket, Key: key }),
+      );
+      if (!result.Body) return null;
+      return {
+        body: result.Body as Readable,
+        contentType: result.ContentType || 'image/png',
+      };
+    } catch {
+      return null;
+    }
   }
 
   getClient(): S3Client {

@@ -49,6 +49,8 @@ import { ContactPreviewSheet } from "@/components/shared/ContactPreviewSheet";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { GhostTableSkeleton } from "@/components/shared/GhostTableSkeleton";
+import { GlassCard } from "@/components/shared/GlassCard";
 import { ImportInProgressDialog } from "@/components/shared/ImportInProgressDialog";
 import { Pagination } from "@/components/shared/Pagination";
 
@@ -57,6 +59,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -973,7 +976,7 @@ export default function ContactosPage() {
   }
 
   return (
-    <div className="bg-[#F3F4F6] pt-2">
+    <div>
       <ImportInProgressDialog
         open={importPreviewInProgress}
         title="Generando vista previa"
@@ -1134,11 +1137,7 @@ export default function ContactosPage() {
       <PageHeader
         title="Contactos"
         description="Gestiona y da seguimiento a tus prospectos de venta"
-        className="mb-6"
       >
-        <span className="mr-2 text-sm text-muted-foreground">
-          Total: {totalContacts}
-        </span>
         {hasPermission("contactos.eliminar") && selectedContacts.length > 0 && (
           <Button
             variant="destructive"
@@ -1159,10 +1158,10 @@ export default function ContactosPage() {
       </PageHeader>
 
       {/* Filter bar + Table + Pagination en una sola tarjeta */}
-      <div className="rounded-[14px] border border-border/40 bg-white/30 shadow-[0_4px_12px_-2px rgba(0,0,0,0.08)] overflow-hidden">
+      <GlassCard>
         {/* Filter bar */}
         <div className="flex min-w-0 flex-col gap-3 px-5 py-4 lg:flex-row lg:items-center">
-        <div className="relative w-full min-w-0 max-w-[580px]">
+        <div className="relative w-full min-w-0 max-w-[400px]">
           <Search className="absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-[#8a9aab]" />
           <Input
             placeholder="Buscar por nombre, empresa, email o teléfono..."
@@ -1275,7 +1274,7 @@ export default function ContactosPage() {
                   Filtros
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-[400px] p-3" align="end">
+              <PopoverContent className="w-[500px] p-3" align="end">
                 <div className="flex items-center gap-3">
                   <Popover>
                     <PopoverTrigger asChild>
@@ -1412,9 +1411,24 @@ export default function ContactosPage() {
         </div>
 
         {/* Content */}
-        {loading ? (
+        {loading && apiRows.length === 0 && pendingContacts.length === 0 ? (
           viewMode === "table" ? (
-            <p className="p-12 text-center text-sm text-[#52677a]">Cargando contactos…</p>
+            <GhostTableSkeleton
+              columns={[
+                { label: "", width: 44 },
+                { label: "Nombre", width: 280 },
+                { label: "Empresa", width: 200 },
+                { label: "Teléfono", width: 150, className: "hidden lg:table-cell" },
+                { label: "Email", width: 200, className: "hidden xl:table-cell" },
+                { label: "Fuente", width: 120, className: "hidden md:table-cell" },
+                { label: "C. Recuperado", width: 125, className: "hidden md:table-cell" },
+                { label: "Etapa", width: 140, className: "hidden md:table-cell" },
+                { label: "Asesor", width: 150, className: "hidden xl:table-cell" },
+                { label: "Fecha", width: 120, className: "hidden sm:table-cell" },
+                { label: "", width: 60 },
+              ]}
+              rows={10}
+            />
           ) : (
             <CrmEntityCardGridSkeleton
               count={8}
@@ -1470,7 +1484,7 @@ export default function ContactosPage() {
           </div>
         )}
 
-        {!loading && totalContacts > 0 && (
+        {totalContacts > 0 && (
           <div className="h-14 bg-white/30 px-5 flex items-center border-t border-dashed border-[#e8ecf0]">
             <Pagination
               page={page}
@@ -1485,7 +1499,7 @@ export default function ContactosPage() {
             />
           </div>
         )}
-      </div>
+      </GlassCard>
 
       <NewContactWizard
         open={newContactOpen}
@@ -1585,12 +1599,12 @@ function ContactsTable({
         id: "select",
         meta: { responsive: "" } as any,
         header: () => (
-          <div className="inline-flex items-center justify-center rounded-full p-1.5 transition-colors hover:bg-primary/10 pl-4">
+          <div className="inline-flex items-center justify-center rounded-full p-1.5 transition-colors hover:bg-primary/10 pl-2">
             <Checkbox checked={allSelected} onCheckedChange={onToggleSelectAll} className="h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded" />
           </div>
         ),
         cell: ({ row }) => (
-          <div className="inline-flex items-center justify-center rounded-full p-1.5 transition-colors hover:bg-primary/10 pl-4">
+          <div className="inline-flex items-center justify-center rounded-full p-1.5 transition-colors hover:bg-primary/10 pl-2">
             <Checkbox
               checked={selectedContacts.includes(row.original.id)}
               onCheckedChange={() => onToggleSelect(row.original.id)}
@@ -1598,7 +1612,8 @@ function ContactsTable({
             />
           </div>
         ),
-        size: 60,
+        size: 44,
+        maxSize: 44,
         enableSorting: false,
         enableResizing: false,
       },
@@ -1786,6 +1801,7 @@ function ContactsTable({
           </DropdownMenu>
         ),
         size: 60,
+        maxSize: 60,
         enableSorting: false,
         enableResizing: false,
       },
@@ -1823,6 +1839,8 @@ function ContactsTable({
                   className={cn(
                     "relative px-3 align-middle overflow-hidden",
                     header.column.getCanSort() && "cursor-pointer select-none hover:text-[#1f2933]",
+                    header.column.id === "select" && "pr-0",
+                    header.column.id === "nombre" && "pl-2",
                   )}
                   style={{ width: header.getSize() }}
                   onClick={header.column.getToggleSortingHandler()}
@@ -1871,7 +1889,11 @@ function ContactsTable({
                 {row.getVisibleCells().map((cell: any) => (
                   <td
                     key={cell.id}
-                    className="px-3 align-middle overflow-hidden"
+                    className={cn(
+                      "px-3 align-middle overflow-hidden",
+                      cell.column.id === "select" && "pr-0",
+                      cell.column.id === "nombre" && "pl-2",
+                    )}
                     style={{ width: cell.column.getSize() }}
                     onClick={
                       cell.column.id === "select" || cell.column.id === "actions"

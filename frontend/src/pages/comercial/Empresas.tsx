@@ -4,9 +4,18 @@ import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 import {
   Search, Building2, Users, Briefcase,
-  FileSpreadsheet, Upload, Download, Plus, List, Grid3X3, Loader2,
-  Eye, Pencil, Trash2, MoreHorizontal, Globe, Tag, User, MapPin,
+  FileSpreadsheet, Upload, Download, Plus, Loader2,
+  Eye, Pencil, Trash2, MoreVertical,
+  X, ChevronDown,
+  ChevronsUpDown, ChevronUp,
 } from 'lucide-react';
+import {
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+  type ColumnDef,
+  type SortingState,
+} from '@tanstack/react-table';
 import type { DateRange } from 'react-day-picker';
 import type { Etapa, CompanyRubro, CompanyTipo, Company, ContactSource } from '@/types';
 import { companyRubroLabels, companyTipoLabels, etapaLabels, contactSourceLabels } from '@/data/mock';
@@ -35,18 +44,30 @@ import { Card, CardContent } from '@/components/ui/card';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
-import { DateRangeFilterButton } from '@/components/ui/date-range-filter-button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  Command,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import { ChartSquareIcon } from '@/components/icons/ChartSquareIcon';
+import { CategorySolidIcon } from '@/components/icons/CategorySolidIcon';
+import { CalendarSvgIcon } from '@/components/icons/CalendarSvgIcon';
+import { GitForkIcon } from '@/components/icons/GitForkIcon';
+import { PaletteIcon } from '@/components/icons/PaletteIcon';
+import { UserHandIcon } from '@/components/icons/UserHandIcon';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { Calendar } from '@/components/ui/calendar';
 import { addCalendarDaysLocalIso } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
-import { api } from '@/lib/api';
+import { api, API_BASE } from '@/lib/api';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useCrmTeamAdvisorFilter } from '@/hooks/useCrmTeamAdvisorFilter';
 import {
@@ -82,25 +103,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Skeleton } from '@/components/ui/skeleton';
+import { GhostTableSkeleton } from '@/components/shared/GhostTableSkeleton';
+import { GlassCard } from '@/components/shared/GlassCard';
 import { useImportJobsStore } from '@/store/importJobsStore';
 import {
-  CrmDataTableSkeleton,
   CrmEntityCardGridSkeleton,
 } from '@/components/shared/CrmListPageSkeleton';
-
-const EMPRESAS_TABLE_SKELETON_COLUMNS = [
-  { label: 'Empresa', className: '', cellClassName: '' },
-  { label: 'Etapa', className: 'hidden md:table-cell' },
-  { label: 'Fuente', className: 'hidden lg:table-cell' },
-  { label: 'Rubro', className: 'hidden md:table-cell' },
-  { label: 'Tipo', className: 'hidden md:table-cell' },
-  { label: 'Recuperado', className: 'hidden lg:table-cell' },
-  { label: 'Asesor', className: 'hidden xl:table-cell' },
-  { label: 'Creación', className: '' },
-  { label: 'Contactos', className: 'text-center' },
-  { label: 'Última interacción', className: '' },
-  { label: '', className: 'w-10' },
-] as const;
+import plantillaIcon from '@/components/icons/file-new-svgrepo-com.svg';
+import importIcon from '@/components/icons/import-3-svgrepo-com.svg';
+import exportIcon from '@/components/icons/export-2-svgrepo-com.svg';
+import columnsIcon from '@/components/icons/columns-3-svgrepo-com.svg';
+import filterIcon from '@/components/icons/filter-svgrepo-com.svg';
 
 type EmpresaSummaryRow = CompanySummaryRow & { isLocalOnly?: boolean };
 
@@ -274,6 +288,26 @@ function importPreviewCell(v: string | undefined) {
   );
 }
 
+const logoCache = new Map<string, boolean>();
+
+function CompanyLogoImg({ companyId, isLocal }: { companyId: string; isLocal: boolean }) {
+  const [errored, setErrored] = useState(() => logoCache.get(companyId) === true);
+  if (isLocal || !isLikelyCompanyCuid(companyId) || errored) {
+    return <Building2 className="size-4 text-muted-foreground" />;
+  }
+  return (
+    <img
+      src={`${API_BASE}/companies/${companyId}/logo`}
+      alt=""
+      className="size-6 rounded object-contain"
+      onError={() => {
+        logoCache.set(companyId, true);
+        setErrored(true);
+      }}
+    />
+  );
+}
+
 const ITEMS_PER_PAGE = 25;
 
 export default function EmpresasPage() {
@@ -287,17 +321,31 @@ export default function EmpresasPage() {
 
   const [search, setSearch] = useState('');
   const [searchDebounced, setSearchDebounced] = useState('');
-  const [sourceFilter, setSourceFilter] = useState<string>('todos');
-  const [etapaFilter, setEtapaFilter] = useState<string>('todos');
-  const [rubroFilter, setRubroFilter] = useState<string>('todos');
-  const [tipoFilter, setTipoFilter] = useState<string>('todos');
-  const [advisorFilter, setAdvisorFilter] = useState<string>('todos');
+  const [sourceFilter, setSourceFilter] = useState<string[]>([]);
+  const [etapaFilter, setEtapaFilter] = useState<string[]>([]);
+  const [rubroFilter, setRubroFilter] = useState<string[]>([]);
+  const [tipoFilter, setTipoFilter] = useState<string[]>([]);
+  const [advisorFilter, setAdvisorFilter] = useState<string[]>([]);
   const [interactionRange, setInteractionRange] = useState<DateRange | undefined>();
+  const [draftRange, setDraftRange] = useState<DateRange | undefined>();
+  const [dateFilterOpen, setDateFilterOpen] = useState(false);
   const { canSeeAllAdvisors, currentUserId } = useCrmTeamAdvisorFilter(
     advisorFilter,
     setAdvisorFilter,
-    'todos',
   );
+  const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({
+    fuente: true,
+    rubro: true,
+    tipo: true,
+    recuperado: true,
+    asesor: true,
+    creacion: true,
+    contactos: true,
+    ultimaInteraccion: true,
+  });
+  const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
+  const [batchDeleteDialogOpen, setBatchDeleteDialogOpen] = useState(false);
+  const [batchDeleting, setBatchDeleting] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'cards'>(() => {
     if (typeof window !== 'undefined' && window.innerWidth < 768) return 'cards';
     return 'table';
@@ -366,11 +414,11 @@ export default function EmpresasPage() {
         page,
         limit: pageSize,
         search: searchDebounced || undefined,
-        etapa: etapaFilter === 'todos' ? undefined : etapaFilter,
-        fuente: sourceFilter === 'todos' ? undefined : sourceFilter,
-        assignedTo: advisorFilter === 'todos' ? undefined : advisorFilter,
-        rubro: rubroFilter === 'todos' ? undefined : rubroFilter,
-        tipo: tipoFilter === 'todos' ? undefined : tipoFilter,
+        etapa: etapaFilter.length > 0 ? etapaFilter.join(',') : undefined,
+        fuente: sourceFilter.length > 0 ? sourceFilter.join(',') : undefined,
+        assignedTo: advisorFilter.length > 0 ? advisorFilter.join(',') : undefined,
+        rubro: rubroFilter.length > 0 ? rubroFilter.join(',') : undefined,
+        tipo: tipoFilter.length > 0 ? tipoFilter.join(',') : undefined,
         lastInteraction: undefined,
         lastInteractionFrom: interactionFromIso,
         lastInteractionTo: interactionToIso,
@@ -424,10 +472,10 @@ export default function EmpresasPage() {
           : undefined;
       const { counts } = await companySummaryEtapaCounts({
         search: searchDebounced || undefined,
-        fuente: sourceFilter === 'todos' ? undefined : sourceFilter,
-        assignedTo: advisorFilter === 'todos' ? undefined : advisorFilter,
-        rubro: rubroFilter === 'todos' ? undefined : rubroFilter,
-        tipo: tipoFilter === 'todos' ? undefined : tipoFilter,
+        fuente: sourceFilter.length > 0 ? sourceFilter.join(',') : undefined,
+        assignedTo: advisorFilter.length > 0 ? advisorFilter.join(',') : undefined,
+        rubro: rubroFilter.length > 0 ? rubroFilter.join(',') : undefined,
+        tipo: tipoFilter.length > 0 ? tipoFilter.join(',') : undefined,
         lastInteraction: undefined,
         lastInteractionFrom: interactionFromIso,
         lastInteractionTo: interactionToIso,
@@ -456,17 +504,75 @@ export default function EmpresasPage() {
     void loadEtapaTabCounts();
   }, [companyImportCompletionTick, loadEtapaTabCounts, loadSummary]);
 
-  const filtersDefault =
-    !searchDebounced &&
-    sourceFilter === 'todos' &&
-    etapaFilter === 'todos' &&
-    rubroFilter === 'todos' &&
-    tipoFilter === 'todos' &&
-    !interactionRange?.from &&
-    !interactionRange?.to &&
-    (canSeeAllAdvisors
-      ? advisorFilter === 'todos'
-      : advisorFilter === currentUserId);
+  const advisorFilterIsActive = canSeeAllAdvisors
+    ? advisorFilter.length > 0
+    : false;
+  const hasActiveFilters =
+    etapaFilter.length > 0 ||
+    sourceFilter.length > 0 ||
+    rubroFilter.length > 0 ||
+    tipoFilter.length > 0 ||
+    advisorFilterIsActive ||
+    searchDebounced !== '';
+
+  const filtersDefault = !hasActiveFilters;
+
+  function clearFilters() {
+    setSearch('');
+    setSearchDebounced('');
+    setSourceFilter([]);
+    setEtapaFilter([]);
+    setRubroFilter([]);
+    setTipoFilter([]);
+    setAdvisorFilter(canSeeAllAdvisors ? [] : [currentUserId]);
+    setInteractionRange(undefined);
+    setPage(1);
+  }
+
+  function toggleSelectAll() {
+    if (selectedCompanies.length === displayRows.length) {
+      setSelectedCompanies([]);
+    } else {
+      setSelectedCompanies(displayRows.map((r) => r.id));
+    }
+  }
+
+  function toggleSelectCompany(id: string) {
+    setSelectedCompanies((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
+    );
+  }
+
+  async function handleBatchDelete() {
+    if (selectedCompanies.length === 0) return;
+    setBatchDeleting(true);
+    toast.loading('Eliminando…', { id: 'batch-delete-empresas' });
+    let deleted = 0;
+    let failed = 0;
+
+    for (const id of selectedCompanies) {
+      if (!isLikelyCompanyCuid(id)) {
+        failed++;
+        continue;
+      }
+      try {
+        await api(`/companies/${id}`, { method: 'DELETE' });
+        deleted++;
+      } catch {
+        failed++;
+      }
+    }
+
+    setBatchDeleting(false);
+    setBatchDeleteDialogOpen(false);
+    setSelectedCompanies([]);
+    await loadCompanies();
+
+    const msg = [];
+    if (deleted > 0) msg.push(`${deleted} eliminada(s)`);
+    if (failed > 0) msg.push(`${failed} fallaron`);
+    toast.success(msg.join(', '), { id: 'batch-delete-empresas' });
+  }
 
   const companyImportPreviewCsvKeys = useMemo(() => {
     const withCols = importPreviewData?.rows.find(
@@ -487,6 +593,248 @@ export default function EmpresasPage() {
       .map(localCompanyToSummary);
     return [...locals, ...summaryRows];
   }, [summaryRows, page, filtersDefault, standaloneCompanies]);
+
+  const [sorting, setSorting] = useState<SortingState>([]);
+
+  const responsiveClasses: Record<string, string> = {
+    etapa: 'hidden md:table-cell',
+    fuente: 'hidden lg:table-cell',
+    rubro: 'hidden md:table-cell',
+    tipo: 'hidden md:table-cell',
+    recuperado: 'hidden lg:table-cell',
+    asesor: 'hidden xl:table-cell',
+  };
+  const getResponsiveClass = (id: string) => responsiveClasses[id] ?? '';
+
+  const columns = useMemo<ColumnDef<EmpresaSummaryRow>[]>(
+    () => [
+      {
+        id: 'select',
+        meta: { responsive: '' } as any,
+        header: () => (
+          <div className="inline-flex items-center justify-center rounded-full p-1.5 transition-colors hover:bg-primary/10 pl-2">
+            <Checkbox
+              checked={selectedCompanies.length === displayRows.length && displayRows.length > 0}
+              onCheckedChange={toggleSelectAll}
+              className="h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
+            />
+          </div>
+        ),
+        cell: ({ row }) => (
+          <div className="inline-flex items-center justify-center rounded-full p-1.5 transition-colors hover:bg-primary/10 pl-2">
+            <Checkbox
+              checked={selectedCompanies.includes(row.original.id)}
+              onCheckedChange={() => toggleSelectCompany(row.original.id)}
+              className="h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
+            />
+          </div>
+        ),
+        size: 44,
+        maxSize: 44,
+        enableSorting: false,
+        enableResizing: false,
+      },
+      {
+        accessorKey: 'name',
+        id: 'empresa',
+        header: 'Empresa',
+        size: 280,
+        enableHiding: false,
+        cell: ({ row }) => {
+          const companyId = row.original.id;
+          const isLocal = (row.original as any).isLocalOnly;
+          return (
+          <div className="min-w-0 flex items-center gap-2">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted overflow-hidden">
+              <CompanyLogoImg companyId={companyId} isLocal={isLocal} />
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-[#0F172A]" title={row.original.name}>{row.original.name}</p>
+              {row.original.domain && (
+                <a
+                  href={row.original.domain.startsWith('http') ? row.original.domain : `https://${row.original.domain}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-muted-foreground hover:text-primary hover:underline truncate block"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {row.original.domain}
+                </a>
+              )}
+            </div>
+          </div>
+        );
+      },
+      enableSorting: false,
+      },
+      {
+        accessorKey: 'displayEtapa',
+        id: 'etapa',
+        header: 'Etapa',
+        enableHiding: true,
+        cell: ({ getValue }) => <StatusBadge status={getValue() as Etapa} />,
+        enableSorting: false,
+        size: 140,
+      },
+      {
+        accessorKey: 'displayFuente',
+        id: 'fuente',
+        header: 'Fuente',
+        enableHiding: true,
+        cell: ({ getValue }) => (
+          <span className="text-sm text-[#475569]">{sourceLabelFromApi(getValue() as string | null)}</span>
+        ),
+        enableSorting: false,
+        size: 100,
+      },
+      {
+        accessorKey: 'rubro',
+        id: 'rubro',
+        header: 'Rubro',
+        enableHiding: true,
+        cell: ({ getValue }) => {
+          const rubro = parseRubroFromApi(getValue() as string | null | undefined);
+          return <span className="block truncate text-sm text-[#475569]" title={rubro ? companyRubroLabels[rubro] : undefined}>{rubro ? companyRubroLabels[rubro] : '—'}</span>;
+        },
+        enableSorting: false,
+        size: 170,
+      },
+      {
+        accessorKey: 'tipo',
+        id: 'tipo',
+        header: 'Tipo',
+        enableHiding: true,
+        cell: ({ getValue }) => {
+          const tipo = parseTipoFromApi(getValue() as string | null | undefined);
+          return <span className="text-sm text-[#475569]">{tipo ?? '—'}</span>;
+        },
+        enableSorting: false,
+        size: 65,
+        maxSize: 65,
+      },
+      {
+        accessorKey: 'clienteRecuperado',
+        id: 'recuperado',
+        header: 'Recuperado',
+        enableHiding: true,
+        cell: ({ getValue }) => (
+          <span className="text-sm text-[#475569]">
+            {getValue() === 'si' ? 'Recuperado' : '—'}
+          </span>
+        ),
+        enableSorting: false,
+        size: 110,
+      },
+      {
+        accessorKey: 'displayAdvisorName',
+        id: 'asesor',
+        header: 'Asesor',
+        enableHiding: true,
+        cell: ({ getValue }) => (
+          <span className="text-sm text-[#475569]">{getValue() as string ?? '—'}</span>
+        ),
+        enableSorting: false,
+        size: 120,
+      },
+      {
+        accessorKey: 'createdAt',
+        id: 'creacion',
+        header: 'Creación',
+        enableHiding: true,
+        cell: ({ getValue }) => (
+          <span className="text-sm text-[#475569]">
+            {new Date(getValue() as string).toLocaleDateString('es-PE')}
+          </span>
+        ),
+        enableSorting: false,
+        size: 115,
+      },
+      {
+        id: 'contactos',
+        header: 'Contactos',
+        enableHiding: true,
+        cell: ({ row }) => (
+          <div className="flex justify-center">
+            <EmpresaContactsPopover
+              contactCount={row.original.contactCount}
+              preview={row.original.contactsPreview}
+              variant="table"
+            />
+          </div>
+        ),
+        enableSorting: false,
+        size: 115,
+      },
+      {
+        accessorKey: 'lastInteractionAt',
+        id: 'ultimaInteraccion',
+        header: 'Última interacción',
+        enableHiding: true,
+        cell: ({ getValue }) => (
+          <span className="text-sm text-[#475569]">
+            {getValue()
+              ? new Date(getValue() as string).toLocaleDateString('es-PE')
+              : '—'}
+          </span>
+        ),
+        enableSorting: false,
+        size: 145,
+      },
+      {
+        id: 'actions',
+        header: '',
+        enableResizing: false,
+        enableSorting: false,
+        enableHiding: false,
+        size: 40,
+        maxSize: 40,
+        cell: ({ row }) => {
+          const emp = row.original;
+          return (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon-sm" aria-label="Acciones">
+                  <MoreVertical className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => openCompanyPreview(emp)}>
+                  <Eye /> Vista previa
+                </DropdownMenuItem>
+                {hasPermission('empresas.editar') && (
+                  <DropdownMenuItem onClick={() => openCompanyEdit(emp)}>
+                    <Pencil /> Editar
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                {hasPermission('empresas.eliminar') && (
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onClick={() => requestDeleteCompany(emp)}
+                  >
+                    <Trash2 /> Eliminar
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          );
+        },
+      },
+    ],
+    [openCompanyPreview, openCompanyEdit, requestDeleteCompany, hasPermission],
+  );
+
+  const table = useReactTable({
+    data: displayRows,
+    columns,
+    state: { sorting, columnVisibility },
+    onSortingChange: setSorting,
+    onColumnVisibilityChange: setColumnVisibility,
+    getCoreRowModel: getCoreRowModel(),
+    enableColumnResizing: true,
+    columnResizeMode: 'onChange',
+    defaultColumn: { minSize: 60 },
+  });
 
   /** Conteos de pestañas: servidor + empresas solo locales (cuentan como etapa lead). */
   const effectiveEtapaTabCounts = useMemo((): Record<string, number> => {
@@ -518,9 +866,10 @@ export default function EmpresasPage() {
 
   useEffect(() => {
     if (etapaTabCounts == null) return;
-    if (etapaFilter === 'todos') return;
-    if ((effectiveEtapaTabCounts[etapaFilter] ?? 0) > 0) return;
-    setEtapaFilter('todos');
+    if (etapaFilter.length === 0) return;
+    const hasAnyResult = etapaFilter.some((e) => (effectiveEtapaTabCounts[e] ?? 0) > 0);
+    if (hasAnyResult) return;
+    setEtapaFilter([]);
     setPage(1);
   }, [etapaTabCounts, etapaFilter, effectiveEtapaTabCounts]);
 
@@ -817,11 +1166,11 @@ export default function EmpresasPage() {
       setExportBusy(true);
       const params: Record<string, string> = {};
       if (searchDebounced) params.search = searchDebounced;
-      if (etapaFilter !== 'todos') params.etapa = etapaFilter;
-      if (sourceFilter !== 'todos') params.fuente = sourceFilter;
-      if (rubroFilter !== 'todos') params.rubro = rubroFilter;
-      if (tipoFilter !== 'todos') params.tipo = tipoFilter;
-      if (advisorFilter !== 'todos') params.assignedTo = advisorFilter;
+      if (etapaFilter.length > 0) params.etapa = etapaFilter.join(',');
+      if (sourceFilter.length > 0) params.fuente = sourceFilter.join(',');
+      if (rubroFilter.length > 0) params.rubro = rubroFilter.join(',');
+      if (tipoFilter.length > 0) params.tipo = tipoFilter.join(',');
+      if (advisorFilter.length > 0) params.assignedTo = advisorFilter.join(',');
       if (interactionRange?.from) params.lastInteractionFrom = new Date(
         interactionRange.from.getFullYear(),
         interactionRange.from.getMonth(),
@@ -848,11 +1197,11 @@ export default function EmpresasPage() {
       setFullExportBusy(true);
       const params: Record<string, string> = {};
       if (searchDebounced) params.search = searchDebounced;
-      if (etapaFilter !== 'todos') params.etapa = etapaFilter;
-      if (sourceFilter !== 'todos') params.fuente = sourceFilter;
-      if (rubroFilter !== 'todos') params.rubro = rubroFilter;
-      if (tipoFilter !== 'todos') params.tipo = tipoFilter;
-      if (advisorFilter !== 'todos') params.assignedTo = advisorFilter;
+      if (etapaFilter.length > 0) params.etapa = etapaFilter.join(',');
+      if (sourceFilter.length > 0) params.fuente = sourceFilter.join(',');
+      if (rubroFilter.length > 0) params.rubro = rubroFilter.join(',');
+      if (tipoFilter.length > 0) params.tipo = tipoFilter.join(',');
+      if (advisorFilter.length > 0) params.assignedTo = advisorFilter.join(',');
       if (interactionRange?.from) params.lastInteractionFrom = interactionRange.from.toISOString();
       if (interactionRange?.to) params.lastInteractionTo = interactionRange.to.toISOString();
 
@@ -1011,7 +1360,7 @@ export default function EmpresasPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div>
       <ImportInProgressDialog
         open={importPreviewInProgress}
         title="Generando vista previa"
@@ -1164,320 +1513,550 @@ export default function EmpresasPage() {
       <PageHeader
         title="Empresas"
         description="Gestiona empresas y cuentas comerciales"
+        className="mb-6"
       >
-        <span className="mr-2 text-sm text-muted-foreground">Total: {total}</span>
-        {hasPermission('empresas.exportar') && (
+        {hasPermission('empresas.eliminar') && selectedCompanies.length > 0 && (
           <Button
-            variant="outline"
-            disabled={exportBusy}
-            title="Sin id: RUC enriquece con SUNAT; columnas contacto_* y etapa como en contactos; oportunidad al vincular contacto."
-            onClick={() => void handleCompanyTemplate()}
-            className="bg-card"
+            variant="destructive"
+            onClick={() => setBatchDeleteDialogOpen(true)}
+            disabled={batchDeleting}
           >
-            {exportBusy ? <Loader2 className="size-4 animate-spin" /> : <FileSpreadsheet className="size-4" />}{' '}
-            Plantilla
+            {batchDeleting ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Trash2 className="size-4" />
+            )}{' '}
+            Eliminar ({selectedCompanies.length})
           </Button>
         )}
-        {hasPermission('empresas.crear') && (
-          <Button
-            variant="outline"
-            disabled={importBusy}
-            title="Por fila: empresa (reutiliza si nombre/RUC existe), contacto opcional con DNI/CEE Factiliza, misma lógica de etapa que contactos."
-            onClick={openCompanyImport}
-            className="bg-card"
-          >
-            {importBusy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}{' '}
-            Importar
-          </Button>
-        )}
-        {hasPermission('empresas.exportar') && (
-          <Button
-            variant="outline"
-            disabled={exportBusy}
-            onClick={() => void handleCompanyExport()}
-            className="bg-card"
-          >
-            {exportBusy ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}{' '}
-            Exportar
-          </Button>
-        )}
-        {hasPermission('empresas.exportar') && (
-          <Button
-            variant="outline"
-            disabled={fullExportBusy}
-            onClick={() => void handleFullExport()}
-            className="bg-card"
-          >
-            {fullExportBusy ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}{' '}
-            Full Exp
-          </Button>
-        )}
-        <Button className="bg-[#13944C] hover:bg-[#0f7a3d]" onClick={() => setNewEmpresaOpen(true)}>
-          <Plus className="size-4" /> Nueva Empresa
+        <Button onClick={() => setNewEmpresaOpen(true)} className="h-11 w-[120px] text-base font-normal shadow-md">
+          <Plus /> Nueva
         </Button>
       </PageHeader>
 
-      {/* Filters */}
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-        <div className="flex flex-wrap items-center gap-2 flex-1">
-          <div className="relative w-[580px]">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por empresa o contacto..."
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              className="pl-9 bg-card"
-            />
-          </div>
-          <Select value={sourceFilter} onValueChange={(v) => { setSourceFilter(v); setPage(1); }}>
-            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card">
-              <div className="flex items-center gap-3">
-                <Globe className="size-3.5" />
-                <SelectValue placeholder="Fuente" />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Fuentes</SelectItem>
-              {Object.entries(contactSourceLabels).map(([key, label]) => (
-                <SelectItem key={key} value={key}>{label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={etapaFilter} onValueChange={(v) => { setEtapaFilter(v); setPage(1); }}>
-            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card">
-              <div className="flex items-center gap-3">
-                <Tag className="size-3.5" />
-                <SelectValue placeholder="Etapa" />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Etapas</SelectItem>
-              {Object.entries(etapaLabels).map(([key, label]) => (
-                <SelectItem key={key} value={key}>{label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={rubroFilter} onValueChange={(v) => { setRubroFilter(v); setPage(1); }}>
-            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card">
-              <div className="flex items-center gap-3">
-                <MapPin className="size-3.5" />
-                <SelectValue placeholder="Rubro" />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Rubros</SelectItem>
-              {Object.entries(companyRubroLabels).map(([key, label]) => (
-                <SelectItem key={key} value={key}>{label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={tipoFilter} onValueChange={(v) => { setTipoFilter(v); setPage(1); }}>
-            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card">
-              <div className="flex items-center gap-3">
-                <Building2 className="size-3.5" />
-                <SelectValue placeholder="Tipo" />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Tipos</SelectItem>
-              {Object.entries(companyTipoLabels).map(([key, label]) => (
-                <SelectItem key={key} value={key}>{label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={advisorFilter}
-            onValueChange={(v) => { setAdvisorFilter(v); setPage(1); }}
-            disabled={!canSeeAllAdvisors}
-          >
-            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card">
-              <div className="flex items-center gap-3">
-                <User className="size-3.5" />
-                <SelectValue placeholder="Asesor" />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Asesores</SelectItem>
-              {activeAdvisors.map((u) => (
-                <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <DateRangeFilterButton
-            value={interactionRange}
-            onChange={(r) => {
-              setInteractionRange(r);
+      <GlassCard>
+      {/* Filter bar */}
+      <div className="flex min-w-0 flex-col gap-3 px-5 py-4 lg:flex-row lg:items-center">
+        <div className="relative w-full min-w-0 max-w-[400px]">
+          <Search className="absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-[#8a9aab]" />
+          <Input
+            placeholder="Buscar por empresa o contacto..."
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
               setPage(1);
             }}
-            placeholder="Última interacción"
-            className="bg-card"
+            className="!h-12 rounded-lg border border-[#e1e7ee] bg-white/60 pl-10 text-[15px] text-black placeholder:text-[#8a9aab] transition-colors hover:border-primary focus-visible:ring-1 shadow-none"
           />
+        </div>
+        <Popover>
+          <PopoverTrigger asChild>
+            <button className={`!h-12 w-[190px] rounded-lg border border-[#e1e7ee] bg-white/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left ${etapaFilter.length > 0 ? 'text-black' : 'text-[#8a9aab]'}`}>
+              <ChartSquareIcon className="size-5 shrink-0 text-[#8a9aab]" />
+              <span className="truncate flex-1">
+                {etapaFilter.length === 0
+                  ? 'Etapa'
+                  : etapaFilter.map((k) => etapaLabels[k] || k).join(', ')}
+              </span>
+              <ChevronDown className="size-3.5 shrink-0 opacity-50" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[200px] p-0" align="start">
+            <Command>
+              <CommandList className="max-h-[260px] overflow-y-auto">
+                <CommandGroup>
+                  {Object.entries(etapaLabels).map(([key, label]) => {
+                    const selected = etapaFilter.includes(key);
+                    return (
+                      <CommandItem
+                        key={key}
+                        onSelect={() => {
+                          setEtapaFilter((prev) =>
+                            prev.includes(key)
+                              ? prev.filter((e) => e !== key)
+                              : [...prev, key],
+                          );
+                          setPage(1);
+                        }}
+                      >
+                        <span className="[&_svg]:!text-primary-foreground">
+                        <Checkbox
+                          checked={selected}
+                          className="mr-2 h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
+                        />
+                        </span>
+                        <span>{label}</span>
+                      </CommandItem>
+                    );
+                  })}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
 
-<div className="ml-auto hidden md:flex items-center rounded-md border bg-card">
-  <Button
-    variant={viewMode === 'table' ? 'secondary' : 'ghost'}
-    size="icon-sm"
-    onClick={() => setViewMode('table')}
-    className="rounded-r-none"
-  >
-    <List className="size-4" />
-  </Button>
-  <Button
-    variant={viewMode === 'cards' ? 'secondary' : 'ghost'}
-    size="icon-sm"
-    onClick={() => setViewMode('cards')}
-    className="rounded-l-none"
-  >
-    <Grid3X3 className="size-4" />
-  </Button>
-</div>
+        <Popover>
+          <PopoverTrigger asChild>
+            <button className={`!h-12 w-[190px] rounded-lg border border-[#e1e7ee] bg-white/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate ${rubroFilter.length > 0 ? 'text-black' : 'text-[#8a9aab]'}`}>
+              <CategorySolidIcon className="size-5 shrink-0 text-[#8a9aab]" />
+              <span className="truncate flex-1">
+                {rubroFilter.length === 0
+                  ? 'Rubro'
+                  : rubroFilter.map((k) => companyRubroLabels[k] || k).join(', ')}
+              </span>
+              <ChevronDown className="size-3.5 shrink-0 opacity-50" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[200px] p-0" align="start">
+            <Command>
+              <CommandList className="max-h-[260px] overflow-y-auto">
+                <CommandGroup>
+                  {Object.entries(companyRubroLabels).map(([key, label]) => {
+                    const selected = rubroFilter.includes(key);
+                    return (
+                      <CommandItem
+                        key={key}
+                        onSelect={() => {
+                          setRubroFilter((prev) =>
+                            prev.includes(key)
+                              ? prev.filter((e) => e !== key)
+                              : [...prev, key],
+                          );
+                          setPage(1);
+                        }}
+                      >
+                        <span className="[&_svg]:!text-primary-foreground">
+                        <Checkbox
+                          checked={selected}
+                          className="mr-2 h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
+                        />
+                        </span>
+                        <span>{label}</span>
+                      </CommandItem>
+                    );
+                  })}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+
+        <Popover open={dateFilterOpen} onOpenChange={(open) => {
+          setDateFilterOpen(open);
+          if (open) setDraftRange(interactionRange);
+        }}>
+          <PopoverTrigger asChild>
+            <button className={`!h-12 w-[210px] rounded-lg border border-[#e1e7ee] bg-white/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate ${interactionRange?.from || interactionRange?.to ? 'text-black' : 'text-[#8a9aab]'}`}>
+              <CalendarSvgIcon className="size-5 shrink-0 text-[#8a9aab]" />
+              <span className="truncate flex-1">
+                {interactionRange?.from && interactionRange?.to
+                  ? `${format(interactionRange.from, 'dd/MM/yyyy')} — ${format(interactionRange.to, 'dd/MM/yyyy')}`
+                  : interactionRange?.from
+                    ? `${format(interactionRange.from, 'dd/MM/yyyy')} —`
+                    : 'Última interacción'}
+              </span>
+              <ChevronDown className="size-3.5 shrink-0 opacity-50" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <div className="p-3">
+              <Calendar
+                mode="range"
+                locale={es}
+                numberOfMonths={2}
+                defaultMonth={draftRange?.from ?? new Date()}
+                selected={draftRange}
+                onSelect={(range) => setDraftRange(range)}
+                showOutsideDays
+                formatters={{
+                  formatWeekdayName: (date) => {
+                    const idx = date.getDay() === 0 ? 6 : date.getDay() - 1;
+                    return ['L', 'M', 'M', 'J', 'V', 'S', 'D'][idx]!;
+                  },
+                }}
+                classNames={{
+                  months: 'flex flex-col gap-5 space-y-0 sm:flex-row sm:gap-6 sm:space-x-0 sm:space-y-0',
+                  day_selected: '!bg-info !text-info-foreground hover:!bg-info hover:!text-info-foreground focus:!bg-info focus:!text-info-foreground',
+                  day_range_start: '!rounded-full !bg-info !text-info-foreground hover:!bg-info hover:!text-info-foreground',
+                  day_range_end: '!rounded-full !bg-info !text-info-foreground hover:!bg-info hover:!text-info-foreground',
+                  day_range_middle: 'aria-selected:!bg-info-soft aria-selected:!text-foreground !rounded-none',
+                }}
+              />
+              <div className="flex items-center justify-end gap-2 border-t border-border/60 pt-3 mt-3">
+                <Button variant="outline" size="sm" onClick={() => { setDraftRange(undefined); }}>
+                  Limpiar
+                </Button>
+                <Button size="sm" onClick={() => {
+                  setInteractionRange(draftRange);
+                  setPage(1);
+                  setDateFilterOpen(false);
+                }}>
+                  Aplicar
+                </Button>
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        {hasActiveFilters && (
+          <Button variant="ghost" size="sm" onClick={clearFilters}>
+            <X className="size-4" /> Limpiar
+          </Button>
+        )}
+
+        <div className="ml-auto hidden sm:flex items-center gap-5">
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1f2933] transition-opacity hover:opacity-70 cursor-pointer">
+                <img src={columnsIcon} className="size-[18px]" alt="" />
+                Columnas
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[180px] p-0" align="end">
+              <Command>
+                <CommandList>
+                  <CommandGroup>
+                    {[
+                      { id: 'fuente', label: 'Fuente' },
+                      { id: 'rubro', label: 'Rubro' },
+                      { id: 'tipo', label: 'Tipo' },
+                      { id: 'recuperado', label: 'Recuperado' },
+                      { id: 'asesor', label: 'Asesor' },
+                      { id: 'creacion', label: 'Creación' },
+                      { id: 'contactos', label: 'Contactos' },
+                      { id: 'ultimaInteraccion', label: 'Última interacción' },
+                    ].map((col) => {
+                      const visible = columnVisibility[col.id] ?? true;
+                      return (
+                        <div
+                          key={col.id}
+                          onClick={() => setColumnVisibility((prev) => ({ ...prev, [col.id]: !visible }))}
+                          className="flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm cursor-pointer hover:bg-accent"
+                        >
+                          <Checkbox
+                            checked={visible}
+                            className="h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
+                          />
+                          <span className="text-[#1f2933]">{col.label}</span>
+                        </div>
+                      );
+                    })}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1f2933] transition-opacity hover:opacity-70 cursor-pointer">
+                <img src={filterIcon} className="size-[18px]" alt="" />
+                Filtros
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[500px] p-3" align="end">
+              <div className="flex items-center gap-3">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button className={`!h-12 flex-1 rounded-lg border border-[#e1e7ee] bg-white/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer text-left truncate flex items-center gap-1.5 ${sourceFilter.length > 0 ? 'text-black' : 'text-[#8a9aab]'}`}>
+                      <PaletteIcon className="size-5 shrink-0 text-[#8a9aab]" />
+                      <span className="truncate flex-1">
+                        {sourceFilter.length === 0
+                          ? 'Fuente'
+                          : sourceFilter.map((k) => contactSourceLabels[k] || k).join(', ')}
+                      </span>
+                      <ChevronDown className="size-3.5 shrink-0 opacity-50" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[180px] p-0" align="start">
+                    <Command>
+                      <CommandList className="max-h-[260px] overflow-y-auto">
+                        <CommandGroup>
+                          {Object.entries(contactSourceLabels).map(([key, label]) => {
+                            const selected = sourceFilter.includes(key);
+                            return (
+                              <CommandItem
+                                key={key}
+                                onSelect={() => {
+                                  setSourceFilter((prev) =>
+                                    prev.includes(key)
+                                      ? prev.filter((e) => e !== key)
+                                      : [...prev, key],
+                                  );
+                                  setPage(1);
+                                }}
+                              >
+                                <span className="[&_svg]:!text-primary-foreground">
+                                <Checkbox
+                                  checked={selected}
+                                  className="mr-2 h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
+                                />
+                                </span>
+                                <span>{label}</span>
+                              </CommandItem>
+                            );
+                          })}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button className={`!h-12 flex-1 rounded-lg border border-[#e1e7ee] bg-white/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer text-left truncate flex items-center gap-1.5 ${tipoFilter.length > 0 ? 'text-black' : 'text-[#8a9aab]'}`}>
+                      <GitForkIcon className="size-5 shrink-0 text-[#8a9aab]" />
+                      <span className="truncate flex-1">
+                        {tipoFilter.length === 0
+                          ? 'Tipo'
+                          : tipoFilter.map((k) => companyTipoLabels[k] || k).join(', ')}
+                      </span>
+                      <ChevronDown className="size-3.5 shrink-0 opacity-50" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[180px] p-0" align="start">
+                    <Command>
+                      <CommandList className="max-h-[260px] overflow-y-auto">
+                        <CommandGroup>
+                          {Object.entries(companyTipoLabels).map(([key, label]) => {
+                            const selected = tipoFilter.includes(key);
+                            return (
+                              <CommandItem
+                                key={key}
+                                onSelect={() => {
+                                  setTipoFilter((prev) =>
+                                    prev.includes(key)
+                                      ? prev.filter((e) => e !== key)
+                                      : [...prev, key],
+                                  );
+                                  setPage(1);
+                                }}
+                              >
+                                <span className="[&_svg]:!text-primary-foreground">
+                                <Checkbox
+                                  checked={selected}
+                                  className="mr-2 h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
+                                />
+                                </span>
+                                <span>{label}</span>
+                              </CommandItem>
+                            );
+                          })}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button className={`!h-12 flex-1 rounded-lg border border-[#e1e7ee] bg-white/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer text-left truncate disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 ${advisorFilter.length > 0 ? 'text-black' : 'text-[#8a9aab]'}`} disabled={!canSeeAllAdvisors}>
+                      <UserHandIcon className="size-5 shrink-0 text-[#8a9aab]" />
+                      <span className="truncate flex-1">
+                        {advisorFilter.length === 0
+                          ? 'Asesor'
+                          : advisorFilter
+                              .map((id) => activeAdvisors.find((u) => u.id === id)?.name || id)
+                              .join(', ')}
+                      </span>
+                      <ChevronDown className="size-3.5 shrink-0 opacity-50" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[180px] p-0" align="start">
+                    <Command>
+                      <CommandList className="max-h-[260px] overflow-y-auto">
+                        <CommandGroup>
+                          {activeAdvisors.map((u) => {
+                            const selected = advisorFilter.includes(u.id);
+                            return (
+                              <CommandItem
+                                key={u.id}
+                                onSelect={() => {
+                                  setAdvisorFilter((prev) =>
+                                    prev.includes(u.id)
+                                      ? prev.filter((e) => e !== u.id)
+                                      : [...prev, u.id],
+                                  );
+                                  setPage(1);
+                                }}
+                              >
+                                <span className="[&_svg]:!text-primary-foreground">
+                                <Checkbox
+                                  checked={selected}
+                                  className="mr-2 h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
+                                />
+                                </span>
+                                <span>{u.name}</span>
+                              </CommandItem>
+                            );
+                          })}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1f2933] transition-opacity hover:opacity-70 cursor-pointer">
+                <MoreVertical className="size-5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {hasPermission('empresas.exportar') && (
+                <DropdownMenuItem
+                  disabled={exportBusy}
+                  onClick={() => void handleCompanyTemplate()}
+                >
+                  {exportBusy ? <Loader2 className="size-3.5 animate-spin" /> : <FileSpreadsheet className="size-4" />}
+                  Plantilla
+                </DropdownMenuItem>
+              )}
+              {hasPermission('empresas.crear') && (
+                <DropdownMenuItem
+                  disabled={importBusy}
+                  onClick={openCompanyImport}
+                >
+                  {importBusy ? <Loader2 className="size-3.5 animate-spin" /> : <Upload className="size-4" />}
+                  Importar
+                </DropdownMenuItem>
+              )}
+              {hasPermission('empresas.exportar') && (
+                <DropdownMenuItem
+                  disabled={exportBusy}
+                  onClick={() => void handleCompanyExport()}
+                >
+                  {exportBusy ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-4" />}
+                  Exportar
+                </DropdownMenuItem>
+              )}
+              {hasPermission('empresas.exportar') && (
+                <DropdownMenuItem
+                  disabled={fullExportBusy}
+                  onClick={() => void handleFullExport()}
+                >
+                  {fullExportBusy ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-4" />}
+                  Full Exp
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
       {/* Content */}
-      <div className="mt-4">
-        {loading ? (
-          viewMode === 'table' ? (
-            <CrmDataTableSkeleton
-              columns={[...EMPRESAS_TABLE_SKELETON_COLUMNS]}
-              rows={10}
-              aria-label="Cargando empresas"
-              className="bg-card"
-            />
-          ) : (
-            <CrmEntityCardGridSkeleton count={8} aria-label="Cargando empresas" />
-          )
-        ) : displayRows.length === 0 ? (
-          <EmptyState
-            icon={Briefcase}
-            title="No se encontraron empresas"
-            description="Intenta ajustar los filtros o crea una nueva empresa."
-            actionLabel="Nueva empresa"
-            onAction={() => setNewEmpresaOpen(true)}
+      {loading && displayRows.length === 0 ? (
+        viewMode === 'table' ? (
+          <GhostTableSkeleton
+            columns={[
+              { label: '', width: 44 },
+              { label: 'Empresa', width: 280 },
+              { label: 'Etapa', width: 140, className: 'hidden md:table-cell' },
+              { label: 'Fuente', width: 100, className: 'hidden lg:table-cell' },
+              { label: 'Rubro', width: 170, className: 'hidden md:table-cell' },
+              { label: 'Tipo', width: 65, className: 'hidden md:table-cell' },
+              { label: 'Recuperado', width: 110, className: 'hidden lg:table-cell' },
+              { label: 'Asesor', width: 120, className: 'hidden xl:table-cell' },
+              { label: 'Creación', width: 115 },
+              { label: 'Contactos', width: 115, className: 'text-center' },
+              { label: 'Última interacción', width: 145 },
+              { label: '', width: 40 },
+            ]}
+            rows={10}
           />
-        ) : viewMode === 'table' ? (
-          <div className="overflow-auto rounded-[14px] bg-card shadow-[0_8px_24px_rgba(15,23,42,0.06)] scrollbar-thin max-h-[calc(100vh-22rem)] max-w-full">
-            <Table className="min-w-[1200px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Empresa</TableHead>
-                  <TableHead className="hidden md:table-cell">Etapa</TableHead>
-                  <TableHead className="hidden lg:table-cell">Fuente</TableHead>
-                  <TableHead className="hidden md:table-cell">Rubro</TableHead>
-                  <TableHead className="hidden md:table-cell">Tipo</TableHead>
-                  <TableHead className="hidden lg:table-cell">Recuperado</TableHead>
-                  <TableHead className="hidden xl:table-cell">Asesor</TableHead>
-                  <TableHead>Creación</TableHead>
-                  <TableHead className="text-center">Contactos</TableHead>
-                  <TableHead>Última interacción</TableHead>
-                  <TableHead className="w-10" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {displayRows.map((emp) => {
-                  const rubro = parseRubroFromApi(emp.rubro);
-                  const tipo = parseTipoFromApi(emp.tipo);
-                  const rowKey = emp.isLocalOnly ? `local-${emp.id}` : emp.id;
-                  return (
-                  <TableRow
-                    key={rowKey}
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => openCompanyDetail(emp)}
-                  >
-<TableCell>
-                      <div className="min-w-0 flex items-center gap-2 max-w-[220px]">
-                        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
-                          <Building2 className="size-4 text-muted-foreground" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-medium truncate">{emp.name}</p>
-                          {emp.domain && (
-                            <a
-                              href={emp.domain.startsWith('http') ? emp.domain : `https://${emp.domain}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-muted-foreground hover:text-primary hover:underline truncate block"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {emp.domain}
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      <StatusBadge status={emp.displayEtapa as Etapa} />
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell text-muted-foreground">
-                      {sourceLabelFromApi(emp.displayFuente)}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell text-muted-foreground">
-                      {rubro ? companyRubroLabels[rubro] : '—'}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell text-muted-foreground">
-                      {tipo ?? '—'}
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell text-muted-foreground">
-                      {emp.clienteRecuperado === 'si' ? 'Recuperado' : '—'}
-                    </TableCell>
-                    <TableCell className="hidden xl:table-cell text-muted-foreground">
-                      {emp.displayAdvisorName ?? '—'}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {new Date(emp.createdAt).toLocaleDateString('es-PE')}
-                    </TableCell>
-                    <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex justify-center">
-                        <EmpresaContactsPopover
-                          contactCount={emp.contactCount}
-                          preview={emp.contactsPreview}
-                          variant="table"
-                        />
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {emp.lastInteractionAt
-                        ? new Date(emp.lastInteractionAt).toLocaleDateString('es-PE')
-                        : '—'}
-                    </TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon-sm" aria-label="Acciones">
-                            <MoreHorizontal className="size-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openCompanyPreview(emp)}>
-                            <Eye /> Vista previa
-                          </DropdownMenuItem>
-                          {hasPermission('empresas.editar') && (
-                            <DropdownMenuItem onClick={() => openCompanyEdit(emp)}>
-                              <Pencil /> Editar
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuSeparator />
-                          {hasPermission('empresas.eliminar') && (
-                            <DropdownMenuItem
-                              variant="destructive"
-                              onClick={() => requestDeleteCompany(emp)}
-                            >
-                              <Trash2 /> Eliminar
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
         ) : (
+          <CrmEntityCardGridSkeleton count={8} aria-label="Cargando empresas" />
+        )
+      ) : displayRows.length === 0 ? (
+        <EmptyState
+          icon={Briefcase}
+          title="No se encontraron empresas"
+          description="Intenta ajustar los filtros o crea una nueva empresa."
+          actionLabel="Nueva empresa"
+          onAction={() => setNewEmpresaOpen(true)}
+        />
+      ) : viewMode === 'table' ? (
+        <div className="border-t border-border/40 overflow-auto scrollbar-thin max-h-[calc(100vh-330px)]">
+          <table className="w-full table-fixed" style={{ minWidth: table.getTotalSize() }}>
+            <thead>
+              {table.getHeaderGroups().map((hg) => (
+                <tr key={hg.id} className="h-11 bg-[#eef1f5] text-left text-xs font-bold text-[#647789]">
+                  {hg.headers.map((header) => (
+                    <th
+                      key={header.id}
+                      colSpan={header.colSpan}
+                      className={cn(
+                        "relative px-3 align-middle overflow-hidden",
+                        header.column.getCanSort() && "cursor-pointer select-none hover:text-[#1f2933]",
+                        header.column.id === "select" && "pr-0",
+                        header.column.id === "empresa" && "pl-1",
+                        getResponsiveClass(header.column.id),
+                      )}
+                      style={{ width: header.getSize() }}
+                      onClick={header.column.getToggleSortingHandler()}
+                    >
+                      <div className="flex items-center gap-1">
+                        {flexRender(header.column.columnDef.header, header.getContext())}
+                        {header.column.getCanSort() && (
+                          <>
+                            {header.column.getIsSorted() === "asc" ? (
+                              <ChevronUp className="size-3 shrink-0" />
+                            ) : header.column.getIsSorted() === "desc" ? (
+                              <ChevronDown className="size-3 shrink-0" />
+                            ) : (
+                              <ChevronsUpDown className="size-3 shrink-0 text-[#94A3B8]" />
+                            )}
+                          </>
+                        )}
+                      </div>
+                      {header.column.getCanResize() && (
+                        <div
+                          onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); header.getResizeHandler()(e); }}
+                          onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); header.getResizeHandler()(e); }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="absolute inset-y-0 right-0 flex items-center justify-center w-5 cursor-col-resize group/rez"
+                        >
+                          <div className="h-4 w-[2px] rounded-full bg-gray-200 group-hover/rez:bg-blue-500 group-active/rez:bg-blue-500 group-hover/rez:w-[5px] group-active/rez:w-[5px] transition-all select-none pointer-events-none" />
+                        </div>
+                      )}
+                    </th>
+                  ))}
+                </tr>
+              ))}
+            </thead>
+            <tbody>
+              {table.getRowModel().rows.map((row) => (
+                <tr
+                  key={row.id}
+                  className="h-14 border-b border-dashed border-[#e8ecf0] bg-card/30 transition-colors cursor-pointer last:border-b-0 hover:bg-[#fafbfc]"
+                  onClick={() => openCompanyDetail(row.original)}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <td
+                      key={cell.id}
+                      className={cn(
+                        "px-3 align-middle overflow-hidden",
+                        cell.column.id === "select" && "pr-0",
+                        cell.column.id === "empresa" && "pl-1",
+                        getResponsiveClass(cell.column.id),
+                      )}
+                      style={{ width: cell.column.getSize() }}
+                      onClick={
+                        cell.column.id === "actions" || cell.column.id === "select"
+                          ? (e) => e.stopPropagation()
+                          : undefined
+                      }
+                    >
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="p-5 border-t border-border/40">
           <div className="grid w-full grid-cols-1 gap-3 px-0 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {displayRows.map((emp) => {
               const rubro = parseRubroFromApi(emp.rubro);
@@ -1503,7 +2082,7 @@ export default function EmpresasPage() {
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                         <Button variant="ghost" size="icon-xs" aria-label="Acciones">
-                          <MoreHorizontal className="size-3.5" />
+                          <MoreVertical className="size-3.5" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent
@@ -1586,28 +2165,40 @@ export default function EmpresasPage() {
               );
             })}
           </div>
-        )}
-      </div>
-
-      {/* Pagination */}
-      {!loading && total > 0 && (
-        <Pagination
-          page={page}
-          totalPages={totalPages}
-          onPageChange={setPage}
-          totalItems={total}
-          pageSize={pageSize}
-          onPageSizeChange={(newSize) => {
-            setPageSize(newSize);
-            setPage(1);
-          }}
-        />
+        </div>
       )}
+
+      {total > 0 && (
+        <div className="h-14 bg-white/30 px-5 flex items-center border-t border-dashed border-[#e8ecf0]">
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            totalItems={total}
+            pageSize={pageSize}
+            onPageSizeChange={(newSize) => {
+              setPageSize(newSize);
+              setPage(1);
+            }}
+          />
+        </div>
+      )}
+      </GlassCard>
 
       <NewCompanyWizard
         open={newEmpresaOpen}
         onOpenChange={setNewEmpresaOpen}
         onSubmit={handleNewEmpresaSubmit}
+      />
+
+      <ConfirmDialog
+        open={batchDeleteDialogOpen}
+        onOpenChange={setBatchDeleteDialogOpen}
+        title="Eliminar Empresas Seleccionadas"
+        description={`¿Estás seguro que deseas eliminar ${selectedCompanies.length} empresa(s)? Esta acción no se puede deshacer.`}
+        onConfirm={() => void handleBatchDelete()}
+        variant="destructive"
+        confirmLabel={batchDeleting ? 'Eliminando...' : `Eliminar ${selectedCompanies.length}`}
       />
 
       <ConfirmDialog

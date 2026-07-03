@@ -133,7 +133,7 @@ export default function MainLayout() {
               'min-h-0 min-w-0 max-w-full flex-1 flex-1 overflow-y-auto overflow-x-hidden px-8',
               compactMainTop
                 ? 'pt-0 pb-4 md:pt-0.5 md:pb-5'
-                : 'pt-1 pb-5 md:pt-2 md:pb-6',
+                : 'pt-4 pb-5 md:pt-5 md:pb-6',
             )}
           >
             <ModuleGate />
