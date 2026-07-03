@@ -64,7 +64,7 @@ async function main() {
           if (agent) {
             await prisma.flotaProspecto.update({
               where: { id: prospecto.id },
-              data: { operador: agent.name },
+              data: { operador: agent.name, asignadoAt: new Date() },
             });
             console.log(`  Operador asignado: ${agent.name} -> ${prospecto.nombreCompleto || phone}`);
           }

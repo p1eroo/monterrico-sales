@@ -94,15 +94,26 @@ export class ChatwootWebhookService {
                   if (!prospecto.operador) {
                     await this.prisma.flotaProspecto.update({
                       where: { id: prospecto.id },
-                      data: { operador: agent.name },
+                      data: { operador: agent.name, asignadoAt: new Date() },
                     });
                   }
                 }
               }
             } catch { /* ignorar */ }
           }
-          // Fallback: si no hay assignee_id, usar sender.name para outbound
-          if (!assigneeId && !isInbound && sender?.name?.trim()) {
+          // Fallback: si no hay assignee_id, buscar por sender.id en listAgents
+          if (!createdByUserId && !isInbound && sender?.id) {
+            try {
+              const agents = await this.client.listAgents();
+              const agent = agents.find((a: any) => a.id === sender.id);
+              if (agent) {
+                const user = await this.prisma.user.findFirst({ where: { name: agent.name } });
+                if (user) createdByUserId = user.id;
+              }
+            } catch { /* ignorar */ }
+          }
+          // Último fallback: si aún no hay, intentar por sender.name
+          if (!createdByUserId && !isInbound && sender?.name?.trim()) {
             try {
               const user = await this.prisma.user.findFirst({ where: { name: sender.name.trim() } });
               if (user) createdByUserId = user.id;
