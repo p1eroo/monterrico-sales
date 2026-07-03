@@ -973,7 +973,7 @@ export default function ContactosPage() {
   }
 
   return (
-    <div className="bg-[#F3F4F6] min-h-screen pt-2 pb-8">
+    <div className="bg-[#F3F4F6] pt-2">
       <ImportInProgressDialog
         open={importPreviewInProgress}
         title="Generando vista previa"
@@ -1159,7 +1159,7 @@ export default function ContactosPage() {
       </PageHeader>
 
       {/* Filter bar + Table + Pagination en una sola tarjeta */}
-      <div className="rounded-[14px] border border-border/40 bg-white/30 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08)] overflow-hidden">
+      <div className="rounded-[14px] border border-border/40 bg-white/30 shadow-[0_4px_12px_-2px rgba(0,0,0,0.08)] overflow-hidden">
         {/* Filter bar */}
         <div className="flex min-w-0 flex-col gap-3 px-5 py-4 lg:flex-row lg:items-center">
         <div className="relative w-full min-w-0 max-w-[580px]">
@@ -1432,7 +1432,7 @@ export default function ContactosPage() {
             onAction={() => setNewContactOpen(true)}
           />
         ) : viewMode === "table" ? (
-          <div className="border-t border-border/40 overflow-auto max-h-[calc(100vh-330px)]">
+          <div className="border-t border-border/40 overflow-auto max-h-[calc(100vh-330px)] scrollbar-thin">
             <ContactsTable
               contacts={displayedContacts}
               selectedContacts={selectedContacts}
