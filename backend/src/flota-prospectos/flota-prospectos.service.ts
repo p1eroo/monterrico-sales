@@ -1489,8 +1489,14 @@ export class FlotaProspectosService {
   }
 
   async getOperadorStats(fecini: string, fecfin: string, scope?: CrmDataScope) {
-    const startDate = new Date(fecini + 'T00:00:00.000Z');
-    const endDate = new Date(fecfin + 'T23:59:59.999Z');
+    // Para DateTime (createdAt): usar Lima
+    const startDate = new Date(fecini + 'T00:00:00.000-05:00');
+    const endDate = new Date(fecfin + 'T00:00:00.000-05:00');
+    endDate.setDate(endDate.getDate() + 1);
+    // Para Date (asignadoAt, fechaCita): usar UTC (sin zona horaria)
+    const dateStart = new Date(fecini + 'T00:00:00.000Z');
+    const dateEnd = new Date(fecfin + 'T00:00:00.000Z');
+    dateEnd.setDate(dateEnd.getDate() + 1);
 
     const baseWhere: any = { eliminadoAt: null };
 
@@ -1511,7 +1517,7 @@ export class FlotaProspectosService {
     // Senders desde mensajes salientes en el rango
     const senderWhere: any = {
       direction: 'outbound',
-      createdAt: { gte: startDate, lte: endDate },
+      createdAt: { gte: startDate, lt: endDate },
     };
     if (scope && !scope.unrestricted) {
       const user = await this.prisma.user.findUnique({
@@ -1543,25 +1549,25 @@ export class FlotaProspectosService {
       operatorNames.map(async (operador) => {
         const [prospectosAsignados, mensajesEnviados, mensajesRecibidos, chatsData, llamadas, citasProgramadas] = await Promise.all([
           this.prisma.flotaProspecto.count({
-            where: { operador, asignadoAt: { gte: startDate, lte: endDate } },
+            where: { operador, asignadoAt: { gte: dateStart, lt: dateEnd } },
           }),
           this.prisma.crmWhatsappMessage.count({
             where: {
               direction: 'outbound',
-              createdAt: { gte: startDate, lte: endDate },
+              createdAt: { gte: startDate, lt: endDate },
               createdBy: { name: operador },
             },
           }),
           this.prisma.crmWhatsappMessage.count({
             where: {
               direction: 'inbound',
-              createdAt: { gte: startDate, lte: endDate },
+              createdAt: { gte: startDate, lt: endDate },
               flotaProspecto: { operador },
             },
           }),
           this.prisma.crmWhatsappMessage.findMany({
             where: {
-              createdAt: { gte: startDate, lte: endDate },
+              createdAt: { gte: startDate, lt: endDate },
               OR: [
                 { direction: 'inbound', flotaProspecto: { operador } },
                 { direction: 'outbound', createdBy: { name: operador } },
@@ -1574,13 +1580,13 @@ export class FlotaProspectosService {
           this.prisma.flotaLlamada.count({
             where: {
               prospecto: { operador },
-              createdAt: { gte: startDate, lte: endDate },
+              createdAt: { gte: startDate, lt: endDate },
             },
           }),
           this.prisma.flotaProspecto.count({
             where: {
               operador,
-              fechaCita: { gte: startDate, lte: endDate },
+              fechaCita: { gte: dateStart, lt: dateEnd },
             },
           }),
         ]);

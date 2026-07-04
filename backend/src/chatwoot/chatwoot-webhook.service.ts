@@ -238,6 +238,7 @@ export class ChatwootWebhookService {
             celular: '51' + cleaned,
             estado: 'Nuevo',
             origen: 'CHATWOOT',
+            fechaRegistro: new Date(),
           },
         });
       } catch {
