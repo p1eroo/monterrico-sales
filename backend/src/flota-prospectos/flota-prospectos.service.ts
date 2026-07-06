@@ -973,7 +973,7 @@ export class FlotaProspectosService {
             : null,
         redSocial:
           col.RED_SOCIAL !== -1 ? cell(row, col.RED_SOCIAL) || null : null,
-        celular: celular || null,
+        celular: celularNorm ? `+51${celularNorm}` : null,
         nombreCompleto: nombre,
         edad: col.EDAD !== -1 ? parseInt10(cell(row, col.EDAD)) : null,
         operador: col.OPERADOR !== -1 ? cell(row, col.OPERADOR) || null : null,
@@ -1154,7 +1154,7 @@ export class FlotaProspectosService {
       records.push({
         fechaRegistro: col.FECHA_REGISTRO !== -1 ? parseDate(cell(row, col.FECHA_REGISTRO)) : null,
         redSocial: col.RED_SOCIAL !== -1 ? cell(row, col.RED_SOCIAL) || null : null,
-        celular: celular || null,
+        celular: celularNorm ? `+51${celularNorm}` : null,
         nombreCompleto: nombre,
         edad: col.EDAD !== -1 ? parseInt10(cell(row, col.EDAD)) : null,
         operador: col.OPERADOR !== -1 ? cell(row, col.OPERADOR) || null : null,
@@ -1345,7 +1345,7 @@ export class FlotaProspectosService {
       records.push({
         fechaRegistro: col.FECHA_REGISTRO !== -1 ? parseDate(cell(row, col.FECHA_REGISTRO)) : null,
         redSocial: col.RED_SOCIAL !== -1 ? cell(row, col.RED_SOCIAL) || null : null,
-        celular: celular || null,
+        celular: celularNorm ? `+51${celularNorm}` : null,
         nombreCompleto: nombre,
         edad: col.EDAD !== -1 ? parseInt10(cell(row, col.EDAD)) : null,
         operador: col.OPERADOR !== -1 ? cell(row, col.OPERADOR) || null : null,
