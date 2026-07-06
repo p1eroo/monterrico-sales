@@ -23,6 +23,7 @@ import {
   X,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { AiBrainSvgIcon } from '@/components/icons/AiBrainSvgIcon';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -526,7 +527,7 @@ export function AiAssistantDrawer() {
           <TooltipContent side="left">Expandir panel</TooltipContent>
         </Tooltip>
         <div className="flex flex-1 items-center justify-center">
-          <Sparkles className="size-5 text-[#13944C]" />
+          <AiBrainSvgIcon className="size-5 text-[#13944C]" />
         </div>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -600,7 +601,7 @@ export function AiAssistantDrawer() {
               <div className="flex items-start gap-2">
                 <div className="flex min-w-0 flex-1 items-center gap-2">
                   <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#13944C]/15 text-[#13944C] dark:bg-[#13944C]/25">
-                    <Sparkles className="size-4" />
+          <AiBrainSvgIcon className="size-7" />
                   </div>
                   <div className="min-w-0">
                     <h2 className="truncate text-sm font-semibold leading-tight">
@@ -1031,11 +1032,10 @@ export function AssistantLauncherButton({
         <Button
           type="button"
           variant="ghost"
-          size="sm"
+          size="icon"
           className={cn(
-            'gap-1.5 px-2 text-white border-0',
-            'bg-[#0d9488] hover:bg-[#0f766e]',
-            isOpen && 'text-white border-0 bg-[#0f766e]',
+            'text-[#0d9488] hover:text-[#0f766e]',
+            isOpen && 'text-[#0f766e]',
             className,
           )}
           onClick={() => {
@@ -1049,8 +1049,7 @@ export function AssistantLauncherButton({
           aria-label="Asistente AI"
           aria-expanded={isOpen}
         >
-          <Sparkles className="size-4 shrink-0" />
-          <span className="hidden text-sm sm:inline">Asistente</span>
+          <AiBrainSvgIcon className="size-7" />
         </Button>
       </TooltipTrigger>
       <TooltipContent side="bottom">

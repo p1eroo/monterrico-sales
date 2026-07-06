@@ -63,7 +63,11 @@ export class ChatwootWebhookService {
     if (!conversation) return { received: true };
 
     const sender = payload.sender as { id?: number; name?: string; type?: string } | undefined;
-    const assigneeId = (conversation as any)?.assignee_id as number | undefined;
+    const assigneeId = (
+      (conversation as any)?.assignee_id
+      || (conversation as any)?.meta?.assignee?.id
+      || ((conversation as any)?.messages?.[0]?.conversation?.assignee_id)
+    ) as number | undefined;
     const contactPhone = ((conversation as any)?.meta?.sender?.phone_number
       || (payload as any)?.sender?.phone_number
       || (conversation as any)?.contact_inbox?.source_id) as string | undefined;

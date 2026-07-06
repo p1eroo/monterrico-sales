@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useState, type ReactNode } from 'react';
+import { memo, useCallback, useMemo, useState, type ReactNode, type ComponentType } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -17,23 +17,20 @@ import {
   Building2,
   Calendar,
   CheckSquare,
-  CircleDot,
-  Flag,
-  Mail,
-  MessageCircle,
   MoreHorizontal,
-  Phone,
   Plus,
   Target,
-  User,
   UserCircle,
-  Users,
 } from 'lucide-react';
 import type { Activity, ActivityStatus, ActivityType, ContactPriority, TaskKind } from '@/types';
 import { TASK_KINDS } from '@/types';
-import { priorityLabels } from '@/data/mock';
+import { UserHandUpIcon } from '@/components/icons/UserHandUpIcon';
+import { LlamadaSvgIcon } from '@/components/icons/LlamadaSvgIcon';
+import { ReunionSvgIcon } from '@/components/icons/ReunionSvgIcon';
+import { CorreoSvgIcon } from '@/components/icons/CorreoSvgIcon';
+import { WhatsAppSvgIcon } from '@/components/icons/WhatsAppSvgIcon';
+import { PrioritySvgIcon } from '@/components/icons/PrioritySvgIcon';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,17 +39,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import {
-  activityTypeIconCircleClass,
-  ACTIVITY_ICON_INHERIT,
-} from '@/lib/activityTypeCircleStyles';
 
-const activityIcons: Record<ActivityType, typeof Phone> = {
-  llamada: Phone,
-  reunion: Users,
+const activityIcons: Record<ActivityType, React.ComponentType<{ className?: string }>> = {
+  llamada: LlamadaSvgIcon,
+  reunion: ReunionSvgIcon,
   tarea: CheckSquare,
-  correo: Mail,
-  whatsapp: MessageCircle,
+  correo: CorreoSvgIcon,
+  whatsapp: WhatsAppSvgIcon,
 };
 
 const KANBAN_STATUS_ORDER: ActivityStatus[] = [
@@ -64,46 +57,39 @@ const KANBAN_STATUS_ORDER: ActivityStatus[] = [
 
 const columnTheme: Record<
   ActivityStatus,
-  { accent: string; headerBg: string; badgeClass: string }
+  { headerBg: string; textColor: string; countBg: string; countText: string }
 > = {
   pendiente: {
-    accent: '#f59e0b',
     headerBg: 'bg-amber-50/90 dark:bg-amber-950/35',
-    badgeClass:
-      'border-amber-200/80 bg-amber-100/90 text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/60 dark:text-amber-100',
+    textColor: 'text-amber-700 dark:text-amber-300',
+    countBg: 'bg-amber-100 dark:bg-amber-900/40',
+    countText: 'text-amber-900 dark:text-amber-100',
   },
   en_progreso: {
-    accent: '#3b82f6',
     headerBg: 'bg-blue-50/90 dark:bg-blue-950/35',
-    badgeClass:
-      'border-blue-200/80 bg-blue-100/90 text-blue-900 dark:border-blue-800/50 dark:bg-blue-950/60 dark:text-blue-100',
+    textColor: 'text-blue-700 dark:text-blue-300',
+    countBg: 'bg-blue-100 dark:bg-blue-900/40',
+    countText: 'text-blue-900 dark:text-blue-100',
   },
   vencida: {
-    accent: '#ef4444',
     headerBg: 'bg-red-50/90 dark:bg-red-950/35',
-    badgeClass:
-      'border-red-200/80 bg-red-100/90 text-red-900 dark:border-red-800/50 dark:bg-red-950/60 dark:text-red-100',
+    textColor: 'text-red-700 dark:text-red-300',
+    countBg: 'bg-red-100 dark:bg-red-900/40',
+    countText: 'text-red-900 dark:text-red-100',
   },
   completada: {
-    accent: '#13944C',
     headerBg: 'bg-emerald-50/90 dark:bg-emerald-950/30',
-    badgeClass:
-      'border-emerald-200/80 bg-emerald-100/90 text-emerald-900 dark:border-emerald-800/50 dark:bg-emerald-950/50 dark:text-emerald-100',
+    textColor: 'text-emerald-700 dark:text-emerald-300',
+    countBg: 'bg-emerald-100 dark:bg-emerald-900/40',
+    countText: 'text-emerald-900 dark:text-emerald-100',
   },
 };
 
-const statusLabelUpper: Record<ActivityStatus, string> = {
-  pendiente: 'PENDIENTE',
-  en_progreso: 'EN PROGRESO',
-  vencida: 'VENCIDA',
-  completada: 'COMPLETADA',
-};
-
-const taskKindAriaLabel: Record<TaskKind, string> = {
-  llamada: 'Llamada',
-  reunion: 'Reunión',
-  correo: 'Correo',
-  whatsapp: 'WhatsApp',
+const statusLabel: Record<ActivityStatus, string> = {
+  pendiente: 'Pendiente',
+  en_progreso: 'En progreso',
+  vencida: 'Vencida',
+  completada: 'Completada',
 };
 
 
@@ -161,7 +147,6 @@ const TaskKanbanCard = memo(function TaskKanbanCard({
   const kind: TaskKind =
     task.taskKind && TASK_KINDS.includes(task.taskKind) ? task.taskKind : 'llamada';
   const TypeIcon = activityIcons[kind];
-  const circle = activityTypeIconCircleClass(kind);
   const overdue = isOverdue(task.dueDate, task.status);
   const priority: ContactPriority = task.priority ?? 'media';
 
@@ -172,48 +157,33 @@ const TaskKanbanCard = memo(function TaskKanbanCard({
   return (
     <div
       className={cn(
-        'rounded-xl border border-border/80 bg-card p-3.5 text-card-foreground shadow-sm',
-        !overlay && 'transition-[box-shadow,border-color] duration-150 hover:border-primary/25 hover:shadow-md',
-        overlay && 'pointer-events-none rotate-1 cursor-grabbing shadow-xl ring-2 ring-primary/20',
+        'relative rounded-xl bg-white dark:bg-gray-800 p-2.5',
+        overlay && 'pointer-events-none rotate-1 cursor-grabbing ring-2 ring-primary/20',
       )}
     >
-      <div className="flex items-center justify-between gap-2">
+      <PrioritySvgIcon className={cn('absolute right-2 top-2 size-4', priorityFlagClass(priority))} />
+      <div className="flex items-center justify-between gap-1">
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
             onCardClick();
           }}
-          className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
+          className="flex min-w-0 flex-1 items-center gap-2.5 text-left pr-7"
         >
-          <div
-            className={cn(
-              'flex size-7 shrink-0 items-center justify-center rounded-full',
-              ACTIVITY_ICON_INHERIT,
-              circle ?? 'bg-muted text-muted-foreground [&_svg]:size-3.5',
-            )}
-            role="img"
-            aria-label={taskKindAriaLabel[kind]}
-          >
-            <TypeIcon className="size-3.5" strokeWidth={2} aria-hidden />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold leading-snug text-foreground" title={task.title}>
-              {task.title}
-            </p>
-          </div>
+          <TypeIcon className="size-6 shrink-0 text-muted-foreground" aria-hidden />
+          <span className="block w-full truncate text-sm text-foreground">{task.title}</span>
         </button>
         {!overlay && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                size="icon-sm"
-                className="size-8 shrink-0 text-muted-foreground"
+                className="absolute right-2 bottom-2 z-[1] size-6 p-0 text-muted-foreground hover:text-foreground"
                 onClick={(e) => e.stopPropagation()}
                 onPointerDown={(e) => e.stopPropagation()}
               >
-                <MoreHorizontal className="size-4" />
+                <MoreHorizontal className="size-3.5" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
@@ -232,19 +202,9 @@ const TaskKanbanCard = memo(function TaskKanbanCard({
 
       <div className="mt-2.5 space-y-2 text-xs text-muted-foreground">
         <div className="flex items-center gap-2">
-          <User className="size-3.5 shrink-0 opacity-70" aria-hidden />
-          <span className="truncate">{task.assignedToName || '—'}</span>
-        </div>
-        <div className="flex items-center gap-2">
           <Calendar className="size-3.5 shrink-0 opacity-70" aria-hidden />
           <span className={cn('truncate', overdue && 'font-medium text-red-600 dark:text-red-400')}>
             {formatDueDate(task.dueDate, task.startTime)}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Flag className={cn('size-3.5 shrink-0', priorityFlagClass(priority))} aria-hidden />
-          <span className={cn('font-medium', priorityFlagClass(priority))}>
-            {priorityLabels[priority]}
           </span>
         </div>
         {hasContact && (
@@ -265,6 +225,10 @@ const TaskKanbanCard = memo(function TaskKanbanCard({
             <span className="truncate">{task.opportunityTitle?.trim()}</span>
           </div>
         )}
+        <div className="inline-flex items-center gap-1 rounded-md border border-[#d0d5dd]/50 dark:border-gray-600/50 bg-white/60 dark:bg-gray-800/60 px-2 py-0.5 text-[13px] text-muted-foreground">
+          <UserHandUpIcon className="size-3.5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
+          <span className="truncate">{task.assignedToName || '—'}</span>
+        </div>
       </div>
     </div>
   );
@@ -333,26 +297,15 @@ const KanbanColumnShell = memo(function KanbanColumnShell({
   const { setNodeRef, isOver } = useDroppable({ id: status });
 
   return (
-    <div className="flex h-full min-h-0 min-w-[10.5rem] max-w-full flex-1 basis-0 flex-col">
-      <div className="h-1 shrink-0 rounded-t-xl" style={{ backgroundColor: theme.accent }} />
-      <div
-        className={cn(
-          'flex shrink-0 items-center justify-between gap-2 border-x border-t border-border/80 px-3 py-2.5 backdrop-blur-sm',
-          theme.headerBg,
-        )}
-      >
+    <div className="flex h-full min-h-0 min-w-[20rem] max-w-full flex-1 basis-0 flex-col overflow-hidden rounded-t-xl">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-x border-t border-border/80 px-3 py-2.5 bg-[#e8ecf0] dark:bg-gray-800/50">
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          <Badge
-            variant="outline"
-            className={cn(
-              'shrink-0 gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
-              theme.badgeClass,
-            )}
-          >
-            <CircleDot className="size-3 opacity-80" aria-hidden />
-            <span className="max-w-[9rem] truncate">{statusLabelUpper[status]}</span>
-          </Badge>
-          <span className="tabular-nums text-sm font-bold text-foreground">{count}</span>
+          <span className={cn('inline-flex items-center justify-center min-w-[1.5rem] h-6 rounded-full px-1.5 text-xs font-bold tabular-nums', theme.countBg, theme.countText)}>
+            {count}
+          </span>
+          <span className={cn('text-sm font-semibold truncate', theme.textColor)}>
+            {statusLabel[status]}
+          </span>
         </div>
         <Button
           type="button"
@@ -360,7 +313,7 @@ const KanbanColumnShell = memo(function KanbanColumnShell({
           size="icon-sm"
           className="size-8 shrink-0 text-muted-foreground hover:text-foreground"
           onClick={onAddTask}
-          aria-label={`Nueva tarea en ${statusLabelUpper[status]}`}
+          aria-label={`Nueva tarea en ${statusLabel[status]}`}
         >
           <Plus className="size-4" />
         </Button>
@@ -368,22 +321,12 @@ const KanbanColumnShell = memo(function KanbanColumnShell({
       <div
         ref={setNodeRef}
         className={cn(
-          'scrollbar-thin flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overflow-x-hidden overscroll-y-contain rounded-b-xl border-x border-b border-border/80 bg-muted/25 p-2 [-webkit-overflow-scrolling:touch] dark:bg-muted/15',
+          'scrollbar-thin flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overflow-x-hidden overscroll-y-contain rounded-b-xl border-x border-b border-border/80 bg-[#e8ecf0] p-1 [-webkit-overflow-scrolling:touch] dark:bg-gray-800/50',
           (isOver || showDropHint) && 'ring-2 ring-inset ring-primary/35',
         )}
       >
         {children}
       </div>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        className="mt-2 h-9 shrink-0 justify-start gap-2 rounded-lg border border-dashed border-border/80 text-muted-foreground hover:border-primary/30 hover:bg-muted/40 hover:text-foreground"
-        onClick={onAddTask}
-      >
-        <Plus className="size-4" />
-        Añadir tarea
-      </Button>
     </div>
   );
 });
@@ -495,7 +438,7 @@ export const TasksKanbanBoard = memo(function TasksKanbanBoard({
       <div className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col gap-2">
         <div
           className={cn(
-            'scrollbar-thin flex h-[min(calc(100dvh-15rem),72rem)] min-h-[22rem] w-full min-w-0 flex-row gap-3',
+            'scrollbar-thin flex min-h-[22rem] w-full min-w-0 flex-1 flex-row gap-3',
             'overflow-x-auto overflow-y-hidden overscroll-x-contain',
             'items-stretch pb-2 pt-0.5 [-webkit-overflow-scrolling:touch]',
           )}

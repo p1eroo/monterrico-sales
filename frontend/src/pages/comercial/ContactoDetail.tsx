@@ -188,7 +188,7 @@ export default function ContactoDetailPage() {
   const { contacts, opportunities, getOpportunitiesByContactId, addOpportunity, updateOpportunity, updateContact } = useCRMStore();
   const { users, activeAdvisors } = useUsers();
   const crmBundle = useCrmConfigStore((s) => s.bundle);
-  const { activities: activitiesFromStore, createActivity } = useActivities();
+  const { activities: activitiesFromStore, createActivity, updateActivity, deleteActivity } = useActivities();
 
   const [apiRecord, setApiRecord] = useState<ApiContactDetail | null>(null);
   const [apiLoading, setApiLoading] = useState(fromApi);
@@ -990,7 +990,7 @@ export default function ContactoDetailPage() {
           </TabsList>
 
           <TabsContent value="actividades" className="mt-4">
-            <ActivityPanel activities={contactActivities} onRegisterActivity={() => toast.info('Usa las acciones rápidas para registrar una actividad')} />
+            <ActivityPanel activities={contactActivities} onRegisterActivity={() => toast.info('Usa las acciones rápidas para registrar una actividad')} onUpdateActivity={updateActivity} onDeleteActivity={deleteActivity} />
           </TabsContent>
 
           {/* Archivos Tab */}

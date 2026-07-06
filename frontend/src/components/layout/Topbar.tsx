@@ -76,7 +76,7 @@ export function Topbar() {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 min-w-0 shrink-0 items-center gap-3 border-b px-6 md:px-8">
+    <header className="sticky top-0 z-30 flex h-14 min-w-0 shrink-0 items-center gap-3 px-6 md:px-8">
       <SidebarTrigger className="-ml-1 text-text-secondary hover:bg-surface-hover hover:text-foreground md:hidden" />
       <Separator
         orientation="vertical"
@@ -97,11 +97,10 @@ export function Topbar() {
         </BreadcrumbList>
       </Breadcrumb>
 
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ml-auto flex items-center gap-3">
         {area === "comercial" && (
           <>
             <AssistantLauncherButton />
-            <div className="mx-1.5 h-5 w-px bg-foreground/20" />
             <NotificationCenter />
           </>
         )}
@@ -109,16 +108,16 @@ export function Topbar() {
 
         <ThemeToggle />
 
-        <Separator
-          orientation="vertical"
-          className="-mx-0.5 h-5 bg-border/80"
-        />
+          <Separator
+            orientation="vertical"
+            className="-mx-0.5 h-5 bg-border/80"
+          />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="h-8 gap-2 px-2 text-base font-normal text-text-secondary hover:bg-surface-hover hover:text-foreground"
+              className="h-auto p-0 text-base font-normal text-text-secondary hover:bg-surface-hover hover:text-foreground"
             >
               <Avatar className="size-9">
                 <AvatarImage

@@ -9,7 +9,7 @@ export class ActivityLogsController {
   constructor(private readonly activityLogsService: ActivityLogsService) {}
 
   @Get()
-  @RequirePermissions('auditoria.ver')
+  @RequirePermissions('actividades.ver')
   findAll(
     @Query('page') page?: string,
     @Query('limit') limit?: string,

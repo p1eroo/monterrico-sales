@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, type ComponentProps } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useCrmTeamAdvisorFilter } from '@/hooks/useCrmTeamAdvisorFilter';
 import { toast } from 'sonner';
 import {
@@ -7,6 +8,7 @@ import {
   CalendarDays, AlertTriangle,
   Check, Pencil, Trash2, Building2,
   List, Grid3X3, Target, UserCircle,
+  ChevronDown,
 } from 'lucide-react';
 import type {
   Activity, ActivityType, ActivityStatus, TaskKind, ContactPriority, TaskAssociation,
@@ -52,6 +54,17 @@ import {
 } from '@/components/ui/collapsible';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  Command,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -68,6 +81,9 @@ import {
   type TaskDetailTask,
   type TaskComment as TaskDetailComment,
 } from '@/components/shared/TaskDetailDialog';
+import { ChartSquareIcon } from '@/components/icons/ChartSquareIcon';
+import { CalendarSvgIcon } from '@/components/icons/CalendarSvgIcon';
+import { FilterSvgIcon } from '@/components/icons/FilterSvgIcon';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { TaskFormDialog } from '@/components/shared/TaskFormDialog';
 import type { TaskFormResult } from '@/components/shared/TaskFormDialog';
@@ -104,10 +120,10 @@ const taskTypeLabels: Record<TaskKind, string> = {
 };
 
 const activityStatusConfig: Record<ActivityStatus, { label: string; className: string }> = {
-  pendiente: { label: 'Pendiente', className: 'text-amber-600' },
-  completada: { label: 'Completada', className: 'text-emerald-600' },
-  en_progreso: { label: 'En progreso', className: 'text-blue-600' },
-  vencida: { label: 'Vencida', className: 'text-red-600' },
+  pendiente: { label: 'Pendiente', className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' },
+  completada: { label: 'Completada', className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' },
+  en_progreso: { label: 'En progreso', className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' },
+  vencida: { label: 'Vencida', className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' },
 };
 
 const statusTabs = [
@@ -152,6 +168,7 @@ function activityCompanyDisplayName(a: Activity): string | undefined {
 }
 
 export default function TareasPage() {
+  const navigate = useNavigate();
   const { activeAdvisors } = useUsers();
   const {
     activities,
@@ -589,23 +606,187 @@ export default function TareasPage() {
 
   return (
     <TooltipProvider>
-      <div className="min-w-0 max-w-full space-y-6">
+      <div className={viewMode === 'kanban' ? 'flex h-full min-h-0 min-w-0 flex-col gap-5' : 'min-w-0 max-w-full space-y-6'}>
       <PageHeader title="Tareas">
-        <div className="flex items-center gap-2">
-          {activitiesLoading && (
-            <span className="text-sm text-muted-foreground">Cargando…</span>
-          )}
-          <Button
-            onClick={() => {
-              setNewTaskColumnStatus(undefined);
-              setNewTaskDefaultAssociations(undefined);
-              setNewTaskOpen(true);
-            }}
-            disabled={activitiesLoading}
-          >
-            <Plus /> Nueva Tarea
-          </Button>
-        </div>
+        {viewMode === 'kanban' ? (
+          <div className="flex items-center gap-2">
+            <div className="flex items-center rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 p-0.5">
+              <button
+                className="rounded-md px-3 py-1.5 text-sm font-medium text-[#647789] dark:text-gray-400 hover:text-[#1f2933] dark:hover:text-gray-100 transition-colors cursor-pointer"
+                onClick={() => setViewMode('list')}
+              >
+                Lista
+              </button>
+              <button className="rounded-md px-3 py-1.5 text-sm font-medium bg-[#e8f5e9] dark:bg-green-900/30 text-[#13944C] dark:text-green-400">
+                Kanban
+              </button>
+            </div>
+            <div className="relative w-full min-w-0 max-w-[400px]">
+              <Search className="absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-[#8a9aab] dark:text-gray-400" />
+              <Input
+                placeholder="Buscar tareas..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="!h-12 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 pl-10 text-[15px] text-black placeholder:text-[#8a9aab] dark:placeholder:text-gray-400 transition-colors hover:border-primary focus-visible:ring-1 shadow-none"
+              />
+            </div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="!h-12 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm font-medium text-[#647789] dark:text-gray-400 hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 whitespace-nowrap">
+                  <CalendarSvgIcon className="size-5" />
+                  Calendario
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-4" align="end">
+                <Calendar
+                  mode="single"
+                  selected={calendarDate}
+                  onSelect={setCalendarDate}
+                  className="mx-auto"
+                  {...calendarTaskProps}
+                />
+              </PopoverContent>
+            </Popover>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1f2933] dark:text-gray-100 transition-opacity hover:opacity-70 cursor-pointer whitespace-nowrap">
+                  <FilterSvgIcon className="size-[18px]" />
+                  Filtros
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[500px] p-3" align="end">
+                <div className="flex items-center gap-3">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className={`!h-12 flex-1 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate ${statusFilter !== 'todos' ? 'text-black' : 'text-[#8a9aab] dark:text-gray-400'}`}>
+                        <ChartSquareIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
+                        <span className="truncate flex-1">
+                          {statusFilter === 'todos'
+                            ? 'Estado'
+                            : activityStatusConfig[statusFilter as ActivityStatus]?.label ?? statusFilter}
+                        </span>
+                        <ChevronDown className="size-3.5 shrink-0 opacity-50" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[180px] p-0" align="start">
+                      <Command>
+                        <CommandList className="max-h-[260px] overflow-y-auto">
+                          <CommandGroup>
+                            <CommandItem onSelect={() => setStatusFilter('todos')}>
+                              <span className="[&_svg]:!text-primary-foreground">
+                                <Checkbox checked={statusFilter === 'todos'} className="mr-2 h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded" />
+                              </span>
+                              <span>Todos</span>
+                            </CommandItem>
+                            {Object.entries(activityStatusConfig).map(([key, { label }]) => (
+                              <CommandItem key={key} onSelect={() => setStatusFilter(key as any)}>
+                                <span className="[&_svg]:!text-primary-foreground">
+                                  <Checkbox checked={statusFilter === key} className="mr-2 h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded" />
+                                </span>
+                                <span>{label}</span>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className={`!h-12 flex-1 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate ${priorityFilter !== 'todas' ? 'text-black' : 'text-[#8a9aab] dark:text-gray-400'}`}>
+                        <ChartSquareIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
+                        <span className="truncate flex-1">
+                          {priorityFilter === 'todas'
+                            ? 'Prioridad'
+                            : priorityLabels[priorityFilter as ContactPriority] ?? priorityFilter}
+                        </span>
+                        <ChevronDown className="size-3.5 shrink-0 opacity-50" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[180px] p-0" align="start">
+                      <Command>
+                        <CommandList className="max-h-[260px] overflow-y-auto">
+                          <CommandGroup>
+                            <CommandItem onSelect={() => setPriorityFilter('todas' as any)}>
+                              <span className="[&_svg]:!text-primary-foreground">
+                                <Checkbox checked={priorityFilter === 'todas'} className="mr-2 h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded" />
+                              </span>
+                              <span>Todas</span>
+                            </CommandItem>
+                            {(Object.keys(priorityLabels) as ContactPriority[]).map((key) => (
+                              <CommandItem key={key} onSelect={() => setPriorityFilter(key as any)}>
+                                <span className="[&_svg]:!text-primary-foreground">
+                                  <Checkbox checked={priorityFilter === key} className="mr-2 h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded" />
+                                </span>
+                                <span>{priorityLabels[key]}</span>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className={`!h-12 flex-1 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate disabled:opacity-50 disabled:cursor-not-allowed ${advisorFilter !== 'todos' ? 'text-black' : 'text-[#8a9aab] dark:text-gray-400'}`} disabled={!canSeeAllAdvisors}>
+                        <UserCircle className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
+                        <span className="truncate flex-1">
+                          {advisorFilter === 'todos'
+                            ? 'Asesor'
+                            : activeAdvisors.find((u) => u.id === advisorFilter)?.name ?? 'Asesor'}
+                        </span>
+                        <ChevronDown className="size-3.5 shrink-0 opacity-50" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[180px] p-0" align="start">
+                      <Command>
+                        <CommandList className="max-h-[260px] overflow-y-auto">
+                          <CommandGroup>
+                            <CommandItem onSelect={() => setAdvisorFilter('todos')}>
+                              <span className="[&_svg]:!text-primary-foreground">
+                                <Checkbox checked={advisorFilter === 'todos'} className="mr-2 h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded" />
+                              </span>
+                              <span>Todos</span>
+                            </CommandItem>
+                            {activeAdvisors.map((u) => (
+                              <CommandItem key={u.id} onSelect={() => setAdvisorFilter(u.id)}>
+                                <span className="[&_svg]:!text-primary-foreground">
+                                  <Checkbox checked={advisorFilter === u.id} className="mr-2 h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded" />
+                                </span>
+                                <span>{u.name}</span>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </PopoverContent>
+            </Popover>
+            {(hasActiveFilters || search) && (
+              <Button variant="ghost" size="sm" onClick={clearFilters}>
+                <X className="size-4" /> Limpiar
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            {activitiesLoading && (
+              <span className="text-sm text-muted-foreground">Cargando…</span>
+            )}
+            <Button
+              onClick={() => {
+                setNewTaskColumnStatus(undefined);
+                setNewTaskDefaultAssociations(undefined);
+                setNewTaskOpen(true);
+              }}
+              disabled={activitiesLoading}
+            >
+              <Plus /> Nueva Tarea
+            </Button>
+          </div>
+        )}
       </PageHeader>
 
       {activitiesError && (
@@ -618,7 +799,7 @@ export default function TareasPage() {
       )}
 
       {/* Filter bar */}
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+      <div className={viewMode === 'kanban' ? 'hidden' : 'flex flex-col gap-3 lg:flex-row lg:items-center'}>
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -718,7 +899,7 @@ export default function TareasPage() {
       )}
 
       {/* Main content: list + sidebar */}
-      <div className="flex min-h-0 min-w-0 max-w-full gap-6">
+      <div className="flex min-h-0 min-w-0 max-w-full flex-1 gap-6">
         {/* Task list / Kanban */}
         <div
           className={cn(
@@ -1022,6 +1203,7 @@ export default function TareasPage() {
         </div>
 
         {/* Calendar sidebar - desktop */}
+        {viewMode !== 'kanban' && (
         <aside className="hidden w-[320px] shrink-0 lg:block">
           <div className="sticky top-6 space-y-4">
             <Card>
@@ -1048,9 +1230,11 @@ export default function TareasPage() {
             </Card>
           </div>
         </aside>
+        )}
       </div>
 
       {/* Mobile calendar collapsible */}
+      {viewMode !== 'kanban' && (
       <div className="lg:hidden">
         <Collapsible open={sidebarOpen} onOpenChange={setSidebarOpen}>
           <CollapsibleTrigger asChild>
@@ -1073,6 +1257,7 @@ export default function TareasPage() {
           </CollapsibleContent>
         </Collapsible>
       </div>
+      )}
 
       {/* Vista previa de tarea (mismo que TasksTab) */}
       <TaskDetailDialog

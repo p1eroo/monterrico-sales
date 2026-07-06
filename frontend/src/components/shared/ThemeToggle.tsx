@@ -18,17 +18,17 @@ export function ThemeToggle() {
   return (
     <Button
       variant="ghost"
-      size="icon-sm"
+      size="icon"
       onClick={toggle}
       className={cn(
-        'text-muted-foreground hover:text-[#13944C] hover:bg-[#13944C]/10'
+        'text-muted-foreground hover:text-[#13944C]'
       )}
       aria-label="Cambiar tema"
     >
       {mounted && resolvedTheme === 'dark' ? (
-        <SunSvgIcon className="size-7" />
+        <SunSvgIcon className="size-8" />
       ) : (
-        <MoonStarsSvgIcon className="size-7" />
+        <MoonStarsSvgIcon className="size-8" />
       )}
     </Button>
   );

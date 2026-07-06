@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Bell } from 'lucide-react';
+import { NotificationBingSvgIcon } from '@/components/icons/NotificationBingSvgIcon';
 import { Button } from '@/components/ui/button';
 import { NotificationDropdown } from './NotificationDropdown';
 import { NotificationDrawer, type DrawerView } from './NotificationDrawer';
@@ -34,10 +34,10 @@ export function NotificationCenter() {
   const trigger = (
     <Button
       variant="ghost"
-      size="icon-sm"
-      className="relative text-muted-foreground hover:text-[#13944C] hover:bg-[#13944C]/10"
+      size="icon"
+      className="relative hover:text-[#13944C]"
     >
-      <Bell className="size-4" />
+      <NotificationBingSvgIcon className="size-8" />
       {unreadCount > 0 && (
         <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-[#13944C] text-[10px] font-bold text-white">
           {unreadCount > 9 ? '9+' : unreadCount}

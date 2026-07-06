@@ -401,6 +401,8 @@ export default function EmpresaDetailPage() {
   const {
     activities: activitiesFromStore,
     createActivity,
+    updateActivity,
+    deleteActivity,
   } = useActivities();
   const companyContactIds = useMemo(
     () => companyContacts.map((c) => c.id),
@@ -1503,7 +1505,7 @@ return (
         </TabsContent>
 
         <TabsContent value="actividades" className="mt-4">
-          <ActivityPanel activities={companyActivities} />
+          <ActivityPanel activities={companyActivities} onUpdateActivity={updateActivity} onDeleteActivity={deleteActivity} />
         </TabsContent>
 
         <TabsContent value="archivos" className="mt-4">

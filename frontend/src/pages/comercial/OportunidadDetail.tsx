@@ -121,7 +121,7 @@ export default function OportunidadDetailPage() {
   const crmBundle = useCrmConfigStore((s) => s.bundle);
   const currentUserRole = useAppStore((s) => s.currentUser.role ?? '');
   const canEditAssignee = canReassignCommercialAdvisor(currentUserRole);
-  const { activities: activitiesFromStore, createActivity } = useActivities();
+  const { activities: activitiesFromStore, createActivity, updateActivity, deleteActivity } = useActivities();
   const storeOpp = opportunities.find((o) => o.id === routeId);
 
   const opp = useMemo(() => {
@@ -1085,7 +1085,7 @@ async function handleCreateNewContact(data: NewContactData) {
         </TabsContent>
 
         <TabsContent value="actividades" className="mt-4">
-          <ActivityPanel activities={oppActivities} />
+          <ActivityPanel activities={oppActivities} onUpdateActivity={updateActivity} onDeleteActivity={deleteActivity} />
         </TabsContent>
 
         <TabsContent value="archivos" className="mt-4">

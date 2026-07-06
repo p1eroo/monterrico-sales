@@ -132,7 +132,7 @@ function activityToMockTask(a: Activity): MockTask {
     status: a.status as TaskStatus,
     type:
       a.taskKind && TASK_KINDS.includes(a.taskKind) ? a.taskKind : 'llamada',
-    priority: 'media',
+    priority: (a.priority as TaskPriority) || 'media',
     company,
     startDate: a.startDate,
     dueDate: a.dueDate,
