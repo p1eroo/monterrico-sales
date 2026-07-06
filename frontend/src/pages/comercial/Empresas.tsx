@@ -110,11 +110,8 @@ import { useImportJobsStore } from '@/store/importJobsStore';
 import {
   CrmEntityCardGridSkeleton,
 } from '@/components/shared/CrmListPageSkeleton';
-import plantillaIcon from '@/components/icons/file-new-svgrepo-com.svg';
-import importIcon from '@/components/icons/import-3-svgrepo-com.svg';
-import exportIcon from '@/components/icons/export-2-svgrepo-com.svg';
-import columnsIcon from '@/components/icons/columns-3-svgrepo-com.svg';
-import filterIcon from '@/components/icons/filter-svgrepo-com.svg';
+import { ColumnsSvgIcon } from '@/components/icons/ColumnsSvgIcon';
+import { FilterSvgIcon } from '@/components/icons/FilterSvgIcon';
 
 type EmpresaSummaryRow = CompanySummaryRow & { isLocalOnly?: boolean };
 
@@ -649,7 +646,7 @@ export default function EmpresasPage() {
               <CompanyLogoImg companyId={companyId} isLocal={isLocal} />
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-[#0F172A]" title={row.original.name}>{row.original.name}</p>
+              <p className="truncate text-sm font-semibold text-[#0F172A] dark:text-gray-100" title={row.original.name}>{row.original.name}</p>
               {row.original.domain && (
                 <a
                   href={row.original.domain.startsWith('http') ? row.original.domain : `https://${row.original.domain}`}
@@ -682,7 +679,7 @@ export default function EmpresasPage() {
         header: 'Fuente',
         enableHiding: true,
         cell: ({ getValue }) => (
-          <span className="text-sm text-[#475569]">{sourceLabelFromApi(getValue() as string | null)}</span>
+          <span className="text-sm text-[#475569] dark:text-gray-400">{sourceLabelFromApi(getValue() as string | null)}</span>
         ),
         enableSorting: false,
         size: 100,
@@ -694,7 +691,7 @@ export default function EmpresasPage() {
         enableHiding: true,
         cell: ({ getValue }) => {
           const rubro = parseRubroFromApi(getValue() as string | null | undefined);
-          return <span className="block truncate text-sm text-[#475569]" title={rubro ? companyRubroLabels[rubro] : undefined}>{rubro ? companyRubroLabels[rubro] : '—'}</span>;
+          return <span className="block truncate text-sm text-[#475569] dark:text-gray-400" title={rubro ? companyRubroLabels[rubro] : undefined}>{rubro ? companyRubroLabels[rubro] : '—'}</span>;
         },
         enableSorting: false,
         size: 170,
@@ -706,7 +703,7 @@ export default function EmpresasPage() {
         enableHiding: true,
         cell: ({ getValue }) => {
           const tipo = parseTipoFromApi(getValue() as string | null | undefined);
-          return <span className="text-sm text-[#475569]">{tipo ?? '—'}</span>;
+          return <span className="text-sm text-[#475569] dark:text-gray-400">{tipo ?? '—'}</span>;
         },
         enableSorting: false,
         size: 65,
@@ -718,7 +715,7 @@ export default function EmpresasPage() {
         header: 'Recuperado',
         enableHiding: true,
         cell: ({ getValue }) => (
-          <span className="text-sm text-[#475569]">
+          <span className="text-sm text-[#475569] dark:text-gray-400">
             {getValue() === 'si' ? 'Recuperado' : '—'}
           </span>
         ),
@@ -731,7 +728,7 @@ export default function EmpresasPage() {
         header: 'Asesor',
         enableHiding: true,
         cell: ({ getValue }) => (
-          <span className="text-sm text-[#475569]">{getValue() as string ?? '—'}</span>
+          <span className="text-sm text-[#475569] dark:text-gray-400">{getValue() as string ?? '—'}</span>
         ),
         enableSorting: false,
         size: 120,
@@ -742,7 +739,7 @@ export default function EmpresasPage() {
         header: 'Creación',
         enableHiding: true,
         cell: ({ getValue }) => (
-          <span className="text-sm text-[#475569]">
+          <span className="text-sm text-[#475569] dark:text-gray-400">
             {new Date(getValue() as string).toLocaleDateString('es-PE')}
           </span>
         ),
@@ -771,7 +768,7 @@ export default function EmpresasPage() {
         header: 'Última interacción',
         enableHiding: true,
         cell: ({ getValue }) => (
-          <span className="text-sm text-[#475569]">
+          <span className="text-sm text-[#475569] dark:text-gray-400">
             {getValue()
               ? new Date(getValue() as string).toLocaleDateString('es-PE')
               : '—'}
@@ -1538,7 +1535,7 @@ export default function EmpresasPage() {
       {/* Filter bar */}
       <div className="flex min-w-0 flex-col gap-3 px-5 py-4 lg:flex-row lg:items-center">
         <div className="relative w-full min-w-0 max-w-[400px]">
-          <Search className="absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-[#8a9aab]" />
+          <Search className="absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-[#8a9aab] dark:text-gray-400" />
           <Input
             placeholder="Buscar por empresa o contacto..."
             value={search}
@@ -1546,13 +1543,13 @@ export default function EmpresasPage() {
               setSearch(e.target.value);
               setPage(1);
             }}
-            className="!h-12 rounded-lg border border-[#e1e7ee] bg-white/60 pl-10 text-[15px] text-black placeholder:text-[#8a9aab] transition-colors hover:border-primary focus-visible:ring-1 shadow-none"
+            className="!h-12 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 pl-10 text-[15px] text-black placeholder:text-[#8a9aab] dark:placeholder:text-gray-400 transition-colors hover:border-primary focus-visible:ring-1 shadow-none"
           />
         </div>
         <Popover>
           <PopoverTrigger asChild>
-            <button className={`!h-12 w-[190px] rounded-lg border border-[#e1e7ee] bg-white/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left ${etapaFilter.length > 0 ? 'text-black' : 'text-[#8a9aab]'}`}>
-              <ChartSquareIcon className="size-5 shrink-0 text-[#8a9aab]" />
+            <button className={`!h-12 w-[190px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left ${etapaFilter.length > 0 ? 'text-black' : 'text-[#8a9aab] dark:text-gray-400'}`}>
+              <ChartSquareIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
               <span className="truncate flex-1">
                 {etapaFilter.length === 0
                   ? 'Etapa'
@@ -1597,8 +1594,8 @@ export default function EmpresasPage() {
 
         <Popover>
           <PopoverTrigger asChild>
-            <button className={`!h-12 w-[190px] rounded-lg border border-[#e1e7ee] bg-white/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate ${rubroFilter.length > 0 ? 'text-black' : 'text-[#8a9aab]'}`}>
-              <CategorySolidIcon className="size-5 shrink-0 text-[#8a9aab]" />
+            <button className={`!h-12 w-[190px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate ${rubroFilter.length > 0 ? 'text-black' : 'text-[#8a9aab] dark:text-gray-400'}`}>
+              <CategorySolidIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
               <span className="truncate flex-1">
                 {rubroFilter.length === 0
                   ? 'Rubro'
@@ -1646,8 +1643,8 @@ export default function EmpresasPage() {
           if (open) setDraftRange(interactionRange);
         }}>
           <PopoverTrigger asChild>
-            <button className={`!h-12 w-[210px] rounded-lg border border-[#e1e7ee] bg-white/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate ${interactionRange?.from || interactionRange?.to ? 'text-black' : 'text-[#8a9aab]'}`}>
-              <CalendarSvgIcon className="size-5 shrink-0 text-[#8a9aab]" />
+            <button className={`!h-12 w-[210px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate ${interactionRange?.from || interactionRange?.to ? 'text-black' : 'text-[#8a9aab] dark:text-gray-400'}`}>
+              <CalendarSvgIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
               <span className="truncate flex-1">
                 {interactionRange?.from && interactionRange?.to
                   ? `${format(interactionRange.from, 'dd/MM/yyyy')} — ${format(interactionRange.to, 'dd/MM/yyyy')}`
@@ -1707,8 +1704,8 @@ export default function EmpresasPage() {
         <div className="ml-auto hidden sm:flex items-center gap-5">
           <Popover>
             <PopoverTrigger asChild>
-              <button className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1f2933] transition-opacity hover:opacity-70 cursor-pointer">
-                <img src={columnsIcon} className="size-[18px]" alt="" />
+              <button className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1f2933] dark:text-gray-100 transition-opacity hover:opacity-70 cursor-pointer">
+                <ColumnsSvgIcon className="size-[18px]" />
                 Columnas
               </button>
             </PopoverTrigger>
@@ -1737,7 +1734,7 @@ export default function EmpresasPage() {
                             checked={visible}
                             className="h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
                           />
-                          <span className="text-[#1f2933]">{col.label}</span>
+                          <span className="text-[#1f2933] dark:text-gray-100">{col.label}</span>
                         </div>
                       );
                     })}
@@ -1748,8 +1745,8 @@ export default function EmpresasPage() {
           </Popover>
           <Popover>
             <PopoverTrigger asChild>
-              <button className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1f2933] transition-opacity hover:opacity-70 cursor-pointer">
-                <img src={filterIcon} className="size-[18px]" alt="" />
+              <button className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1f2933] dark:text-gray-100 transition-opacity hover:opacity-70 cursor-pointer">
+                <FilterSvgIcon className="size-[18px]" />
                 Filtros
               </button>
             </PopoverTrigger>
@@ -1757,8 +1754,8 @@ export default function EmpresasPage() {
               <div className="flex items-center gap-3">
                 <Popover>
                   <PopoverTrigger asChild>
-                    <button className={`!h-12 flex-1 rounded-lg border border-[#e1e7ee] bg-white/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer text-left truncate flex items-center gap-1.5 ${sourceFilter.length > 0 ? 'text-black' : 'text-[#8a9aab]'}`}>
-                      <PaletteIcon className="size-5 shrink-0 text-[#8a9aab]" />
+                    <button className={`!h-12 flex-1 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer text-left truncate flex items-center gap-1.5 ${sourceFilter.length > 0 ? 'text-black' : 'text-[#8a9aab] dark:text-gray-400'}`}>
+                      <PaletteIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
                       <span className="truncate flex-1">
                         {sourceFilter.length === 0
                           ? 'Fuente'
@@ -1802,8 +1799,8 @@ export default function EmpresasPage() {
                 </Popover>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <button className={`!h-12 flex-1 rounded-lg border border-[#e1e7ee] bg-white/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer text-left truncate flex items-center gap-1.5 ${tipoFilter.length > 0 ? 'text-black' : 'text-[#8a9aab]'}`}>
-                      <GitForkIcon className="size-5 shrink-0 text-[#8a9aab]" />
+                    <button className={`!h-12 flex-1 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer text-left truncate flex items-center gap-1.5 ${tipoFilter.length > 0 ? 'text-black' : 'text-[#8a9aab] dark:text-gray-400'}`}>
+                      <GitForkIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
                       <span className="truncate flex-1">
                         {tipoFilter.length === 0
                           ? 'Tipo'
@@ -1847,8 +1844,8 @@ export default function EmpresasPage() {
                 </Popover>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <button className={`!h-12 flex-1 rounded-lg border border-[#e1e7ee] bg-white/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer text-left truncate disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 ${advisorFilter.length > 0 ? 'text-black' : 'text-[#8a9aab]'}`} disabled={!canSeeAllAdvisors}>
-                      <UserHandIcon className="size-5 shrink-0 text-[#8a9aab]" />
+                    <button className={`!h-12 flex-1 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer text-left truncate disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 ${advisorFilter.length > 0 ? 'text-black' : 'text-[#8a9aab] dark:text-gray-400'}`} disabled={!canSeeAllAdvisors}>
+                      <UserHandIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
                       <span className="truncate flex-1">
                         {advisorFilter.length === 0
                           ? 'Asesor'
@@ -1898,7 +1895,7 @@ export default function EmpresasPage() {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1f2933] transition-opacity hover:opacity-70 cursor-pointer">
+              <button className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1f2933] dark:text-gray-100 transition-opacity hover:opacity-70 cursor-pointer">
                 <MoreVertical className="size-5" />
               </button>
             </DropdownMenuTrigger>
@@ -1980,14 +1977,14 @@ export default function EmpresasPage() {
           <table className="w-full table-fixed" style={{ minWidth: table.getTotalSize() }}>
             <thead>
               {table.getHeaderGroups().map((hg) => (
-                <tr key={hg.id} className="h-11 bg-[#eef1f5] text-left text-xs font-bold text-[#647789]">
+                <tr key={hg.id} className="h-11 bg-[#eef1f5] dark:bg-gray-800 text-left text-xs font-bold text-[#647789] dark:text-gray-400">
                   {hg.headers.map((header) => (
                     <th
                       key={header.id}
                       colSpan={header.colSpan}
                       className={cn(
                         "relative px-3 align-middle overflow-hidden",
-                        header.column.getCanSort() && "cursor-pointer select-none hover:text-[#1f2933]",
+                        header.column.getCanSort() && "cursor-pointer select-none hover:text-[#1f2933] dark:hover:text-gray-100",
                         header.column.id === "select" && "pr-0",
                         header.column.id === "empresa" && "pl-1",
                         getResponsiveClass(header.column.id),
@@ -2004,7 +2001,7 @@ export default function EmpresasPage() {
                             ) : header.column.getIsSorted() === "desc" ? (
                               <ChevronDown className="size-3 shrink-0" />
                             ) : (
-                              <ChevronsUpDown className="size-3 shrink-0 text-[#94A3B8]" />
+                              <ChevronsUpDown className="size-3 shrink-0 text-[#94A3B8] dark:text-gray-500" />
                             )}
                           </>
                         )}
@@ -2028,7 +2025,7 @@ export default function EmpresasPage() {
               {table.getRowModel().rows.map((row) => (
                 <tr
                   key={row.id}
-                  className="h-14 border-b border-dashed border-[#e8ecf0] bg-card/30 transition-colors cursor-pointer last:border-b-0 hover:bg-[#fafbfc]"
+                  className="h-14 border-b border-dashed border-[#e8ecf0] dark:border-gray-700 bg-card/30 transition-colors cursor-pointer last:border-b-0 hover:bg-[#fafbfc] dark:hover:bg-gray-800"
                   onClick={() => openCompanyDetail(row.original)}
                 >
                   {row.getVisibleCells().map((cell) => (
@@ -2169,7 +2166,7 @@ export default function EmpresasPage() {
       )}
 
       {total > 0 && (
-        <div className="h-14 bg-white/30 px-5 flex items-center border-t border-dashed border-[#e8ecf0]">
+        <div className="h-14 bg-white/30 dark:bg-gray-900/30 px-5 flex items-center border-t border-dashed border-[#e8ecf0] dark:border-gray-700">
           <Pagination
             page={page}
             totalPages={totalPages}

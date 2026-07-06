@@ -36,12 +36,12 @@ export function Pagination({
     <div className="flex w-full items-center justify-end gap-4">
       {onPageSizeChange && pageSize != null && (
         <div className="flex items-center gap-2">
-          <span className="text-sm text-black whitespace-nowrap">Filas:</span>
+          <span className="text-sm text-black dark:text-gray-200 whitespace-nowrap">Filas:</span>
           <Select
             value={String(pageSize)}
             onValueChange={(val) => onPageSizeChange(Number(val))}
           >
-            <SelectTrigger size="sm" className="h-8 w-auto min-w-0 border-0 bg-transparent shadow-none text-black gap-1.5 justify-start [&_svg]:!text-black [&_svg]:!opacity-100">
+            <SelectTrigger size="sm" className="h-8 w-auto min-w-0 border-0 bg-transparent shadow-none text-black dark:text-gray-200 gap-1.5 justify-start [&_svg]:!text-black dark:[&_svg]:!text-gray-200 [&_svg]:!opacity-100">
               <SelectValue placeholder={String(pageSize)} />
             </SelectTrigger>
             <SelectContent>
@@ -55,7 +55,7 @@ export function Pagination({
         </div>
       )}
 
-      <p className="text-sm text-black whitespace-nowrap">
+      <p className="text-sm text-black dark:text-gray-200 whitespace-nowrap">
         {start != null && end != null && totalItems != null
           ? `${start}–${end} de ${totalItems}`
           : `Página ${page} de ${totalPages}`}
@@ -67,7 +67,7 @@ export function Pagination({
           size="sm"
           disabled={page <= 1}
           onClick={() => onPageChange(page - 1)}
-          className="h-8 w-7 p-0 text-black disabled:text-gray-300"
+          className="h-8 w-7 p-0 text-black dark:text-gray-200 disabled:text-gray-300 dark:disabled:text-gray-600"
         >
           <ChevronLeft className="size-5" />
         </Button>
@@ -76,7 +76,7 @@ export function Pagination({
           size="sm"
           disabled={page >= totalPages}
           onClick={() => onPageChange(page + 1)}
-          className="h-8 w-7 p-0 text-black disabled:text-gray-300"
+          className="h-8 w-7 p-0 text-black dark:text-gray-200 disabled:text-gray-300 dark:disabled:text-gray-600"
         >
           <ChevronRight className="size-5" />
         </Button>

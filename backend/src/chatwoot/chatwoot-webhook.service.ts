@@ -65,6 +65,7 @@ export class ChatwootWebhookService {
     const sender = payload.sender as { id?: number; name?: string; type?: string } | undefined;
     const assigneeId = (conversation as any)?.assignee_id as number | undefined;
     const contactPhone = ((conversation as any)?.meta?.sender?.phone_number
+      || (payload as any)?.sender?.phone_number
       || (conversation as any)?.contact_inbox?.source_id) as string | undefined;
     const contactSenderId = (conversation as any)?.meta?.sender?.id as number | undefined;
 
@@ -123,6 +124,12 @@ export class ChatwootWebhookService {
           // Guardar en crm_whatsapp_message para reportes
           const content = typeof payload.content === 'string' ? payload.content.slice(0, 500) : '[sin texto]';
           const createdAt = typeof payload.created_at === 'number' ? new Date(payload.created_at * 1000) : new Date();
+
+          this.logger.log(
+            `[webhook msg] isInbound=${isInbound} assigneeId=${assigneeId || 'NO'} sender.name="${sender?.name?.trim() || 'NO'}" ` +
+            `sender.type="${sender?.type || 'NO'}" createdByUserId=${createdByUserId || 'NO'} prospectoId=${prospecto.id}`,
+          );
+
           await this.prisma.crmWhatsappMessage.create({
             data: {
               direction: isInbound ? 'inbound' : 'outbound',
@@ -133,6 +140,7 @@ export class ChatwootWebhookService {
               body: content,
               flotaProspectoId: prospecto.id,
               createdByUserId,
+              payloadJson: payload as any,
               createdAt,
             },
           });

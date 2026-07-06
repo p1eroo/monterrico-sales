@@ -1489,14 +1489,10 @@ export class FlotaProspectosService {
   }
 
   async getOperadorStats(fecini: string, fecfin: string, scope?: CrmDataScope) {
-    // Para DateTime (createdAt): usar Lima
+    // Unificar todas las fechas con offset Lima (-05:00)
     const startDate = new Date(fecini + 'T00:00:00.000-05:00');
     const endDate = new Date(fecfin + 'T00:00:00.000-05:00');
     endDate.setDate(endDate.getDate() + 1);
-    // Para Date (asignadoAt, fechaCita): usar UTC (sin zona horaria)
-    const dateStart = new Date(fecini + 'T00:00:00.000Z');
-    const dateEnd = new Date(fecfin + 'T00:00:00.000Z');
-    dateEnd.setDate(dateEnd.getDate() + 1);
 
     const baseWhere: any = { eliminadoAt: null };
 
@@ -1507,14 +1503,74 @@ export class FlotaProspectosService {
       }
     }
 
-    // Operadores desde prospectos (con scope)
+    // 1. Cargar todos los usuarios con role 'operador' para construir el mapa de resolución de nombres
+    const allOperadorUsers = await this.prisma.user.findMany({
+      where: { role: { slug: 'operador' } },
+      select: {
+        id: true,
+        name: true,
+        accounts: {
+          where: { provider: 'credentials' },
+          select: { providerId: true },
+        },
+      },
+    });
+
+    // 2. Construir mapa de resolución: rawName → { canonicalName, userId }
+    const nameResolutionMap = new Map<string, { canonicalName: string; userId: string }>();
+
+    for (const user of allOperadorUsers) {
+      const canonicalName = user.name;
+      const userId = user.id;
+      const username = user.accounts[0]?.providerId || null;
+      const firstName = canonicalName.split(' ')[0] || '';
+      const normalizedFull = normalizeStr(canonicalName);
+
+      // Mapear canonical name → self
+      nameResolutionMap.set(canonicalName, { canonicalName, userId });
+      nameResolutionMap.set(canonicalName.toLowerCase(), { canonicalName, userId });
+      nameResolutionMap.set(normalizedFull, { canonicalName, userId });
+
+      // Mapear username → canonical
+      if (username && username !== canonicalName) {
+        nameResolutionMap.set(username, { canonicalName, userId });
+        nameResolutionMap.set(username.toLowerCase(), { canonicalName, userId });
+      }
+
+      // Mapear primer nombre → canonical
+      if (firstName && firstName.toLowerCase() !== canonicalName.toLowerCase()) {
+        nameResolutionMap.set(firstName, { canonicalName, userId });
+        nameResolutionMap.set(firstName.toLowerCase(), { canonicalName, userId });
+      }
+    }
+
+    function resolveName(raw: string): { canonicalName: string; userId: string } | null {
+      const trimmed = raw.trim();
+      if (!trimmed) return null;
+
+      // Búsqueda exacta
+      const exact = nameResolutionMap.get(trimmed);
+      if (exact) return exact;
+
+      // Búsqueda case-insensitive
+      const ci = nameResolutionMap.get(trimmed.toLowerCase());
+      if (ci) return ci;
+
+      // Búsqueda normalizada
+      const norm = nameResolutionMap.get(normalizeStr(trimmed));
+      if (norm) return norm;
+
+      return null;
+    }
+
+    // 3. Recolectar nombres raw de prospectos
     const prospectOperators = await this.prisma.flotaProspecto.findMany({
       where: { ...baseWhere, operador: { not: null } },
       select: { operador: true },
       distinct: ['operador'],
     });
 
-    // Senders desde mensajes salientes en el rango
+    // 4. Recolectar nombres de senders (outbound messages)
     const senderWhere: any = {
       direction: 'outbound',
       createdAt: { gte: startDate, lt: endDate },
@@ -1538,39 +1594,94 @@ export class FlotaProspectosService {
       distinct: ['createdByUserId'],
     });
 
-    // Unir ambos sets de nombres
-    const operatorNamesSet = new Set<string>();
-    for (const o of prospectOperators) if (o.operador) operatorNamesSet.add(o.operador);
-    for (const s of senders) if (s.createdBy?.name) operatorNamesSet.add(s.createdBy.name);
+    // 5. Agrupar por canonicalName: { userIds, operadorVariants }
+    const canonicalGroups = new Map<string, { userIds: string[]; operadorVariants: string[] }>();
 
-    const operatorNames = Array.from(operatorNamesSet);
+    for (const o of prospectOperators) {
+      if (!o.operador) continue;
+      const resolved = resolveName(o.operador);
+      const canonical = resolved?.canonicalName || o.operador;
+      const variant = o.operador;
 
+      let group = canonicalGroups.get(canonical);
+      if (!group) {
+        group = { userIds: resolved?.userId ? [resolved.userId] : [], operadorVariants: [] };
+        canonicalGroups.set(canonical, group);
+      }
+      if (resolved?.userId && !group.userIds.includes(resolved.userId)) {
+        group.userIds.push(resolved.userId);
+      }
+      if (!group.operadorVariants.includes(variant)) {
+        group.operadorVariants.push(variant);
+      }
+    }
+
+    for (const s of senders) {
+      if (!s.createdBy?.name) continue;
+      const resolved = resolveName(s.createdBy.name);
+      const canonical = resolved?.canonicalName || s.createdBy.name;
+      const variant = s.createdBy.name;
+
+      let group = canonicalGroups.get(canonical);
+      if (!group) {
+        group = { userIds: resolved?.userId ? [resolved.userId] : [], operadorVariants: [] };
+        canonicalGroups.set(canonical, group);
+      }
+      if (resolved?.userId && !group.userIds.includes(resolved.userId)) {
+        group.userIds.push(resolved.userId);
+      }
+      if (!group.operadorVariants.includes(variant)) {
+        group.operadorVariants.push(variant);
+      }
+    }
+
+    // 6. Ejecutar métricas agrupadas por canonicalName
     const rows = await Promise.all(
-      operatorNames.map(async (operador) => {
+      Array.from(canonicalGroups.entries()).map(async ([canonicalName, group]) => {
+        const { userIds, operadorVariants } = group;
+
         const [prospectosAsignados, mensajesEnviados, mensajesRecibidos, chatsData, llamadas, citasProgramadas] = await Promise.all([
           this.prisma.flotaProspecto.count({
-            where: { operador, asignadoAt: { gte: dateStart, lt: dateEnd } },
+            where: operadorVariants.length > 0
+              ? { operador: { in: operadorVariants }, asignadoAt: { gte: startDate, lt: endDate } }
+              : { operador: canonicalName, asignadoAt: { gte: startDate, lt: endDate } },
           }),
           this.prisma.crmWhatsappMessage.count({
             where: {
               direction: 'outbound',
               createdAt: { gte: startDate, lt: endDate },
-              createdBy: { name: operador },
+              OR: [
+                ...(userIds.length > 0
+                  ? [{ createdByUserId: { in: userIds } }]
+                  : [] as any[]),
+                ...(operadorVariants.length > 0
+                  ? [{ flotaProspecto: { operador: { in: operadorVariants } } }]
+                  : [{ createdBy: { name: canonicalName } }]),
+              ],
             },
           }),
           this.prisma.crmWhatsappMessage.count({
             where: {
               direction: 'inbound',
               createdAt: { gte: startDate, lt: endDate },
-              flotaProspecto: { operador },
+              ...(operadorVariants.length > 0
+                ? { flotaProspecto: { operador: { in: operadorVariants } } }
+                : { flotaProspecto: { operador: canonicalName } }),
             },
           }),
           this.prisma.crmWhatsappMessage.findMany({
             where: {
               createdAt: { gte: startDate, lt: endDate },
               OR: [
-                { direction: 'inbound', flotaProspecto: { operador } },
-                { direction: 'outbound', createdBy: { name: operador } },
+                ...(userIds.length > 0
+                  ? [{ createdByUserId: { in: userIds } }]
+                  : [] as any[]),
+                ...(operadorVariants.length > 0
+                  ? [
+                      { direction: 'inbound', flotaProspecto: { operador: { in: operadorVariants } } },
+                      { direction: 'outbound', flotaProspecto: { operador: { in: operadorVariants } } },
+                    ]
+                  : [] as any[]),
               ],
             },
             select: { flotaProspectoId: true },
@@ -1579,20 +1690,24 @@ export class FlotaProspectosService {
           }),
           this.prisma.flotaLlamada.count({
             where: {
-              prospecto: { operador },
               createdAt: { gte: startDate, lt: endDate },
+              ...(operadorVariants.length > 0
+                ? { prospecto: { operador: { in: operadorVariants } } }
+                : { prospecto: { operador: canonicalName } }),
             },
           }),
           this.prisma.flotaProspecto.count({
             where: {
-              operador,
-              fechaCita: { gte: dateStart, lt: dateEnd },
+              fechaCita: { gte: startDate, lt: endDate },
+              ...(operadorVariants.length > 0
+                ? { operador: { in: operadorVariants } }
+                : { operador: canonicalName }),
             },
           }),
         ]);
 
         return {
-          operador,
+          operador: canonicalName,
           prospectosAsignados,
           chatsActivos: chatsData.length,
           mensajesEnviados,

@@ -135,11 +135,11 @@ import { useImportJobsStore } from "@/store/importJobsStore";
 import {
   CrmEntityCardGridSkeleton,
 } from "@/components/shared/CrmListPageSkeleton";
-import plantillaIcon from "@/components/icons/file-new-svgrepo-com.svg";
-import importIcon from "@/components/icons/import-3-svgrepo-com.svg";
-import exportIcon from "@/components/icons/export-2-svgrepo-com.svg";
-import columnsIcon from "@/components/icons/columns-3-svgrepo-com.svg";
-import filterIcon from "@/components/icons/filter-svgrepo-com.svg";
+import { FileNewSvgIcon } from "@/components/icons/FileNewSvgIcon";
+import { ImportSvgIcon } from "@/components/icons/ImportSvgIcon";
+import { ExportSvgIcon } from "@/components/icons/ExportSvgIcon";
+import { ColumnsSvgIcon } from "@/components/icons/ColumnsSvgIcon";
+import { FilterSvgIcon } from "@/components/icons/FilterSvgIcon";
 
 const DEFAULT_ITEMS_PER_PAGE = 25;
 
@@ -1137,6 +1137,7 @@ export default function ContactosPage() {
       <PageHeader
         title="Contactos"
         description="Gestiona y da seguimiento a tus prospectos de venta"
+        className="mb-6"
       >
         {hasPermission("contactos.eliminar") && selectedContacts.length > 0 && (
           <Button
@@ -1162,7 +1163,7 @@ export default function ContactosPage() {
         {/* Filter bar */}
         <div className="flex min-w-0 flex-col gap-3 px-5 py-4 lg:flex-row lg:items-center">
         <div className="relative w-full min-w-0 max-w-[400px]">
-          <Search className="absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-[#8a9aab]" />
+          <Search className="absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-[#8a9aab] dark:text-gray-400" />
           <Input
             placeholder="Buscar por nombre, empresa, email o teléfono..."
             value={search}
@@ -1170,13 +1171,13 @@ export default function ContactosPage() {
               setSearch(e.target.value);
               setPage(1);
             }}
-            className="!h-12 rounded-lg border border-[#e1e7ee] bg-white/60 pl-10 text-[15px] text-black placeholder:text-[#8a9aab] transition-colors hover:border-primary focus-visible:ring-1 shadow-none"
+            className="!h-12 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 pl-10 text-[15px] text-black placeholder:text-[#8a9aab] dark:placeholder:text-gray-400 transition-colors hover:border-primary focus-visible:ring-1 shadow-none"
           />
         </div>
         <Popover>
           <PopoverTrigger asChild>
-            <button className={`!h-12 w-[190px] rounded-lg border border-[#e1e7ee] bg-white/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left ${etapaFilter.length > 0 ? "text-black" : "text-[#8a9aab]"}`}>
-              <ChartSquareIcon className="size-5 shrink-0 text-[#8a9aab]" />
+            <button className={`!h-12 w-[190px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left ${etapaFilter.length > 0 ? "text-black" : "text-[#8a9aab] dark:text-gray-400"}`}>
+              <ChartSquareIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
               <span className="truncate flex-1">
                 {etapaFilter.length === 0
                   ? "Etapa"
@@ -1228,8 +1229,8 @@ export default function ContactosPage() {
           <div className="ml-auto hidden sm:flex items-center gap-5">
             <Popover>
               <PopoverTrigger asChild>
-                <button className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1f2933] transition-opacity hover:opacity-70 cursor-pointer">
-                  <img src={columnsIcon} className="size-[18px]" alt="" />
+                <button className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1f2933] dark:text-gray-100 transition-opacity hover:opacity-70 cursor-pointer">
+                  <ColumnsSvgIcon className="size-[18px]" />
                   Columnas
                 </button>
               </PopoverTrigger>
@@ -1258,7 +1259,7 @@ export default function ContactosPage() {
                               checked={visible}
                               className="h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
                             />
-                            <span className="text-[#1f2933]">{col.label}</span>
+                            <span className="text-[#1f2933] dark:text-gray-100">{col.label}</span>
                           </div>
                         );
                       })}
@@ -1269,8 +1270,8 @@ export default function ContactosPage() {
             </Popover>
             <Popover>
               <PopoverTrigger asChild>
-                <button className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1f2933] transition-opacity hover:opacity-70 cursor-pointer">
-                  <img src={filterIcon} className="size-[18px]" alt="" />
+                <button className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1f2933] dark:text-gray-100 transition-opacity hover:opacity-70 cursor-pointer">
+                  <FilterSvgIcon className="size-[18px]" />
                   Filtros
                 </button>
               </PopoverTrigger>
@@ -1278,8 +1279,8 @@ export default function ContactosPage() {
                 <div className="flex items-center gap-3">
                   <Popover>
                     <PopoverTrigger asChild>
-                      <button className={`!h-12 flex-1 rounded-lg border border-[#e1e7ee] bg-white/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer text-left truncate flex items-center gap-1.5 ${sourceFilter.length > 0 ? "text-black" : "text-[#8a9aab]"}`}>
-                        <PaletteIcon className="size-5 shrink-0 text-[#8a9aab]" />
+                      <button className={`!h-12 flex-1 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer text-left truncate flex items-center gap-1.5 ${sourceFilter.length > 0 ? "text-black" : "text-[#8a9aab] dark:text-gray-400"}`}>
+                        <PaletteIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
                         <span className="truncate flex-1">
                           {sourceFilter.length === 0
                             ? "Fuente"
@@ -1323,8 +1324,8 @@ export default function ContactosPage() {
                   </Popover>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <button className={`!h-12 flex-1 rounded-lg border border-[#e1e7ee] bg-white/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer text-left truncate disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 ${advisorFilter.length > 0 ? "text-black" : "text-[#8a9aab]"}`} disabled={!canSeeAllAdvisors}>
-                        <UserHandIcon className="size-5 shrink-0 text-[#8a9aab]" />
+                      <button className={`!h-12 flex-1 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer text-left truncate disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 ${advisorFilter.length > 0 ? "text-black" : "text-[#8a9aab] dark:text-gray-400"}`} disabled={!canSeeAllAdvisors}>
+                        <UserHandIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
                          <span className="truncate flex-1">
                            {advisorFilter.length === 0
                              ? "Asesor"
@@ -1373,7 +1374,7 @@ export default function ContactosPage() {
             </Popover>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1f2933] transition-opacity hover:opacity-70 cursor-pointer">
+                <button className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1f2933] dark:text-gray-100 transition-opacity hover:opacity-70 cursor-pointer">
                   <MoreVertical className="size-5" />
                 </button>
               </DropdownMenuTrigger>
@@ -1383,7 +1384,7 @@ export default function ContactosPage() {
                     disabled={exportBusy}
                     onClick={() => void handleContactTemplate()}
                   >
-                    {exportBusy ? <Loader2 className="size-3.5 animate-spin" /> : <img src={plantillaIcon} className="size-[18px]" alt="" />}
+                    {exportBusy ? <Loader2 className="size-3.5 animate-spin" /> : <FileNewSvgIcon className="size-[18px]" />}
                     Plantilla
                   </DropdownMenuItem>
                 )}
@@ -1392,7 +1393,7 @@ export default function ContactosPage() {
                     disabled={importBusy}
                     onClick={openContactImport}
                   >
-                    {importBusy ? <Loader2 className="size-3.5 animate-spin" /> : <img src={importIcon} className="size-[18px]" alt="" />}
+                    {importBusy ? <Loader2 className="size-3.5 animate-spin" /> : <ImportSvgIcon className="size-[18px]" />}
                     Importar
                   </DropdownMenuItem>
                 )}
@@ -1401,7 +1402,7 @@ export default function ContactosPage() {
                     disabled={exportBusy}
                     onClick={() => void handleContactExport()}
                   >
-                    {exportBusy ? <Loader2 className="size-3.5 animate-spin" /> : <img src={exportIcon} className="size-[18px]" alt="" />}
+                    {exportBusy ? <Loader2 className="size-3.5 animate-spin" /> : <ExportSvgIcon className="size-[18px]" />}
                     Exportar
                   </DropdownMenuItem>
                 )}
@@ -1485,7 +1486,7 @@ export default function ContactosPage() {
         )}
 
         {totalContacts > 0 && (
-          <div className="h-14 bg-white/30 px-5 flex items-center border-t border-dashed border-[#e8ecf0]">
+          <div className="h-14 bg-white/30 dark:bg-gray-900/30 px-5 flex items-center border-t border-dashed border-[#e8ecf0] dark:border-gray-700">
             <Pagination
               page={page}
               totalPages={totalPages}
@@ -1629,7 +1630,7 @@ function ContactsTable({
             <div className="min-w-0 max-w-[20rem]">
               <div className="flex items-center gap-2">
                 <p
-                  className="truncate text-sm font-semibold text-[#0F172A]"
+                  className="truncate text-sm font-semibold text-[#0F172A] dark:text-gray-100"
                   title={contact.name}
                 >
                   {contact.name}
@@ -1642,7 +1643,7 @@ function ContactsTable({
                 )}
               </div>
               {contact.cargo && (
-                <p className="mt-0.5 truncate text-xs text-[#64748B]">
+                <p className="mt-0.5 truncate text-xs text-[#64748B] dark:text-gray-400">
                   {contact.cargo}
                 </p>
               )}
@@ -1657,7 +1658,7 @@ function ContactsTable({
         header: "Empresa",
         enableHiding: true,
         cell: ({ getValue }) => (
-          <span className="block max-w-[16rem] truncate text-sm text-[#475569]" title={String(getValue())}>
+          <span className="block max-w-[16rem] truncate text-sm text-[#475569] dark:text-gray-400" title={String(getValue())}>
             {String(getValue())}
           </span>
         ),
@@ -1672,7 +1673,7 @@ function ContactsTable({
         cell: ({ getValue }) => {
           const val = String(getValue() || "");
           return (
-            <span className="block truncate text-sm text-[#475569]" title={val || undefined}>
+            <span className="block truncate text-sm text-[#475569] dark:text-gray-400" title={val || undefined}>
               {val || "—"}
             </span>
           );
@@ -1688,7 +1689,7 @@ function ContactsTable({
         cell: ({ getValue }) => {
           const val = String(getValue() || "");
           return (
-            <span className="block max-w-[14rem] truncate text-sm text-[#475569]" title={val}>
+            <span className="block max-w-[14rem] truncate text-sm text-[#475569] dark:text-gray-400" title={val}>
               {val || "—"}
             </span>
           );
@@ -1702,7 +1703,7 @@ function ContactsTable({
         header: "Fuente",
         enableHiding: true,
         cell: ({ getValue }) => (
-          <span className="inline-flex h-6 items-center rounded-full border border-gray-300 bg-white px-2.5 text-xs font-semibold text-gray-700">
+          <span className="inline-flex h-6 items-center rounded-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2.5 text-xs font-semibold text-gray-700 dark:text-gray-300">
             {contactSourceLabels[String(getValue())] || String(getValue())}
           </span>
         ),
@@ -1721,7 +1722,7 @@ function ContactsTable({
           return val === "si" ? (
             <span className="text-sm font-medium text-emerald-700">Sí</span>
           ) : val === "no" ? (
-            <span className="text-sm text-[#475569]">No</span>
+            <span className="text-sm text-[#475569] dark:text-gray-400">No</span>
           ) : (
             <span className="text-sm text-gray-300">—</span>
           );
@@ -1745,7 +1746,7 @@ function ContactsTable({
         cell: ({ getValue }) => {
           const val = String(getValue() || "");
           return (
-            <span className="block truncate text-sm text-[#475569]" title={val || undefined}>
+            <span className="block truncate text-sm text-[#475569] dark:text-gray-400" title={val || undefined}>
               {val || "—"}
             </span>
           );
@@ -1759,7 +1760,7 @@ function ContactsTable({
         header: "Fecha",
         enableHiding: true,
         cell: ({ getValue }) => (
-          <span className="text-sm text-[#475569]">
+          <span className="text-sm text-[#475569] dark:text-gray-400">
             {new Date(String(getValue())).toLocaleDateString("es-PE", {
               day: "2-digit",
               month: "short",
@@ -1779,7 +1780,7 @@ function ContactsTable({
               <Button
                 variant="ghost"
                 size="icon-sm"
-                className="h-8 w-8 rounded-lg text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#0F172A]"
+                className="h-8 w-8 rounded-lg text-[#64748B] dark:text-gray-400 hover:bg-[#F1F5F9] dark:hover:bg-gray-800 hover:text-[#0F172A] dark:hover:text-gray-100"
               >
                 <MoreVertical className="size-4" />
               </Button>
@@ -1831,14 +1832,14 @@ function ContactsTable({
     <table className="w-full table-fixed" style={{ minWidth: table.getTotalSize() }}>
         <thead>
           {table.getHeaderGroups().map((hg) => (
-            <tr key={hg.id} className="h-11 bg-[#eef1f5] text-left text-xs font-bold text-[#647789]">
+            <tr key={hg.id} className="h-11 bg-[#eef1f5] dark:bg-gray-800 text-left text-xs font-bold text-[#647789] dark:text-gray-400">
               {hg.headers.map((header: any) => (
                 <th
                   key={header.id}
                   colSpan={header.colSpan}
                   className={cn(
                     "relative px-3 align-middle overflow-hidden",
-                    header.column.getCanSort() && "cursor-pointer select-none hover:text-[#1f2933]",
+                    header.column.getCanSort() && "cursor-pointer select-none hover:text-[#1f2933] dark:hover:text-gray-100",
                     header.column.id === "select" && "pr-0",
                     header.column.id === "nombre" && "pl-2",
                   )}
@@ -1854,7 +1855,7 @@ function ContactsTable({
                         ) : header.column.getIsSorted() === "desc" ? (
                           <ChevronDown className="size-3 shrink-0" />
                         ) : (
-                          <ChevronsUpDown className="size-3 shrink-0 text-[#94A3B8]" />
+                          <ChevronsUpDown className="size-3 shrink-0 text-[#94A3B8] dark:text-gray-500" />
                         )}
                       </>
                     )}
@@ -1881,8 +1882,8 @@ function ContactsTable({
               <tr
                 key={row.id}
                 className={cn(
-                  "h-14 border-b border-dashed border-[#e8ecf0] bg-card/30 transition-colors cursor-pointer last:border-b-0",
-                  pending ? "bg-muted/40" : "hover:bg-[#fafbfc]",
+                  "h-14 border-b border-dashed border-[#e8ecf0] dark:border-gray-700 bg-card/30 transition-colors cursor-pointer last:border-b-0",
+                  pending ? "bg-muted/40" : "hover:bg-[#fafbfc] dark:hover:bg-gray-800",
                 )}
                 onClick={() => onView(row.original)}
               >

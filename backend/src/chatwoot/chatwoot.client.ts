@@ -14,6 +14,8 @@ import type {
 @Injectable()
 export class ChatwootClient {
   private config: ChatwootConfig;
+  private agentsCache: { data: ChatwootAgent[]; timestamp: number } | null = null;
+  private readonly AGENTS_CACHE_TTL = 5 * 60 * 1000;
 
   constructor(private configService: ConfigService) {
     this.config = {
@@ -310,7 +312,12 @@ export class ChatwootClient {
   }
 
   async listAgents(): Promise<ChatwootAgent[]> {
-    return this.request('GET', '/agents');
+    if (this.agentsCache && Date.now() - this.agentsCache.timestamp < this.AGENTS_CACHE_TTL) {
+      return this.agentsCache.data;
+    }
+    const data = await this.request<ChatwootAgent[]>('GET', '/agents');
+    this.agentsCache = { data, timestamp: Date.now() };
+    return data;
   }
 
   async markAsRead(conversationId: number): Promise<void> {

@@ -3,9 +3,9 @@ import { useCrmTeamAdvisorFilter } from '@/hooks/useCrmTeamAdvisorFilter';
 import { toast } from 'sonner';
 import {
   Plus, Search, X, MoreHorizontal, Phone, Users,
-  CheckSquare, Mail, Clock, MessageCircle,
-  CalendarDays, CalendarCheck, AlertTriangle,
-  RefreshCw, Check, Pencil, Trash2, Building2,
+  CheckSquare, Mail, MessageCircle,
+  CalendarDays, AlertTriangle,
+  Check, Pencil, Trash2, Building2,
   List, Grid3X3, Target, UserCircle,
 } from 'lucide-react';
 import type {
@@ -235,14 +235,6 @@ export default function TareasPage() {
     void loadTaskFormEntities();
   }, [loadTaskFormEntities]);
 
-  const stats = useMemo(() => {
-    const total = allTasksForDisplay.length;
-    const pendientes = allTasksForDisplay.filter((a) => a.status === 'pendiente').length;
-    const completadas = allTasksForDisplay.filter((a) => a.status === 'completada').length;
-    const vencidas = allTasksForDisplay.filter((a) => a.status === 'vencida').length;
-    const enProgreso = allTasksForDisplay.filter((a) => a.status === 'en_progreso').length;
-    return { total, pendientes, completadas, vencidas, enProgreso };
-  }, [allTasksForDisplay]);
 
   const filteredTasks = useMemo(() => {
     return allTasksForDisplay.filter((task) => {
@@ -595,44 +587,6 @@ export default function TareasPage() {
     });
   }
 
-  const statsCards = [
-    {
-      label: 'Total',
-      value: stats.total,
-      icon: CalendarDays,
-      className:
-        'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-600/50 dark:bg-slate-800/60 dark:text-slate-100',
-    },
-    {
-      label: 'Pendientes',
-      value: stats.pendientes,
-      icon: Clock,
-      className:
-        'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800/45 dark:bg-amber-950/45 dark:text-amber-100',
-    },
-    {
-      label: 'Completadas',
-      value: stats.completadas,
-      icon: CalendarCheck,
-      className:
-        'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800/45 dark:bg-emerald-950/45 dark:text-emerald-100',
-    },
-    {
-      label: 'En progreso',
-      value: stats.enProgreso,
-      icon: RefreshCw,
-      className:
-        'border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-800/45 dark:bg-blue-950/45 dark:text-blue-100',
-    },
-    {
-      label: 'Vencidas',
-      value: stats.vencidas,
-      icon: AlertTriangle,
-      className:
-        'border-red-200 bg-red-50 text-red-800 dark:border-red-800/45 dark:bg-red-950/45 dark:text-red-100',
-    },
-  ];
-
   return (
     <TooltipProvider>
       <div className="min-w-0 max-w-full space-y-6">
@@ -662,28 +616,6 @@ export default function TareasPage() {
           </Button>
         </div>
       )}
-
-      {/* Stats cards */}
-      <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3 lg:[grid-template-columns:repeat(5,minmax(0,1fr))]">
-        {statsCards.map((stat) => {
-          const StatIcon = stat.icon;
-          return (
-            <Card key={stat.label} className={cn('min-w-0 border py-0', stat.className)}>
-              <CardContent className="flex items-center gap-3 px-4 py-3">
-                <div
-                  className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white/90 shadow-sm ring-1 ring-black/[0.06] dark:bg-black/35 dark:ring-white/10"
-                >
-                  <StatIcon className="size-5" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{stat.value}</p>
-                  <p className="text-xs font-medium opacity-90">{stat.label}</p>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
 
       {/* Filter bar */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">

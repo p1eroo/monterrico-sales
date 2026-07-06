@@ -105,7 +105,7 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChartSquareIcon } from "@/components/icons/ChartSquareIcon";
-import { UserHandIcon } from "@/components/icons/UserHandIcon";
+import { UserHandUpIcon } from "@/components/icons/UserHandUpIcon";
 import { ChangeEtapaDialog } from "@/components/shared/ChangeEtapaDialog";
 import { AssignDialog } from "@/components/shared/AssignDialog";
 import { cn } from "@/lib/utils";
@@ -513,8 +513,8 @@ const OpportunityCard = memo(function OpportunityCard({
   return (
     <div
       className={cn(
-        "relative select-none rounded-[4px] bg-white/40 p-3 border border-[#d0d5dd]/70",
-        !overlay && ["transition-all duration-150", "hover:border-[#d0d5dd]"],
+        "relative select-none rounded-[4px] bg-white/40 dark:bg-gray-800/40 p-3 border border-[#d0d5dd]/70 dark:border-gray-600/70",
+        !overlay && ["transition-all duration-150", "hover:border-[#d0d5dd] dark:hover:border-gray-600"],
         isDragging && "opacity-40",
         overlay && "pointer-events-none rotate-2 border-primary/40",
       )}
@@ -543,14 +543,14 @@ const OpportunityCard = memo(function OpportunityCard({
       <div className="space-y-2 pr-7">
         <div>
           {overlay ? (
-            <span className="block w-full truncate text-left text-[13px] font-semibold text-[#13944C]">
+            <span className="block w-full truncate text-left text-[13px] font-semibold text-[#13944C] dark:text-green-400">
               {opportunity.title}
             </span>
           ) : (
             <button
               type="button"
               onClick={handleNameClick}
-              className="block w-full truncate text-left text-[13px] font-semibold text-[#13944C] hover:text-[#0f7a3d]"
+              className="block w-full truncate text-left text-[13px] font-semibold text-[#13944C] dark:text-green-400 hover:text-[#0f7a3d] dark:hover:text-green-500"
             >
               {opportunity.title}
             </button>
@@ -560,7 +560,7 @@ const OpportunityCard = memo(function OpportunityCard({
           </p>
         </div>
 
-        <div className="border-t border-[#d0d5dd]/60" />
+        <div className="border-t border-[#d0d5dd]/60 dark:border-gray-600/60" />
 
         <div className="space-y-1">
           <p className="flex items-center gap-1 truncate text-[13px] text-muted-foreground">
@@ -573,12 +573,12 @@ const OpportunityCard = memo(function OpportunityCard({
               {opportunity.contactName}
             </p>
           )}
-          <p className="flex items-center gap-1 truncate text-[13px] text-muted-foreground">
-            <User className="size-3 shrink-0" />
+          <div className="inline-flex items-center gap-1 rounded-md border border-[#d0d5dd]/50 dark:border-gray-600/50 bg-white/60 dark:bg-gray-800/60 px-2 py-0.5 text-[13px] text-muted-foreground">
+            <UserHandUpIcon className="size-3.5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
             <span className="truncate">
               {(opportunity.assignedToName ?? "").split(" ")[0] || "—"}
             </span>
-          </p>
+          </div>
         </div>
       </div>
     </div>
@@ -921,7 +921,7 @@ function PipelineKanbanSkeleton({
             {Array.from({ length: 4 }, (_, i) => (
               <Skeleton
                 key={i}
-                className="h-32 w-full shrink-0 rounded-[14px] bg-white"
+                className="h-32 w-full shrink-0 rounded-[14px] bg-white dark:bg-gray-900"
               />
             ))}
           </div>
@@ -967,7 +967,7 @@ const KanbanColumn = memo(function KanbanColumn({
   return (
     <div
       className={cn(
-        "flex h-full min-h-0 flex-col rounded-[16px] border border-border/30 bg-white/20 shadow-[0_2px_12px_rgba(15,23,42,0.04)] transition-all duration-200",
+        "flex h-full min-h-0 flex-col rounded-[16px] border border-border/30 bg-white/20 dark:bg-gray-950/40 shadow-[0_2px_12px_rgba(15,23,42,0.04)] transition-all duration-200",
         collapsed ? "w-14" : "min-w-[300px] flex-1",
       )}
     >
@@ -1018,7 +1018,7 @@ const KanbanColumn = memo(function KanbanColumn({
         )}
       </div>
 
-      {!collapsed && <div className="border-t border-[#d0d5dd]/60 mx-3 mb-2" />}
+      {!collapsed && <div className="border-t border-[#d0d5dd]/60 dark:border-gray-600/60 mx-3 mb-2" />}
 
       {!collapsed && (
         <div
@@ -1579,12 +1579,12 @@ export default function Pipeline() {
 
         {/* Search */}
         <div className="relative w-full min-w-0 max-w-[400px]">
-          <Search className="absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-[#8a9aab]" />
+          <Search className="absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-[#8a9aab] dark:text-gray-400" />
           <Input
             placeholder="Buscar..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="!h-11 rounded-lg border border-[#e1e7ee] bg-white/60 pl-10 text-[15px] text-black placeholder:text-[#8a9aab] transition-colors hover:border-primary focus-visible:ring-1 shadow-none"
+            className="!h-11 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 pl-10 text-[15px] text-black placeholder:text-[#8a9aab] dark:placeholder:text-gray-400 transition-colors hover:border-primary focus-visible:ring-1 shadow-none"
           />
         </div>
 
@@ -1592,9 +1592,9 @@ export default function Pipeline() {
         <Popover>
           <PopoverTrigger asChild>
             <button
-              className={`!h-11 w-[190px] rounded-lg border border-[#e1e7ee] bg-white/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate ${filters.etapas.length > 0 ? "text-black" : "text-[#8a9aab]"}`}
+              className={`!h-11 w-[190px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate ${filters.etapas.length > 0 ? "text-black" : "text-[#8a9aab] dark:text-gray-400"}`}
             >
-              <ChartSquareIcon className="size-5 shrink-0 text-[#8a9aab]" />
+              <ChartSquareIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
               <span className="truncate flex-1">
                 {filters.etapas.length === 0
                   ? "Etapa"
@@ -1649,10 +1649,10 @@ export default function Pipeline() {
         <Popover>
           <PopoverTrigger asChild>
             <button
-              className={`!h-11 w-[190px] rounded-lg border border-[#e1e7ee] bg-white/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate disabled:opacity-50 disabled:cursor-not-allowed ${filters.assignedTo ? "text-black" : "text-[#8a9aab]"}`}
+              className={`!h-11 w-[190px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate disabled:opacity-50 disabled:cursor-not-allowed ${filters.assignedTo ? "text-black" : "text-[#8a9aab] dark:text-gray-400"}`}
               disabled={!canSeeAllAdvisors}
             >
-              <UserHandIcon className="size-5 shrink-0 text-[#8a9aab]" />
+              <UserHandUpIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
               <span className="truncate flex-1">
                 {filters.assignedTo
                   ? activeAdvisors.find((u) => u.id === filters.assignedTo)
@@ -1734,14 +1734,14 @@ export default function Pipeline() {
               </span>
             )}
           </span>
-          <div className="flex items-center rounded-lg border border-[#e1e7ee] bg-white/60 p-0.5">
+          <div className="flex items-center rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 p-0.5">
             <button
-              className="rounded-md px-3 py-1.5 text-sm font-medium text-[#647789] hover:text-[#1f2933] transition-colors cursor-pointer"
+              className="rounded-md px-3 py-1.5 text-sm font-medium text-[#647789] dark:text-gray-400 hover:text-[#1f2933] dark:hover:text-gray-100 transition-colors cursor-pointer"
               onClick={() => navigate("/opportunities")}
             >
               Lista
             </button>
-            <button className="rounded-md px-3 py-1.5 text-sm font-medium bg-[#e8f5e9] text-[#13944C]">
+            <button className="rounded-md px-3 py-1.5 text-sm font-medium bg-[#e8f5e9] dark:bg-green-900/30 text-[#13944C] dark:text-green-400">
               Pipeline
             </button>
           </div>
