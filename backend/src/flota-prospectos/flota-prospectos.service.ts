@@ -1650,14 +1650,9 @@ export class FlotaProspectosService {
             where: {
               direction: 'outbound',
               createdAt: { gte: startDate, lt: endDate },
-              OR: [
-                ...(userIds.length > 0
-                  ? [{ createdByUserId: { in: userIds } }]
-                  : [] as any[]),
-                ...(operadorVariants.length > 0
-                  ? [{ flotaProspecto: { operador: { in: operadorVariants } } }]
-                  : [{ createdBy: { name: canonicalName } }]),
-              ],
+              createdByUserId: userIds.length > 0
+                ? { in: userIds }
+                : { equals: '__no_user__' },
             },
           }),
           this.prisma.crmWhatsappMessage.count({

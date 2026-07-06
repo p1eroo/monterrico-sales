@@ -64,10 +64,27 @@ const contactSelectListSlim = {
     select: {
       id: true,
       isPrimary: true,
-      company: { select: { id: true, urlSlug: true, name: true } },
+      company: {
+        select: {
+          id: true,
+          urlSlug: true,
+          name: true,
+          activities: { select: { activity: { select: { createdAt: true } } } },
+        },
+      },
     },
   },
   user: { select: { id: true, name: true } },
+  activities: { select: { activity: { select: { createdAt: true } } } },
+  opportunities: {
+    select: {
+      opportunity: {
+        select: {
+          activities: { select: { activity: { select: { createdAt: true } } } },
+        },
+      },
+    },
+  },
 } as const;
 
 const contactIncludeDetail = {
@@ -598,10 +615,26 @@ export class ContactsService {
     ]);
 
     return {
-      data: rows.map((r) => ({
-        ...r,
-        clienteRecuperado: normalizeClienteRecuperado(r.clienteRecuperado),
-      })),
+      data: rows.map((r) => {
+        const contactActivityDates = (r as any).activities?.map((a: any) => a.activity.createdAt) ?? [];
+        const companyActivityDates = (r as any).companies?.flatMap((c: any) =>
+          c.company?.activities?.map((a: any) => a.activity.createdAt) ?? []
+        ) ?? [];
+        const opportunityActivityDates = (r as any).opportunities?.flatMap((o: any) =>
+          o.opportunity?.activities?.map((a: any) => a.activity.createdAt) ?? []
+        ) ?? [];
+
+        const allDates = [...contactActivityDates, ...companyActivityDates, ...opportunityActivityDates];
+        const lastInteractionAt = allDates.length > 0
+          ? new Date(Math.max(...allDates.map((d: Date) => d.getTime()))).toISOString()
+          : null;
+
+        return {
+          ...r,
+          clienteRecuperado: normalizeClienteRecuperado(r.clienteRecuperado),
+          lastInteractionAt,
+        };
+      }),
       total,
       page,
       limit,
