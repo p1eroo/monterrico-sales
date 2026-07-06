@@ -91,6 +91,7 @@ import {
 import { fetchOperadores, getOperatorDisplayName, flotaProspectosByPhone, flotaProspectoCreate, type OperadorUser, type FlotaProspectoDetalle } from '@/lib/flotaProspectosApi';
 import { getConductorTelefonos } from '@/lib/flotaConductoresApi';
 import { api } from '@/lib/api';
+import { useAppStore } from '@/store';
 
 /* ==================== CHATWOOT INBOX VIEW ==================== */
 
@@ -345,11 +346,13 @@ export default function ChatwootInboxView() {
     const fullPhone = cleaned.length === 9 ? `51${cleaned}` : cleaned;
     setCreatingChat(true);
     try {
+      const currentUser = useAppStore.getState().currentUser;
       const result = await initiateConversation({
         name,
         phone: fullPhone,
         templateName: finalName,
         templateCategory: finalCategory,
+        operador: currentUser.name,
       });
       setNewChatOpen(false);
       setNewPhone('');

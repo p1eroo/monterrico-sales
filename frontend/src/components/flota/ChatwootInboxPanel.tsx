@@ -24,6 +24,7 @@ import {
   type ChatwootMessage,
   type ChatwootContact,
 } from '@/lib/chatwootApi';
+import { useAppStore } from '@/store';
 import { ChatwootChatPanel } from '@/pages/flota/ChatwootInboxView';
 
 const FILTERS = [
@@ -219,11 +220,13 @@ export default function ChatwootInboxPanel({
     const fullPhone = cleaned.length === 9 ? `51${cleaned}` : cleaned;
     setCreatingChat(true);
     try {
+      const currentUser = useAppStore.getState().currentUser;
       const result = await initiateConversation({
         name,
         phone: fullPhone,
         templateName: finalName,
         templateCategory: finalCategory,
+        operador: currentUser.name,
       });
       setNewChatOpen(false);
       setNewChatPhone('');

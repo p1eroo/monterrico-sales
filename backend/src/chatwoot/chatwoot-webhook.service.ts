@@ -56,8 +56,8 @@ export class ChatwootWebhookService {
   }
 
   private async handleMessageCreated(payload: Record<string, unknown>) {
-    const messageType = payload.message_type as number | undefined;
-    if (messageType === 2) return { received: true };
+    const messageType = payload.message_type;
+    if (messageType === 2 || messageType === 'activity') return { received: true };
 
     const conversation = payload.conversation as { id?: number; meta?: { sender?: { phone_number?: string; id?: number; name?: string } } } | undefined;
     if (!conversation) return { received: true };
@@ -71,7 +71,7 @@ export class ChatwootWebhookService {
 
     try {
       if (contactPhone) {
-        const isInbound = sender?.type === 'contact';
+        const isInbound = messageType === 0 || messageType === 'incoming' || sender?.type === 'contact';
         const name = isInbound ? (sender?.name || '') : (conversation as any)?.meta?.sender?.name || '';
         const prospecto = await this.findOrCreateProspecto(contactPhone, name);
         if (prospecto) {
@@ -82,34 +82,39 @@ export class ChatwootWebhookService {
               chatwootConversationId: conversation.id,
             },
           });
-          // Vincular mensaje al User y asignar operador por assignee_id
+          // Vincular mensaje al User — sender.id (quién realmente envió) primero
           let createdByUserId: string | null = null;
-          if (assigneeId) {
-            try {
-              const agents = await this.client.listAgents();
-              const agent = agents.find((a: any) => a.id === assigneeId);
-              if (agent) {
-                const user = await this.prisma.user.findFirst({ where: { name: agent.name } });
-                if (user) {
-                  createdByUserId = user.id;
-                  if (!prospecto.operador) {
-                    await this.prisma.flotaProspecto.update({
-                      where: { id: prospecto.id },
-                      data: { operador: agent.name, asignadoAt: new Date() },
-                    });
-                  }
-                }
-              }
-            } catch { /* ignorar */ }
-          }
-          // Fallback: si no hay assignee_id, buscar por sender.id en listAgents
-          if (!createdByUserId && !isInbound && sender?.id) {
+          if (!isInbound && sender?.id) {
             try {
               const agents = await this.client.listAgents();
               const agent = agents.find((a: any) => a.id === sender.id);
               if (agent) {
                 const user = await this.prisma.user.findFirst({ where: { name: agent.name } });
                 if (user) createdByUserId = user.id;
+              }
+            } catch { /* ignorar */ }
+          }
+          // Fallback: assignee_id (dueño del chat) — también actualiza prospecto.operador
+          if (!createdByUserId && assigneeId) {
+            try {
+              const agents = await this.client.listAgents();
+              const agent = agents.find((a: any) => a.id === assigneeId);
+              if (agent) {
+                const user = await this.prisma.user.findFirst({ where: { name: agent.name } });
+                if (user) createdByUserId = user.id;
+              }
+            } catch { /* ignorar */ }
+          }
+          // Actualizar operador del prospecto por assignee_id (Chatwoot)
+          if (assigneeId) {
+            try {
+              const agents = await this.client.listAgents();
+              const agent = agents.find((a: any) => a.id === assigneeId);
+              if (agent && !prospecto.operador) {
+                await this.prisma.flotaProspecto.update({
+                  where: { id: prospecto.id },
+                  data: { operador: agent.name, asignadoAt: new Date() },
+                });
               }
             } catch { /* ignorar */ }
           }
