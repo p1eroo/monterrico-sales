@@ -77,6 +77,7 @@ export type ApiContactListRow = {
   etapaHistory?: unknown;
   createdAt: string;
   updatedAt: string;
+  lastInteractionAt?: string | null;
   companies: ApiContactCompanyRow[];
   user?: { id: string; name: string } | null;
 };
@@ -192,6 +193,7 @@ export function mapApiContactRowToContact(row: ApiContactListRow | ApiContactNes
     direccion: row.direccion ?? undefined,
     clienteRecuperado: parseClienteRec(row.clienteRecuperado),
     etapaHistory: parseEtapaHistory(row.etapaHistory),
+    lastInteractionAt: (row as ApiContactListRow).lastInteractionAt ?? undefined,
   };
 }
 

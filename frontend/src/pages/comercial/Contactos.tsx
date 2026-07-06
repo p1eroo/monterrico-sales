@@ -175,10 +175,10 @@ const CONTACTOS_TABLE_SKELETON_COLUMNS = [
   { label: "Teléfono", className: "hidden lg:table-cell" },
   { label: "Email", className: "hidden min-w-0 max-w-[14rem] xl:table-cell" },
   { label: "Fuente", className: "hidden lg:table-cell" },
-  { label: "C. Recuperado", className: "hidden lg:table-cell" },
+  { label: "Recuperado", className: "hidden lg:table-cell" },
   { label: "Etapa" },
   { label: "Asesor", className: "hidden xl:table-cell" },
-  { label: "Fecha", className: "hidden md:table-cell" },
+  { label: "Creación", className: "hidden md:table-cell" },
   { label: "", className: "w-10" },
 ];
 
@@ -221,6 +221,7 @@ export default function ContactosPage() {
     etapa: true,
     asesor: true,
     fecha: true,
+    ultimaInteraccion: true,
   });
   const [sourceFilter, setSourceFilter] = useState<string[]>([]);
   const [advisorFilter, setAdvisorFilter] = useState<string[]>([]);
@@ -906,6 +907,7 @@ export default function ContactosPage() {
         clienteRecuperado: ["cliente_recuperado"],
         etapa: ["etapa"],
         asesor: ["asignado_a"],
+        ultimaInteraccion: ["ultima_interaccion"],
       };
       // Columnas siempre visibles (no están en columnVisibility porque no se pueden ocultar)
       const alwaysVisible = ["nombre", "cargo"];
@@ -1243,10 +1245,11 @@ export default function ContactosPage() {
                         { id: "telefono", label: "Teléfono" },
                         { id: "correo", label: "Email" },
                         { id: "fuente", label: "Fuente" },
-                        { id: "clienteRecuperado", label: "C. Recuperado" },
+                        { id: "clienteRecuperado", label: "Recuperado" },
                         { id: "etapa", label: "Etapa" },
                         { id: "asesor", label: "Asesor" },
-                        { id: "fecha", label: "Fecha" },
+                        { id: "fecha", label: "Creación" },
+                        { id: "ultimaInteraccion", label: "Última interacción" },
                       ].map((col) => {
                         const visible = columnVisibility[col.id] ?? true;
                         return (
@@ -1419,13 +1422,14 @@ export default function ContactosPage() {
                 { label: "", width: 44 },
                 { label: "Nombre", width: 280 },
                 { label: "Empresa", width: 200 },
-                { label: "Teléfono", width: 150, className: "hidden lg:table-cell" },
+                { label: "Teléfono", width: 120, className: "hidden lg:table-cell" },
                 { label: "Email", width: 200, className: "hidden xl:table-cell" },
                 { label: "Fuente", width: 120, className: "hidden md:table-cell" },
-                { label: "C. Recuperado", width: 125, className: "hidden md:table-cell" },
+                { label: "Recuperado", width: 100, className: "hidden md:table-cell" },
                 { label: "Etapa", width: 140, className: "hidden md:table-cell" },
                 { label: "Asesor", width: 150, className: "hidden xl:table-cell" },
-                { label: "Fecha", width: 120, className: "hidden sm:table-cell" },
+                { label: "Creación", width: 120, className: "hidden md:table-cell" },
+                { label: "Última interacción", width: 140, className: "hidden lg:table-cell" },
                 { label: "", width: 60 },
               ]}
               rows={10}
@@ -1679,7 +1683,7 @@ function ContactsTable({
           );
         },
         enableSorting: false,
-        size: 150,
+        size: 120,
       },
       {
         accessorKey: "correo",
@@ -1713,9 +1717,9 @@ function ContactsTable({
       {
         accessorKey: "clienteRecuperado",
         id: "clienteRecuperado",
-        header: "C. Recuperado",
-        size: 125,
-        maxSize: 125,
+        header: "Recuperado",
+        size: 100,
+        maxSize: 100,
         enableHiding: true,
         cell: ({ getValue }) => {
           const val = getValue();
@@ -1757,7 +1761,7 @@ function ContactsTable({
       {
         accessorKey: "createdAt",
         id: "fecha",
-        header: "Fecha",
+        header: "Creación",
         enableHiding: true,
         cell: ({ getValue }) => (
           <span className="text-sm text-[#475569] dark:text-gray-400">
@@ -1771,6 +1775,27 @@ function ContactsTable({
         size: 120,
       },
       {
+        accessorKey: "lastInteractionAt",
+        id: "ultimaInteraccion",
+        header: "Última interacción",
+        enableHiding: true,
+        cell: ({ getValue }) => {
+          const val = getValue() as string | null | undefined;
+          return (
+            <span className="text-sm text-[#475569] dark:text-gray-400">
+              {val
+                ? new Date(val).toLocaleDateString("es-PE", {
+                    day: "2-digit",
+                    month: "short",
+                  })
+                : "—"}
+            </span>
+          );
+        },
+        enableSorting: false,
+        size: 140,
+      },
+      {
         id: "actions",
         header: "",
         meta: { responsive: "" } as any,
@@ -1780,7 +1805,7 @@ function ContactsTable({
               <Button
                 variant="ghost"
                 size="icon-sm"
-                className="h-8 w-8 rounded-lg text-[#64748B] dark:text-gray-400 hover:bg-[#F1F5F9] dark:hover:bg-gray-800 hover:text-[#0F172A] dark:hover:text-gray-100"
+                className="h-8 w-8 rounded-lg"
               >
                 <MoreVertical className="size-4" />
               </Button>
@@ -2025,7 +2050,7 @@ function ContactsGrid({
                 <StatusBadge status={contact.etapa} />
                 {contact.clienteRecuperado === "si" && (
                   <Badge variant="secondary" className="text-xs">
-                    C. Recuperado
+                    Recuperado
                   </Badge>
                 )}
               </div>

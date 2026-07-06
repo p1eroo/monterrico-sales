@@ -207,6 +207,8 @@ export interface Contact {
   etapaHistory?: { etapa: Etapa; fecha: string }[];
   /** Indica si es un cliente recuperado (antes inactivo/cierre perdido) */
   clienteRecuperado?: 'si' | 'no';
+  /** Última fecha de interacción con el contacto (actividades vinculadas) */
+  lastInteractionAt?: string | null;
 }
 
 export interface Activity {
