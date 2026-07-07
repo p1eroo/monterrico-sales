@@ -23,6 +23,7 @@ import {
   Loader2,
   X,
   Maximize2,
+  Download,
 } from 'lucide-react';
 import type { EmailThread, EmailFolder, EmailMessage } from '@/types';
 import { emailThreads, folderLabels, entityTypeLabels } from '@/data/emailMock';
@@ -32,7 +33,7 @@ import {
   contactDetailHref,
   opportunityDetailHref,
 } from '@/lib/detailRoutes';
-import { fetchGmailMessages, fetchGmailMessage, sendGmailMessage, linkEmailToCRM } from '@/lib/gmailApi';
+import { fetchGmailMessages, fetchGmailMessage, sendGmailMessage, linkEmailToCRM, downloadGmailAttachment } from '@/lib/gmailApi';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -140,6 +141,7 @@ export default function InboxPage() {
   const [selectedGmailId, setSelectedGmailId] = useState<string | null>(null);
   const [selectedGmailDetail, setSelectedGmailDetail] = useState<any>(null);
   const [gmailDetailLoading, setGmailDetailLoading] = useState(false);
+  const [gmailDetailError, setGmailDetailError] = useState(false);
 
   const gmailCategoryLabels: Record<string, string> = {
     PRIMARY: 'Principal',
@@ -207,20 +209,16 @@ export default function InboxPage() {
 
   // Fetch Gmail detail when a message is selected
   useEffect(() => {
-    if (!selectedGmailId) { setSelectedGmailDetail(null); return; }
+    if (!selectedGmailId) { setSelectedGmailDetail(null); setGmailDetailError(false); return; }
     setGmailDetailLoading(true);
-    const timeout = setTimeout(() => setGmailDetailLoading(false), 10000);
+    setGmailDetailError(false);
     fetchGmailMessage(selectedGmailId)
-      .then((detail) => {
-        clearTimeout(timeout);
-        setSelectedGmailDetail(detail);
-      })
-      .catch((err) => {
-        clearTimeout(timeout);
-        console.error('Error fetching Gmail message:', err);
+      .then(setSelectedGmailDetail)
+      .catch(() => {
+        setGmailDetailError(true);
+        toast.error('No se pudo cargar el contenido del correo');
       })
       .finally(() => setGmailDetailLoading(false));
-    return () => clearTimeout(timeout);
   }, [selectedGmailId]);
 
   // Convert Gmail message to EmailThread shape
@@ -469,6 +467,7 @@ export default function InboxPage() {
                   key={thread.id}
                   onClick={() => {
                     setSelectedThread(thread);
+                    setSelectedGmailId(thread.id);
                     markAsRead(thread.id);
                   }}
                   className={cn(
@@ -636,145 +635,113 @@ export default function InboxPage() {
               </div>
             )}
         <div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin">
-          <div className="space-y-6 p-4">
-            {googleConnected && gmailDetailLoading && selectedGmailId && (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="size-5 animate-spin text-primary" />
-                <span className="ml-2 text-sm text-muted-foreground">Cargando contenido…</span>
-              </div>
-            )}
-                {googleConnected && selectedGmailDetail && !gmailDetailLoading && (
-                  <div className="rounded-lg border bg-card p-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#13944C]/10 text-[#13944C] font-semibold">
-                          {(selectedGmailDetail.from || '?').charAt(0)}
-                        </div>
-                        <div>
-                          <p className="font-medium">{selectedGmailDetail.from}</p>
-                          <p className="text-xs text-muted-foreground">
-                            Para: {selectedGmailDetail.to}
-                          </p>
-                        </div>
+          {googleConnected && selectedGmailId ? (
+            <div className="p-4">
+              {gmailDetailLoading && (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="size-5 animate-spin text-primary" />
+                  <span className="ml-2 text-sm text-muted-foreground">Cargando contenido…</span>
+                </div>
+              )}
+
+              {!gmailDetailLoading && gmailDetailError && (
+                <div className="flex flex-col items-center justify-center gap-3 py-8">
+                  <p className="text-sm text-muted-foreground">No se pudo cargar el correo.</p>
+                  <Button variant="outline" size="sm" onClick={() => {
+                    if (selectedGmailId) {
+                      setGmailDetailLoading(true);
+                      setGmailDetailError(false);
+                      fetchGmailMessage(selectedGmailId)
+                        .then(setSelectedGmailDetail)
+                        .catch(() => setGmailDetailError(true))
+                        .finally(() => setGmailDetailLoading(false));
+                    }
+                  }}>
+                    Reintentar
+                  </Button>
+                </div>
+              )}
+
+              {selectedGmailDetail && !gmailDetailLoading && (
+                <div className="rounded-lg border bg-card p-4">
+                  <div className="flex items-start justify-between gap-4 mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#13944C]/10 text-[#13944C] font-semibold">
+                        {(selectedGmailDetail.from || '?').charAt(0)}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">
-                          {formatFullDate(selectedGmailDetail.date)}
-                        </span>
-                        <a
-                          href={`https://mail.google.com/mail/u/0/#inbox/${selectedGmailDetail.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-primary hover:underline shrink-0"
-                        >
-                          Ver en Gmail
-                        </a>
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{selectedGmailDetail.from}</p>
+                        <p className="text-xs text-muted-foreground truncate">Para: {selectedGmailDetail.to}</p>
                       </div>
                     </div>
-                    {(() => {
-                      const rawBody = selectedGmailDetail.body || '';
-                      const hasHtml = /<[a-z][\s\S]*>/i.test(rawBody);
-                      const safeHtml = DOMPurify.sanitize(rawBody, { ADD_ATTR: ['target'] });
-                      return (
-                        <>
-                          {/* Debug: mostrar si tiene HTML */}
-                          <details className="mb-2 text-xs text-muted-foreground">
-                            <summary className="cursor-pointer">
-                              Debug: body length={rawBody.length}, hasHtml={String(hasHtml)}
-                            </summary>
-                            <pre className="mt-1 max-h-32 overflow-auto rounded border bg-muted p-2 text-[10px] whitespace-pre-wrap break-words">
-                              {rawBody.slice(0, 2000)}
-                            </pre>
-                          </details>
-                          <iframe
-                            sandbox="allow-same-origin"
-                            srcDoc={`
-                              <html>
-                                <head>
-                                  <style>
-                                    body {
-                                      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-                                      padding: 0; margin: 0; color: #111827; font-size: 14px; line-height: 1.6;
-                                    }
-                                    img { max-width: 100%; height: auto; }
-                                    a { color: #13944C; }
-                                    table { max-width: 100%; }
-                                    * { max-width: 100%; }
-                                  </style>
-                                </head>
-                                <body>${safeHtml}</body>
-                              </html>
-                            `.trim()}
-                            title="Contenido del correo"
-                            className="w-full min-h-[400px] rounded border-0"
-                            style={{ height: 'auto', minHeight: '400px' }}
-                          />
-                        </>
-                      );
-                    })()}
-                    {selectedGmailDetail.attachments?.length > 0 && (
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {selectedGmailDetail.attachments.map((att: any, i: number) => (
-                      <div key={i} className="flex items-center gap-2 rounded border bg-muted/50 px-3 py-2 text-sm">
-                        <Paperclip className="size-4" />
-                        {att.filename}
-                        <span className="text-xs text-muted-foreground">
-                          ({(att.size / 1024).toFixed(1)} KB)
-                        </span>
-                      </div>
-                    ))}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs text-muted-foreground">{formatFullDate(selectedGmailDetail.date)}</span>
+                      <a href={`https://mail.google.com/mail/u/0/#inbox/${selectedGmailDetail.id}`} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">
+                        Ver en Gmail
+                      </a>
+                    </div>
                   </div>
-                )}
-              </div>
-            )}
-            {selectedThread && !(googleConnected && selectedGmailDetail && !gmailDetailLoading) ? (
-              [...selectedThread.messages].reverse().map((msg) => (
-                    <div key={msg.id} className="rounded-lg border bg-card p-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#13944C]/10 text-[#13944C] font-semibold">
-                            {msg.fromName.charAt(0)}
-                          </div>
-                          <div>
-                            <p className="font-medium">{msg.fromName}</p>
-                            <p className="text-xs text-muted-foreground">{msg.from}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="text-xs text-muted-foreground">
-                            {formatFullDate(msg.timestamp)}
-                          </span>
-        {googleConnected && activeFolder === 'inbox' && (
-                            <a
-                              href={`https://mail.google.com/mail/u/0/#inbox/${msg.id}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-primary hover:underline"
-                            >
-                              Ver en Gmail
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                      <div className="mt-4 whitespace-pre-wrap text-sm">{msg.body}</div>
-                      {msg.attachments && msg.attachments.length > 0 && (
-                        <div className="mt-4 flex flex-wrap gap-2">
-                          {msg.attachments.map((att: any) => (
-                            <div key={att.id} className="flex items-center gap-2 rounded border bg-muted/50 px-3 py-2 text-sm">
-                              <Paperclip className="size-4" />
-                              {att.name}
-                              <span className="text-xs text-muted-foreground">
-                                ({(att.size / 1024).toFixed(1)} KB)
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+
+                  {selectedGmailDetail.body ? (
+                    /<[a-z][\s\S]*>/i.test(selectedGmailDetail.body) ? (
+                      <div className="max-h-[60vh] overflow-y-auto rounded border bg-muted/10 p-3 text-sm leading-relaxed [&_a]:text-[#13944C] [&_a]:underline" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedGmailDetail.body, { ADD_ATTR: ['target'], ADD_TAGS: ['a'] }) }} />
+                    ) : (
+                      <div className="max-h-[60vh] overflow-y-auto whitespace-pre-wrap rounded border bg-muted/10 p-3 text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: (() => {
+                        const text = selectedGmailDetail.body
+                          .replace(/&/g, '&amp;')
+                          .replace(/</g, '&lt;')
+                          .replace(/>/g, '&gt;');
+                        return text.replace(
+                          /(https?:\/\/\S+)/g,
+                          '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:#13944C;text-decoration:underline">$1</a>'
+                        );
+                      })() }} />
+                    )
+                  ) : (
+                    <p className="text-sm text-muted-foreground italic">(Sin contenido)</p>
+                  )}
+
+                  {selectedGmailDetail.attachments?.length > 0 && (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {selectedGmailDetail.attachments.map((att: any, i: number) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => downloadGmailAttachment(selectedGmailDetail.id, att.attachmentId, att.filename).catch(() => toast.error('Error al descargar el archivo'))}
+                          className="flex items-center gap-2 rounded border bg-muted/50 px-3 py-2 text-sm hover:bg-muted/80 transition-colors cursor-pointer"
+                        >
+                          <Paperclip className="size-4" />
+                          {att.filename}
+                          <span className="text-xs text-muted-foreground">({(att.size / 1024).toFixed(1)} KB)</span>
+                        </button>
+                      ))}
                     </div>
-                  ))
-                ) : null}
-              </div>
-              </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : selectedThread ? (
+            <div className="p-4">
+              {[...selectedThread.messages].reverse().map((msg) => (
+                <div key={msg.id} className="rounded-lg border bg-card p-4 mb-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#13944C]/10 text-[#13944C] font-semibold">
+                        {msg.fromName.charAt(0)}
+                      </div>
+                      <div>
+                        <p className="font-medium">{msg.fromName}</p>
+                        <p className="text-xs text-muted-foreground">{msg.from}</p>
+                      </div>
+                    </div>
+                    <span className="text-xs text-muted-foreground shrink-0">{formatFullDate(msg.timestamp)}</span>
+                  </div>
+                  <div className="mt-4 whitespace-pre-wrap text-sm">{msg.body}</div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
           </>
         ) : (
           <div className="flex flex-col items-center justify-center text-center">

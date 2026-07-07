@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Query, Body, Req, Param } from '@nestjs/common';
+import { Controller, Get, Post, Query, Body, Req, Param, Res, StreamableFile } from '@nestjs/common';
+import type { Response } from 'express';
 import { GmailService } from './gmail.service';
 
 type AuthedReq = { user: { userId: string } };
@@ -31,6 +32,26 @@ export class GmailController {
   @Get('messages/:id')
   async getMessage(@Req() req: AuthedReq, @Param('id') id: string) {
     return this.gmailService.getMessage(req.user.userId, id);
+  }
+
+  @Get('messages/:messageId/attachments/:attachmentId')
+  async downloadAttachment(
+    @Req() req: AuthedReq,
+    @Param('messageId') messageId: string,
+    @Param('attachmentId') attachmentId: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { data, filename, mimeType } = await this.gmailService.downloadAttachment(
+      req.user.userId,
+      messageId,
+      attachmentId,
+    );
+    res.set({
+      'Content-Type': mimeType,
+      'Content-Disposition': `attachment; filename="${encodeURIComponent(filename)}"`,
+      'Content-Length': data.length.toString(),
+    });
+    return new StreamableFile(data);
   }
 
   @Post('send')

@@ -1,5 +1,6 @@
 import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import { google } from 'googleapis';
+import { simpleParser } from 'mailparser';
 import { PrismaService } from '../prisma/prisma.service';
 import { EntitySyncService } from '../sync/entity-sync.service';
 
@@ -64,90 +65,53 @@ export class GmailService {
 
   async getMessage(userId: string, messageId: string) {
     const gmail = await this.getGmailClient(userId);
-    const res = await gmail.users.messages.get({ userId: 'me', id: messageId, format: 'full' });
-    const headers = res.data.payload?.headers ?? [];
-    const parts = res.data.payload?.parts ?? [];
-    const attachments: any[] = [];
-    const body = this.extractBody(res.data.payload);
 
-    const extractAttachments = (parts: any[]) => {
-      for (const p of parts) {
-        if (p.filename && p.body?.attachmentId) {
-          attachments.push({
-            filename: p.filename,
-            mimeType: p.mimeType,
-            attachmentId: p.body.attachmentId,
-            size: p.body.size,
-          });
-        }
-        if (p.parts) extractAttachments(p.parts);
+    // Fetch full format for headers + attachment metadata
+    const full = await gmail.users.messages.get({ userId: 'me', id: messageId, format: 'full' });
+    const headers = full.data.payload?.headers ?? [];
+
+    // Fetch raw format for reliable body extraction via mailparser
+    const raw = await gmail.users.messages.get({ userId: 'me', id: messageId, format: 'raw' });
+    const rawEmail = Buffer.from(raw.data.raw ?? '', 'base64url').toString();
+    let body = full.data.snippet || '';
+    try {
+      const parsed = await simpleParser(rawEmail);
+      body = parsed.text || parsed.html || body;
+      this.logger.log(`[getMessage OK] subject="${headers.find((h) => h.name === 'Subject')?.value}" html=${typeof parsed.html === 'string' ? parsed.html.length : 'false'} text=${typeof parsed.text === 'string' ? parsed.text.length : 'false'} bodyLen=${body.length} attachments=${parsed.attachments.length}`);
+    } catch (e: any) {
+      this.logger.error(`[getMessage FAIL] mailparser error: ${e?.message || e}`);
+    }
+
+    // Extract attachment metadata from full format
+    const attachments: any[] = [];
+    const walkAttachments = (p: any) => {
+      if (!p) return;
+      if (p.filename && p.body?.attachmentId) {
+        attachments.push({
+          filename: p.filename,
+          mimeType: p.mimeType,
+          attachmentId: p.body.attachmentId,
+          size: p.body.size,
+        });
+      }
+      if (p.parts) {
+        for (const part of p.parts) walkAttachments(part);
       }
     };
-    extractAttachments(parts);
+    walkAttachments(full.data.payload);
 
     return {
-      id: res.data.id,
-      threadId: res.data.threadId,
+      id: full.data.id,
+      threadId: full.data.threadId,
       subject: headers.find((h) => h.name === 'Subject')?.value ?? '',
       from: headers.find((h) => h.name === 'From')?.value ?? '',
       to: headers.find((h) => h.name === 'To')?.value ?? '',
       date: headers.find((h) => h.name === 'Date')?.value ?? '',
       cc: headers.find((h) => h.name === 'Cc')?.value ?? '',
-      body: (body || res.data.snippet) ?? '',
+      body,
       attachments,
-      labelIds: res.data.labelIds ?? [],
+      labelIds: full.data.labelIds ?? [],
     };
-  }
-
-  private extractBody(payload: any): string {
-    if (!payload) return '';
-    const logPrefix = `[extractBody] mimeType=${payload.mimeType} parts=${payload.parts?.length ?? 0}`;
-    // Try body data directly
-    if (payload.body?.data) {
-      try {
-        const decoded = Buffer.from(payload.body.data, 'base64url').toString('utf-8');
-        if (decoded.trim()) { console.log(`${logPrefix} found direct body data (base64url) length=${decoded.length}`); return decoded; }
-      } catch {}
-      try {
-        const decoded = Buffer.from(payload.body.data, 'base64').toString('utf-8');
-        if (decoded.trim()) { console.log(`${logPrefix} found direct body data (base64) length=${decoded.length}`); return decoded; }
-      } catch {}
-    }
-    // Search through parts — prefer text/html over text/plain
-    if (payload.parts) {
-      let plainContent = '';
-      for (const [i, p] of payload.parts.entries()) {
-        console.log(`${logPrefix} part[${i}] mimeType=${p.mimeType} hasData=${!!p.body?.data} dataLen=${p.body?.data?.length ?? 0}`);
-        if (p.mimeType === 'text/html' && p.body?.data) {
-          try {
-            const decoded = Buffer.from(p.body.data, 'base64url').toString('utf-8');
-            if (decoded.trim()) { console.log(`${logPrefix} found text/html in part[${i}] length=${decoded.length}`); return decoded; }
-          } catch {}
-          try {
-            const decoded = Buffer.from(p.body.data, 'base64').toString('utf-8');
-            if (decoded.trim()) { console.log(`${logPrefix} found text/html in part[${i}] (base64) length=${decoded.length}`); return decoded; }
-          } catch {}
-        }
-        if (p.mimeType === 'text/plain' && p.body?.data) {
-          try {
-            const decoded = Buffer.from(p.body.data, 'base64url').toString('utf-8');
-            if (decoded.trim() && !plainContent) { console.log(`${logPrefix} saving text/plain in part[${i}] length=${decoded.length}`); plainContent = decoded; }
-          } catch {}
-          try {
-            const decoded = Buffer.from(p.body.data, 'base64').toString('utf-8');
-            if (decoded.trim() && !plainContent) { console.log(`${logPrefix} saving text/plain in part[${i}] (base64) length=${decoded.length}`); plainContent = decoded; }
-          } catch {}
-        }
-        // Recurse into nested parts
-        if (p.parts) {
-          const nested = this.extractBody(p);
-          if (nested.trim()) { console.log(`${logPrefix} nested found content length=${nested.length}`); return nested; }
-        }
-      }
-      if (plainContent) { console.log(`${logPrefix} falling back to text/plain length=${plainContent.length}`); return plainContent; }
-    }
-    console.log(`${logPrefix} no content found`);
-    return '';
   }
 
   async sendMessage(userId: string, to: string, subject: string, bodyHtml: string, cc?: string) {
@@ -163,6 +127,43 @@ export class GmailService {
     emailLines.push(bodyHtml);
     const encoded = Buffer.from(emailLines.join('\r\n')).toString('base64url');
     await gmail.users.messages.send({ userId: 'me', requestBody: { raw: encoded } });
+  }
+
+  async downloadAttachment(userId: string, messageId: string, attachmentId: string) {
+    const gmail = await this.getGmailClient(userId);
+
+    const attachmentRes = await gmail.users.messages.attachments.get({
+      userId: 'me',
+      messageId,
+      id: attachmentId,
+    });
+
+    const data = Buffer.from(attachmentRes.data.data ?? '', 'base64');
+
+    const messageRes = await gmail.users.messages.get({
+      userId: 'me',
+      id: messageId,
+      format: 'full',
+    });
+
+    const parts = messageRes.data.payload?.parts ?? [];
+    let filename = 'attachment';
+    let mimeType = 'application/octet-stream';
+
+    const findPart = (pList: any[]): boolean => {
+      for (const p of pList) {
+        if (p.body?.attachmentId === attachmentId) {
+          filename = p.filename || filename;
+          mimeType = p.mimeType || mimeType;
+          return true;
+        }
+        if (p.parts && findPart(p.parts)) return true;
+      }
+      return false;
+    };
+    findPart(parts);
+
+    return { data, filename, mimeType };
   }
 
   async getUserProfile(userId: string) {

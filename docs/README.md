@@ -2,6 +2,7 @@
 
 | Documento | Contenido |
 |-----------|-----------|
+| [00_PROJECT_OVERVIEW.md](./00_PROJECT_OVERVIEW.md) | **Visión general completa** del proyecto: stack, estructura, BD, APIs, auth, convenciones. Leer primero. |
 | [AUTH.md](./AUTH.md) | Auth local: migración, primer usuario, login, registro, cambio de contraseña (resumen). |
 | [AUTH_Y_API.md](./AUTH_Y_API.md) | Integración paso a paso: JWT, `api()`, permisos, registro, usuarios y contraseña. |
 | [USUARIOS_API.md](./USUARIOS_API.md) | CRUD de usuarios en API: `GET`/`POST`/`PATCH`, roles `r1`–`r4`, permisos **solo admin** para alta/edición. |

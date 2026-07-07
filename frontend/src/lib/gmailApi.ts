@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api, apiBlob } from './api';
 
 export type GmailMessage = {
   id: string;
@@ -58,4 +58,16 @@ export async function linkEmailToCRM(to: string, subject: string): Promise<{ lin
     method: 'POST',
     body: JSON.stringify({ to, subject }),
   });
+}
+
+export async function downloadGmailAttachment(messageId: string, attachmentId: string, filename: string): Promise<void> {
+  const blob = await apiBlob(`/gmail/messages/${encodeURIComponent(messageId)}/attachments/${encodeURIComponent(attachmentId)}`);
+  const blobUrl = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = blobUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(blobUrl);
 }
