@@ -107,8 +107,35 @@ export async function fetchConversations(params?: {
 export async function searchChatwootConversations(q: string): Promise<ChatwootConversation[]> {
   const res = await api<{ data: ChatwootConversation[] }>(
     `/api/chatwoot/conversations/search?q=${encodeURIComponent(q)}`,
+    { cache: 'no-store' },
   );
   return res.data ?? [];
+}
+
+/** Coincide nombre o teléfono del remitente con el texto de búsqueda. */
+export function conversationMatchesQuery(
+  conversation: ChatwootConversation,
+  query: string,
+): boolean {
+  const q = query.trim();
+  if (!q) return true;
+  const qLower = q.toLowerCase();
+  const name = conversation.meta?.sender?.name?.toLowerCase() ?? '';
+  const phone = conversation.meta?.sender?.phone_number ?? '';
+  const digits = q.replace(/\D/g, '');
+  if (name.includes(qLower)) return true;
+  if (phone.includes(q)) return true;
+  if (digits.length >= 3) {
+    const phoneDigits = phone.replace(/\D/g, '');
+    if (phoneDigits.includes(digits) || phoneDigits.endsWith(digits.slice(-9))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export async function fetchUnreadConversations(): Promise<ChatwootConversation[]> {
+  return fetchConversations({ unread_only: true });
 }
 
 export async function fetchUnreadSummary(): Promise<{
@@ -271,4 +298,86 @@ export async function fetchChatwootContacts(params?: {
   if (params?.q) qs.set('q', params.q);
   const qsStr = qs.toString();
   return api(`/api/chatwoot/contacts-list${qsStr ? `?${qsStr}` : ''}`);
+}
+
+export async function fetchContactConversations(contactId: number): Promise<ChatwootConversation[]> {
+  const res = await api<{ data: ChatwootConversation[] }>(
+    `/api/chatwoot/contacts/${contactId}/conversations`,
+    { cache: 'no-store' },
+  );
+  return res.data ?? [];
+}
+
+export function findConversationByPhone(
+  conversations: ChatwootConversation[],
+  phone: string | null | undefined,
+): ChatwootConversation | undefined {
+  const digits = phone?.replace(/\D/g, '') ?? '';
+  if (!digits) return undefined;
+  const suffix = digits.slice(-9);
+  return conversations.find((c) => {
+    const cd = c.meta?.sender?.phone_number?.replace(/\D/g, '') ?? '';
+    return cd === digits || cd.endsWith(suffix) || suffix.endsWith(cd.slice(-9));
+  });
+}
+
+export function pickBestContactConversation(
+  conversations: ChatwootConversation[],
+): ChatwootConversation | null {
+  if (conversations.length === 0) return null;
+  const active = conversations.filter((c) => c.status === 'open' || c.status === 'pending');
+  const pool = active.length > 0 ? active : conversations;
+  return [...pool].sort((a, b) => (b.last_activity_at ?? 0) - (a.last_activity_at ?? 0))[0];
+}
+
+/** Resuelve la conversación de un contacto: memoria → historial por contacto → búsqueda → resolve profundo. */
+export async function resolveContactConversation(
+  contact: ChatwootContact,
+  loaded: ChatwootConversation[],
+): Promise<ChatwootConversation | null> {
+  const inMemory = findConversationByPhone(loaded, contact.phone_number);
+  if (inMemory) return inMemory;
+  const convs = await fetchContactConversations(contact.id);
+  const fromContact = pickBestContactConversation(convs);
+  if (fromContact) return fromContact;
+  if (contact.phone_number) {
+    const digits = contact.phone_number.replace(/\D/g, '');
+    const suffix = digits.slice(-9);
+    const searchTerms = [digits, suffix, `+${digits}`]
+      .filter((q, i, arr) => q.length >= 3 && arr.indexOf(q) === i);
+    for (const q of searchTerms) {
+      const searchHits = await searchChatwootConversations(q);
+      const fromSearch = pickBestContactConversation(searchHits);
+      if (fromSearch) return fromSearch;
+    }
+    const qs = new URLSearchParams({
+      phone: contact.phone_number,
+      contact_id: String(contact.id),
+    });
+    const res = await api<{ data: ChatwootConversation | null }>(
+      `/api/chatwoot/resolve-conversation?${qs.toString()}`,
+      { cache: 'no-store' },
+    );
+    if (res.data) return res.data;
+  }
+  return null;
+}
+
+/** Abre chat de un contacto; si no hay historial resuelto, usa initiateConversation sin plantilla. */
+export async function openContactChat(
+  contact: ChatwootContact,
+  loaded: ChatwootConversation[],
+): Promise<{ conversationId: number; conversation?: ChatwootConversation | null } | null> {
+  const conv = await resolveContactConversation(contact, loaded);
+  if (conv) return { conversationId: conv.id, conversation: conv };
+  if (!contact.phone_number) return null;
+  const phone = contact.phone_number.startsWith('+')
+    ? contact.phone_number
+    : `+${contact.phone_number.replace(/\D/g, '')}`;
+  const result = await initiateConversation({
+    name: contact.name || phone,
+    phone,
+    skipTemplate: true,
+  });
+  return { conversationId: result.conversationId };
 }

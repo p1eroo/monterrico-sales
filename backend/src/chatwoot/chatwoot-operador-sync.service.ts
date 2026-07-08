@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ChatwootClient } from './chatwoot.client';
+import { FlotaProspectosGateway } from '../flota-prospectos/flota-prospectos.gateway';
 import type { ChatwootAgent } from './chatwoot.types';
 
 export interface OperadorUser {
@@ -24,6 +25,7 @@ export class ChatwootOperadorSyncService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly client: ChatwootClient,
+    private readonly prospectosGateway: FlotaProspectosGateway,
   ) {}
 
   async listOperadores(): Promise<OperadorUser[]> {
@@ -218,6 +220,7 @@ export class ChatwootOperadorSyncService {
     });
 
     this.logger.log(`Operador sincronizado prospecto ${prospectoId}: ${existing.operador ?? '—'} → ${canonicalOperador}`);
+    this.prospectosGateway.emitChange('operador_assigned', prospectoId);
     return { updated: true, operador: canonicalOperador };
   }
 
@@ -387,6 +390,7 @@ export class ChatwootOperadorSyncService {
     }
 
     this.logger.log(`Operador auto-asignado prospecto ${params.prospectoId}: ${canonicalOperador}`);
+    this.prospectosGateway.emitChange('operador_assigned', params.prospectoId);
     return { assigned: true, operador: canonicalOperador };
   }
 }

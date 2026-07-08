@@ -7,6 +7,7 @@ import { AuditDetailService } from '../audit-detail/audit-detail.service';
 import { FLOTA_PROSPECTO_FIELD_LABELS } from '../audit-detail/audit-field-labels';
 import { buildChangeEntries } from '../common/audit-diff.util';
 import { ChatwootOperadorSyncService } from '../chatwoot/chatwoot-operador-sync.service';
+import { FlotaProspectosGateway } from './flota-prospectos.gateway';
 import type { CrmDataScope } from '../auth/crm-data-scope.service';
 import type { ImportJobProgressInput } from '../import-export/import-export-jobs.service';
 import type { BulkImportResultDto, BulkImportRowError } from '../import-export/import-export.service';
@@ -124,6 +125,7 @@ export class FlotaProspectosService {
     private activityLogs: ActivityLogsService,
     private auditDetail: AuditDetailService,
     private operadorSync: ChatwootOperadorSyncService,
+    private prospectosGateway: FlotaProspectosGateway,
   ) {}
 
   private normalizeCelular(celular?: string | null): string | null {
@@ -495,6 +497,7 @@ export class FlotaProspectosService {
       });
     }
 
+    this.prospectosGateway.emitChange('updated', id);
     return updated;
   }
 
@@ -525,6 +528,7 @@ export class FlotaProspectosService {
 
     await this.operadorSync.syncAssigneeFromOperador(id, val);
 
+    this.prospectosGateway.emitChange('operador_assigned', id);
     return updated;
   }
 
@@ -563,6 +567,7 @@ export class FlotaProspectosService {
           entityName: updated.nombreCompleto,
           description: `Prospecto reactivado: ${updated.nombreCompleto} (${updated.celular || ''})`,
         });
+        this.prospectosGateway.emitChange('updated', updated.id);
         return updated;
       }
       const operadorName = existingByPhone.operador?.trim() || null;
@@ -591,6 +596,7 @@ export class FlotaProspectosService {
       entityName: created.nombreCompleto,
       description: `Prospecto creado: ${created.nombreCompleto} (${created.celular || ''})`,
     });
+    this.prospectosGateway.emitChange('created', created.id);
     return created;
   }
 
@@ -612,6 +618,7 @@ export class FlotaProspectosService {
       entityName: existing.nombreCompleto,
       description: `Prospecto eliminado: ${existing.nombreCompleto} (${existing.celular || ''})`,
     });
+    this.prospectosGateway.emitChange('deleted', id);
   }
 
   /** Soft delete múltiples prospectos */
@@ -629,6 +636,9 @@ export class FlotaProspectosService {
       entityType: 'flota-prospecto',
       description: `${result.count} prospecto(s) eliminado(s) en lote`,
     });
+    for (const prospectoId of ids) {
+      this.prospectosGateway.emitChange('deleted', prospectoId);
+    }
     return result.count;
   }
 

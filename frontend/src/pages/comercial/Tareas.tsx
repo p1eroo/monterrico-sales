@@ -908,19 +908,7 @@ export default function TareasPage() {
           )}
         >
           {viewMode === 'kanban' ? (
-            tasksForKanban.length === 0 ? (
-              <EmptyState
-                icon={Grid3X3}
-                title="No hay tareas para el tablero"
-                description="Ajusta los filtros o crea una nueva tarea."
-                actionLabel="Nueva Tarea"
-                onAction={() => {
-                  setNewTaskColumnStatus(undefined);
-                  setNewTaskDefaultAssociations(undefined);
-                  setNewTaskOpen(true);
-                }}
-              />
-            ) : (
+            activitiesLoading || tasksForKanban.length > 0 ? (
               <TasksKanbanBoard
                 tasks={tasksForKanban}
                 loading={activitiesLoading}
@@ -942,6 +930,18 @@ export default function TareasPage() {
                 onDelete={requestDeleteTask}
                 formatDueDate={formatDueDate}
                 isOverdue={isOverdue}
+              />
+            ) : (
+              <EmptyState
+                icon={Grid3X3}
+                title="No hay tareas para el tablero"
+                description="Ajusta los filtros o crea una nueva tarea."
+                actionLabel="Nueva Tarea"
+                onAction={() => {
+                  setNewTaskColumnStatus(undefined);
+                  setNewTaskDefaultAssociations(undefined);
+                  setNewTaskOpen(true);
+                }}
               />
             )
           ) : (

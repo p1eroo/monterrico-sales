@@ -52,7 +52,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { flotaProspectoDetail, flotaProspectoUpdate, flotaProspectoFiles, flotaProspectoFileContentUrl, flotaProspectoUploadFile, flotaLlamadasList, flotaLlamadaCreate, fetchOperadores, getOperatorDisplayName, type FlotaProspectoRow, type FlotaLlamada, type FlotaFile, type OperadorUser } from '@/lib/flotaProspectosApi';
+import { flotaProspectoDetail, flotaProspectoUpdate, flotaProspectoFiles, flotaProspectoFileContentUrl, flotaProspectoUploadFile, flotaLlamadasList, flotaLlamadaCreate, fetchOperadores, getOperatorDisplayName, MODALIDAD_OPTIONS, type FlotaProspectoRow, type FlotaLlamada, type FlotaFile, type OperadorUser } from '@/lib/flotaProspectosApi';
+import { notifyFlotaProspectosRefresh } from '@/lib/flotaProspectosRealtime';
 
 const ESTADOS = ['Afiliado', 'Citado', 'Seguimiento', 'Informacion', 'Sin Requisitos', 'No Responde'] as const;
 
@@ -509,7 +510,7 @@ export default function FlotaProspectoDetail() {
       setProspecto(updated);
       setEditModalOpen(false);
       toast.success('Prospecto actualizado');
-      try { new BroadcastChannel("flota-prospectos").postMessage({ type: "refresh" }); } catch {}
+      notifyFlotaProspectosRefresh();
     } catch (e) {
       toast.error('No se pudo actualizar');
     } finally {
@@ -759,10 +760,26 @@ export default function FlotaProspectoDetail() {
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Modalidad</Label>
-                <Input
-                  value={editData.modalidad || ''}
-                  onChange={(e) => setEditData({ ...editData, modalidad: e.target.value })}
-                />
+                <Select
+                  value={editData.modalidad || '__none__'}
+                  onValueChange={(v) => setEditData({ ...editData, modalidad: v === '__none__' ? '' : v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sin modalidad" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Sin modalidad</SelectItem>
+                    {MODALIDAD_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                    {editData.modalidad &&
+                      !MODALIDAD_OPTIONS.some((o) => o.value === editData.modalidad) && (
+                        <SelectItem value={editData.modalidad}>{editData.modalidad}</SelectItem>
+                      )}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid gap-2">
                 <Label>Distrito</Label>

@@ -31,6 +31,7 @@ import { CorreoSvgIcon } from '@/components/icons/CorreoSvgIcon';
 import { WhatsAppSvgIcon } from '@/components/icons/WhatsAppSvgIcon';
 import { PrioritySvgIcon } from '@/components/icons/PrioritySvgIcon';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -331,6 +332,51 @@ const KanbanColumnShell = memo(function KanbanColumnShell({
   );
 });
 
+function TasksKanbanSkeleton() {
+  return (
+    <div
+      className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col gap-2"
+      aria-busy="true"
+      aria-live="polite"
+      aria-label="Cargando tablero de tareas"
+    >
+      <div
+        className={cn(
+          'scrollbar-thin flex min-h-[22rem] w-full min-w-0 flex-1 flex-row gap-3',
+          'overflow-x-auto overflow-y-hidden overscroll-x-contain',
+          'items-stretch pb-2 pt-0.5 [-webkit-overflow-scrolling:touch]',
+        )}
+      >
+        {KANBAN_STATUS_ORDER.map((status) => {
+          const theme = columnTheme[status];
+          return (
+            <div
+              key={status}
+              className="flex h-full min-h-0 min-w-[20rem] max-w-full flex-1 basis-0 flex-col overflow-hidden rounded-t-xl"
+            >
+              <div className="flex shrink-0 items-center justify-between gap-2 border-x border-t border-border/80 px-3 py-2.5 bg-[#e8ecf0] dark:bg-gray-800/50">
+                <div className="flex min-w-0 flex-1 items-center gap-2">
+                  <Skeleton className={cn('h-6 w-6 shrink-0 rounded-full', theme.countBg)} />
+                  <Skeleton className="h-4 max-w-[7rem] flex-1" />
+                </div>
+                <Skeleton className="size-8 shrink-0 rounded-md" />
+              </div>
+              <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden rounded-b-xl border-x border-b border-border/80 bg-[#e8ecf0] p-2 dark:bg-gray-800/50">
+                {Array.from({ length: status === 'pendiente' ? 3 : 2 }, (_, i) => (
+                  <Skeleton
+                    key={i}
+                    className="h-[7.5rem] w-full shrink-0 rounded-xl bg-white dark:bg-gray-900"
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export const TasksKanbanBoard = memo(function TasksKanbanBoard({
   tasks,
   loading,
@@ -418,11 +464,7 @@ export const TasksKanbanBoard = memo(function TasksKanbanBoard({
   }, [clearDrag]);
 
   if (loading) {
-    return (
-      <div className="flex min-h-[20rem] items-center justify-center rounded-xl border border-dashed bg-muted/20 text-sm text-muted-foreground">
-        Cargando tablero…
-      </div>
-    );
+    return <TasksKanbanSkeleton />;
   }
 
   return (

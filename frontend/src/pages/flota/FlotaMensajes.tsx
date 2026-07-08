@@ -119,7 +119,9 @@ import {
   flotaProspectoCreate,
   flotaProspectosList,
   flotaLlamadaCreate,
+  MODALIDAD_OPTIONS,
 } from '@/lib/flotaProspectosApi';
+import { notifyFlotaProspectosRefresh } from '@/lib/flotaProspectosRealtime';
 import { getConductorTelefonos } from '@/lib/flotaConductoresApi';
 import {
   fetchSharedConnection,
@@ -1772,7 +1774,7 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
       });
       toast.success(`Estado actualizado a ${formatStatus(nuevoEstado)}`);
       onContactUpdated();
-      try { new BroadcastChannel("flota-prospectos").postMessage({ type: "refresh" }); } catch {}
+      notifyFlotaProspectosRefresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'No se pudo actualizar el estado');
     }
@@ -1787,7 +1789,7 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
       });
       toast.success(nuevoOperador ? `Operador asignado: ${nuevoOperador}` : 'Operador removido');
       onContactUpdated();
-      try { new BroadcastChannel("flota-prospectos").postMessage({ type: "refresh" }); } catch {}
+      notifyFlotaProspectosRefresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'No se pudo asignar operador');
     }
@@ -2330,11 +2332,28 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
             </div>
             <div className="space-y-1">
               <Label>Modalidad</Label>
-              <Input
-                value={editData.modalidad ?? ''}
-                onChange={(e) => setEditData((prev) => ({ ...prev, modalidad: e.target.value }))}
-                placeholder="Modalidad"
-              />
+              <Select
+                value={editData.modalidad || '__none__'}
+                onValueChange={(v) =>
+                  setEditData((prev) => ({ ...prev, modalidad: v === '__none__' ? '' : v }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sin modalidad" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Sin modalidad</SelectItem>
+                  {MODALIDAD_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                  {editData.modalidad &&
+                    !MODALIDAD_OPTIONS.some((o) => o.value === editData.modalidad) && (
+                      <SelectItem value={editData.modalidad}>{editData.modalidad}</SelectItem>
+                    )}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1">
               <Label>Red Social</Label>

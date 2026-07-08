@@ -44,7 +44,6 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
 import { PageHeader } from "@/components/shared/PageHeader";
 import {
@@ -68,6 +67,7 @@ import {
   type OperadorStats,
 } from "@/lib/flotaProspectosApi";
 import { getSunatHistorial } from "@/lib/flotaSunatApi";
+import { useFlotaProspectosRealtime } from "@/lib/flotaProspectosRealtime";
 import {
   PieChart,
   Pie,
@@ -255,20 +255,9 @@ export default function FlotaReportes() {
     void loadData();
   }, []);
 
-  // Auto-recargar cuando se actualiza un prospecto desde otra pestaña/sección
-  useEffect(() => {
-    try {
-      const bc = new BroadcastChannel("flota-prospectos");
-      bc.onmessage = (event) => {
-        if (event.data?.type === "refresh") {
-          void loadData();
-        }
-      };
-      return () => bc.close();
-    } catch {
-      /* BroadcastChannel no soportado */
-    }
-  }, []);
+  useFlotaProspectosRealtime(() => {
+    void loadData();
+  });
 
   useEffect(() => {
     async function loadSunatHistory() {
@@ -1082,10 +1071,7 @@ export default function FlotaReportes() {
           <Card id="chart-conversion">
             <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2">
               <div className="min-w-0 space-y-1">
-                <CardTitle className="text-base">Conversión Mensual</CardTitle>
-                <CardDescription>
-                  Prospectos registrados vs afiliados por mes
-                </CardDescription>
+                <CardTitle className="text-base font-medium">Conversión Mensual</CardTitle>
               </div>
               <Button
                 type="button"
@@ -1178,12 +1164,9 @@ export default function FlotaReportes() {
           <Card id="chart-operador" className="flex flex-col">
             <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2">
               <div className="min-w-0 space-y-1">
-                <CardTitle className="text-base">
+                <CardTitle className="text-base font-medium">
                   Actividad por Operador
                 </CardTitle>
-                <CardDescription>
-                  Prospectos asignados, chats activos y mensajes en el periodo
-                </CardDescription>
               </div>
               <Button
                 type="button"
@@ -1307,12 +1290,9 @@ export default function FlotaReportes() {
           <Card id="chart-fuente">
             <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2">
               <div className="min-w-0 space-y-1">
-                <CardTitle className="text-base">
+                <CardTitle className="text-base font-medium">
                   Prospectos por Fuente
                 </CardTitle>
-                <CardDescription>
-                  Distribución según canal de origen
-                </CardDescription>
               </div>
               <Button
                 type="button"
@@ -1371,8 +1351,7 @@ export default function FlotaReportes() {
           <Card id="chart-zona">
             <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2">
               <div className="min-w-0 space-y-1">
-                <CardTitle className="text-base">Prospectos por Zona</CardTitle>
-                <CardDescription>Distribución por distrito</CardDescription>
+                <CardTitle className="text-base font-medium">Prospectos por Zona</CardTitle>
               </div>
               <Button
                 type="button"
@@ -1434,12 +1413,9 @@ export default function FlotaReportes() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div>
-                    <CardTitle className="text-base">
+                    <CardTitle className="text-base font-medium">
                       Nuevos Conductores
                     </CardTitle>
-                    <CardDescription>
-                      Registros nuevos vs activos por semana
-                    </CardDescription>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -1613,12 +1589,9 @@ export default function FlotaReportes() {
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
-                  <CardTitle className="text-base flex items-center gap-2">
+                  <CardTitle className="text-base font-medium flex items-center gap-2">
                     SUNAT - Gestión de Flota
                   </CardTitle>
-                  <CardDescription>
-                    Cumplimiento y métricas de autorización
-                  </CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
                   <Popover>

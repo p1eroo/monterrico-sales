@@ -104,11 +104,8 @@ export class ChatwootClient {
   }
 
   async listContactConversations(contactId: number): Promise<ChatwootConversationListItem[]> {
-    const raw = await this.request<any>('GET', `/contacts/${contactId}/conversations`);
-    if (Array.isArray(raw)) return raw as ChatwootConversationListItem[];
-    if (raw?.data?.payload && Array.isArray(raw.data.payload)) return raw.data.payload as ChatwootConversationListItem[];
-    if (raw?.payload && Array.isArray(raw.payload)) return raw.payload as ChatwootConversationListItem[];
-    return [];
+    const raw = await this.request<unknown>('GET', `/contacts/${contactId}/conversations`);
+    return this.extractConversationList(raw);
   }
 
   async listContacts(params?: {

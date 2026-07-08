@@ -27,6 +27,13 @@ export class ChatwootService {
 
   private readonly convPageSize = 25;
   private readonly maxScanPages = 40;
+  private readonly unreadCacheTtlMs = 90_000;
+  private unreadCache: {
+    items: ChatwootConversationListItem[];
+    summary: { totalUnread: number; conversationCount: number };
+    at: number;
+  } | null = null;
+  private unreadScanInFlight: Promise<ChatwootConversationListItem[]> | null = null;
 
   async listConversations(params?: {
     status?: string;
@@ -46,103 +53,369 @@ export class ChatwootService {
 
   /** Escanea páginas de Chatwoot y devuelve solo conversaciones con mensajes no leídos. */
   async listUnreadConversations(): Promise<ChatwootConversationListItem[]> {
-    const inboxId = this.client.getConfig().inboxId;
-    const unread: ChatwootConversationListItem[] = [];
-    const seen = new Set<number>();
+    if (this.unreadScanInFlight) return this.unreadScanInFlight;
 
-    for (let page = 1; page <= this.maxScanPages; page++) {
-      const batch = await this.client.listConversations({
-        inbox_id: inboxId,
-        page,
-        sort_by: 'unread',
-      });
-      if (batch.length === 0) break;
-      for (const c of batch) {
-        if ((c.unread_count ?? 0) > 0 && !seen.has(c.id)) {
-          seen.add(c.id);
-          unread.push(c);
+    const scan = (async () => {
+      const inboxId = this.client.getConfig().inboxId;
+      const unread: ChatwootConversationListItem[] = [];
+      const seen = new Set<number>();
+
+      for (let page = 1; page <= this.maxScanPages; page++) {
+        const batch = await this.client.listConversations({
+          inbox_id: inboxId,
+          page,
+          sort_by: 'unread',
+        });
+        if (batch.length === 0) break;
+
+        let pageHadUnread = false;
+        for (const c of batch) {
+          if ((c.unread_count ?? 0) > 0 && !seen.has(c.id)) {
+            seen.add(c.id);
+            unread.push(c);
+            pageHadUnread = true;
+          }
         }
-      }
-      if (batch.length < this.convPageSize) break;
-    }
 
-    return unread.sort((a, b) => (b.last_activity_at ?? 0) - (a.last_activity_at ?? 0));
+        if (batch.length < this.convPageSize) break;
+        if (page > 1 && !pageHadUnread) break;
+      }
+
+      return unread.sort((a, b) => (b.last_activity_at ?? 0) - (a.last_activity_at ?? 0));
+    })();
+
+    this.unreadScanInFlight = scan;
+    try {
+      return await scan;
+    } finally {
+      this.unreadScanInFlight = null;
+    }
   }
 
-  async getUnreadSummary(): Promise<{ totalUnread: number; conversationCount: number }> {
-    const unread = await this.listUnreadConversations();
+  private buildUnreadSummary(items: ChatwootConversationListItem[]) {
     return {
-      totalUnread: unread.reduce((sum, c) => sum + (c.unread_count ?? 0), 0),
-      conversationCount: unread.length,
+      totalUnread: items.reduce((sum, c) => sum + (c.unread_count ?? 0), 0),
+      conversationCount: items.length,
     };
   }
 
-  /** Búsqueda global por teléfono, nombre o contenido — no limitada a páginas cargadas. */
-  async searchConversations(query: string): Promise<ChatwootConversationListItem[]> {
-    const q = query.trim();
-    if (!q) return [];
+  /** Lista completa de no leídos con cache compartida (badge + pestaña). */
+  async getUnreadConversations(force = false): Promise<ChatwootConversationListItem[]> {
+    if (
+      !force
+      && this.unreadCache
+      && Date.now() - this.unreadCache.at < this.unreadCacheTtlMs
+    ) {
+      return this.unreadCache.items;
+    }
+
+    const items = await this.listUnreadConversations();
+    this.unreadCache = {
+      items,
+      summary: this.buildUnreadSummary(items),
+      at: Date.now(),
+    };
+    return items;
+  }
+
+  async getUnreadSummary(force = false): Promise<{ totalUnread: number; conversationCount: number }> {
+    if (
+      !force
+      && this.unreadCache
+      && Date.now() - this.unreadCache.at < this.unreadCacheTtlMs
+    ) {
+      return this.unreadCache.summary;
+    }
+
+    const items = await this.getUnreadConversations(force);
+    return this.unreadCache?.summary ?? this.buildUnreadSummary(items);
+  }
+
+  invalidateUnreadCache(): void {
+    this.unreadCache = null;
+  }
+
+  private normalizePhoneSuffix(phone: string): string {
+    const digits = phone.replace(/\D/g, '');
+    return digits.slice(-9) || digits;
+  }
+
+  private phonesMatch(stored: string | null | undefined, targetSuffix: string): boolean {
+    if (!stored || !targetSuffix) return false;
+    const a = stored.replace(/\D/g, '');
+    const b = targetSuffix.replace(/\D/g, '');
+    const as = a.slice(-9);
+    const bs = b.slice(-9);
+    return as === bs || a.endsWith(bs) || b.endsWith(as) || a.includes(bs) || b.includes(as);
+  }
+
+  private async addConversationsFromContact(
+    contactId: number,
+    phoneSuffix: string,
+    addConv: (c: ChatwootConversationListItem | ChatwootConversation | null | undefined) => void,
+  ): Promise<void> {
+    try {
+      const convs = await this.client.listContactConversations(contactId);
+      const matched = phoneSuffix
+        ? convs.filter((c) => this.phonesMatch(c.meta?.sender?.phone_number, phoneSuffix))
+        : convs;
+      (matched.length > 0 ? matched : convs).forEach(addConv);
+    } catch { /* ignorar */ }
+  }
+
+  private pickBestConversation(
+    items: Array<ChatwootConversationListItem | ChatwootConversation>,
+    strictInbox = true,
+  ): ChatwootConversationListItem | ChatwootConversation | null {
+    if (items.length === 0) return null;
+    const inboxId = this.client.getConfig().inboxId;
+    const normalized = items.map((c) => ({
+      ...c,
+      last_activity_at: c.last_activity_at ?? (c as { timestamp?: number }).timestamp ?? 0,
+    }));
+    const filtered = strictInbox
+      ? normalized.filter((c) => !c.inbox_id || Number(c.inbox_id) === inboxId)
+      : normalized;
+    if (filtered.length === 0 && strictInbox) {
+      return this.pickBestConversation(items, false);
+    }
+    if (filtered.length === 0) return null;
+    const active = filtered.filter((c) => c.status === 'open' || c.status === 'pending');
+    const pool = active.length > 0 ? active : filtered;
+    return [...pool].sort((a, b) => (b.last_activity_at ?? 0) - (a.last_activity_at ?? 0))[0];
+  }
+
+  /** Busca la mejor conversación para un teléfono (open/pending primero, luego resolved). */
+  async findConversationForPhone(
+    phone: string,
+    contactId?: number | null,
+  ): Promise<ChatwootConversationListItem | null> {
+    const phoneSuffix = this.normalizePhoneSuffix(phone);
+    const digits = phone.replace(/\D/g, '');
+    if (!phoneSuffix && !digits) return null;
 
     const inboxId = this.client.getConfig().inboxId;
+    const candidates: Array<ChatwootConversationListItem | ChatwootConversation> = [];
+    const seen = new Set<number>();
+
+    const addTrusted = (c: ChatwootConversationListItem | ChatwootConversation | null | undefined) => {
+      if (!c?.id || seen.has(c.id)) return;
+      seen.add(c.id);
+      candidates.push(c);
+    };
+
+    const addIfPhoneMatch = (c: ChatwootConversationListItem | ChatwootConversation | null | undefined) => {
+      if (!c?.id || seen.has(c.id)) return;
+      const senderPhone = c.meta?.sender?.phone_number;
+      if (phoneSuffix && senderPhone && !this.phonesMatch(senderPhone, phoneSuffix)) return;
+      seen.add(c.id);
+      candidates.push(c);
+    };
+
+    if (contactId) {
+      try {
+        const convs = await this.client.listContactConversations(contactId);
+        convs.forEach(addTrusted);
+      } catch { /* ignorar */ }
+    }
+
+    const searchQueries = [
+      digits,
+      phoneSuffix,
+      digits.slice(-9),
+      phone.startsWith('+') ? phone : `+${digits}`,
+    ].filter((q, i, arr) => q.length >= 3 && arr.indexOf(q) === i);
+
+    for (const q of searchQueries) {
+      try {
+        let page = 1;
+        let items = await this.client.searchConversations(q, page);
+        while (items.length > 0) {
+          items.forEach(addTrusted);
+          if (items.length < this.convPageSize) break;
+          page++;
+          items = await this.client.searchConversations(q, page);
+        }
+      } catch { /* ignorar */ }
+    }
+
+    for (const q of searchQueries) {
+      try {
+        for (let page = 1; page <= 5; page++) {
+          const batch = await this.client.listConversations({ q, page, inbox_id: inboxId });
+          if (batch.length === 0) break;
+          batch.forEach(addTrusted);
+          if (batch.length < this.convPageSize) break;
+        }
+      } catch { /* ignorar */ }
+    }
+
+    if (phoneSuffix) {
+      for (const status of ['open', 'resolved', 'pending', 'snoozed'] as const) {
+        try {
+          for (let page = 1; page <= this.maxScanPages; page++) {
+            const batch = await this.client.listConversations({ status, page, inbox_id: inboxId });
+            if (batch.length === 0) break;
+            for (const c of batch) {
+              if (this.phonesMatch(c.meta?.sender?.phone_number, phoneSuffix)) addIfPhoneMatch(c);
+            }
+            if (batch.length < this.convPageSize) break;
+          }
+        } catch { /* ignorar */ }
+      }
+
+      try {
+        for (let page = 1; page <= this.maxScanPages; page++) {
+          const batch = await this.client.listConversations({ page, inbox_id: inboxId });
+          if (batch.length === 0) break;
+          for (const c of batch) {
+            if (this.phonesMatch(c.meta?.sender?.phone_number, phoneSuffix)) addIfPhoneMatch(c);
+          }
+          if (batch.length < this.convPageSize) break;
+        }
+      } catch { /* ignorar */ }
+    }
+
+    const suffix = phoneSuffix || digits.slice(-9);
+    if (suffix.length >= 3) {
+      try {
+        const prospecto = await this.prisma.flotaProspecto.findFirst({
+          where: {
+            eliminadoAt: null,
+            OR: [
+              { celular: { endsWith: suffix } },
+              { movil: { endsWith: suffix } },
+            ],
+          },
+          select: { chatwootConversationId: true, chatwootContactId: true },
+        });
+        if (prospecto?.chatwootConversationId) {
+          try {
+            addTrusted(await this.client.getConversation(prospecto.chatwootConversationId));
+          } catch { /* ignorar */ }
+        }
+        if (prospecto?.chatwootContactId) {
+          try {
+            const convs = await this.client.listContactConversations(prospecto.chatwootContactId);
+            convs.forEach(addTrusted);
+          } catch { /* ignorar */ }
+        }
+      } catch { /* ignorar */ }
+    }
+
+    const best = this.pickBestConversation(candidates);
+    return best as ChatwootConversationListItem | null;
+  }
+
+  async resolveConversation(
+    phone: string,
+    contactId?: number,
+  ): Promise<ChatwootConversationListItem | null> {
+    if (contactId) {
+      const convs = await this.getContactConversations(contactId);
+      const best = this.pickBestConversation(convs);
+      if (best) return best as ChatwootConversationListItem;
+    }
+    return this.findConversationForPhone(phone, contactId);
+  }
+
+  /** Historial de conversaciones de un contacto en el inbox de Flota. */
+  async getContactConversations(contactId: number): Promise<ChatwootConversationListItem[]> {
+    const inboxId = this.client.getConfig().inboxId;
+    const convs = await this.client.listContactConversations(contactId);
+    const normalized = convs.map((c) => ({
+      ...c,
+      last_activity_at: c.last_activity_at ?? (c as { timestamp?: number }).timestamp ?? 0,
+    }));
+    const filtered = normalized.filter((c) => !c.inbox_id || Number(c.inbox_id) === inboxId);
+    return (filtered.length > 0 ? filtered : normalized)
+      .sort((a, b) => (b.last_activity_at ?? 0) - (a.last_activity_at ?? 0));
+  }
+
+  /** Búsqueda por prospectos en BD (nombre/teléfono) → conversaciones vinculadas en Chatwoot. */
+  async searchConversations(query: string): Promise<ChatwootConversationListItem[]> {
+    const q = query.trim();
+    if (!q || q.length < 2) return [];
+
+    const inboxId = this.client.getConfig().inboxId;
+    const phoneSuffix = this.normalizePhoneSuffix(q);
+    const digits = q.replace(/\D/g, '');
     const results: ChatwootConversationListItem[] = [];
     const seenIds = new Set<number>();
+    const seenContactIds = new Set<number>();
 
     const addConv = (c: ChatwootConversationListItem | ChatwootConversation | null | undefined) => {
       if (!c?.id || seenIds.has(c.id)) return;
-      if (c.inbox_id && c.inbox_id !== inboxId) return;
+      if (c.inbox_id && Number(c.inbox_id) !== inboxId) return;
       seenIds.add(c.id);
       results.push(c as ChatwootConversationListItem);
     };
 
-    try {
-      const fromSearch = await this.client.searchConversations(q);
-      fromSearch.forEach(addConv);
-    } catch (e) {
-      this.logger.warn(`search/conversations falló: ${e instanceof Error ? e.message : e}`);
-    }
-
-    try {
-      const contacts = await this.client.listContacts({ q });
-      for (const contact of contacts.slice(0, 15)) {
-        const convs = await this.client.listContactConversations(contact.id);
-        convs.forEach(addConv);
-      }
-    } catch (e) {
-      this.logger.warn(`contacts/search falló: ${e instanceof Error ? e.message : e}`);
-    }
-
-    const digits = q.replace(/\D/g, '');
-    if (digits.length >= 7) {
-      const suffix = digits.slice(-9);
-      const prospecto = await this.prisma.flotaProspecto.findFirst({
-        where: {
-          OR: [
-            { celular: { endsWith: suffix } },
-            { movil: { endsWith: suffix } },
-            { celular: { contains: digits } },
-            { movil: { contains: digits } },
-          ],
-          chatwootConversationId: { not: null },
-        },
-        select: { chatwootConversationId: true },
-      });
-      if (prospecto?.chatwootConversationId) {
-        try {
-          const conv = await this.client.getConversation(prospecto.chatwootConversationId);
-          addConv(conv);
-        } catch { /* ignorar */ }
-      }
-    }
-
-    const qLower = q.toLowerCase();
-    if (results.length === 0) {
+    // Búsqueda directa en Chatwoot API
+    const searchQueries = [q, digits, phoneSuffix]
+      .filter((term, i, arr) => term.length >= 2 && arr.indexOf(term) === i);
+    for (const term of searchQueries) {
       try {
-        const fromMessages = await this.client.listConversations({ q, page: 1, inbox_id: inboxId });
-        fromMessages.forEach(addConv);
+        let page = 1;
+        let items = await this.client.searchConversations(term, page);
+        while (items.length > 0) {
+          items.forEach(addConv);
+          if (items.length < this.convPageSize) break;
+          page++;
+          items = await this.client.searchConversations(term, page);
+        }
       } catch { /* ignorar */ }
     }
 
-    return results
-      .sort((a, b) => (b.last_activity_at ?? 0) - (a.last_activity_at ?? 0));
+    const matchConditions: Array<Record<string, unknown>> = [
+      { nombreCompleto: { contains: q, mode: 'insensitive' } },
+    ];
+    if (digits.length >= 3) {
+      matchConditions.push(
+        { celular: { contains: digits } },
+        { movil: { contains: digits } },
+      );
+    }
+    if (phoneSuffix.length >= 3 && phoneSuffix !== digits) {
+      matchConditions.push(
+        { celular: { endsWith: phoneSuffix } },
+        { movil: { endsWith: phoneSuffix } },
+      );
+    }
+
+    const prospectos = await this.prisma.flotaProspecto.findMany({
+      where: {
+        eliminadoAt: null,
+        AND: [
+          { OR: matchConditions },
+          {
+            OR: [
+              { chatwootConversationId: { not: null } },
+              { chatwootContactId: { not: null } },
+            ],
+          },
+        ],
+      },
+      select: {
+        chatwootConversationId: true,
+        chatwootContactId: true,
+      },
+      take: 25,
+    });
+
+    await Promise.all(prospectos.map(async (p) => {
+      if (p.chatwootConversationId) {
+        try {
+          addConv(await this.client.getConversation(p.chatwootConversationId));
+        } catch { /* ignorar */ }
+      }
+      if (p.chatwootContactId && !seenContactIds.has(p.chatwootContactId)) {
+        seenContactIds.add(p.chatwootContactId);
+        await this.addConversationsFromContact(p.chatwootContactId, phoneSuffix, addConv);
+      }
+    }));
+
+    return results.sort((a, b) => (b.last_activity_at ?? 0) - (a.last_activity_at ?? 0));
   }
 
   async listMessages(
@@ -283,11 +556,12 @@ export class ChatwootService {
         this.logger.log('Contacto ya existe, buscando ID...');
         // Buscar en nuestra base de datos primero (chatwootContactId)
         try {
+          const suffix = cleanPhone.slice(-9);
           const prospecto = await this.prisma.flotaProspecto.findFirst({
             where: {
               OR: [
-                { celular: { endsWith: cleanPhone } },
-                { movil: { endsWith: cleanPhone } },
+                { celular: { endsWith: suffix } },
+                { movil: { endsWith: suffix } },
               ],
               chatwootContactId: { not: null },
             },
@@ -300,13 +574,13 @@ export class ChatwootService {
         } catch { /* ignorar */ }
         // Fallback: buscar en Chatwoot API
         if (!contactId) {
-          const queries = [cleanPhone, e164Phone, cleanPhone.slice(-9)];
+          const suffix = cleanPhone.slice(-9);
+          const queries = [cleanPhone, e164Phone, suffix];
           for (const q of queries) {
             try {
               const results = await this.searchContacts(q);
               const found = results.find((c) =>
-                c.phone_number?.replace(/\D/g, '') === cleanPhone ||
-                c.phone_number?.replace(/\D/g, '') === `51${cleanPhone.slice(-9)}`,
+                this.phonesMatch(c.phone_number, suffix),
               );
               if (found) { contactId = found.id; break; }
             } catch { /* ignorar */ }
@@ -317,39 +591,14 @@ export class ChatwootService {
       }
     }
 
-    // 2. Buscar conversación existente activa
+    // 2. Buscar conversación existente (open, pending o resolved)
     let conversation: ChatwootConversation | null = null;
     let foundExisting = false;
-    if (contactId) {
-      try {
-        const existing = await this.client.listContactConversations(contactId);
-        const digits = cleanPhone.replace(/\D/g, '');
-        const found = existing.find((c) =>
-          (c.status === 'open' || c.status === 'pending') &&
-          c.meta?.sender?.phone_number?.replace(/\D/g, '') === digits,
-        );
-        if (found) { conversation = found as any; foundExisting = true; }
-      } catch { /* ignorar */ }
-    }
-    // Fallback: buscar por teléfono si no tenemos contactId
-    if (!conversation && !contactId) {
-      try {
-        let page = 1;
-        let items = await this.client.listConversations({ status: 'open', page });
-        const digits = cleanPhone.replace(/\D/g, '');
-        while (items.length > 0) {
-          const found = items.find((c) =>
-            (c.status === 'open' || c.status === 'pending') &&
-            c.meta?.sender?.phone_number?.replace(/\D/g, '') === digits,
-          );
-          if (found) { conversation = found as any; foundExisting = true; break; }
-          page++;
-          items = await this.client.listConversations({ status: 'open', page });
-        }
-      } catch { /* ignorar */ }
-    }
-    if (conversation) {
-      this.logger.log(`Conversación existente encontrada: id=${conversation.id}`);
+    const existingConv = await this.findConversationForPhone(data.phone, contactId);
+    if (existingConv) {
+      conversation = existingConv as ChatwootConversation;
+      foundExisting = true;
+      this.logger.log(`Conversación existente encontrada: id=${conversation.id} status=${conversation.status}`);
     }
 
     // 3. Si no hay conversación activa, crear una nueva
@@ -422,7 +671,7 @@ export class ChatwootService {
       }
     }
 
-    return { conversationId: conversation.id, contactId: contact?.id ?? 0, isNew: !foundExisting };
+    return { conversationId: conversation.id, contactId: contactId ?? contact?.id ?? 0, isNew: !foundExisting };
   }
 
   async listTemplates() {

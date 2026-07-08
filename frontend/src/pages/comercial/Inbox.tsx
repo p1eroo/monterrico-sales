@@ -56,7 +56,22 @@ import { Attach2SvgIcon } from '@/components/icons/Attach2SvgIcon';
 import { ReplySvgIcon } from '@/components/icons/ReplySvgIcon';
 import { GmailSvgIcon } from '@/components/icons/GmailSvgIcon';
 import { PencilFileSvgIcon } from '@/components/icons/PencilFileSvgIcon';
+import { Layout3SvgIcon } from '@/components/icons/Layout3SvgIcon';
+import { Columns32SvgIcon } from '@/components/icons/Columns32SvgIcon';
 import DOMPurify from 'dompurify';
+
+type InboxLayoutMode = 'three-column' | 'two-column';
+
+const INBOX_LAYOUT_STORAGE_KEY = 'inbox-layout-mode';
+
+function readInboxLayoutMode(): InboxLayoutMode {
+  try {
+    const v = localStorage.getItem(INBOX_LAYOUT_STORAGE_KEY);
+    return v === 'two-column' ? 'two-column' : 'three-column';
+  } catch {
+    return 'three-column';
+  }
+}
 
 const FOLDERS: { id: EmailFolder; icon: typeof Inbox; label: string }[] = [
   { id: 'inbox', icon: Inbox, label: 'Recibidos' },
@@ -237,6 +252,8 @@ export default function InboxPage() {
   const googleConnected = useAppStore((s) => s.googleConnected);
   const [activeFolder, setActiveFolder] = useState<EmailFolder>('inbox');
   const [search, setSearch] = useState('');
+  const [layoutMode, setLayoutMode] = useState<InboxLayoutMode>(readInboxLayoutMode);
+  const isThreeColumn = layoutMode === 'three-column';
   const [selectedThread, setSelectedThread] = useState<EmailThread | null>(null);
   const [composeOpen, setComposeOpen] = useState(false);
   const [starredThreads, setStarredThreads] = useState<Set<string>>(new Set());
@@ -439,6 +456,24 @@ export default function InboxPage() {
     }
   };
 
+  const clearSelectedThread = useCallback(() => {
+    setSelectedThread(null);
+    setSelectedGmailId(null);
+    setSelectedGmailThreadId(null);
+  }, []);
+
+  const toggleLayoutMode = useCallback(() => {
+    setLayoutMode((prev) => {
+      const next: InboxLayoutMode = prev === 'three-column' ? 'two-column' : 'three-column';
+      try {
+        localStorage.setItem(INBOX_LAYOUT_STORAGE_KEY, next);
+      } catch {
+        /* noop */
+      }
+      return next;
+    });
+  }, []);
+
   const handleSendEmail = async () => {
     const bodyHtml = composeBodyRef.current?.innerHTML.trim() || composeBody;
     const bodyText = bodyHtml.replace(/<[^>]*>/g, '').trim();
@@ -613,7 +648,14 @@ export default function InboxPage() {
       </aside>
 
       {/* Email list */}
-      <div className="flex min-h-0 w-full shrink-0 flex-col border-r font-sans md:w-[400px] lg:w-[440px] xl:w-[500px]">
+      <div
+        className={cn(
+          'flex min-h-0 shrink-0 flex-col border-r font-sans',
+          isThreeColumn
+            ? 'w-full md:w-[400px] lg:w-[440px] xl:w-[500px]'
+            : cn('min-w-0 flex-1', selectedThread && 'hidden md:hidden'),
+        )}
+      >
         {/* Mobile folder tabs */}
         <div className="flex gap-1 overflow-x-auto border-b p-2 lg:hidden">
           {FOLDERS.map((f) => {
@@ -636,7 +678,7 @@ export default function InboxPage() {
           })}
         </div>
         <div className="flex items-center gap-2 border-b p-2">
-          <div className="relative flex-1">
+          <div className="relative min-w-0 flex-1">
             <Input
               placeholder="Buscar correos..."
               value={search}
@@ -645,6 +687,22 @@ export default function InboxPage() {
             />
             <Search className="absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           </div>
+          <div className="h-6 w-px shrink-0 bg-border" aria-hidden />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-8 shrink-0 text-muted-foreground hover:text-foreground"
+            onClick={toggleLayoutMode}
+            title={isThreeColumn ? 'Cambiar a vista de 2 columnas' : 'Cambiar a vista de 3 columnas'}
+            aria-label={isThreeColumn ? 'Cambiar a vista de 2 columnas' : 'Cambiar a vista de 3 columnas'}
+          >
+            {isThreeColumn ? (
+              <Columns32SvgIcon className="size-[18px]" />
+            ) : (
+              <Layout3SvgIcon className="size-[18px]" />
+            )}
+          </Button>
         </div>
         <div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin">
           <div className="divide-y divide-dashed divide-[#e8ecf0] dark:divide-gray-700">
@@ -652,7 +710,12 @@ export default function InboxPage() {
               const lastMsg = thread.messages[0];
               const unread = isThreadUnread(thread);
               const starred = isThreadStarred(thread);
-              const preview = lastMsg.body.slice(0, 80).replace(/\n/g, ' ') + '...';
+              const previewLimit = isThreeColumn ? 80 : 280;
+              const rawPreview = lastMsg.body.replace(/\n/g, ' ').trim();
+              const preview =
+                rawPreview.length > previewLimit
+                  ? `${rawPreview.slice(0, previewLimit)}...`
+                  : rawPreview;
               return (
                 <div
                   key={thread.id}
@@ -675,39 +738,85 @@ export default function InboxPage() {
                       className={cn('size-4', starred && 'fill-amber-500 text-amber-500')}
                     />
                   </button>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <span
-                        className={cn(
-                          'truncate text-sm',
-                          unread ? 'font-medium' : 'font-normal'
-                        )}
-                      >
-                        {lastMsg.fromName}
-                      </span>
-                      <span className="shrink-0 text-sm font-normal text-muted-foreground">
-                        {formatTime(lastMsg.timestamp)}
-                      </span>
-                    </div>
-                    <p
-                      className={cn(
-                        'truncate pr-20 text-sm',
-                        unread ? 'font-medium text-foreground' : 'font-normal text-muted-foreground'
+                  {isThreeColumn ? (
+                    <>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span
+                            className={cn(
+                              'truncate text-sm',
+                              unread ? 'font-medium' : 'font-normal',
+                            )}
+                          >
+                            {lastMsg.fromName}
+                          </span>
+                          <span className="shrink-0 text-sm font-normal text-muted-foreground">
+                            {formatTime(lastMsg.timestamp)}
+                          </span>
+                        </div>
+                        <p
+                          className={cn(
+                            'truncate pr-20 text-sm',
+                            unread ? 'font-medium text-foreground' : 'font-normal text-muted-foreground',
+                          )}
+                        >
+                          {thread.subject}
+                        </p>
+                        <p className="truncate pr-20 text-sm font-normal text-muted-foreground">
+                          {preview}
+                        </p>
+                      </div>
+                      {thread.relatedEntityName && (
+                        <Badge variant="outline" className="shrink-0 text-xs font-normal">
+                          {entityTypeLabels[thread.relatedEntityType ?? 'contact']}
+                        </Badge>
                       )}
-                    >
-                      {thread.subject}
-                    </p>
-                    <p className="truncate pr-20 text-sm font-normal text-muted-foreground">{preview}</p>
-                  </div>
-                  {thread.relatedEntityName && (
-                    <Badge variant="outline" className="shrink-0 text-xs font-normal">
-                      {entityTypeLabels[thread.relatedEntityType ?? 'contact']}
-                    </Badge>
-                  )}
-                  {thread.hasAttachments && (
-                    <FileDownloadSvgIcon
-                      className="absolute bottom-2 right-3 size-5 text-muted-foreground"
-                    />
+                      {thread.hasAttachments && (
+                        <FileDownloadSvgIcon
+                          className="absolute bottom-2 right-3 size-5 text-muted-foreground"
+                        />
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex min-w-0 flex-1 items-center gap-3">
+                        <span
+                          className={cn(
+                            'w-[10.5rem] shrink-0 truncate text-sm sm:w-[12rem]',
+                            unread ? 'font-semibold text-foreground' : 'font-normal text-foreground',
+                          )}
+                        >
+                          {lastMsg.fromName}
+                        </span>
+                        <p
+                          className={cn(
+                            'min-w-0 flex-1 truncate text-sm',
+                            unread ? 'text-foreground' : 'text-muted-foreground',
+                          )}
+                        >
+                          <span className={unread ? 'font-semibold text-foreground' : 'font-medium text-foreground'}>
+                            {thread.subject}
+                          </span>
+                          {preview ? (
+                            <span className="font-normal text-muted-foreground">
+                              {' '}
+                              — {preview}
+                            </span>
+                          ) : null}
+                        </p>
+                        <span className="shrink-0 text-sm font-normal text-muted-foreground">
+                          {formatTime(lastMsg.timestamp)}
+                        </span>
+                        {thread.hasAttachments && (
+                          <FileDownloadSvgIcon className="size-5 shrink-0 text-muted-foreground" />
+                        )}
+                        {thread.relatedEntityName && (
+                          <Badge variant="outline" className="shrink-0 text-xs font-normal">
+                            {entityTypeLabels[thread.relatedEntityType ?? 'contact']}
+                          </Badge>
+                        )}
+                      </div>
+                    </>
                   )}
                 </div>
               );
@@ -742,8 +851,13 @@ export default function InboxPage() {
       {/* Email detail */}
       <div
         className={cn(
-          'hidden min-h-0 min-w-0 flex-1 flex-col bg-background md:flex',
-          !selectedThread && 'md:hidden lg:flex lg:items-center lg:justify-center'
+          'flex min-h-0 min-w-0 flex-col bg-background',
+          isThreeColumn
+            ? cn(
+                'hidden flex-1 md:flex',
+                !selectedThread && 'md:hidden lg:flex lg:items-center lg:justify-center',
+              )
+            : cn('hidden flex-1', selectedThread && 'md:flex'),
         )}
       >
         {selectedThread ? (
@@ -753,12 +867,8 @@ export default function InboxPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="lg:hidden"
-                  onClick={() => {
-                    setSelectedThread(null);
-                    setSelectedGmailId(null);
-                    setSelectedGmailThreadId(null);
-                  }}
+                  className={cn(!isThreeColumn ? 'md:inline-flex' : 'lg:hidden')}
+                  onClick={clearSelectedThread}
                 >
                   <ChevronLeft className="size-4" />
                 </Button>
@@ -981,18 +1091,14 @@ export default function InboxPage() {
         <PenSquare className="size-6" />
       </Button>
 
-      {/* Mobile/Tablet: overlay when no 3-column layout */}
-      {selectedThread && (
+      {/* Mobile: overlay en vista de 3 columnas o pantallas pequeñas */}
+      {selectedThread && (isThreeColumn ? (
         <div className="fixed inset-0 z-50 flex flex-col bg-background lg:hidden">
           <div className="flex items-center gap-2 border-b p-3">
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => {
-                setSelectedThread(null);
-                setSelectedGmailId(null);
-                setSelectedGmailThreadId(null);
-              }}
+              onClick={clearSelectedThread}
             >
               <ChevronLeft className="size-4" />
             </Button>
@@ -1025,9 +1131,46 @@ export default function InboxPage() {
                 ))
               )}
             </div>
-            </div>
+          </div>
         </div>
-      )}
+      ) : (
+        <div className="fixed inset-0 z-50 flex flex-col bg-background md:hidden">
+          <div className="flex items-center gap-2 border-b p-3">
+            <Button variant="ghost" size="icon" onClick={clearSelectedThread}>
+              <ChevronLeft className="size-4" />
+            </Button>
+            <span className="truncate font-medium">{selectedThread.subject}</span>
+          </div>
+          <div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin">
+            <div className="space-y-6 p-4">
+              {googleConnected && selectedThreadMessages.length > 0 ? (
+                selectedThreadMessages.map((msg, idx) => (
+                  <div
+                    key={msg.id}
+                    className={cn(idx > 0 && 'border-t border-dashed border-[#e8ecf0] pt-6 dark:border-gray-700')}
+                  >
+                    <GmailMessageItem
+                      msg={msg}
+                      showReply={idx === selectedThreadMessages.length - 1}
+                      onReply={() => setReplyOpen(true)}
+                    />
+                  </div>
+                ))
+              ) : (
+                [...selectedThread.messages].reverse().map((msg) => (
+                  <div key={msg.id} className="rounded-lg border p-4">
+                    <p className="font-medium">{msg.fromName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatFullDate(msg.timestamp)}
+                    </p>
+                    <div className="mt-3 whitespace-pre-wrap text-sm">{msg.body}</div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      ))}
 
       {/* Compose floating card / fullscreen */}
       {composeOpen && composeFullscreen && (

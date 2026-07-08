@@ -88,9 +88,14 @@ import {
   fetchChatwootTemplates,
   fetchChatwootContacts,
   searchChatwootConversations,
+  fetchUnreadConversations,
+  conversationMatchesQuery,
+  openContactChat,
+  findConversationByPhone,
   type ChatwootAgent,
 } from '@/lib/chatwootApi';
-import { fetchOperadores, getOperatorDisplayName, flotaProspectosByPhone, flotaProspectoCreate, type OperadorUser, type FlotaProspectoDetalle } from '@/lib/flotaProspectosApi';
+import { fetchOperadores, getOperatorDisplayName, flotaProspectosByPhone, flotaProspectoCreate, MODALIDAD_OPTIONS, type OperadorUser, type FlotaProspectoDetalle } from '@/lib/flotaProspectosApi';
+import { notifyFlotaProspectosRefresh } from '@/lib/flotaProspectosRealtime';
 import { getConductorTelefonos } from '@/lib/flotaConductoresApi';
 import { api } from '@/lib/api';
 import { useAppStore } from '@/store';
@@ -119,6 +124,11 @@ export default function ChatwootInboxView() {
   const socketRef = useRef<any>(null);
   const convPageRef = useRef(1);
   const loadingConvRef = useRef(false);
+  const loadingPage1Ref = useRef(false);
+  const loadPage1InFlightRef = useRef<Promise<void> | null>(null);
+  const lastConvLoadAtRef = useRef(0);
+  const hasConvDataRef = useRef(false);
+  const unreadLoadInFlightRef = useRef<Promise<void> | null>(null);
   const [hasMoreConv, setHasMoreConv] = useState(true);
   const [contacts, setContacts] = useState<ChatwootContact[]>([]);
   const [loadingContacts, setLoadingContacts] = useState(false);
@@ -129,6 +139,7 @@ export default function ChatwootInboxView() {
   const [newChatSelectedTemplate, setNewChatSelectedTemplate] = useState('afiliacion_atu');
   const [newChatLoadingTpl, setNewChatLoadingTpl] = useState(false);
   const [contactNewChatData, setContactNewChatData] = useState<{ phone: string; name: string } | null>(null);
+  const [openingContactId, setOpeningContactId] = useState<number | null>(null);
 
   useEffect(() => {
     getConductorTelefonos().then((r) => setConductorCodesAll(r.codigoByTelefono)).catch(() => {});
@@ -141,6 +152,10 @@ export default function ChatwootInboxView() {
   useEffect(() => {
     if (activeId) {
       markConversationAsRead(activeId).catch(() => {});
+      setUnreadList((prev) => prev.filter((c) => c.id !== activeId));
+      setConversations((prev) =>
+        prev.map((c) => (c.id === activeId ? { ...c, unread_count: 0 } : c)),
+      );
     }
   }, [activeId]);
 
@@ -149,13 +164,14 @@ export default function ChatwootInboxView() {
     return () => clearTimeout(t);
   }, [query]);
 
-  // Búsqueda global en servidor (teléfono, nombre, etc.)
+  // Búsqueda: prospectos en BD + filtro local en conversaciones cargadas
   useEffect(() => {
-    if (filter === 'contacts' || !debouncedQuery) {
+    if (filter === 'contacts' || !debouncedQuery || debouncedQuery.length < 2) {
       setSearchResults([]);
       setSearching(false);
       return;
     }
+
     let cancelled = false;
     setSearching(true);
     searchChatwootConversations(debouncedQuery)
@@ -171,29 +187,34 @@ export default function ChatwootInboxView() {
     return () => { cancelled = true; };
   }, [debouncedQuery, filter]);
 
-  // No leídos: cargar desde servidor (todas las páginas)
-  useEffect(() => {
-    if (filter !== 'unread' || debouncedQuery) {
-      setUnreadList([]);
-      return;
+  async function loadUnreadList(showLoading = true) {
+    if (unreadLoadInFlightRef.current) return unreadLoadInFlightRef.current;
+    const run = (async () => {
+      if (showLoading) setLoadingUnread(true);
+      try {
+        const items = await fetchUnreadConversations();
+        setUnreadList(items);
+      } catch {
+        if (showLoading) setUnreadList([]);
+      } finally {
+        if (showLoading) setLoadingUnread(false);
+      }
+    })();
+    unreadLoadInFlightRef.current = run;
+    try {
+      await run;
+    } finally {
+      unreadLoadInFlightRef.current = null;
     }
-    let cancelled = false;
-    setLoadingUnread(true);
-    fetchConversations({ unread_only: true })
-      .then((items) => {
-        if (!cancelled) setUnreadList(items);
-      })
-      .catch(() => {
-        if (!cancelled) setUnreadList([]);
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingUnread(false);
-      });
-    return () => { cancelled = true; };
+  }
+
+  useEffect(() => {
+    if (filter !== 'unread' || debouncedQuery) return;
+    void loadUnreadList(unreadList.length === 0);
   }, [filter, debouncedQuery]);
 
   useEffect(() => {
-    void loadConversations();
+    void loadConversations(true);
   }, []);
 
   /** Socket.IO para tiempo real */
@@ -215,7 +236,7 @@ export default function ChatwootInboxView() {
       socket.emit('ping', (response: unknown) => {
         console.log('🏓 Ping response:', response);
       });
-      void loadConversations();
+      void loadConversations(false);
     });
 
     socket.on('connect_error', (err: Error) => {
@@ -257,7 +278,7 @@ export default function ChatwootInboxView() {
           if (!existing) return prev;
           const body = String(msgData.content || '').slice(0, 100);
           const isOutgoing = listNorm.message_type === CHATWOOT_MESSAGE_TYPE.OUTGOING;
-          return prev.map((c) =>
+          const updated = prev.map((c) =>
             c.id === payload.conversationId
                   ? {
                       ...c,
@@ -269,9 +290,28 @@ export default function ChatwootInboxView() {
                     }
               : c,
           ).sort((a, b) => (b.last_activity_at || 0) - (a.last_activity_at || 0));
+
+          if (!isOutgoing && payload.conversationId !== currentActiveId) {
+            const conv = updated.find((c) => c.id === payload.conversationId);
+            if (conv) {
+              setUnreadList((ul) => {
+                const idx = ul.findIndex((c) => c.id === conv.id);
+                if (idx >= 0) {
+                  const next = [...ul];
+                  next[idx] = conv;
+                  return next.sort((a, b) => (b.last_activity_at || 0) - (a.last_activity_at || 0));
+                }
+                return [conv, ...ul].sort((a, b) => (b.last_activity_at || 0) - (a.last_activity_at || 0));
+              });
+            }
+          } else if (payload.conversationId === currentActiveId) {
+            setUnreadList((ul) => ul.filter((c) => c.id !== payload.conversationId));
+          }
+
+          return updated;
         });
       } else if (payload.event === 'conversation_created' || payload.event === 'conversation_updated' || payload.event === 'conversation_status_changed') {
-        void loadConversations();
+        void loadConversations(true);
       }
     });
 
@@ -281,28 +321,60 @@ export default function ChatwootInboxView() {
     };
   }, []);
 
-  async function loadConversations() {
+  async function loadConversations(force = false) {
+    const now = Date.now();
+    if (
+      !force
+      && loadPage1InFlightRef.current
+    ) {
+      return loadPage1InFlightRef.current;
+    }
+    if (
+      !force
+      && hasConvDataRef.current
+      && now - lastConvLoadAtRef.current < 30_000
+    ) {
+      return;
+    }
+    if (loadingPage1Ref.current && !force) {
+      return loadPage1InFlightRef.current ?? undefined;
+    }
+
+    const run = (async () => {
+      loadingPage1Ref.current = true;
+      try {
+        convPageRef.current = 1;
+        loadingConvRef.current = false;
+        setLoading(true);
+        const page1 = await fetchConversations({ page: 1 });
+        page1.sort((a, b) => b.last_activity_at - a.last_activity_at);
+        setConversations(page1);
+        setHasMoreConv(page1.length >= 25);
+        hasConvDataRef.current = page1.length > 0;
+        lastConvLoadAtRef.current = Date.now();
+        void fetchUnreadConversations().then((items) => setUnreadList(items)).catch(() => {});
+      } catch {
+        // silent
+      } finally {
+        loadingPage1Ref.current = false;
+        setLoading(false);
+      }
+    })();
+
+    loadPage1InFlightRef.current = run;
     try {
-      convPageRef.current = 1;
-      loadingConvRef.current = false;
-      const page1 = await fetchConversations({ page: 1 });
-      page1.sort((a, b) => b.last_activity_at - a.last_activity_at);
-      setConversations(page1);
-      setHasMoreConv(page1.length >= 25);
-      setLoading(false);
-    } catch {
-      // silent
+      await run;
     } finally {
-      setLoading(false);
+      loadPage1InFlightRef.current = null;
     }
   }
 
   // Scroll infinito: cargar más conversaciones al llegar al final (solo listado normal)
   useEffect(() => {
     const el = scrollContainerRef.current;
-    if (!el || debouncedQuery || filter === 'unread') return;
+    if (!el || debouncedQuery || filter === 'unread' || loading) return;
     const onScroll = () => {
-      if (loadingConvRef.current || !hasMoreConv) return;
+      if (loadingPage1Ref.current || loadingConvRef.current || !hasMoreConv || conversations.length === 0) return;
       if (el.scrollHeight - el.scrollTop - el.clientHeight < 300) {
         loadingConvRef.current = true;
         const next = convPageRef.current + 1;
@@ -322,7 +394,7 @@ export default function ChatwootInboxView() {
     };
     el.addEventListener('scroll', onScroll);
     return () => el.removeEventListener('scroll', onScroll);
-  }, [hasMoreConv, conversations.length, debouncedQuery, filter]);
+  }, [hasMoreConv, conversations.length, debouncedQuery, filter, loading]);
 
   // Efecto para cargar contactos
   useEffect(() => {
@@ -371,9 +443,20 @@ export default function ChatwootInboxView() {
 
   const filtered = useMemo(() => {
     if (filter === 'contacts') return [];
-    if (debouncedQuery) return searchResults;
-    if (filter === 'unread') return unreadList;
-    return conversations;
+    if (!debouncedQuery) {
+      if (filter === 'unread') return unreadList;
+      return conversations;
+    }
+
+    const base = filter === 'unread' ? unreadList : conversations;
+    const map = new Map<number, ChatwootConversation>();
+    for (const c of base) {
+      if (conversationMatchesQuery(c, debouncedQuery)) map.set(c.id, c);
+    }
+    for (const c of searchResults) map.set(c.id, c);
+    return Array.from(map.values()).sort(
+      (a, b) => (b.last_activity_at ?? 0) - (a.last_activity_at ?? 0),
+    );
   }, [conversations, filter, debouncedQuery, searchResults, unreadList]);
 
   const virtualizer = useVirtualizer({
@@ -386,6 +469,46 @@ export default function ChatwootInboxView() {
   const handleSelectConversation = useCallback((id: number) => {
     setActiveId(id);
   }, []);
+
+  const openNewChatForContact = useCallback((phone: string, name: string) => {
+    setContactNewChatData({ phone, name });
+    setNewChatSelectedTemplate('afiliacion_atu');
+    setNewChatLoadingTpl(true);
+    setNewChatTemplates([]);
+    setNewChatOpen(true);
+    fetchChatwootTemplates().then((tpls) => {
+      setNewChatTemplates(tpls);
+      if (tpls.length > 0) setNewChatSelectedTemplate(tpls[0].name);
+    }).catch(() => {}).finally(() => setNewChatLoadingTpl(false));
+  }, []);
+
+  const handleContactClick = useCallback(async (contact: ChatwootContact) => {
+    if (openingContactId === contact.id) return;
+    setOpeningContactId(contact.id);
+    try {
+      const opened = await openContactChat(contact, allConversations);
+      if (opened) {
+        if (opened.conversation) {
+          setConversations((prev) => {
+            if (prev.some((c) => c.id === opened.conversation!.id)) return prev;
+            return [opened.conversation!, ...prev].sort((a, b) => (b.last_activity_at ?? 0) - (a.last_activity_at ?? 0));
+          });
+        } else {
+          await loadConversations(true);
+        }
+        setFilter('all');
+        setActiveId(opened.conversationId);
+        return;
+      }
+      if (contact.phone_number) {
+        openNewChatForContact(contact.phone_number, contact.name);
+      }
+    } catch {
+      toast.error('No se pudo abrir el chat del contacto');
+    } finally {
+      setOpeningContactId(null);
+    }
+  }, [allConversations, openNewChatForContact, openingContactId, loadConversations]);
 
   async function handleNewChat() {
     const phone = (contactNewChatData?.phone || newPhone).trim();
@@ -411,7 +534,7 @@ export default function ChatwootInboxView() {
       setNewPhone('');
       setNewName('');
       setContactNewChatData(null);
-      await loadConversations();
+      await loadConversations(true);
       await new Promise((r) => setTimeout(r, 100));
       setActiveId(result.conversationId);
     } catch (e) {
@@ -465,7 +588,7 @@ export default function ChatwootInboxView() {
             </div>
           </div>
           <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto scrollbar-thin pt-1.5">
-            {((loading && filter !== 'contacts') || searching || (filter === 'unread' && loadingUnread && !debouncedQuery)) ? (
+            {((loading && filter !== 'contacts' && filter !== 'unread' && !debouncedQuery) || (searching && debouncedQuery.length >= 2 && filtered.length === 0) || (filter === 'unread' && loadingUnread && !debouncedQuery)) ? (
               <div className="flex items-center justify-center py-16">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
@@ -481,27 +604,13 @@ export default function ChatwootInboxView() {
               ) : (
                 <div className="divide-y divide-border">
                   {contacts.map((c) => {
-                    const existingConv = allConversations.find((conv) =>
-                      conv.meta.sender.phone_number?.replace(/\D/g, '') === c.phone_number?.replace(/\D/g, ''),
-                    );
+                    const existingConv = findConversationByPhone(allConversations, c.phone_number);
+                    const isOpening = openingContactId === c.id;
                     return (
                       <button key={c.id}
-                        onClick={() => {
-                          if (existingConv) {
-                            setActiveId(existingConv.id);
-                          } else if (c.phone_number) {
-                            setContactNewChatData({ phone: c.phone_number, name: c.name });
-                            setNewChatSelectedTemplate('afiliacion_atu');
-                            setNewChatLoadingTpl(true);
-                            setNewChatTemplates([]);
-                            setNewChatOpen(true);
-                            fetchChatwootTemplates().then((tpls) => {
-                              setNewChatTemplates(tpls);
-                              if (tpls.length > 0) setNewChatSelectedTemplate(tpls[0].name);
-                            }).catch(() => {}).finally(() => setNewChatLoadingTpl(false));
-                          }
-                        }}
-                        className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-muted/50 transition-colors"
+                        onClick={() => void handleContactClick(c)}
+                        disabled={isOpening}
+                        className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-muted/50 transition-colors disabled:opacity-60"
                       >
                         <div className="h-10 w-10 shrink-0 rounded-full overflow-hidden">
                           {c.thumbnail ? (
@@ -516,9 +625,11 @@ export default function ChatwootInboxView() {
                           <p className="truncate text-sm font-medium">{c.name}</p>
                           <p className="truncate text-xs text-muted-foreground">{c.phone_number || ''}</p>
                         </div>
-                        {existingConv && (
+                        {isOpening ? (
+                          <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
+                        ) : existingConv ? (
                           <span className="shrink-0 text-[10px] text-muted-foreground">En chat</span>
-                        )}
+                        ) : null}
                       </button>
                     );
                   })}
@@ -1195,7 +1306,10 @@ export function ChatwootChatPanel({
         } else if (sender?.name && !localStorage.getItem(`chatwoot_deleted_prospect_${conversationId}`)) {
           setProspectoDeleted(false);
           return flotaProspectoCreate({ nombreCompleto: sender.name, celular: cleanedPhone }).then(
-            (created) => setProspecto({ id: created.id, nombreCompleto: created.nombreCompleto, celular: created.celular, operador: null, estado: 'Nuevo' }),
+            (created) => {
+              setProspecto({ id: created.id, nombreCompleto: created.nombreCompleto, celular: created.celular, operador: null, estado: 'Nuevo' });
+              notifyFlotaProspectosRefresh();
+            },
           );
         } else {
           setProspecto(null);
@@ -1231,7 +1345,7 @@ export function ChatwootChatPanel({
       });
       setProspecto((prev) => prev ? { ...prev, estado: nuevoEstado } : prev);
       toast.success(`Estado: ${formatEstado(nuevoEstado)}`);
-      try { new BroadcastChannel("flota-prospectos").postMessage({ type: "refresh" }); } catch {}
+      try { notifyFlotaProspectosRefresh(); } catch {}
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error al actualizar estado');
     } finally {
@@ -1250,7 +1364,7 @@ export function ChatwootChatPanel({
       setProspecto((prev) => prev ? { ...prev, estado: 'Citado', fechaCita: citadoDate } : prev);
       setCitadoDialogOpen(false);
       toast.success('Cita programada');
-      try { new BroadcastChannel("flota-prospectos").postMessage({ type: "refresh" }); } catch {}
+      try { notifyFlotaProspectosRefresh(); } catch {}
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error al guardar');
     } finally {
@@ -1265,6 +1379,7 @@ export function ChatwootChatPanel({
       const cleaned = sender.phone_number.replace(/\D/g, '');
       const created = await flotaProspectoCreate({ nombreCompleto: sender.name, celular: cleaned });
       setProspecto({ id: created.id, nombreCompleto: created.nombreCompleto, celular: created.celular, operador: null, estado: 'Nuevo' });
+      notifyFlotaProspectosRefresh();
       toast.success('Prospecto creado');
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error al crear prospecto');
@@ -1279,6 +1394,7 @@ export function ChatwootChatPanel({
     try {
       await updateConversation(conversationId, { assignee_id: agentId });
       await refreshProspectoOperador();
+      notifyFlotaProspectosRefresh();
       toast.success(`Asignado: ${agentName || 'Agente #' + agentId}`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error al asignar');
@@ -2182,6 +2298,7 @@ export function ChatwootChatPanel({
                               });
                               setProspecto((prev) => prev ? { ...prev, asistencia: newVal } : prev);
                               toast.success(`Asistencia: ${val || 'Sin registrar'}`);
+                              notifyFlotaProspectosRefresh();
                             } catch (e) {
                               toast.error(e instanceof Error ? e.message : 'Error al guardar');
                             }
@@ -2227,6 +2344,7 @@ export function ChatwootChatPanel({
                       setProspectoDeleted(false);
                       setProspecto({ id: created.id, nombreCompleto: created.nombreCompleto, celular: created.celular, operador: null, estado: 'Nuevo' });
                       toast.success('Prospecto recreado');
+                      notifyFlotaProspectosRefresh();
                     } catch (e) {
                       toast.error(e instanceof Error ? e.message : 'Error al crear prospecto');
                     } finally {
@@ -2328,6 +2446,7 @@ export function ChatwootChatPanel({
                 setProspecto(null);
                 setDeleteConfirmOpen(false);
                 toast.success('Prospecto eliminado');
+                notifyFlotaProspectosRefresh();
               } catch (e) {
                 toast.error(e instanceof Error ? e.message : 'Error al eliminar');
               } finally {
@@ -2401,7 +2520,24 @@ export function ChatwootChatPanel({
             </div>
             <div className="space-y-1">
               <Label>Modalidad</Label>
-              <Input value={editData.modalidad ?? ''} onChange={(e) => setEditData((d) => ({ ...d, modalidad: e.target.value }))} />
+              <Select
+                value={editData.modalidad || '__none__'}
+                onValueChange={(v) => setEditData((d) => ({ ...d, modalidad: v === '__none__' ? '' : v }))}
+              >
+                <SelectTrigger><SelectValue placeholder="Sin modalidad" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Sin modalidad</SelectItem>
+                  {MODALIDAD_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                  {editData.modalidad &&
+                    !MODALIDAD_OPTIONS.some((o) => o.value === editData.modalidad) && (
+                      <SelectItem value={editData.modalidad}>{editData.modalidad}</SelectItem>
+                    )}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1">
               <Label>Placa</Label>
@@ -2468,6 +2604,7 @@ export function ChatwootChatPanel({
                 }
                 setEditProspectoOpen(false);
                 toast.success('Prospecto actualizado');
+                notifyFlotaProspectosRefresh();
               } catch (e) {
                 toast.error(e instanceof Error ? e.message : 'Error al guardar');
               } finally {

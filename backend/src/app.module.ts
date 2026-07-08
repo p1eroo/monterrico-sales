@@ -27,6 +27,7 @@ import { AuditDetailModule } from './audit-detail/audit-detail.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { WhatsappModule } from './whatsapp/whatsapp.module';
 import { FlotaProspectosModule } from './flota-prospectos/flota-prospectos.module';
+import { FlotaProspectosRealtimeModule } from './flota-prospectos/flota-prospectos-realtime.module';
 import { ApolloModule } from './apollo/apollo.module';
 import { FacebookLeadsModule } from './facebook-leads/facebook-leads.module';
 import { ChatwootModule } from './chatwoot/chatwoot.module';
@@ -71,6 +72,7 @@ import { GoogleCalendarModule } from './google-calendar/google-calendar.module';
     AuditDetailModule,
     NotificationsModule,
     WhatsappModule,
+    FlotaProspectosRealtimeModule,
     FlotaProspectosModule,
     ApolloModule,
     FacebookLeadsModule,

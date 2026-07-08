@@ -39,7 +39,7 @@ export class ChatwootController {
     @Query('unread_only') unreadOnly?: string,
   ) {
     if (unreadOnly === 'true' || unreadOnly === '1') {
-      const items = await this.service.listUnreadConversations();
+      const items = await this.service.getUnreadConversations();
       return { data: items };
     }
     const items = await this.service.listConversations({
@@ -52,9 +52,28 @@ export class ChatwootController {
   }
 
   @Get('conversations/search')
-  async searchConversations(@Query('q') q: string) {
+  async searchConversations(
+    @Query('q') q: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    res.setHeader('Cache-Control', 'no-store');
     const items = await this.service.searchConversations(q ?? '');
     return { data: items };
+  }
+
+  /** Resuelve la mejor conversación para un teléfono (incluye resolved y búsqueda profunda). */
+  @Get('resolve-conversation')
+  async resolveConversation(
+    @Query('phone') phone: string,
+    @Res({ passthrough: true }) res: Response,
+    @Query('contact_id') contactId?: string,
+  ) {
+    res.setHeader('Cache-Control', 'no-store');
+    const conv = await this.service.resolveConversation(
+      phone ?? '',
+      contactId ? Number(contactId) : undefined,
+    );
+    return { data: conv };
   }
 
   @Get('unread-summary')
@@ -152,6 +171,12 @@ export class ChatwootController {
     @Body() body: { name?: string; custom_attributes?: Record<string, string> },
   ) {
     return this.client.updateContact(id, body);
+  }
+
+  @Get('contacts/:id/conversations')
+  async listContactConversations(@Param('id', ParseIntPipe) id: number) {
+    const items = await this.service.getContactConversations(id);
+    return { data: items };
   }
 
   @Get('inboxes')

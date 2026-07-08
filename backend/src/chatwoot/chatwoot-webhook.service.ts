@@ -3,6 +3,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ChatwootClient } from './chatwoot.client';
 import { ChatwootEventService } from './chatwoot-event.service';
 import { ChatwootOperadorSyncService } from './chatwoot-operador-sync.service';
+import { FlotaProspectosGateway } from '../flota-prospectos/flota-prospectos.gateway';
+import { ChatwootService } from './chatwoot.service';
 import type { ChatwootWebhookPayload } from './chatwoot.types';
 
 @Injectable()
@@ -14,6 +16,8 @@ export class ChatwootWebhookService {
     private readonly client: ChatwootClient,
     private readonly events: ChatwootEventService,
     private readonly operadorSync: ChatwootOperadorSyncService,
+    private readonly chatwootService: ChatwootService,
+    private readonly prospectosGateway: FlotaProspectosGateway,
   ) {}
 
   private emit(event: string, data: unknown) {
@@ -74,6 +78,9 @@ export class ChatwootWebhookService {
     try {
       if (contactPhone) {
         const isInbound = messageType === 0 || messageType === 'incoming' || sender?.type === 'contact';
+        if (isInbound) {
+          this.chatwootService.invalidateUnreadCache();
+        }
         const name = isInbound ? (sender?.name || '') : (conversation as any)?.meta?.sender?.name || '';
         const prospecto = await this.findOrCreateProspecto(contactPhone, name);
         if (prospecto) {
@@ -274,10 +281,14 @@ export class ChatwootWebhookService {
 
     // Actualizar nombre con el que envía Chatwoot (siempre)
     if (prospecto && name) {
+      const prevName = prospecto.nombreCompleto;
       prospecto = await this.prisma.flotaProspecto.update({
         where: { id: prospecto.id },
         data: { nombreCompleto: name },
       });
+      if (prevName !== name && !prospecto.eliminadoAt) {
+        this.prospectosGateway.emitChange('updated', prospecto.id);
+      }
     }
 
     // Si existe pero está eliminado, no reactivar — solo actualizar nombre si aplica
@@ -302,6 +313,7 @@ export class ChatwootWebhookService {
             fechaRegistro: new Date(),
           },
         });
+        this.prospectosGateway.emitChange('created', prospecto.id);
       } catch {
         return null;
       }

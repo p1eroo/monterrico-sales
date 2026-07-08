@@ -34,6 +34,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { flotaCalendarCitas, type CalendarCita } from "@/lib/flotaProspectosApi";
+import { notifyFlotaProspectosRefresh } from "@/lib/flotaProspectosRealtime";
 
 interface CitaEvent {
   prospecto: CalendarCita;
@@ -349,13 +350,7 @@ export default function FlotaCalendario() {
                           toast.success(
                             `${c.prospecto.nombreCompleto} — ${nuevoValor}`,
                           );
-                          try {
-                            const bc = new BroadcastChannel(
-                              "flota-prospectos",
-                            );
-                            bc.postMessage({ type: "refresh" });
-                            bc.close();
-                          } catch {}
+                          notifyFlotaProspectosRefresh();
                         } catch {
                           setProspectos((prev) =>
                             prev.map((p) =>

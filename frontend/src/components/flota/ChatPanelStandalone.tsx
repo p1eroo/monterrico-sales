@@ -10,6 +10,7 @@ import { EmojiGrid } from '@/components/EmojiGrid';
 import { cn } from '@/lib/utils';
 import { fetchFlotaProspectoMessages, sendFlotaWhatsappMessage, uploadFlotaImage, uploadFlotaAudio, uploadFlotaDocument, deleteFlotaWhatsappMessage } from '@/lib/flotaWhatsappApi';
 import { fetchOperadores, getOperatorDisplayName, type OperadorUser } from '@/lib/flotaProspectosApi';
+import { notifyFlotaProspectosRefresh } from '@/lib/flotaProspectosRealtime';
 import type { WhatsappMessageItem } from '@/lib/whatsappApi';
 import { downloadWhatsappAttachment } from '@/lib/whatsappApi';
 import { useVirtualizer } from '@tanstack/react-virtual';
@@ -196,7 +197,7 @@ export default function ChatPanelStandalone({ prospectoId, onClose }: ChatPanelS
       });
       setProspecto((prev) => prev ? { ...prev, estado: nuevoEstado } : prev);
       toast.success(`Estado actualizado a ${formatStatus(nuevoEstado)}`);
-      try { new BroadcastChannel("flota-prospectos").postMessage({ type: "refresh" }); } catch {}
+      notifyFlotaProspectosRefresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'No se pudo actualizar el estado');
     }
@@ -210,7 +211,7 @@ export default function ChatPanelStandalone({ prospectoId, onClose }: ChatPanelS
       });
       setProspecto((prev) => prev ? { ...prev, operador: nuevoOperador } : prev);
       toast.success(nuevoOperador ? `Operador asignado: ${nuevoOperador}` : 'Operador removido');
-      try { new BroadcastChannel("flota-prospectos").postMessage({ type: "refresh" }); } catch {}
+      notifyFlotaProspectosRefresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'No se pudo asignar operador');
     }

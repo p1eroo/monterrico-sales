@@ -80,6 +80,7 @@ import {
   flotaLlamadaCreate,
   fetchOperadores,
   getOperatorDisplayName,
+  MODALIDAD_OPTIONS,
   type FlotaProspectoRow,
   type FlotaProspectosCounts,
   type OperadorUser,
@@ -87,6 +88,7 @@ import {
   type SheetsSpreadsheet,
 } from "@/lib/flotaProspectosApi";
 import { getConductorTelefonos } from "@/lib/flotaConductoresApi";
+import { useFlotaProspectosRealtime, notifyFlotaProspectosRefresh } from "@/lib/flotaProspectosRealtime";
 import { InlineEditCell } from "@/components/shared/InlineEditCell";
 import { DataTable, type ColumnDef } from "@/components/shared/DataTable";
 import { TableWithStickyScroll } from "@/components/shared/TableWithStickyScroll";
@@ -106,11 +108,6 @@ const ESTADO_OPTIONS = [
 const ASISTENCIA_OPTIONS = [
   { label: "Asistió", value: "Asistió" },
   { label: "No Asistió", value: "No Asistió" },
-];
-
-const MODALIDAD_OPTIONS = [
-  { label: "ATU", value: "ATU" },
-  { label: "PARTICULAR", value: "PARTICULAR" },
 ];
 
 const estadoColors: Record<string, string> = {
@@ -403,12 +400,8 @@ export default function FlotaProspectos() {
                     const fullPhone = phone.length === 9 ? `+51${phone}` : `+${phone}`;
                     try {
                       const result = await initiateConversation({ name: p.nombreCompleto, phone: fullPhone, skipTemplate: true, operador: p.operador || undefined });
-                      if (result.isNew) {
-                        setNewChatData({ phone: fullPhone, name: p.nombreCompleto, conversationId: result.conversationId, operador: p.operador || undefined });
-                      } else {
-                        setChatActiveId(result.conversationId);
-                        setChatPanelOpen(true);
-                      }
+                      setChatActiveId(result.conversationId);
+                      setChatPanelOpen(true);
                     } catch {
                       toast.error('Error al abrir el chat');
                     }
@@ -567,7 +560,7 @@ export default function FlotaProspectos() {
       {
         accessorKey: "distrito",
         id: "distrito",
-        header: "Distrito",
+        header: "Zona",
         size: 100,
         cell: ({ getValue }) => (
           <span
@@ -919,20 +912,10 @@ export default function FlotaProspectos() {
     void Promise.all([loadProspectos(page), loadCounts()]);
   }, [completionTick, loadProspectos, loadCounts]);
 
-  // Auto-recargar cuando otra pestaña actualiza un prospecto (BroadcastChannel)
-  useEffect(() => {
-    try {
-      const bc = new BroadcastChannel("flota-prospectos");
-      bc.onmessage = (event) => {
-        if (event.data?.type === "refresh") {
-          void Promise.all([loadProspectos(page), loadCounts()]);
-        }
-      };
-      return () => bc.close();
-    } catch {
-      /* BroadcastChannel no soportado */
-    }
-  }, [loadProspectos, loadCounts]);
+  // Auto-recargar cuando otra pestaña, socket o visibilidad indican cambios
+  useFlotaProspectosRealtime(() => {
+    void Promise.all([loadProspectos(page), loadCounts()]);
+  });
 
   useEffect(() => {
     void loadCounts();
@@ -1275,7 +1258,7 @@ export default function FlotaProspectos() {
         Modalidad: p.modalidad ?? "",
         Placa: p.placa ?? "",
         "Año Veh.": p.anioVehiculo != null ? String(p.anioVehiculo) : "",
-        Distrito: p.distrito ?? "",
+        Zona: p.distrito ?? "",
         "F. Cita": p.fechaCita
           ? new Date(p.fechaCita).toLocaleDateString("es-PE")
           : "",
@@ -1333,6 +1316,7 @@ export default function FlotaProspectos() {
       });
       toast.success("Prospecto actualizado");
       setEditProspectoId(null);
+      notifyFlotaProspectosRefresh();
       void loadProspectos(page);
       void loadCounts();
     } catch (e) {
@@ -1552,7 +1536,7 @@ export default function FlotaProspectos() {
             { label: "Modalidad" },
             { label: "Placa" },
             { label: "Año Veh." },
-            { label: "Distrito" },
+            { label: "Zona" },
             { label: "F. Cita" },
             { label: "Asistencia" },
             { label: "F. Afiliacion" },
@@ -2054,16 +2038,27 @@ export default function FlotaProspectos() {
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <label className="text-sm font-medium">Modalidad</label>
-                <Input
-                  value={newProspecto.modalidad}
-                  onChange={(e) =>
+                <Select
+                  value={newProspecto.modalidad || "__none__"}
+                  onValueChange={(v) =>
                     setNewProspecto({
                       ...newProspecto,
-                      modalidad: e.target.value,
+                      modalidad: v === "__none__" ? "" : v,
                     })
                   }
-                  placeholder="Flota propia"
-                />
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sin modalidad" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Sin modalidad</SelectItem>
+                    {MODALIDAD_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid gap-2">
                 <label className="text-sm font-medium">Distrito</label>
@@ -2347,7 +2342,33 @@ export default function FlotaProspectos() {
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <label className="text-sm font-medium">Modalidad</label>
-                <Input value={editData.modalidad} onChange={(e) => setEditData((p) => ({ ...p, modalidad: e.target.value }))} placeholder="Flota propia" />
+                <Select
+                  value={editData.modalidad || "__none__"}
+                  onValueChange={(v) =>
+                    setEditData((p) => ({
+                      ...p,
+                      modalidad: v === "__none__" ? "" : v,
+                    }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sin modalidad" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Sin modalidad</SelectItem>
+                    {MODALIDAD_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                    {editData.modalidad &&
+                      !MODALIDAD_OPTIONS.some((o) => o.value === editData.modalidad) && (
+                        <SelectItem value={editData.modalidad}>
+                          {editData.modalidad}
+                        </SelectItem>
+                      )}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid gap-2">
                 <label className="text-sm font-medium">Placa</label>
