@@ -1,11 +1,11 @@
 import { api } from './api';
 import type { ImportJob } from './importExportApi';
 
-export const MODALIDAD_OPTIONS = [
+export const MODALIDAD_OPTIONS: { label: string; value: string }[] = [
   { label: 'ATU', value: 'ATU' },
   { label: 'PARTICULAR', value: 'PARTICULAR' },
   { label: 'SETARE', value: 'SETARE' },
-] as const;
+];
 
 export const MODALIDAD_VALUES = MODALIDAD_OPTIONS.map((o) => o.value);
 
