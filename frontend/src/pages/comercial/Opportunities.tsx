@@ -13,7 +13,7 @@ import {
   Plus, Search,
   MoreVertical,
   Eye, Pencil, Trash2,
-  DollarSign, Target, TrendingUp,
+  Target, TrendingUp,
   X, ChevronDown, ChevronsUpDown, ChevronUp,
   User, Loader2,
   Upload, Download,
@@ -21,6 +21,9 @@ import {
 } from 'lucide-react';
 import { ChartSquareIcon } from '@/components/icons/ChartSquareIcon';
 import { PaletteIcon } from '@/components/icons/PaletteIcon';
+import { BlackSuitcaseSvgIcon } from '@/components/icons/BlackSuitcaseSvgIcon';
+import { MoneySackSvgIcon } from '@/components/icons/MoneySackSvgIcon';
+import { BusinessGraphBoardSvgIcon } from '@/components/icons/BusinessGraphBoardSvgIcon';
 import type { Etapa, Opportunity } from '@/types';
 import { etapaLabels, contactSourceLabels } from '@/data/mock';
 import { cn } from '@/lib/utils';
@@ -659,8 +662,8 @@ export default function OpportunitiesPage() {
       {/* Stats */}
       <div className="flex flex-col sm:flex-row rounded-[14px] border border-border/30 bg-white/30 dark:bg-gray-900/30">
         <div className="flex-1 flex items-center justify-center gap-3 py-4 px-5 relative">
-          <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 border-2 border-emerald-200">
-            <Target className="size-7" />
+          <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-transparent text-emerald-600 border-2 border-emerald-500">
+            <BlackSuitcaseSvgIcon className="size-7" />
           </div>
           <div className="space-y-0.5">
             <p className="text-sm font-medium text-[#647789] dark:text-gray-400">Total oportunidades</p>
@@ -674,8 +677,8 @@ export default function OpportunitiesPage() {
           <div className="absolute right-0 top-4 bottom-4 w-px bg-border hidden sm:block" />
         </div>
         <div className="flex-1 flex items-center justify-center gap-3 py-4 px-5 relative">
-          <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600 border-2 border-blue-200">
-            <DollarSign className="size-7" />
+          <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-transparent text-blue-600 border-2 border-blue-500">
+            <MoneySackSvgIcon className="size-7" />
           </div>
           <div className="space-y-0.5">
             <p className="text-sm font-medium text-[#647789] dark:text-gray-400">Valor total</p>
@@ -689,8 +692,8 @@ export default function OpportunitiesPage() {
           <div className="absolute right-0 top-4 bottom-4 w-px bg-border hidden sm:block" />
         </div>
         <div className="flex-1 flex items-center justify-center gap-3 py-4 px-5 relative">
-          <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600 border-2 border-amber-200">
-            <TrendingUp className="size-7" />
+          <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-transparent text-amber-600 border-2 border-amber-500">
+            <BusinessGraphBoardSvgIcon className="size-7" />
           </div>
           <div className="space-y-0.5">
             <p className="text-sm font-medium text-[#647789] dark:text-gray-400">Tasa promedio de cierre</p>

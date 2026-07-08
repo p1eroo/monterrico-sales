@@ -1488,11 +1488,376 @@ export class FlotaProspectosService {
     };
   }
 
+  /** Fecha calendario Lima (YYYY-MM-DD). */
+  private limaDateString(d: Date = new Date()): string {
+    return d.toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
+  }
+
+  private eachDateInclusive(fecini: string, fecfin: string): string[] {
+    const out: string[] = [];
+    const cur = new Date(fecini + 'T12:00:00.000-05:00');
+    const end = new Date(fecfin + 'T12:00:00.000-05:00');
+    while (cur <= end) {
+      out.push(cur.toLocaleDateString('en-CA', { timeZone: 'America/Lima' }));
+      cur.setDate(cur.getDate() + 1);
+    }
+    return out;
+  }
+
+  private emptyOperadorStats(operador: string) {
+    return {
+      operador,
+      prospectosAsignados: 0,
+      chatsActivos: 0,
+      mensajesEnviados: 0,
+      mensajesRecibidos: 0,
+      llamadas: 0,
+      citasProgramadas: 0,
+    };
+  }
+
+  private mergeOperadorStats(
+    target: Map<string, ReturnType<FlotaProspectosService['emptyOperadorStats']>>,
+    rows: ReturnType<FlotaProspectosService['emptyOperadorStats']>[],
+  ) {
+    for (const row of rows) {
+      const existing = target.get(row.operador);
+      if (!existing) {
+        target.set(row.operador, { ...row });
+        continue;
+      }
+      existing.prospectosAsignados += row.prospectosAsignados;
+      existing.chatsActivos += row.chatsActivos;
+      existing.mensajesEnviados += row.mensajesEnviados;
+      existing.mensajesRecibidos += row.mensajesRecibidos;
+      existing.llamadas += row.llamadas;
+      existing.citasProgramadas += row.citasProgramadas;
+    }
+  }
+
+  private dateOnlyUtc(yyyyMmDd: string): Date {
+    return new Date(yyyyMmDd + 'T00:00:00.000Z');
+  }
+
+  private fechaToYmd(fecha: Date): string {
+    return fecha.toISOString().slice(0, 10);
+  }
+
+  /** Agrupa días faltantes en rangos contiguos para un solo computeLive por tramo. */
+  private missingDayRanges(missingDays: string[]): { start: string; end: string }[] {
+    if (missingDays.length === 0) return [];
+    const sorted = [...missingDays].sort();
+    const ranges: { start: string; end: string }[] = [];
+    let start = sorted[0];
+    let prev = sorted[0];
+
+    for (let i = 1; i < sorted.length; i++) {
+      const d = sorted[i];
+      const nextDay = new Date(prev + 'T12:00:00.000-05:00');
+      nextDay.setDate(nextDay.getDate() + 1);
+      const expected = nextDay.toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
+      if (d !== expected) {
+        ranges.push({ start, end: prev });
+        start = d;
+      }
+      prev = d;
+    }
+    ranges.push({ start, end: prev });
+    return ranges;
+  }
+
+  /**
+   * Lee historial diario si existe; huecos sin snapshot se calculan en vivo
+   * por rangos contiguos (no día a día). No incluye días futuros.
+   */
   async getOperadorStats(fecini: string, fecfin: string, scope?: CrmDataScope) {
-    // Unificar todas las fechas con offset Lima (-05:00)
+    const today = this.limaDateString();
+    const effectiveEnd = fecfin > today ? today : fecfin;
+    if (fecini > effectiveEnd) return [];
+
+    const days = this.eachDateInclusive(fecini, effectiveEnd);
+    if (days.length === 0) return [];
+
+    const rangeStart = this.dateOnlyUtc(fecini);
+    const rangeEndExclusive = this.dateOnlyUtc(effectiveEnd);
+    rangeEndExclusive.setUTCDate(rangeEndExclusive.getUTCDate() + 1);
+
+    const historyRows = await this.prisma.flotaOperadorStatsDaily.findMany({
+      where: {
+        fecha: { gte: rangeStart, lt: rangeEndExclusive },
+      },
+    });
+
+    const coveredFromDb = new Set(historyRows.map((r) => this.fechaToYmd(r.fecha)));
+
+    // Sin historial en el rango: un solo cálculo en vivo
+    if (coveredFromDb.size === 0) {
+      return this.applyOperadorStatsScope(
+        await this.computeLiveOperadorStats(fecini, effectiveEnd, scope),
+        scope,
+      );
+    }
+
+    const aggregated = new Map<string, ReturnType<FlotaProspectosService['emptyOperadorStats']>>();
+    this.mergeOperadorStats(
+      aggregated,
+      historyRows.map((r) => ({
+        operador: r.operador,
+        prospectosAsignados: r.prospectosAsignados,
+        chatsActivos: r.chatsActivos,
+        mensajesEnviados: r.mensajesEnviados,
+        mensajesRecibidos: r.mensajesRecibidos,
+        llamadas: r.llamadas,
+        citasProgramadas: r.citasProgramadas,
+      })),
+    );
+
+    const missingDays = days.filter((day) => !coveredFromDb.has(day));
+    for (const range of this.missingDayRanges(missingDays)) {
+      const live = await this.computeLiveOperadorStats(range.start, range.end, scope);
+      this.mergeOperadorStats(aggregated, live);
+    }
+
+    return this.applyOperadorStatsScope(Array.from(aggregated.values()), scope);
+  }
+
+  private async applyOperadorStatsScope(
+    rows: ReturnType<FlotaProspectosService['emptyOperadorStats']>[],
+    scope?: CrmDataScope,
+  ) {
+    if (!scope || scope.unrestricted) return rows;
+
+    const filter = await this.getScopeOperadorFilter(scope.viewerUserId);
+    if (!filter) return [];
+    const op = (filter as { operador?: string | { in?: string[] } }).operador;
+    const aliases = typeof op === 'string' ? [op] : (op?.in ?? []);
+    const allowed = new Set(aliases.map((a) => a.trim().toLowerCase()));
+    if (allowed.size === 0) return [];
+    return rows.filter((r) => {
+      const name = r.operador.trim().toLowerCase();
+      return allowed.has(name) || [...allowed].some((a) => name.includes(a) || a.includes(name));
+    });
+  }
+
+  /** Persiste el snapshot de un día calendario (Lima). Idempotente (upsert). */
+  async snapshotOperadorStatsDay(fecha: string) {
+    const rows = await this.computeLiveOperadorStats(fecha, fecha);
+    const fechaDate = this.dateOnlyUtc(fecha);
+
+    for (const row of rows) {
+      await this.prisma.flotaOperadorStatsDaily.upsert({
+        where: {
+          fecha_operador: { fecha: fechaDate, operador: row.operador },
+        },
+        create: {
+          fecha: fechaDate,
+          operador: row.operador,
+          prospectosAsignados: row.prospectosAsignados,
+          chatsActivos: row.chatsActivos,
+          mensajesEnviados: row.mensajesEnviados,
+          mensajesRecibidos: row.mensajesRecibidos,
+          llamadas: row.llamadas,
+          citasProgramadas: row.citasProgramadas,
+        },
+        update: {
+          prospectosAsignados: row.prospectosAsignados,
+          chatsActivos: row.chatsActivos,
+          mensajesEnviados: row.mensajesEnviados,
+          mensajesRecibidos: row.mensajesRecibidos,
+          llamadas: row.llamadas,
+          citasProgramadas: row.citasProgramadas,
+        },
+      });
+    }
+
+    return { fecha, operadores: rows.length };
+  }
+
+  /**
+   * Backfill de un rango: cálculo en vivo por día + upsert.
+   * `asignadosOverrides`: mapa "YYYY-MM-DD|Operador" → prospectosAsignados corregidos.
+   * Si `replaceAsignados` es true, ignora el live para asignados y usa solo overrides
+   * (días sin override → 0 para operadores presentes en el mapa).
+   */
+  async backfillOperadorStatsDaily(
+    fecini: string,
+    fecfin: string,
+    asignadosOverrides?: Map<string, number>,
+    replaceAsignados = false,
+  ) {
+    const days = this.eachDateInclusive(fecini, fecfin);
+    let upserts = 0;
+
+    const overrideOperators = new Set<string>();
+    if (asignadosOverrides) {
+      for (const key of asignadosOverrides.keys()) {
+        const sep = key.indexOf('|');
+        if (sep >= 0) overrideOperators.add(key.slice(sep + 1));
+      }
+    }
+
+    for (const day of days) {
+      const live = await this.computeLiveOperadorStats(day, day);
+      const byOperador = new Map(live.map((r) => [r.operador, { ...r }]));
+
+      if (replaceAsignados && asignadosOverrides) {
+        for (const op of overrideOperators) {
+          const existing = byOperador.get(op) || this.emptyOperadorStats(op);
+          existing.prospectosAsignados = asignadosOverrides.get(`${day}|${op}`) || 0;
+          byOperador.set(op, existing);
+        }
+      } else if (asignadosOverrides) {
+        for (const [key, count] of asignadosOverrides.entries()) {
+          const sep = key.indexOf('|');
+          if (sep < 0) continue;
+          const d = key.slice(0, sep);
+          const op = key.slice(sep + 1);
+          if (d !== day) continue;
+          const existing = byOperador.get(op) || this.emptyOperadorStats(op);
+          existing.prospectosAsignados = count;
+          byOperador.set(op, existing);
+        }
+      }
+
+      const fechaDate = this.dateOnlyUtc(day);
+      for (const row of byOperador.values()) {
+        // No guardar filas totalmente vacías
+        if (
+          row.prospectosAsignados === 0 &&
+          row.chatsActivos === 0 &&
+          row.mensajesEnviados === 0 &&
+          row.mensajesRecibidos === 0 &&
+          row.llamadas === 0 &&
+          row.citasProgramadas === 0
+        ) {
+          continue;
+        }
+
+        await this.prisma.flotaOperadorStatsDaily.upsert({
+          where: {
+            fecha_operador: { fecha: fechaDate, operador: row.operador },
+          },
+          create: {
+            fecha: fechaDate,
+            operador: row.operador,
+            prospectosAsignados: row.prospectosAsignados,
+            chatsActivos: row.chatsActivos,
+            mensajesEnviados: row.mensajesEnviados,
+            mensajesRecibidos: row.mensajesRecibidos,
+            llamadas: row.llamadas,
+            citasProgramadas: row.citasProgramadas,
+          },
+          update: {
+            prospectosAsignados: row.prospectosAsignados,
+            chatsActivos: row.chatsActivos,
+            mensajesEnviados: row.mensajesEnviados,
+            mensajesRecibidos: row.mensajesRecibidos,
+            llamadas: row.llamadas,
+            citasProgramadas: row.citasProgramadas,
+          },
+        });
+        upserts += 1;
+      }
+    }
+
+    return { from: fecini, to: fecfin, days: days.length, upserts };
+  }
+
+  /**
+   * Reconstruye asignados desde ActivityLog (primera asignación por prospecto+operador en el rango)
+   * y hace backfill del historial diario. Usado para corregir semanas alteradas por reasignaciones.
+   */
+  async backfillOperadorStatsFromActivityLog(fecini: string, fecfin: string) {
+    const start = new Date(fecini + 'T00:00:00.000-05:00');
+    const end = new Date(fecfin + 'T00:00:00.000-05:00');
+    end.setDate(end.getDate() + 1);
+
+    const logs = await this.prisma.activityLog.findMany({
+      where: {
+        module: 'flota',
+        action: 'asignar',
+        createdAt: { gte: start, lt: end },
+        description: { contains: 'Operador asignado:' },
+        entityId: { not: null },
+      },
+      select: { entityId: true, description: true, createdAt: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const allOperadorUsers = await this.prisma.user.findMany({
+      where: { role: { slug: 'operador' } },
+      select: {
+        name: true,
+        accounts: {
+          where: { provider: 'credentials' },
+          select: { providerId: true },
+        },
+      },
+    });
+
+    const nameResolutionMap = new Map<string, string>();
+    for (const user of allOperadorUsers) {
+      const canonicalName = user.name;
+      const username = user.accounts[0]?.providerId || null;
+      const firstName = canonicalName.split(' ')[0] || '';
+      nameResolutionMap.set(canonicalName, canonicalName);
+      nameResolutionMap.set(canonicalName.toLowerCase(), canonicalName);
+      nameResolutionMap.set(normalizeStr(canonicalName), canonicalName);
+      if (username) {
+        nameResolutionMap.set(username, canonicalName);
+        nameResolutionMap.set(username.toLowerCase(), canonicalName);
+      }
+      if (firstName) {
+        nameResolutionMap.set(firstName, canonicalName);
+        nameResolutionMap.set(firstName.toLowerCase(), canonicalName);
+      }
+    }
+
+    const resolve = (raw: string) =>
+      nameResolutionMap.get(raw) ||
+      nameResolutionMap.get(raw.toLowerCase()) ||
+      nameResolutionMap.get(normalizeStr(raw)) ||
+      raw;
+
+    const seen = new Set<string>();
+    const overrides = new Map<string, number>();
+
+    for (const log of logs) {
+      if (!log.entityId) continue;
+      const match = log.description.match(/Operador asignado:\s*(.+)$/i);
+      if (!match) continue;
+      const operador = resolve(match[1].trim());
+      if (!operador) continue;
+      const dedupeKey = `${log.entityId}|${operador}`;
+      if (seen.has(dedupeKey)) continue;
+      seen.add(dedupeKey);
+
+      const day = log.createdAt.toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
+      const mapKey = `${day}|${operador}`;
+      overrides.set(mapKey, (overrides.get(mapKey) || 0) + 1);
+    }
+
+    this.logger.log(
+      `ActivityLog asignados overrides: ${overrides.size} celdas, ${seen.size} prospectos únicos`,
+    );
+    for (const [k, v] of overrides) {
+      this.logger.log(`  override ${k} = ${v}`);
+    }
+
+    return this.backfillOperadorStatsDaily(fecini, fecfin, overrides, true);
+  }
+
+  /** Cálculo en vivo (misma lógica original) — no usa historial. */
+  async computeLiveOperadorStats(fecini: string, fecfin: string, scope?: CrmDataScope) {
+    // DateTime (mensajes, llamadas): ventana en hora Lima
     const startDate = new Date(fecini + 'T00:00:00.000-05:00');
     const endDate = new Date(fecfin + 'T00:00:00.000-05:00');
     endDate.setDate(endDate.getDate() + 1);
+
+    // Campos @db.Date (asignadoAt): comparar contra medianoche UTC del día calendario
+    const startDateOnly = this.dateOnlyUtc(fecini);
+    const endDateOnly = this.dateOnlyUtc(fecfin);
+    endDateOnly.setUTCDate(endDateOnly.getUTCDate() + 1);
 
     const baseWhere: any = { eliminadoAt: null };
 
@@ -1643,8 +2008,8 @@ export class FlotaProspectosService {
         const [prospectosAsignados, mensajesEnviados, mensajesRecibidos, chatsData, llamadas, citasProgramadas] = await Promise.all([
           this.prisma.flotaProspecto.count({
             where: operadorVariants.length > 0
-              ? { operador: { in: operadorVariants }, asignadoAt: { gte: startDate, lt: endDate } }
-              : { operador: canonicalName, asignadoAt: { gte: startDate, lt: endDate } },
+              ? { operador: { in: operadorVariants }, asignadoAt: { gte: startDateOnly, lt: endDateOnly } }
+              : { operador: canonicalName, asignadoAt: { gte: startDateOnly, lt: endDateOnly } },
           }),
           this.prisma.crmWhatsappMessage.count({
             where: {

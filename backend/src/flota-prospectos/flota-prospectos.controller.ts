@@ -135,6 +135,49 @@ export class FlotaProspectosController {
     return this.service.getOperadorStats(fecini, fecfin, scope);
   }
 
+  /**
+   * POST /flota-prospectos/operador-stats/backfill
+   * Cierra/reconstruye historial diario. Con fromActivityLog=true corrige asignados desde ActivityLog.
+   */
+  @Post('flota-prospectos/operador-stats/backfill')
+  @RequirePermissions('flota_prospectos.ver_todos')
+  async backfillOperadorStats(
+    @Body()
+    body: {
+      fecini?: string;
+      fecfin?: string;
+      fromActivityLog?: boolean;
+    },
+  ) {
+    const fecini = body.fecini?.trim();
+    const fecfin = body.fecfin?.trim();
+    if (!fecini || !fecfin) {
+      throw new HttpException('fecini y fecfin son requeridos (YYYY-MM-DD)', HttpStatus.BAD_REQUEST);
+    }
+    if (body.fromActivityLog) {
+      return this.service.backfillOperadorStatsFromActivityLog(fecini, fecfin);
+    }
+    return this.service.backfillOperadorStatsDaily(fecini, fecfin);
+  }
+
+  /** POST /flota-prospectos/operador-stats/snapshot — Snapshot de un día (default: ayer Lima) */
+  @Post('flota-prospectos/operador-stats/snapshot')
+  @RequirePermissions('flota_prospectos.ver_todos')
+  async snapshotOperadorStats(@Body() body: { fecha?: string }) {
+    let fecha = body.fecha?.trim();
+    if (!fecha) {
+      const lima = new Date(
+        new Date().toLocaleString('en-US', { timeZone: 'America/Lima' }),
+      );
+      lima.setDate(lima.getDate() - 1);
+      const y = lima.getFullYear();
+      const m = String(lima.getMonth() + 1).padStart(2, '0');
+      const d = String(lima.getDate()).padStart(2, '0');
+      fecha = `${y}-${m}-${d}`;
+    }
+    return this.service.snapshotOperadorStatsDay(fecha);
+  }
+
   /** GET /flota-prospectos/masivo-list — Lista ligera de prospectos para el envío masivo */
   @Get('flota-prospectos/masivo-list')
   @RequirePermissions('flota_prospectos.ver')

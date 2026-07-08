@@ -829,3 +829,22 @@ model FlotaLlamada {
 
   @@index([prospectoId])
 }
+
+/** Snapshot diario de métricas "Actividad por Operador" (histórico inmutable). */
+model FlotaOperadorStatsDaily {
+  id                   String   @id @default(cuid())
+  fecha                DateTime @db.Date
+  operador             String
+  prospectosAsignados  Int      @default(0)
+  chatsActivos         Int      @default(0)
+  mensajesEnviados     Int      @default(0)
+  mensajesRecibidos    Int      @default(0)
+  llamadas             Int      @default(0)
+  citasProgramadas     Int      @default(0)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@unique([fecha, operador])
+  @@index([fecha])
+  @@index([operador])
+}

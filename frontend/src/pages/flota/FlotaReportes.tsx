@@ -35,6 +35,7 @@ import {
   endOfMonth,
   eachMonthOfInterval,
   eachDayOfInterval,
+  min,
 } from "date-fns";
 import { es } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -146,9 +147,12 @@ const CustomTooltip = ({
 };
 
 export default function FlotaReportes() {
-  const [dateRange, setDateRange] = useState<DateRangeValue | undefined>({
-    from: startOfMonth(new Date()),
-    to: endOfMonth(new Date()),
+  const [dateRange, setDateRange] = useState<DateRangeValue | undefined>(() => {
+    const now = new Date();
+    return {
+      from: startOfMonth(now),
+      to: min([endOfMonth(now), now]),
+    };
   });
   const [conductores, setConductores] = useState<Conductor[]>([]);
   const [prospectos, setProspectos] = useState<FlotaProspectoRow[]>([]);
