@@ -33,7 +33,6 @@ import { Pagination } from '@/components/shared/Pagination';
 import { PriorityBadge } from '@/components/shared/PriorityBadge';
 import { GhostTableSkeleton } from '@/components/shared/GhostTableSkeleton';
 import { GlassCard } from '@/components/shared/GlassCard';
-import { Card } from '@/components/ui/card';
 import {
   NewOpportunityFormDialog,
   buildOpportunityCreateBody,
