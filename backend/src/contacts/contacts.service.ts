@@ -487,6 +487,8 @@ export class ContactsService {
       etapa?: string;
       fuente?: string;
       assignedTo?: string;
+      /** IDs a excluir (sin asignar / otros roles siguen visibles). */
+      excludeAssignedTo?: string;
       linkedToCompanyId?: string;
       excludeCompanyLinkId?: string;
       excludeOpportunityLinkId?: string;
@@ -545,6 +547,23 @@ export class ContactsService {
     }
     if (scope && !scope.unrestricted) {
       where.assignedTo = scope.viewerUserId;
+    } else if (opts?.excludeAssignedTo?.trim()) {
+      const excludeIds = opts.excludeAssignedTo
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+      if (excludeIds.length > 0) {
+        // `notIn` solo no incluye NULL; hay que unir sin asignar explícitamente.
+        where.AND = [
+          ...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
+          {
+            OR: [
+              { assignedTo: null },
+              { assignedTo: { notIn: excludeIds } },
+            ],
+          },
+        ];
+      }
     } else if (opts?.assignedTo?.trim()) {
       const assignedTos = opts.assignedTo.split(',').map((s) => s.trim()).filter(Boolean);
       if (assignedTos.length > 1) {
@@ -564,6 +583,7 @@ export class ContactsService {
       search?: string;
       fuente?: string;
       assignedTo?: string;
+      excludeAssignedTo?: string;
     },
     scope?: CrmDataScope,
   ): Promise<{ counts: Record<string, number> }> {
@@ -591,6 +611,7 @@ export class ContactsService {
       etapa?: string;
       fuente?: string;
       assignedTo?: string;
+      excludeAssignedTo?: string;
       linkedToCompanyId?: string;
       excludeCompanyLinkId?: string;
       excludeOpportunityLinkId?: string;

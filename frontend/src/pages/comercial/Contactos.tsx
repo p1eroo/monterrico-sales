@@ -28,9 +28,7 @@ import {
 } from "lucide-react";
 import { ChartSquareIcon } from "@/components/icons/ChartSquareIcon";
 import { PaletteIcon } from "@/components/icons/PaletteIcon";
-import { UserHandIcon } from "@/components/icons/UserHandIcon";
 import { contactSourceLabels, etapaLabels } from "@/data/mock";
-import { useUsers } from "@/hooks/useUsers";
 import { useAppStore } from "@/store";
 import { canReassignCommercialAdvisor } from "@/data/rbac";
 import {
@@ -46,6 +44,8 @@ import {
   type ContactEditSavePayload,
 } from "@/components/shared/ContactEditDialog";
 import { ContactPreviewSheet } from "@/components/shared/ContactPreviewSheet";
+import { MultiAdvisorFilter } from "@/components/shared/MultiAdvisorFilter";
+import { useMultiAdvisorFilter } from "@/hooks/useMultiAdvisorFilter";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
@@ -115,7 +115,6 @@ import {
   useOptimisticCrmStore,
 } from "@/store/optimisticCrmStore";
 import { usePermissions } from "@/hooks/usePermissions";
-import { useCrmTeamAdvisorFilter } from "@/hooks/useCrmTeamAdvisorFilter";
 import {
   downloadImportExportCsv,
   previewContactsImportCsv,
@@ -194,7 +193,16 @@ function importPreviewCell(v: string | undefined) {
 
 export default function ContactosPage() {
   const navigate = useNavigate();
-  const { activeAdvisors } = useUsers();
+  const {
+    selectedIds: advisorFilter,
+    setSelectedIds: setAdvisorFilter,
+    canSeeAllAdvisors,
+    activeAdvisors,
+    isInitialized: advisorFilterInitialized,
+    isActive: advisorFilterIsActive,
+    queryParams: advisorListParams,
+    reset: resetAdvisorFilter,
+  } = useMultiAdvisorFilter();
   const currentUserRole = useAppStore((s) => s.currentUser.role ?? "");
   const canEditAssignee = canReassignCommercialAdvisor(currentUserRole);
   const { hasPermission } = usePermissions();
@@ -224,11 +232,6 @@ export default function ContactosPage() {
     ultimaInteraccion: true,
   });
   const [sourceFilter, setSourceFilter] = useState<string[]>([]);
-  const [advisorFilter, setAdvisorFilter] = useState<string[]>([]);
-  const { canSeeAllAdvisors, currentUserId } = useCrmTeamAdvisorFilter(
-    advisorFilter,
-    setAdvisorFilter,
-  );
   const [viewMode, setViewMode] = useState<"table" | "cards">(() => {
     if (typeof window !== "undefined" && window.innerWidth < 768)
       return "cards";
@@ -282,7 +285,8 @@ export default function ContactosPage() {
         search: searchDebounced || undefined,
         etapa: etapaFilter.length > 0 ? etapaFilter.join(',') : undefined,
         fuente: sourceFilter.length > 0 ? sourceFilter.join(',') : undefined,
-        assignedTo: advisorFilter.length > 0 ? advisorFilter.join(',') : undefined,
+        assignedTo: advisorListParams.assignedTo,
+        excludeAssignedTo: advisorListParams.excludeAssignedTo,
       });
       setApiRows(res.data);
       setTotalContacts(res.total);
@@ -294,7 +298,7 @@ export default function ContactosPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, searchDebounced, etapaFilter, sourceFilter, advisorFilter]);
+  }, [page, pageSize, searchDebounced, etapaFilter, sourceFilter, advisorListParams]);
 
   useEffect(() => {
     void loadApiContacts();
@@ -305,13 +309,14 @@ export default function ContactosPage() {
       const { counts } = await contactListEtapaCounts({
         search: searchDebounced || undefined,
         fuente: sourceFilter.length > 0 ? sourceFilter.join(',') : undefined,
-        assignedTo: advisorFilter.length > 0 ? advisorFilter.join(',') : undefined,
+        assignedTo: advisorListParams.assignedTo,
+        excludeAssignedTo: advisorListParams.excludeAssignedTo,
       });
       setEtapaTabCounts(counts);
     } catch {
       setEtapaTabCounts({});
     }
-  }, [searchDebounced, sourceFilter, advisorFilter]);
+  }, [searchDebounced, sourceFilter, advisorListParams]);
 
   useEffect(() => {
     void loadEtapaTabCounts();
@@ -446,9 +451,6 @@ export default function ContactosPage() {
   const startIndex = totalContacts === 0 ? 0 : (page - 1) * pageSize + 1;
   const endIndex = Math.min(page * pageSize, totalContacts);
 
-  const advisorFilterIsActive = canSeeAllAdvisors
-    ? advisorFilter.length > 0
-    : false;
   const hasActiveFilters =
     etapaFilter.length > 0 ||
     sourceFilter.length > 0 ||
@@ -459,7 +461,7 @@ export default function ContactosPage() {
     setSearch("");
     setEtapaFilter([]);
     setSourceFilter([]);
-    setAdvisorFilter(canSeeAllAdvisors ? [] : [currentUserId]);
+    resetAdvisorFilter();
     setPage(1);
   }
 
@@ -896,7 +898,10 @@ export default function ContactosPage() {
       if (searchDebounced) params.search = searchDebounced;
       if (etapaFilter.length > 0) params.etapa = etapaFilter.join(',');
       if (sourceFilter.length > 0) params.fuente = sourceFilter.join(',');
-      if (advisorFilter.length > 0) params.assignedTo = advisorFilter.join(',');
+      if (advisorListParams.assignedTo) params.assignedTo = advisorListParams.assignedTo;
+      if (advisorListParams.excludeAssignedTo) {
+        params.excludeAssignedTo = advisorListParams.excludeAssignedTo;
+      }
       // Mapear columnas visibles de la tabla a nombres de columnas CSV
       const tableToCsv: Record<string, string[]> = {
         nombre: ["nombre"],
@@ -1173,12 +1178,12 @@ export default function ContactosPage() {
               setSearch(e.target.value);
               setPage(1);
             }}
-            className="!h-12 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 pl-10 text-[15px] text-black placeholder:text-[#8a9aab] dark:placeholder:text-gray-400 transition-colors hover:border-primary focus-visible:ring-1 shadow-none"
+            className="!h-12 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 pl-10 text-[15px] text-black dark:text-gray-100 placeholder:text-[#8a9aab] dark:placeholder:text-gray-400 transition-colors hover:border-primary focus-visible:ring-1 shadow-none"
           />
         </div>
         <Popover>
           <PopoverTrigger asChild>
-            <button className={`!h-12 w-[190px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left ${etapaFilter.length > 0 ? "text-black" : "text-[#8a9aab] dark:text-gray-400"}`}>
+            <button className={`!h-12 w-[190px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left ${etapaFilter.length > 0 ? "text-black dark:text-gray-100" : "text-[#8a9aab] dark:text-gray-400"}`}>
               <ChartSquareIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
               <span className="truncate flex-1">
                 {etapaFilter.length === 0
@@ -1282,7 +1287,7 @@ export default function ContactosPage() {
                 <div className="flex items-center gap-3">
                   <Popover>
                     <PopoverTrigger asChild>
-                      <button className={`!h-12 flex-1 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer text-left truncate flex items-center gap-1.5 ${sourceFilter.length > 0 ? "text-black" : "text-[#8a9aab] dark:text-gray-400"}`}>
+                      <button className={`!h-12 flex-1 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer text-left truncate flex items-center gap-1.5 ${sourceFilter.length > 0 ? "text-black dark:text-gray-100" : "text-[#8a9aab] dark:text-gray-400"}`}>
                         <PaletteIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
                         <span className="truncate flex-1">
                           {sourceFilter.length === 0
@@ -1325,53 +1330,16 @@ export default function ContactosPage() {
                       </Command>
                     </PopoverContent>
                   </Popover>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button className={`!h-12 flex-1 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer text-left truncate disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 ${advisorFilter.length > 0 ? "text-black" : "text-[#8a9aab] dark:text-gray-400"}`} disabled={!canSeeAllAdvisors}>
-                        <UserHandIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
-                         <span className="truncate flex-1">
-                           {advisorFilter.length === 0
-                             ? "Asesor"
-                             : advisorFilter
-                                 .map((id) => activeAdvisors.find((u) => u.id === id)?.name || id)
-                                 .join(", ")}
-                         </span>
-                         <ChevronDown className="size-3.5 shrink-0 opacity-50" />
-                       </button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[180px] p-0" align="start">
-                      <Command>
-                        <CommandList className="max-h-[260px] overflow-y-auto">
-                          <CommandGroup>
-                            {activeAdvisors.map((u) => {
-                              const selected = advisorFilter.includes(u.id);
-                              return (
-                                <CommandItem
-                                  key={u.id}
-                                  onSelect={() => {
-                                    setAdvisorFilter((prev) =>
-                                      prev.includes(u.id)
-                                        ? prev.filter((e) => e !== u.id)
-                                        : [...prev, u.id],
-                                    );
-                                    setPage(1);
-                                  }}
-                                >
-                                  <span className="[&_svg]:!text-primary-foreground">
-                                  <Checkbox
-                                    checked={selected}
-                                    className="mr-2 h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
-                                  />
-                                  </span>
-                                  <span>{u.name}</span>
-                                </CommandItem>
-                              );
-                            })}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
+                  <MultiAdvisorFilter
+                    value={advisorFilter}
+                    onChange={setAdvisorFilter}
+                    advisors={activeAdvisors}
+                    disabled={!canSeeAllAdvisors}
+                    isActive={advisorFilterIsActive}
+                    isInitialized={advisorFilterInitialized}
+                    className="!h-12 flex-1"
+                    onInteraction={() => setPage(1)}
+                  />
                 </div>
               </PopoverContent>
             </Popover>

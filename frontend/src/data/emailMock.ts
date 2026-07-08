@@ -182,6 +182,7 @@ export const folderLabels: Record<string, string> = {
   drafts: 'Borradores',
   starred: 'Destacados',
   trash: 'Papelera',
+  attachments: 'Adjuntos',
 };
 
 export const entityTypeLabels: Record<string, string> = {

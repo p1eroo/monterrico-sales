@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, memo, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { usePermissions } from "@/hooks/usePermissions";
-import { useAppStore } from "@/store";
 import {
   DndContext,
   closestCorners,
@@ -48,7 +47,6 @@ import {
   activities,
   activityTypeLabels,
 } from "@/data/mock";
-import { useUsers } from "@/hooks/useUsers";
 import { api } from "@/lib/api";
 import { fetchCrmConfig } from "@/lib/crmConfigApi";
 import type { CrmCatalogDto } from "@/lib/crmConfigApi";
@@ -74,6 +72,8 @@ import {
   buildOpportunityCreateBody,
   type NewOpportunityFormValues,
 } from "@/components/shared/NewOpportunityFormDialog";
+import { MultiAdvisorFilter } from "@/components/shared/MultiAdvisorFilter";
+import { useMultiAdvisorFilter } from "@/hooks/useMultiAdvisorFilter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -1119,11 +1119,10 @@ const KanbanColumn = memo(function KanbanColumn({
 // --- Pipeline Page ---
 
 interface PipelineFilters {
-  assignedTo: string;
   etapas: Etapa[];
 }
 
-const emptyFilters: PipelineFilters = { assignedTo: "", etapas: [] };
+const emptyFilters: PipelineFilters = { etapas: [] };
 
 /** Fusiona PATCH de detalle en la fila de lista (evita `contactListAll` tras cada movimiento). */
 function mergeListRowFromContactDetail(
@@ -1158,9 +1157,16 @@ function buildOpportunityByContactId(
 export default function Pipeline() {
   const navigate = useNavigate();
   const { hasPermission } = usePermissions();
-  const currentUserId = useAppStore((s) => s.currentUser.id);
-  const canSeeAllAdvisors = hasPermission("equipo.datos_completos");
-  const { activeAdvisors } = useUsers();
+  const {
+    selectedIds: advisorFilter,
+    setSelectedIds: setAdvisorFilter,
+    canSeeAllAdvisors,
+    activeAdvisors,
+    isInitialized: advisorFilterInitialized,
+    isActive: advisorFilterIsActive,
+    matchesAssignee,
+    reset: resetAdvisorFilter,
+  } = useMultiAdvisorFilter();
   const bundle = useCrmConfigStore((s) => s.bundle);
   const setBundle = useCrmConfigStore((s) => s.setBundle);
 
@@ -1258,12 +1264,6 @@ export default function Pipeline() {
   }
   const [filters, setFilters] = useState<PipelineFilters>(emptyFilters);
   const [searchTerm, setSearchTerm] = useState("");
-
-  useEffect(() => {
-    if (!canSeeAllAdvisors && filters.assignedTo === "") {
-      setFilters((f) => ({ ...f, assignedTo: currentUserId }));
-    }
-  }, [canSeeAllAdvisors, currentUserId, filters.assignedTo]);
 
   const [selectedOpp, setSelectedOpp] = useState<Opportunity | null>(null);
   const [changeEtapaOpen, setChangeEtapaOpen] = useState(false);
@@ -1437,9 +1437,6 @@ export default function Pipeline() {
     }
   }
 
-  const advisorFilterIsActive = canSeeAllAdvisors
-    ? Boolean(filters.assignedTo)
-    : false;
   const activeFilterCount =
     (advisorFilterIsActive ? 1 : 0) + (filters.etapas.length > 0 ? 1 : 0);
 
@@ -1453,13 +1450,12 @@ export default function Pipeline() {
         !o.contactName?.toLowerCase().includes(term)
       )
         return false;
-      if (filters.assignedTo && o.assignedTo !== filters.assignedTo)
-        return false;
+      if (!matchesAssignee(o.assignedTo)) return false;
       if (filters.etapas.length > 0 && !filters.etapas.includes(o.etapa))
         return false;
       return true;
     });
-  }, [allOpportunities, filters, searchTerm]);
+  }, [allOpportunities, filters.etapas, searchTerm, matchesAssignee]);
 
   const pipeline = useMemo(() => {
     const all = buildPipelineFromOpportunities(
@@ -1592,7 +1588,7 @@ export default function Pipeline() {
         <Popover>
           <PopoverTrigger asChild>
             <button
-              className={`!h-11 w-[190px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate ${filters.etapas.length > 0 ? "text-black" : "text-[#8a9aab] dark:text-gray-400"}`}
+              className={`!h-11 w-[190px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate ${filters.etapas.length > 0 ? "text-black dark:text-gray-100" : "text-[#8a9aab] dark:text-gray-400"}`}
             >
               <ChartSquareIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
               <span className="truncate flex-1">
@@ -1646,64 +1642,15 @@ export default function Pipeline() {
         </Popover>
 
         {/* Asesor */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <button
-              className={`!h-11 w-[190px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate disabled:opacity-50 disabled:cursor-not-allowed ${filters.assignedTo ? "text-black" : "text-[#8a9aab] dark:text-gray-400"}`}
-              disabled={!canSeeAllAdvisors}
-            >
-              <UserHandUpIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
-              <span className="truncate flex-1">
-                {filters.assignedTo
-                  ? activeAdvisors.find((u) => u.id === filters.assignedTo)
-                      ?.name || "Asesor"
-                  : "Asesor"}
-              </span>
-              <ChevronDown className="size-3.5 shrink-0 opacity-50" />
-            </button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[180px] p-0" align="start">
-            <Command>
-              <CommandList className="max-h-[260px] overflow-y-auto">
-                <CommandGroup>
-                  <CommandItem
-                    onSelect={() =>
-                      setFilters((f) => ({ ...f, assignedTo: "" }))
-                    }
-                  >
-                    <Checkbox
-                      checked={!filters.assignedTo}
-                      className="mr-2 h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
-                    />
-                    <span>Todos</span>
-                  </CommandItem>
-                  {activeAdvisors.map((u) => {
-                    const selected = filters.assignedTo === u.id;
-                    return (
-                      <CommandItem
-                        key={u.id}
-                        onSelect={() =>
-                          setFilters((f) => ({
-                            ...f,
-                            assignedTo: selected ? "" : u.id,
-                          }))
-                        }
-                      >
-                        <span className="[&_svg]:!text-primary-foreground">
-                          <Checkbox
-                            checked={selected}
-                            className="mr-2 h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
-                          />
-                        </span>
-                        <span>{u.name}</span>
-                      </CommandItem>
-                    );
-                  })}
-                </CommandGroup>
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
+        <MultiAdvisorFilter
+          value={advisorFilter}
+          onChange={setAdvisorFilter}
+          advisors={activeAdvisors}
+          disabled={!canSeeAllAdvisors}
+          isActive={advisorFilterIsActive}
+          isInitialized={advisorFilterInitialized}
+          className="!h-11 w-[190px]"
+        />
 
         {/* Limpiar */}
         {(activeFilterCount > 0 || searchTerm) && (
@@ -1712,11 +1659,8 @@ export default function Pipeline() {
             size="sm"
             onClick={() => {
               setSearchTerm("");
-              setFilters(
-                canSeeAllAdvisors
-                  ? emptyFilters
-                  : { ...emptyFilters, assignedTo: currentUserId },
-              );
+              setFilters(emptyFilters);
+              resetAdvisorFilter();
             }}
           >
             <X className="size-4" /> Limpiar

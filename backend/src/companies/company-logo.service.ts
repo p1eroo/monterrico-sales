@@ -28,7 +28,7 @@ export class CompanyLogoService {
   ) {}
 
   async getLogo(companyId: string): Promise<{ body: Buffer; contentType: string } | null> {
-    // 1. Try S3 cache in crm-avatar bucket
+    // 1. Try S3 cache in crm-avatar bucket (por companyId, compatibilidad)
     if (this.s3.isConfigured()) {
       const cached = await this.s3.getObjectFromBucket(LOGO_BUCKET, `${LOGO_PREFIX}${companyId}.png`);
       if (cached) {
@@ -40,28 +40,45 @@ export class CompanyLogoService {
       }
     }
 
-    // 2. Get domain
+    // 2. Get domain de la empresa y delegar a la resolución por dominio
     const company = await this.prisma.company.findUnique({
       where: { id: companyId },
       select: { domain: true },
     });
     if (!company?.domain) return null;
 
-    const domain = this.extractDomain(company.domain);
+    return this.getLogoByDomain(company.domain);
+  }
+
+  /**
+   * Resuelve el logo de un dominio (ej. "bbva.com.pe"). Cachea en MinIO por
+   * dominio para reutilizarlo entre empresas y remitentes de correo.
+   */
+  async getLogoByDomain(rawDomain: string): Promise<{ body: Buffer; contentType: string } | null> {
+    const domain = this.extractDomain(rawDomain);
     if (!domain) return null;
 
-    // 3. Fetch from DuckDuckGo
+    const cacheKey = `${LOGO_PREFIX}domains/${domain}.png`;
+
+    // 1. Cache en MinIO por dominio
+    if (this.s3.isConfigured()) {
+      const cached = await this.s3.getObjectFromBucket(LOGO_BUCKET, cacheKey);
+      if (cached) {
+        const chunks: Buffer[] = [];
+        for await (const chunk of cached.body) {
+          chunks.push(chunk);
+        }
+        return { body: Buffer.concat(chunks), contentType: cached.contentType };
+      }
+    }
+
+    // 2. Descargar de DuckDuckGo
     const result = await fetchImage(`${DUCKDUCKGO_URL}/${domain}.ico`);
     if (!result) return null;
 
-    // 4. Save to Minio with correct prefix path
+    // 3. Guardar en MinIO
     try {
-      await this.s3.putObjectToBucket(
-        LOGO_BUCKET,
-        `${LOGO_PREFIX}${companyId}.png`,
-        result.body,
-        result.contentType,
-      );
+      await this.s3.putObjectToBucket(LOGO_BUCKET, cacheKey, result.body, result.contentType);
     } catch (err) {
       console.error('Error saving logo to Minio:', err);
     }

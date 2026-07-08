@@ -68,7 +68,7 @@ type LinkDialogState = {
   to: number;
 };
 
-function Toolbar({ editor }: { editor: Editor | null }) {
+function Toolbar({ editor, bordered = true }: { editor: Editor | null; bordered?: boolean }) {
   const [linkDialog, setLinkDialog] = useState<LinkDialogState | null>(null);
   const urlInputRef = useRef<HTMLInputElement>(null);
   const imageInsertAtRef = useRef(0);
@@ -186,7 +186,10 @@ function Toolbar({ editor }: { editor: Editor | null }) {
   return (
     <>
     <div
-      className="flex flex-wrap items-center gap-0.5 rounded-t-md border border-b-0 bg-muted/50 px-1 py-1"
+      className={cn(
+        'flex flex-wrap items-center gap-0.5 rounded-t-md bg-muted/50 px-1 py-1',
+        bordered && 'border border-b-0',
+      )}
       onMouseDown={(e) => e.preventDefault()}
     >
       <Select value={fontSizeValue} onValueChange={setFontSize}>
@@ -435,6 +438,10 @@ export type CampaignEmailEditorProps = {
   onChange: (html: string) => void;
   resetKey: number;
   placeholder?: string;
+  /** Altura mínima reducida para respuestas inline */
+  compact?: boolean;
+  /** Muestra el borde/anillo del contenedor. Desactívalo cuando ya va dentro de otro contenedor */
+  bordered?: boolean;
 };
 
 export function CampaignEmailEditor({
@@ -442,6 +449,8 @@ export function CampaignEmailEditor({
   onChange,
   resetKey,
   placeholder = 'Escribe tu mensaje. Usa {{nombre}} para personalizar.',
+  compact = false,
+  bordered = true,
 }: CampaignEmailEditorProps) {
   const editor = useEditor(
     {
@@ -485,7 +494,8 @@ export function CampaignEmailEditor({
       editorProps: {
         attributes: {
           class: cn(
-            'tiptap max-w-none min-h-[260px] px-3 py-2 text-sm leading-relaxed',
+            'tiptap max-w-none px-3 py-2 text-sm leading-relaxed',
+            compact ? 'min-h-[120px]' : 'min-h-[260px]',
             'focus:outline-none',
             '[&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5',
             '[&_blockquote]:border-l-2 [&_blockquote]:border-muted-foreground/30 [&_blockquote]:pl-3 [&_blockquote]:italic',
@@ -498,8 +508,14 @@ export function CampaignEmailEditor({
   );
 
   return (
-    <div className="campaign-email-editor rounded-md border border-border bg-background shadow-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ring-offset-background dark:shadow-sm">
-      <Toolbar editor={editor} />
+    <div
+      className={cn(
+        'campaign-email-editor bg-background',
+        bordered &&
+          'rounded-md border border-border shadow-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ring-offset-background dark:shadow-sm',
+      )}
+    >
+      <Toolbar editor={editor} bordered={bordered} />
       <EditorContent editor={editor} className="campaign-email-editor-content" />
     </div>
   );

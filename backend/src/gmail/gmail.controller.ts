@@ -1,12 +1,26 @@
 import { Controller, Get, Post, Query, Body, Req, Param, Res, StreamableFile } from '@nestjs/common';
 import type { Response } from 'express';
 import { GmailService } from './gmail.service';
+import { Public } from '../auth/decorators/public.decorator';
 
 type AuthedReq = { user: { userId: string } };
 
 @Controller('gmail')
 export class GmailController {
   constructor(private readonly gmailService: GmailService) {}
+
+  @Get('sender-avatar')
+  @Public()
+  async getSenderAvatar(@Query('from') from: string, @Res() res: Response) {
+    const result = from ? await this.gmailService.getSenderAvatar(from) : null;
+    if (!result) {
+      res.status(204).end();
+      return;
+    }
+    res.setHeader('Content-Type', result.contentType);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.end(result.body);
+  }
 
   @Get('profile')
   async getProfile(@Req() req: AuthedReq) {
@@ -34,6 +48,11 @@ export class GmailController {
     return this.gmailService.getMessage(req.user.userId, id);
   }
 
+  @Get('threads/:id')
+  async getThread(@Req() req: AuthedReq, @Param('id') id: string) {
+    return this.gmailService.getThread(req.user.userId, id);
+  }
+
   @Get('messages/:messageId/attachments/:attachmentId')
   async downloadAttachment(
     @Req() req: AuthedReq,
@@ -57,9 +76,25 @@ export class GmailController {
   @Post('send')
   async sendMessage(
     @Req() req: AuthedReq,
-    @Body() body: { to: string; subject: string; body: string; cc?: string },
+    @Body()
+    body: {
+      to: string;
+      subject: string;
+      body: string;
+      cc?: string;
+      threadId?: string;
+      inReplyTo?: string;
+    },
   ) {
-    await this.gmailService.sendMessage(req.user.userId, body.to, body.subject, body.body, body.cc);
+    await this.gmailService.sendMessage(
+      req.user.userId,
+      body.to,
+      body.subject,
+      body.body,
+      body.cc,
+      body.threadId,
+      body.inReplyTo,
+    );
     return { ok: true };
   }
 

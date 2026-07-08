@@ -344,6 +344,7 @@ export async function contactListPaginated(params?: {
   etapa?: string;
   fuente?: string;
   assignedTo?: string;
+  excludeAssignedTo?: string;
   linkedToCompanyId?: string;
   excludeCompanyLinkId?: string;
   excludeOpportunityLinkId?: string;
@@ -355,6 +356,9 @@ export async function contactListPaginated(params?: {
   if (params?.etapa?.trim()) sp.set('etapa', params.etapa.trim());
   if (params?.fuente?.trim()) sp.set('fuente', params.fuente.trim());
   if (params?.assignedTo?.trim()) sp.set('assignedTo', params.assignedTo.trim());
+  if (params?.excludeAssignedTo?.trim()) {
+    sp.set('excludeAssignedTo', params.excludeAssignedTo.trim());
+  }
   if (params?.linkedToCompanyId?.trim()) {
     sp.set('linkedToCompany', params.linkedToCompanyId.trim());
   }
@@ -374,11 +378,15 @@ export async function contactListEtapaCounts(params?: {
   search?: string;
   fuente?: string;
   assignedTo?: string;
+  excludeAssignedTo?: string;
 }): Promise<{ counts: Record<string, number> }> {
   const sp = new URLSearchParams();
   if (params?.search?.trim()) sp.set('search', params.search.trim());
   if (params?.fuente?.trim()) sp.set('fuente', params.fuente.trim());
   if (params?.assignedTo?.trim()) sp.set('assignedTo', params.assignedTo.trim());
+  if (params?.excludeAssignedTo?.trim()) {
+    sp.set('excludeAssignedTo', params.excludeAssignedTo.trim());
+  }
   const qs = sp.toString();
   return api<{ counts: Record<string, number> }>(
     qs ? `/contacts/etapa-counts?${qs}` : '/contacts/etapa-counts',
@@ -390,6 +398,7 @@ export async function contactListAll(opts?: {
   etapa?: string;
   fuente?: string;
   assignedTo?: string;
+  excludeAssignedTo?: string;
 }): Promise<ApiContactListRow[]> {
   const sp = new URLSearchParams();
   sp.set('limit', '5000');
@@ -397,6 +406,9 @@ export async function contactListAll(opts?: {
   if (opts?.etapa?.trim()) sp.set('etapa', opts.etapa.trim());
   if (opts?.fuente?.trim()) sp.set('fuente', opts.fuente.trim());
   if (opts?.assignedTo?.trim()) sp.set('assignedTo', opts.assignedTo.trim());
+  if (opts?.excludeAssignedTo?.trim()) {
+    sp.set('excludeAssignedTo', opts.excludeAssignedTo.trim());
+  }
   const res = await api<ContactListPaginatedResponse>(`/contacts?${sp.toString()}`);
   return res.data;
 }

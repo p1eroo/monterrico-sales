@@ -59,6 +59,7 @@ export class ImportExportController {
     @Res({ passthrough: false }) res: Response,
     @Req() req: AuthedReq,
     @Query('assignedTo') assignedTo?: string,
+    @Query('excludeAssignedTo') excludeAssignedTo?: string,
     @Query('search') search?: string,
     @Query('etapa') etapa?: string,
     @Query('fuente') fuente?: string,
@@ -70,6 +71,7 @@ export class ImportExportController {
     );
     const body = await this.importExportService.contactsExportCsv(scope, {
       assignedTo: assignedTo?.trim() || undefined,
+      excludeAssignedTo: excludeAssignedTo?.trim() || undefined,
       search: search?.trim() || undefined,
       etapa: etapa?.trim() || undefined,
       fuente: fuente?.trim() || undefined,
@@ -145,6 +147,7 @@ export class ImportExportController {
     @Res({ passthrough: false }) res: Response,
     @Req() req: AuthedReq,
     @Query('assignedTo') assignedTo?: string,
+    @Query('excludeAssignedTo') excludeAssignedTo?: string,
     @Query('search') search?: string,
     @Query('etapa') etapa?: string,
     @Query('fuente') fuente?: string,
@@ -159,6 +162,7 @@ export class ImportExportController {
     );
     const body = await this.importExportService.companiesExportCsv(scope, {
       assignedTo: assignedTo?.trim() || undefined,
+      excludeAssignedTo: excludeAssignedTo?.trim() || undefined,
       search: search?.trim() || undefined,
       etapa: etapa?.trim() || undefined,
       fuente: fuente?.trim() || undefined,
@@ -237,6 +241,7 @@ export class ImportExportController {
     @Res({ passthrough: false }) res: Response,
     @Req() req: AuthedReq,
     @Query('assignedTo') assignedTo?: string,
+    @Query('excludeAssignedTo') excludeAssignedTo?: string,
     @Query('search') search?: string,
     @Query('etapa') etapa?: string,
     @Query('status') status?: string,
@@ -247,6 +252,7 @@ export class ImportExportController {
     );
     const body = await this.importExportService.opportunitiesExportCsv(scope, {
       assignedTo: assignedTo?.trim() || undefined,
+      excludeAssignedTo: excludeAssignedTo?.trim() || undefined,
       search: search?.trim() || undefined,
       etapa: etapa?.trim() || undefined,
       status: status?.trim() || undefined,

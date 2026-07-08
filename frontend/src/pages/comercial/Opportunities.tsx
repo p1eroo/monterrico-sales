@@ -21,10 +21,8 @@ import {
 } from 'lucide-react';
 import { ChartSquareIcon } from '@/components/icons/ChartSquareIcon';
 import { PaletteIcon } from '@/components/icons/PaletteIcon';
-import { UserHandIcon } from '@/components/icons/UserHandIcon';
 import type { Etapa, Opportunity } from '@/types';
 import { etapaLabels, contactSourceLabels } from '@/data/mock';
-import { useUsers } from '@/hooks/useUsers';
 import { cn } from '@/lib/utils';
 
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -40,6 +38,8 @@ import {
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { OpportunityEditDialog } from '@/components/shared/OpportunityEditDialog';
 import { OpportunityPreviewSheet } from '@/components/shared/OpportunityPreviewSheet';
+import { MultiAdvisorFilter } from '@/components/shared/MultiAdvisorFilter';
+import { useMultiAdvisorFilter } from '@/hooks/useMultiAdvisorFilter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -77,7 +77,6 @@ import {
   useOptimisticCrmStore,
 } from '@/store/optimisticCrmStore';
 import { usePermissions } from '@/hooks/usePermissions';
-import { useCrmTeamAdvisorFilter } from '@/hooks/useCrmTeamAdvisorFilter';
 import {
   downloadImportExportCsv,
   startImportJob,
@@ -137,7 +136,17 @@ function EtapaBadge({ etapa }: { etapa: Etapa }) {
 }
 
 export default function OpportunitiesPage() {
-  const { activeAdvisors } = useUsers();
+  const {
+    selectedIds: assigneeFilter,
+    setSelectedIds: setAssigneeFilter,
+    canSeeAllAdvisors,
+    activeAdvisors,
+    isInitialized: assigneeFilterInitialized,
+    isActive: assigneeFilterIsActive,
+    queryParams: advisorListParams,
+    matchesAssignee,
+    reset: resetAdvisorFilter,
+  } = useMultiAdvisorFilter();
   const pendingOpportunities = useOptimisticCrmStore((s) => s.pendingOpportunities);
   const addPendingOpportunity = useOptimisticCrmStore((s) => s.addPendingOpportunity);
   const removePendingOpportunity = useOptimisticCrmStore((s) => s.removePendingOpportunity);
@@ -175,13 +184,8 @@ export default function OpportunitiesPage() {
   const [search, setSearch] = useState('');
   const [etapaFilter, setEtapaFilter] = useState<string[]>([]);
   const [sourceFilter, setSourceFilter] = useState<string[]>([]);
-  const [assigneeFilter, setAssigneeFilter] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_OPPORTUNITIES_PER_PAGE);
-  const { canSeeAllAdvisors, currentUserId } = useCrmTeamAdvisorFilter(
-    assigneeFilter,
-    setAssigneeFilter,
-  );
   const [viewMode] = useState<'table'>('table');
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({
@@ -220,12 +224,11 @@ export default function OpportunitiesPage() {
         opp.clientName?.toLowerCase().includes(search.toLowerCase());
 
       const matchesEtapa = etapaFilter.length === 0 || etapaFilter.includes(opp.etapa);
-      const matchesAssignee = assigneeFilter.length === 0 || assigneeFilter.includes(opp.assignedTo);
       const matchesSource = sourceFilter.length === 0 || (opp.fuente ? sourceFilter.includes(opp.fuente) : false);
 
-      return matchesSearch && matchesEtapa && matchesAssignee && matchesSource;
+      return matchesSearch && matchesEtapa && matchesAssignee(opp.assignedTo) && matchesSource;
     });
-  }, [allOpportunities, search, etapaFilter, assigneeFilter, sourceFilter]);
+  }, [allOpportunities, search, etapaFilter, sourceFilter, matchesAssignee]);
 
   useEffect(() => {
     setPage(1);
@@ -260,9 +263,6 @@ export default function OpportunitiesPage() {
     return { total, totalValue, avgProbability };
   }, [allOpportunities]);
 
-  const assigneeFilterIsActive = canSeeAllAdvisors
-    ? assigneeFilter.length > 0
-    : false;
   const hasActiveFilters =
     etapaFilter.length > 0 ||
     assigneeFilterIsActive ||
@@ -273,7 +273,7 @@ export default function OpportunitiesPage() {
     setSearch('');
     setEtapaFilter([]);
     setSourceFilter([]);
-    setAssigneeFilter(canSeeAllAdvisors ? [] : [currentUserId]);
+    resetAdvisorFilter();
   }
 
   async function handleCreateOpportunity(data: NewOpportunityFormValues) {
@@ -352,8 +352,11 @@ export default function OpportunitiesPage() {
       const params: Record<string, string> = {};
       if (search) params.search = search;
       if (etapaFilter.length > 0) params.etapa = etapaFilter.join(',');
-      if (assigneeFilter.length > 0) params.assignedTo = assigneeFilter.join(',');
       if (sourceFilter.length > 0) params.fuente = sourceFilter.join(',');
+      if (advisorListParams.assignedTo) params.assignedTo = advisorListParams.assignedTo;
+      if (advisorListParams.excludeAssignedTo) {
+        params.excludeAssignedTo = advisorListParams.excludeAssignedTo;
+      }
       await downloadImportExportCsv('opportunities', 'export', params);
       toast.success('Exportación descargada');
     } catch (e) {
@@ -713,12 +716,12 @@ export default function OpportunitiesPage() {
                 setSearch(e.target.value);
                 setPage(1);
               }}
-              className="!h-12 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 pl-10 text-[15px] text-black placeholder:text-[#8a9aab] dark:placeholder:text-gray-400 transition-colors hover:border-primary focus-visible:ring-1 shadow-none"
+              className="!h-12 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 pl-10 text-[15px] text-black dark:text-gray-100 placeholder:text-[#8a9aab] dark:placeholder:text-gray-400 transition-colors hover:border-primary focus-visible:ring-1 shadow-none"
             />
           </div>
           <Popover>
             <PopoverTrigger asChild>
-              <button className={`!h-12 w-[190px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left ${etapaFilter.length > 0 ? 'text-black' : 'text-[#8a9aab] dark:text-gray-400'}`}>
+              <button className={`!h-12 w-[190px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left ${etapaFilter.length > 0 ? 'text-black dark:text-gray-100' : 'text-[#8a9aab] dark:text-gray-400'}`}>
                 <ChartSquareIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
                 <span className="truncate flex-1">
                   {etapaFilter.length === 0
@@ -762,57 +765,20 @@ export default function OpportunitiesPage() {
             </PopoverContent>
           </Popover>
 
-          <Popover>
-            <PopoverTrigger asChild>
-              <button className={`!h-12 w-[190px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left disabled:opacity-50 disabled:cursor-not-allowed ${assigneeFilter.length > 0 ? 'text-black' : 'text-[#8a9aab] dark:text-gray-400'}`} disabled={!canSeeAllAdvisors}>
-                <UserHandIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
-                <span className="truncate flex-1">
-                  {assigneeFilter.length === 0
-                    ? 'Asesor'
-                    : assigneeFilter
-                        .map((id) => activeAdvisors.find((u) => u.id === id)?.name || id)
-                        .join(', ')}
-                </span>
-                <ChevronDown className="size-3.5 shrink-0 opacity-50" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[180px] p-0" align="start">
-              <Command>
-                <CommandList className="max-h-[260px] overflow-y-auto">
-                  <CommandGroup>
-                    {activeAdvisors.map((u) => {
-                      const selected = assigneeFilter.includes(u.id);
-                      return (
-                        <CommandItem
-                          key={u.id}
-                          onSelect={() => {
-                            setAssigneeFilter((prev) =>
-                              prev.includes(u.id)
-                                ? prev.filter((e) => e !== u.id)
-                                : [...prev, u.id],
-                            );
-                            setPage(1);
-                          }}
-                        >
-                          <span className="[&_svg]:!text-primary-foreground">
-                            <Checkbox
-                              checked={selected}
-                              className="mr-2 h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
-                            />
-                          </span>
-                          <span>{u.name}</span>
-                        </CommandItem>
-                      );
-                    })}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
+          <MultiAdvisorFilter
+            value={assigneeFilter}
+            onChange={setAssigneeFilter}
+            advisors={activeAdvisors}
+            disabled={!canSeeAllAdvisors}
+            isActive={assigneeFilterIsActive}
+            isInitialized={assigneeFilterInitialized}
+            className="!h-12 w-[190px]"
+            onInteraction={() => setPage(1)}
+          />
 
           <Popover>
             <PopoverTrigger asChild>
-              <button className={`!h-12 w-[190px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate ${sourceFilter.length > 0 ? 'text-black' : 'text-[#8a9aab] dark:text-gray-400'}`}>
+              <button className={`!h-12 w-[190px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate ${sourceFilter.length > 0 ? 'text-black dark:text-gray-100' : 'text-[#8a9aab] dark:text-gray-400'}`}>
                 <PaletteIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
                 <span className="truncate flex-1">
                   {sourceFilter.length === 0

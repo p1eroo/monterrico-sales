@@ -26,6 +26,6 @@ import { PrismaModule } from '../prisma/prisma.module';
   ],
   controllers: [CompaniesController],
   providers: [CompaniesService, CompanyStaleEtapaService, CompanyStaleEtapaScheduler, CompanyLogoService],
-  exports: [CompaniesService],
+  exports: [CompaniesService, CompanyLogoService],
 })
 export class CompaniesModule {}

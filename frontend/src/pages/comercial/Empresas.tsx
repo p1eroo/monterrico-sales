@@ -19,7 +19,6 @@ import {
 import type { DateRange } from 'react-day-picker';
 import type { Etapa, CompanyRubro, CompanyTipo, Company, ContactSource } from '@/types';
 import { companyRubroLabels, companyTipoLabels, etapaLabels, contactSourceLabels } from '@/data/mock';
-import { useUsers } from '@/hooks/useUsers';
 import { useCompaniesStore } from '@/store/companiesStore';
 
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -27,6 +26,8 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { ImportInProgressDialog } from '@/components/shared/ImportInProgressDialog';
 import { Pagination } from '@/components/shared/Pagination';
+import { MultiAdvisorFilter } from '@/components/shared/MultiAdvisorFilter';
+import { useMultiAdvisorFilter } from '@/hooks/useMultiAdvisorFilter';
 import { CompanyEditDialog, type CompanyEditSavePayload } from '@/components/shared/CompanyEditDialog';
 import { CompanyPreviewSheet } from '@/components/shared/CompanyPreviewSheet';
 import {
@@ -61,7 +62,6 @@ import { CategorySolidIcon } from '@/components/icons/CategorySolidIcon';
 import { CalendarSvgIcon } from '@/components/icons/CalendarSvgIcon';
 import { GitForkIcon } from '@/components/icons/GitForkIcon';
 import { PaletteIcon } from '@/components/icons/PaletteIcon';
-import { UserHandIcon } from '@/components/icons/UserHandIcon';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Calendar } from '@/components/ui/calendar';
@@ -69,7 +69,6 @@ import { addCalendarDaysLocalIso } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 import { api, API_BASE } from '@/lib/api';
 import { usePermissions } from '@/hooks/usePermissions';
-import { useCrmTeamAdvisorFilter } from '@/hooks/useCrmTeamAdvisorFilter';
 import {
   downloadImportExportCsv,
   previewCompaniesImportCsv,
@@ -310,6 +309,16 @@ const ITEMS_PER_PAGE = 25;
 export default function EmpresasPage() {
   const navigate = useNavigate();
   const { companies: standaloneCompanies, updateCompany, deleteCompany } = useCompaniesStore();
+  const {
+    selectedIds: advisorFilter,
+    setSelectedIds: setAdvisorFilter,
+    canSeeAllAdvisors,
+    activeAdvisors,
+    isInitialized: advisorFilterInitialized,
+    isActive: advisorFilterIsActive,
+    queryParams: advisorListParams,
+    reset: resetAdvisorFilter,
+  } = useMultiAdvisorFilter();
 
   const [summaryRows, setSummaryRows] = useState<CompanySummaryRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -322,14 +331,9 @@ export default function EmpresasPage() {
   const [etapaFilter, setEtapaFilter] = useState<string[]>([]);
   const [rubroFilter, setRubroFilter] = useState<string[]>([]);
   const [tipoFilter, setTipoFilter] = useState<string[]>([]);
-  const [advisorFilter, setAdvisorFilter] = useState<string[]>([]);
   const [interactionRange, setInteractionRange] = useState<DateRange | undefined>();
   const [draftRange, setDraftRange] = useState<DateRange | undefined>();
   const [dateFilterOpen, setDateFilterOpen] = useState(false);
-  const { canSeeAllAdvisors, currentUserId } = useCrmTeamAdvisorFilter(
-    advisorFilter,
-    setAdvisorFilter,
-  );
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({
     fuente: true,
     rubro: true,
@@ -361,8 +365,8 @@ export default function EmpresasPage() {
   );
   const [exportBusy, setExportBusy] = useState(false);
   const [fullExportBusy, setFullExportBusy] = useState(false);
-  const { activeAdvisors } = useUsers();
   const { hasPermission } = usePermissions();
+
   const [previewEmpresa, setPreviewEmpresa] = useState<EmpresaSummaryRow | null>(null);
   const [editEmpresa, setEditEmpresa] = useState<EmpresaSummaryRow | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -413,7 +417,8 @@ export default function EmpresasPage() {
         search: searchDebounced || undefined,
         etapa: etapaFilter.length > 0 ? etapaFilter.join(',') : undefined,
         fuente: sourceFilter.length > 0 ? sourceFilter.join(',') : undefined,
-        assignedTo: advisorFilter.length > 0 ? advisorFilter.join(',') : undefined,
+        assignedTo: advisorListParams.assignedTo,
+        excludeAssignedTo: advisorListParams.excludeAssignedTo,
         rubro: rubroFilter.length > 0 ? rubroFilter.join(',') : undefined,
         tipo: tipoFilter.length > 0 ? tipoFilter.join(',') : undefined,
         lastInteraction: undefined,
@@ -436,7 +441,7 @@ export default function EmpresasPage() {
     searchDebounced,
     etapaFilter,
     sourceFilter,
-    advisorFilter,
+    advisorListParams,
     rubroFilter,
     tipoFilter,
     interactionRange?.from,
@@ -470,7 +475,8 @@ export default function EmpresasPage() {
       const { counts } = await companySummaryEtapaCounts({
         search: searchDebounced || undefined,
         fuente: sourceFilter.length > 0 ? sourceFilter.join(',') : undefined,
-        assignedTo: advisorFilter.length > 0 ? advisorFilter.join(',') : undefined,
+        assignedTo: advisorListParams.assignedTo,
+        excludeAssignedTo: advisorListParams.excludeAssignedTo,
         rubro: rubroFilter.length > 0 ? rubroFilter.join(',') : undefined,
         tipo: tipoFilter.length > 0 ? tipoFilter.join(',') : undefined,
         lastInteraction: undefined,
@@ -484,7 +490,7 @@ export default function EmpresasPage() {
   }, [
     searchDebounced,
     sourceFilter,
-    advisorFilter,
+    advisorListParams,
     rubroFilter,
     tipoFilter,
     interactionRange?.from,
@@ -501,9 +507,6 @@ export default function EmpresasPage() {
     void loadEtapaTabCounts();
   }, [companyImportCompletionTick, loadEtapaTabCounts, loadSummary]);
 
-  const advisorFilterIsActive = canSeeAllAdvisors
-    ? advisorFilter.length > 0
-    : false;
   const hasActiveFilters =
     etapaFilter.length > 0 ||
     sourceFilter.length > 0 ||
@@ -521,7 +524,7 @@ export default function EmpresasPage() {
     setEtapaFilter([]);
     setRubroFilter([]);
     setTipoFilter([]);
-    setAdvisorFilter(canSeeAllAdvisors ? [] : [currentUserId]);
+    resetAdvisorFilter();
     setInteractionRange(undefined);
     setPage(1);
   }
@@ -1167,7 +1170,10 @@ export default function EmpresasPage() {
       if (sourceFilter.length > 0) params.fuente = sourceFilter.join(',');
       if (rubroFilter.length > 0) params.rubro = rubroFilter.join(',');
       if (tipoFilter.length > 0) params.tipo = tipoFilter.join(',');
-      if (advisorFilter.length > 0) params.assignedTo = advisorFilter.join(',');
+      if (advisorListParams.assignedTo) params.assignedTo = advisorListParams.assignedTo;
+      if (advisorListParams.excludeAssignedTo) {
+        params.excludeAssignedTo = advisorListParams.excludeAssignedTo;
+      }
       if (interactionRange?.from) params.lastInteractionFrom = new Date(
         interactionRange.from.getFullYear(),
         interactionRange.from.getMonth(),
@@ -1198,13 +1204,32 @@ export default function EmpresasPage() {
       if (sourceFilter.length > 0) params.fuente = sourceFilter.join(',');
       if (rubroFilter.length > 0) params.rubro = rubroFilter.join(',');
       if (tipoFilter.length > 0) params.tipo = tipoFilter.join(',');
-      if (advisorFilter.length > 0) params.assignedTo = advisorFilter.join(',');
+      if (advisorListParams.assignedTo) params.assignedTo = advisorListParams.assignedTo;
+      if (advisorListParams.excludeAssignedTo) {
+        params.excludeAssignedTo = advisorListParams.excludeAssignedTo;
+      }
       if (interactionRange?.from) params.lastInteractionFrom = interactionRange.from.toISOString();
       if (interactionRange?.to) params.lastInteractionTo = interactionRange.to.toISOString();
 
       const [companies, contacts, opportunities] = await Promise.all([
-        companyListSummaryPaginated({ limit: 5000, ...params }),
-        contactListAll(params),
+        companyListSummaryPaginated({
+          limit: 5000,
+          search: params.search,
+          etapa: params.etapa,
+          fuente: params.fuente,
+          rubro: params.rubro,
+          tipo: params.tipo,
+          assignedTo: advisorListParams.assignedTo,
+          excludeAssignedTo: advisorListParams.excludeAssignedTo,
+          lastInteractionFrom: params.lastInteractionFrom,
+          lastInteractionTo: params.lastInteractionTo,
+        }),
+        contactListAll({
+          etapa: params.etapa,
+          fuente: params.fuente,
+          assignedTo: advisorListParams.assignedTo,
+          excludeAssignedTo: advisorListParams.excludeAssignedTo,
+        }),
         opportunityListAll(params),
       ]);
 
@@ -1543,12 +1568,12 @@ export default function EmpresasPage() {
               setSearch(e.target.value);
               setPage(1);
             }}
-            className="!h-12 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 pl-10 text-[15px] text-black placeholder:text-[#8a9aab] dark:placeholder:text-gray-400 transition-colors hover:border-primary focus-visible:ring-1 shadow-none"
+            className="!h-12 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 pl-10 text-[15px] text-black dark:text-gray-100 placeholder:text-[#8a9aab] dark:placeholder:text-gray-400 transition-colors hover:border-primary focus-visible:ring-1 shadow-none"
           />
         </div>
         <Popover>
           <PopoverTrigger asChild>
-            <button className={`!h-12 w-[190px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left ${etapaFilter.length > 0 ? 'text-black' : 'text-[#8a9aab] dark:text-gray-400'}`}>
+            <button className={`!h-12 w-[190px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left ${etapaFilter.length > 0 ? 'text-black dark:text-gray-100' : 'text-[#8a9aab] dark:text-gray-400'}`}>
               <ChartSquareIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
               <span className="truncate flex-1">
                 {etapaFilter.length === 0
@@ -1594,7 +1619,7 @@ export default function EmpresasPage() {
 
         <Popover>
           <PopoverTrigger asChild>
-            <button className={`!h-12 w-[190px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate ${rubroFilter.length > 0 ? 'text-black' : 'text-[#8a9aab] dark:text-gray-400'}`}>
+            <button className={`!h-12 w-[190px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate ${rubroFilter.length > 0 ? 'text-black dark:text-gray-100' : 'text-[#8a9aab] dark:text-gray-400'}`}>
               <CategorySolidIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
               <span className="truncate flex-1">
                 {rubroFilter.length === 0
@@ -1643,7 +1668,7 @@ export default function EmpresasPage() {
           if (open) setDraftRange(interactionRange);
         }}>
           <PopoverTrigger asChild>
-            <button className={`!h-12 w-[210px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate ${interactionRange?.from || interactionRange?.to ? 'text-black' : 'text-[#8a9aab] dark:text-gray-400'}`}>
+            <button className={`!h-12 w-[210px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate ${interactionRange?.from || interactionRange?.to ? 'text-black dark:text-gray-100' : 'text-[#8a9aab] dark:text-gray-400'}`}>
               <CalendarSvgIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
               <span className="truncate flex-1">
                 {interactionRange?.from && interactionRange?.to
@@ -1754,7 +1779,7 @@ export default function EmpresasPage() {
               <div className="flex items-center gap-3">
                 <Popover>
                   <PopoverTrigger asChild>
-                    <button className={`!h-12 flex-1 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer text-left truncate flex items-center gap-1.5 ${sourceFilter.length > 0 ? 'text-black' : 'text-[#8a9aab] dark:text-gray-400'}`}>
+                    <button className={`!h-12 flex-1 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer text-left truncate flex items-center gap-1.5 ${sourceFilter.length > 0 ? 'text-black dark:text-gray-100' : 'text-[#8a9aab] dark:text-gray-400'}`}>
                       <PaletteIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
                       <span className="truncate flex-1">
                         {sourceFilter.length === 0
@@ -1799,7 +1824,7 @@ export default function EmpresasPage() {
                 </Popover>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <button className={`!h-12 flex-1 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer text-left truncate flex items-center gap-1.5 ${tipoFilter.length > 0 ? 'text-black' : 'text-[#8a9aab] dark:text-gray-400'}`}>
+                    <button className={`!h-12 flex-1 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer text-left truncate flex items-center gap-1.5 ${tipoFilter.length > 0 ? 'text-black dark:text-gray-100' : 'text-[#8a9aab] dark:text-gray-400'}`}>
                       <GitForkIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
                       <span className="truncate flex-1">
                         {tipoFilter.length === 0
@@ -1842,53 +1867,16 @@ export default function EmpresasPage() {
                     </Command>
                   </PopoverContent>
                 </Popover>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <button className={`!h-12 flex-1 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer text-left truncate disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 ${advisorFilter.length > 0 ? 'text-black' : 'text-[#8a9aab] dark:text-gray-400'}`} disabled={!canSeeAllAdvisors}>
-                      <UserHandIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
-                      <span className="truncate flex-1">
-                        {advisorFilter.length === 0
-                          ? 'Asesor'
-                          : advisorFilter
-                              .map((id) => activeAdvisors.find((u) => u.id === id)?.name || id)
-                              .join(', ')}
-                      </span>
-                      <ChevronDown className="size-3.5 shrink-0 opacity-50" />
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[180px] p-0" align="start">
-                    <Command>
-                      <CommandList className="max-h-[260px] overflow-y-auto">
-                        <CommandGroup>
-                          {activeAdvisors.map((u) => {
-                            const selected = advisorFilter.includes(u.id);
-                            return (
-                              <CommandItem
-                                key={u.id}
-                                onSelect={() => {
-                                  setAdvisorFilter((prev) =>
-                                    prev.includes(u.id)
-                                      ? prev.filter((e) => e !== u.id)
-                                      : [...prev, u.id],
-                                  );
-                                  setPage(1);
-                                }}
-                              >
-                                <span className="[&_svg]:!text-primary-foreground">
-                                <Checkbox
-                                  checked={selected}
-                                  className="mr-2 h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
-                                />
-                                </span>
-                                <span>{u.name}</span>
-                              </CommandItem>
-                            );
-                          })}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
+                <MultiAdvisorFilter
+                  value={advisorFilter}
+                  onChange={setAdvisorFilter}
+                  advisors={activeAdvisors}
+                  disabled={!canSeeAllAdvisors}
+                  isActive={advisorFilterIsActive}
+                  isInitialized={advisorFilterInitialized}
+                  className="!h-12 flex-1"
+                  onInteraction={() => setPage(1)}
+                />
               </div>
             </PopoverContent>
           </Popover>

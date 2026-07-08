@@ -8,11 +8,13 @@ export type GmailMessage = {
   date: string;
   snippet: string;
   labelIds: string[];
+  hasAttachments?: boolean;
 };
 
 export type GmailMessageDetail = GmailMessage & {
   to: string;
   cc?: string;
+  messageId?: string;
   body: string;
   attachments: {
     filename: string;
@@ -42,10 +44,38 @@ export async function fetchGmailMessage(id: string): Promise<GmailMessageDetail>
   return api<GmailMessageDetail>(`/gmail/messages/${id}`);
 }
 
-export async function sendGmailMessage(to: string, subject: string, body: string, cc?: string): Promise<void> {
+export type GmailThreadDetail = {
+  id: string;
+  subject: string;
+  messages: GmailMessageDetail[];
+};
+
+export async function fetchGmailThread(threadId: string): Promise<GmailThreadDetail> {
+  return api<GmailThreadDetail>(`/gmail/threads/${threadId}`);
+}
+
+export type SendGmailMessageOptions = {
+  cc?: string;
+  threadId?: string;
+  inReplyTo?: string;
+};
+
+export async function sendGmailMessage(
+  to: string,
+  subject: string,
+  body: string,
+  options?: SendGmailMessageOptions,
+): Promise<void> {
   await api('/gmail/send', {
     method: 'POST',
-    body: JSON.stringify({ to, subject, body, cc }),
+    body: JSON.stringify({
+      to,
+      subject,
+      body,
+      cc: options?.cc,
+      threadId: options?.threadId,
+      inReplyTo: options?.inReplyTo,
+    }),
   });
 }
 

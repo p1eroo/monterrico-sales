@@ -33,12 +33,14 @@ import {
   contactDetailHref,
   opportunityDetailHref,
 } from '@/lib/detailRoutes';
-import { fetchGmailMessages, fetchGmailMessage, sendGmailMessage, linkEmailToCRM, downloadGmailAttachment } from '@/lib/gmailApi';
+import { fetchGmailMessages, fetchGmailThread, sendGmailMessage, linkEmailToCRM, downloadGmailAttachment } from '@/lib/gmailApi';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { EmailRecipientsInput } from '@/components/shared/EmailRecipientsInput';
+import { SenderAvatar } from '@/components/shared/SenderAvatar';
+import { CampaignEmailEditor } from '@/components/shared/CampaignEmailEditor';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,6 +48,14 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { FileDownloadSvgIcon } from '@/components/icons/FileDownloadSvgIcon';
+import { PdfSvgIcon } from '@/components/icons/PdfSvgIcon';
+import { JpgSvgIcon } from '@/components/icons/JpgSvgIcon';
+import { XlsSvgIcon } from '@/components/icons/XlsSvgIcon';
+import { Attach2SvgIcon } from '@/components/icons/Attach2SvgIcon';
+import { ReplySvgIcon } from '@/components/icons/ReplySvgIcon';
+import { GmailSvgIcon } from '@/components/icons/GmailSvgIcon';
+import { PencilFileSvgIcon } from '@/components/icons/PencilFileSvgIcon';
 import DOMPurify from 'dompurify';
 
 const FOLDERS: { id: EmailFolder; icon: typeof Inbox; label: string }[] = [
@@ -53,6 +63,7 @@ const FOLDERS: { id: EmailFolder; icon: typeof Inbox; label: string }[] = [
   { id: 'sent', icon: Send, label: 'Enviados' },
   { id: 'drafts', icon: FileEdit, label: 'Borradores' },
   { id: 'starred', icon: Star, label: 'Destacados' },
+  { id: 'attachments', icon: Paperclip, label: 'Adjuntos' },
   { id: 'trash', icon: Trash2, label: 'Papelera' },
 ];
 
@@ -79,6 +90,24 @@ function formatFullDate(iso: string) {
   });
 }
 
+function getAttachmentIcon(filename?: string, mimeType?: string) {
+  const name = (filename ?? '').toLowerCase();
+  const mime = (mimeType ?? '').toLowerCase();
+  const ext = name.includes('.') ? name.slice(name.lastIndexOf('.') + 1) : '';
+
+  if (mime.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'heic'].includes(ext)) {
+    return JpgSvgIcon;
+  }
+  if (
+    mime.includes('spreadsheet') ||
+    mime.includes('excel') ||
+    ['xls', 'xlsx', 'xlsm', 'csv'].includes(ext)
+  ) {
+    return XlsSvgIcon;
+  }
+  return PdfSvgIcon;
+}
+
 function getEntityIcon(type: string) {
   switch (type) {
     case 'contact':
@@ -90,6 +119,117 @@ function getEntityIcon(type: string) {
     default:
       return Link2;
   }
+}
+
+function extractEmailFromHeader(from: string): string {
+  const match = from.match(/<([^>]+)>/);
+  return match ? match[1].trim() : from.trim();
+}
+
+function replySubject(subject: string): string {
+  const trimmed = subject.trim();
+  if (/^re:/i.test(trimmed)) return trimmed;
+  return `Re: ${trimmed}`;
+}
+
+function GmailMessageBody({ body }: { body: string }) {
+  if (!body) {
+    return <p className="text-sm text-muted-foreground italic">(Sin contenido)</p>;
+  }
+  if (/<[a-z][\s\S]*>/i.test(body)) {
+    return (
+      <div
+        className="max-w-full overflow-x-hidden text-sm leading-relaxed [overflow-wrap:anywhere] [&_*]:!max-w-full [&_a]:[overflow-wrap:anywhere] [&_a]:text-[#13944C] [&_a]:underline [&_img]:h-auto [&_pre]:whitespace-pre-wrap [&_pre]:break-words [&_table]:!w-auto"
+        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(body, { ADD_ATTR: ['target'], ADD_TAGS: ['a'] }) }}
+      />
+    );
+  }
+  const text = body.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const linked = text.replace(
+    /(https?:\/\/\S+)/g,
+    '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:#13944C;text-decoration:underline">$1</a>',
+  );
+  return (
+    <div
+      className="max-w-full whitespace-pre-wrap text-sm leading-relaxed [overflow-wrap:anywhere]"
+      dangerouslySetInnerHTML={{ __html: linked }}
+    />
+  );
+}
+
+function GmailMessageItem({
+  msg,
+  showReply,
+  onReply,
+}: {
+  msg: any;
+  showReply: boolean;
+  onReply: () => void;
+}) {
+  return (
+    <div>
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <SenderAvatar from={msg.from} />
+          <div className="min-w-0">
+            <p className="truncate font-medium">{msg.from}</p>
+            <p className="truncate text-xs text-muted-foreground">Para: {msg.to}</p>
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          {showReply && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-8 text-foreground/70 hover:text-foreground"
+              onClick={onReply}
+              title="Responder"
+            >
+              <ReplySvgIcon className="size-5" />
+            </Button>
+          )}
+          <span className="text-xs text-muted-foreground">{formatFullDate(msg.date)}</span>
+        </div>
+      </div>
+
+      <GmailMessageBody body={msg.body} />
+
+      {msg.attachments?.length > 0 && (
+        <div className="mt-4 rounded-xl bg-muted/50 p-4">
+          <div className="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <Attach2SvgIcon className="size-5" />
+            {msg.attachments.length}{' '}
+            {msg.attachments.length === 1 ? 'Adjunto' : 'Adjuntos'}
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {msg.attachments.map((att: any, i: number) => {
+              const AttachmentIcon = getAttachmentIcon(att.filename, att.mimeType);
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() =>
+                    downloadGmailAttachment(msg.id, att.attachmentId, att.filename).catch(() =>
+                      toast.error('Error al descargar el archivo'),
+                    )
+                  }
+                  className="flex cursor-pointer items-center gap-3 rounded-lg border bg-background px-3 py-2 text-left transition-colors hover:bg-muted/40"
+                >
+                  <AttachmentIcon className="size-9 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{att.filename}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {(att.size / 1024).toFixed(1)} KB · Descargar
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function InboxPage() {
@@ -135,20 +275,19 @@ export default function InboxPage() {
   // Gmail state
   const [gmailMessages, setGmailMessages] = useState<any[]>([]);
   const [gmailLoading, setGmailLoading] = useState(false);
-  const [gmailCategory, setGmailCategory] = useState<string>('PRIMARY');
   const [nextPageToken, setNextPageToken] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [selectedGmailId, setSelectedGmailId] = useState<string | null>(null);
+  const [selectedGmailThreadId, setSelectedGmailThreadId] = useState<string | null>(null);
   const [selectedGmailDetail, setSelectedGmailDetail] = useState<any>(null);
+  const [selectedThreadMessages, setSelectedThreadMessages] = useState<any[]>([]);
   const [gmailDetailLoading, setGmailDetailLoading] = useState(false);
   const [gmailDetailError, setGmailDetailError] = useState(false);
-
-  const gmailCategoryLabels: Record<string, string> = {
-    PRIMARY: 'Principal',
-    CATEGORY_SOCIAL: 'Social',
-    CATEGORY_PROMOTIONS: 'Promociones',
-    CATEGORY_UPDATES: 'Notificaciones',
-  };
+  const [replyOpen, setReplyOpen] = useState(false);
+  const [replyHtml, setReplyHtml] = useState('');
+  const [replyResetKey, setReplyResetKey] = useState(0);
+  const [sendingReply, setSendingReply] = useState(false);
+  const replyBoxRef = useRef<HTMLDivElement>(null);
 
   const gmailFolderParams = useMemo(() => {
     if (!googleConnected) return { labelIds: undefined, q: undefined };
@@ -161,14 +300,12 @@ export default function InboxPage() {
         return { q: 'is:starred' };
       case 'trash':
         return { q: 'in:trash' };
+      case 'attachments':
+        return { q: 'has:attachment' };
       default: // inbox
-        return {
-          labelIds: gmailCategory === 'PRIMARY' ? undefined : ['INBOX', gmailCategory],
-          q: gmailCategory === 'PRIMARY' ? 'in:inbox category:primary' : undefined,
-        };
+        return { q: 'in:inbox' };
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [googleConnected, activeFolder, gmailCategory]);
+  }, [googleConnected, activeFolder]);
 
   // Fetch Gmail messages
   useEffect(() => {
@@ -185,8 +322,7 @@ export default function InboxPage() {
       })
       .catch(() => toast.error('Error al cargar correos'))
       .finally(() => setGmailLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [googleConnected, gmailCategory, gmailFolderParams]);
+  }, [googleConnected, gmailFolderParams]);
 
   const loadMoreMessages = async () => {
     if (!nextPageToken || loadingMore) return;
@@ -207,19 +343,30 @@ export default function InboxPage() {
     }
   };
 
-  // Fetch Gmail detail when a message is selected
+  // Fetch the full Gmail thread (conversation) when a message is selected
   useEffect(() => {
-    if (!selectedGmailId) { setSelectedGmailDetail(null); setGmailDetailError(false); return; }
+    if (!selectedGmailThreadId) {
+      setSelectedGmailDetail(null);
+      setSelectedThreadMessages([]);
+      setGmailDetailError(false);
+      return;
+    }
+    setReplyOpen(false);
+    setReplyHtml('');
+    setReplyResetKey((k) => k + 1);
     setGmailDetailLoading(true);
     setGmailDetailError(false);
-    fetchGmailMessage(selectedGmailId)
-      .then(setSelectedGmailDetail)
+    fetchGmailThread(selectedGmailThreadId)
+      .then((thread) => {
+        setSelectedThreadMessages(thread.messages);
+        setSelectedGmailDetail(thread.messages[thread.messages.length - 1] ?? null);
+      })
       .catch(() => {
         setGmailDetailError(true);
         toast.error('No se pudo cargar el contenido del correo');
       })
       .finally(() => setGmailDetailLoading(false));
-  }, [selectedGmailId]);
+  }, [selectedGmailThreadId]);
 
   // Convert Gmail message to EmailThread shape
   const gmailThreads: EmailThread[] = useMemo(() => {
@@ -242,6 +389,7 @@ export default function InboxPage() {
         id: msg.id,
         subject: msg.subject,
         messages: [msgObj],
+        hasAttachments: msg.hasAttachments ?? false,
       } as EmailThread;
     });
   }, [gmailMessages]);
@@ -255,7 +403,9 @@ export default function InboxPage() {
       const inFolder =
         activeFolder === 'starred'
           ? starredThreads.has(thread.id)
-          : lastMsg.folder === activeFolder;
+          : activeFolder === 'attachments'
+            ? (thread.hasAttachments ?? false)
+            : lastMsg.folder === activeFolder;
       const matchSearch =
         !search ||
         thread.subject.toLowerCase().includes(search.toLowerCase()) ||
@@ -285,6 +435,7 @@ export default function InboxPage() {
     markAsRead(thread.id);
     if (googleConnected) {
       setSelectedGmailId(thread.id);
+      setSelectedGmailThreadId(thread.messages[0]?.threadId ?? thread.id);
     }
   };
 
@@ -301,7 +452,7 @@ export default function InboxPage() {
     try {
       const cc = composeShowCc ? composeCc.trim() : undefined;
       const bcc = composeShowBcc ? composeBcc.trim() : undefined;
-      await sendGmailMessage(composeTo, composeSubject, bodyHtml, cc || undefined);
+      await sendGmailMessage(composeTo, composeSubject, bodyHtml, { cc: cc || undefined });
       toast.success('Correo enviado');
 
       // Vincular destinatarios al CRM
@@ -342,6 +493,63 @@ export default function InboxPage() {
     }
   };
 
+  useEffect(() => {
+    if (!replyOpen) return;
+    const t = setTimeout(() => {
+      replyBoxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }, 100);
+    return () => clearTimeout(t);
+  }, [replyOpen]);
+
+  const handleDiscardReply = () => {
+    setReplyOpen(false);
+    setReplyHtml('');
+    setReplyResetKey((k) => k + 1);
+  };
+
+  const replyTarget = useMemo(() => {
+    if (selectedThreadMessages.length === 0) return null;
+    // Reply to the most recent message not sent by us; fallback to last message
+    const inbound = [...selectedThreadMessages]
+      .reverse()
+      .find((m) => !(m.labelIds ?? []).includes('SENT'));
+    return inbound ?? selectedThreadMessages[selectedThreadMessages.length - 1];
+  }, [selectedThreadMessages]);
+
+  const handleSendReply = async () => {
+    if (!replyTarget) return;
+    const bodyText = replyHtml.replace(/<[^>]*>/g, '').trim();
+    if (!bodyText) {
+      toast.error('Escribe un mensaje antes de enviar');
+      return;
+    }
+    const to = extractEmailFromHeader(replyTarget.from);
+    const subject = replySubject(replyTarget.subject || '');
+    setSendingReply(true);
+    try {
+      await sendGmailMessage(to, subject, replyHtml, {
+        threadId: replyTarget.threadId,
+        inReplyTo: replyTarget.messageId,
+      });
+      toast.success('Respuesta enviada');
+      handleDiscardReply();
+      if (selectedGmailThreadId) {
+        const thread = await fetchGmailThread(selectedGmailThreadId);
+        setSelectedThreadMessages(thread.messages);
+        setSelectedGmailDetail(thread.messages[thread.messages.length - 1] ?? null);
+      }
+      // Refrescar la lista para actualizar el preview del hilo
+      fetchGmailMessages(50, undefined, gmailFolderParams.labelIds, gmailFolderParams.q)
+        .then((res) => setGmailMessages(res.messages))
+        .catch(() => {});
+    } catch (e) {
+      console.error('Error sending reply:', e);
+      toast.error(e instanceof Error ? e.message : 'Error al enviar la respuesta');
+    } finally {
+      setSendingReply(false);
+    }
+  };
+
   if (!googleConnected) {
     return (
       <div className="flex flex-col items-center justify-center gap-6 rounded-lg border-2 border-dashed border-muted-foreground/20 bg-muted/20 p-12">
@@ -372,14 +580,14 @@ export default function InboxPage() {
   return (
     <div className="flex h-[calc(100vh-7rem)] min-h-0 rounded-xl border bg-card overflow-hidden">
       {/* Sidebar */}
-      <aside className="hidden min-h-0 w-56 shrink-0 flex-col border-r bg-muted/30 lg:flex">
-        <div className="p-3">
+      <aside className="hidden min-h-0 w-60 shrink-0 flex-col border-r bg-muted/30 lg:flex">
+        <div className="p-3 pt-7">
           <Button
-            className="w-full bg-[#13944C] hover:bg-[#0f7a3d]"
+            className="h-11 w-full gap-2 bg-[#13944C] hover:bg-[#0f7a3d]"
             onClick={() => setComposeOpen(true)}
           >
-            <PenSquare className="size-4" />
-            Nuevo correo
+            <PencilFileSvgIcon className="size-5" />
+            Redactar
           </Button>
         </div>
         <nav className="flex-1 space-y-0.5 p-2">
@@ -390,7 +598,7 @@ export default function InboxPage() {
                 key={f.id}
                 onClick={() => setActiveFolder(f.id)}
                 className={cn(
-                  'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors',
+                  'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] transition-colors',
                   activeFolder === f.id
                     ? 'bg-[#13944C]/10 text-[#13944C] font-medium'
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -405,7 +613,7 @@ export default function InboxPage() {
       </aside>
 
       {/* Email list */}
-      <div className="flex min-h-0 flex-col border-r" style={{ flex: '0 0 620px' }}>
+      <div className="flex min-h-0 w-full shrink-0 flex-col border-r font-sans md:w-[400px] lg:w-[440px] xl:w-[500px]">
         {/* Mobile folder tabs */}
         <div className="flex gap-1 overflow-x-auto border-b p-2 lg:hidden">
           {FOLDERS.map((f) => {
@@ -429,34 +637,17 @@ export default function InboxPage() {
         </div>
         <div className="flex items-center gap-2 border-b p-2">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Buscar correos..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
+              className="border-0 bg-transparent pr-9 shadow-none focus-visible:ring-0"
             />
+            <Search className="absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           </div>
         </div>
-        {googleConnected && activeFolder === 'inbox' && (          <div className="flex gap-0.5 border-b px-2 py-1.5">
-            {Object.entries(gmailCategoryLabels).map(([key, label]) => (
-              <button
-                key={key}
-                onClick={() => setGmailCategory(key)}
-                className={cn(
-                  'rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
-                  gmailCategory === key
-                    ? 'bg-[#13944C]/10 text-[#13944C]'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        )}
         <div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin">
-          <div className="divide-y">
+          <div className="divide-y divide-dashed divide-[#e8ecf0] dark:divide-gray-700">
             {filteredThreads.map((thread) => {
               const lastMsg = thread.messages[0];
               const unread = isThreadUnread(thread);
@@ -465,13 +656,9 @@ export default function InboxPage() {
               return (
                 <div
                   key={thread.id}
-                  onClick={() => {
-                    setSelectedThread(thread);
-                    setSelectedGmailId(thread.id);
-                    markAsRead(thread.id);
-                  }}
+                  onClick={() => handleSelectThread(thread)}
                   className={cn(
-                    'flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/50',
+                    'relative flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/50',
                     selectedThread?.id === thread.id && 'bg-muted/70',
                     unread && 'bg-[#13944C]/5'
                   )}
@@ -492,30 +679,35 @@ export default function InboxPage() {
                     <div className="flex items-center justify-between gap-2">
                       <span
                         className={cn(
-                          'truncate text-xs',
-                          unread ? 'font-semibold' : 'font-medium'
+                          'truncate text-sm',
+                          unread ? 'font-medium' : 'font-normal'
                         )}
                       >
                         {lastMsg.fromName}
                       </span>
-                      <span className="shrink-0 text-xs text-muted-foreground">
+                      <span className="shrink-0 text-sm font-normal text-muted-foreground">
                         {formatTime(lastMsg.timestamp)}
                       </span>
                     </div>
                     <p
                       className={cn(
-                        'truncate text-xs',
-                        unread ? 'font-semibold text-foreground' : 'text-muted-foreground'
+                        'truncate pr-20 text-sm',
+                        unread ? 'font-medium text-foreground' : 'font-normal text-muted-foreground'
                       )}
                     >
                       {thread.subject}
                     </p>
-                    <p className="truncate text-xs text-muted-foreground">{preview}</p>
+                    <p className="truncate pr-20 text-sm font-normal text-muted-foreground">{preview}</p>
                   </div>
                   {thread.relatedEntityName && (
-                    <Badge variant="outline" className="shrink-0 text-[10px]">
+                    <Badge variant="outline" className="shrink-0 text-xs font-normal">
                       {entityTypeLabels[thread.relatedEntityType ?? 'contact']}
                     </Badge>
+                  )}
+                  {thread.hasAttachments && (
+                    <FileDownloadSvgIcon
+                      className="absolute bottom-2 right-3 size-5 text-muted-foreground"
+                    />
                   )}
                 </div>
               );
@@ -525,7 +717,7 @@ export default function InboxPage() {
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <Inbox className="size-12 text-muted-foreground" />
               <p className="mt-2 text-sm font-medium">No hay correos</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-sm font-normal text-muted-foreground">
                 {activeFolder === 'inbox' ? 'Tu bandeja está vacía' : `No hay correos en ${folderLabels[activeFolder]}`}
               </p>
             </div>
@@ -550,14 +742,14 @@ export default function InboxPage() {
       {/* Email detail */}
       <div
         className={cn(
-          'hidden min-h-0 flex-1 flex-col bg-background md:flex',
+          'hidden min-h-0 min-w-0 flex-1 flex-col bg-background md:flex',
           !selectedThread && 'md:hidden lg:flex lg:items-center lg:justify-center'
         )}
       >
         {selectedThread ? (
           <>
-            <div className="flex items-center justify-between border-b px-4 py-3">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between gap-2 border-b border-dashed border-[#e8ecf0] px-4 py-3 dark:border-gray-700">
+              <div className="flex min-w-0 flex-1 items-center gap-2">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -565,17 +757,30 @@ export default function InboxPage() {
                   onClick={() => {
                     setSelectedThread(null);
                     setSelectedGmailId(null);
+                    setSelectedGmailThreadId(null);
                   }}
                 >
                   <ChevronLeft className="size-4" />
                 </Button>
-                <h2 className="truncate font-semibold">{selectedThread.subject}</h2>
+                <h2 className="truncate font-medium">{selectedThread.subject}</h2>
               </div>
               <div className="flex items-center gap-1">
-                <Button variant="ghost" size="sm">
-                  <Reply className="size-4" />
-                  Responder
-                </Button>
+                {googleConnected && selectedGmailId ? (
+                  <Button variant="ghost" size="icon" className="size-8" asChild title="Ver en Gmail">
+                    <a
+                      href={`https://mail.google.com/mail/u/0/#inbox/${selectedGmailThreadId ?? selectedGmailId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <GmailSvgIcon className="size-9" />
+                    </a>
+                  </Button>
+                ) : (
+                  <Button variant="ghost" size="sm">
+                    <Reply className="size-4" />
+                    Responder
+                  </Button>
+                )}
                 {!googleConnected && (
                   <>
                     <Button variant="ghost" size="sm">
@@ -648,11 +853,14 @@ export default function InboxPage() {
                 <div className="flex flex-col items-center justify-center gap-3 py-8">
                   <p className="text-sm text-muted-foreground">No se pudo cargar el correo.</p>
                   <Button variant="outline" size="sm" onClick={() => {
-                    if (selectedGmailId) {
+                    if (selectedGmailThreadId) {
                       setGmailDetailLoading(true);
                       setGmailDetailError(false);
-                      fetchGmailMessage(selectedGmailId)
-                        .then(setSelectedGmailDetail)
+                      fetchGmailThread(selectedGmailThreadId)
+                        .then((thread) => {
+                          setSelectedThreadMessages(thread.messages);
+                          setSelectedGmailDetail(thread.messages[thread.messages.length - 1] ?? null);
+                        })
                         .catch(() => setGmailDetailError(true))
                         .finally(() => setGmailDetailLoading(false));
                     }
@@ -662,59 +870,70 @@ export default function InboxPage() {
                 </div>
               )}
 
-              {selectedGmailDetail && !gmailDetailLoading && (
-                <div className="rounded-lg border bg-card p-4">
-                  <div className="flex items-start justify-between gap-4 mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#13944C]/10 text-[#13944C] font-semibold">
-                        {(selectedGmailDetail.from || '?').charAt(0)}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-medium truncate">{selectedGmailDetail.from}</p>
-                        <p className="text-xs text-muted-foreground truncate">Para: {selectedGmailDetail.to}</p>
-                      </div>
+              {selectedThreadMessages.length > 0 && !gmailDetailLoading && (
+                <div>
+                  {selectedThreadMessages.map((msg, idx) => (
+                    <div
+                      key={msg.id}
+                      className={cn(
+                        idx > 0 &&
+                          'mt-6 border-t border-dashed border-[#e8ecf0] pt-6 dark:border-gray-700',
+                      )}
+                    >
+                      <GmailMessageItem
+                        msg={msg}
+                        showReply={idx === selectedThreadMessages.length - 1}
+                        onReply={() => setReplyOpen(true)}
+                      />
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs text-muted-foreground">{formatFullDate(selectedGmailDetail.date)}</span>
-                      <a href={`https://mail.google.com/mail/u/0/#inbox/${selectedGmailDetail.id}`} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">
-                        Ver en Gmail
-                      </a>
-                    </div>
-                  </div>
+                  ))}
 
-                  {selectedGmailDetail.body ? (
-                    /<[a-z][\s\S]*>/i.test(selectedGmailDetail.body) ? (
-                      <div className="max-h-[60vh] overflow-y-auto rounded border bg-muted/10 p-3 text-sm leading-relaxed [&_a]:text-[#13944C] [&_a]:underline" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedGmailDetail.body, { ADD_ATTR: ['target'], ADD_TAGS: ['a'] }) }} />
-                    ) : (
-                      <div className="max-h-[60vh] overflow-y-auto whitespace-pre-wrap rounded border bg-muted/10 p-3 text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: (() => {
-                        const text = selectedGmailDetail.body
-                          .replace(/&/g, '&amp;')
-                          .replace(/</g, '&lt;')
-                          .replace(/>/g, '&gt;');
-                        return text.replace(
-                          /(https?:\/\/\S+)/g,
-                          '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:#13944C;text-decoration:underline">$1</a>'
-                        );
-                      })() }} />
-                    )
-                  ) : (
-                    <p className="text-sm text-muted-foreground italic">(Sin contenido)</p>
-                  )}
-
-                  {selectedGmailDetail.attachments?.length > 0 && (
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      {selectedGmailDetail.attachments.map((att: any, i: number) => (
-                        <button
-                          key={i}
-                          type="button"
-                          onClick={() => downloadGmailAttachment(selectedGmailDetail.id, att.attachmentId, att.filename).catch(() => toast.error('Error al descargar el archivo'))}
-                          className="flex items-center gap-2 rounded border bg-muted/50 px-3 py-2 text-sm hover:bg-muted/80 transition-colors cursor-pointer"
+                  {replyOpen && replyTarget && (
+                    <div ref={replyBoxRef} className="mt-6 rounded-xl border border-border bg-background shadow-sm">
+                      <div className="flex items-center gap-2 border-b border-dashed border-[#e8ecf0] px-4 py-3 dark:border-gray-700">
+                        <ReplySvgIcon className="size-4 shrink-0 text-muted-foreground" />
+                        <span className="truncate text-sm text-muted-foreground">
+                          Para:{' '}
+                          <span className="text-foreground">
+                            {extractEmailFromHeader(replyTarget.from)}
+                          </span>
+                        </span>
+                      </div>
+                      <div className="p-3">
+                        <CampaignEmailEditor
+                          initialHtml=""
+                          onChange={setReplyHtml}
+                          resetKey={replyResetKey}
+                          placeholder="Escribe tu respuesta..."
+                          compact
+                          bordered={false}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between gap-2 border-t border-dashed border-[#e8ecf0] px-4 py-3 dark:border-gray-700">
+                        <Button
+                          className="bg-[#13944C] hover:bg-[#0f7a3d]"
+                          disabled={sendingReply}
+                          onClick={() => void handleSendReply()}
                         >
-                          <Paperclip className="size-4" />
-                          {att.filename}
-                          <span className="text-xs text-muted-foreground">({(att.size / 1024).toFixed(1)} KB)</span>
-                        </button>
-                      ))}
+                          {sendingReply ? (
+                            <>
+                              <Loader2 className="mr-2 size-4 animate-spin" />
+                              Enviando...
+                            </>
+                          ) : (
+                            'Enviar'
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-muted-foreground hover:text-foreground"
+                          onClick={handleDiscardReply}
+                          title="Descartar"
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -722,21 +941,21 @@ export default function InboxPage() {
             </div>
           ) : selectedThread ? (
             <div className="p-4">
-              {[...selectedThread.messages].reverse().map((msg) => (
-                <div key={msg.id} className="rounded-lg border bg-card p-4 mb-4">
+              {[...selectedThread.messages].reverse().map((msg, idx) => (
+                <div key={msg.id} className={cn('pb-4', idx > 0 && 'mt-4 border-t pt-4')}>
                   <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-center gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
                       <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#13944C]/10 text-[#13944C] font-semibold">
                         {msg.fromName.charAt(0)}
                       </div>
-                      <div>
-                        <p className="font-medium">{msg.fromName}</p>
-                        <p className="text-xs text-muted-foreground">{msg.from}</p>
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{msg.fromName}</p>
+                        <p className="text-xs text-muted-foreground truncate">{msg.from}</p>
                       </div>
                     </div>
                     <span className="text-xs text-muted-foreground shrink-0">{formatFullDate(msg.timestamp)}</span>
                   </div>
-                  <div className="mt-4 whitespace-pre-wrap text-sm">{msg.body}</div>
+                  <div className="mt-4 max-w-full whitespace-pre-wrap break-words text-sm leading-relaxed">{msg.body}</div>
                 </div>
               ))}
             </div>
@@ -772,48 +991,28 @@ export default function InboxPage() {
               onClick={() => {
                 setSelectedThread(null);
                 setSelectedGmailId(null);
+                setSelectedGmailThreadId(null);
               }}
             >
               <ChevronLeft className="size-4" />
             </Button>
-            <span className="truncate font-semibold">{selectedThread.subject}</span>
+            <span className="truncate font-medium">{selectedThread.subject}</span>
           </div>
           <div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin">
             <div className="space-y-6 p-4">
-              {googleConnected && selectedGmailDetail ? (
-                <div className="rounded-lg border p-4">
-                  <p className="font-medium">{selectedGmailDetail.from}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatFullDate(selectedGmailDetail.date)}
-                  </p>
-                  {(() => {
-                    const safeHtml = DOMPurify.sanitize(selectedGmailDetail.body || '<p>Sin contenido</p>', { ADD_ATTR: ['target'] });
-                    return (
-                      <iframe
-                        sandbox="allow-same-origin"
-                        srcDoc={`
-                          <html>
-                            <head>
-                              <style>
-                                body {
-                                  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-                                  padding: 0; margin: 0; color: #111827; font-size: 14px; line-height: 1.6;
-                                }
-                                img { max-width: 100%; height: auto; }
-                                a { color: #13944C; }
-                                table { max-width: 100%; }
-                                * { max-width: 100%; }
-                              </style>
-                            </head>
-                            <body>${safeHtml}</body>
-                          </html>
-                        `.trim()}
-                        title="Contenido del correo"
-                        className="w-full min-h-[300px] rounded border-0"
-                      />
-                    );
-                  })()}
-                </div>
+              {googleConnected && selectedThreadMessages.length > 0 ? (
+                selectedThreadMessages.map((msg, idx) => (
+                  <div
+                    key={msg.id}
+                    className={cn(idx > 0 && 'border-t border-dashed border-[#e8ecf0] pt-6 dark:border-gray-700')}
+                  >
+                    <GmailMessageItem
+                      msg={msg}
+                      showReply={idx === selectedThreadMessages.length - 1}
+                      onReply={() => setReplyOpen(true)}
+                    />
+                  </div>
+                ))
               ) : (
                 [...selectedThread.messages].reverse().map((msg) => (
                   <div key={msg.id} className="rounded-lg border p-4">

@@ -442,7 +442,7 @@ export interface AuditLog {
 }
 
 /** Email: entidad de correo para inbox CRM */
-export type EmailFolder = 'inbox' | 'sent' | 'drafts' | 'starred' | 'trash';
+export type EmailFolder = 'inbox' | 'sent' | 'drafts' | 'starred' | 'trash' | 'attachments';
 
 export interface EmailAttachment {
   id: string;
@@ -505,6 +505,7 @@ export interface EmailThread {
   relatedEntityType?: RelatedEntityType;
   relatedEntityId?: string;
   relatedEntityName?: string;
+  hasAttachments?: boolean;
 }
 
 /** Campaign: bulk messaging module */

@@ -134,6 +134,7 @@ export async function companyListSummaryPaginated(params?: {
   etapa?: string;
   fuente?: string;
   assignedTo?: string;
+  excludeAssignedTo?: string;
   lastInteraction?: string;
   lastInteractionFrom?: string;
   lastInteractionTo?: string;
@@ -147,6 +148,9 @@ export async function companyListSummaryPaginated(params?: {
   if (params?.etapa?.trim()) sp.set('etapa', params.etapa.trim());
   if (params?.fuente?.trim()) sp.set('fuente', params.fuente.trim());
   if (params?.assignedTo?.trim()) sp.set('assignedTo', params.assignedTo.trim());
+  if (params?.excludeAssignedTo?.trim()) {
+    sp.set('excludeAssignedTo', params.excludeAssignedTo.trim());
+  }
   if (params?.lastInteraction?.trim()) sp.set('lastInteraction', params.lastInteraction.trim());
   if (params?.lastInteractionFrom?.trim()) sp.set('lastInteractionFrom', params.lastInteractionFrom.trim());
   if (params?.lastInteractionTo?.trim()) sp.set('lastInteractionTo', params.lastInteractionTo.trim());
@@ -163,6 +167,7 @@ export async function companySummaryEtapaCounts(params?: {
   tipo?: string;
   fuente?: string;
   assignedTo?: string;
+  excludeAssignedTo?: string;
   lastInteraction?: string;
   lastInteractionFrom?: string;
   lastInteractionTo?: string;
@@ -173,6 +178,9 @@ export async function companySummaryEtapaCounts(params?: {
   if (params?.tipo?.trim()) sp.set('tipo', params.tipo.trim());
   if (params?.fuente?.trim()) sp.set('fuente', params.fuente.trim());
   if (params?.assignedTo?.trim()) sp.set('assignedTo', params.assignedTo.trim());
+  if (params?.excludeAssignedTo?.trim()) {
+    sp.set('excludeAssignedTo', params.excludeAssignedTo.trim());
+  }
   if (params?.lastInteraction?.trim()) sp.set('lastInteraction', params.lastInteraction.trim());
   if (params?.lastInteractionFrom?.trim()) sp.set('lastInteractionFrom', params.lastInteractionFrom.trim());
   if (params?.lastInteractionTo?.trim()) sp.set('lastInteractionTo', params.lastInteractionTo.trim());

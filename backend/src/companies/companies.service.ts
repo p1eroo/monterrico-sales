@@ -537,6 +537,8 @@ export class CompaniesService {
       tipo?: string;
       fuente?: string;
       assignedTo?: string;
+      /** IDs a excluir (sin asignar / otros roles siguen visibles). */
+      excludeAssignedTo?: string;
       /**
        * Filtro por última interacción (actividad) en empresa/contactos/oportunidades.
        * Valores soportados:
@@ -599,21 +601,67 @@ export class CompaniesService {
         ],
       });
     }
-    const advQ =
+    const excludeAdvQ =
       scope && !scope.unrestricted
         ? undefined
-        : opts?.assignedTo?.trim();
-    if (advQ) {
-      andParts.push({
-        OR: [
-          { assignedTo: advQ },
-          {
-            contacts: {
-              some: { contact: { assignedTo: advQ } },
+        : opts?.excludeAssignedTo?.trim();
+    if (excludeAdvQ) {
+      const excludeIds = excludeAdvQ
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+      if (excludeIds.length > 0) {
+        // Complemento del filtro assignedTo: no en la lista ni null, y sin contactos de esos IDs.
+        andParts.push({
+          AND: [
+            {
+              OR: [
+                { assignedTo: null },
+                { assignedTo: { notIn: excludeIds } },
+              ],
             },
-          },
-        ],
-      });
+            {
+              contacts: {
+                none: { contact: { assignedTo: { in: excludeIds } } },
+              },
+            },
+          ],
+        });
+      }
+    } else {
+      const advQ =
+        scope && !scope.unrestricted
+          ? undefined
+          : opts?.assignedTo?.trim();
+      if (advQ) {
+        const assignedTos = advQ
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean);
+        if (assignedTos.length > 1) {
+          andParts.push({
+            OR: [
+              { assignedTo: { in: assignedTos } },
+              {
+                contacts: {
+                  some: { contact: { assignedTo: { in: assignedTos } } },
+                },
+              },
+            ],
+          });
+        } else if (assignedTos.length === 1) {
+          andParts.push({
+            OR: [
+              { assignedTo: assignedTos[0] },
+              {
+                contacts: {
+                  some: { contact: { assignedTo: assignedTos[0] } },
+                },
+              },
+            ],
+          });
+        }
+      }
     }
 
     const li = opts?.lastInteraction?.trim();
@@ -706,6 +754,7 @@ export class CompaniesService {
       tipo?: string;
       fuente?: string;
       assignedTo?: string;
+      excludeAssignedTo?: string;
       lastInteraction?: string;
       lastInteractionFrom?: string;
       lastInteractionTo?: string;
@@ -758,6 +807,7 @@ export class CompaniesService {
       etapa?: string;
       fuente?: string;
       assignedTo?: string;
+      excludeAssignedTo?: string;
       lastInteraction?: string;
       lastInteractionFrom?: string;
       lastInteractionTo?: string;
