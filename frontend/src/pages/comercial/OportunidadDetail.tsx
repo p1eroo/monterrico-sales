@@ -12,7 +12,8 @@ import { fetchActivityLogs, activityLogToTimelineEvent } from '@/lib/activityLog
 import { useActivities } from '@/hooks/useActivities';
 import { useUsers } from '@/hooks/useUsers';
 import { getPrimaryCompany } from '@/lib/utils';
-import type { CompanyRubro, Etapa, TimelineEvent } from '@/types';
+import { taskAssociationsFromActivity } from '@/lib/taskAssociationsFromActivity';
+import type { CompanyRubro, Etapa, TimelineEvent, Activity } from '@/types';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { DetailLayout } from '@/components/shared/DetailLayout';
 import { EntityDetailPageSkeleton } from '@/components/shared/EntityDetailPageSkeleton';
@@ -932,6 +933,21 @@ async function handleCreateNewContact(data: NewContactData) {
 
   const headerSubtitle = linkedContact?.name ?? '';
 
+  const followUpAssociations = useMemo(() => {
+    const contactId =
+      linkedContact?.id && isLikelyContactCuid(linkedContact.id)
+        ? linkedContact.id
+        : opp.contactId;
+    return taskAssociationsFromActivity({
+      contactId,
+      contactName: linkedContact?.name,
+      companyId: primaryCompany?.id,
+      companyName: primaryCompany?.name,
+      opportunityId: opp.id,
+      opportunityTitle: opp.title,
+    } as Activity);
+  }, [opp, linkedContact, primaryCompany]);
+
   return (
     <>
     <DetailLayout
@@ -955,6 +971,7 @@ async function handleCreateNewContact(data: NewContactData) {
               companies={linkedContact?.companies ?? []}
               opportunities={[opp]}
               contactId={opp?.contactId}
+              followUpAssociations={followUpAssociations}
               onTaskCreated={(task) => tasksTabRef.current?.addTask(task as any)}
               onActivityCreated={handleQuickActivityCreated}
               inline

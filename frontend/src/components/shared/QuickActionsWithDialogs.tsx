@@ -119,11 +119,13 @@ const CREATE_ACTIVITY_TRIGGER_CLASS =
 interface QuickActionsWithDialogsProps {
   entityName: string;
   contacts?: Contact[];
-  companies?: { name: string }[];
+  companies?: { name: string; id?: string }[];
   opportunities?: Opportunity[];
   onTaskCreated?: (task: QuickTask) => void;
   onActivityCreated?: (activity: QuickActivityDraft) => void | Promise<void>;
   contactId?: string;
+  /** Vínculos prellenados al crear tarea de seguimiento tras registrar actividad */
+  followUpAssociations?: TaskAssociation[];
   excludeActions?: string[];
   inline?: boolean;
 }
@@ -135,6 +137,7 @@ export function QuickActionsWithDialogs({
   opportunities = [],
   onTaskCreated,
   onActivityCreated,
+  followUpAssociations = [],
   excludeActions = [],
   inline = false,
 }: QuickActionsWithDialogsProps) {
@@ -143,6 +146,8 @@ export function QuickActionsWithDialogs({
 
   const [activityDialogType, setActivityDialogType] = useState<'llamada' | 'reunion' | 'correo' | null>(null);
   const [taskFormOpen, setTaskFormOpen] = useState(false);
+  const [linkedTaskPromptOpen, setLinkedTaskPromptOpen] = useState(false);
+  const [linkedTaskFormOpen, setLinkedTaskFormOpen] = useState(false);
 
   const visibleOptions = MENU_OPTIONS.filter((opt) => !excludeActions.includes(opt.type));
 
@@ -194,6 +199,7 @@ export function QuickActionsWithDialogs({
     };
     onTaskCreated?.(task);
     setTaskFormOpen(false);
+    setLinkedTaskFormOpen(false);
   }
 
   async function handleActivitySave(data: import('./ActivityFormDialog').ActivityFormData) {
@@ -223,6 +229,7 @@ export function QuickActionsWithDialogs({
     setNoteContent('');
     setActivityDialogType(null);
     setActiveDialog(null);
+    setLinkedTaskPromptOpen(true);
   }
 
   return (
@@ -339,6 +346,31 @@ export function QuickActionsWithDialogs({
         />
       )}
 
+      <Dialog open={linkedTaskPromptOpen} onOpenChange={setLinkedTaskPromptOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Crear tarea vinculada</DialogTitle>
+            <DialogDescription>
+              ¿Deseas crear una nueva tarea vinculada a esta actividad?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-row gap-2 sm:justify-end">
+            <Button variant="outline" onClick={() => setLinkedTaskPromptOpen(false)}>
+              No, gracias
+            </Button>
+            <Button
+              className="bg-[#13944C] hover:bg-[#0f7a3d]"
+              onClick={() => {
+                setLinkedTaskPromptOpen(false);
+                setLinkedTaskFormOpen(true);
+              }}
+            >
+              Sí, crear tarea
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <TaskFormDialog
         open={taskFormOpen}
         onOpenChange={setTaskFormOpen}
@@ -347,6 +379,18 @@ export function QuickActionsWithDialogs({
         contacts={contacts}
         companies={companies}
         opportunities={opportunities}
+        onSave={handleTaskFormSave}
+      />
+
+      <TaskFormDialog
+        open={linkedTaskFormOpen}
+        onOpenChange={setLinkedTaskFormOpen}
+        title="Nueva Tarea Vinculada"
+        description="Crea una tarea para continuar con el proceso."
+        contacts={contacts}
+        companies={companies}
+        opportunities={opportunities}
+        defaultAssociations={followUpAssociations.length > 0 ? followUpAssociations : undefined}
         onSave={handleTaskFormSave}
       />
     </>

@@ -33,6 +33,7 @@ import { Pagination } from '@/components/shared/Pagination';
 import { PriorityBadge } from '@/components/shared/PriorityBadge';
 import { GhostTableSkeleton } from '@/components/shared/GhostTableSkeleton';
 import { GlassCard } from '@/components/shared/GlassCard';
+import { Card } from '@/components/ui/card';
 import {
   NewOpportunityFormDialog,
   buildOpportunityCreateBody,
@@ -660,7 +661,7 @@ export default function OpportunitiesPage() {
       </PageHeader>
 
       {/* Stats */}
-      <div className="flex flex-col sm:flex-row rounded-[14px] border border-border/30 bg-white/30 dark:bg-gray-900/30">
+      <Card className="flex flex-col overflow-hidden py-0 sm:flex-row">
         <div className="flex-1 flex items-center justify-center gap-3 py-4 px-5 relative">
           <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-transparent text-emerald-600 border-2 border-emerald-500">
             <BlackSuitcaseSvgIcon className="size-7" />
@@ -705,7 +706,7 @@ export default function OpportunitiesPage() {
             </div>
           </div>
         </div>
-      </div>
+      </Card>
 
       <GlassCard>
         {/* Filter bar */}
@@ -1015,7 +1016,7 @@ export default function OpportunitiesPage() {
         ) : null}
 
         {totalFiltered > 0 && (
-          <div className="h-14 bg-white/30 dark:bg-gray-900/30 px-5 flex items-center border-t border-dashed border-[#e8ecf0] dark:border-gray-700">
+          <div className="flex h-14 items-center border-t border-dashed border-[#e8ecf0] bg-card/30 px-5 dark:border-gray-700">
             <Pagination
               page={page}
               totalPages={totalPages}

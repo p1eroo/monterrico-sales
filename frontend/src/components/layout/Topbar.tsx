@@ -1,16 +1,9 @@
-import { useLocation, useNavigate } from "react-router-dom";
-import { User, Settings, LogOut, Car, LayoutDashboard } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { User, Settings, LogOut } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,55 +13,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useAppStore } from "@/store";
-import { initialsFromName } from "@/lib/utils";
 import { AvatarImage } from "@/lib/avatar";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { AssistantLauncherButton } from "@/components/assistant/AiAssistantDrawer";
 import FlotaNotificationBell from "@/components/flota/FlotaNotificationBell";
-
-const routeLabels: Record<string, string> = {
-  "/dashboard": "Dashboard",
-  "/contactos": "Contactos",
-  "/empresas": "Empresas",
-  "/pipeline": "Pipeline",
-  "/tareas": "Tareas",
-  "/calendario": "Calendario",
-  "/inbox": "Correo",
-  "/campaigns": "Masivo",
-  "/opportunities": "Oportunidades",
-  "/clients": "Clientes",
-  "/reports": "Reportes",
-  "/team": "Equipo",
-  "/users": "Usuarios y Roles",
-  "/audit": "Auditoría",
-  "/profile": "Mi perfil",
-  "/settings": "Configuración",
-  "/agentes-ia": "Agentes IA",
-  "/integraciones/apollo": "Apollo",
-};
+import { AreaSwitcher } from "@/components/layout/AreaSwitcher";
 
 export function Topbar() {
-  const location = useLocation();
   const navigate = useNavigate();
-  const { currentUser, logout, area, setArea } = useAppStore();
-  const isAdmin =
-    currentUser.role === "Administrador" || currentUser.role === "admin";
-
-  const currentRoute = Object.keys(routeLabels).find((route) =>
-    location.pathname.startsWith(route),
-  );
-  const pageTitle = currentRoute ? routeLabels[currentRoute] : "Página";
-
-  const initials = initialsFromName(currentUser.name);
+  const { currentUser, logout, area } = useAppStore();
 
   const handleLogout = () => {
     logout();
@@ -83,19 +38,9 @@ export function Topbar() {
         className="h-5 bg-border/80 md:hidden"
       />
 
-      <Breadcrumb className="hidden min-w-0 flex-1 text-base sm:flex">
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbPage className="text-muted-foreground">CRM</BreadcrumbPage>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator>/</BreadcrumbSeparator>
-          <BreadcrumbItem>
-            <BreadcrumbPage className="text-[#13944C] font-medium">
-              {pageTitle}
-            </BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
+      <div className="hidden min-w-0 flex-1 items-center sm:flex">
+        <AreaSwitcher />
+      </div>
 
       <div className="ml-auto flex items-center gap-3">
         {area === "comercial" && (
@@ -108,10 +53,10 @@ export function Topbar() {
 
         <ThemeToggle />
 
-          <Separator
-            orientation="vertical"
-            className="-mx-0.5 h-5 bg-border/80"
-          />
+        <Separator
+          orientation="vertical"
+          className="-mx-0.5 h-5 bg-border/80"
+        />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

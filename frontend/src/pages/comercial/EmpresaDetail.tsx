@@ -16,7 +16,7 @@ import {
 import { fetchActivityLogs, activityLogToTimelineEvent } from '@/lib/activityLogsApi';
 import { useUsers } from '@/hooks/useUsers';
 import { useActivities } from '@/hooks/useActivities';
-import type { Etapa, CompanyRubro, CompanyTipo, ContactSource, TimelineEvent, Contact } from '@/types';
+import type { Etapa, CompanyRubro, CompanyTipo, ContactSource, TimelineEvent, Contact, Activity } from '@/types';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { EntityDetailPageSkeleton } from '@/components/shared/EntityDetailPageSkeleton';
 import { DetailLayout } from '@/components/shared/DetailLayout';
@@ -53,6 +53,7 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { formatCurrency, formatDate } from '@/lib/formatters';
+import { taskAssociationsFromActivity } from '@/lib/taskAssociationsFromActivity';
 import { ENTITY_DETAIL_SECTION_TAB_OPTIONS } from '@/lib/entityDetailSectionTabs';
 import { api } from '@/lib/api';
 import { companyDetailHref, contactDetailHref, isEntityDetailApiParam } from '@/lib/detailRoutes';
@@ -1252,6 +1253,19 @@ const displayLastInteraction = companyTimelineEvents[0]?.date
   ?? companyActivities[0]?.dueDate
   ?? null;
 
+const followUpAssociations = useMemo(() => {
+  const contactId =
+    firstContact?.id && isLikelyContactCuid(firstContact.id) ? firstContact.id : undefined;
+  return taskAssociationsFromActivity({
+    contactId,
+    contactName: firstContact?.name,
+    companyId: resolvedCompanyId,
+    companyName: companyData?.name ?? companyName,
+    opportunityId: companyOpportunities[0]?.id,
+    opportunityTitle: companyOpportunities[0]?.title,
+  } as Activity);
+}, [firstContact, resolvedCompanyId, companyData, companyName, companyOpportunities]);
+
 return (
     <>
     <DetailLayout
@@ -1276,6 +1290,7 @@ return (
               companies={linkedCompanies}
               opportunities={companyOpportunities}
               contactId={firstContact?.id}
+              followUpAssociations={followUpAssociations}
               onTaskCreated={(task) => tasksTabRef.current?.addTask(task as any)}
               onActivityCreated={handleQuickActivityCreated}
               inline

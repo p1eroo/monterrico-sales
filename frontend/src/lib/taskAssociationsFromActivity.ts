@@ -1,4 +1,4 @@
-import type { Activity, TaskAssociation } from '@/types';
+import type { Activity, Contact, Opportunity, TaskAssociation } from '@/types';
 
 /**
  * Reconstruye asociaciones del formulario de tarea a partir de la actividad
@@ -36,6 +36,46 @@ export function taskAssociationsFromActivity(a: Activity): TaskAssociation[] {
       type: 'negocio',
       id: a.opportunityId,
       name: a.opportunityTitle?.trim() || 'Oportunidad',
+    });
+  }
+  return out;
+}
+
+/** Vínculos para tarea de seguimiento tras registrar actividad en calendario / acciones rápidas. */
+export function taskAssociationsFromEntityCtx(
+  ctx: {
+    contactId?: string;
+    companyId?: string;
+    opportunityId?: string;
+  } | null | undefined,
+  contacts: Contact[],
+  companies: { name: string; id?: string }[],
+  opportunities: Opportunity[],
+): TaskAssociation[] {
+  if (!ctx) return [];
+  const out: TaskAssociation[] = [];
+  if (ctx.contactId) {
+    const c = contacts.find((x) => x.id === ctx.contactId);
+    out.push({
+      type: 'contacto',
+      id: ctx.contactId,
+      name: c?.name ?? 'Contacto',
+    });
+  }
+  if (ctx.companyId) {
+    const c = companies.find((x) => x.id === ctx.companyId);
+    out.push({
+      type: 'empresa',
+      id: ctx.companyId,
+      name: c?.name ?? 'Empresa',
+    });
+  }
+  if (ctx.opportunityId) {
+    const o = opportunities.find((x) => x.id === ctx.opportunityId);
+    out.push({
+      type: 'negocio',
+      id: ctx.opportunityId,
+      name: o?.title ?? 'Oportunidad',
     });
   }
   return out;

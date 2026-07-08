@@ -989,6 +989,38 @@ function ultimaObs(obs: string | null | undefined): string {
   return entries[0].replace(/^\[.+?\]\s*/, '');
 }
 
+const PROSPECTO_EDIT_FIELDS = [
+  'nombreCompleto', 'celular', 'movil', 'edad', 'distrito',
+  'modalidad', 'placa', 'anioVehiculo', 'redSocial', 'observaciones',
+] as const;
+
+function prospectoToEditData(prospecto: FlotaProspectoDetalle, operadores: OperadorUser[]): Record<string, string> {
+  const data: Record<string, string> = {};
+  for (const k of PROSPECTO_EDIT_FIELDS) {
+    const v = prospecto[k as keyof FlotaProspectoDetalle];
+    if (v == null) continue;
+    data[k] = k === 'observaciones' ? ultimaObs(String(v)) : String(v);
+  }
+  if (prospecto.operador) {
+    data.operador = getOperatorDisplayName(prospecto.operador, operadores);
+  }
+  return data;
+}
+
+function buildProspectoPatchBody(editData: Record<string, string>): Record<string, unknown> {
+  const body: Record<string, unknown> = {};
+  for (const k of PROSPECTO_EDIT_FIELDS) {
+    const v = editData[k];
+    if (k === 'edad' || k === 'anioVehiculo') {
+      const num = parseInt(v ?? '', 10);
+      if (!isNaN(num)) body[k] = num;
+    } else if (v?.trim()) {
+      body[k] = v.trim();
+    }
+  }
+  return body;
+}
+
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between rounded-md bg-muted/30 px-3 py-2">
@@ -2027,11 +2059,7 @@ export function ChatwootChatPanel({
                 <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Prospecto</h4>
                 {prospecto && (
                   <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => {
-                    const data: Record<string, string> = {};
-                    for (const [k, v] of Object.entries(prospecto)) {
-                      if (v != null) data[k] = k === 'observaciones' ? ultimaObs(String(v)) : String(v);
-                    }
-                    setEditData(data);
+                    setEditData(prospectoToEditData(prospecto, operadores));
                     setEditProspectoOpen(true);
                   }}>
                     <Edit2 className="h-3 w-3" />
@@ -2344,22 +2372,17 @@ export function ChatwootChatPanel({
               if (!prospecto?.id) return;
               setUpdating(true);
               try {
-                const body: Record<string, unknown> = {};
-                for (const [k, v] of Object.entries(editData)) {
-                  if (v?.trim()) body[k] = v.trim();
-                }
-                if (body.edad) body.edad = parseInt(body.edad as string, 10);
-                if (body.anioVehiculo) body.anioVehiculo = parseInt(body.anioVehiculo as string, 10);
+                const body = buildProspectoPatchBody(editData);
+                const nombreCambio = typeof body.nombreCompleto === 'string'
+                  && body.nombreCompleto !== prospecto.nombreCompleto;
                 await api(`/flota-prospectos/${prospecto.id}`, { method: 'PATCH', body: JSON.stringify(body) });
-                // Recargar prospecto
                 const cleaned = prospecto.celular?.replace(/\D/g, '');
                 if (cleaned) {
                   const res = await flotaProspectosByPhone(cleaned);
                   if (res.found && res.prospecto) setProspecto(res.prospecto);
                 }
-                // Si cambió el nombre, actualizar en Chatwoot
-                if (body.nombreCompleto && sender?.id) {
-                  updateContact(sender.id, { name: String(body.nombreCompleto) }).catch(() => {});
+                if (nombreCambio && sender?.id) {
+                  await updateContact(sender.id, { name: String(body.nombreCompleto) });
                   onConversationsUpdated((prev) => prev.map((c) =>
                     c.id === conversationId ? { ...c, meta: { ...c.meta, sender: { ...c.meta.sender, name: String(body.nombreCompleto) } } } : c,
                   ));

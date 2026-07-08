@@ -10,7 +10,7 @@ import {
   Building2, Globe, DollarSign, CalendarDays, MapPin,
   FileArchive, Loader2, Plus, ChevronLeft, ChevronRight,
 } from 'lucide-react';
-import type { Contact, Etapa, CompanyRubro, CompanyTipo, TimelineEvent } from '@/types';
+import type { Contact, Etapa, CompanyRubro, CompanyTipo, TimelineEvent, Activity } from '@/types';
 import {
   contactSourceLabels, etapaLabels,
   companyRubroLabels,
@@ -23,6 +23,7 @@ import { useCRMStore } from '@/store/crmStore';
 import { useAppStore } from '@/store';
 import { canReassignCommercialAdvisor } from '@/data/rbac';
 import { getPrimaryCompany } from '@/lib/utils';
+import { taskAssociationsFromActivity } from '@/lib/taskAssociationsFromActivity';
 
 import { EmptyState } from '@/components/shared/EmptyState';
 import { LinkExistingDialog, type LinkExistingItem } from '@/components/shared/LinkExistingDialog';
@@ -905,6 +906,20 @@ export default function ContactoDetailPage() {
         icon: <DollarSign className="size-4" />,
       }));
 
+  const followUpAssociations = useMemo(() => {
+    if (!contact || !isLikelyContactCuid(contact.id)) return [];
+    const primaryCompany = getPrimaryCompany(contact);
+    const primaryOpp = contactOpportunities[0];
+    return taskAssociationsFromActivity({
+      contactId: contact.id,
+      contactName: contact.name,
+      companyId: primaryCompany?.id,
+      companyName: primaryCompany?.name,
+      opportunityId: primaryOpp?.id,
+      opportunityTitle: primaryOpp?.title,
+    } as Activity);
+  }, [contact, contactOpportunities]);
+
   return (
     <>
     <DetailLayout
@@ -928,6 +943,7 @@ export default function ContactoDetailPage() {
               companies={contact.companies ?? []}
               opportunities={contactOpportunities}
               contactId={contact.id}
+              followUpAssociations={followUpAssociations}
               onTaskCreated={(task) => tasksTabRef.current?.addTask(task as any)}
               onActivityCreated={handleQuickActivityCreated}
               excludeActions={['archivo']}

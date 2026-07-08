@@ -105,7 +105,7 @@ export function GoalCard({
   const percent = goal > 0 ? Math.min(100, Math.round((sales / goal) * 100)) : 0;
 
   return (
-    <Card className="relative overflow-hidden border-primary/20 py-0">
+    <Card className="relative overflow-hidden py-0">
       <CardContent className="px-4 py-3">
         <div className="flex flex-col items-center gap-2">
           <p className="self-start text-sm font-medium text-muted-foreground">

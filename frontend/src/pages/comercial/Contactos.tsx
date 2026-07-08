@@ -1458,7 +1458,7 @@ export default function ContactosPage() {
         )}
 
         {totalContacts > 0 && (
-          <div className="h-14 bg-white/30 dark:bg-gray-900/30 px-5 flex items-center border-t border-dashed border-[#e8ecf0] dark:border-gray-700">
+          <div className="flex h-14 items-center border-t border-dashed border-[#e8ecf0] bg-card/30 px-5 dark:border-gray-700">
             <Pagination
               page={page}
               totalPages={totalPages}

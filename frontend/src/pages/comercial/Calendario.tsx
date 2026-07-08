@@ -31,8 +31,9 @@ import { cn } from '@/lib/utils';
 import { fetchGoogleEvents, type GoogleEvent } from '@/lib/calendarApi';
 import { useAppStore } from '@/store';
 import { batchCheckCompanies } from '@/lib/apolloApi';
-import type { CalendarEvent, Contact, Opportunity, TaskKind } from '@/types';
+import type { CalendarEvent, Contact, Opportunity, TaskKind, TaskAssociation } from '@/types';
 import { TASK_KINDS } from '@/types';
+import { taskAssociationsFromEntityCtx } from '@/lib/taskAssociationsFromActivity';
 
 const CALENDAR_TYPE_FILTER_MODALITIES = ['llamada', 'reunion', 'correo', 'whatsapp'] as const;
 
@@ -167,6 +168,10 @@ export default function CalendarioPage() {
     opportunityId?: string;
   } | null>(null);
   const [taskFormOpen, setTaskFormOpen] = useState(false);
+  const [linkedTaskPromptOpen, setLinkedTaskPromptOpen] = useState(false);
+  const [taskFormDefaultAssociations, setTaskFormDefaultAssociations] = useState<
+    TaskAssociation[] | undefined
+  >();
 
   const [quickCreateMenu, setQuickCreateMenu] = useState<{
     day: Date;
@@ -345,6 +350,7 @@ export default function CalendarioPage() {
     kind: 'llamada' | 'reunion' | 'correo' | 'whatsapp' | 'tarea',
   ) {
     if (kind === 'tarea') {
+      setTaskFormDefaultAssociations(undefined);
       setTaskFormOpen(true);
       return;
     }
@@ -384,9 +390,14 @@ export default function CalendarioPage() {
         activityEntityCtx,
         defaultAssigneeId,
       );
+      const ctx = activityEntityCtx;
       await createActivity(payload);
       setActivityFormKind(null);
       setActivityEntityCtx(null);
+      setTaskFormDefaultAssociations(
+        taskAssociationsFromEntityCtx(ctx, taskContacts, taskCompanies, taskOpportunities),
+      );
+      setLinkedTaskPromptOpen(true);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error al crear la actividad');
       throw e;
@@ -913,10 +924,42 @@ export default function CalendarioPage() {
         />
       )}
 
-      <TaskFormDialog open={taskFormOpen} onOpenChange={setTaskFormOpen} title="Nueva tarea"
-        description="Crea una tarea vinculada a contacto, empresa u oportunidad."
+      <Dialog open={linkedTaskPromptOpen} onOpenChange={setLinkedTaskPromptOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Crear tarea vinculada</DialogTitle>
+            <DialogDescription>
+              ¿Deseas crear una nueva tarea vinculada a esta actividad?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-row gap-2 sm:justify-end">
+            <Button variant="outline" onClick={() => setLinkedTaskPromptOpen(false)}>
+              No, gracias
+            </Button>
+            <Button
+              className="bg-[#13944C] hover:bg-[#0f7a3d]"
+              onClick={() => {
+                setLinkedTaskPromptOpen(false);
+                setTaskFormOpen(true);
+              }}
+            >
+              Sí, crear tarea
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <TaskFormDialog open={taskFormOpen} onOpenChange={(open) => {
+          setTaskFormOpen(open);
+          if (!open) setTaskFormDefaultAssociations(undefined);
+        }} title={taskFormDefaultAssociations?.length ? 'Nueva Tarea Vinculada' : 'Nueva tarea'}
+        description={taskFormDefaultAssociations?.length
+          ? 'Crea una tarea para continuar con el proceso.'
+          : 'Crea una tarea vinculada a contacto, empresa u oportunidad.'}
         contacts={taskContacts} companies={taskCompanies} opportunities={taskOpportunities}
-        defaultAssigneeId={defaultAssigneeId} defaultStartDate={format(currentDate, 'yyyy-MM-dd')} onSave={handleCalendarTaskFormSave}
+        defaultAssigneeId={defaultAssigneeId} defaultStartDate={format(currentDate, 'yyyy-MM-dd')}
+        defaultAssociations={taskFormDefaultAssociations}
+        onSave={handleCalendarTaskFormSave}
       />
 
       <EventDetailModal event={selectedEvent} open={detailOpen} onOpenChange={setDetailOpen}
