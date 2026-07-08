@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ChatwootClient } from './chatwoot.client';
 import { PrismaService } from '../prisma/prisma.service';
+import { ChatwootOperadorSyncService } from './chatwoot-operador-sync.service';
 import type {
   ChatwootConversation,
   ChatwootConversationListItem,
@@ -17,24 +18,131 @@ export class ChatwootService {
   constructor(
     private readonly client: ChatwootClient,
     private readonly prisma: PrismaService,
+    private readonly operadorSync: ChatwootOperadorSyncService,
   ) {}
 
   getInboxId(): number {
     return this.client.getConfig().inboxId;
   }
 
+  private readonly convPageSize = 25;
+  private readonly maxScanPages = 40;
+
   async listConversations(params?: {
     status?: string;
     q?: string;
     inbox_id?: number;
     page?: number;
+    sort_by?: 'latest' | 'unread' | 'last_activity_at_desc';
   }): Promise<ChatwootConversationListItem[]> {
     return this.client.listConversations({
       inbox_id: params?.inbox_id ?? this.client.getConfig().inboxId,
       status: params?.status,
       q: params?.q,
       page: params?.page,
+      sort_by: params?.sort_by,
     });
+  }
+
+  /** Escanea páginas de Chatwoot y devuelve solo conversaciones con mensajes no leídos. */
+  async listUnreadConversations(): Promise<ChatwootConversationListItem[]> {
+    const inboxId = this.client.getConfig().inboxId;
+    const unread: ChatwootConversationListItem[] = [];
+    const seen = new Set<number>();
+
+    for (let page = 1; page <= this.maxScanPages; page++) {
+      const batch = await this.client.listConversations({
+        inbox_id: inboxId,
+        page,
+        sort_by: 'unread',
+      });
+      if (batch.length === 0) break;
+      for (const c of batch) {
+        if ((c.unread_count ?? 0) > 0 && !seen.has(c.id)) {
+          seen.add(c.id);
+          unread.push(c);
+        }
+      }
+      if (batch.length < this.convPageSize) break;
+    }
+
+    return unread.sort((a, b) => (b.last_activity_at ?? 0) - (a.last_activity_at ?? 0));
+  }
+
+  async getUnreadSummary(): Promise<{ totalUnread: number; conversationCount: number }> {
+    const unread = await this.listUnreadConversations();
+    return {
+      totalUnread: unread.reduce((sum, c) => sum + (c.unread_count ?? 0), 0),
+      conversationCount: unread.length,
+    };
+  }
+
+  /** Búsqueda global por teléfono, nombre o contenido — no limitada a páginas cargadas. */
+  async searchConversations(query: string): Promise<ChatwootConversationListItem[]> {
+    const q = query.trim();
+    if (!q) return [];
+
+    const inboxId = this.client.getConfig().inboxId;
+    const results: ChatwootConversationListItem[] = [];
+    const seenIds = new Set<number>();
+
+    const addConv = (c: ChatwootConversationListItem | ChatwootConversation | null | undefined) => {
+      if (!c?.id || seenIds.has(c.id)) return;
+      if (c.inbox_id && c.inbox_id !== inboxId) return;
+      seenIds.add(c.id);
+      results.push(c as ChatwootConversationListItem);
+    };
+
+    try {
+      const fromSearch = await this.client.searchConversations(q);
+      fromSearch.forEach(addConv);
+    } catch (e) {
+      this.logger.warn(`search/conversations falló: ${e instanceof Error ? e.message : e}`);
+    }
+
+    try {
+      const contacts = await this.client.listContacts({ q });
+      for (const contact of contacts.slice(0, 15)) {
+        const convs = await this.client.listContactConversations(contact.id);
+        convs.forEach(addConv);
+      }
+    } catch (e) {
+      this.logger.warn(`contacts/search falló: ${e instanceof Error ? e.message : e}`);
+    }
+
+    const digits = q.replace(/\D/g, '');
+    if (digits.length >= 7) {
+      const suffix = digits.slice(-9);
+      const prospecto = await this.prisma.flotaProspecto.findFirst({
+        where: {
+          OR: [
+            { celular: { endsWith: suffix } },
+            { movil: { endsWith: suffix } },
+            { celular: { contains: digits } },
+            { movil: { contains: digits } },
+          ],
+          chatwootConversationId: { not: null },
+        },
+        select: { chatwootConversationId: true },
+      });
+      if (prospecto?.chatwootConversationId) {
+        try {
+          const conv = await this.client.getConversation(prospecto.chatwootConversationId);
+          addConv(conv);
+        } catch { /* ignorar */ }
+      }
+    }
+
+    const qLower = q.toLowerCase();
+    if (results.length === 0) {
+      try {
+        const fromMessages = await this.client.listConversations({ q, page: 1, inbox_id: inboxId });
+        fromMessages.forEach(addConv);
+      } catch { /* ignorar */ }
+    }
+
+    return results
+      .sort((a, b) => (b.last_activity_at ?? 0) - (a.last_activity_at ?? 0));
   }
 
   async listMessages(
@@ -53,18 +161,40 @@ export class ChatwootService {
       language: string;
       processed_params: Record<string, unknown>;
     },
+    sender?: { userId: string; name: string },
   ): Promise<ChatwootMessage> {
-    return this.client.sendMessage(conversationId, content, 'outgoing', templateParams);
+    const message = await this.client.sendMessage(conversationId, content, 'outgoing', templateParams);
+    if (sender) {
+      const prospecto = await this.operadorSync.findProspectoForConversation(conversationId);
+      if (prospecto) {
+        await this.operadorSync.assignOnFirstOutbound({
+          prospectoId: prospecto.id,
+          conversationId,
+          senderUserId: sender.userId,
+          senderUserName: sender.name,
+        });
+      }
+    }
+    return message;
   }
 
   async updateConversation(
     conversationId: number,
     data: { status?: string; assignee_id?: number },
   ) {
+    let result;
     if (data.assignee_id !== undefined) {
-      return this.client.assignConversation(conversationId, data.assignee_id);
+      result = await this.client.assignConversation(conversationId, data.assignee_id);
+      await this.operadorSync.syncOperadorFromConversation(
+        conversationId,
+        undefined,
+        undefined,
+        data.assignee_id,
+      );
+    } else {
+      result = await this.client.updateConversation(conversationId, data);
     }
-    return this.client.updateConversation(conversationId, data);
+    return result;
   }
 
   async searchContacts(query: string): Promise<ChatwootContact[]> {
@@ -240,19 +370,37 @@ export class ChatwootService {
       this.logger.log(`Conversación creada: id=${conversation.id}`);
     }
 
-    // 3. Asignar agente de Chatwoot según el operador del prospecto
-    if (conversation && data.operador) {
+    // Vincular prospecto con la conversación y sincronizar operador ↔ agente
+    if (conversation) {
       try {
-        const agents = await this.client.listAgents();
-        const agent = agents.find(
-          (a) => a.name.toLowerCase().trim() === data.operador!.toLowerCase().trim(),
-        );
-        if (agent) {
-          await this.client.assignConversation(conversation.id, agent.id);
-          this.logger.log(`Conversación asignada a agente: ${agent.name} (id=${agent.id})`);
+        const prospecto = await this.prisma.flotaProspecto.findFirst({
+          where: {
+            OR: [
+              { celular: { endsWith: cleanPhone.slice(-9) } },
+              { movil: { endsWith: cleanPhone.slice(-9) } },
+            ],
+          },
+        });
+        if (prospecto) {
+          await this.prisma.flotaProspecto.update({
+            where: { id: prospecto.id },
+            data: {
+              chatwootConversationId: conversation.id,
+              chatwootContactId: contactId ?? prospecto.chatwootContactId,
+            },
+          });
+          if (data.operador) {
+            await this.operadorSync.syncAssigneeFromOperador(prospecto.id, data.operador);
+          }
+        } else if (data.operador) {
+          const agent = await this.operadorSync.findAgentForOperador(data.operador);
+          if (agent) {
+            await this.client.assignConversation(conversation.id, agent.id);
+            this.logger.log(`Conversación asignada a agente: ${agent.name} (id=${agent.id})`);
+          }
         }
       } catch (e) {
-        this.logger.warn(`Error asignando agente: ${e instanceof Error ? e.message : e}`);
+        this.logger.warn(`Error sincronizando operador/agente: ${e instanceof Error ? e.message : e}`);
       }
     }
 
@@ -279,5 +427,9 @@ export class ChatwootService {
 
   async listTemplates() {
     return this.client.listTemplates();
+  }
+
+  async syncOperadorFromConversation(conversationId: number, phone?: string) {
+    return this.operadorSync.syncOperadorFromConversation(conversationId, phone);
   }
 }

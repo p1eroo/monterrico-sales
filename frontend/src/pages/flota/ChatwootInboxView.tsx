@@ -77,6 +77,7 @@ import {
   fetchMessages,
   sendMessage,
   updateConversation,
+  syncOperadorFromChatwoot,
   updateContact,
   fetchConversation,
   fetchAgents,
@@ -86,6 +87,7 @@ import {
   sendTemplateToConversation,
   fetchChatwootTemplates,
   fetchChatwootContacts,
+  searchChatwootConversations,
   type ChatwootAgent,
 } from '@/lib/chatwootApi';
 import { fetchOperadores, getOperatorDisplayName, flotaProspectosByPhone, flotaProspectoCreate, type OperadorUser, type FlotaProspectoDetalle } from '@/lib/flotaProspectosApi';
@@ -99,6 +101,11 @@ export default function ChatwootInboxView() {
   const [conversations, setConversations] = useState<ChatwootConversation[]>([]);
   const [activeId, setActiveId] = useState<number | null>(null);
   const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<ChatwootConversation[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [unreadList, setUnreadList] = useState<ChatwootConversation[]>([]);
+  const [loadingUnread, setLoadingUnread] = useState(false);
   const [loading, setLoading] = useState(true);
   const [messagesCache, setMessagesCache] = useState<Record<number, ChatwootMessage[]>>({});
   const [filter, setFilter] = useState<'all' | 'unread' | 'open' | 'resolved' | 'contacts'>('all');
@@ -136,6 +143,54 @@ export default function ChatwootInboxView() {
       markConversationAsRead(activeId).catch(() => {});
     }
   }, [activeId]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(query.trim()), 350);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  // Búsqueda global en servidor (teléfono, nombre, etc.)
+  useEffect(() => {
+    if (filter === 'contacts' || !debouncedQuery) {
+      setSearchResults([]);
+      setSearching(false);
+      return;
+    }
+    let cancelled = false;
+    setSearching(true);
+    searchChatwootConversations(debouncedQuery)
+      .then((items) => {
+        if (!cancelled) setSearchResults(items);
+      })
+      .catch(() => {
+        if (!cancelled) setSearchResults([]);
+      })
+      .finally(() => {
+        if (!cancelled) setSearching(false);
+      });
+    return () => { cancelled = true; };
+  }, [debouncedQuery, filter]);
+
+  // No leídos: cargar desde servidor (todas las páginas)
+  useEffect(() => {
+    if (filter !== 'unread' || debouncedQuery) {
+      setUnreadList([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingUnread(true);
+    fetchConversations({ unread_only: true })
+      .then((items) => {
+        if (!cancelled) setUnreadList(items);
+      })
+      .catch(() => {
+        if (!cancelled) setUnreadList([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingUnread(false);
+      });
+    return () => { cancelled = true; };
+  }, [filter, debouncedQuery]);
 
   useEffect(() => {
     void loadConversations();
@@ -242,10 +297,10 @@ export default function ChatwootInboxView() {
     }
   }
 
-  // Scroll infinito: cargar más conversaciones al llegar al final
+  // Scroll infinito: cargar más conversaciones al llegar al final (solo listado normal)
   useEffect(() => {
     const el = scrollContainerRef.current;
-    if (!el) return;
+    if (!el || debouncedQuery || filter === 'unread') return;
     const onScroll = () => {
       if (loadingConvRef.current || !hasMoreConv) return;
       if (el.scrollHeight - el.scrollTop - el.clientHeight < 300) {
@@ -267,7 +322,7 @@ export default function ChatwootInboxView() {
     };
     el.addEventListener('scroll', onScroll);
     return () => el.removeEventListener('scroll', onScroll);
-  }, [hasMoreConv, conversations.length]);
+  }, [hasMoreConv, conversations.length, debouncedQuery, filter]);
 
   // Efecto para cargar contactos
   useEffect(() => {
@@ -306,22 +361,20 @@ export default function ChatwootInboxView() {
     return () => el.removeEventListener('scroll', onScroll);
   }, [filter, hasMoreContacts, query, contacts.length]);
 
-  const queryLower = useMemo(() => query.toLowerCase(), [query]);
+  const allConversations = useMemo(() => {
+    const map = new Map<number, ChatwootConversation>();
+    for (const c of conversations) map.set(c.id, c);
+    for (const c of searchResults) map.set(c.id, c);
+    for (const c of unreadList) map.set(c.id, c);
+    return Array.from(map.values());
+  }, [conversations, searchResults, unreadList]);
 
   const filtered = useMemo(() => {
     if (filter === 'contacts') return [];
-    return conversations
-      .filter((c) => {
-        if (filter === 'unread') return (c.unread_count ?? 0) > 0;
-        if (filter === 'open') return c.status === 'open';
-        if (filter === 'resolved') return c.status === 'resolved';
-        return true;
-      })
-      .filter((c) =>
-        c.meta.sender.name.toLowerCase().includes(queryLower) ||
-        c.meta.sender.phone_number?.includes(query),
-      );
-  }, [conversations, filter, query, queryLower]);
+    if (debouncedQuery) return searchResults;
+    if (filter === 'unread') return unreadList;
+    return conversations;
+  }, [conversations, filter, debouncedQuery, searchResults, unreadList]);
 
   const virtualizer = useVirtualizer({
     count: filtered.length,
@@ -412,7 +465,7 @@ export default function ChatwootInboxView() {
             </div>
           </div>
           <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto scrollbar-thin pt-1.5">
-            {loading && filter !== 'contacts' ? (
+            {((loading && filter !== 'contacts') || searching || (filter === 'unread' && loadingUnread && !debouncedQuery)) ? (
               <div className="flex items-center justify-center py-16">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
@@ -428,7 +481,7 @@ export default function ChatwootInboxView() {
               ) : (
                 <div className="divide-y divide-border">
                   {contacts.map((c) => {
-                    const existingConv = conversations.find((conv) =>
+                    const existingConv = allConversations.find((conv) =>
                       conv.meta.sender.phone_number?.replace(/\D/g, '') === c.phone_number?.replace(/\D/g, ''),
                     );
                     return (
@@ -501,7 +554,7 @@ export default function ChatwootInboxView() {
           <ChatwootChatPanel
             key={activeId}
             conversationId={activeId}
-            conversations={conversations}
+            conversations={allConversations}
             onConversationsUpdated={setConversations}
             messagesCache={messagesCache}
             setMessagesCache={setMessagesCache}
@@ -1096,17 +1149,30 @@ export function ChatwootChatPanel({
   const sender = convo?.meta.sender;
   const assignedAgentId = convo?.meta.assignee?.id;
 
-  // Sincronizar operador cuando cambia el agente asignado (incluso por Socket.IO)
-  const prevAgentRef = useRef(assignedAgentId);
+  async function refreshProspectoOperador(phone?: string) {
+    const cleaned = (phone ?? sender?.phone_number ?? prospecto?.celular ?? '').replace(/\D/g, '');
+    if (!cleaned) return;
+    try {
+      await syncOperadorFromChatwoot(conversationId, cleaned);
+      const res = await flotaProspectosByPhone(cleaned);
+      if (res.found && res.prospecto && !res.prospecto.eliminadoAt) {
+        setProspecto(res.prospecto);
+      }
+    } catch { /* silent */ }
+  }
+
+  // Sincronizar operador cuando cambia el agente asignado (Chatwoot → operador)
+  const prevAgentRef = useRef<number | undefined>(undefined);
   useEffect(() => {
-    if (!prospecto?.id || prevAgentRef.current === assignedAgentId) return;
+    if (!prospecto?.id || !conversationId) return;
+    if (prevAgentRef.current === assignedAgentId) return;
     prevAgentRef.current = assignedAgentId;
-    const agentName = convo?.meta.assignee?.name;
-    syncOperadorConAgente(agentName);
-  }, [assignedAgentId, prospecto?.id]);
+    void refreshProspectoOperador();
+  }, [assignedAgentId, prospecto?.id, conversationId]);
 
   useEffect(() => {
     if (!panelOpen || !conversationId) return;
+    prevAgentRef.current = undefined;
     fetchConversation(conversationId).then((d) => {
       setContactDetail(d.meta?.sender ?? null);
     }).catch(() => {});
@@ -1117,11 +1183,10 @@ export function ChatwootChatPanel({
     if (phone) {
       setLoadingProspecto(true);
       const cleanedPhone = phone.replace(/\D/g, '');
-      flotaProspectosByPhone(cleanedPhone).then((res) => {
+      flotaProspectosByPhone(cleanedPhone).then(async (res) => {
         if (res.found && res.prospecto && !res.prospecto.eliminadoAt) {
           setProspecto(res.prospecto);
-          const agentName = conversations.find((c) => c.id === conversationId)?.meta?.assignee?.name;
-          setTimeout(() => syncOperadorConAgente(agentName), 100);
+          await refreshProspectoOperador(cleanedPhone);
         } else if (res.found && res.prospecto?.eliminadoAt) {
           // Prospecto eliminado, no mostrar
           localStorage.setItem(`chatwoot_deleted_prospect_${conversationId}`, 'true');
@@ -1208,29 +1273,12 @@ export function ChatwootChatPanel({
     }
   }
 
-  async function syncOperadorConAgente(agentName: string | undefined) {
-    if (!prospecto?.id) return;
-    const matchingOperador = agentName ? operadores.find((op) => op.name === agentName) : null;
-    try {
-      await api(`/flota-prospectos/${prospecto.id}/operador`, {
-        method: 'PATCH',
-        body: JSON.stringify({ operador: matchingOperador ? agentName : null }),
-      });
-      if (matchingOperador) {
-        setProspecto((prev) => prev ? { ...prev, operador: agentName! } : prev);
-      } else {
-        setProspecto((prev) => prev ? { ...prev, operador: null } : prev);
-      }
-    } catch {}
-  }
-
   async function handleAssigneeChange(agentId: number) {
     setUpdating(true);
     const agentName = agents.find((a) => a.id === agentId)?.name;
     try {
       await updateConversation(conversationId, { assignee_id: agentId });
-      // Sincronizar operador del prospecto
-      if (prospecto?.id) await syncOperadorConAgente(agentName);
+      await refreshProspectoOperador();
       toast.success(`Asignado: ${agentName || 'Agente #' + agentId}`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error al asignar');
@@ -1525,6 +1573,9 @@ export function ChatwootChatPanel({
     }));
     try {
       await sendMessage(conversationId, body);
+      if (!prospecto?.operador) {
+        await refreshProspectoOperador();
+      }
     } catch (e) {
       setMessagesCache((prev) => ({
         ...prev,
@@ -1549,6 +1600,9 @@ export function ChatwootChatPanel({
           processed_params: {},
         },
       });
+      if (!prospecto?.operador) {
+        await refreshProspectoOperador();
+      }
       toast.success('Plantilla enviada');
       setDismiss24h(true);
       void loadMessages();
@@ -2375,12 +2429,37 @@ export function ChatwootChatPanel({
                 const body = buildProspectoPatchBody(editData);
                 const nombreCambio = typeof body.nombreCompleto === 'string'
                   && body.nombreCompleto !== prospecto.nombreCompleto;
+                const operadorNuevo = editData.operador?.trim() || '';
+                const operadorActual = prospecto.operador
+                  ? getOperatorDisplayName(prospecto.operador, operadores)
+                  : '';
+                const operadorCambio = operadorNuevo !== operadorActual;
+
                 await api(`/flota-prospectos/${prospecto.id}`, { method: 'PATCH', body: JSON.stringify(body) });
+
+                if (operadorCambio) {
+                  await api(`/flota-prospectos/${prospecto.id}/operador`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ operador: operadorNuevo || null }),
+                  });
+                }
+
                 const cleaned = prospecto.celular?.replace(/\D/g, '');
                 if (cleaned) {
                   const res = await flotaProspectosByPhone(cleaned);
                   if (res.found && res.prospecto) setProspecto(res.prospecto);
                 }
+
+                if (operadorCambio) {
+                  const convDetail = await fetchConversation(conversationId);
+                  const assignee = convDetail.meta?.assignee;
+                  onConversationsUpdated((prev) => prev.map((c) =>
+                    c.id === conversationId
+                      ? { ...c, meta: { ...c.meta, assignee } }
+                      : c,
+                  ));
+                }
+
                 if (nombreCambio && sender?.id) {
                   await updateContact(sender.id, { name: String(body.nombreCompleto) });
                   onConversationsUpdated((prev) => prev.map((c) =>

@@ -6,6 +6,7 @@ import { ActivityActor } from '../activity-logs/activity-logs.types';
 import { AuditDetailService } from '../audit-detail/audit-detail.service';
 import { FLOTA_PROSPECTO_FIELD_LABELS } from '../audit-detail/audit-field-labels';
 import { buildChangeEntries } from '../common/audit-diff.util';
+import { ChatwootOperadorSyncService } from '../chatwoot/chatwoot-operador-sync.service';
 import type { CrmDataScope } from '../auth/crm-data-scope.service';
 import type { ImportJobProgressInput } from '../import-export/import-export-jobs.service';
 import type { BulkImportResultDto, BulkImportRowError } from '../import-export/import-export.service';
@@ -122,6 +123,7 @@ export class FlotaProspectosService {
     private googleSheets: GoogleSheetsService,
     private activityLogs: ActivityLogsService,
     private auditDetail: AuditDetailService,
+    private operadorSync: ChatwootOperadorSyncService,
   ) {}
 
   private normalizeCelular(celular?: string | null): string | null {
@@ -501,7 +503,10 @@ export class FlotaProspectosService {
     const existing = await this.prisma.flotaProspecto.findUnique({ where: { id } });
     if (!existing) throw new Error('Prospecto no encontrado');
 
-    const val = operador?.trim() || null;
+    const ops = await this.operadorSync.listOperadores();
+    const raw = operador?.trim() || null;
+    const val = raw ? (this.operadorSync.resolveOperadorName(raw, ops) ?? raw) : null;
+
     const updated = await this.prisma.flotaProspecto.update({
       where: { id },
       data: { operador: val, asignadoAt: val ? limaDate() : null },
@@ -517,6 +522,8 @@ export class FlotaProspectosService {
         ? `Operador asignado: ${val}`
         : 'Operador removido',
     });
+
+    await this.operadorSync.syncAssigneeFromOperador(id, val);
 
     return updated;
   }

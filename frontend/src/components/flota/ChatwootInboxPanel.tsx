@@ -20,6 +20,7 @@ import {
   initiateConversation,
   fetchChatwootTemplates,
   fetchChatwootContacts,
+  searchChatwootConversations,
   type ChatwootConversation,
   type ChatwootMessage,
   type ChatwootContact,
@@ -129,6 +130,10 @@ export default function ChatwootInboxPanel({
   const [activeId, setActiveId] = useState<number | null>(null);
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<ChatwootConversation[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [unreadList, setUnreadList] = useState<ChatwootConversation[]>([]);
+  const [loadingUnread, setLoadingUnread] = useState(false);
   const [loading, setLoading] = useState(true);
   const [messagesCache, setMessagesCache] = useState<Record<number, ChatwootMessage[]>>({});
   const [filter, setFilter] = useState<'all' | 'unread' | 'contacts'>('all');
@@ -167,8 +172,9 @@ export default function ChatwootInboxPanel({
     if (initialActiveId) setActiveId(initialActiveId);
   }, [initialActiveId]);
 
-  // Cargar más conversaciones al scrollear cerca del final
+  // Cargar más conversaciones al scrollear cerca del final (solo listado normal)
   useEffect(() => {
+    if (debouncedQuery || filter === 'unread') return;
     if (loadingConvRef.current || conversations.length === 0) return;
     const items = virtualizer.getVirtualItems();
     if (items.length === 0) return;
@@ -241,9 +247,56 @@ export default function ChatwootInboxPanel({
     }
   }
 
-  const queryLower = useMemo(() => query.toLowerCase(), [query]);
+  // Debounce para búsqueda
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(query.trim()), 350);
+    return () => clearTimeout(t);
+  }, [query]);
 
-  // Cargar primera página al entrar a contactos o al buscar
+  // Búsqueda global en servidor
+  useEffect(() => {
+    if (filter === 'contacts' || !open || !debouncedQuery) {
+      setSearchResults([]);
+      setSearching(false);
+      return;
+    }
+    let cancelled = false;
+    setSearching(true);
+    searchChatwootConversations(debouncedQuery)
+      .then((items) => { if (!cancelled) setSearchResults(items); })
+      .catch(() => { if (!cancelled) setSearchResults([]); })
+      .finally(() => { if (!cancelled) setSearching(false); });
+    return () => { cancelled = true; };
+  }, [debouncedQuery, filter, open]);
+
+  // No leídos desde servidor
+  useEffect(() => {
+    if (filter !== 'unread' || !open || debouncedQuery) {
+      setUnreadList([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingUnread(true);
+    fetchConversations({ unread_only: true })
+      .then((items) => { if (!cancelled) setUnreadList(items); })
+      .catch(() => { if (!cancelled) setUnreadList([]); })
+      .finally(() => { if (!cancelled) setLoadingUnread(false); });
+    return () => { cancelled = true; };
+  }, [filter, open, debouncedQuery]);
+
+  const allConversations = useMemo(() => {
+    const map = new Map<number, ChatwootConversation>();
+    for (const c of conversations) map.set(c.id, c);
+    for (const c of searchResults) map.set(c.id, c);
+    for (const c of unreadList) map.set(c.id, c);
+    return Array.from(map.values());
+  }, [conversations, searchResults, unreadList]);
+
+  const filtered = useMemo(() => {
+    if (debouncedQuery) return searchResults;
+    if (filter === 'unread') return unreadList;
+    return conversations;
+  }, [conversations, filter, debouncedQuery, searchResults, unreadList]);
   useEffect(() => {
     if (filter !== 'contacts' || !open) return;
     if (contacts.length > 0 && !debouncedQuery) return;
@@ -282,23 +335,6 @@ export default function ChatwootInboxPanel({
     }
   });
 
-  // Debounce para búsqueda
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedQuery(query), 350);
-    return () => clearTimeout(t);
-  }, [query]);
-
-  const filtered = useMemo(() =>
-    conversations.filter((c) => {
-      if (filter === 'unread') return (c.unread_count ?? 0) > 0;
-      return true;
-    }).filter((c) =>
-      c.meta.sender.name.toLowerCase().includes(queryLower) ||
-      c.meta.sender.phone_number?.includes(query),
-    ),
-    [conversations, filter, query, queryLower],
-  );
-
   const virtualizer = useVirtualizer({
     count: filtered.length,
     getScrollElement: () => scrollContainerRef.current,
@@ -324,7 +360,7 @@ export default function ChatwootInboxPanel({
                   <ChatwootChatPanel
                     key={activeId}
                     conversationId={activeId}
-                    conversations={conversations}
+                    conversations={allConversations}
                     onConversationsUpdated={setConversations}
                     messagesCache={messagesCache}
                     setMessagesCache={setMessagesCache}
@@ -376,7 +412,7 @@ export default function ChatwootInboxPanel({
                     <div style={{ height: contactsVirtualizer.getTotalSize(), position: 'relative' }}>
                       {contactsVirtualizer.getVirtualItems().map((vi) => {
                         const c = contacts[vi.index];
-                        const existingConv = conversations.find((conv) =>
+                        const existingConv = allConversations.find((conv) =>
                           conv.meta.sender.phone_number?.replace(/\D/g, '') === c.phone_number?.replace(/\D/g, ''),
                         );
                         return (
@@ -424,7 +460,7 @@ export default function ChatwootInboxPanel({
                       })}
                     </div>
                   )
-                ) : loading ? (
+                ) : (loading || searching || (filter === 'unread' && loadingUnread && !debouncedQuery)) ? (
                   <div className="flex items-center justify-center py-16">
                     <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                   </div>

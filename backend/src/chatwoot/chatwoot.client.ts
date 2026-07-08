@@ -55,33 +55,48 @@ export class ChatwootClient {
     return this.config;
   }
 
+  private extractConversationList(raw: unknown): ChatwootConversationListItem[] {
+    if (Array.isArray(raw)) return raw as ChatwootConversationListItem[];
+    const r = raw as Record<string, unknown>;
+    if (r?.data && typeof r.data === 'object') {
+      const data = r.data as Record<string, unknown>;
+      if (Array.isArray(data.payload)) return data.payload as ChatwootConversationListItem[];
+      if (Array.isArray(data)) return data as ChatwootConversationListItem[];
+    }
+    if (Array.isArray(r?.payload)) return r.payload as ChatwootConversationListItem[];
+    return [];
+  }
+
   async listConversations(params?: {
     status?: string;
     q?: string;
     inbox_id?: number;
     page?: number;
+    sort_by?: 'latest' | 'unread' | 'last_activity_at_desc';
   }): Promise<ChatwootConversationListItem[]> {
     const search = new URLSearchParams();
     if (params?.status) search.set('status', params.status);
     if (params?.q) search.set('q', params.q);
     if (params?.inbox_id) search.set('inbox_id', String(params.inbox_id));
     if (params?.page) search.set('page', String(params.page));
-    search.set('sort_by', 'latest');
-    const raw = await this.request<any>(
+    search.set('sort_by', params?.sort_by ?? 'latest');
+    const raw = await this.request<unknown>(
       'GET',
       `/conversations?${search.toString()}`,
     );
-    // Chatwoot API puede devolver varias estructuras:
-    // { data: { payload: [...], meta: {...} } }  ← conversaciones
-    // { data: [...], meta: {...} }
-    // { payload: [...], meta: {...} }
-    // o directamente un array
-    if (Array.isArray(raw)) return raw as ChatwootConversationListItem[];
-    // Caso común: { data: { payload: [...], meta: {...} } }
-    if (raw?.data?.payload && Array.isArray(raw.data.payload)) return raw.data.payload as ChatwootConversationListItem[];
-    if (raw?.data && Array.isArray(raw.data)) return raw.data as ChatwootConversationListItem[];
-    if (raw?.payload && Array.isArray(raw.payload)) return raw.payload as ChatwootConversationListItem[];
-    return [];
+    return this.extractConversationList(raw);
+  }
+
+  async searchConversations(q: string, page = 1): Promise<ChatwootConversationListItem[]> {
+    try {
+      const raw = await this.request<unknown>(
+        'GET',
+        `/search/conversations?q=${encodeURIComponent(q)}&page=${page}`,
+      );
+      return this.extractConversationList(raw);
+    } catch {
+      return [];
+    }
   }
 
   async getConversation(id: number): Promise<ChatwootConversation> {

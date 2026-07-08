@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { MessageCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { fetchConversations } from '@/lib/chatwootApi';
+import { fetchUnreadSummary } from '@/lib/chatwootApi';
 import ChatwootInboxPanel from '@/components/flota/ChatwootInboxPanel';
 
 export default function FlotaNotificationBell() {
@@ -11,8 +11,8 @@ export default function FlotaNotificationBell() {
 
   const refresh = async () => {
     try {
-      const list = await fetchConversations({ page: 1 });
-      setUnreadCount(list.reduce((sum, c) => sum + (c.unread_count ?? 0), 0));
+      const summary = await fetchUnreadSummary();
+      setUnreadCount(summary.totalUnread);
     } catch {
       // silently fail
     } finally {

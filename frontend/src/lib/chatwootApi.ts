@@ -91,15 +91,31 @@ export async function fetchConversations(params?: {
   q?: string;
   inbox_id?: number;
   page?: number;
+  unread_only?: boolean;
 }): Promise<ChatwootConversation[]> {
   const search = new URLSearchParams();
   if (params?.status) search.set('status', params.status);
   if (params?.q) search.set('q', params.q);
   if (params?.inbox_id) search.set('inbox_id', String(params.inbox_id));
   if (params?.page) search.set('page', String(params.page));
+  if (params?.unread_only) search.set('unread_only', 'true');
   const qs = search.toString();
   const res = await api<{ data: ChatwootConversation[] }>(`/api/chatwoot/conversations${qs ? `?${qs}` : ''}`);
   return res.data ?? [];
+}
+
+export async function searchChatwootConversations(q: string): Promise<ChatwootConversation[]> {
+  const res = await api<{ data: ChatwootConversation[] }>(
+    `/api/chatwoot/conversations/search?q=${encodeURIComponent(q)}`,
+  );
+  return res.data ?? [];
+}
+
+export async function fetchUnreadSummary(): Promise<{
+  totalUnread: number;
+  conversationCount: number;
+}> {
+  return api('/api/chatwoot/unread-summary');
 }
 
 export async function fetchMessages(
@@ -127,6 +143,17 @@ export async function updateConversation(
   return api(`/api/chatwoot/conversations/${conversationId}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
+  });
+}
+
+/** Sincroniza prospecto.operador con el agente asignado actual en Chatwoot */
+export async function syncOperadorFromChatwoot(
+  conversationId: number,
+  phone?: string,
+): Promise<{ updated: boolean; operador: string | null; prospectoId: string | null }> {
+  const qs = phone ? `?phone=${encodeURIComponent(phone)}` : '';
+  return api(`/api/chatwoot/conversations/${conversationId}/sync-operador${qs}`, {
+    method: 'POST',
   });
 }
 

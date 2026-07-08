@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ChatwootClient } from './chatwoot.client';
 import { ChatwootEventService } from './chatwoot-event.service';
+import { ChatwootOperadorSyncService } from './chatwoot-operador-sync.service';
 import type { ChatwootWebhookPayload } from './chatwoot.types';
 
 @Injectable()
@@ -12,6 +13,7 @@ export class ChatwootWebhookService {
     private readonly prisma: PrismaService,
     private readonly client: ChatwootClient,
     private readonly events: ChatwootEventService,
+    private readonly operadorSync: ChatwootOperadorSyncService,
   ) {}
 
   private emit(event: string, data: unknown) {
@@ -39,12 +41,8 @@ export class ChatwootWebhookService {
         case 'contact_updated':
           return await this.handleContactSync(payload);
         case 'conversation_updated':
-          this.emit('conversation_updated', {
-            conversationId: payload.id,
-            assignee: payload.assignee,
-            status: payload.status,
-          });
-          return { received: true };
+        case 'assignee_changed':
+          return await this.handleAssigneeChanged(payload);
         default:
           this.emit(payload.event, payload);
           return { received: true };
@@ -109,18 +107,39 @@ export class ChatwootWebhookService {
               }
             } catch { /* ignorar */ }
           }
-          // Actualizar operador del prospecto por assignee_id (Chatwoot)
-          if (assigneeId) {
-            try {
-              const agents = await this.client.listAgents();
-              const agent = agents.find((a: any) => a.id === assigneeId);
-              if (agent && !prospecto.operador) {
-                await this.prisma.flotaProspecto.update({
-                  where: { id: prospecto.id },
-                  data: { operador: agent.name, asignadoAt: new Date() },
-                });
-              }
-            } catch { /* ignorar */ }
+          // Auto-asignar al operador que envía el primer mensaje outbound (sin operador/assignee)
+          if (!isInbound && conversation.id && sender?.id) {
+            const hasOperador = this.operadorSync.resolveOperadorName(prospecto.operador);
+            let assigneeIsOperador = false;
+            if (assigneeId) {
+              try {
+                const agents = await this.client.listAgents();
+                const assigneeAgent = agents.find((a: { id: number }) => a.id === assigneeId);
+                assigneeIsOperador = !!this.operadorSync.resolveOperadorName(assigneeAgent?.name);
+              } catch { /* ignorar */ }
+            }
+            if (!hasOperador && !assigneeIsOperador) {
+              await this.operadorSync.assignOnFirstOutbound({
+                prospectoId: prospecto.id,
+                conversationId: conversation.id,
+                senderAgentId: sender.id,
+                senderAgentName: sender.name,
+              });
+            } else if (assigneeId) {
+              await this.operadorSync.syncOperadorFromConversation(
+                conversation.id,
+                contactPhone,
+                undefined,
+                assigneeId,
+              );
+            }
+          } else if (assigneeId && conversation.id) {
+            await this.operadorSync.syncOperadorFromConversation(
+              conversation.id,
+              contactPhone,
+              undefined,
+              assigneeId,
+            );
           }
           // Último fallback: si aún no hay, intentar por sender.name
           if (!createdByUserId && !isInbound && sender?.name?.trim()) {
@@ -196,6 +215,31 @@ export class ChatwootWebhookService {
     this.emit('conversation_status_changed', {
       conversationId: payload.id,
       status: payload.status,
+    });
+    return { received: true };
+  }
+
+  private async handleAssigneeChanged(payload: ChatwootWebhookPayload) {
+    const conversationId = payload.id
+      ?? payload.conversation?.id
+      ?? (payload as unknown as { conversation_id?: number }).conversation_id;
+    const assignee = payload.assignee
+      ?? payload.conversation?.meta?.assignee;
+    const phone = payload.conversation?.meta?.sender?.phone_number;
+
+    if (conversationId) {
+      await this.operadorSync.syncOperadorFromConversation(
+        conversationId,
+        phone,
+        assignee ?? null,
+        assignee?.id,
+      );
+    }
+
+    this.emit('conversation_updated', {
+      conversationId,
+      assignee,
+      status: payload.status ?? payload.conversation?.status,
     });
     return { received: true };
   }

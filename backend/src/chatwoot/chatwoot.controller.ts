@@ -8,6 +8,7 @@ import {
   Body,
   ParseIntPipe,
   Res,
+  Req,
   Logger,
 } from '@nestjs/common';
 import { NotFoundException } from '@nestjs/common';
@@ -16,6 +17,8 @@ import { Public } from '../auth/decorators/public.decorator';
 import { ChatwootService } from './chatwoot.service';
 import { ChatwootClient } from './chatwoot.client';
 import { ChatwootEventService } from './chatwoot-event.service';
+
+type AuthedReq = { user: { userId: string; name: string } };
 
 @Controller('api/chatwoot')
 export class ChatwootController {
@@ -33,7 +36,12 @@ export class ChatwootController {
     @Query('q') q?: string,
     @Query('inbox_id') inboxId?: string,
     @Query('page') page?: string,
+    @Query('unread_only') unreadOnly?: string,
   ) {
+    if (unreadOnly === 'true' || unreadOnly === '1') {
+      const items = await this.service.listUnreadConversations();
+      return { data: items };
+    }
     const items = await this.service.listConversations({
       status,
       q,
@@ -41,6 +49,17 @@ export class ChatwootController {
       page: page ? Number(page) : undefined,
     });
     return { data: items };
+  }
+
+  @Get('conversations/search')
+  async searchConversations(@Query('q') q: string) {
+    const items = await this.service.searchConversations(q ?? '');
+    return { data: items };
+  }
+
+  @Get('unread-summary')
+  async unreadSummary() {
+    return this.service.getUnreadSummary();
   }
 
   @Get('conversations/:id')
@@ -68,8 +87,12 @@ export class ChatwootController {
         processed_params: Record<string, unknown>;
       };
     },
+    @Req() req: AuthedReq,
   ) {
-    return this.service.sendMessage(id, body.content ?? '', body.template_params);
+    return this.service.sendMessage(id, body.content ?? '', body.template_params, {
+      userId: req.user.userId,
+      name: req.user.name,
+    });
   }
 
   @Post('conversations/:id/messages/template')
@@ -82,12 +105,16 @@ export class ChatwootController {
       templateLanguage?: string;
       templateParams?: Record<string, unknown>;
     },
+    @Req() req: AuthedReq,
   ) {
     return this.service.sendMessage(id, body.content ?? '', {
       name: body.templateName,
       category: body.templateCategory,
       language: body.templateLanguage ?? 'es_PE',
       processed_params: body.templateParams ?? {},
+    }, {
+      userId: req.user.userId,
+      name: req.user.name,
     });
   }
 
@@ -97,6 +124,14 @@ export class ChatwootController {
     @Body() body: { status?: string; assignee_id?: number },
   ) {
     return this.service.updateConversation(id, body);
+  }
+
+  @Post('conversations/:id/sync-operador')
+  async syncOperador(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('phone') phone?: string,
+  ) {
+    return this.service.syncOperadorFromConversation(id, phone);
   }
 
   @Get('contacts')

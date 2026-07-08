@@ -6,6 +6,7 @@ import { ChatwootController } from './chatwoot.controller';
 import { ChatwootWebhookController } from './chatwoot-webhook.controller';
 import { ChatwootWebhookService } from './chatwoot-webhook.service';
 import { ChatwootEventService } from './chatwoot-event.service';
+import { ChatwootOperadorSyncService } from './chatwoot-operador-sync.service';
 
 @Global()
 @Module({
@@ -16,7 +17,8 @@ import { ChatwootEventService } from './chatwoot-event.service';
     ChatwootService,
     ChatwootWebhookService,
     ChatwootEventService,
+    ChatwootOperadorSyncService,
   ],
-  exports: [ChatwootService, ChatwootEventService],
+  exports: [ChatwootService, ChatwootEventService, ChatwootOperadorSyncService],
 })
 export class ChatwootModule {}
