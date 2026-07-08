@@ -58,6 +58,7 @@ import { chartHasAnyValue } from '@/lib/chartEmpty';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FunnelChart, type FunnelStage } from '@/components/crm/FunnelChart';
 import { buildOpportunitiesStageFunnelStages } from '@/lib/companyStageFunnelData';
+import { AdvisorPerformanceBarChart } from '@/components/shared/AdvisorPerformanceBarChart';
 
 const COLORS = ['#13944C', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];
 
@@ -646,7 +647,7 @@ export default function Reports() {
     !loading && (!summary || !chartHasAnyValue(conversionData, ['tasa']));
   const advisorChartEmpty =
     !loading &&
-    (!summary || !chartHasAnyValue(performanceByAdvisor, ['oportunidades', 'contactos']));
+    (!summary || !chartHasAnyValue(performanceByAdvisor, ['oportunidades', 'contactos', 'empresas']));
   const salesChartEmpty =
     !loading && (!summary || !chartHasAnyValue(salesByMonthData, ['ventas', 'meta']));
   const activitiesChartEmpty =
@@ -1022,9 +1023,9 @@ export default function Reports() {
               isEmpty={opportunitiesFunnelEmpty}
               variant="bar"
               emptyMessage="Sin oportunidades en este periodo con las etapas seleccionadas."
-              className="min-h-[min(52vh,420px)] py-3 max-md:min-h-0 max-md:py-1"
+              className="min-h-[min(56vh,460px)] py-3 max-md:min-h-0 max-md:py-1"
             >
-              <FunnelChart stages={opportunitiesFunnelStages} height={360} variant="rect" singularLabel="oportunidad" />
+              <FunnelChart stages={opportunitiesFunnelStages} height={420} singularLabel="oportunidad" />
             </ChartCardBody>
           </CardContent>
         </Card>
@@ -1039,7 +1040,7 @@ export default function Reports() {
             </DialogHeader>
             <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 sm:px-6 sm:pb-6">
               {!opportunitiesFunnelEmpty ? (
-                <FunnelChart stages={opportunitiesFunnelStages} height={500} showLegend variant="rect" singularLabel="oportunidad" />
+                <FunnelChart stages={opportunitiesFunnelStages} height={560} showLegend singularLabel="oportunidad" />
               ) : null}
             </div>
           </DialogContent>
@@ -1305,36 +1306,7 @@ export default function Reports() {
             </DialogHeader>
             <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 sm:px-6 sm:pb-6">
               {!advisorChartEmpty ? (
-                <div className="h-[520px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={performanceByAdvisor} layout="vertical" margin={{ left: 20 }}>
-                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={chartTheme.gridStroke} />
-                      <XAxis type="number" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-                      <YAxis
-                        type="category"
-                        dataKey="name"
-                        tick={{ fontSize: 12 }}
-                        tickLine={false}
-                        axisLine={false}
-                        width={110}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          borderRadius: '8px',
-                          border: `1px solid ${chartTheme.tooltipBorder}`,
-                          backgroundColor: chartTheme.tooltipBg,
-                          color: chartTheme.tooltipText,
-                          fontSize: '13px',
-                        }}
-                        itemStyle={{ color: chartTheme.tooltipText }}
-                        labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
-                      />
-                      <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
-<Bar isAnimationActive={!exportingPdf} dataKey="oportunidades" name="Oportunidades" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={16} />
-<Bar isAnimationActive={!exportingPdf} dataKey="contactos" name="Contactos" fill="#13944C" radius={[0, 4, 4, 0]} barSize={16} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                <AdvisorPerformanceBarChart data={performanceByAdvisor} height={520} />
               ) : null}
             </div>
           </DialogContent>
@@ -1872,38 +1844,11 @@ export default function Reports() {
             <ChartCardBody
               loading={loading}
               isEmpty={advisorChartEmpty}
-              variant="barHorizontal"
+              variant="bar"
               emptyMessage="Sin rendimiento por asesor en este periodo."
               className={chartH}
             >
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={performanceByAdvisor} layout="vertical" margin={{ left: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={chartTheme.gridStroke} />
-                  <XAxis type="number" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-                  <YAxis
-                    type="category"
-                    dataKey="name"
-                    tick={{ fontSize: 12 }}
-                    tickLine={false}
-                    axisLine={false}
-                    width={80}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      borderRadius: '8px',
-                      border: `1px solid ${chartTheme.tooltipBorder}`,
-                      backgroundColor: chartTheme.tooltipBg,
-                      color: chartTheme.tooltipText,
-                      fontSize: '13px',
-                    }}
-                    itemStyle={{ color: chartTheme.tooltipText }}
-                    labelStyle={{ color: chartTheme.tooltipTextMuted, marginBottom: 4 }}
-                  />
-                  <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
-                  <Bar dataKey="oportunidades" name="Oportunidades" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={14} />
-                  <Bar dataKey="contactos" name="Contactos" fill="#13944C" radius={[0, 4, 4, 0]} barSize={14} />
-                </BarChart>
-              </ResponsiveContainer>
+              <AdvisorPerformanceBarChart data={performanceByAdvisor} height={400} />
             </ChartCardBody>
           </CardContent>
         </Card>

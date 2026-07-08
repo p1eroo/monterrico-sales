@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { Contact, ContactSource } from '@/types';
-import { contactSourceLabels } from '@/data/mock';
+import { useLeadSourceOptions } from '@/store/crmConfigStore';
 import { useUsers } from '@/hooks/useUsers';
 import { AssignedAdvisorFormField } from '@/components/shared/AssignedAdvisorFormField';
 import {
@@ -48,6 +48,7 @@ export function ContactEditDialog({
   canEditAssignee,
 }: ContactEditDialogProps) {
   const { activeAdvisors } = useUsers();
+  const leadSourceOptions = useLeadSourceOptions();
   const [editForm, setEditForm] = useState({
     name: '',
     cargo: '',
@@ -144,7 +145,7 @@ export function ContactEditDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(contactSourceLabels).map(([key, label]) => (
+                {leadSourceOptions.map(({ value: key, label }) => (
                   <SelectItem key={key} value={key}>
                     {label}
                   </SelectItem>

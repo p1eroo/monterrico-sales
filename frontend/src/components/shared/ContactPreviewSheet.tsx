@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import type { Contact } from '@/types';
 import { contactSourceLabels, etapaLabels } from '@/data/mock';
+import { useCrmConfigStore, getSourceLabelFromCatalog } from '@/store/crmConfigStore';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { api } from '@/lib/api';
 import {
@@ -78,6 +79,7 @@ export function ContactPreviewSheet({
   onOpenFullDetail,
   onEdit,
 }: ContactPreviewSheetProps) {
+  const bundle = useCrmConfigStore((s) => s.bundle);
   const [linkDetail, setLinkDetail] = useState<ApiContactDetail | null>(null);
   const [linksLoading, setLinksLoading] = useState(false);
 
@@ -151,7 +153,7 @@ export function ContactPreviewSheet({
           <PreviewRow icon={Funnel} label="Etapa" value={etapaLabel} />
           <PreviewRow icon={Phone} label="Teléfono" value={contact.telefono} />
           <PreviewRow icon={Mail} label="Correo" value={contact.correo} />
-          <PreviewRow icon={Globe} label="Fuente" value={contactSourceLabels[contact.fuente] ?? contact.fuente} />
+          <PreviewRow icon={Globe} label="Fuente" value={getSourceLabelFromCatalog(contact.fuente, bundle, contactSourceLabels)} />
           <PreviewRow icon={User} label="Asesor" value={contact.assignedToName ?? 'Sin asignar'} />
           <PreviewRow icon={UserCheck} label="Cliente recuperado" value={cliRec} />
 

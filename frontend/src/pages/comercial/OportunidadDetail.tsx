@@ -73,7 +73,7 @@ import {
 import { usePaginatedContactPicker, type PaginatedContactPickerOptions } from '@/hooks/usePaginatedContactPicker';
 import { usePaginatedCompanyPicker, type PaginatedCompanyPickerOptions } from '@/hooks/usePaginatedCompanyPicker';
 import { useStageBadgeTone } from '@/hooks/useStageBadgeTone';
-import { useCrmConfigStore, getStageLabelFromCatalog } from '@/store/crmConfigStore';
+import { useCrmConfigStore, getStageLabelFromCatalog, getSourceLabelFromCatalog } from '@/store/crmConfigStore';
 
 const TIMELINE_PAGE_SIZE = 8;
 
@@ -899,6 +899,22 @@ async function handleCreateNewContact(data: NewContactData) {
           icon: <Building2 className="size-4" />,
         }));
 
+  const followUpAssociations = useMemo(() => {
+    if (!opp) return [];
+    const contactId =
+      linkedContact?.id && isLikelyContactCuid(linkedContact.id)
+        ? linkedContact.id
+        : opp.contactId;
+    return taskAssociationsFromActivity({
+      contactId,
+      contactName: linkedContact?.name,
+      companyId: primaryCompany?.id,
+      companyName: primaryCompany?.name,
+      opportunityId: opp.id,
+      opportunityTitle: opp.title,
+    } as Activity);
+  }, [opp, linkedContact, primaryCompany]);
+
   if (fromApi && apiLoading) {
     return <EntityDetailPageSkeleton ariaLabel="Cargando oportunidad" />;
   }
@@ -932,21 +948,6 @@ async function handleCreateNewContact(data: NewContactData) {
   }
 
   const headerSubtitle = linkedContact?.name ?? '';
-
-  const followUpAssociations = useMemo(() => {
-    const contactId =
-      linkedContact?.id && isLikelyContactCuid(linkedContact.id)
-        ? linkedContact.id
-        : opp.contactId;
-    return taskAssociationsFromActivity({
-      contactId,
-      contactName: linkedContact?.name,
-      companyId: primaryCompany?.id,
-      companyName: primaryCompany?.name,
-      opportunityId: opp.id,
-      opportunityTitle: opp.title,
-    } as Activity);
-  }, [opp, linkedContact, primaryCompany]);
 
   return (
     <>
@@ -988,7 +989,7 @@ async function handleCreateNewContact(data: NewContactData) {
               { icon: DollarSign, value: formatCurrency(opp.amount) },
               { icon: Target, value: `${opp.probability}% probabilidad` },
               { icon: CalendarDays, value: `Cierre: ${formatDate(opp.expectedCloseDate)}` },
-              { icon: Tag, value: contactSourceLabels[opp.fuente ?? 'base'] },
+              { icon: Tag, value: getSourceLabelFromCatalog(opp.fuente ?? 'base', crmBundle, contactSourceLabels) },
               { icon: User, value: opp.assignedToName },
               { icon: CalendarDays, value: `Creada: ${formatDate(opp.createdAt)}` },
             ]}

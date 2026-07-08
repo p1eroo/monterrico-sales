@@ -65,7 +65,7 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { getStageBadgeTone } from '@/lib/etapaConfig';
-import { useCrmConfigStore, getStageLabelFromCatalog } from '@/store/crmConfigStore';
+import { useCrmConfigStore, getStageLabelFromCatalog, getSourceLabelFromCatalog, useLeadSourceOptions } from '@/store/crmConfigStore';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { api } from '@/lib/api';
 import { opportunityDetailHref } from '@/lib/detailRoutes';
@@ -157,6 +157,8 @@ export default function OpportunitiesPage() {
   const cacheOpportunities = useOpportunityCacheStore((s) => s.opportunities);
   const cacheLoad = useOpportunityCacheStore((s) => s.load);
   const cacheLoadedAt = useOpportunityCacheStore((s) => s.loadedAt);
+  const bundle = useCrmConfigStore((s) => s.bundle);
+  const leadSourceOptions = useLeadSourceOptions();
 
   useEffect(() => {
     cacheLoad();
@@ -539,7 +541,7 @@ export default function OpportunitiesPage() {
           const val = String(getValue() || '');
           return (
             <span className="text-sm text-[#475569] dark:text-gray-400">
-              {contactSourceLabels[val as keyof typeof contactSourceLabels] || val || '—'}
+              {getSourceLabelFromCatalog(val, bundle, contactSourceLabels) || '—'}
             </span>
           );
         },
@@ -615,7 +617,7 @@ export default function OpportunitiesPage() {
         },
       },
     ],
-    [isPendingOpportunityId, openOpportunityPreview, openOpportunityEdit, requestDeleteOpportunity, hasPermission],
+    [isPendingOpportunityId, openOpportunityPreview, openOpportunityEdit, requestDeleteOpportunity, hasPermission, bundle],
   );
 
   const table = useReactTable({
@@ -786,7 +788,7 @@ export default function OpportunitiesPage() {
                 <span className="truncate flex-1">
                   {sourceFilter.length === 0
                     ? 'Fuente'
-                    : sourceFilter.map((k) => contactSourceLabels[k as keyof typeof contactSourceLabels] || k).join(', ')}
+                    : sourceFilter.map((k) => getSourceLabelFromCatalog(k, bundle, contactSourceLabels)).join(', ')}
                 </span>
                 <ChevronDown className="size-3.5 shrink-0 opacity-50" />
               </button>
@@ -795,7 +797,7 @@ export default function OpportunitiesPage() {
               <Command>
                 <CommandList className="max-h-[260px] overflow-y-auto">
                   <CommandGroup>
-                    {Object.entries(contactSourceLabels).map(([key, label]) => {
+                    {leadSourceOptions.map(({ value: key, label }) => {
                       const selected = sourceFilter.includes(key);
                       return (
                         <CommandItem

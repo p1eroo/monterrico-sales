@@ -3,7 +3,6 @@ import { Prisma } from '../generated/prisma';
 import { PrismaService } from '../prisma/prisma.service';
 import { slugifyForUrl } from '../common/url-slug.util';
 import { CrmConfigService } from '../crm-config/crm-config.service';
-import { normalizeOpportunityFuente } from '../common/normalize-opportunity-fuente.util';
 
 type Tx = Prisma.TransactionClient;
 
@@ -155,13 +154,13 @@ export class EntitySyncService {
 
     const primaryOppIdForFuente =
       await this.resolvePrimaryOpportunityIdForCompanyTx(tx, companyId);
-    let fuenteForCompany = normalizeOpportunityFuente(contact.fuente);
+    let fuenteForCompany = await this.crmConfig.normalizeLeadSourceOrDefault(contact.fuente);
     if (primaryOppIdForFuente) {
       const po = await tx.opportunity.findUnique({
         where: { id: primaryOppIdForFuente },
         select: { fuente: true },
       });
-      fuenteForCompany = normalizeOpportunityFuente(po?.fuente);
+      fuenteForCompany = await this.crmConfig.normalizeLeadSourceOrDefault(po?.fuente);
     }
 
     await tx.company.update({
@@ -217,13 +216,13 @@ export class EntitySyncService {
 
     const primaryOppId =
       await this.resolvePrimaryOpportunityIdForCompanyTx(tx, companyId);
-    let syncFuente = normalizeOpportunityFuente(company.fuente);
+    let syncFuente = await this.crmConfig.normalizeLeadSourceOrDefault(company.fuente);
     if (primaryOppId) {
       const po = await tx.opportunity.findUnique({
         where: { id: primaryOppId },
         select: { fuente: true },
       });
-      syncFuente = normalizeOpportunityFuente(po?.fuente);
+      syncFuente = await this.crmConfig.normalizeLeadSourceOrDefault(po?.fuente);
     }
 
     const ccRows = await tx.companyContact.findMany({
@@ -284,7 +283,7 @@ export class EntitySyncService {
     const fact = opp.amount;
     const etapa = opp.etapa;
     const assignedTo = opp.assignedTo;
-    const fuente = normalizeOpportunityFuente(opp.fuente);
+    const fuente = await this.crmConfig.normalizeLeadSourceOrDefault(opp.fuente);
 
     await tx.company.update({
       where: { id: companyId },

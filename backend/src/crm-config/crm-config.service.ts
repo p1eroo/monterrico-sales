@@ -454,6 +454,21 @@ export class CrmConfigService implements OnModuleInit {
     return slug;
   }
 
+  /** Igual que normalizeLeadSource pero sin lanzar; útil en sync interno. */
+  async normalizeLeadSourceOrDefault(
+    raw?: string | null,
+    fallback = 'base',
+  ): Promise<string> {
+    await this.ensureReady();
+    const trimmed = raw?.trim() ?? '';
+    if (!trimmed) return fallback;
+    const rows = await this.prisma.crmLeadSource.findMany({
+      where: { enabled: true },
+      select: { slug: true, name: true },
+    });
+    return resolveLeadSourceSlug(trimmed, rows) ?? fallback;
+  }
+
   /** Probabilidad comercial según catálogo; fallback si el slug no está en BD. */
   async resolveOpportunityProbability(etapa: string): Promise<number> {
     await this.ensureReady();

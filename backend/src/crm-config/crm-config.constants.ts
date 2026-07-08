@@ -21,6 +21,7 @@ export const SEED_LEAD_SOURCES: { slug: string; name: string }[] = [
   { slug: 'entorno', name: 'Entorno' },
   { slug: 'feria', name: 'Feria' },
   { slug: 'masivo', name: 'Masivo' },
+  { slug: 'apollo', name: 'Apollo' },
 ];
 
 export const SEED_STAGES: {

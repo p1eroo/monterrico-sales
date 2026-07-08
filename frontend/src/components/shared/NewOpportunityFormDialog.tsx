@@ -9,7 +9,7 @@ import type { ContactPriority, ContactSource } from '@/types';
 import { etapaLabels, contactSourceLabels } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
 import { useCRMStore } from '@/store/crmStore';
-import { useCrmConfigStore } from '@/store/crmConfigStore';
+import { useCrmConfigStore, getSourceLabelFromCatalog } from '@/store/crmConfigStore';
 import { getPrimaryCompany, cn } from '@/lib/utils';
 import { LinkExistingDialog, type LinkExistingItem } from '@/components/shared/LinkExistingDialog';
 import { Button } from '@/components/ui/button';
@@ -206,14 +206,13 @@ export function NewOpportunityFormDialog({
 
   const fuentePreviewLabel = useMemo(() => {
     const contactId = watchContactId?.trim();
-    let oppFuenteLabel = contactSourceLabels.base;
+    let oppFuenteLabel = getSourceLabelFromCatalog('base', bundle, contactSourceLabels);
     if (contactId && pickedContactRow?.id === contactId && pickedContactRow.fuente) {
-      const slug = pickedContactRow.fuente.toLowerCase() as ContactSource;
-      oppFuenteLabel = contactSourceLabels[slug] ?? pickedContactRow.fuente;
+      oppFuenteLabel = getSourceLabelFromCatalog(pickedContactRow.fuente, bundle, contactSourceLabels);
     } else {
       const c = contactId ? mergedContactsForForm.find((x) => x.id === contactId) : undefined;
       if (c?.fuente) {
-        oppFuenteLabel = contactSourceLabels[c.fuente] ?? c.fuente;
+        oppFuenteLabel = getSourceLabelFromCatalog(c.fuente, bundle, contactSourceLabels);
       }
     }
     const hasCompany = !!watchCompanyId?.trim();
@@ -226,6 +225,7 @@ export function NewOpportunityFormDialog({
     watchContactId,
     pickedContactRow,
     mergedContactsForForm,
+    bundle,
   ]);
 
   function resetLinkState() {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { useCrmConfigStore } from '@/store/crmConfigStore';
+import { useCrmConfigStore, getLeadSourceOptionsFromCatalog } from '@/store/crmConfigStore';
 import { Check, ChevronLeft, ChevronRight, Loader2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { factilizaApi } from '@/lib/factilizaApi';
@@ -99,15 +99,10 @@ export function NewCompanyWizard({
     return Object.entries(etapaLabels).map(([value, label]) => ({ value, label }));
   }, [bundle]);
 
-  const sourceOptions = useMemo(() => {
-    const src = bundle?.catalog.leadSources
-      .filter((x) => x.enabled)
-      .sort((a, b) => a.sortOrder - b.sortOrder);
-    if (src?.length) {
-      return src.map((s) => ({ value: s.slug, label: s.name }));
-    }
-    return Object.entries(contactSourceLabels).map(([value, label]) => ({ value, label }));
-  }, [bundle]);
+  const sourceOptions = useMemo(
+    () => getLeadSourceOptionsFromCatalog(bundle, contactSourceLabels),
+    [bundle],
+  );
 
   function resetCompanyNameLookup() {
     setCompanyNameLookupLoading(false);

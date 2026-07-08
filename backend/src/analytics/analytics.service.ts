@@ -112,6 +112,116 @@ type OpportunityWeeklyProgressRow = {
   sinCambios: number;
 };
 
+type WeeklyMetricRow = {
+  name: string;
+  value: number;
+};
+
+type WeekClip = {
+  name: string;
+  clipStart: Date;
+  clipEnd: Date;
+};
+
+function eachWeekClipsInRange(from: Date, to: Date, maxWeeks = 26): WeekClip[] {
+  const rows: WeekClip[] = [];
+  let weekStart = startOfUtcWeekMonday(from);
+  let weekCount = 0;
+  while (weekStart <= to && weekCount < maxWeeks) {
+    weekCount++;
+    const weekEnd = endOfUtcWeekSunday(weekStart);
+    rows.push({
+      name: String(isoWeekNumberUtc(weekStart)),
+      clipStart: maxUtcDate(weekStart, from),
+      clipEnd: minUtcDate(weekEnd, to),
+    });
+    weekStart = new Date(weekStart);
+    weekStart.setUTCDate(weekStart.getUTCDate() + 7);
+  }
+  return rows;
+}
+
+const DASHBOARD_SPARKLINE_WEEKS = 8;
+const GOALS_MONTHLY_CHART = 6;
+
+type GoalChartPoint = {
+  name: string;
+  meta: number;
+  avance: number;
+};
+
+function pctChange(cur: number, prev: number): string {
+  if (prev <= 0) return cur > 0 ? '+100%' : '0%';
+  const p = Math.round(((cur - prev) / prev) * 1000) / 10;
+  return `${p >= 0 ? '+' : ''}${p}%`;
+}
+
+/** Inicio del día calendario en Lima (UTC-5), coherente con parseDayStart. */
+function limaDayStartFromUtcParts(y: number, m: number, d: number): Date {
+  return new Date(Date.UTC(y, m, d, 5, 0, 0, 0));
+}
+
+/** Últimos 7 días (incl. hoy) vs los 7 días anteriores, anclado a hora Lima. */
+function rolling7DayRanges(now = new Date()): {
+  from: Date;
+  to: Date;
+  prevFrom: Date;
+  prevTo: Date;
+} {
+  const limaNow = new Date(now.getTime() - 5 * 3600000);
+  const y = limaNow.getUTCFullYear();
+  const m = limaNow.getUTCMonth();
+  const d = limaNow.getUTCDate();
+
+  const from = limaDayStartFromUtcParts(y, m, d - 6);
+  const to = now;
+  const prevTo = new Date(from.getTime() - 1);
+  const prevFrom = limaDayStartFromUtcParts(y, m, d - 13);
+
+  return { from, to, prevFrom, prevTo };
+}
+
+/** Últimos N meses calendario (Lima) para gráfico de metas. */
+function lastNMonthClips(n: number, now = new Date()): {
+  ym: string;
+  clipStart: Date;
+  clipEnd: Date;
+  label: string;
+}[] {
+  const lima = new Date(now.getTime() - 5 * 3600000);
+  const rows: { ym: string; clipStart: Date; clipEnd: Date; label: string }[] = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const anchor = new Date(Date.UTC(lima.getUTCFullYear(), lima.getUTCMonth() - i, 1));
+    const ym = monthKey(anchor);
+    rows.push({
+      ym,
+      clipStart: startOfUtcMonth(anchor),
+      clipEnd: endOfUtcMonth(anchor),
+      label: monthLabelEs(ym),
+    });
+  }
+  return rows;
+}
+
+/** Ventana fija para sparklines del dashboard: últimas N semanas incluyendo la actual (anclada a hoy). */
+function dashboardSparklineRange(now = new Date()): { from: Date; to: Date; weeks: WeekClip[] } {
+  const currentWeekStart = startOfUtcWeekMonday(now);
+  const from = new Date(currentWeekStart);
+  from.setUTCDate(from.getUTCDate() - 7 * (DASHBOARD_SPARKLINE_WEEKS - 1));
+  const to = now;
+  const weeks = eachWeekClipsInRange(from, to, DASHBOARD_SPARKLINE_WEEKS);
+  return { from, to, weeks };
+}
+
+function weekNameForDate(d: Date, weeks: WeekClip[]): string | null {
+  for (const w of weeks) {
+    if (d.getTime() >= w.clipStart.getTime() && d.getTime() <= w.clipEnd.getTime()) {
+      return w.name;
+    }
+  }
+  return null;
+}
+
 function startOfUtcMonth(d: Date): Date {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1, 0, 0, 0, 0));
 }
@@ -165,6 +275,58 @@ export class AnalyticsService {
       w.fuente = { equals: sourceSlug.trim(), mode: 'insensitive' };
     }
     return w;
+  }
+
+  private async fetchRolling7DayChangeInputs(
+    advisorId: string | undefined,
+    source: string | undefined,
+    unrestricted: boolean,
+  ): Promise<{
+    contacts7d: number;
+    contactsPrev7d: number;
+    opportunities7d: number;
+    opportunitiesPrev7d: number;
+    sales7d: number;
+    salesPrev7d: number;
+  }> {
+    const { from, to, prevFrom, prevTo } = rolling7DayRanges();
+    const [
+      contacts7d,
+      contactsPrev7d,
+      opportunities7d,
+      opportunitiesPrev7d,
+      closedAgg7d,
+      closedAggPrev7d,
+    ] = await Promise.all([
+      this.prisma.contact.count({
+        where: this.contactWhere(from, to, advisorId, source, unrestricted),
+      }),
+      this.prisma.contact.count({
+        where: this.contactWhere(prevFrom, prevTo, advisorId, source, unrestricted),
+      }),
+      this.prisma.opportunity.count({
+        where: this.opportunityWhereOpen(advisorId, unrestricted, from, to),
+      }),
+      this.prisma.opportunity.count({
+        where: this.opportunityWhereOpen(advisorId, unrestricted, prevFrom, prevTo),
+      }),
+      this.prisma.opportunity.aggregate({
+        where: this.opportunityWhereWonInRange(from, to, advisorId, unrestricted),
+        _sum: { amount: true },
+      }),
+      this.prisma.opportunity.aggregate({
+        where: this.opportunityWhereWonInRange(prevFrom, prevTo, advisorId, unrestricted),
+        _sum: { amount: true },
+      }),
+    ]);
+    return {
+      contacts7d,
+      contactsPrev7d,
+      opportunities7d,
+      opportunitiesPrev7d,
+      sales7d: closedAgg7d._sum.amount ?? 0,
+      salesPrev7d: closedAggPrev7d._sum.amount ?? 0,
+    };
   }
 
   private companyPortfolioBaseWhere(
@@ -527,6 +689,47 @@ export class AnalyticsService {
     return rows;
   }
 
+  private async buildContactsWeekly(
+    from: Date,
+    to: Date,
+    advisorId: string | undefined,
+    source: string | undefined,
+    unrestricted: boolean,
+    weeks?: WeekClip[],
+  ): Promise<WeeklyMetricRow[]> {
+    const weekClips = weeks ?? eachWeekClipsInRange(from, to);
+    const counts = new Map<string, number>(weekClips.map((w) => [w.name, 0]));
+    const contacts = await this.prisma.contact.findMany({
+      where: this.contactWhere(from, to, advisorId, source, unrestricted),
+      select: { createdAt: true },
+    });
+    for (const c of contacts) {
+      const key = weekNameForDate(c.createdAt, weekClips);
+      if (key) counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return weekClips.map((w) => ({ name: w.name, value: counts.get(w.name) ?? 0 }));
+  }
+
+  private async buildSalesWeekly(
+    from: Date,
+    to: Date,
+    advisorId: string | undefined,
+    unrestricted: boolean,
+    weeks?: WeekClip[],
+  ): Promise<WeeklyMetricRow[]> {
+    const weekClips = weeks ?? eachWeekClipsInRange(from, to);
+    const totals = new Map<string, number>(weekClips.map((w) => [w.name, 0]));
+    const won = await this.prisma.opportunity.findMany({
+      where: this.opportunityWhereWonInRange(from, to, advisorId, unrestricted),
+      select: { updatedAt: true, amount: true },
+    });
+    for (const o of won) {
+      const key = weekNameForDate(o.updatedAt, weekClips);
+      if (key) totals.set(key, (totals.get(key) ?? 0) + (o.amount ?? 0));
+    }
+    return weekClips.map((w) => ({ name: w.name, value: totals.get(w.name) ?? 0 }));
+  }
+
   private opportunityWhereOpen(
     advisorId: string | undefined,
     _unrestricted: boolean,
@@ -557,6 +760,25 @@ export class AnalyticsService {
     };
     if (advisorId?.trim()) {
       w.assignedTo = advisorId.trim();
+    }
+    return w;
+  }
+
+  private opportunityWhereCreatedInRange(
+    from: Date,
+    to: Date,
+    advisorId: string | undefined,
+    sourceSlug: string | undefined,
+    _unrestricted: boolean,
+  ): Prisma.OpportunityWhereInput {
+    const w: Prisma.OpportunityWhereInput = {
+      createdAt: { gte: from, lte: to },
+    };
+    if (advisorId?.trim()) {
+      w.assignedTo = advisorId.trim();
+    }
+    if (sourceSlug && sourceSlug !== 'all') {
+      w.fuente = { equals: sourceSlug.trim(), mode: 'insensitive' };
     }
     return w;
   }
@@ -597,12 +819,7 @@ export class AnalyticsService {
       }
     }
 
-    const prevLen = to.getTime() - from.getTime();
-    const prevFrom = new Date(from.getTime() - prevLen);
-    const prevTo = new Date(from.getTime() - 1);
-
     const cw = this.contactWhere(from, to, advisorId, source, unrestricted);
-    const pw = this.contactWhere(prevFrom, prevTo, advisorId, source, unrestricted);
     const compW = mergeCompanyScope(
       this.companyWhere(from, to, advisorId, source, unrestricted),
       opts.crmScope,
@@ -610,11 +827,9 @@ export class AnalyticsService {
 
     const [
       totalContacts,
-      totalContactsPrev,
       newContactsInRange,
       activeOpportunities,
       closedAgg,
-      closedAggPrev,
       pipelineAgg,
       pendingActivitiesCount,
       overdueActivitiesCount,
@@ -625,9 +840,10 @@ export class AnalyticsService {
       companyStageGroups,
       totalOppsCreated,
       companySourceGroups,
+      opportunitySourceGroups,
+      rolling7,
     ] = await Promise.all([
       this.prisma.contact.count({ where: cw }),
-      this.prisma.contact.count({ where: pw }),
       this.prisma.contact.count({ where: cw }),
       this.prisma.opportunity.count({
         where: this.opportunityWhereOpen(advisorId, unrestricted, from, to),
@@ -636,10 +852,6 @@ export class AnalyticsService {
         where: this.opportunityWhereWonInRange(from, to, advisorId, unrestricted),
         _sum: { amount: true },
         _count: true,
-      }),
-      this.prisma.opportunity.aggregate({
-        where: this.opportunityWhereWonInRange(prevFrom, prevTo, advisorId, unrestricted),
-        _sum: { amount: true },
       }),
       this.prisma.opportunity.aggregate({
         where: this.opportunityWhereOpen(advisorId, unrestricted, from, to),
@@ -718,20 +930,21 @@ export class AnalyticsService {
         where: compW,
         _count: { id: true },
       }),
+      this.prisma.opportunity.groupBy({
+        by: ['fuente'],
+        where: this.opportunityWhereCreatedInRange(from, to, advisorId, source, unrestricted),
+        _count: { id: true },
+      }),
+      this.fetchRolling7DayChangeInputs(advisorId, source, unrestricted),
     ]);
 
     const closedSalesAmount = closedAgg._sum.amount ?? 0;
-    const closedSalesPrev = closedAggPrev._sum.amount ?? 0;
+    const closedSalesPrev = rolling7.salesPrev7d;
+    const totalContactsPrev = rolling7.contactsPrev7d;
     const pipelineValue = pipelineAgg._sum.amount ?? 0;
 
     /** Oportunidades ganadas en el periodo (status = 'ganada') */
     const conversionPct = closedAgg._count ?? 0;
-
-    const pctChange = (cur: number, prev: number): string => {
-      if (prev <= 0) return cur > 0 ? '+100%' : '0%';
-      const p = Math.round(((cur - prev) / prev) * 1000) / 10;
-      return `${p >= 0 ? '+' : ''}${p}%`;
-    };
 
     const months = eachMonthBetween(from, to);
 
@@ -853,6 +1066,16 @@ export class AnalyticsService {
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
 
+    const mergedByOpportunitySource = new Map<string, number>();
+    for (const g of opportunitySourceGroups) {
+      if (!g.fuente) continue;
+      const k = resolveLeadSourceKeyLoose(g.fuente, leadCatalog);
+      mergedByOpportunitySource.set(k, (mergedByOpportunitySource.get(k) ?? 0) + g._count.id);
+    }
+    const opportunitiesBySource = [...mergedByOpportunitySource.entries()]
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+
     const funnelByStage = funnelGroups
       .map((g) => ({
         name: g.etapa,
@@ -910,6 +1133,16 @@ export class AnalyticsService {
       },
       _count: { id: true },
     });
+    const companyCountByAdvisor = await this.prisma.company.groupBy({
+      by: ['assignedTo'],
+      where: {
+        assignedTo: { not: null },
+        createdAt: { gte: from, lte: to },
+        ...(advisorId?.trim() ? { assignedTo: advisorId.trim() } : {}),
+        ...(unrestricted ? {} : { assignedTo: { not: null } }),
+      },
+      _count: { id: true },
+    });
     const oppCountMap = new Map(
       oppCountByAdvisor
         .filter((x) => x.assignedTo)
@@ -920,12 +1153,18 @@ export class AnalyticsService {
         .filter((x) => x.assignedTo)
         .map((x) => [x.assignedTo!, x._count.id]),
     );
+    const companyCountMap = new Map(
+      companyCountByAdvisor
+        .filter((x) => x.assignedTo)
+        .map((x) => [x.assignedTo!, x._count.id]),
+    );
     const idToName = new Map(
       userRows.map((u) => [u.id, u.name.trim() || 'Sin nombre'] as const),
     );
     const advisorIds = new Set<string>();
     for (const k of oppCountMap.keys()) advisorIds.add(k);
     for (const k of contactCountMap.keys()) if (k) advisorIds.add(k!);
+    for (const k of companyCountMap.keys()) if (k) advisorIds.add(k!);
 
     const missingNameIds = [...advisorIds].filter((id) => !idToName.has(id));
     if (missingNameIds.length > 0) {
@@ -943,8 +1182,9 @@ export class AnalyticsService {
         name: idToName.get(id) ?? 'Usuario no encontrado',
         oportunidades: oppCountMap.get(id) ?? 0,
         contactos: contactCountMap.get(id) ?? 0,
+        empresas: companyCountMap.get(id) ?? 0,
       }))
-      .filter((r) => r.oportunidades > 0 || r.contactos > 0)
+      .filter((r) => r.oportunidades > 0 || r.contactos > 0 || r.empresas > 0)
       .sort((a, b) => b.oportunidades - a.oportunidades)
       .slice(0, 20);
 
@@ -1116,6 +1356,36 @@ export class AnalyticsService {
       opts.crmScope,
     );
 
+    const { from: sparkFrom, to: sparkTo, weeks: sparklineWeeks } = dashboardSparklineRange();
+
+    const [contactsWeekly, salesWeekly, opportunitiesWeeklySparklineProgress] = await Promise.all([
+      this.buildContactsWeekly(
+        sparkFrom,
+        sparkTo,
+        advisorId,
+        source,
+        unrestricted,
+        sparklineWeeks,
+      ),
+      this.buildSalesWeekly(sparkFrom, sparkTo, advisorId, unrestricted, sparklineWeeks),
+      this.buildOpportunitiesWeeklyProgress(
+        sparkFrom,
+        sparkTo,
+        advisorId,
+        source,
+        unrestricted,
+        opts.crmScope,
+      ),
+    ]);
+
+    const oppSparkByWeek = new Map(
+      opportunitiesWeeklySparklineProgress.map((row) => [row.name, row.avance + row.nuevoIngreso]),
+    );
+    const opportunitiesWeeklySparkline = sparklineWeeks.map((w) => ({
+      name: w.name,
+      value: oppSparkByWeek.get(w.name) ?? 0,
+    }));
+
     /** Contactos con/sin interacción en el periodo */
     const contactPortfolioWhere = this.contactWhere(from, to, advisorId, source, unrestricted);
     const contactIds = await this.prisma.contact.findMany({
@@ -1172,17 +1442,22 @@ export class AnalyticsService {
         pipelineValue,
         activitiesCompleted: activitiesCompletedCount,
         changes: {
-          contacts: pctChange(totalContacts, totalContactsPrev),
-          sales: pctChange(closedSalesAmount, closedSalesPrev),
+          contacts: pctChange(rolling7.contacts7d, rolling7.contactsPrev7d),
+          opportunities: pctChange(rolling7.opportunities7d, rolling7.opportunitiesPrev7d),
+          sales: pctChange(rolling7.sales7d, rolling7.salesPrev7d),
         },
       },
       salesByMonth,
       contactsBySource,
+      opportunitiesBySource,
       companiesBySource,
       funnelByStage,
       companiesByStage,
       companiesWeeklyProgress,
       opportunitiesWeeklyProgress,
+      contactsWeekly,
+      salesWeekly,
+      opportunitiesWeeklySparkline,
       performanceByAdvisor,
       pendingActivities: pendingActivitiesDto,
       contactsByPeriod,
@@ -1193,6 +1468,119 @@ export class AnalyticsService {
       followUpsByMonth,
       opportunitiesInteraction,
     };
+  }
+
+  private async resolveWeeklyGoalAmount(teamScope: boolean, userId: string): Promise<number> {
+    if (teamScope) {
+      const org = await this.prisma.crmOrganizationProfile.findUnique({ where: { id: 'default' } });
+      return org?.globalWeeklyGoal ?? 0;
+    }
+    const goal = await this.prisma.crmUserSalesGoal.findUnique({
+      where: { userId },
+      select: { weeklyTarget: true },
+    });
+    return goal?.weeklyTarget ?? 0;
+  }
+
+  private async resolveMonthlyGoalsByYm(
+    teamScope: boolean,
+    userId: string,
+    monthStarts: Date[],
+  ): Promise<Map<string, number>> {
+    const map = new Map<string, number>();
+    if (monthStarts.length === 0) return map;
+    if (teamScope) {
+      const rows = await this.prisma.crmMonthlySalesTarget.findMany({
+        where: {
+          organizationId: 'default',
+          periodStart: { in: monthStarts },
+        },
+        select: { periodStart: true, amount: true },
+      });
+      for (const row of rows) {
+        map.set(monthKey(row.periodStart), row.amount);
+      }
+    } else {
+      const rows = await this.prisma.crmUserMonthlySalesTarget.findMany({
+        where: {
+          userId,
+          periodStart: { in: monthStarts },
+        },
+        select: { periodStart: true, amount: true },
+      });
+      for (const row of rows) {
+        map.set(monthKey(row.periodStart), row.amount);
+      }
+    }
+    return map;
+  }
+
+  private wonOppsPortfolioFilter(
+    teamScope: boolean,
+    userId: string,
+  ): Prisma.OpportunityWhereInput {
+    return teamScope ? {} : { assignedTo: userId };
+  }
+
+  private async buildGoalsWeeklyChart(
+    teamScope: boolean,
+    userId: string,
+  ): Promise<GoalChartPoint[]> {
+    const { from, to, weeks } = dashboardSparklineRange();
+    const weeklyGoal = await this.resolveWeeklyGoalAmount(teamScope, userId);
+    const portfolio = this.wonOppsPortfolioFilter(teamScope, userId);
+    const totals = new Map<string, number>(weeks.map((w) => [w.name, 0]));
+    const won = await this.prisma.opportunity.findMany({
+      where: {
+        status: 'ganada',
+        updatedAt: { gte: from, lte: to },
+        ...portfolio,
+      },
+      select: { updatedAt: true, amount: true },
+    });
+    for (const o of won) {
+      const key = weekNameForDate(o.updatedAt, weeks);
+      if (key) totals.set(key, (totals.get(key) ?? 0) + (o.amount ?? 0));
+    }
+    return weeks.map((w) => ({
+      name: `S${w.name}`,
+      meta: weeklyGoal,
+      avance: totals.get(w.name) ?? 0,
+    }));
+  }
+
+  private async buildGoalsMonthlyChart(
+    teamScope: boolean,
+    userId: string,
+  ): Promise<GoalChartPoint[]> {
+    const months = lastNMonthClips(GOALS_MONTHLY_CHART);
+    const monthStarts = months.map((m) => m.clipStart);
+    const metaByYm = await this.resolveMonthlyGoalsByYm(teamScope, userId, monthStarts);
+    const portfolio = this.wonOppsPortfolioFilter(teamScope, userId);
+    const rangeFrom = months[0]?.clipStart ?? new Date();
+    const rangeTo = months[months.length - 1]?.clipEnd ?? new Date();
+    const won = await this.prisma.opportunity.findMany({
+      where: {
+        status: 'ganada',
+        updatedAt: { gte: rangeFrom, lte: rangeTo },
+        ...portfolio,
+      },
+      select: { updatedAt: true, amount: true },
+    });
+    const totals = new Map<string, number>(months.map((m) => [m.ym, 0]));
+    for (const o of won) {
+      for (const m of months) {
+        if (o.updatedAt >= m.clipStart && o.updatedAt <= m.clipEnd) {
+          totals.set(m.ym, (totals.get(m.ym) ?? 0) + (o.amount ?? 0));
+          break;
+        }
+      }
+    }
+    return months.map((m) => ({
+      name: m.label,
+      meta: metaByYm.get(m.ym) ?? 0,
+      avance: totals.get(m.ym) ?? 0,
+    }));
   }
 
   /** Montos cerrados (ganadas) para metas: semana ISO actual y mes calendario UTC. */
@@ -1207,17 +1595,6 @@ export class AnalyticsService {
       ? advisorId?.trim() || undefined
       : viewerUserId;
 
-    // Listado de asesores para dropdown (si es unrestricted)
-    const advisors = isUnrestricted
-      ? await this.prisma.user.findMany({
-          where: {
-            role: { slug: ADVISOR_ROLE_SLUG },
-            ...(area ? { allowedAreas: { has: area } } : {}),
-          },
-          select: { id: true, name: true },
-          orderBy: { name: 'asc' },
-        })
-      : [];
     const now = new Date();
     const weekStart = startOfUtcWeekMonday(now);
     const weekEnd = endOfUtcWeekSunday(now);
@@ -1226,8 +1603,10 @@ export class AnalyticsService {
 
     const portfolio = isUnrestricted ? {} : { assignedTo: viewerUserId };
     const myPortfolio = {};
+    const teamScope = isUnrestricted;
+    const chartUserId = viewerUserId;
 
-    const [teamWeek, teamMonth, myWeek, myMonth] = await Promise.all([
+    const [teamWeek, teamMonth, myWeek, myMonth, weeklyChart, monthlyChart] = await Promise.all([
       this.prisma.opportunity.aggregate({
         where: {
           status: 'ganada',
@@ -1262,6 +1641,8 @@ export class AnalyticsService {
         },
         _sum: { amount: true },
       }),
+      this.buildGoalsWeeklyChart(teamScope, chartUserId),
+      this.buildGoalsMonthlyChart(teamScope, chartUserId),
     ]);
 
     return {
@@ -1273,6 +1654,8 @@ export class AnalyticsService {
       teamMonthlyClosed: teamMonth._sum.amount ?? 0,
       myWeeklyClosed: myWeek._sum.amount ?? 0,
       myMonthlyClosed: myMonth._sum.amount ?? 0,
+      weeklyChart,
+      monthlyChart,
     };
   }
 
@@ -1302,28 +1685,21 @@ export class AnalyticsService {
       }
     }
 
-    const prevLen = to.getTime() - from.getTime();
-    const prevFrom = new Date(from.getTime() - prevLen);
-    const prevTo = new Date(from.getTime() - 1);
-
     const cw = this.contactWhere(from, to, advisorId, source, unrestricted);
-    const pw = this.contactWhere(prevFrom, prevTo, advisorId, source, unrestricted);
 
     const [
       totalContacts,
-      totalContactsPrev,
       newContactsInRange,
       activeOpportunities,
       closedAgg,
-      closedAggPrev,
       pipelineAgg,
       pendingActivitiesCount,
       overdueActivitiesCount,
       activitiesCompletedCount,
       totalOppsCreated,
+      rolling7,
     ] = await Promise.all([
       this.prisma.contact.count({ where: cw }),
-      this.prisma.contact.count({ where: pw }),
       this.prisma.contact.count({ where: cw }),
       this.prisma.opportunity.count({
         where: this.opportunityWhereOpen(advisorId, unrestricted, from, to),
@@ -1332,10 +1708,6 @@ export class AnalyticsService {
         where: this.opportunityWhereWonInRange(from, to, advisorId, unrestricted),
         _sum: { amount: true },
         _count: true,
-      }),
-      this.prisma.opportunity.aggregate({
-        where: this.opportunityWhereWonInRange(prevFrom, prevTo, advisorId, unrestricted),
-        _sum: { amount: true },
       }),
       this.prisma.opportunity.aggregate({
         where: this.opportunityWhereOpen(advisorId, unrestricted, from, to),
@@ -1368,19 +1740,15 @@ export class AnalyticsService {
           ...(advisorId?.trim() ? { assignedTo: advisorId.trim() } : {}),
         },
       }),
+      this.fetchRolling7DayChangeInputs(advisorId, source, unrestricted),
     ]);
 
     const closedSalesAmount = closedAgg._sum.amount ?? 0;
-    const closedSalesPrev = closedAggPrev._sum.amount ?? 0;
+    const closedSalesPrev = rolling7.salesPrev7d;
+    const totalContactsPrev = rolling7.contactsPrev7d;
     const pipelineValue = pipelineAgg._sum.amount ?? 0;
 
     const conversionPct = closedAgg._count ?? 0;
-
-    const pctChange = (cur: number, prev: number): string => {
-      if (prev <= 0) return cur > 0 ? '+100%' : '0%';
-      const p = Math.round(((cur - prev) / prev) * 1000) / 10;
-      return `${p >= 0 ? '+' : ''}${p}%`;
-    };
 
     return {
       range: { from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) },
@@ -1396,8 +1764,9 @@ export class AnalyticsService {
       pipelineValue,
       activitiesCompleted: activitiesCompletedCount,
       changes: {
-        contacts: pctChange(totalContacts, totalContactsPrev),
-        sales: pctChange(closedSalesAmount, closedSalesPrev),
+        contacts: pctChange(rolling7.contacts7d, rolling7.contactsPrev7d),
+        opportunities: pctChange(rolling7.opportunities7d, rolling7.opportunitiesPrev7d),
+        sales: pctChange(rolling7.sales7d, rolling7.salesPrev7d),
       },
     };
   }

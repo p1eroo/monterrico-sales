@@ -16,6 +16,8 @@ const empty: AnalyticsGoalProgress = {
   teamMonthlyClosed: 0,
   myWeeklyClosed: 0,
   myMonthlyClosed: 0,
+  weeklyChart: [],
+  monthlyChart: [],
 };
 
 export const useAnalyticsGoalStore = create<State>((set) => ({

@@ -103,8 +103,8 @@ function parseEtapa(raw: string): Etapa {
 }
 
 function parseSource(raw: string): ContactSource {
-  const valid: ContactSource[] = ['referido', 'base', 'entorno', 'feria', 'masivo'];
-  return valid.includes(raw as ContactSource) ? (raw as ContactSource) : 'base';
+  const v = raw?.trim() ?? '';
+  return v || 'base';
 }
 
 function mapCompanies(rows: ApiContactCompanyRow[] | undefined): LinkedCompany[] {

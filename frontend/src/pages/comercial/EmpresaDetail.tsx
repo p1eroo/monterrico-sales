@@ -88,7 +88,7 @@ import {
 import { buildOptimisticContact } from '@/lib/optimisticEntities';
 import { generateOptimisticId, useOptimisticCrmStore } from '@/store/optimisticCrmStore';
 import { useStageBadgeTone } from '@/hooks/useStageBadgeTone';
-import { useCrmConfigStore, getStageLabelFromCatalog } from '@/store/crmConfigStore';
+import { useCrmConfigStore, getStageLabelFromCatalog, getSourceLabelFromCatalog } from '@/store/crmConfigStore';
 import { getHighestPriorityOpportunityEtapa } from '@/lib/opportunityUtils';
 
 const TIMELINE_PAGE_SIZE = 8;
@@ -315,10 +315,9 @@ export default function EmpresaDetailPage() {
       : undefined);
   const displayFuenteLabel =
     fromApiById && apiRecord?.fuente
-      ? (contactSourceLabels[apiRecord.fuente as ContactSource] ??
-        apiRecord.fuente)
+      ? getSourceLabelFromCatalog(apiRecord.fuente, crmBundle, contactSourceLabels)
       : firstContact?.fuente
-        ? (contactSourceLabels[firstContact.fuente] ?? firstContact.fuente)
+        ? getSourceLabelFromCatalog(firstContact.fuente, crmBundle, contactSourceLabels)
         : '—';
 
   const displayAssignedToName = fromApiById && apiRecord?.user?.name
@@ -1208,6 +1207,19 @@ async function handleCreateNewContact(data: NewContactData) {
           icon: <Users className="size-4" />,
         }));
 
+  const followUpAssociations = useMemo(() => {
+    const contactId =
+      firstContact?.id && isLikelyContactCuid(firstContact.id) ? firstContact.id : undefined;
+    return taskAssociationsFromActivity({
+      contactId,
+      contactName: firstContact?.name,
+      companyId: resolvedCompanyId,
+      companyName: companyData?.name ?? companyName,
+      opportunityId: companyOpportunities[0]?.id,
+      opportunityTitle: companyOpportunities[0]?.title,
+    } as Activity);
+  }, [firstContact, resolvedCompanyId, companyData, companyName, companyOpportunities]);
+
   const hasCompany =
     companyContacts.length > 0 ||
     !!standaloneCompany ||
@@ -1252,19 +1264,6 @@ const displayLastInteraction = companyTimelineEvents[0]?.date
   ?? companyActivities[0]?.createdAt
   ?? companyActivities[0]?.dueDate
   ?? null;
-
-const followUpAssociations = useMemo(() => {
-  const contactId =
-    firstContact?.id && isLikelyContactCuid(firstContact.id) ? firstContact.id : undefined;
-  return taskAssociationsFromActivity({
-    contactId,
-    contactName: firstContact?.name,
-    companyId: resolvedCompanyId,
-    companyName: companyData?.name ?? companyName,
-    opportunityId: companyOpportunities[0]?.id,
-    opportunityTitle: companyOpportunities[0]?.title,
-  } as Activity);
-}, [firstContact, resolvedCompanyId, companyData, companyName, companyOpportunities]);
 
 return (
     <>

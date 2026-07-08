@@ -19,7 +19,6 @@ import type { CrmDataScope } from '../auth/crm-data-scope.service';
 import { mergeCompanyScope } from '../common/crm-data-scope-where.util';
 import { NotificationsService } from '../notifications/notifications.service';
 import { parseDateOnlyToUtcNoon } from '../common/parse-date-input.util';
-import { normalizeOpportunityFuente } from '../common/normalize-opportunity-fuente.util';
 
 /** Estados de pipeline derivados de la etapa (no se usa `suspendida`). */
 type PipelineOpportunityStatus = 'abierta' | 'ganada' | 'perdida';
@@ -106,7 +105,7 @@ export class OpportunitiesService {
 
   private async resolveFuenteForCreate(dto: CreateOpportunityDto): Promise<string> {
     if (dto.fuente?.trim()) {
-      return normalizeOpportunityFuente(dto.fuente);
+      return this.crmConfig.normalizeLeadSource(dto.fuente);
     }
     const contactId = dto.contactId?.trim();
     if (contactId) {
@@ -115,7 +114,7 @@ export class OpportunitiesService {
         select: { fuente: true },
       });
       if (c?.fuente?.trim()) {
-        return normalizeOpportunityFuente(c.fuente);
+        return this.crmConfig.normalizeLeadSourceOrDefault(c.fuente);
       }
     }
     return 'base';
@@ -623,7 +622,7 @@ export class OpportunitiesService {
       data.priority = this.normalizePriority(dto.priority);
     }
     if (dto.fuente !== undefined) {
-      data.fuente = normalizeOpportunityFuente(dto.fuente);
+      data.fuente = await this.crmConfig.normalizeLeadSource(dto.fuente);
     }
 
     const hasContactLinkUpdate = dto.contactId !== undefined;

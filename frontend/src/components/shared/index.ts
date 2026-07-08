@@ -42,5 +42,12 @@ export { TaskFormDialog, type TaskFormResult, type TaskFormStatus, type TaskForm
 export { TasksTab, type TasksTabHandle } from './TasksTab';
 export { ThemeToggle } from './ThemeToggle';
 export { TimelinePanel } from './TimelinePanel';
+export { OpportunitiesBySourceRadarCard } from './OpportunitiesBySourceRadarCard';
+export {
+  OpportunitiesBySourceRadarChart,
+  type SourceRadarPoint,
+} from './OpportunitiesBySourceRadarChart';
 export { WeeklyGoalCard } from './WeeklyGoalCard';
+export { GoalsStatisticsCard } from './GoalsStatisticsCard';
+export { GoalGroupedBarChart, GOAL_META_COLOR, GOAL_AVANCE_COLOR } from './GoalGroupedBarChart';
 export { DailyBriefingPanel } from './DailyBriefingPanel';

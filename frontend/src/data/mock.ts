@@ -203,6 +203,7 @@ export const contactSourceLabels: Record<string, string> = {
   entorno: 'Entorno',
   feria: 'Feria',
   masivo: 'Masivo',
+  apollo: 'Apollo',
 };
 
 export const companyRubroLabels: Record<string, string> = {

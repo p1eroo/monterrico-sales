@@ -82,9 +82,8 @@ function parseOpportunityPriority(raw: string | null | undefined): ContactPriori
 }
 
 function parseFuente(raw: string | null | undefined): ContactSource {
-  const valid: ContactSource[] = ['referido', 'base', 'entorno', 'feria', 'masivo'];
   const v = raw?.trim() ?? '';
-  return valid.includes(v as ContactSource) ? (v as ContactSource) : 'base';
+  return v || 'base';
 }
 
 export function mapApiOpportunityToOpportunity(

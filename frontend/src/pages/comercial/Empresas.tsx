@@ -19,6 +19,7 @@ import {
 import type { DateRange } from 'react-day-picker';
 import type { Etapa, CompanyRubro, CompanyTipo, Company, ContactSource } from '@/types';
 import { companyRubroLabels, companyTipoLabels, etapaLabels, contactSourceLabels } from '@/data/mock';
+import { useCrmConfigStore, getSourceLabelFromCatalog, useLeadSourceOptions } from '@/store/crmConfigStore';
 import { useCompaniesStore } from '@/store/companiesStore';
 
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -59,12 +60,9 @@ import {
 } from '@/components/ui/command';
 import { ChartSquareIcon } from '@/components/icons/ChartSquareIcon';
 import { CategorySolidIcon } from '@/components/icons/CategorySolidIcon';
-import { CalendarSvgIcon } from '@/components/icons/CalendarSvgIcon';
+import { DateRangeFilterButton } from '@/components/ui/date-range-filter-button';
 import { GitForkIcon } from '@/components/icons/GitForkIcon';
 import { PaletteIcon } from '@/components/icons/PaletteIcon';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
-import { Calendar } from '@/components/ui/calendar';
 import { addCalendarDaysLocalIso } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 import { api, API_BASE } from '@/lib/api';
@@ -265,11 +263,12 @@ function parseTipoFromApi(s: string | null | undefined): CompanyTipo | undefined
   return s === 'A' || s === 'B' || s === 'C' ? s : undefined;
 }
 
-function sourceLabelFromApi(s: string | null | undefined): string {
+function sourceLabelFromApi(
+  s: string | null | undefined,
+  bundle: ReturnType<typeof useCrmConfigStore.getState>['bundle'],
+): string {
   if (!s) return '—';
-  return s in contactSourceLabels
-    ? contactSourceLabels[s as ContactSource]
-    : s;
+  return getSourceLabelFromCatalog(s, bundle, contactSourceLabels);
 }
 
 function importPreviewCell(v: string | undefined) {
@@ -324,6 +323,8 @@ export default function EmpresasPage() {
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
+  const bundle = useCrmConfigStore((s) => s.bundle);
+  const leadSourceOptions = useLeadSourceOptions();
 
   const [search, setSearch] = useState('');
   const [searchDebounced, setSearchDebounced] = useState('');
@@ -332,8 +333,6 @@ export default function EmpresasPage() {
   const [rubroFilter, setRubroFilter] = useState<string[]>([]);
   const [tipoFilter, setTipoFilter] = useState<string[]>([]);
   const [interactionRange, setInteractionRange] = useState<DateRange | undefined>();
-  const [draftRange, setDraftRange] = useState<DateRange | undefined>();
-  const [dateFilterOpen, setDateFilterOpen] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({
     fuente: true,
     rubro: true,
@@ -682,7 +681,7 @@ export default function EmpresasPage() {
         header: 'Fuente',
         enableHiding: true,
         cell: ({ getValue }) => (
-          <span className="text-sm text-[#475569] dark:text-gray-400">{sourceLabelFromApi(getValue() as string | null)}</span>
+          <span className="text-sm text-[#475569] dark:text-gray-400">{sourceLabelFromApi(getValue() as string | null, bundle)}</span>
         ),
         enableSorting: false,
         size: 100,
@@ -821,7 +820,7 @@ export default function EmpresasPage() {
         },
       },
     ],
-    [openCompanyPreview, openCompanyEdit, requestDeleteCompany, hasPermission],
+    [openCompanyPreview, openCompanyEdit, requestDeleteCompany, hasPermission, bundle],
   );
 
   const table = useReactTable({
@@ -1663,62 +1662,14 @@ export default function EmpresasPage() {
           </PopoverContent>
         </Popover>
 
-        <Popover open={dateFilterOpen} onOpenChange={(open) => {
-          setDateFilterOpen(open);
-          if (open) setDraftRange(interactionRange);
-        }}>
-          <PopoverTrigger asChild>
-            <button className={`!h-12 w-[210px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate ${interactionRange?.from || interactionRange?.to ? 'text-black dark:text-gray-100' : 'text-[#8a9aab] dark:text-gray-400'}`}>
-              <CalendarSvgIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
-              <span className="truncate flex-1">
-                {interactionRange?.from && interactionRange?.to
-                  ? `${format(interactionRange.from, 'dd/MM/yyyy')} — ${format(interactionRange.to, 'dd/MM/yyyy')}`
-                  : interactionRange?.from
-                    ? `${format(interactionRange.from, 'dd/MM/yyyy')} —`
-                    : 'Última interacción'}
-              </span>
-              <ChevronDown className="size-3.5 shrink-0 opacity-50" />
-            </button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <div className="p-3">
-              <Calendar
-                mode="range"
-                locale={es}
-                numberOfMonths={2}
-                defaultMonth={draftRange?.from ?? new Date()}
-                selected={draftRange}
-                onSelect={(range) => setDraftRange(range)}
-                showOutsideDays
-                formatters={{
-                  formatWeekdayName: (date) => {
-                    const idx = date.getDay() === 0 ? 6 : date.getDay() - 1;
-                    return ['L', 'M', 'M', 'J', 'V', 'S', 'D'][idx]!;
-                  },
-                }}
-                classNames={{
-                  months: 'flex flex-col gap-5 space-y-0 sm:flex-row sm:gap-6 sm:space-x-0 sm:space-y-0',
-                  day_selected: '!bg-info !text-info-foreground hover:!bg-info hover:!text-info-foreground focus:!bg-info focus:!text-info-foreground',
-                  day_range_start: '!rounded-full !bg-info !text-info-foreground hover:!bg-info hover:!text-info-foreground',
-                  day_range_end: '!rounded-full !bg-info !text-info-foreground hover:!bg-info hover:!text-info-foreground',
-                  day_range_middle: 'aria-selected:!bg-info-soft aria-selected:!text-foreground !rounded-none',
-                }}
-              />
-              <div className="flex items-center justify-end gap-2 border-t border-border/60 pt-3 mt-3">
-                <Button variant="outline" size="sm" onClick={() => { setDraftRange(undefined); }}>
-                  Limpiar
-                </Button>
-                <Button size="sm" onClick={() => {
-                  setInteractionRange(draftRange);
-                  setPage(1);
-                  setDateFilterOpen(false);
-                }}>
-                  Aplicar
-                </Button>
-              </div>
-            </div>
-          </PopoverContent>
-        </Popover>
+        <DateRangeFilterButton
+          value={interactionRange}
+          onChange={(range) => {
+            setInteractionRange(range);
+            setPage(1);
+          }}
+          placeholder="Última interacción"
+        />
 
         {hasActiveFilters && (
           <Button variant="ghost" size="sm" onClick={clearFilters}>
@@ -1784,7 +1735,7 @@ export default function EmpresasPage() {
                       <span className="truncate flex-1">
                         {sourceFilter.length === 0
                           ? 'Fuente'
-                          : sourceFilter.map((k) => contactSourceLabels[k] || k).join(', ')}
+                          : sourceFilter.map((k) => getSourceLabelFromCatalog(k, bundle, contactSourceLabels)).join(', ')}
                       </span>
                       <ChevronDown className="size-3.5 shrink-0 opacity-50" />
                     </button>
@@ -1793,7 +1744,7 @@ export default function EmpresasPage() {
                     <Command>
                       <CommandList className="max-h-[260px] overflow-y-auto">
                         <CommandGroup>
-                          {Object.entries(contactSourceLabels).map(([key, label]) => {
+                          {leadSourceOptions.map(({ value: key, label }) => {
                             const selected = sourceFilter.includes(key);
                             return (
                               <CommandItem

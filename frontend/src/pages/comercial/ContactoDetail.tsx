@@ -79,7 +79,7 @@ import {
 import { type ApiCompanyRecord } from '@/lib/companyApi';
 import { usePaginatedCompanyPicker, type PaginatedCompanyPickerOptions } from '@/hooks/usePaginatedCompanyPicker';
 import { useStageBadgeTone } from '@/hooks/useStageBadgeTone';
-import { useCrmConfigStore, getStageLabelFromCatalog } from '@/store/crmConfigStore';
+import { useCrmConfigStore, getStageLabelFromCatalog, getSourceLabelFromCatalog } from '@/store/crmConfigStore';
 import { getHighestPriorityOpportunityEtapa } from '@/lib/opportunityUtils';
 import {
   usePaginatedOpportunityPicker,
@@ -95,6 +95,7 @@ function parseRubroFromApi(s: string | null | undefined): CompanyRubro | undefin
 }
 
 function ContactoInformacionAside({ contact }: { contact: Contact }) {
+  const crmBundle = useCrmConfigStore((s) => s.bundle);
 return (
 <EntityInfoCard
   title="Información"
@@ -110,7 +111,7 @@ return (
       value: getPrimaryCompany(contact)?.name ?? '—',
       truncate: true,
     },
-    { icon: Globe, value: contactSourceLabels[contact.fuente] },
+    { icon: Globe, value: getSourceLabelFromCatalog(contact.fuente, crmBundle, contactSourceLabels) },
     { icon: CalendarDays, value: `Fecha de creación: ${formatDate(contact.createdAt)}` },
     ...(contact.direccion?.trim()
     ? [
@@ -570,6 +571,20 @@ export default function ContactoDetailPage() {
     availableCompaniesToLink,
   ]);
 
+  const followUpAssociations = useMemo(() => {
+    if (!contact || !isLikelyContactCuid(contact.id)) return [];
+    const primaryCompany = getPrimaryCompany(contact);
+    const primaryOpp = contactOpportunities[0];
+    return taskAssociationsFromActivity({
+      contactId: contact.id,
+      contactName: contact.name,
+      companyId: primaryCompany?.id,
+      companyName: primaryCompany?.name,
+      opportunityId: primaryOpp?.id,
+      opportunityTitle: primaryOpp?.title,
+    } as Activity);
+  }, [contact, contactOpportunities]);
+
   // Los returns condicionales van después de todos los hooks
   if (fromApi && apiLoading) {
     return <EntityDetailPageSkeleton ariaLabel="Cargando contacto" />;
@@ -905,20 +920,6 @@ export default function ContactoDetailPage() {
         status: getStageLabelFromCatalog(o.etapa, crmBundle, etapaLabels as Record<string, string>),
         icon: <DollarSign className="size-4" />,
       }));
-
-  const followUpAssociations = useMemo(() => {
-    if (!contact || !isLikelyContactCuid(contact.id)) return [];
-    const primaryCompany = getPrimaryCompany(contact);
-    const primaryOpp = contactOpportunities[0];
-    return taskAssociationsFromActivity({
-      contactId: contact.id,
-      contactName: contact.name,
-      companyId: primaryCompany?.id,
-      companyName: primaryCompany?.name,
-      opportunityId: primaryOpp?.id,
-      opportunityTitle: primaryOpp?.title,
-    } as Activity);
-  }, [contact, contactOpportunities]);
 
   return (
     <>

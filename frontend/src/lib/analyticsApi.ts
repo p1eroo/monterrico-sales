@@ -15,7 +15,7 @@ export type AnalyticsSummary = {
     overdueFollowUps: number;
     pipelineValue: number;
     activitiesCompleted: number;
-    changes: { contacts: string; sales: string };
+    changes: { contacts: string; opportunities: string; sales: string };
   };
   salesByMonth: {
     name: string;
@@ -30,6 +30,7 @@ export type AnalyticsSummary = {
     }[];
   }[];
   contactsBySource: { name: string; value: number }[];
+  opportunitiesBySource: { name: string; value: number }[];
   companiesBySource: { name: string; value: number }[];
   funnelByStage: { name: string; value: number }[];
   /** Empresas creadas en el rango, agrupadas por `etapa` (mismos filtros que contactos). */
@@ -51,7 +52,11 @@ export type AnalyticsSummary = {
     atraso: number;
     sinCambios: number;
   }[];
-  performanceByAdvisor: { name: string; oportunidades: number; contactos: number }[];
+  /** Sparkline KPI dashboard: una barra por semana ISO en el rango del filtro */
+  contactsWeekly: { name: string; value: number }[];
+  salesWeekly: { name: string; value: number }[];
+  opportunitiesWeeklySparkline: { name: string; value: number }[];
+  performanceByAdvisor: { name: string; oportunidades: number; contactos: number; empresas: number }[];
   pendingActivities: {
     id: string;
     title: string;
@@ -74,6 +79,12 @@ export type AnalyticsSummary = {
   opportunitiesInteraction: { withInteraction: number; withoutInteraction: number };
 };
 
+export type GoalChartPoint = {
+  name: string;
+  meta: number;
+  avance: number;
+};
+
 export type AnalyticsGoalProgress = {
   weekStart: string;
   weekEnd: string;
@@ -83,6 +94,8 @@ export type AnalyticsGoalProgress = {
   teamMonthlyClosed: number;
   myWeeklyClosed: number;
   myMonthlyClosed: number;
+  weeklyChart: GoalChartPoint[];
+  monthlyChart: GoalChartPoint[];
 };
 
 function pad2(n: number) {
@@ -139,7 +152,7 @@ export type AnalyticsKPIs = {
   overdueFollowUps: number;
   pipelineValue: number;
   activitiesCompleted: number;
-  changes: { contacts: string; sales: string };
+  changes: { contacts: string; opportunities: string; sales: string };
 };
 
 export async function fetchAnalyticsKPIs(params: {

@@ -18,6 +18,7 @@ import {
   Users,
 } from 'lucide-react';
 import { contactSourceLabels, etapaLabels, companyRubroLabels, companyTipoLabels } from '@/data/mock';
+import { useCrmConfigStore, getSourceLabelFromCatalog } from '@/store/crmConfigStore';
 import type { CompanySummaryRow } from '@/lib/companyApi';
 import { isLikelyCompanyCuid } from '@/lib/companyApi';
 import { formatCurrency, formatDate } from '@/lib/formatters';
@@ -95,6 +96,7 @@ export function CompanyPreviewSheet({
   onOpenFullDetail,
   onEdit,
 }: CompanyPreviewSheetProps) {
+  const bundle = useCrmConfigStore((s) => s.bundle);
   const [apiRecord, setApiRecord] = useState<ApiCompanyRecord | null>(null);
   const [contactRows, setContactRows] = useState<ApiContactListRow[]>([]);
   const [opportunityRows, setOpportunityRows] = useState<ApiOpportunityListRow[]>([]);
@@ -178,10 +180,9 @@ export function CompanyPreviewSheet({
   const etapa = (canLoadServer && apiRecord?.etapa ? apiRecord.etapa : row.displayEtapa) as Etapa;
   const etapaLabel = etapaLabels[etapa] ?? etapa;
   const fuenteRaw = canLoadServer && apiRecord?.fuente != null ? apiRecord.fuente : row.displayFuente;
-  const fuenteLabel =
-    fuenteRaw && fuenteRaw in contactSourceLabels
-      ? contactSourceLabels[fuenteRaw as ContactSource]
-      : fuenteRaw ?? '—';
+  const fuenteLabel = fuenteRaw
+    ? getSourceLabelFromCatalog(fuenteRaw, bundle, contactSourceLabels)
+    : '—';
   const asesor =
     canLoadServer && apiRecord?.user?.name
       ? apiRecord.user.name

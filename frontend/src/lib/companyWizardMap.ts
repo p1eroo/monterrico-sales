@@ -1,8 +1,7 @@
-import type { ContactSource, CompanyRubro, CompanyTipo, Etapa } from '@/types';
+import type { CompanyRubro, CompanyTipo, Etapa } from '@/types';
 import {
   companyRubroLabels,
   companyTipoLabels,
-  contactSourceLabels,
   etapaLabels,
 } from '@/data/mock';
 import { isLikelyContactCuid } from '@/lib/contactApi';
@@ -50,10 +49,6 @@ function isTipoKey(k: string): k is CompanyTipo {
   return Object.prototype.hasOwnProperty.call(companyTipoLabels, k);
 }
 
-function isContactSourceKey(k: string): k is ContactSource {
-  return Object.prototype.hasOwnProperty.call(contactSourceLabels, k);
-}
-
 function isEtapaKey(k: string): k is Etapa {
   return Object.prototype.hasOwnProperty.call(etapaLabels, k);
 }
@@ -82,8 +77,7 @@ export function mapApiCompanyRecordToNewCompanyData(
     dominio: c.domain ?? '',
     linkedin: c.linkedin ?? '',
     correo: c.correo ?? '',
-    origenLead:
-      fuenteRaw && isContactSourceKey(fuenteRaw) ? fuenteRaw : 'base',
+    origenLead: fuenteRaw || 'base',
     propietario: c.assignedTo ?? '',
     clienteRecuperado:
       normalizeClienteRecuperado(c.clienteRecuperado) === 'si' ? 'si' : 'no',

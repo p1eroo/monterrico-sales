@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useCrmConfigStore } from '@/store/crmConfigStore';
+import { useCrmConfigStore, getLeadSourceOptionsFromCatalog } from '@/store/crmConfigStore';
 import { toast } from 'sonner';
 import { Check, ChevronLeft, ChevronRight, Building2, Link2, Briefcase, Search, ChevronDown } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -148,15 +148,10 @@ export function NewContactWizard({
     return Object.entries(etapaLabels).map(([value, label]) => ({ value, label }));
   }, [bundle]);
 
-  const sourceOptions = useMemo(() => {
-    const src = bundle?.catalog.leadSources
-      .filter((x) => x.enabled)
-      .sort((a, b) => a.sortOrder - b.sortOrder);
-    if (src?.length) {
-      return src.map((s) => ({ value: s.slug, label: s.name }));
-    }
-    return Object.entries(contactSourceLabels).map(([value, label]) => ({ value, label }));
-  }, [bundle]);
+  const sourceOptions = useMemo(
+    () => getLeadSourceOptionsFromCatalog(bundle, contactSourceLabels),
+    [bundle],
+  );
 
   const [pendingNewCompany, setPendingNewCompany] = useState<NewCompanyData | null>(null);
   const [wizardCompanyPatchId, setWizardCompanyPatchId] = useState<string | null>(null);

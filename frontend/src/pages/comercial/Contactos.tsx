@@ -29,6 +29,7 @@ import {
 import { ChartSquareIcon } from "@/components/icons/ChartSquareIcon";
 import { PaletteIcon } from "@/components/icons/PaletteIcon";
 import { contactSourceLabels, etapaLabels } from "@/data/mock";
+import { useCrmConfigStore, getSourceLabelFromCatalog, useLeadSourceOptions } from "@/store/crmConfigStore";
 import { useAppStore } from "@/store";
 import { canReassignCommercialAdvisor } from "@/data/rbac";
 import {
@@ -216,6 +217,8 @@ export default function ContactosPage() {
   const [totalContacts, setTotalContacts] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
+  const bundle = useCrmConfigStore((s) => s.bundle);
+  const leadSourceOptions = useLeadSourceOptions();
 
   const [search, setSearch] = useState("");
   const [searchDebounced, setSearchDebounced] = useState("");
@@ -1292,7 +1295,7 @@ export default function ContactosPage() {
                         <span className="truncate flex-1">
                           {sourceFilter.length === 0
                             ? "Fuente"
-                            : sourceFilter.map((k) => contactSourceLabels[k] || k).join(", ")}
+                            : sourceFilter.map((k) => getSourceLabelFromCatalog(k, bundle, contactSourceLabels)).join(", ")}
                         </span>
                         <ChevronDown className="size-3.5 shrink-0 opacity-50" />
                       </button>
@@ -1301,7 +1304,7 @@ export default function ContactosPage() {
                       <Command>
                         <CommandList className="max-h-[260px] overflow-y-auto">
                           <CommandGroup>
-                            {Object.entries(contactSourceLabels).map(([key, label]) => {
+                            {leadSourceOptions.map(({ value: key, label }) => {
                               const selected = sourceFilter.includes(key);
                               return (
                                 <CommandItem
@@ -1564,6 +1567,7 @@ function ContactsTable({
   onColumnVisibilityChange,
 }: ContactsTableProps) {
   const { hasPermission } = usePermissions();
+  const bundle = useCrmConfigStore((s) => s.bundle);
   const [sorting, setSorting] = useState<SortingState>([]);
 
   const columns = useMemo<ColumnDef<Contact>[]>(
@@ -1676,7 +1680,7 @@ function ContactsTable({
         enableHiding: true,
         cell: ({ getValue }) => (
           <span className="inline-flex h-6 items-center rounded-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2.5 text-xs font-semibold text-gray-700 dark:text-gray-300">
-            {contactSourceLabels[String(getValue())] || String(getValue())}
+            {getSourceLabelFromCatalog(String(getValue()), bundle, contactSourceLabels)}
           </span>
         ),
         enableSorting: false,
@@ -1800,7 +1804,7 @@ function ContactsTable({
         enableResizing: false,
       },
     ],
-    [allSelected, onToggleSelectAll, selectedContacts, onToggleSelect, isPendingContactId, onPreview, onEdit, onDelete, hasPermission],
+    [allSelected, onToggleSelectAll, selectedContacts, onToggleSelect, isPendingContactId, onPreview, onEdit, onDelete, hasPermission, bundle],
   );
 
   const table = useReactTable({
