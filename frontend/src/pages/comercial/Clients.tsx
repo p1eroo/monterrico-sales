@@ -1,23 +1,46 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import {
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+  type ColumnDef,
+} from '@tanstack/react-table';
 import type { Client, ClientStatus } from '@/types';
 import { companyRubroLabels } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Pagination } from '@/components/shared/Pagination';
+import { GlassCard } from '@/components/shared/GlassCard';
+import { GhostTableSkeleton } from '@/components/shared/GhostTableSkeleton';
+import { MultiAdvisorFilter } from '@/components/shared/MultiAdvisorFilter';
+import { CompanyLogoBox } from '@/components/shared/CompanyLogo';
+import { useMultiAdvisorFilter } from '@/hooks/useMultiAdvisorFilter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '@/components/ui/table';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
+  Command,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 import {
-  Building2, Users, UserX, DollarSign, Search, Eye,
-  Phone, Mail, FileText, Clock, User, Download, ExternalLink,
-  Globe,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Building2, Users, UserX, Search,
+  Phone, Mail, FileText, Clock, User,
+  ChevronDown, MoreVertical, X,
 } from 'lucide-react';
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
@@ -29,24 +52,30 @@ import { cn } from '@/lib/utils';
 import { rightDrawerSheetContentClass } from '@/lib/rightPanelShell';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { toast } from 'sonner';
-import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '@/hooks/usePermissions';
-import { useCrmTeamAdvisorFilter } from '@/hooks/useCrmTeamAdvisorFilter';
 import { useAppStore } from '@/store';
 import { fetchExternalClients } from '@/lib/clientApi';
-import { CrmDataTableSkeleton, CrmStatCardsSkeleton } from '@/components/shared/CrmListPageSkeleton';
+import { MoneySackSvgIcon } from '@/components/icons/MoneySackSvgIcon';
+import { ChartSquareIcon } from '@/components/icons/ChartSquareIcon';
+import { ColumnsSvgIcon } from '@/components/icons/ColumnsSvgIcon';
+import { ExportSvgIcon } from '@/components/icons/ExportSvgIcon';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const CLIENTS_TABLE_SKELETON_COLUMNS = [
-  { label: 'Empresa' },
-  { label: 'Rubro', className: 'hidden lg:table-cell' },
-  { label: 'Tipo', className: 'hidden lg:table-cell' },
-  { label: 'Teléfono', className: 'hidden md:table-cell' },
-  { label: 'Email', className: 'hidden lg:table-cell' },
-  { label: 'Estado' },
-  { label: 'Asesor', className: 'hidden md:table-cell' },
-  { label: 'Fecha alta', className: 'hidden xl:table-cell' },
-  { label: 'Ingresos', className: 'text-right' },
-  { label: '', className: 'text-right w-10' },
+  { label: 'Empresa', width: 280 },
+  { label: 'RUC', width: 120, className: 'hidden md:table-cell' },
+  { label: 'Teléfono', width: 120, className: 'hidden md:table-cell' },
+  { label: 'Email', width: 180, className: 'hidden lg:table-cell' },
+  { label: 'Estado', width: 100 },
+  { label: 'Asesor', width: 150, className: 'hidden md:table-cell' },
+  { label: 'Fecha alta', width: 120, className: 'hidden xl:table-cell' },
+  { label: 'Ingresos', width: 150 },
+];
+
+const CLIENT_STATUS_OPTIONS: { key: ClientStatus; label: string }[] = [
+  { key: 'activo', label: 'Activo' },
+  { key: 'inactivo', label: 'Inactivo' },
+  { key: 'potencial', label: 'Potencial' },
 ];
 
 const clientStatusConfig: Record<ClientStatus, { label: string; className: string }> = {
@@ -61,6 +90,26 @@ function ClientStatusBadge({ status }: { status: ClientStatus }) {
     <Badge variant="outline" className={cn('text-[11px] font-medium', config.className)}>
       {config.label}
     </Badge>
+  );
+}
+
+function ClientsStatsSkeleton() {
+  return (
+    <Card className="flex flex-col overflow-hidden py-0 sm:flex-row" aria-hidden>
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="relative flex flex-1 items-center justify-center gap-3 px-5 py-4">
+          <Skeleton className="size-16 shrink-0 rounded-full" />
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-28" />
+            <Skeleton className="h-7 w-16" />
+            <Skeleton className="h-3 w-20" />
+          </div>
+          {i < 3 && (
+            <div className="absolute right-0 top-4 bottom-4 hidden w-px bg-border sm:block" />
+          )}
+        </div>
+      ))}
+    </Card>
   );
 }
 
@@ -83,20 +132,12 @@ function truncateCompanyName(name: string, maxLength = 28): string {
   return name.slice(0, maxLength - 3) + '...';
 }
 
-function empresaPath(client: Client): string {
-  if (client.companyUrlSlug) {
-    return `/empresas/${encodeURIComponent(client.companyUrlSlug)}`;
-  }
-  return `/empresas/${encodeURIComponent(client.company)}`;
-}
-
 function exportClientsToCSV(clients: Client[]) {
-  const headers = ['Empresa', 'Dominio', 'Rubro', 'Tipo', 'Teléfono', 'Email', 'Estado', 'Asesor', 'Fecha alta', 'Ingresos'];
+  const headers = ['Empresa', 'RUC', 'Dominio', 'Teléfono', 'Email', 'Estado', 'Asesor', 'Fecha alta', 'Ingresos'];
   const rows = clients.map((c) => [
     c.company,
+    c.ruc ?? '',
     getDomainFromEmail(c.email) ?? '',
-    c.companyRubro ? companyRubroLabels[c.companyRubro] : '',
-    c.companyTipo ?? '',
     c.phone,
     c.email,
     clientStatusConfig[c.status].label,
@@ -115,21 +156,33 @@ function exportClientsToCSV(clients: Client[]) {
 }
 
 export default function Clients() {
-  const navigate = useNavigate();
-  const { users, activeAdvisors } = useUsers();
+  const { users } = useUsers();
   const { hasPermission } = usePermissions();
+  const {
+    selectedIds: assigneeFilter,
+    setSelectedIds: setAssigneeFilter,
+    canSeeAllAdvisors,
+    activeAdvisors,
+    isInitialized: assigneeFilterInitialized,
+    isActive: assigneeFilterIsActive,
+    matchesAssignee,
+    reset: resetAdvisorFilter,
+  } = useMultiAdvisorFilter();
+
   const [clientList, setClientList] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [assigneeFilter, setAssigneeFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<ClientStatus[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
-  const { canSeeAllAdvisors } = useCrmTeamAdvisorFilter(
-    assigneeFilter as any,
-    setAssigneeFilter as any,
-  );
+  const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({
+    ruc: true,
+    phone: true,
+    email: true,
+    asesor: true,
+    createdAt: true,
+  });
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
 
   const { currentUser } = useAppStore();
@@ -142,37 +195,37 @@ export default function Clients() {
 
       const mappedExternal: Client[] = externalRaw.map((ext) => {
         const rawAsesor = (ext.asesorresponsable || '').trim().toLowerCase();
-        
+
         let advisor = users.find(
-          (u) => u.username.toLowerCase() === rawAsesor
+          (u) => u.username.toLowerCase() === rawAsesor,
         );
 
         if (!advisor && currentUser.username.toLowerCase() === rawAsesor) {
-          advisor = currentUser as any;
+          advisor = currentUser as typeof users[number];
         }
 
-        // Lógica de cálculo anual inteligente
         const monthsOrder: Record<string, number> = {
-          'enero': 0, 'febrero': 1, 'marzo': 2, 'abril': 3, 'mayo': 4, 'junio': 5,
-          'julio': 6, 'agosto': 7, 'septiembre': 8, 'octubre': 9, 'noviembre': 10, 'diciembre': 11
+          enero: 0, febrero: 1, marzo: 2, abril: 3, mayo: 4, junio: 5,
+          julio: 6, agosto: 7, septiembre: 8, octubre: 9, noviembre: 10, diciembre: 11,
         };
         const currentMonthIdx = new Date().getMonth();
         let yearTotal = 0;
         for (let i = 1; i <= 5; i++) {
-          const mName = (ext as any)[`mes${i}`]?.toLowerCase().trim();
-          const mAmount = (ext as any)[`monto${i}`] || 0;
-          if (mName && monthsOrder[mName] !== undefined && monthsOrder[mName] <= currentMonthIdx) {
-            yearTotal += mAmount;
+          const mName = (ext as Record<string, unknown>)[`mes${i}`] as string | undefined;
+          const mAmount = (ext as Record<string, unknown>)[`monto${i}`] as number | undefined;
+          if (mName && monthsOrder[mName.toLowerCase().trim()] !== undefined && monthsOrder[mName.toLowerCase().trim()] <= currentMonthIdx) {
+            yearTotal += mAmount || 0;
           }
         }
-        
+
         return {
           id: `ext-${ext.idclienteempresa || ext.codigoempresa}`,
           company: ext.nombrecomercial || ext.razonsocial,
+          ruc: ext.rucempresa?.trim() || undefined,
           contactName: ext.contacto || '—',
           phone: ext.telefono || '—',
           email: ext.contactoemail || '—',
-          status: 'activo',
+          status: 'activo' as ClientStatus,
           assignedTo: advisor ? advisor.id : (ext.asesorresponsable || 'unassigned'),
           assignedToName: advisor ? (advisor.name || advisor.username) : (ext.asesorresponsable || 'Sin asesor'),
           service: ext.tipopagodetalle || '—',
@@ -181,16 +234,14 @@ export default function Clients() {
           externalMonthName: ext.mes1,
           externalMonthAmount: ext.monto1,
           externalYearTotal: yearTotal,
-          // Pasamos los datos adicionales para las tarjetas del drawer
-          ...({
-            mes1: ext.mes1, monto1: ext.monto1,
-            mes2: ext.mes2, monto2: ext.monto2,
-            mes3: ext.mes3, monto3: ext.monto3,
-            mes4: ext.mes4, monto4: ext.monto4,
-            mes5: ext.mes5, monto5: ext.monto5,
-          } as any),
+          externalLogoUrl: ext.logoempresa?.trim() || undefined,
+          mes1: ext.mes1, monto1: ext.monto1,
+          mes2: ext.mes2, monto2: ext.monto2,
+          mes3: ext.mes3, monto3: ext.monto3,
+          mes4: ext.mes4, monto4: ext.monto4,
+          mes5: ext.mes5, monto5: ext.monto5,
           notes: '',
-        };
+        } as Client;
       });
 
       setClientList(mappedExternal);
@@ -201,15 +252,15 @@ export default function Clients() {
     } finally {
       setLoading(false);
     }
-  }, [currentUser.username, users]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [searchTerm, statusFilter, assigneeFilter]);
+  }, [currentUser, users]);
 
   useEffect(() => {
     void reloadClients();
   }, [reloadClients]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, statusFilter, assigneeFilter, pageSize]);
 
   const stats = useMemo(() => {
     const total = clientList.length;
@@ -223,27 +274,59 @@ export default function Clients() {
   }, [clientList]);
 
   const filteredClients = useMemo(() => {
+    const rucQuery = searchTerm.replace(/\D/g, '');
     return clientList.filter((client) => {
       const matchesSearch =
         searchTerm === '' ||
         client.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
         client.contactName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         client.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        client.phone.includes(searchTerm);
+        client.phone.includes(searchTerm) ||
+        (rucQuery.length > 0 &&
+          (client.ruc?.replace(/\D/g, '').includes(rucQuery) ?? false));
 
-      const matchesStatus = statusFilter === 'all' || client.status === statusFilter;
-      const matchesAssignee =
-        assigneeFilter === 'all' || client.assignedTo === assigneeFilter;
+      const matchesStatus =
+        statusFilter.length === 0 || statusFilter.includes(client.status);
 
-      return matchesSearch && matchesStatus && matchesAssignee;
+      return matchesSearch && matchesStatus && matchesAssignee(client.assignedTo);
     });
-  }, [clientList, searchTerm, statusFilter, assigneeFilter]);
+  }, [clientList, searchTerm, statusFilter, matchesAssignee]);
 
-  const totalPages = Math.ceil(filteredClients.length / pageSize);
-  const paginatedClients = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return filteredClients.slice(start, start + pageSize);
-  }, [filteredClients, page, pageSize]);
+  const totalFiltered = filteredClients.length;
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
+  const start = (page - 1) * pageSize;
+  const displayedClients = useMemo(
+    () => filteredClients.slice(start, start + pageSize),
+    [filteredClients, start, pageSize],
+  );
+
+  const hasActiveFilters =
+    searchTerm !== '' ||
+    statusFilter.length > 0 ||
+    assigneeFilterIsActive;
+
+  function clearFilters() {
+    setSearchTerm('');
+    setStatusFilter([]);
+    resetAdvisorFilter();
+    setPage(1);
+  }
+
+  function openClientDetail(client: Client) {
+    if (client.id.startsWith('ext-')) {
+      toast.info('Cliente Externo', {
+        description: 'Este registro proviene del system y es de solo lectura.',
+      });
+    }
+    setSelectedClient(client);
+  }
 
   const selectedAssigneeUser = useMemo(
     () =>
@@ -253,34 +336,179 @@ export default function Clients() {
     [selectedClient, users],
   );
 
-  const statsCards = [
-    { label: 'Total Clientes', value: stats.total, icon: Building2, color: 'text-[#13944C]', bg: 'bg-[#13944C]/10' },
-    { label: 'Activos', value: stats.activos, icon: Users, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-    { label: 'Inactivos', value: stats.inactivos, icon: UserX, color: 'text-red-600', bg: 'bg-red-50' },
-    { label: 'Ingresos Totales', value: formatCurrency(stats.ingresos), icon: DollarSign, color: 'text-blue-600', bg: 'bg-blue-50' },
-  ];
+  const columns = useMemo<ColumnDef<Client>[]>(
+    () => [
+      {
+        accessorKey: 'company',
+        id: 'company',
+        header: 'Empresa',
+        enableHiding: false,
+        size: 280,
+        cell: ({ row }) => {
+          const client = row.original;
+          const emailDomain = getDomainFromEmail(client.email);
+          return (
+            <div className="flex min-w-0 max-w-[20rem] items-center gap-2">
+              <CompanyLogoBox
+                companyId={client.companyId}
+                domain={emailDomain}
+                externalLogoUrl={client.externalLogoUrl}
+              />
+              <div className="min-w-0">
+                <p
+                  className="truncate text-sm font-semibold text-[#0F172A] dark:text-gray-100"
+                  title={client.company}
+                >
+                  {truncateCompanyName(client.company)}
+                </p>
+                {emailDomain ? (
+                  <a
+                    href={`https://${emailDomain}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={`Abrir ${emailDomain}`}
+                    className="block truncate text-xs text-[#64748B] hover:text-primary hover:underline dark:text-gray-400"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {emailDomain}
+                  </a>
+                ) : (
+                  <p className="truncate text-xs text-[#64748B] dark:text-gray-400">
+                    {client.contactName !== '—' ? client.contactName : '—'}
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: 'ruc',
+        id: 'ruc',
+        header: 'RUC',
+        enableHiding: true,
+        size: 120,
+        cell: ({ getValue }) => {
+          const val = String(getValue() || '').trim();
+          return (
+            <span className="text-sm tabular-nums text-[#475569] dark:text-gray-400" title={val || undefined}>
+              {val || '—'}
+            </span>
+          );
+        },
+      },
+      {
+        accessorKey: 'phone',
+        id: 'phone',
+        header: 'Teléfono',
+        enableHiding: true,
+        size: 120,
+        cell: ({ getValue }) => (
+          <span className="text-sm text-[#475569] dark:text-gray-400">{getValue() as string}</span>
+        ),
+      },
+      {
+        accessorKey: 'email',
+        id: 'email',
+        header: 'Email',
+        enableHiding: true,
+        size: 180,
+        cell: ({ getValue }) => {
+          const val = String(getValue() || '');
+          return (
+            <span className="block truncate text-sm text-[#475569] dark:text-gray-400" title={val || undefined}>
+              {val || '—'}
+            </span>
+          );
+        },
+      },
+      {
+        accessorKey: 'status',
+        id: 'status',
+        header: 'Estado',
+        enableHiding: false,
+        size: 100,
+        cell: ({ getValue }) => <ClientStatusBadge status={getValue() as ClientStatus} />,
+      },
+      {
+        accessorKey: 'assignedToName',
+        id: 'asesor',
+        header: 'Asesor',
+        enableHiding: true,
+        size: 150,
+        cell: ({ getValue }) => {
+          const val = String(getValue() || '');
+          return (
+            <span className="block truncate text-sm text-[#475569] dark:text-gray-400" title={val || undefined}>
+              {val || '—'}
+            </span>
+          );
+        },
+      },
+      {
+        accessorKey: 'createdAt',
+        id: 'createdAt',
+        header: 'Fecha alta',
+        enableHiding: true,
+        size: 120,
+        cell: ({ getValue }) => (
+          <span className="text-sm text-[#475569] dark:text-gray-400">
+            {formatDate(getValue() as string)}
+          </span>
+        ),
+      },
+      {
+        id: 'ingresos',
+        header: 'Ingresos',
+        enableHiding: false,
+        size: 150,
+        cell: ({ row }) => {
+          const client = row.original;
+          if (client.id.startsWith('ext-')) {
+            return (
+              <div className="flex flex-col items-end leading-tight">
+                <span className="text-sm font-semibold tabular-nums text-[#0F172A] dark:text-gray-100">
+                  {formatCurrency(client.externalMonthAmount || 0).replace('S/\u00a0', 'S/ ')}
+                </span>
+                <span className="text-[10px] font-normal uppercase text-[#64748B] dark:text-gray-400">
+                  {client.externalMonthName || 'Mes'} · Año: S/ {(client.externalYearTotal || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            );
+          }
+          return (
+            <span className="block text-right text-sm font-semibold tabular-nums text-[#0F172A] dark:text-gray-100">
+              {formatCurrency(client.totalRevenue)}
+            </span>
+          );
+        },
+      },
+    ],
+    [],
+  );
+
+  const table = useReactTable({
+    data: displayedClients,
+    columns,
+    state: { columnVisibility },
+    onColumnVisibilityChange: setColumnVisibility,
+    getCoreRowModel: getCoreRowModel(),
+    enableColumnResizing: true,
+    columnResizeMode: 'onChange',
+    defaultColumn: { minSize: 60 },
+  });
+
+  const statusFilterLabel =
+    statusFilter.length === 0
+      ? 'Estado'
+      : statusFilter.map((k) => clientStatusConfig[k].label).join(', ');
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Clientes"
-      >
-        <span className="mr-2 text-sm text-muted-foreground">Total: {filteredClients.length}</span>
-        {hasPermission('clientes.exportar') && (
-          <Button
-            variant="outline"
-            onClick={() => {
-              exportClientsToCSV(filteredClients);
-              toast.success('Exportación completada', {
-                description: `Se exportaron ${filteredClients.length} clientes.`,
-              });
-            }}
-            className="bg-card"
-          >
-            <Download className="size-4" /> Exportar
-          </Button>
-        )}
-      </PageHeader>
+        description="Gestiona y da seguimiento a tu cartera de clientes activos"
+      />
 
       {loadError && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -288,223 +516,326 @@ export default function Clients() {
         </div>
       )}
 
+      {/* Fase 1: Stats unificados */}
       {loading ? (
-        <CrmStatCardsSkeleton count={4} />
+        <ClientsStatsSkeleton />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {statsCards.map((stat) => (
-            <Card key={stat.label} className="py-0">
-              <CardContent className="flex items-center gap-4 px-4 py-3">
-                <div className={cn('flex size-12 items-center justify-center rounded-lg', stat.bg)}>
-                  <stat.icon className={cn('size-6', stat.color)} />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">{stat.label}</p>
-                  <p className="text-2xl font-bold">{stat.value}</p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <Card className="flex flex-col overflow-hidden py-0 sm:flex-row">
+          <div className="relative flex flex-1 items-center justify-center gap-3 px-5 py-4">
+            <div className="flex size-16 shrink-0 items-center justify-center rounded-full border-2 border-emerald-500 bg-transparent text-emerald-600">
+              <Building2 className="size-7" />
+            </div>
+            <div className="space-y-0.5">
+              <p className="text-sm font-medium text-[#647789] dark:text-gray-400">Total clientes</p>
+              <p className="text-[22px] font-bold tracking-tight text-[#0F172A] dark:text-gray-100">{stats.total}</p>
+              <p className="text-xs text-[#8a9aab] dark:text-gray-400">en cartera</p>
+            </div>
+            <div className="absolute right-0 top-4 bottom-4 hidden w-px bg-border sm:block" />
+          </div>
+          <div className="relative flex flex-1 items-center justify-center gap-3 px-5 py-4">
+            <div className="flex size-16 shrink-0 items-center justify-center rounded-full border-2 border-emerald-500 bg-transparent text-emerald-600">
+              <Users className="size-7" />
+            </div>
+            <div className="space-y-0.5">
+              <p className="text-sm font-medium text-[#647789] dark:text-gray-400">Activos</p>
+              <p className="text-[22px] font-bold tracking-tight text-[#0F172A] dark:text-gray-100">{stats.activos}</p>
+              <p className="text-xs text-[#8a9aab] dark:text-gray-400">
+                {stats.total > 0 ? `${Math.round((stats.activos / stats.total) * 100)}% del total` : '—'}
+              </p>
+            </div>
+            <div className="absolute right-0 top-4 bottom-4 hidden w-px bg-border sm:block" />
+          </div>
+          <div className="relative flex flex-1 items-center justify-center gap-3 px-5 py-4">
+            <div className="flex size-16 shrink-0 items-center justify-center rounded-full border-2 border-red-500 bg-transparent text-red-600">
+              <UserX className="size-7" />
+            </div>
+            <div className="space-y-0.5">
+              <p className="text-sm font-medium text-[#647789] dark:text-gray-400">Inactivos</p>
+              <p className="text-[22px] font-bold tracking-tight text-[#0F172A] dark:text-gray-100">{stats.inactivos}</p>
+              <p className="text-xs text-[#8a9aab] dark:text-gray-400">
+                {stats.inactivos === 0 ? 'ninguno registrado' : 'requieren seguimiento'}
+              </p>
+            </div>
+            <div className="absolute right-0 top-4 bottom-4 hidden w-px bg-border sm:block" />
+          </div>
+          <div className="relative flex flex-1 items-center justify-center gap-3 px-5 py-4">
+            <div className="flex size-16 shrink-0 items-center justify-center rounded-full border-2 border-blue-500 bg-transparent text-blue-600">
+              <MoneySackSvgIcon className="size-7" />
+            </div>
+            <div className="space-y-0.5">
+              <p className="text-sm font-medium text-[#647789] dark:text-gray-400">Ingresos totales</p>
+              <p className="text-[22px] font-bold tracking-tight text-[#0F172A] dark:text-gray-100">{formatCurrency(stats.ingresos)}</p>
+              <p className="text-xs text-[#8a9aab] dark:text-gray-400">acumulado del año</p>
+            </div>
+          </div>
+        </Card>
       )}
 
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-        <div className="relative w-[580px]">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por empresa, contacto, email o teléfono…"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 bg-card"
-          />
-        </div>
-        <div className="flex flex-wrap items-center gap-2 flex-1">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card shadow-none">
-              <div className="flex items-center gap-1.5">
-                <Globe className="size-3.5" />
-                <SelectValue placeholder="Estado" />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Estados</SelectItem>
-              <SelectItem value="activo">Activo</SelectItem>
-              <SelectItem value="inactivo">Inactivo</SelectItem>
-              <SelectItem value="potencial">Potencial</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select
-            value={assigneeFilter}
-            onValueChange={setAssigneeFilter}
-            disabled={!canSeeAllAdvisors}
-          >
-            <SelectTrigger className="h-9 w-auto rounded-md border-input bg-card shadow-none">
-              <div className="flex items-center gap-1.5">
-                <User className="size-3.5" />
-                <SelectValue placeholder="Asesor" />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Asesores</SelectItem>
-              {activeAdvisors.map((u) => (
-                <SelectItem key={u.id} value={u.id}>
-                  {u.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      {/* Fases 2–4: GlassCard con filtros, tabla tanstack y paginación */}
+      <GlassCard>
+        <div className="flex min-w-0 flex-col gap-3 px-5 py-4 lg:flex-row lg:items-center">
+          <div className="relative w-full min-w-0 max-w-[400px]">
+            <Search className="absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-[#8a9aab] dark:text-gray-400" />
+            <Input
+              placeholder="Buscar por empresa, RUC, contacto, email o teléfono…"
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setPage(1);
+              }}
+              className="!h-12 rounded-lg border border-[#e1e7ee] bg-white/60 pl-10 text-[15px] text-black shadow-none transition-colors placeholder:text-[#8a9aab] hover:border-primary focus-visible:ring-1 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-100 dark:placeholder:text-gray-400"
+            />
+          </div>
 
-      {loading ? (
-        <CrmDataTableSkeleton
-          columns={CLIENTS_TABLE_SKELETON_COLUMNS}
-          rows={8}
-          aria-label="Cargando clientes"
-          roundedClass="rounded-lg"
-          className="bg-card"
-        />
-      ) : (
-      <div className="scrollbar-thin max-h-[calc(100vh-22rem)] overflow-auto rounded-[14px]">
-        <Table className="min-w-[1100px]">
-          <TableHeader className="sticky top-0 z-10 bg-background">
-            <TableRow>
-              <TableHead>Empresa</TableHead>
-              <TableHead className="hidden lg:table-cell">Rubro</TableHead>
-              <TableHead className="hidden lg:table-cell">Tipo</TableHead>
-              <TableHead className="hidden md:table-cell">Teléfono</TableHead>
-              <TableHead className="hidden lg:table-cell">Email</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead className="hidden md:table-cell">Asesor</TableHead>
-              <TableHead className="hidden xl:table-cell">Fecha alta</TableHead>
-              <TableHead className="text-right">Ingresos</TableHead>
-              <TableHead className="text-right">Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {paginatedClients.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={10} className="py-12 text-center text-muted-foreground">
-                  {clientList.length === 0
-                    ? 'Aún no hay clientes. Aparecerán aquí cuando una empresa llegue a la etapa Activo o a una etapa con probabilidad 100 %.'
-                    : 'No se encontraron clientes con los filtros aplicados.'}
-                </TableCell>
-              </TableRow>
-            ) : (
-              paginatedClients.map((client) => {
-                const emailDomain = getDomainFromEmail(client.email);
-                return (
-                  <TableRow
-                    key={client.id}
-                    className={cn(
-                      'cursor-pointer hover:bg-muted/50',
-                      client.id.startsWith('ext-') && 'bg-blue-50/30'
-                    )}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className={cn(
+                  'flex !h-12 w-[190px] cursor-pointer items-center gap-1.5 rounded-lg border border-[#e1e7ee] bg-white/60 px-3 text-left text-sm shadow-none transition-colors hover:border-primary dark:border-gray-700 dark:bg-gray-800/60',
+                  statusFilter.length > 0
+                    ? 'text-black dark:text-gray-100'
+                    : 'text-[#8a9aab] dark:text-gray-400',
+                )}
+              >
+                <ChartSquareIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
+                <span className="flex-1 truncate">{statusFilterLabel}</span>
+                <ChevronDown className="size-3.5 shrink-0 opacity-50" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[200px] p-0" align="start">
+              <Command>
+                <CommandList className="max-h-[260px] overflow-y-auto">
+                  <CommandGroup>
+                    {CLIENT_STATUS_OPTIONS.map(({ key, label }) => {
+                      const selected = statusFilter.includes(key);
+                      return (
+                        <CommandItem
+                          key={key}
+                          onSelect={() => {
+                            setStatusFilter((prev) =>
+                              prev.includes(key)
+                                ? prev.filter((s) => s !== key)
+                                : [...prev, key],
+                            );
+                            setPage(1);
+                          }}
+                        >
+                          <span className="[&_svg]:!text-primary-foreground">
+                            <Checkbox
+                              checked={selected}
+                              className="mr-2 h-4 w-4 rounded border border-gray-400 data-[state=checked]:border-primary data-[state=checked]:bg-primary"
+                            />
+                          </span>
+                          <span>{label}</span>
+                        </CommandItem>
+                      );
+                    })}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+
+          <MultiAdvisorFilter
+            value={assigneeFilter}
+            onChange={setAssigneeFilter}
+            advisors={activeAdvisors}
+            disabled={!canSeeAllAdvisors}
+            isActive={assigneeFilterIsActive}
+            isInitialized={assigneeFilterInitialized}
+            className="!h-12 w-[190px]"
+            onInteraction={() => setPage(1)}
+          />
+
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
+              <X className="size-4" /> Limpiar
+            </Button>
+          )}
+
+          <div className="ml-auto hidden items-center gap-5 sm:flex">
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex cursor-pointer items-center gap-1.5 text-sm font-semibold text-[#1f2933] transition-opacity hover:opacity-70 dark:text-gray-100"
+                >
+                  <ColumnsSvgIcon className="size-[18px]" />
+                  Columnas
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[180px] p-0" align="end">
+                <Command>
+                  <CommandList>
+                    <CommandGroup>
+                      {[
+                        { id: 'ruc', label: 'RUC' },
+                        { id: 'phone', label: 'Teléfono' },
+                        { id: 'email', label: 'Email' },
+                        { id: 'asesor', label: 'Asesor' },
+                        { id: 'createdAt', label: 'Fecha alta' },
+                      ].map((col) => {
+                        const visible = columnVisibility[col.id] ?? true;
+                        return (
+                          <div
+                            key={col.id}
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => setColumnVisibility((prev) => ({ ...prev, [col.id]: !visible }))}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                setColumnVisibility((prev) => ({ ...prev, [col.id]: !visible }));
+                              }
+                            }}
+                            className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
+                          >
+                            <Checkbox
+                              checked={visible}
+                              className="h-4 w-4 rounded border border-gray-400 data-[state=checked]:border-primary data-[state=checked]:bg-primary"
+                            />
+                            <span className="text-[#1f2933] dark:text-gray-100">{col.label}</span>
+                          </div>
+                        );
+                      })}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex cursor-pointer items-center gap-1.5 text-sm font-semibold text-[#1f2933] transition-opacity hover:opacity-70 dark:text-gray-100"
+                >
+                  <MoreVertical className="size-5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {hasPermission('clientes.exportar') && (
+                  <DropdownMenuItem
                     onClick={() => {
-                      if (client.id.startsWith('ext-')) {
-                        // Solo informamos que es de solo lectura, pero permitimos ver el detalle
-                        toast.info('Cliente Externo', {
-                          description: 'Este registro proviene del system y es de solo lectura.',
-                        });
-                      }
-                      setSelectedClient(client);
+                      exportClientsToCSV(filteredClients);
+                      toast.success('Exportación completada', {
+                        description: `Se exportaron ${filteredClients.length} clientes.`,
+                      });
                     }}
                   >
-                    <TableCell className="max-w-[280px]">
-                      <div>
-                        <p className="font-medium truncate" title={client.company}>{truncateCompanyName(client.company)}</p>
-                        {emailDomain && (
-                          <a
-                            href={`https://${emailDomain}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title={`Abrir ${emailDomain}`}
-                            className="text-xs text-muted-foreground hover:text-primary hover:underline cursor-pointer block"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {emailDomain}
-                          </a>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell text-muted-foreground">
-                      {client.companyRubro ? companyRubroLabels[client.companyRubro] : '—'}
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell text-muted-foreground">
-                      {client.companyTipo ?? '—'}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">{client.phone}</TableCell>
-                    <TableCell className="hidden lg:table-cell">{client.email}</TableCell>
-                    <TableCell>
-                      <ClientStatusBadge status={client.status} />
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">{client.assignedToName}</TableCell>
-                    <TableCell className="hidden xl:table-cell">{formatDate(client.createdAt)}</TableCell>
-                    <TableCell className="text-right font-medium">
-                      {client.id.startsWith('ext-') ? (
-                        <div className="flex flex-col items-end leading-tight">
-                          <span>{formatCurrency(client.externalMonthAmount || 0).replace('S/ ', 'S/ ')}</span>
-                          <span className="text-[10px] text-muted-foreground uppercase font-normal">
-                            {client.externalMonthName || 'Mes'} · Año: S/ {(client.externalYearTotal || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </span>
-                        </div>
-                      ) : (
-                        formatCurrency(client.totalRevenue)
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        {!client.id.startsWith('ext-') && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="size-8"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedClient(client);
-                              }}
-                            >
-                              <Eye className="size-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="size-8"
-                              title="Ver empresa"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(empresaPath(client));
-                              }}
-                            >
-                              <ExternalLink className="size-4" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </div>
-      )}
+                    <ExportSvgIcon className="size-[18px]" />
+                    Exportar
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
 
-      {!loading && totalPages > 0 && (
-        <Pagination
-          page={page}
-          totalPages={totalPages}
-          onPageChange={setPage}
-          totalItems={filteredClients.length}
-          pageSize={pageSize}
-          onPageSizeChange={(newSize) => {
-            setPageSize(newSize);
-            setPage(1);
-          }}
-        />
-      )}
+        {loading ? (
+          <GhostTableSkeleton columns={CLIENTS_TABLE_SKELETON_COLUMNS} rows={10} />
+        ) : totalFiltered === 0 ? (
+          <Card className="rounded-none border-0 shadow-none">
+            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+              <Building2 className="mb-4 size-12 text-muted-foreground/40" />
+              <h3 className="text-lg font-semibold">No se encontraron clientes</h3>
+              <p className="mt-1 max-w-md text-sm text-muted-foreground">
+                {clientList.length === 0
+                  ? 'Aún no hay clientes. Aparecerán aquí cuando una empresa llegue a la etapa Activo o a una etapa con probabilidad 100%.'
+                  : 'Intenta ajustar los filtros para ver más resultados.'}
+              </p>
+              {hasActiveFilters && (
+                <Button variant="outline" className="mt-4" onClick={clearFilters}>
+                  Limpiar filtros
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="scrollbar-thin max-h-[calc(100vh-460px)] overflow-auto border-t border-border/40 bg-card/30">
+            <table className="w-full table-fixed bg-transparent" style={{ minWidth: table.getTotalSize() }}>
+              <thead>
+                {table.getHeaderGroups().map((hg) => (
+                  <tr
+                    key={hg.id}
+                    className="h-11 bg-[#eef1f5] text-left text-xs font-bold text-[#647789] dark:bg-gray-800 dark:text-gray-400"
+                  >
+                    {hg.headers.map((header) => (
+                      <th
+                        key={header.id}
+                        colSpan={header.colSpan}
+                        className={cn(
+                          'relative overflow-hidden px-3 align-middle',
+                          header.column.id === 'ingresos' && 'text-right',
+                        )}
+                        style={{ width: header.getSize() }}
+                      >
+                        {flexRender(header.column.columnDef.header, header.getContext())}
+                        {header.column.getCanResize() && (
+                          <div
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              header.getResizeHandler()(e);
+                            }}
+                            onTouchStart={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              header.getResizeHandler()(e);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="group/rez absolute inset-y-0 right-0 flex w-5 cursor-col-resize items-center justify-center"
+                          >
+                            <div className="pointer-events-none h-4 w-[2px] select-none rounded-full bg-gray-200 transition-all group-hover/rez:w-[5px] group-hover/rez:bg-blue-500 group-active/rez:w-[5px] group-active/rez:bg-blue-500" />
+                          </div>
+                        )}
+                      </th>
+                    ))}
+                  </tr>
+                ))}
+              </thead>
+              <tbody className="bg-transparent">
+                {table.getRowModel().rows.map((row) => (
+                    <tr
+                      key={row.id}
+                      className="h-14 cursor-pointer border-b border-dashed border-[#e8ecf0] bg-transparent transition-colors last:border-b-0 hover:bg-[#fafbfc] dark:border-gray-700 dark:hover:bg-gray-800"
+                      onClick={() => openClientDetail(row.original)}
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <td
+                          key={cell.id}
+                          className={cn(
+                            'overflow-hidden px-3 align-middle',
+                            cell.column.id === 'ingresos' && 'text-right',
+                          )}
+                          style={{ width: cell.column.getSize() }}
+                        >
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </td>
+                      ))}
+                    </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {!loading && totalFiltered > 0 && (
+          <div className="flex h-14 items-center border-t border-dashed border-[#e8ecf0] bg-transparent px-5 dark:border-gray-700">
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              totalItems={totalFiltered}
+              pageSize={pageSize}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                setPage(1);
+              }}
+            />
+          </div>
+        )}
+      </GlassCard>
 
       <Sheet open={!!selectedClient} onOpenChange={(open) => !open && setSelectedClient(null)}>
         <SheetContent
@@ -518,7 +849,7 @@ export default function Clients() {
                   <div className="flex size-12 items-center justify-center rounded-lg bg-[#13944C]/10">
                     <Building2 className="size-6 text-[#13944C]" />
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <div className="min-w-0 flex-1">
                     <SheetTitle className="truncate">{selectedClient.company}</SheetTitle>
                     <SheetDescription className="flex flex-wrap items-center gap-2 pt-1">
                       <ClientStatusBadge status={selectedClient.status} />
@@ -536,7 +867,7 @@ export default function Clients() {
               <ScrollArea className="h-[calc(100vh-130px)]">
                 <div className="space-y-6 px-4">
                   <div className="space-y-3">
-                    <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                    <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                       Contacto vinculado
                     </h4>
                     <p className="text-xs text-muted-foreground">
@@ -544,15 +875,15 @@ export default function Clients() {
                     </p>
                     <div className="space-y-2.5">
                       <div className="flex items-center gap-3">
-                        <User className="size-4 text-muted-foreground shrink-0" />
+                        <User className="size-4 shrink-0 text-muted-foreground" />
                         <span className="text-sm">{selectedClient.contactName || '—'}</span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <Phone className="size-4 text-muted-foreground shrink-0" />
+                        <Phone className="size-4 shrink-0 text-muted-foreground" />
                         <span className="text-sm">{selectedClient.phone || '—'}</span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <Mail className="size-4 text-muted-foreground shrink-0" />
+                        <Mail className="size-4 shrink-0 text-muted-foreground" />
                         <span className="text-sm">{selectedClient.email || '—'}</span>
                       </div>
                     </div>
@@ -561,36 +892,35 @@ export default function Clients() {
                   <Separator />
 
                   <div className="space-y-4">
-                    <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                    <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                       Métricas
                     </h4>
-                    
+
                     {selectedClient.id.startsWith('ext-') ? (
                       <div className="space-y-4">
-                        {/* Tarjeta de Total Anual */}
-                        <div className="rounded-xl bg-primary/5 border border-primary/10 p-4">
-                          <p className="text-xs text-muted-foreground uppercase font-medium">Acumulado Año 2026</p>
-                          <p className="text-2xl font-bold text-primary mt-1">
+                        <div className="rounded-xl border border-primary/10 bg-primary/5 p-4">
+                          <p className="text-xs font-medium uppercase text-muted-foreground">Acumulado Año 2026</p>
+                          <p className="mt-1 text-2xl font-bold text-primary">
                             S/ {(selectedClient.externalYearTotal || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </p>
                         </div>
 
-                        {/* Grid de Meses */}
                         <div className="grid grid-cols-3 gap-2">
                           {[1, 2, 3, 4, 5].map((i) => {
-                            const mName = (selectedClient as any)[`mes${i}`];
-                            const mAmount = (selectedClient as any)[`monto${i}`];
+                            const ext = selectedClient as Client & Record<string, unknown>;
+                            const mName = ext[`mes${i}`] as string | undefined;
+                            const mAmount = ext[`monto${i}`] as number | undefined;
                             if (!mName) return null;
-                            
+
                             return (
                               <div key={i} className="flex flex-col items-center justify-center rounded-lg border bg-card p-2 text-center shadow-sm">
-                                <span className="text-[10px] font-bold text-muted-foreground uppercase">
+                                <span className="text-[10px] font-bold uppercase text-muted-foreground">
                                   {mName.substring(0, 3)}
                                 </span>
-                                <span className="text-sm font-bold text-blue-600 mt-1">
+                                <span className="mt-1 text-sm font-bold text-blue-600">
                                   {(mAmount || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </span>
-                                <span className="text-[9px] text-muted-foreground mt-0.5">Soles</span>
+                                <span className="mt-0.5 text-[9px] text-muted-foreground">Soles</span>
                               </div>
                             );
                           })}
@@ -600,26 +930,26 @@ export default function Clients() {
                       <div className="grid grid-cols-2 gap-4">
                         <div className="rounded-lg border p-3">
                           <p className="text-xs text-muted-foreground">Ingresos</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
+                          <p className="mt-0.5 text-xs text-muted-foreground">
                             Misma facturación estimada de la empresa.
                           </p>
-                          <p className="text-lg font-bold text-[#13944C] mt-1">
+                          <p className="mt-1 text-lg font-bold text-[#13944C]">
                             {formatCurrency(selectedClient.totalRevenue)}
                           </p>
                         </div>
                         <div className="rounded-lg border p-3">
                           <p className="text-xs text-muted-foreground">Fecha de alta</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
+                          <p className="mt-0.5 text-xs text-muted-foreground">
                             Registro como cliente en CRM.
                           </p>
-                          <p className="text-sm font-medium mt-1">
+                          <p className="mt-1 text-sm font-medium">
                             {formatDate(selectedClient.createdAt)}
                           </p>
                         </div>
                       </div>
                     )}
                     {selectedClient.lastActivity && (
-                      <div className="flex items-center gap-3 text-sm text-muted-foreground pt-2">
+                      <div className="flex items-center gap-3 pt-2 text-sm text-muted-foreground">
                         <Clock className="size-4 shrink-0" />
                         Última actividad: {formatDate(selectedClient.lastActivity)}
                       </div>
@@ -629,12 +959,12 @@ export default function Clients() {
                   <Separator />
 
                   <div className="space-y-3">
-                    <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                    <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                       Asesor asignado
                     </h4>
                     <div className="flex items-center gap-3">
                       <Avatar className="size-9">
-                        <AvatarFallback className="bg-[#13944C]/10 text-[#13944C] text-xs">
+                        <AvatarFallback className="bg-[#13944C]/10 text-xs text-[#13944C]">
                           {getInitials(selectedClient.assignedToName)}
                         </AvatarFallback>
                       </Avatar>
@@ -649,16 +979,15 @@ export default function Clients() {
                     </div>
                   </div>
 
-
                   {selectedClient.notes && (
                     <>
                       <Separator />
                       <div className="space-y-3">
-                        <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                        <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                           Notas
                         </h4>
                         <div className="flex items-start gap-3">
-                          <FileText className="size-4 text-muted-foreground shrink-0 mt-0.5" />
+                          <FileText className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                           <p className="text-sm">{selectedClient.notes}</p>
                         </div>
                       </div>

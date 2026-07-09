@@ -3,6 +3,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { UpArrowSvgIcon } from '@/components/icons/UpArrowSvgIcon';
 import { DownArrowSvgIcon } from '@/components/icons/DownArrowSvgIcon';
 import { MetricBarSparkline } from '@/components/shared/MetricBarSparkline';
+import { MetricLineSparkline } from '@/components/shared/MetricLineSparkline';
 import { cn } from '@/lib/utils';
 
 interface MetricCardProps {
@@ -13,6 +14,7 @@ interface MetricCardProps {
   sparklineData?: number[];
   sparklineLabels?: string[];
   sparklineColor?: string;
+  sparklineVariant?: 'bar' | 'line';
   sparklineLoading?: boolean;
   description?: string;
   loading?: boolean;
@@ -26,6 +28,7 @@ export function MetricCard({
   sparklineData,
   sparklineLabels,
   sparklineColor,
+  sparklineVariant = 'bar',
   sparklineLoading,
   description,
   loading,
@@ -86,11 +89,19 @@ export function MetricCard({
           {sparklineLoading ? (
             <Skeleton className="h-[35px] min-w-[100px] max-w-[160px] shrink-0 rounded-sm" />
           ) : sparklineData && sparklineData.length > 0 ? (
-            <MetricBarSparkline
-              data={sparklineData}
-              labels={sparklineLabels}
-              color={sparklineColor}
-            />
+            sparklineVariant === 'line' ? (
+              <MetricLineSparkline
+                data={sparklineData}
+                labels={sparklineLabels}
+                color={sparklineColor}
+              />
+            ) : (
+              <MetricBarSparkline
+                data={sparklineData}
+                labels={sparklineLabels}
+                color={sparklineColor}
+              />
+            )
           ) : null}
         </div>
       </CardContent>

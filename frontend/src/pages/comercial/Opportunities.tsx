@@ -362,6 +362,7 @@ export default function OpportunitiesPage() {
       if (advisorListParams.excludeAssignedTo) {
         params.excludeAssignedTo = advisorListParams.excludeAssignedTo;
       }
+      if (advisorListParams.advisorPool) params.advisorPool = advisorListParams.advisorPool;
       await downloadImportExportCsv('opportunities', 'export', params);
       toast.success('Exportación descargada');
     } catch (e) {

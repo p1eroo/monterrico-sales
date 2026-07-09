@@ -55,6 +55,8 @@ export type AnalyticsSummary = {
   /** Sparkline KPI dashboard: una barra por semana ISO en el rango del filtro */
   contactsWeekly: { name: string; value: number }[];
   salesWeekly: { name: string; value: number }[];
+  wonOpportunitiesWeekly: { name: string; value: number }[];
+  activitiesCompletedWeekly: { name: string; value: number }[];
   opportunitiesWeeklySparkline: { name: string; value: number }[];
   performanceByAdvisor: { name: string; oportunidades: number; contactos: number; empresas: number }[];
   pendingActivities: {
@@ -66,7 +68,7 @@ export type AnalyticsSummary = {
     dueDate: string;
     contactName: string;
   }[];
-  contactsByPeriod: { name: string; leads: number; nuevos: number }[];
+  contactsVsOpportunitiesByMonth: { name: string; contactos: number; oportunidades: number }[];
   conversionByMonth: { name: string; tasa: number }[];
   activitiesByTypeData: {
     name: string;
@@ -105,6 +107,14 @@ function pad2(n: number) {
 /** Fechas locales YYYY-MM-DD para el API */
 export function formatLocalISODate(d: Date): string {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+/** Año en curso: 1 ene → hoy (gráficos de tendencia en Reportes). */
+export function analyticsYearToDateRange(now = new Date()): { from: string; to: string } {
+  return {
+    from: `${now.getFullYear()}-01-01`,
+    to: formatLocalISODate(now),
+  };
 }
 
 export function analyticsRangeFromPreset(
@@ -155,36 +165,46 @@ export type AnalyticsKPIs = {
   changes: { contacts: string; opportunities: string; sales: string };
 };
 
-export async function fetchAnalyticsKPIs(params: {
+export type AnalyticsQueryFilters = {
   from?: string;
   to?: string;
+  /** @deprecated Prefer assignedTo / excludeAssignedTo */
   advisorId?: string;
+  assignedTo?: string;
+  excludeAssignedTo?: string;
+  advisorPool?: string;
   source?: string;
   area?: string;
-}): Promise<AnalyticsKPIs> {
-  const q = new URLSearchParams();
+  /** Semanas para sparklines KPI (8 dashboard, 10 reportes). */
+  sparklineWeeks?: number;
+};
+
+function appendAnalyticsFilters(q: URLSearchParams, params: AnalyticsQueryFilters) {
   if (params.from) q.set('from', params.from);
   if (params.to) q.set('to', params.to);
-  if (params.advisorId) q.set('advisorId', params.advisorId);
+  if (params.assignedTo) q.set('assignedTo', params.assignedTo);
+  else if (params.advisorId) q.set('advisorId', params.advisorId);
+  if (params.excludeAssignedTo) q.set('excludeAssignedTo', params.excludeAssignedTo);
+  if (params.advisorPool) q.set('advisorPool', params.advisorPool);
   if (params.source) q.set('source', params.source);
   if (params.area) q.set('area', params.area);
+  if (params.sparklineWeeks != null) q.set('sparklineWeeks', String(params.sparklineWeeks));
+}
+
+export async function fetchAnalyticsKPIs(
+  params: AnalyticsQueryFilters,
+): Promise<AnalyticsKPIs> {
+  const q = new URLSearchParams();
+  appendAnalyticsFilters(q, params);
   const qs = q.toString();
   return api<AnalyticsKPIs>(`/analytics/kpis${qs ? `?${qs}` : ''}`);
 }
 
-export async function fetchAnalyticsSummary(params: {
-  from?: string;
-  to?: string;
-  advisorId?: string;
-  source?: string;
-  area?: string;
-}): Promise<AnalyticsSummary> {
+export async function fetchAnalyticsSummary(
+  params: AnalyticsQueryFilters,
+): Promise<AnalyticsSummary> {
   const q = new URLSearchParams();
-  if (params.from) q.set('from', params.from);
-  if (params.to) q.set('to', params.to);
-  if (params.advisorId) q.set('advisorId', params.advisorId);
-  if (params.source) q.set('source', params.source);
-  if (params.area) q.set('area', params.area);
+  appendAnalyticsFilters(q, params);
   const qs = q.toString();
   return api<AnalyticsSummary>(`/analytics/summary${qs ? `?${qs}` : ''}`);
 }

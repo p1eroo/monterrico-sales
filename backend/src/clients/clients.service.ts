@@ -169,6 +169,7 @@ export class ClientsService {
       id: string;
       urlSlug: string;
       name: string;
+      ruc: string | null;
       rubro: string | null;
       tipo: string | null;
       telefono: string | null;
@@ -187,6 +188,7 @@ export class ClientsService {
       companyId: row.company.id,
       companyUrlSlug: row.company.urlSlug,
       company: row.company.name,
+      ruc: row.company.ruc?.trim() || undefined,
       companyRubro: row.company.rubro ?? undefined,
       companyTipo: row.company.tipo ?? undefined,
       contactName: primary?.name ?? '',

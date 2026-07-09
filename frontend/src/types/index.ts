@@ -267,6 +267,8 @@ export interface Opportunity {
 export interface Client {
   id: string;
   company: string;
+  /** RUC de la empresa (SUNAT). */
+  ruc?: string;
   /** Id/slug de empresa en API (detalle y navegación). */
   companyId?: string;
   companyUrlSlug?: string;
@@ -287,6 +289,8 @@ export interface Client {
   externalMonthName?: string;
   externalMonthAmount?: number;
   externalYearTotal?: number;
+  /** Logo directo de API externa (Taxi Monterrico). */
+  externalLogoUrl?: string;
   notes?: string;
 }
 

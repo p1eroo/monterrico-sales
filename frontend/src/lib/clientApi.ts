@@ -9,6 +9,7 @@ export type ApiClientRow = {
   companyId: string;
   companyUrlSlug: string;
   company: string;
+  ruc?: string;
   companyRubro?: string;
   companyTipo?: string;
   contactName: string;
@@ -41,6 +42,7 @@ export function mapApiClientRow(row: ApiClientRow): Client {
     companyId: row.companyId,
     companyUrlSlug: row.companyUrlSlug,
     company: row.company,
+    ruc: row.ruc?.trim() || undefined,
     companyRubro:
       rubro && RUBRO_KEYS.has(rubro) ? (rubro as CompanyRubro) : undefined,
     companyTipo: parseTipo(row.companyTipo?.trim()),
@@ -77,6 +79,8 @@ export async function updateClientApi(
 export type ExternalClientRow = {
   idclienteempresa: number;
   codigoempresa: string;
+  rucempresa?: string;
+  logoempresa?: string;
   razonsocial: string;
   nombrecomercial: string;
   contacto: string;

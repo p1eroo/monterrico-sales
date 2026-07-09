@@ -135,6 +135,7 @@ export async function companyListSummaryPaginated(params?: {
   fuente?: string;
   assignedTo?: string;
   excludeAssignedTo?: string;
+  advisorPool?: string;
   lastInteraction?: string;
   lastInteractionFrom?: string;
   lastInteractionTo?: string;
@@ -150,6 +151,9 @@ export async function companyListSummaryPaginated(params?: {
   if (params?.assignedTo?.trim()) sp.set('assignedTo', params.assignedTo.trim());
   if (params?.excludeAssignedTo?.trim()) {
     sp.set('excludeAssignedTo', params.excludeAssignedTo.trim());
+  }
+  if (params?.advisorPool?.trim()) {
+    sp.set('advisorPool', params.advisorPool.trim());
   }
   if (params?.lastInteraction?.trim()) sp.set('lastInteraction', params.lastInteraction.trim());
   if (params?.lastInteractionFrom?.trim()) sp.set('lastInteractionFrom', params.lastInteractionFrom.trim());
@@ -168,6 +172,7 @@ export async function companySummaryEtapaCounts(params?: {
   fuente?: string;
   assignedTo?: string;
   excludeAssignedTo?: string;
+  advisorPool?: string;
   lastInteraction?: string;
   lastInteractionFrom?: string;
   lastInteractionTo?: string;
@@ -180,6 +185,9 @@ export async function companySummaryEtapaCounts(params?: {
   if (params?.assignedTo?.trim()) sp.set('assignedTo', params.assignedTo.trim());
   if (params?.excludeAssignedTo?.trim()) {
     sp.set('excludeAssignedTo', params.excludeAssignedTo.trim());
+  }
+  if (params?.advisorPool?.trim()) {
+    sp.set('advisorPool', params.advisorPool.trim());
   }
   if (params?.lastInteraction?.trim()) sp.set('lastInteraction', params.lastInteraction.trim());
   if (params?.lastInteractionFrom?.trim()) sp.set('lastInteractionFrom', params.lastInteractionFrom.trim());

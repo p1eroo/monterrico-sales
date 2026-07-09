@@ -19,6 +19,10 @@ import { buildChangeEntries } from '../common/audit-diff.util';
 import { CONTACT_FIELD_LABELS } from '../audit-detail/audit-field-labels';
 import type { CrmDataScope } from '../auth/crm-data-scope.service';
 import { mergeCompanyScope } from '../common/crm-data-scope-where.util';
+import {
+  applySimpleAdvisorFilter,
+  parseAdvisorFilterQuery,
+} from '../common/advisor-filter.util';
 import { NotificationsService } from '../notifications/notifications.service';
 import { normalizeContactCargo } from './contact-cargo.util';
 import { normalizeClienteRecuperado } from '../common/normalize-cliente-recuperado';
@@ -487,8 +491,10 @@ export class ContactsService {
       etapa?: string;
       fuente?: string;
       assignedTo?: string;
-      /** IDs a excluir (sin asignar / otros roles siguen visibles). */
+      /** IDs a excluir (legacy; sin asignar / otros roles siguen visibles). */
       excludeAssignedTo?: string;
+      /** CSV de asesores activos (para token __others__). */
+      advisorPool?: string;
       linkedToCompanyId?: string;
       excludeCompanyLinkId?: string;
       excludeOpportunityLinkId?: string;
@@ -547,30 +553,15 @@ export class ContactsService {
     }
     if (scope && !scope.unrestricted) {
       where.assignedTo = scope.viewerUserId;
-    } else if (opts?.excludeAssignedTo?.trim()) {
-      const excludeIds = opts.excludeAssignedTo
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
-      if (excludeIds.length > 0) {
-        // `notIn` solo no incluye NULL; hay que unir sin asignar explícitamente.
-        where.AND = [
-          ...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
-          {
-            OR: [
-              { assignedTo: null },
-              { assignedTo: { notIn: excludeIds } },
-            ],
-          },
-        ];
-      }
-    } else if (opts?.assignedTo?.trim()) {
-      const assignedTos = opts.assignedTo.split(',').map((s) => s.trim()).filter(Boolean);
-      if (assignedTos.length > 1) {
-        where.assignedTo = { in: assignedTos };
-      } else if (assignedTos.length === 1) {
-        where.assignedTo = assignedTos[0];
-      }
+    } else {
+      applySimpleAdvisorFilter(
+        where,
+        parseAdvisorFilterQuery({
+          assignedTo: opts?.assignedTo,
+          excludeAssignedTo: opts?.excludeAssignedTo,
+          advisorPool: opts?.advisorPool,
+        }),
+      );
     }
     return where;
   }
@@ -584,6 +575,7 @@ export class ContactsService {
       fuente?: string;
       assignedTo?: string;
       excludeAssignedTo?: string;
+      advisorPool?: string;
     },
     scope?: CrmDataScope,
   ): Promise<{ counts: Record<string, number> }> {
@@ -612,6 +604,7 @@ export class ContactsService {
       fuente?: string;
       assignedTo?: string;
       excludeAssignedTo?: string;
+      advisorPool?: string;
       linkedToCompanyId?: string;
       excludeCompanyLinkId?: string;
       excludeOpportunityLinkId?: string;

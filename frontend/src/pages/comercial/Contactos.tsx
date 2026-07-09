@@ -290,6 +290,7 @@ export default function ContactosPage() {
         fuente: sourceFilter.length > 0 ? sourceFilter.join(',') : undefined,
         assignedTo: advisorListParams.assignedTo,
         excludeAssignedTo: advisorListParams.excludeAssignedTo,
+        advisorPool: advisorListParams.advisorPool,
       });
       setApiRows(res.data);
       setTotalContacts(res.total);
@@ -314,6 +315,7 @@ export default function ContactosPage() {
         fuente: sourceFilter.length > 0 ? sourceFilter.join(',') : undefined,
         assignedTo: advisorListParams.assignedTo,
         excludeAssignedTo: advisorListParams.excludeAssignedTo,
+        advisorPool: advisorListParams.advisorPool,
       });
       setEtapaTabCounts(counts);
     } catch {
@@ -905,6 +907,7 @@ export default function ContactosPage() {
       if (advisorListParams.excludeAssignedTo) {
         params.excludeAssignedTo = advisorListParams.excludeAssignedTo;
       }
+      if (advisorListParams.advisorPool) params.advisorPool = advisorListParams.advisorPool;
       // Mapear columnas visibles de la tabla a nombres de columnas CSV
       const tableToCsv: Record<string, string[]> = {
         nombre: ["nombre"],

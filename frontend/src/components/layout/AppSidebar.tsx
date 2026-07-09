@@ -1,7 +1,6 @@
-import { useState } from 'react';
+import { useState, type ComponentType } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard,
   UserPlus,
   Briefcase,
   CalendarCheck,
@@ -51,18 +50,21 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils';
 import logoMark from '@/assets/logo.png';
 import tmWordmark from '@/assets/TM.png';
+import { DashboardSvgIcon } from '@/components/icons/DashboardSvgIcon';
+
+type NavIcon = ComponentType<{ className?: string }>;
 
 type NavDef = {
   to: string;
   label: string;
-  icon: typeof LayoutDashboard;
+  icon: NavIcon;
   permission?: PermissionKey;
   anyOf?: readonly PermissionKey[];
-  children?: { to: string; label: string; icon: typeof LayoutDashboard }[];
+  children?: { to: string; label: string; icon: NavIcon }[];
 };
 
 const navItems: NavDef[] = [
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'dashboard.ver' },
+  { to: '/dashboard', label: 'Dashboard', icon: DashboardSvgIcon, permission: 'dashboard.ver' },
   { to: '/contactos', label: 'Contactos', icon: UserPlus, permission: 'contactos.ver' },
   { to: '/empresas', label: 'Empresas', icon: Briefcase, permission: 'empresas.ver' },
   { to: '/opportunities', label: 'Oportunidades', icon: Target, permission: 'oportunidades.ver' },
@@ -100,7 +102,7 @@ function navItemVisible(
 }
 
 const navItemsFlota: NavDef[] = [
-  { to: '/flota/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'flota_dashboard.ver' },
+  { to: '/flota/dashboard', label: 'Dashboard', icon: DashboardSvgIcon, permission: 'flota_dashboard.ver' },
   { to: '/flota/prospectos', label: 'Prospectos', icon: UserCheck, permission: 'flota_prospectos.ver' },
   { to: '/flota/conductores', label: 'Conductores', icon: Car, permission: 'flota_conductores.ver' },
   { to: '/flota/calendario', label: 'Calendario', icon: Calendar, permission: 'flota_prospectos.ver' },
@@ -109,7 +111,7 @@ const navItemsFlota: NavDef[] = [
 ];
 
 const navItemsAdmin: NavDef[] = [
-  { to: '/admin', label: 'Panel Control', icon: LayoutDashboard },
+  { to: '/admin', label: 'Panel Control', icon: DashboardSvgIcon },
   {
     to: '/admin/users',
     label: 'Usuarios y Roles',
@@ -121,7 +123,7 @@ const navItemsAdmin: NavDef[] = [
 ];
 
 const navItemsMarketing: NavDef[] = [
-  { to: '/marketing', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/marketing', label: 'Dashboard', icon: DashboardSvgIcon },
   { to: '/marketing/leads', label: 'Leads', icon: UserPlus },
   { to: '/marketing/integrations', label: 'Integraciones', icon: ArrowRightLeft },
   { to: '/marketing/personal', label: 'Personal', icon: Users },

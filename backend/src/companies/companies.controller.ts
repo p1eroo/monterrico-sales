@@ -114,6 +114,7 @@ export class CompaniesController {
     @Query('fuente') fuente?: string,
     @Query('assignedTo') assignedTo?: string,
     @Query('excludeAssignedTo') excludeAssignedTo?: string,
+    @Query('advisorPool') advisorPool?: string,
     @Query('lastInteraction') lastInteraction?: string,
     @Query('lastInteractionFrom') lastInteractionFrom?: string,
     @Query('lastInteractionTo') lastInteractionTo?: string,
@@ -130,6 +131,7 @@ export class CompaniesController {
         fuente: fuente?.trim() || undefined,
         assignedTo: assignedTo?.trim() || undefined,
         excludeAssignedTo: excludeAssignedTo?.trim() || undefined,
+        advisorPool: advisorPool?.trim() || undefined,
         lastInteraction: lastInteraction?.trim() || undefined,
         lastInteractionFrom: lastInteractionFrom?.trim() || undefined,
         lastInteractionTo: lastInteractionTo?.trim() || undefined,
@@ -161,6 +163,7 @@ export class CompaniesController {
     @Query('fuente') fuente?: string,
     @Query('assignedTo') assignedTo?: string,
     @Query('excludeAssignedTo') excludeAssignedTo?: string,
+    @Query('advisorPool') advisorPool?: string,
     @Query('lastInteraction') lastInteraction?: string,
     @Query('lastInteractionFrom') lastInteractionFrom?: string,
     @Query('lastInteractionTo') lastInteractionTo?: string,
@@ -184,6 +187,7 @@ export class CompaniesController {
         fuente: fuente?.trim() || undefined,
         assignedTo: assignedTo?.trim() || undefined,
         excludeAssignedTo: excludeAssignedTo?.trim() || undefined,
+        advisorPool: advisorPool?.trim() || undefined,
         lastInteraction: lastInteraction?.trim() || undefined,
         lastInteractionFrom: lastInteractionFrom?.trim() || undefined,
         lastInteractionTo: lastInteractionTo?.trim() || undefined,
@@ -242,6 +246,19 @@ export class CompaniesController {
           userName: req.user.name,
         }, scope),
       );
+  }
+
+  @Get('logo-by-domain')
+  @Public()
+  async getLogoByDomain(@Query('domain') domain: string, @Res() res: Response) {
+    const result = await this.companyLogoService.getLogoByDomain(domain ?? '');
+    if (!result) {
+      res.status(204).end();
+      return;
+    }
+    res.setHeader('Content-Type', result.contentType);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.end(result.body);
   }
 
   @Get(':id/logo')

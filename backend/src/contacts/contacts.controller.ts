@@ -63,6 +63,7 @@ export class ContactsController {
     @Query('fuente') fuente?: string,
     @Query('assignedTo') assignedTo?: string,
     @Query('excludeAssignedTo') excludeAssignedTo?: string,
+    @Query('advisorPool') advisorPool?: string,
     @Query('linkedToCompany') linkedToCompany?: string,
     @Query('excludeCompanyLink') excludeCompanyLink?: string,
     @Query('excludeOpportunityLink') excludeOpportunityLink?: string,
@@ -82,6 +83,7 @@ export class ContactsController {
         fuente: fuente?.trim() || undefined,
         assignedTo: assignedTo?.trim() || undefined,
         excludeAssignedTo: excludeAssignedTo?.trim() || undefined,
+        advisorPool: advisorPool?.trim() || undefined,
         linkedToCompanyId: linkedToCompany?.trim() || undefined,
         excludeCompanyLinkId: excludeCompanyLink?.trim() || undefined,
         excludeOpportunityLinkId: excludeOpportunityLink?.trim() || undefined,
@@ -98,6 +100,7 @@ export class ContactsController {
     @Query('fuente') fuente?: string,
     @Query('assignedTo') assignedTo?: string,
     @Query('excludeAssignedTo') excludeAssignedTo?: string,
+    @Query('advisorPool') advisorPool?: string,
   ) {
     const scope = await this.crmDataScope.buildScope(
       req.user.userId,
@@ -109,6 +112,7 @@ export class ContactsController {
         fuente: fuente?.trim() || undefined,
         assignedTo: assignedTo?.trim() || undefined,
         excludeAssignedTo: excludeAssignedTo?.trim() || undefined,
+        advisorPool: advisorPool?.trim() || undefined,
       },
       scope,
     );

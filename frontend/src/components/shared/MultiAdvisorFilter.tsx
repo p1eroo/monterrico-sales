@@ -10,9 +10,15 @@ import {
   CommandGroup,
   CommandItem,
   CommandList,
+  CommandSeparator,
 } from '@/components/ui/command';
 import { UserHandIcon } from '@/components/icons/UserHandIcon';
 import { cn } from '@/lib/utils';
+import {
+  ADVISOR_OTHERS,
+  ADVISOR_SPECIAL_OPTIONS,
+  ADVISOR_UNASSIGNED,
+} from '@/hooks/useMultiAdvisorFilter';
 
 type AdvisorOption = { id: string; name: string };
 
@@ -22,13 +28,19 @@ type MultiAdvisorFilterProps = {
   advisors: AdvisorOption[];
   /** Quien no puede ver todos los asesores: el control queda deshabilitado. */
   disabled?: boolean;
-  /** Hay exclusión parcial o “solo otros/sin asignar”. */
+  /** Hay exclusión parcial o selección incompleta. */
   isActive?: boolean;
   /** Evita flash de checkboxes vacíos antes de auto-seleccionar todos. */
   isInitialized?: boolean;
   className?: string;
   onInteraction?: () => void;
 };
+
+function optionLabel(id: string, advisors: AdvisorOption[]): string {
+  if (id === ADVISOR_UNASSIGNED) return 'Sin asignar';
+  if (id === ADVISOR_OTHERS) return 'Otros';
+  return advisors.find((u) => u.id === id)?.name || id;
+}
 
 export function MultiAdvisorFilter({
   value,
@@ -43,10 +55,17 @@ export function MultiAdvisorFilter({
   const label = !isActive
     ? 'Asesor'
     : value.length === 0
-      ? 'Otros / Sin asignar'
-      : value
-          .map((id) => advisors.find((u) => u.id === id)?.name || id)
-          .join(', ');
+      ? 'Ninguno'
+      : value.map((id) => optionLabel(id, advisors)).join(', ');
+
+  const toggle = (id: string) => {
+    onChange(
+      value.includes(id) ? value.filter((e) => e !== id) : [...value, id],
+    );
+    onInteraction?.();
+  };
+
+  const showSpecials = !disabled;
 
   return (
     <Popover>
@@ -67,25 +86,15 @@ export function MultiAdvisorFilter({
           <ChevronDown className="size-3.5 shrink-0 opacity-50" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-[180px] p-0" align="start">
+      <PopoverContent className="w-[200px] p-0" align="start">
         <Command>
-          <CommandList className="max-h-[260px] overflow-y-auto">
+          <CommandList className="max-h-[280px] overflow-y-auto">
             <CommandGroup>
               {advisors.map((u) => {
                 const selected =
                   (!disabled && !isInitialized) || value.includes(u.id);
                 return (
-                  <CommandItem
-                    key={u.id}
-                    onSelect={() => {
-                      onChange(
-                        value.includes(u.id)
-                          ? value.filter((e) => e !== u.id)
-                          : [...value, u.id],
-                      );
-                      onInteraction?.();
-                    }}
-                  >
+                  <CommandItem key={u.id} onSelect={() => toggle(u.id)}>
                     <span className="[&_svg]:!text-primary-foreground">
                       <Checkbox
                         checked={selected}
@@ -97,6 +106,31 @@ export function MultiAdvisorFilter({
                 );
               })}
             </CommandGroup>
+            {showSpecials && (
+              <>
+                <CommandSeparator />
+                <CommandGroup>
+                  {ADVISOR_SPECIAL_OPTIONS.map((opt) => {
+                    const selected =
+                      (!disabled && !isInitialized) || value.includes(opt.id);
+                    return (
+                      <CommandItem
+                        key={opt.id}
+                        onSelect={() => toggle(opt.id)}
+                      >
+                        <span className="[&_svg]:!text-primary-foreground">
+                          <Checkbox
+                            checked={selected}
+                            className="mr-2 h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
+                          />
+                        </span>
+                        <span>{opt.name}</span>
+                      </CommandItem>
+                    );
+                  })}
+                </CommandGroup>
+              </>
+            )}
           </CommandList>
         </Command>
       </PopoverContent>

@@ -23,6 +23,11 @@ import { CrmConfigService } from '../crm-config/crm-config.service';
 import { EntitySyncService } from '../sync/entity-sync.service';
 import type { CrmDataScope } from '../auth/crm-data-scope.service';
 import { mergeCompanyScope } from '../common/crm-data-scope-where.util';
+import {
+  applySimpleAdvisorFilter,
+  companyAdvisorWhere,
+  parseAdvisorFilterQuery,
+} from '../common/advisor-filter.util';
 import { normalizeClienteRecuperadoForCsv } from '../common/normalize-cliente-recuperado';
 import { STAGE_PROBABILITY_FALLBACK } from '../crm-config/crm-config.constants';
 import {
@@ -788,6 +793,7 @@ export class ImportExportService {
       fuente?: string;
       assignedTo?: string;
       excludeAssignedTo?: string;
+      advisorPool?: string;
       columns?: string;
     },
   ): Promise<string> {
@@ -817,32 +823,15 @@ export class ImportExportService {
     }
     if (scope && !scope.unrestricted) {
       where.assignedTo = scope.viewerUserId;
-    } else if (opts?.excludeAssignedTo?.trim()) {
-      const excludeIds = opts.excludeAssignedTo
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
-      if (excludeIds.length > 0) {
-        where.AND = [
-          ...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
-          {
-            OR: [
-              { assignedTo: null },
-              { assignedTo: { notIn: excludeIds } },
-            ],
-          },
-        ];
-      }
-    } else if (opts?.assignedTo?.trim()) {
-      const assignedTos = opts.assignedTo
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
-      if (assignedTos.length > 1) {
-        where.assignedTo = { in: assignedTos };
-      } else if (assignedTos.length === 1) {
-        where.assignedTo = assignedTos[0];
-      }
+    } else {
+      applySimpleAdvisorFilter(
+        where,
+        parseAdvisorFilterQuery({
+          assignedTo: opts?.assignedTo,
+          excludeAssignedTo: opts?.excludeAssignedTo,
+          advisorPool: opts?.advisorPool,
+        }),
+      );
     }
     const rows = await this.prisma.contact.findMany({
       where,
@@ -2059,6 +2048,7 @@ export class ImportExportService {
       fuente?: string;
       assignedTo?: string;
       excludeAssignedTo?: string;
+      advisorPool?: string;
       lastInteractionFrom?: string;
       lastInteractionTo?: string;
     },
@@ -2092,59 +2082,18 @@ export class ImportExportService {
       where.fuente = { equals: fuenteQ, mode: 'insensitive' };
     }
     if (opts?.etapa?.trim()) where.etapa = opts.etapa.trim();
-    if (opts?.excludeAssignedTo?.trim() && (!scope || scope.unrestricted)) {
-      const excludeIds = opts.excludeAssignedTo
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
-      if (excludeIds.length > 0) {
+    if (!(scope && !scope.unrestricted)) {
+      const advisorClause = companyAdvisorWhere(
+        parseAdvisorFilterQuery({
+          assignedTo: opts?.assignedTo,
+          excludeAssignedTo: opts?.excludeAssignedTo,
+          advisorPool: opts?.advisorPool,
+        }),
+      );
+      if (advisorClause) {
         where.AND = [
           ...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
-          {
-            OR: [
-              { assignedTo: null },
-              { assignedTo: { notIn: excludeIds } },
-            ],
-          },
-          {
-            contacts: {
-              none: { contact: { assignedTo: { in: excludeIds } } },
-            },
-          },
-        ];
-      }
-    } else if (opts?.assignedTo?.trim() && (!scope || scope.unrestricted)) {
-      const assignedTos = opts.assignedTo
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
-      if (assignedTos.length > 1) {
-        where.AND = [
-          ...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
-          {
-            OR: [
-              { assignedTo: { in: assignedTos } },
-              {
-                contacts: {
-                  some: { contact: { assignedTo: { in: assignedTos } } },
-                },
-              },
-            ],
-          },
-        ];
-      } else if (assignedTos.length === 1) {
-        where.AND = [
-          ...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
-          {
-            OR: [
-              { assignedTo: assignedTos[0] },
-              {
-                contacts: {
-                  some: { contact: { assignedTo: assignedTos[0] } },
-                },
-              },
-            ],
-          },
+          advisorClause,
         ];
       }
     }
@@ -3025,6 +2974,7 @@ export class ImportExportService {
       status?: string;
       assignedTo?: string;
       excludeAssignedTo?: string;
+      advisorPool?: string;
     },
   ): Promise<string> {
     const where: Prisma.OpportunityWhereInput = {};
@@ -3036,27 +2986,15 @@ export class ImportExportService {
     if (opts?.status?.trim()) where.status = opts.status.trim();
     if (scope && !scope.unrestricted) {
       where.assignedTo = scope.viewerUserId;
-    } else if (opts?.excludeAssignedTo?.trim()) {
-      const excludeIds = opts.excludeAssignedTo
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
-      if (excludeIds.length > 0) {
-        where.OR = [
-          { assignedTo: null },
-          { assignedTo: { notIn: excludeIds } },
-        ];
-      }
-    } else if (opts?.assignedTo?.trim()) {
-      const assignedTos = opts.assignedTo
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
-      if (assignedTos.length > 1) {
-        where.assignedTo = { in: assignedTos };
-      } else if (assignedTos.length === 1) {
-        where.assignedTo = assignedTos[0];
-      }
+    } else {
+      applySimpleAdvisorFilter(
+        where,
+        parseAdvisorFilterQuery({
+          assignedTo: opts?.assignedTo,
+          excludeAssignedTo: opts?.excludeAssignedTo,
+          advisorPool: opts?.advisorPool,
+        }),
+      );
     }
     const list = await this.prisma.opportunity.findMany({
       where,

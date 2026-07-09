@@ -29,6 +29,10 @@ import { DateRangeFilterButton } from '@/components/ui/date-range-filter-button'
 import { PdfSvgIcon } from '@/components/icons/PdfSvgIcon';
 import { XlsSvgIcon } from '@/components/icons/XlsSvgIcon';
 import { cn } from '@/lib/utils';
+import {
+  comercialFilterActionClass,
+  comercialFilterSurfaceClass,
+} from '@/lib/comercialFilterSurface';
 import { MetricCard } from '@/components/shared/MetricCard';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -56,9 +60,6 @@ import {
 import { useCrmConfigStore, getStageLabelFromCatalog, getSourceLabelFromCatalog } from '@/store/crmConfigStore';
 import { ChartCardBody } from '@/components/shared/ChartCardBody';
 import { chartHasAnyValue } from '@/lib/chartEmpty';
-
-const dashboardFilterActionClass =
-  'flex h-12 items-center gap-1.5 rounded-lg border border-[#e1e7ee] bg-white/60 px-3 text-sm text-black shadow-none transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-100';
 
 const activityIconMap: Record<string, typeof Phone> = {
   llamada: Phone,
@@ -227,7 +228,7 @@ export default function Dashboard() {
     }));
   }, [summary, bundle]);
 
-  const leadsByPeriodData = summary?.contactsByPeriod ?? [];
+  const contactsVsOpportunitiesData = summary?.contactsVsOpportunitiesByMonth ?? [];
   const conversionData = summary?.conversionByMonth ?? [];
   const activitiesByTypeData = summary?.activitiesByTypeData ?? [];
   const followUpsData = summary?.followUpsByMonth ?? [];
@@ -256,7 +257,7 @@ export default function Dashboard() {
           sourceLabel: 'Todas las fuentes',
         },
         kpis: summary.kpis,
-        contactsByPeriod: leadsByPeriodData,
+        contactsVsOpportunitiesByMonth: contactsVsOpportunitiesData,
         contactsBySource: leadsBySourceData,
         conversionByMonth: conversionData,
         performanceByAdvisor,
@@ -275,7 +276,7 @@ export default function Dashboard() {
     [
       summaryLoading,
       summary,
-      leadsByPeriodData,
+      contactsVsOpportunitiesData,
       leadsBySourceData,
       conversionData,
       performanceByAdvisor,
@@ -300,7 +301,7 @@ export default function Dashboard() {
             value={dateRange}
             onChange={setDateRange}
             placeholder="Seleccionar periodo"
-            className="w-[260px]"
+            className={cn('w-[260px]', comercialFilterSurfaceClass)}
           />
         </div>
         {hasPermission('dashboard.exportar') && (
@@ -309,7 +310,7 @@ export default function Dashboard() {
               type="button"
               disabled={summaryLoading || !summary}
               onClick={() => handleExport('PDF')}
-              className={cn(dashboardFilterActionClass, 'cursor-pointer')}
+              className={cn(comercialFilterActionClass, 'cursor-pointer')}
             >
               <PdfSvgIcon className="size-5 shrink-0" />
               PDF
@@ -318,7 +319,7 @@ export default function Dashboard() {
               type="button"
               disabled={summaryLoading || !summary}
               onClick={() => handleExport('Excel')}
-              className={cn(dashboardFilterActionClass, 'cursor-pointer')}
+              className={cn(comercialFilterActionClass, 'cursor-pointer')}
             >
               <XlsSvgIcon className="size-5 shrink-0" />
               Excel

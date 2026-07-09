@@ -345,6 +345,7 @@ export async function contactListPaginated(params?: {
   fuente?: string;
   assignedTo?: string;
   excludeAssignedTo?: string;
+  advisorPool?: string;
   linkedToCompanyId?: string;
   excludeCompanyLinkId?: string;
   excludeOpportunityLinkId?: string;
@@ -358,6 +359,9 @@ export async function contactListPaginated(params?: {
   if (params?.assignedTo?.trim()) sp.set('assignedTo', params.assignedTo.trim());
   if (params?.excludeAssignedTo?.trim()) {
     sp.set('excludeAssignedTo', params.excludeAssignedTo.trim());
+  }
+  if (params?.advisorPool?.trim()) {
+    sp.set('advisorPool', params.advisorPool.trim());
   }
   if (params?.linkedToCompanyId?.trim()) {
     sp.set('linkedToCompany', params.linkedToCompanyId.trim());
@@ -379,6 +383,7 @@ export async function contactListEtapaCounts(params?: {
   fuente?: string;
   assignedTo?: string;
   excludeAssignedTo?: string;
+  advisorPool?: string;
 }): Promise<{ counts: Record<string, number> }> {
   const sp = new URLSearchParams();
   if (params?.search?.trim()) sp.set('search', params.search.trim());
@@ -386,6 +391,9 @@ export async function contactListEtapaCounts(params?: {
   if (params?.assignedTo?.trim()) sp.set('assignedTo', params.assignedTo.trim());
   if (params?.excludeAssignedTo?.trim()) {
     sp.set('excludeAssignedTo', params.excludeAssignedTo.trim());
+  }
+  if (params?.advisorPool?.trim()) {
+    sp.set('advisorPool', params.advisorPool.trim());
   }
   const qs = sp.toString();
   return api<{ counts: Record<string, number> }>(
@@ -399,6 +407,7 @@ export async function contactListAll(opts?: {
   fuente?: string;
   assignedTo?: string;
   excludeAssignedTo?: string;
+  advisorPool?: string;
 }): Promise<ApiContactListRow[]> {
   const sp = new URLSearchParams();
   sp.set('limit', '5000');
@@ -408,6 +417,9 @@ export async function contactListAll(opts?: {
   if (opts?.assignedTo?.trim()) sp.set('assignedTo', opts.assignedTo.trim());
   if (opts?.excludeAssignedTo?.trim()) {
     sp.set('excludeAssignedTo', opts.excludeAssignedTo.trim());
+  }
+  if (opts?.advisorPool?.trim()) {
+    sp.set('advisorPool', opts.advisorPool.trim());
   }
   const res = await api<ContactListPaginatedResponse>(`/contacts?${sp.toString()}`);
   return res.data;

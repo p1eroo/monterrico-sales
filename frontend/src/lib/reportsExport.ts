@@ -18,7 +18,7 @@ export type ReportsExportInput = {
     activitiesCompleted: number;
     changes: { contacts: string; sales: string };
   };
-  contactsByPeriod: { name: string; leads: number; nuevos: number }[];
+  contactsVsOpportunitiesByMonth: { name: string; contactos: number; oportunidades: number }[];
   contactsBySource: { name: string; value: number }[];
   conversionByMonth: { name: string; tasa: number }[];
   performanceByAdvisor: { name: string; oportunidades: number; contactos: number; empresas: number }[];
@@ -128,16 +128,20 @@ export function downloadReportsCsv(data: ReportsExportInput, baseName: string) {
   lines.push(
     csvRow(['Tareas completadas', data.kpis.activitiesCompleted]),
   );
-  lines.push(csvRow(['Cambio contactos vs anterior', data.kpis.changes.contacts]));
-  lines.push(csvRow(['Cambio ventas vs anterior', data.kpis.changes.sales]));
+  lines.push(csvRow(['Cambio contactos (7 días)', data.kpis.changes.contacts]));
+  lines.push(csvRow(['Cambio ventas (7 días)', data.kpis.changes.sales]));
   lines.push('');
 
   const tables: { title: string; headers: string[]; rows: (string | number)[][] }[] =
     [
       {
-        title: 'Contactos por periodo',
-        headers: ['Periodo', 'Total contactos', 'Nuevos'],
-        rows: data.contactsByPeriod.map((x) => [x.name, x.leads, x.nuevos]),
+        title: 'Contactos y oportunidades por mes',
+        headers: ['Mes', 'Contactos', 'Oportunidades'],
+        rows: data.contactsVsOpportunitiesByMonth.map((x) => [
+          x.name,
+          x.contactos,
+          x.oportunidades,
+        ]),
       },
       {
         title: 'Contactos por fuente',
@@ -246,11 +250,11 @@ export function downloadReportsXlsx(data: ReportsExportInput, baseName: string) 
   };
 
   addSheet(
-    'Contactos periodo',
-    data.contactsByPeriod.map((x) => ({
-      Periodo: x.name,
-      'Total contactos': x.leads,
-      Nuevos: x.nuevos,
+    'Contactos y opps',
+    data.contactsVsOpportunitiesByMonth.map((x) => ({
+      Mes: x.name,
+      Contactos: x.contactos,
+      Oportunidades: x.oportunidades,
     })),
   );
   addSheet(
@@ -344,9 +348,13 @@ export function downloadReportsPdf(data: ReportsExportInput, baseName: string) {
   const sections: { title: string; head?: string[][]; body?: (string | number)[][], chartKey: keyof NonNullable<ReportsExportInput['charts']> }[] =
     [
       {
-        title: 'Contactos por periodo',
-        head: [['Periodo', 'Total', 'Nuevos']],
-        body: data.contactsByPeriod.map((x) => [x.name, x.leads, x.nuevos]),
+        title: 'Contactos y oportunidades por mes',
+        head: [['Mes', 'Contactos', 'Oportunidades']],
+        body: data.contactsVsOpportunitiesByMonth.map((x) => [
+          x.name,
+          x.contactos,
+          x.oportunidades,
+        ]),
         chartKey: 'contacts',
       },
       {

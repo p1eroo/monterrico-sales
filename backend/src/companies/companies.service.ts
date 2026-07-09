@@ -18,6 +18,10 @@ import { buildChangeEntries } from '../common/audit-diff.util';
 import { COMPANY_FIELD_LABELS } from '../audit-detail/audit-field-labels';
 import type { CrmDataScope } from '../auth/crm-data-scope.service';
 import { mergeCompanyScope } from '../common/crm-data-scope-where.util';
+import {
+  companyAdvisorWhere,
+  parseAdvisorFilterQuery,
+} from '../common/advisor-filter.util';
 import { formatImportedCompanyName } from '../common/import-display-name.util';
 import { FactilizaService } from '../factiliza/factiliza.service';
 import { normalizeClienteRecuperado } from '../common/normalize-cliente-recuperado';
@@ -537,8 +541,10 @@ export class CompaniesService {
       tipo?: string;
       fuente?: string;
       assignedTo?: string;
-      /** IDs a excluir (sin asignar / otros roles siguen visibles). */
+      /** IDs a excluir (legacy; sin asignar / otros roles siguen visibles). */
       excludeAssignedTo?: string;
+      /** CSV de asesores activos (para token __others__). */
+      advisorPool?: string;
       /**
        * Filtro por última interacción (actividad) en empresa/contactos/oportunidades.
        * Valores soportados:
@@ -601,67 +607,15 @@ export class CompaniesService {
         ],
       });
     }
-    const excludeAdvQ =
-      scope && !scope.unrestricted
-        ? undefined
-        : opts?.excludeAssignedTo?.trim();
-    if (excludeAdvQ) {
-      const excludeIds = excludeAdvQ
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
-      if (excludeIds.length > 0) {
-        // Complemento del filtro assignedTo: no en la lista ni null, y sin contactos de esos IDs.
-        andParts.push({
-          AND: [
-            {
-              OR: [
-                { assignedTo: null },
-                { assignedTo: { notIn: excludeIds } },
-              ],
-            },
-            {
-              contacts: {
-                none: { contact: { assignedTo: { in: excludeIds } } },
-              },
-            },
-          ],
-        });
-      }
-    } else {
-      const advQ =
-        scope && !scope.unrestricted
-          ? undefined
-          : opts?.assignedTo?.trim();
-      if (advQ) {
-        const assignedTos = advQ
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean);
-        if (assignedTos.length > 1) {
-          andParts.push({
-            OR: [
-              { assignedTo: { in: assignedTos } },
-              {
-                contacts: {
-                  some: { contact: { assignedTo: { in: assignedTos } } },
-                },
-              },
-            ],
-          });
-        } else if (assignedTos.length === 1) {
-          andParts.push({
-            OR: [
-              { assignedTo: assignedTos[0] },
-              {
-                contacts: {
-                  some: { contact: { assignedTo: assignedTos[0] } },
-                },
-              },
-            ],
-          });
-        }
-      }
+    if (!(scope && !scope.unrestricted)) {
+      const advisorClause = companyAdvisorWhere(
+        parseAdvisorFilterQuery({
+          assignedTo: opts?.assignedTo,
+          excludeAssignedTo: opts?.excludeAssignedTo,
+          advisorPool: opts?.advisorPool,
+        }),
+      );
+      if (advisorClause) andParts.push(advisorClause);
     }
 
     const li = opts?.lastInteraction?.trim();
@@ -755,6 +709,7 @@ export class CompaniesService {
       fuente?: string;
       assignedTo?: string;
       excludeAssignedTo?: string;
+      advisorPool?: string;
       lastInteraction?: string;
       lastInteractionFrom?: string;
       lastInteractionTo?: string;
@@ -808,6 +763,7 @@ export class CompaniesService {
       fuente?: string;
       assignedTo?: string;
       excludeAssignedTo?: string;
+      advisorPool?: string;
       lastInteraction?: string;
       lastInteractionFrom?: string;
       lastInteractionTo?: string;

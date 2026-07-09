@@ -418,6 +418,7 @@ export default function EmpresasPage() {
         fuente: sourceFilter.length > 0 ? sourceFilter.join(',') : undefined,
         assignedTo: advisorListParams.assignedTo,
         excludeAssignedTo: advisorListParams.excludeAssignedTo,
+        advisorPool: advisorListParams.advisorPool,
         rubro: rubroFilter.length > 0 ? rubroFilter.join(',') : undefined,
         tipo: tipoFilter.length > 0 ? tipoFilter.join(',') : undefined,
         lastInteraction: undefined,
@@ -476,6 +477,7 @@ export default function EmpresasPage() {
         fuente: sourceFilter.length > 0 ? sourceFilter.join(',') : undefined,
         assignedTo: advisorListParams.assignedTo,
         excludeAssignedTo: advisorListParams.excludeAssignedTo,
+        advisorPool: advisorListParams.advisorPool,
         rubro: rubroFilter.length > 0 ? rubroFilter.join(',') : undefined,
         tipo: tipoFilter.length > 0 ? tipoFilter.join(',') : undefined,
         lastInteraction: undefined,
@@ -1173,6 +1175,7 @@ export default function EmpresasPage() {
       if (advisorListParams.excludeAssignedTo) {
         params.excludeAssignedTo = advisorListParams.excludeAssignedTo;
       }
+      if (advisorListParams.advisorPool) params.advisorPool = advisorListParams.advisorPool;
       if (interactionRange?.from) params.lastInteractionFrom = new Date(
         interactionRange.from.getFullYear(),
         interactionRange.from.getMonth(),
@@ -1207,6 +1210,7 @@ export default function EmpresasPage() {
       if (advisorListParams.excludeAssignedTo) {
         params.excludeAssignedTo = advisorListParams.excludeAssignedTo;
       }
+      if (advisorListParams.advisorPool) params.advisorPool = advisorListParams.advisorPool;
       if (interactionRange?.from) params.lastInteractionFrom = interactionRange.from.toISOString();
       if (interactionRange?.to) params.lastInteractionTo = interactionRange.to.toISOString();
 
@@ -1220,6 +1224,7 @@ export default function EmpresasPage() {
           tipo: params.tipo,
           assignedTo: advisorListParams.assignedTo,
           excludeAssignedTo: advisorListParams.excludeAssignedTo,
+          advisorPool: advisorListParams.advisorPool,
           lastInteractionFrom: params.lastInteractionFrom,
           lastInteractionTo: params.lastInteractionTo,
         }),
@@ -1228,6 +1233,7 @@ export default function EmpresasPage() {
           fuente: params.fuente,
           assignedTo: advisorListParams.assignedTo,
           excludeAssignedTo: advisorListParams.excludeAssignedTo,
+          advisorPool: advisorListParams.advisorPool,
         }),
         opportunityListAll(params),
       ]);

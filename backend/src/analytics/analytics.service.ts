@@ -5,6 +5,16 @@ import type { CrmDataScope } from '../auth/crm-data-scope.service';
 import { mergeCompanyScope } from '../common/crm-data-scope-where.util';
 import { CrmConfigService } from '../crm-config/crm-config.service';
 import { resolveLeadSourceKeyLoose } from '../crm-config/lead-source-normalize.util';
+import {
+  type AnalyticsScopeFilters,
+  applyAdvisorFilter,
+  applyCompanyAdvisorFilter,
+  applyActivityAdvisorFilter,
+  applySourceFilter,
+  advisorWhereFromFilters,
+  performanceGroupByWhere,
+  singleAdvisorIdForMeta,
+} from './analytics-filter.util';
 
 const MAX_RANGE_DAYS = 366;
 /** Solo para listados de asesores (nombres); el filtrado de métricas usa `assignedTo`. */
@@ -142,6 +152,7 @@ function eachWeekClipsInRange(from: Date, to: Date, maxWeeks = 26): WeekClip[] {
 }
 
 const DASHBOARD_SPARKLINE_WEEKS = 8;
+const REPORTS_SPARKLINE_WEEKS = 10;
 const GOALS_MONTHLY_CHART = 6;
 
 type GoalChartPoint = {
@@ -203,13 +214,13 @@ function lastNMonthClips(n: number, now = new Date()): {
   return rows;
 }
 
-/** Ventana fija para sparklines del dashboard: últimas N semanas incluyendo la actual (anclada a hoy). */
-function dashboardSparklineRange(now = new Date()): { from: Date; to: Date; weeks: WeekClip[] } {
+/** Ventana fija para sparklines KPI: últimas N semanas incluyendo la actual (anclada a hoy). */
+function sparklineRange(weekCount: number, now = new Date()): { from: Date; to: Date; weeks: WeekClip[] } {
   const currentWeekStart = startOfUtcWeekMonday(now);
   const from = new Date(currentWeekStart);
-  from.setUTCDate(from.getUTCDate() - 7 * (DASHBOARD_SPARKLINE_WEEKS - 1));
+  from.setUTCDate(from.getUTCDate() - 7 * (weekCount - 1));
   const to = now;
-  const weeks = eachWeekClipsInRange(from, to, DASHBOARD_SPARKLINE_WEEKS);
+  const weeks = eachWeekClipsInRange(from, to, weekCount);
   return { from, to, weeks };
 }
 
@@ -258,28 +269,68 @@ export class AnalyticsService {
     return { from, to };
   }
 
+  private async resolveScopeFilters(opts: {
+    advisorId?: string;
+    assignedTo?: string;
+    excludeAssignedTo?: string;
+    advisorPool?: string;
+    source?: string;
+    unrestricted: boolean;
+    viewerUserId: string;
+  }): Promise<AnalyticsScopeFilters> {
+    let assignedTo: string | undefined;
+    let excludeAssignedTo: string | undefined;
+    let advisorPool: string | undefined;
+
+    if (!opts.unrestricted) {
+      assignedTo = opts.viewerUserId;
+    } else if (opts.assignedTo?.trim() || opts.excludeAssignedTo?.trim()) {
+      assignedTo = opts.assignedTo?.trim() || undefined;
+      excludeAssignedTo = opts.excludeAssignedTo?.trim() || undefined;
+      advisorPool = opts.advisorPool?.trim() || undefined;
+    } else if (opts.advisorId?.trim()) {
+      assignedTo = opts.advisorId.trim();
+    }
+
+    const sources: string[] = [];
+    const rawSource = opts.source?.trim();
+    if (rawSource && rawSource !== 'all') {
+      const unique = [
+        ...new Set(
+          rawSource
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean),
+        ),
+      ];
+      for (const part of unique) {
+        try {
+          sources.push(await this.crmConfig.normalizeLeadSource(part));
+        } catch {
+          sources.push(part);
+        }
+      }
+    }
+
+    return { assignedTo, excludeAssignedTo, advisorPool, sources };
+  }
+
   private contactWhere(
     from: Date,
     to: Date,
-    advisorId: string | undefined,
-    sourceSlug: string | undefined,
+    filters: AnalyticsScopeFilters,
     _unrestricted: boolean,
   ): Prisma.ContactWhereInput {
     const w: Prisma.ContactWhereInput = {
       createdAt: { gte: from, lte: to },
     };
-    if (advisorId?.trim()) {
-      w.assignedTo = advisorId.trim();
-    }
-    if (sourceSlug && sourceSlug !== 'all') {
-      w.fuente = { equals: sourceSlug.trim(), mode: 'insensitive' };
-    }
+    applyAdvisorFilter(w, filters);
+    applySourceFilter(w, filters.sources);
     return w;
   }
 
   private async fetchRolling7DayChangeInputs(
-    advisorId: string | undefined,
-    source: string | undefined,
+    filters: AnalyticsScopeFilters,
     unrestricted: boolean,
   ): Promise<{
     contacts7d: number;
@@ -299,23 +350,23 @@ export class AnalyticsService {
       closedAggPrev7d,
     ] = await Promise.all([
       this.prisma.contact.count({
-        where: this.contactWhere(from, to, advisorId, source, unrestricted),
+        where: this.contactWhere(from, to, filters, unrestricted),
       }),
       this.prisma.contact.count({
-        where: this.contactWhere(prevFrom, prevTo, advisorId, source, unrestricted),
+        where: this.contactWhere(prevFrom, prevTo, filters, unrestricted),
       }),
       this.prisma.opportunity.count({
-        where: this.opportunityWhereOpen(advisorId, unrestricted, from, to),
+        where: this.opportunityWhereOpen(filters, unrestricted, from, to),
       }),
       this.prisma.opportunity.count({
-        where: this.opportunityWhereOpen(advisorId, unrestricted, prevFrom, prevTo),
+        where: this.opportunityWhereOpen(filters, unrestricted, prevFrom, prevTo),
       }),
       this.prisma.opportunity.aggregate({
-        where: this.opportunityWhereWonInRange(from, to, advisorId, unrestricted),
+        where: this.opportunityWhereWonInRange(from, to, filters, unrestricted),
         _sum: { amount: true },
       }),
       this.prisma.opportunity.aggregate({
-        where: this.opportunityWhereWonInRange(prevFrom, prevTo, advisorId, unrestricted),
+        where: this.opportunityWhereWonInRange(prevFrom, prevTo, filters, unrestricted),
         _sum: { amount: true },
       }),
     ]);
@@ -330,29 +381,23 @@ export class AnalyticsService {
   }
 
   private companyPortfolioBaseWhere(
-    advisorId: string | undefined,
-    sourceSlug: string | undefined,
+    filters: AnalyticsScopeFilters,
     _unrestricted: boolean,
   ): Prisma.CompanyWhereInput {
     const w: Prisma.CompanyWhereInput = {};
-    if (advisorId?.trim()) {
-      w.assignedTo = advisorId.trim();
-    }
-    if (sourceSlug && sourceSlug !== 'all') {
-      w.fuente = { equals: sourceSlug.trim(), mode: 'insensitive' };
-    }
+    applyCompanyAdvisorFilter(w, filters);
+    applySourceFilter(w, filters.sources);
     return w;
   }
 
   private companyWhere(
     from: Date,
     to: Date,
-    advisorId: string | undefined,
-    sourceSlug: string | undefined,
+    filters: AnalyticsScopeFilters,
     unrestricted: boolean,
   ): Prisma.CompanyWhereInput {
     return {
-      ...this.companyPortfolioBaseWhere(advisorId, sourceSlug, unrestricted),
+      ...this.companyPortfolioBaseWhere(filters, unrestricted),
       createdAt: { gte: from, lte: to },
     };
   }
@@ -364,14 +409,13 @@ export class AnalyticsService {
   private async buildCompaniesWeeklyProgress(
     from: Date,
     to: Date,
-    advisorId: string | undefined,
-    source: string | undefined,
+    filters: AnalyticsScopeFilters,
     unrestricted: boolean,
     crmScope: CrmDataScope,
   ): Promise<CompanyWeeklyProgressRow[]> {
     const portfolioWhere = mergeCompanyScope(
       {
-        ...this.companyPortfolioBaseWhere(advisorId, source, unrestricted),
+        ...this.companyPortfolioBaseWhere(filters, unrestricted),
         createdAt: { lte: to },
       },
       crmScope,
@@ -487,31 +531,25 @@ export class AnalyticsService {
   }
 
   private opportunityPortfolioBaseWhere(
-    advisorId: string | undefined,
-    sourceSlug: string | undefined,
+    filters: AnalyticsScopeFilters,
     _unrestricted: boolean,
   ): Prisma.OpportunityWhereInput {
     const w: Prisma.OpportunityWhereInput = {};
-    if (advisorId?.trim()) {
-      w.assignedTo = advisorId.trim();
-    }
-    if (sourceSlug && sourceSlug !== 'all') {
-      w.fuente = { equals: sourceSlug.trim(), mode: 'insensitive' };
-    }
+    applyAdvisorFilter(w, filters);
+    applySourceFilter(w, filters.sources);
     return w;
   }
 
   private async buildOpportunitiesWeeklyProgress(
     from: Date,
     to: Date,
-    advisorId: string | undefined,
-    source: string | undefined,
+    filters: AnalyticsScopeFilters,
     unrestricted: boolean,
     crmScope: CrmDataScope,
   ): Promise<OpportunityWeeklyProgressRow[]> {
     console.log('[DEBUG] buildOpportunitiesWeeklyProgress called:', { from: from.toISOString(), to: to.toISOString() });
     const portfolioWhere: Prisma.OpportunityWhereInput = {
-      ...this.opportunityPortfolioBaseWhere(advisorId, source, unrestricted),
+      ...this.opportunityPortfolioBaseWhere(filters, unrestricted),
       // Solo oportunidades relevantes (no perdidas, no inactivas)
       status: { in: ['abierta', 'ganada', 'cerrada'] },
     };
@@ -692,15 +730,14 @@ export class AnalyticsService {
   private async buildContactsWeekly(
     from: Date,
     to: Date,
-    advisorId: string | undefined,
-    source: string | undefined,
+    filters: AnalyticsScopeFilters,
     unrestricted: boolean,
     weeks?: WeekClip[],
   ): Promise<WeeklyMetricRow[]> {
     const weekClips = weeks ?? eachWeekClipsInRange(from, to);
     const counts = new Map<string, number>(weekClips.map((w) => [w.name, 0]));
     const contacts = await this.prisma.contact.findMany({
-      where: this.contactWhere(from, to, advisorId, source, unrestricted),
+      where: this.contactWhere(from, to, filters, unrestricted),
       select: { createdAt: true },
     });
     for (const c of contacts) {
@@ -713,14 +750,14 @@ export class AnalyticsService {
   private async buildSalesWeekly(
     from: Date,
     to: Date,
-    advisorId: string | undefined,
+    filters: AnalyticsScopeFilters,
     unrestricted: boolean,
     weeks?: WeekClip[],
   ): Promise<WeeklyMetricRow[]> {
     const weekClips = weeks ?? eachWeekClipsInRange(from, to);
     const totals = new Map<string, number>(weekClips.map((w) => [w.name, 0]));
     const won = await this.prisma.opportunity.findMany({
-      where: this.opportunityWhereWonInRange(from, to, advisorId, unrestricted),
+      where: this.opportunityWhereWonInRange(from, to, filters, unrestricted),
       select: { updatedAt: true, amount: true },
     });
     for (const o of won) {
@@ -730,8 +767,56 @@ export class AnalyticsService {
     return weekClips.map((w) => ({ name: w.name, value: totals.get(w.name) ?? 0 }));
   }
 
+  private async buildWonOpportunitiesWeekly(
+    from: Date,
+    to: Date,
+    filters: AnalyticsScopeFilters,
+    unrestricted: boolean,
+    weeks?: WeekClip[],
+  ): Promise<WeeklyMetricRow[]> {
+    const weekClips = weeks ?? eachWeekClipsInRange(from, to);
+    const counts = new Map<string, number>(weekClips.map((w) => [w.name, 0]));
+    const won = await this.prisma.opportunity.findMany({
+      where: this.opportunityWhereWonInRange(from, to, filters, unrestricted),
+      select: { updatedAt: true },
+    });
+    for (const o of won) {
+      const key = weekNameForDate(o.updatedAt, weekClips);
+      if (key) counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return weekClips.map((w) => ({ name: w.name, value: counts.get(w.name) ?? 0 }));
+  }
+
+  private async buildActivitiesCompletedWeekly(
+    from: Date,
+    to: Date,
+    filters: AnalyticsScopeFilters,
+    unrestricted: boolean,
+    weeks?: WeekClip[],
+  ): Promise<WeeklyMetricRow[]> {
+    const weekClips = weeks ?? eachWeekClipsInRange(from, to);
+    const counts = new Map<string, number>(weekClips.map((w) => [w.name, 0]));
+    const acts = await this.prisma.activity.findMany({
+      where: this.activityWhereForAnalytics(
+        {
+          ...TASK_ACTIVITY_FILTER,
+          completedAt: { gte: from, lte: to },
+        },
+        filters,
+        unrestricted,
+      ),
+      select: { completedAt: true },
+    });
+    for (const a of acts) {
+      if (!a.completedAt) continue;
+      const key = weekNameForDate(a.completedAt, weekClips);
+      if (key) counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return weekClips.map((w) => ({ name: w.name, value: counts.get(w.name) ?? 0 }));
+  }
+
   private opportunityWhereOpen(
-    advisorId: string | undefined,
+    filters: AnalyticsScopeFilters,
     _unrestricted: boolean,
     from?: Date,
     to?: Date,
@@ -742,54 +827,46 @@ export class AnalyticsService {
     if (from && to) {
       w.createdAt = { gte: from, lte: to };
     }
-    if (advisorId?.trim()) {
-      w.assignedTo = advisorId.trim();
-    }
+    applyAdvisorFilter(w, filters);
     return w;
   }
 
   private opportunityWhereWonInRange(
     from: Date,
     to: Date,
-    advisorId: string | undefined,
+    filters: AnalyticsScopeFilters,
     _unrestricted: boolean,
   ): Prisma.OpportunityWhereInput {
     const w: Prisma.OpportunityWhereInput = {
       status: 'ganada',
       updatedAt: { gte: from, lte: to },
     };
-    if (advisorId?.trim()) {
-      w.assignedTo = advisorId.trim();
-    }
+    applyAdvisorFilter(w, filters);
     return w;
   }
 
   private opportunityWhereCreatedInRange(
     from: Date,
     to: Date,
-    advisorId: string | undefined,
-    sourceSlug: string | undefined,
+    filters: AnalyticsScopeFilters,
     _unrestricted: boolean,
   ): Prisma.OpportunityWhereInput {
     const w: Prisma.OpportunityWhereInput = {
       createdAt: { gte: from, lte: to },
     };
-    if (advisorId?.trim()) {
-      w.assignedTo = advisorId.trim();
-    }
-    if (sourceSlug && sourceSlug !== 'all') {
-      w.fuente = { equals: sourceSlug.trim(), mode: 'insensitive' };
-    }
+    applyAdvisorFilter(w, filters);
+    applySourceFilter(w, filters.sources);
     return w;
   }
 
   private activityWhereForAnalytics(
     base: Prisma.ActivityWhereInput,
-    advisorId: string | undefined,
+    filters: AnalyticsScopeFilters,
     _unrestricted: boolean,
   ): Prisma.ActivityWhereInput {
-    const adv = advisorId?.trim() ? { assignedTo: advisorId.trim() } : {};
-    return { ...base, ...adv };
+    const w: Prisma.ActivityWhereInput = { ...base };
+    applyActivityAdvisorFilter(w, filters);
+    return w;
   }
 
   /** Resumen principal: dashboard y reportes (misma fuente de datos). */
@@ -797,31 +874,32 @@ export class AnalyticsService {
     from?: string;
     to?: string;
     advisorId?: string;
+    assignedTo?: string;
+    excludeAssignedTo?: string;
+    advisorPool?: string;
     source?: string;
     area?: string;
     crmScope: CrmDataScope;
+    /** Semanas para series sparkline KPI; dashboard 8, reportes 10. */
+    sparklineWeeks?: number;
   }) {
     const { from, to } = this.resolveRange(opts.from, opts.to);
     console.log('[DEBUG-BACKEND] getSummary range:', { from: from.toISOString(), to: to.toISOString() });
     const unrestricted = opts.crmScope.unrestricted;
-    const advisorId = unrestricted
-      ? opts.advisorId?.trim() || undefined
-      : opts.crmScope.viewerUserId;
+    const filters = await this.resolveScopeFilters({
+      advisorId: opts.advisorId,
+      assignedTo: opts.assignedTo,
+      excludeAssignedTo: opts.excludeAssignedTo,
+      advisorPool: opts.advisorPool,
+      source: opts.source,
+      unrestricted,
+      viewerUserId: opts.crmScope.viewerUserId,
+    });
+    const metaAdvisorId = singleAdvisorIdForMeta(filters);
 
-    let source: string | undefined = opts.source?.trim();
-    if (!source || source === 'all') {
-      source = undefined;
-    } else {
-      try {
-        source = await this.crmConfig.normalizeLeadSource(source);
-      } catch {
-        /* filtro legacy (p. ej. slug antiguo no en catálogo) */
-      }
-    }
-
-    const cw = this.contactWhere(from, to, advisorId, source, unrestricted);
+    const cw = this.contactWhere(from, to, filters, unrestricted);
     const compW = mergeCompanyScope(
-      this.companyWhere(from, to, advisorId, source, unrestricted),
+      this.companyWhere(from, to, filters, unrestricted),
       opts.crmScope,
     );
 
@@ -846,15 +924,15 @@ export class AnalyticsService {
       this.prisma.contact.count({ where: cw }),
       this.prisma.contact.count({ where: cw }),
       this.prisma.opportunity.count({
-        where: this.opportunityWhereOpen(advisorId, unrestricted, from, to),
+        where: this.opportunityWhereOpen(filters, unrestricted, from, to),
       }),
       this.prisma.opportunity.aggregate({
-        where: this.opportunityWhereWonInRange(from, to, advisorId, unrestricted),
+        where: this.opportunityWhereWonInRange(from, to, filters, unrestricted),
         _sum: { amount: true },
         _count: true,
       }),
       this.prisma.opportunity.aggregate({
-        where: this.opportunityWhereOpen(advisorId, unrestricted, from, to),
+        where: this.opportunityWhereOpen(filters, unrestricted, from, to),
         _sum: { amount: true },
       }),
       this.prisma.activity.count({
@@ -863,7 +941,7 @@ export class AnalyticsService {
             ...TASK_ACTIVITY_FILTER,
             status: 'pendiente',
           },
-          advisorId,
+          filters,
           unrestricted,
         ),
       }),
@@ -874,7 +952,7 @@ export class AnalyticsService {
             status: 'pendiente',
             dueDate: { lt: new Date() },
           },
-          advisorId,
+          filters,
           unrestricted,
         ),
       }),
@@ -884,7 +962,7 @@ export class AnalyticsService {
             ...TASK_ACTIVITY_FILTER,
             completedAt: { gte: from, lte: to },
           },
-          advisorId,
+          filters,
           unrestricted,
         ),
       }),
@@ -922,7 +1000,7 @@ export class AnalyticsService {
       this.prisma.opportunity.count({
         where: {
           createdAt: { gte: from, lte: to },
-          ...(advisorId?.trim() ? { assignedTo: advisorId.trim() } : {}),
+          ...advisorWhereFromFilters(filters),
         },
       }),
       this.prisma.company.groupBy({
@@ -932,10 +1010,10 @@ export class AnalyticsService {
       }),
       this.prisma.opportunity.groupBy({
         by: ['fuente'],
-        where: this.opportunityWhereCreatedInRange(from, to, advisorId, source, unrestricted),
+        where: this.opportunityWhereCreatedInRange(from, to, filters, unrestricted),
         _count: { id: true },
       }),
-      this.fetchRolling7DayChangeInputs(advisorId, source, unrestricted),
+      this.fetchRolling7DayChangeInputs(filters, unrestricted),
     ]);
 
     const closedSalesAmount = closedAgg._sum.amount ?? 0;
@@ -956,12 +1034,12 @@ export class AnalyticsService {
     /** Sin asesor: meta equipo por mes. Con asesor: solo filas CrmUserMonthlySalesTarget (mes sin fila → 0). */
     const metaByYm = new Map<string, number>();
     const advisorMetaByYm = new Map<string, number>();
-    if (advisorId) {
+    if (metaAdvisorId) {
       const userMonthRows =
         monthStartDates.length > 0
           ? await this.prisma.crmUserMonthlySalesTarget.findMany({
               where: {
-                userId: advisorId,
+                userId: metaAdvisorId,
                 periodStart: { in: monthStartDates },
               },
               select: { periodStart: true, amount: true },
@@ -984,7 +1062,7 @@ export class AnalyticsService {
     }
 
     const wonOppRowsForMonthBreakdown = await this.prisma.opportunity.findMany({
-      where: this.opportunityWhereWonInRange(from, to, advisorId, unrestricted),
+      where: this.opportunityWhereWonInRange(from, to, filters, unrestricted),
       select: {
         id: true,
         title: true,
@@ -1036,12 +1114,12 @@ export class AnalyticsService {
           where: this.opportunityWhereWonInRange(
             mStart > from ? mStart : from,
             mEnd < to ? mEnd : to,
-            advisorId,
+            filters,
             unrestricted,
           ),
           _sum: { amount: true },
         });
-        const meta = advisorId
+        const meta = metaAdvisorId
           ? (advisorMetaByYm.get(ym) ?? 0)
           : (metaByYm.get(ym) ?? 0);
         return {
@@ -1100,10 +1178,13 @@ export class AnalyticsService {
 
     const opportunitiesByStage = await this.prisma.opportunity.groupBy({
       by: ['etapa'],
-      where: {
-        createdAt: { gte: from, lte: to },
-        ...(advisorId?.trim() ? { assignedTo: advisorId.trim() } : {}),
-      },
+      where: (() => {
+        const w: Prisma.OpportunityWhereInput = {
+          createdAt: { gte: from, lte: to },
+        };
+        applyAdvisorFilter(w, filters);
+        return w;
+      })(),
       _count: { id: true },
     });
     const opportunitiesByStageData2 = opportunitiesByStage
@@ -1113,34 +1194,21 @@ export class AnalyticsService {
       }))
       .sort((a, b) => b.count - a.count);
 
+    const groupByWhere = performanceGroupByWhere(from, to, filters);
+
     const oppCountByAdvisor = await this.prisma.opportunity.groupBy({
       by: ['assignedTo'],
-      where: {
-        assignedTo: { not: null },
-        createdAt: { gte: from, lte: to },
-        ...(advisorId?.trim() ? { assignedTo: advisorId.trim() } : {}),
-        ...(unrestricted ? {} : { assignedTo: { not: null } }),
-      },
+      where: groupByWhere as Prisma.OpportunityWhereInput,
       _count: { id: true },
     });
     const contactCountByAdvisor = await this.prisma.contact.groupBy({
       by: ['assignedTo'],
-      where: {
-        assignedTo: { not: null },
-        createdAt: { gte: from, lte: to },
-        ...(advisorId?.trim() ? { assignedTo: advisorId.trim() } : {}),
-        ...(unrestricted ? {} : { assignedTo: { not: null } }),
-      },
+      where: groupByWhere,
       _count: { id: true },
     });
     const companyCountByAdvisor = await this.prisma.company.groupBy({
       by: ['assignedTo'],
-      where: {
-        assignedTo: { not: null },
-        createdAt: { gte: from, lte: to },
-        ...(advisorId?.trim() ? { assignedTo: advisorId.trim() } : {}),
-        ...(unrestricted ? {} : { assignedTo: { not: null } }),
-      },
+      where: groupByWhere as Prisma.CompanyWhereInput,
       _count: { id: true },
     });
     const oppCountMap = new Map(
@@ -1194,7 +1262,7 @@ export class AnalyticsService {
           ...TASK_ACTIVITY_FILTER,
           status: 'pendiente',
         },
-        advisorId,
+        filters,
         unrestricted,
       ),
       orderBy: { dueDate: 'asc' },
@@ -1218,10 +1286,12 @@ export class AnalyticsService {
       contactName: a.contacts[0]?.contact?.name ?? '—',
     }));
 
-    /** Serie mensual: contactos creados por mes en el rango */
-    const contactsByMonthMap = new Map<string, { leads: number; nuevos: number }>();
+    /** Serie mensual: contactos y oportunidades creados por mes en el rango */
+    const contactsByMonthMap = new Map<string, number>();
+    const oppsByMonthMap = new Map<string, number>();
     for (const ym of months) {
-      contactsByMonthMap.set(ym, { leads: 0, nuevos: 0 });
+      contactsByMonthMap.set(ym, 0);
+      oppsByMonthMap.set(ym, 0);
     }
     const contactsInRange = await this.prisma.contact.findMany({
       where: cw,
@@ -1229,16 +1299,24 @@ export class AnalyticsService {
     });
     for (const c of contactsInRange) {
       const key = monthKey(c.createdAt);
-      const row = contactsByMonthMap.get(key);
-      if (row) {
-        row.leads += 1;
-        row.nuevos += 1;
+      if (contactsByMonthMap.has(key)) {
+        contactsByMonthMap.set(key, (contactsByMonthMap.get(key) ?? 0) + 1);
       }
     }
-    const contactsByPeriod = months.map((ym) => ({
+    const oppsInRange = await this.prisma.opportunity.findMany({
+      where: this.opportunityWhereCreatedInRange(from, to, filters, unrestricted),
+      select: { createdAt: true },
+    });
+    for (const o of oppsInRange) {
+      const key = monthKey(o.createdAt);
+      if (oppsByMonthMap.has(key)) {
+        oppsByMonthMap.set(key, (oppsByMonthMap.get(key) ?? 0) + 1);
+      }
+    }
+    const contactsVsOpportunitiesByMonth = months.map((ym) => ({
       name: monthLabelEs(ym),
-      leads: contactsByMonthMap.get(ym)?.leads ?? 0,
-      nuevos: contactsByMonthMap.get(ym)?.nuevos ?? 0,
+      contactos: contactsByMonthMap.get(ym) ?? 0,
+      oportunidades: oppsByMonthMap.get(ym) ?? 0,
     }));
 
     /** Conversión por mes (oportunidades ganadas en el mes) */
@@ -1250,7 +1328,7 @@ export class AnalyticsService {
         const cFrom = mStart > from ? mStart : from;
         const cTo = mEnd < to ? mEnd : to;
         const ganadas = await this.prisma.opportunity.count({
-          where: this.opportunityWhereWonInRange(cFrom, cTo, advisorId, unrestricted),
+          where: this.opportunityWhereWonInRange(cFrom, cTo, filters, unrestricted),
         });
         return { name: monthLabelEs(ym), tasa: ganadas };
       }),
@@ -1267,7 +1345,7 @@ export class AnalyticsService {
     const actsDone = await this.prisma.activity.findMany({
       where: this.activityWhereForAnalytics(
         { completedAt: { gte: from, lte: to } },
-        advisorId,
+        filters,
         unrestricted,
       ),
       select: { completedAt: true, type: true },
@@ -1290,7 +1368,7 @@ export class AnalyticsService {
     /** Oportunidades abiertas por etapa (conteo + suma de montos) */
     const oppsByStage = await this.prisma.opportunity.groupBy({
       by: ['etapa'],
-      where: this.opportunityWhereOpen(advisorId, unrestricted, from, to),
+      where: this.opportunityWhereOpen(filters, unrestricted, from, to),
       _count: { id: true },
       _sum: { amount: true },
     });
@@ -1314,7 +1392,7 @@ export class AnalyticsService {
                 ...TASK_ACTIVITY_FILTER,
                 completedAt: { gte: cFrom, lte: cTo },
               },
-              advisorId,
+              filters,
               unrestricted,
             ),
           }),
@@ -1325,7 +1403,7 @@ export class AnalyticsService {
                 status: 'pendiente',
                 dueDate: { gte: cFrom, lte: cTo },
               },
-              advisorId,
+              filters,
               unrestricted,
             ),
           }),
@@ -1341,8 +1419,7 @@ export class AnalyticsService {
     const companiesWeeklyProgress = await this.buildCompaniesWeeklyProgress(
       from,
       to,
-      advisorId,
-      source,
+      filters,
       unrestricted,
       opts.crmScope,
     );
@@ -1350,29 +1427,32 @@ export class AnalyticsService {
     const opportunitiesWeeklyProgress = await this.buildOpportunitiesWeeklyProgress(
       from,
       to,
-      advisorId,
-      source,
+      filters,
       unrestricted,
       opts.crmScope,
     );
 
-    const { from: sparkFrom, to: sparkTo, weeks: sparklineWeeks } = dashboardSparklineRange();
+    const sparkWeeks =
+      opts.sparklineWeeks === REPORTS_SPARKLINE_WEEKS
+        ? REPORTS_SPARKLINE_WEEKS
+        : DASHBOARD_SPARKLINE_WEEKS;
+    const { from: sparkFrom, to: sparkTo, weeks: sparklineWeeks } = sparklineRange(sparkWeeks);
 
-    const [contactsWeekly, salesWeekly, opportunitiesWeeklySparklineProgress] = await Promise.all([
+    const [contactsWeekly, salesWeekly, wonOpportunitiesWeekly, activitiesCompletedWeekly, opportunitiesWeeklySparklineProgress] = await Promise.all([
       this.buildContactsWeekly(
         sparkFrom,
         sparkTo,
-        advisorId,
-        source,
+        filters,
         unrestricted,
         sparklineWeeks,
       ),
-      this.buildSalesWeekly(sparkFrom, sparkTo, advisorId, unrestricted, sparklineWeeks),
+      this.buildSalesWeekly(sparkFrom, sparkTo, filters, unrestricted, sparklineWeeks),
+      this.buildWonOpportunitiesWeekly(sparkFrom, sparkTo, filters, unrestricted, sparklineWeeks),
+      this.buildActivitiesCompletedWeekly(sparkFrom, sparkTo, filters, unrestricted, sparklineWeeks),
       this.buildOpportunitiesWeeklyProgress(
         sparkFrom,
         sparkTo,
-        advisorId,
-        source,
+        filters,
         unrestricted,
         opts.crmScope,
       ),
@@ -1387,7 +1467,7 @@ export class AnalyticsService {
     }));
 
     /** Contactos con/sin interacción en el periodo */
-    const contactPortfolioWhere = this.contactWhere(from, to, advisorId, source, unrestricted);
+    const contactPortfolioWhere = this.contactWhere(from, to, filters, unrestricted);
     const contactIds = await this.prisma.contact.findMany({
       where: contactPortfolioWhere,
       select: { id: true },
@@ -1457,10 +1537,12 @@ export class AnalyticsService {
       opportunitiesWeeklyProgress,
       contactsWeekly,
       salesWeekly,
+      wonOpportunitiesWeekly,
+      activitiesCompletedWeekly,
       opportunitiesWeeklySparkline,
       performanceByAdvisor,
       pendingActivities: pendingActivitiesDto,
-      contactsByPeriod,
+      contactsVsOpportunitiesByMonth,
       conversionByMonth,
       activitiesByTypeData,
       opportunitiesByStageData,
@@ -1526,7 +1608,7 @@ export class AnalyticsService {
     teamScope: boolean,
     userId: string,
   ): Promise<GoalChartPoint[]> {
-    const { from, to, weeks } = dashboardSparklineRange();
+    const { from, to, weeks } = sparklineRange(DASHBOARD_SPARKLINE_WEEKS);
     const weeklyGoal = await this.resolveWeeklyGoalAmount(teamScope, userId);
     const portfolio = this.wonOppsPortfolioFilter(teamScope, userId);
     const totals = new Map<string, number>(weeks.map((w) => [w.name, 0]));
@@ -1664,28 +1746,26 @@ export class AnalyticsService {
     from?: string;
     to?: string;
     advisorId?: string;
+    assignedTo?: string;
+    excludeAssignedTo?: string;
+    advisorPool?: string;
     source?: string;
     area?: string;
     crmScope: CrmDataScope;
   }) {
     const { from, to } = this.resolveRange(opts.from, opts.to);
     const unrestricted = opts.crmScope.unrestricted;
-    const advisorId = unrestricted
-      ? opts.advisorId?.trim() || undefined
-      : opts.crmScope.viewerUserId;
+    const filters = await this.resolveScopeFilters({
+      advisorId: opts.advisorId,
+      assignedTo: opts.assignedTo,
+      excludeAssignedTo: opts.excludeAssignedTo,
+      advisorPool: opts.advisorPool,
+      source: opts.source,
+      unrestricted,
+      viewerUserId: opts.crmScope.viewerUserId,
+    });
 
-    let source: string | undefined = opts.source?.trim();
-    if (!source || source === 'all') {
-      source = undefined;
-    } else {
-      try {
-        source = await this.crmConfig.normalizeLeadSource(source);
-      } catch {
-        /* filtro legacy */
-      }
-    }
-
-    const cw = this.contactWhere(from, to, advisorId, source, unrestricted);
+    const cw = this.contactWhere(from, to, filters, unrestricted);
 
     const [
       totalContacts,
@@ -1702,45 +1782,45 @@ export class AnalyticsService {
       this.prisma.contact.count({ where: cw }),
       this.prisma.contact.count({ where: cw }),
       this.prisma.opportunity.count({
-        where: this.opportunityWhereOpen(advisorId, unrestricted, from, to),
+        where: this.opportunityWhereOpen(filters, unrestricted, from, to),
       }),
       this.prisma.opportunity.aggregate({
-        where: this.opportunityWhereWonInRange(from, to, advisorId, unrestricted),
+        where: this.opportunityWhereWonInRange(from, to, filters, unrestricted),
         _sum: { amount: true },
         _count: true,
       }),
       this.prisma.opportunity.aggregate({
-        where: this.opportunityWhereOpen(advisorId, unrestricted, from, to),
+        where: this.opportunityWhereOpen(filters, unrestricted, from, to),
         _sum: { amount: true },
       }),
       this.prisma.activity.count({
         where: this.activityWhereForAnalytics(
           { ...TASK_ACTIVITY_FILTER, status: 'pendiente' },
-          advisorId,
+          filters,
           unrestricted,
         ),
       }),
       this.prisma.activity.count({
         where: this.activityWhereForAnalytics(
           { ...TASK_ACTIVITY_FILTER, status: 'pendiente', dueDate: { lt: new Date() } },
-          advisorId,
+          filters,
           unrestricted,
         ),
       }),
       this.prisma.activity.count({
         where: this.activityWhereForAnalytics(
           { ...TASK_ACTIVITY_FILTER, completedAt: { gte: from, lte: to } },
-          advisorId,
+          filters,
           unrestricted,
         ),
       }),
       this.prisma.opportunity.count({
         where: {
           createdAt: { gte: from, lte: to },
-          ...(advisorId?.trim() ? { assignedTo: advisorId.trim() } : {}),
+          ...advisorWhereFromFilters(filters),
         },
       }),
-      this.fetchRolling7DayChangeInputs(advisorId, source, unrestricted),
+      this.fetchRolling7DayChangeInputs(filters, unrestricted),
     ]);
 
     const closedSalesAmount = closedAgg._sum.amount ?? 0;
