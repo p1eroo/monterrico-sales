@@ -17,6 +17,8 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
   fetchConversations,
+  fetchConversation,
+  toListConversation,
   initiateConversation,
   fetchChatwootTemplates,
   fetchChatwootContacts,
@@ -125,10 +127,13 @@ export default function ChatwootInboxPanel({
   open,
   onOpenChange,
   initialActiveId,
+  initialContact,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   initialActiveId?: number | null;
+  /** Nombre/teléfono del prospecto al abrir desde la tabla (chats fuera de la página 1). */
+  initialContact?: { name?: string; phone?: string } | null;
 }) {
   const [conversations, setConversations] = useState<ChatwootConversation[]>([]);
   const [activeId, setActiveId] = useState<number | null>(null);
@@ -161,6 +166,7 @@ export default function ChatwootInboxPanel({
   const lastConvLoadAtRef = useRef(0);
   const hasConvDataRef = useRef(false);
   const unreadLoadInFlightRef = useRef<Promise<void> | null>(null);
+  const activeIdRef = useRef<number | null>(null);
 
   async function loadConversations(force = false) {
     const now = Date.now();
@@ -182,7 +188,16 @@ export default function ChatwootInboxPanel({
         setLoading(true);
         const page1 = await fetchConversations({ page: 1 }) as ChatwootConversation[];
         page1.sort((a, b) => b.last_activity_at - a.last_activity_at);
-        setConversations(page1);
+        const keepId = activeIdRef.current;
+        setConversations((prev) => {
+          const active = keepId
+            ? prev.find((c) => c.id === keepId) ?? page1.find((c) => c.id === keepId)
+            : undefined;
+          if (active && !page1.some((c) => c.id === active.id)) {
+            return [active, ...page1];
+          }
+          return page1;
+        });
         setHasMoreConv(page1.length >= 25);
         hasConvDataRef.current = page1.length > 0;
         lastConvLoadAtRef.current = Date.now();
@@ -208,8 +223,115 @@ export default function ChatwootInboxPanel({
   }, [open]);
 
   useEffect(() => {
-    if (initialActiveId) setActiveId(initialActiveId);
+    if (initialActiveId) {
+      setActiveId(initialActiveId);
+      activeIdRef.current = initialActiveId;
+    }
   }, [initialActiveId]);
+
+  useEffect(() => {
+    activeIdRef.current = activeId;
+  }, [activeId]);
+
+  // Chats fuera de la página 1 (p. ej. desde Prospectos): cargar e inyectar detalle
+  useEffect(() => {
+    if (!open || !initialActiveId) return;
+    let cancelled = false;
+
+    // Mostrar nombre/teléfono del prospecto de inmediato mientras llega el detalle
+    if (initialContact?.name || initialContact?.phone) {
+      setConversations((prev) => {
+        const idx = prev.findIndex((c) => c.id === initialActiveId);
+        if (idx >= 0) {
+          const existing = prev[idx];
+          const existingName = existing.meta?.sender?.name;
+          if (existingName && existingName !== 'Desconocido' && existing.meta?.sender?.phone_number) {
+            return prev;
+          }
+          const next = [...prev];
+          next[idx] = {
+            ...existing,
+            meta: {
+              ...existing.meta,
+              sender: {
+                ...existing.meta.sender,
+                name:
+                  (existingName && existingName !== 'Desconocido' ? existingName : null)
+                  || initialContact.name
+                  || existingName
+                  || initialContact.phone
+                  || 'Desconocido',
+                phone_number: existing.meta?.sender?.phone_number || initialContact.phone || '',
+              },
+            },
+          };
+          return next;
+        }
+        return [
+          {
+            id: initialActiveId,
+            inbox_id: 0,
+            status: 'open' as const,
+            meta: {
+              sender: {
+                id: 0,
+                name: initialContact.name || initialContact.phone || 'Desconocido',
+                phone_number: initialContact.phone || '',
+                email: '',
+              },
+            },
+            last_activity_at: Date.now() / 1000,
+          },
+          ...prev,
+        ];
+      });
+    }
+
+    void fetchConversation(initialActiveId)
+      .then((detail) => {
+        if (cancelled) return;
+        const normalized = toListConversation(detail, initialContact ?? undefined);
+        setConversations((prev) => {
+          const idx = prev.findIndex((c) => c.id === normalized.id);
+          if (idx >= 0) {
+            const next = [...prev];
+            const existing = next[idx];
+            const existingName = existing.meta?.sender?.name;
+            next[idx] = {
+              ...existing,
+              ...normalized,
+              meta: {
+                ...normalized.meta,
+                sender: {
+                  ...normalized.meta.sender,
+                  name:
+                    (normalized.meta.sender.name && normalized.meta.sender.name !== 'Desconocido'
+                      ? normalized.meta.sender.name
+                      : null)
+                    || (existingName && existingName !== 'Desconocido' ? existingName : null)
+                    || initialContact?.name
+                    || normalized.meta.sender.name,
+                  phone_number:
+                    normalized.meta.sender.phone_number
+                    || existing.meta?.sender?.phone_number
+                    || initialContact?.phone
+                    || '',
+                },
+              },
+            };
+            return next;
+          }
+          return [normalized, ...prev];
+        });
+      })
+      .catch(() => {
+        /* el placeholder del prospecto ya cubre el encabezado */
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, initialActiveId, initialContact?.name, initialContact?.phone]);
 
   function openNewChat(phone?: string, name?: string) {
     if (phone !== undefined) setNewChatPhone(phone);

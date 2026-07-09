@@ -55,7 +55,7 @@ function eachMonthBetween(from: Date, to: Date): string[] {
   const keys: string[] = [];
   const cur = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), 1));
   const end = new Date(Date.UTC(to.getUTCFullYear(), to.getUTCMonth(), 1));
-  while (cur.getTime() < end.getTime()) {
+  while (cur.getTime() <= end.getTime()) {
     keys.push(monthKey(cur));
     cur.setUTCMonth(cur.getUTCMonth() + 1);
   }
@@ -839,6 +839,7 @@ export class AnalyticsService {
   ): Prisma.OpportunityWhereInput {
     const w: Prisma.OpportunityWhereInput = {
       status: 'ganada',
+      etapa: 'activo',
       updatedAt: { gte: from, lte: to },
     };
     applyAdvisorFilter(w, filters);
@@ -1337,10 +1338,10 @@ export class AnalyticsService {
     /** Actividades por tipo y mes (completadas) */
     const activitiesByTypeMonth: Record<
       string,
-      { llamadas: number; reuniones: number; correos: number }
+      { llamadas: number; reuniones: number; correos: number; notas: number }
     > = {};
     for (const ym of months) {
-      activitiesByTypeMonth[ym] = { llamadas: 0, reuniones: 0, correos: 0 };
+      activitiesByTypeMonth[ym] = { llamadas: 0, reuniones: 0, correos: 0, notas: 0 };
     }
     const actsDone = await this.prisma.activity.findMany({
       where: this.activityWhereForAnalytics(
@@ -1359,6 +1360,7 @@ export class AnalyticsService {
       else if (t === 'reunion' || t === 'reunión') {
         activitiesByTypeMonth[key].reuniones += 1;
       } else if (t === 'correo') activitiesByTypeMonth[key].correos += 1;
+      else if (t === 'nota') activitiesByTypeMonth[key].notas += 1;
     }
     const activitiesByTypeData = months.map((ym) => ({
       name: monthLabelEs(ym),

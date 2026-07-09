@@ -1244,6 +1244,8 @@ export function ChatwootChatPanel({
   const [panelOpen, setPanelOpen] = useState(defaultPanelOpen ?? true);
   const [contactDetail, setContactDetail] = useState<{
     id?: number;
+    name?: string;
+    phone_number?: string;
     custom_attributes?: Record<string, string>;
     additional_attributes?: Record<string, string>;
   } | null>(null);
@@ -1258,6 +1260,17 @@ export function ChatwootChatPanel({
 
   const convo = conversations.find((c) => c.id === conversationId);
   const sender = convo?.meta.sender;
+  const displayName =
+    (sender?.name && sender.name !== 'Desconocido' ? sender.name : null)
+    || prospecto?.nombreCompleto
+    || (contactDetail as { name?: string } | null)?.name
+    || sender?.phone_number
+    || 'Desconocido';
+  const displayPhone =
+    sender?.phone_number
+    || prospecto?.celular
+    || (contactDetail as { phone_number?: string } | null)?.phone_number
+    || '';
   const assignedAgentId = convo?.meta.assignee?.id;
 
   async function refreshProspectoOperador(phone?: string) {
@@ -1282,41 +1295,97 @@ export function ChatwootChatPanel({
   }, [assignedAgentId, prospecto?.id, conversationId]);
 
   useEffect(() => {
-    if (!panelOpen || !conversationId) return;
+    if (!conversationId) return;
     prevAgentRef.current = undefined;
     fetchConversation(conversationId).then((d) => {
       setContactDetail(d.meta?.sender ?? null);
+      // Asegurar que la conversación activa exista en la lista (chats viejos / deep-link)
+      if (d?.id) {
+        onConversationsUpdated((prev) => {
+          if (prev.some((c) => c.id === d.id)) {
+            return prev.map((c) =>
+              c.id === d.id
+                ? {
+                    ...c,
+                    status: d.status ?? c.status,
+                    meta: {
+                      ...c.meta,
+                      sender: {
+                        ...c.meta.sender,
+                        ...d.meta?.sender,
+                        name:
+                          (d.meta?.sender?.name && d.meta.sender.name !== 'Desconocido'
+                            ? d.meta.sender.name
+                            : null)
+                          || c.meta.sender?.name
+                          || d.meta?.sender?.name
+                          || 'Desconocido',
+                        phone_number:
+                          d.meta?.sender?.phone_number || c.meta.sender?.phone_number || '',
+                      },
+                      assignee: d.meta?.assignee ?? c.meta.assignee,
+                    },
+                  }
+                : c,
+            );
+          }
+          return [
+            {
+              id: d.id,
+              inbox_id: d.inbox_id,
+              status: d.status,
+              meta: {
+                sender: {
+                  id: d.meta?.sender?.id ?? 0,
+                  name: d.meta?.sender?.name || 'Desconocido',
+                  phone_number: d.meta?.sender?.phone_number || '',
+                  email: d.meta?.sender?.email || '',
+                  thumbnail: d.meta?.sender?.thumbnail,
+                },
+                assignee: d.meta?.assignee,
+              },
+              last_activity_at: d.last_activity_at ?? 0,
+            },
+            ...prev,
+          ];
+        });
+      }
     }).catch(() => {});
+  }, [conversationId]);
+
+  useEffect(() => {
+    if (!panelOpen || !conversationId) return;
     fetchAgents().then(setAgents).catch(() => {});
     fetchOperadores().then((ops) => setOperadores(ops)).catch(() => {});
-    // Cargar prospecto por teléfono
-    const phone = conversations.find((c) => c.id === conversationId)?.meta?.sender?.phone_number;
-    if (phone) {
-      setLoadingProspecto(true);
-      const cleanedPhone = phone.replace(/\D/g, '');
-      flotaProspectosByPhone(cleanedPhone).then(async (res) => {
-        if (res.found && res.prospecto && !res.prospecto.eliminadoAt) {
-          setProspecto(res.prospecto);
-          await refreshProspectoOperador(cleanedPhone);
-        } else if (res.found && res.prospecto?.eliminadoAt) {
-          // Prospecto eliminado, no mostrar
-          localStorage.setItem(`chatwoot_deleted_prospect_${conversationId}`, 'true');
-          setProspectoDeleted(true);
-          setProspecto(null);
-        } else if (sender?.name && !localStorage.getItem(`chatwoot_deleted_prospect_${conversationId}`)) {
-          setProspectoDeleted(false);
-          return flotaProspectoCreate({ nombreCompleto: sender.name, celular: cleanedPhone }).then(
-            (created) => {
-              setProspecto({ id: created.id, nombreCompleto: created.nombreCompleto, celular: created.celular, operador: null, estado: 'Nuevo' });
-              notifyFlotaProspectosRefresh();
-            },
-          );
-        } else {
-          setProspecto(null);
-        }
-      }).catch(() => setProspecto(null)).finally(() => setLoadingProspecto(false));
-    }
   }, [panelOpen, conversationId]);
+
+  useEffect(() => {
+    if (!conversationId) return;
+    const phone = sender?.phone_number || contactDetail?.phone_number;
+    if (!phone) return;
+    setLoadingProspecto(true);
+    const cleanedPhone = phone.replace(/\D/g, '');
+    flotaProspectosByPhone(cleanedPhone).then(async (res) => {
+      if (res.found && res.prospecto && !res.prospecto.eliminadoAt) {
+        setProspecto(res.prospecto);
+        await refreshProspectoOperador(cleanedPhone);
+      } else if (res.found && res.prospecto?.eliminadoAt) {
+        localStorage.setItem(`chatwoot_deleted_prospect_${conversationId}`, 'true');
+        setProspectoDeleted(true);
+        setProspecto(null);
+      } else if (sender?.name && sender.name !== 'Desconocido' && !localStorage.getItem(`chatwoot_deleted_prospect_${conversationId}`)) {
+        setProspectoDeleted(false);
+        return flotaProspectoCreate({ nombreCompleto: sender.name, celular: cleanedPhone }).then(
+          (created) => {
+            setProspecto({ id: created.id, nombreCompleto: created.nombreCompleto, celular: created.celular, operador: null, estado: 'Nuevo' });
+            notifyFlotaProspectosRefresh();
+          },
+        );
+      } else {
+        setProspecto(null);
+      }
+    }).catch(() => setProspecto(null)).finally(() => setLoadingProspecto(false));
+  }, [conversationId, sender?.phone_number, contactDetail?.phone_number]);
 
   async function handleStatusChange(newStatus: string) {
     setUpdating(true);
@@ -1790,15 +1859,15 @@ export function ChatwootChatPanel({
                   onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                 />
               ) : (
-                <span>{(sender?.name ?? '?').slice(0, 2).toUpperCase()}</span>
+                <span>{displayName.slice(0, 2).toUpperCase()}</span>
               )}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate font-semibold leading-tight">{sender?.name ?? 'Desconocido'}</p>
+              <p className="truncate font-semibold leading-tight">{displayName}</p>
               <p className="truncate text-xs text-muted-foreground">
-                {sender?.phone_number ?? ''}
+                {displayPhone}
                 {(() => {
-                  const cod = getConductorCodigo(sender?.phone_number, conductorCodes ?? {});
+                  const cod = getConductorCodigo(displayPhone || sender?.phone_number, conductorCodes ?? {});
                   return cod ? <span className="ml-1 text-emerald-600 font-medium">{cod}</span> : null;
                 })()}
               </p>

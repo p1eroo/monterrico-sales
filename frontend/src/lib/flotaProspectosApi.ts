@@ -21,6 +21,7 @@ export interface FlotaProspectoRow {
   modalidad: string | null;
   anioVehiculo: number | null;
   placa: string | null;
+  aireAcondicionado: string | null;
   distrito: string | null;
   fechaCita: string | null;
   asistencia: string | null;
@@ -31,6 +32,8 @@ export interface FlotaProspectoRow {
   origen: string;
   createdAt: string;
   updatedAt: string;
+  chatwootContactId?: number | null;
+  chatwootConversationId?: number | null;
   _count?: { llamadas: number };
 }
 
@@ -237,7 +240,7 @@ export async function fetchOperadores(): Promise<OperadorUser[]> {
 
 export interface FlotaProspectoDetalle {
   id: string; nombreCompleto: string; celular: string | null; operador: string | null; estado: string;
-  edad?: number | null; modalidad?: string | null; placa?: string | null; anioVehiculo?: number | null;
+  edad?: number | null; modalidad?: string | null; placa?: string | null; aireAcondicionado?: string | null; anioVehiculo?: number | null;
   distrito?: string | null; fechaCita?: string | null; movil?: string | null; observaciones?: string | null;
   asistencia?: string | null; llamadaCount?: number;
   eliminadoAt?: string | null;

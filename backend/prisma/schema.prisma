@@ -791,6 +791,8 @@ model FlotaProspecto {
   modalidad       String?
   anioVehiculo    Int?
   placa           String?
+  /** SI / No — aire acondicionado del vehículo */
+  aireAcondicionado String?
   distrito        String?
    fechaCita       DateTime?
   asistencia      String?

@@ -62,6 +62,7 @@ export const FLOTA_PROSPECTO_FIELD_LABELS: Record<string, string> = {
   estado: 'Estado',
   modalidad: 'Modalidad',
   placa: 'Placa',
+  aireAcondicionado: 'Aire acondicionado',
   anioVehiculo: 'Año vehículo',
   distrito: 'Distrito',
   fechaRegistro: 'Fecha de registro',

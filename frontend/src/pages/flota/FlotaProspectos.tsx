@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
-import { initiateConversation, fetchChatwootTemplates } from "@/lib/chatwootApi";
+import { initiateConversation, fetchChatwootTemplates, findConversationByPhoneNumber, fetchContactConversations, pickBestContactConversation } from "@/lib/chatwootApi";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAppStore } from "@/store";
 import { useImportJobsStore } from "@/store/importJobsStore";
@@ -108,6 +108,11 @@ const ESTADO_OPTIONS = [
 const ASISTENCIA_OPTIONS = [
   { label: "Asistió", value: "Asistió" },
   { label: "No Asistió", value: "No Asistió" },
+];
+
+const AIRE_ACONDICIONADO_OPTIONS = [
+  { label: "SI", value: "SI" },
+  { label: "No", value: "No" },
 ];
 
 const estadoColors: Record<string, string> = {
@@ -260,6 +265,7 @@ export default function FlotaProspectos() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [blockedProspects, setBlockedProspects] = useState<FlotaProspectoRow[]>([]);
   const [modalidadFilter, setModalidadFilter] = useState("all");
+  const [aireAcondicionadoFilter, setAireAcondicionadoFilter] = useState("all");
   const [redSocialFilter, setRedSocialFilter] = useState("all");
   const [operadorFilter, setOperadorFilter] = useState("all");
   const [pageSize, setPageSize] = useState(25);
@@ -269,7 +275,9 @@ export default function FlotaProspectos() {
   const [fechasOpen, setFechasOpen] = useState(false);
   const [chatPanelOpen, setChatPanelOpen] = useState(false);
   const [chatActiveId, setChatActiveId] = useState<number | null>(null);
-  const [newChatData, setNewChatData] = useState<{ phone: string; name: string; conversationId: number; operador?: string } | null>(null);
+  const [chatInitialContact, setChatInitialContact] = useState<{ name?: string; phone?: string } | null>(null);
+  const [openingChatProspectoId, setOpeningChatProspectoId] = useState<string | null>(null);
+  const [newChatData, setNewChatData] = useState<{ phone: string; name: string; operador?: string } | null>(null);
   const [newChatTemplates, setNewChatTemplates] = useState<{ name: string; language: string; category: string; content?: string }[]>([]);
   const [newChatSelected, setNewChatSelected] = useState('afiliacion_atu');
   const [newChatLoadingTpl, setNewChatLoadingTpl] = useState(false);
@@ -286,6 +294,8 @@ export default function FlotaProspectos() {
   operadoresRef.current = operadores;
   const conductorTelefonosRef = useRef(conductorTelefonos);
   conductorTelefonosRef.current = conductorTelefonos;
+  const openingChatProspectoIdRef = useRef(openingChatProspectoId);
+  openingChatProspectoIdRef.current = openingChatProspectoId;
 
   const columns = useMemo<ColumnDef<FlotaProspectoRow>[]>(
     () => [
@@ -392,22 +402,62 @@ export default function FlotaProspectos() {
               </span>
                 {phone && (
                 <div
-                  className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-background/70 rounded cursor-pointer z-10"
+                  className={`absolute inset-0 flex items-center justify-center transition-opacity bg-background/70 rounded z-10 ${
+                    openingChatProspectoId === row.original.id
+                      ? 'opacity-100 cursor-wait'
+                      : 'opacity-0 hover:opacity-100 cursor-pointer'
+                  }`}
                   onClick={async (e) => {
                     e.stopPropagation();
                     const p = row.original;
-                    const phone = (p.celular || '').replace(/\D/g, '');
-                    const fullPhone = phone.length === 9 ? `+51${phone}` : `+${phone}`;
+                    if (openingChatProspectoIdRef.current === p.id) return;
+                    const digits = (p.celular || '').replace(/\D/g, '');
+                    if (!digits) return;
+                    const fullPhone = digits.length === 9 ? `+51${digits}` : `+${digits}`;
+                    setOpeningChatProspectoId(p.id);
                     try {
-                      const result = await initiateConversation({ name: p.nombreCompleto, phone: fullPhone, skipTemplate: true, operador: p.operador || undefined });
-                      setChatActiveId(result.conversationId);
-                      setChatPanelOpen(true);
+                      const openExisting = (conversationId: number) => {
+                        setChatInitialContact({
+                          name: p.nombreCompleto,
+                          phone: fullPhone,
+                        });
+                        setChatActiveId(conversationId);
+                        setChatPanelOpen(true);
+                      };
+                      if (p.chatwootConversationId) {
+                        openExisting(p.chatwootConversationId);
+                        return;
+                      }
+                      const existing = await findConversationByPhoneNumber(fullPhone);
+                      if (existing) {
+                        openExisting(existing.id);
+                        return;
+                      }
+                      if (p.chatwootContactId) {
+                        const convs = await fetchContactConversations(p.chatwootContactId);
+                        const best = pickBestContactConversation(convs);
+                        if (best) {
+                          openExisting(best.id);
+                          return;
+                        }
+                      }
+                      setNewChatData({
+                        phone: fullPhone,
+                        name: p.nombreCompleto,
+                        operador: p.operador || undefined,
+                      });
                     } catch {
                       toast.error('Error al abrir el chat');
+                    } finally {
+                      setOpeningChatProspectoId(null);
                     }
                   }}
                 >
-                  <MessageCircle className="size-5 text-primary" />
+                  {openingChatProspectoId === row.original.id ? (
+                    <Loader2 className="size-5 animate-spin text-primary" />
+                  ) : (
+                    <MessageCircle className="size-5 text-primary" />
+                  )}
                 </div>
               )}
               {isBlocked && (
@@ -546,6 +596,17 @@ export default function FlotaProspectos() {
         ),
       },
       {
+        accessorKey: "aireAcondicionado",
+        id: "aireAcondicionado",
+        header: "A.C.",
+        size: 70,
+        cell: ({ getValue }) => (
+          <span className="text-[10px]" title={String(getValue() ?? "")}>
+            {String(getValue() ?? "") || "—"}
+          </span>
+        ),
+      },
+      {
         accessorKey: "anioVehiculo",
         id: "anioVehiculo",
         header: "Año Veh.",
@@ -647,7 +708,7 @@ export default function FlotaProspectos() {
         ),
       },
     ],
-    [],
+    [openingChatProspectoId],
   );
 
   const { hasPermission } = usePermissions();
@@ -771,7 +832,7 @@ export default function FlotaProspectos() {
                 fechaRegistro: null, redSocial: null, celular: p.celular,
                 nombreCompleto: p.nombreCompleto, edad: null,
                 operador: p.operador, estado: p.estado || '',
-                modalidad: null, anioVehiculo: null, placa: null, distrito: null,
+                modalidad: null, anioVehiculo: null, placa: null, aireAcondicionado: null, distrito: null,
                 fechaCita: null, asistencia: null, fechaAfiliacion: null, movil: null,
                 observaciones: null, esDuplicado: false, origen: '', createdAt: '', updatedAt: '',
                 _count: { llamadas: 0 },
@@ -833,8 +894,16 @@ export default function FlotaProspectos() {
                     return aliases.join(",");
                   })(),
           filters:
-            Object.keys(columnFilters).length > 0 || modalidadFilter !== "all"
-              ? { ...columnFilters, ...(modalidadFilter !== "all" ? { modalidad: modalidadFilter } : {}) }
+            Object.keys(columnFilters).length > 0
+            || modalidadFilter !== "all"
+            || aireAcondicionadoFilter !== "all"
+              ? {
+                  ...columnFilters,
+                  ...(modalidadFilter !== "all" ? { modalidad: modalidadFilter } : {}),
+                  ...(aireAcondicionadoFilter !== "all"
+                    ? { aireAcondicionado: aireAcondicionadoFilter }
+                    : {}),
+                }
               : undefined,
           conLlamadas:
             conLlamadasFilter === "all" ? undefined : conLlamadasFilter,
@@ -860,6 +929,7 @@ export default function FlotaProspectos() {
       redSocialFilter,
       operadorFilter,
       modalidadFilter,
+      aireAcondicionadoFilter,
       conLlamadasFilter,
       columnFilters,
     ],
@@ -1242,6 +1312,18 @@ export default function FlotaProspectos() {
         mesImportHasta: mesImportRange?.to?.toISOString().split("T")[0],
         redSocial: redSocialFilter === "all" ? undefined : redSocialFilter,
         operador: operadorParam,
+        filters:
+          Object.keys(columnFilters).length > 0
+          || modalidadFilter !== "all"
+          || aireAcondicionadoFilter !== "all"
+            ? {
+                ...columnFilters,
+                ...(modalidadFilter !== "all" ? { modalidad: modalidadFilter } : {}),
+                ...(aireAcondicionadoFilter !== "all"
+                  ? { aireAcondicionado: aireAcondicionadoFilter }
+                  : {}),
+              }
+            : undefined,
       });
 
       const rows = res.data.map((p) => ({
@@ -1257,6 +1339,7 @@ export default function FlotaProspectos() {
         Estado: p.estado,
         Modalidad: p.modalidad ?? "",
         Placa: p.placa ?? "",
+        "A.C.": p.aireAcondicionado ?? "",
         "Año Veh.": p.anioVehiculo != null ? String(p.anioVehiculo) : "",
         Zona: p.distrito ?? "",
         "F. Cita": p.fechaCita
@@ -1638,13 +1721,33 @@ export default function FlotaProspectos() {
                 modalidad: (
                   <select
                     value={modalidadFilter}
-                    onChange={(e) => setModalidadFilter(e.target.value)}
+                    onChange={(e) => {
+                      setModalidadFilter(e.target.value);
+                      setPage(1);
+                    }}
                     className="w-full h-6 rounded border border-input bg-background px-1.5 text-[10px] outline-none text-muted-foreground"
                   >
                     <option value="all">Modalidad</option>
                     {modalidadOptions.map((opt) => (
                       <option key={opt} value={opt}>
                         {opt}
+                      </option>
+                    ))}
+                  </select>
+                ),
+                aireAcondicionado: (
+                  <select
+                    value={aireAcondicionadoFilter}
+                    onChange={(e) => {
+                      setAireAcondicionadoFilter(e.target.value);
+                      setPage(1);
+                    }}
+                    className="w-full h-6 rounded border border-input bg-background px-1.5 text-[10px] outline-none text-muted-foreground"
+                  >
+                    <option value="all">A.C.</option>
+                    {AIRE_ACONDICIONADO_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
                       </option>
                     ))}
                   </select>
@@ -1669,6 +1772,7 @@ export default function FlotaProspectos() {
                 estado: "select",
                 asistencia: "select",
                 modalidad: "select",
+                aireAcondicionado: "select",
                 fechaCita: "datetime-local",
                 fechaAfiliacion: "date",
               }}
@@ -1677,11 +1781,13 @@ export default function FlotaProspectos() {
                 estado: ESTADO_OPTIONS,
                 asistencia: ASISTENCIA_OPTIONS,
                 modalidad: MODALIDAD_OPTIONS,
+                aireAcondicionado: AIRE_ACONDICIONADO_OPTIONS,
               }}
                onEditStart={(row, columnId) => {
                  if (columnId === "estado") return false;
                  if (columnId === "operador") return false;
                  if (columnId === "modalidad") return;
+                 if (columnId === "aireAcondicionado") return;
                  return false;
                }}
               onRowSelectionChange={(ids) => setSelectedIds(new Set(ids))}
@@ -1745,6 +1851,8 @@ export default function FlotaProspectos() {
                     toast.error("Error al cambiar operador");
                   }
                   return;
+                } else if (columnId === "aireAcondicionado") {
+                  body[columnId] = newValue?.trim() || null;
                 } else {
                   body[columnId] = newValue;
                 }
@@ -2410,8 +2518,15 @@ tr[data-row-id="${bp.id}"] {
 
       <ChatwootInboxPanel
         open={chatPanelOpen}
-        onOpenChange={(v) => { if (!v) { setChatPanelOpen(false); setChatActiveId(null); } }}
+        onOpenChange={(v) => {
+          if (!v) {
+            setChatPanelOpen(false);
+            setChatActiveId(null);
+            setChatInitialContact(null);
+          }
+        }}
         initialActiveId={chatActiveId}
+        initialContact={chatInitialContact}
       />
 
       <Dialog open={!!newChatData} onOpenChange={(v) => { if (!v) setNewChatData(null); }}>
@@ -2475,15 +2590,19 @@ tr[data-row-id="${bp.id}"] {
               const templateCategory = template?.category || 'UTILITY';
               setNewChatSending(true);
               try {
-                await initiateConversation({
+                const result = await initiateConversation({
                   name: newChatData.name,
                   phone: newChatData.phone,
                   templateName,
                   templateCategory,
                   operador: newChatData.operador,
                 });
+                setChatInitialContact({
+                  name: newChatData.name,
+                  phone: newChatData.phone,
+                });
                 setNewChatData(null);
-                setChatActiveId(newChatData.conversationId);
+                setChatActiveId(result.conversationId);
                 setChatPanelOpen(true);
                 toast.success('Mensaje enviado');
               } catch (e) {

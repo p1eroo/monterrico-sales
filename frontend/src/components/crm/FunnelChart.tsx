@@ -24,8 +24,8 @@ interface FunnelChartProps {
 }
 
 /** Paleta fija del embudo (verdes, de más intenso arriba a más claro abajo). */
-const FUNNEL_GREEN_STOPS = ['#10B981', '#34D399', '#6EE7B7', '#A7F3D0'] as const;
-const FUNNEL_LABEL_COLOR = '#064E3B';
+const FUNNEL_GREEN_STOPS_LIGHT = ['#065f46', '#13944C', '#34d399', '#a7f3d0'] as const;
+const FUNNEL_GREEN_STOPS_DARK = ['#064e3b', '#0f766e', '#13944C', '#34d399'] as const;
 
 function parseHexColor(hex: string): [number, number, number] {
   const raw = hex.replace('#', '');
@@ -46,17 +46,18 @@ function lerpHex(from: string, to: string, t: number): string {
   return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 }
 
-function buildFunnelGreenColors(stageCount: number): string[] {
+function buildFunnelGreenColors(stageCount: number, isDark: boolean): string[] {
+  const stops = isDark ? FUNNEL_GREEN_STOPS_DARK : FUNNEL_GREEN_STOPS_LIGHT;
   if (stageCount <= 0) return [];
-  if (stageCount === 1) return [FUNNEL_GREEN_STOPS[0]];
+  if (stageCount === 1) return [stops[0]];
 
   return Array.from({ length: stageCount }, (_, index) => {
     const position = index / (stageCount - 1);
-    const scaled = position * (FUNNEL_GREEN_STOPS.length - 1);
+    const scaled = position * (stops.length - 1);
     const lower = Math.floor(scaled);
-    const upper = Math.min(lower + 1, FUNNEL_GREEN_STOPS.length - 1);
+    const upper = Math.min(lower + 1, stops.length - 1);
     const fraction = scaled - lower;
-    return lerpHex(FUNNEL_GREEN_STOPS[lower], FUNNEL_GREEN_STOPS[upper], fraction);
+    return lerpHex(stops[lower], stops[upper], fraction);
   });
 }
 
@@ -70,7 +71,11 @@ export function FunnelChart({
   const chartTheme = useChartTheme();
   const categories = useMemo(() => stages.map((s) => s.label), [stages]);
   const values = useMemo(() => stages.map((s) => s.value), [stages]);
-  const colors = useMemo(() => buildFunnelGreenColors(stages.length), [stages.length]);
+  const colors = useMemo(
+    () => buildFunnelGreenColors(stages.length, chartTheme.isDark),
+    [stages.length, chartTheme.isDark],
+  );
+  const labelColor = chartTheme.isDark ? '#f8fafc' : '#064e3b';
 
   const options = useMemo<ApexOptions>(
     () => ({
@@ -79,6 +84,7 @@ export function FunnelChart({
         toolbar: { show: false },
         fontFamily: 'inherit',
         animations: { enabled: true, speed: 450 },
+        background: 'transparent',
       },
       plotOptions: {
         funnel: {
@@ -102,12 +108,19 @@ export function FunnelChart({
         style: {
           fontSize: '13px',
           fontWeight: 600,
-          colors: [FUNNEL_LABEL_COLOR],
+          colors: [labelColor],
         },
         background: {
           enabled: false,
         },
-        dropShadow: { enabled: false },
+        dropShadow: {
+          enabled: chartTheme.isDark,
+          color: '#000',
+          top: 1,
+          left: 0,
+          blur: 2,
+          opacity: 0.45,
+        },
       },
       xaxis: {
         categories,
@@ -122,7 +135,7 @@ export function FunnelChart({
       },
       legend: { show: false },
       tooltip: {
-        theme: chartTheme.tooltipBg === '#1e293b' ? 'dark' : 'light',
+        theme: chartTheme.isDark ? 'dark' : 'light',
         y: {
           formatter: (val) => {
             const n = Number(val);
@@ -131,7 +144,7 @@ export function FunnelChart({
         },
       },
     }),
-    [categories, chartTheme, colors, singularLabel, variant],
+    [categories, chartTheme.isDark, colors, labelColor, singularLabel, variant],
   );
 
   const series = useMemo(() => [{ name: 'Pipeline', data: values }], [values]);

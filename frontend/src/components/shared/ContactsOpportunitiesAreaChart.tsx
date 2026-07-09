@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import Chart from 'react-apexcharts';
 import type { ApexOptions } from 'apexcharts';
+import { useChartTheme } from '@/hooks/useChartTheme';
 import { cn } from '@/lib/utils';
 
 export type ContactsOpportunitiesMonthPoint = {
@@ -9,8 +10,8 @@ export type ContactsOpportunitiesMonthPoint = {
   oportunidades: number;
 };
 
-const CONTACTOS_COLOR = '#22c55e';
-const OPORTUNIDADES_COLOR = '#fb923c';
+const CONTACTOS_COLOR = '#13944C';
+const OPORTUNIDADES_COLOR = '#6ee7b7';
 
 function formatTotal(n: number): string {
   return Math.round(n).toLocaleString('es-PE');
@@ -29,6 +30,7 @@ export function ContactsOpportunitiesAreaChart({
   height = 300,
   showLegendSummary = true,
 }: ContactsOpportunitiesAreaChartProps) {
+  const chartTheme = useChartTheme();
   const categories = useMemo(() => data.map((d) => d.name), [data]);
   const contactosSeries = useMemo(() => data.map((d) => d.contactos), [data]);
   const oportunidadesSeries = useMemo(() => data.map((d) => d.oportunidades), [data]);
@@ -51,6 +53,7 @@ export function ContactsOpportunitiesAreaChart({
         zoom: { enabled: false },
         offsetY: 0,
         parentHeightOffset: 0,
+        background: 'transparent',
       },
       colors: [CONTACTOS_COLOR, OPORTUNIDADES_COLOR],
       stroke: { curve: 'smooth', width: 2.5 },
@@ -58,15 +61,15 @@ export function ContactsOpportunitiesAreaChart({
         type: 'gradient',
         gradient: {
           shadeIntensity: 1,
-          opacityFrom: 0.35,
-          opacityTo: 0.04,
+          opacityFrom: chartTheme.isDark ? 0.28 : 0.35,
+          opacityTo: chartTheme.isDark ? 0.02 : 0.04,
           stops: [0, 90, 100],
         },
       },
       dataLabels: { enabled: false },
       legend: { show: false },
       grid: {
-        borderColor: '#e2e8f0',
+        borderColor: chartTheme.gridStroke,
         strokeDashArray: 4,
         xaxis: { lines: { show: false } },
         yaxis: { lines: { show: true } },
@@ -78,7 +81,11 @@ export function ContactsOpportunitiesAreaChart({
         axisTicks: { show: false },
         labels: {
           offsetY: -2,
-          style: { colors: '#94a3b8', fontSize: '11px', fontWeight: 500 },
+          style: {
+            colors: chartTheme.axisColor,
+            fontSize: '11px',
+            fontWeight: 500,
+          },
         },
       },
       yaxis: {
@@ -86,10 +93,11 @@ export function ContactsOpportunitiesAreaChart({
         tickAmount: 5,
         labels: {
           formatter: (value) => String(Math.round(Number(value))),
-          style: { colors: '#94a3b8', fontSize: '11px' },
+          style: { colors: chartTheme.axisColor, fontSize: '11px' },
         },
       },
       tooltip: {
+        theme: chartTheme.isDark ? 'dark' : 'light',
         shared: true,
         intersect: false,
         y: {
@@ -97,7 +105,7 @@ export function ContactsOpportunitiesAreaChart({
         },
       },
     }),
-    [categories],
+    [categories, chartTheme.axisColor, chartTheme.gridStroke, chartTheme.isDark],
   );
 
   const series = useMemo(

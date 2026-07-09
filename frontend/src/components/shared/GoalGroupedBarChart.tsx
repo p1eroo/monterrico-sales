@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import Chart from 'react-apexcharts';
 import type { ApexOptions } from 'apexcharts';
 import type { GoalChartPoint } from '@/lib/analyticsApi';
+import { useChartTheme } from '@/hooks/useChartTheme';
 import { cn } from '@/lib/utils';
 
 export const GOALS_ROW_CHART_MIN_HEIGHT = 320;
@@ -23,6 +24,7 @@ interface GoalGroupedBarChartProps {
 }
 
 export function GoalGroupedBarChart({ data, className }: GoalGroupedBarChartProps) {
+  const chartTheme = useChartTheme();
   const categories = useMemo(() => data.map((d) => d.name), [data]);
   const metaSeries = useMemo(() => data.map((d) => d.meta), [data]);
   const avanceSeries = useMemo(() => data.map((d) => d.avance), [data]);
@@ -34,6 +36,7 @@ export function GoalGroupedBarChart({ data, className }: GoalGroupedBarChartProp
         toolbar: { show: false },
         fontFamily: 'inherit',
         animations: { enabled: true, speed: 400 },
+        background: 'transparent',
       },
       colors: [META_COLOR, AVANCE_COLOR],
       plotOptions: {
@@ -48,7 +51,7 @@ export function GoalGroupedBarChart({ data, className }: GoalGroupedBarChartProp
       stroke: { show: true, width: 2, colors: ['transparent'] },
       legend: { show: false },
       grid: {
-        borderColor: '#e2e8f0',
+        borderColor: chartTheme.gridStroke,
         strokeDashArray: 4,
         xaxis: { lines: { show: false } },
         yaxis: { lines: { show: true } },
@@ -59,17 +62,18 @@ export function GoalGroupedBarChart({ data, className }: GoalGroupedBarChartProp
         axisBorder: { show: false },
         axisTicks: { show: false },
         labels: {
-          style: { colors: '#94a3b8', fontSize: '11px', fontWeight: 500 },
+          style: { colors: chartTheme.axisColor, fontSize: '11px', fontWeight: 500 },
         },
       },
       yaxis: {
         min: 0,
         labels: {
           formatter: (v) => formatAxisValue(Number(v)),
-          style: { colors: '#94a3b8', fontSize: '11px' },
+          style: { colors: chartTheme.axisColor, fontSize: '11px' },
         },
       },
       tooltip: {
+        theme: chartTheme.isDark ? 'dark' : 'light',
         shared: true,
         intersect: false,
         y: {
@@ -78,7 +82,7 @@ export function GoalGroupedBarChart({ data, className }: GoalGroupedBarChartProp
         },
       },
     }),
-    [categories],
+    [categories, chartTheme.axisColor, chartTheme.gridStroke, chartTheme.isDark],
   );
 
   const series = useMemo(

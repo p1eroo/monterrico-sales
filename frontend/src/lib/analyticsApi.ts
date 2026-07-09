@@ -75,6 +75,7 @@ export type AnalyticsSummary = {
     llamadas: number;
     reuniones: number;
     correos: number;
+    notas: number;
   }[];
   opportunitiesByStageData: { name: string; count: number; value: number }[];
   followUpsByMonth: { name: string; completados: number; pendientes: number }[];

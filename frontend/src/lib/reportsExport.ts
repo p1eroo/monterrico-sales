@@ -39,6 +39,7 @@ export type ReportsExportInput = {
     llamadas: number;
     reuniones: number;
     correos: number;
+    notas: number;
   }[];
   followUpsByMonth: { name: string; completados: number; pendientes: number }[];
   /** Datos para tablas de nuevas secciones */
@@ -183,12 +184,13 @@ export function downloadReportsCsv(data: ReportsExportInput, baseName: string) {
       },
       {
         title: 'Actividades por tipo',
-        headers: ['Mes', 'Llamadas', 'Reuniones', 'Correos'],
+        headers: ['Mes', 'Llamadas', 'Reuniones', 'Correos', 'Notas'],
         rows: data.activitiesByType.map((x) => [
           x.name,
           x.llamadas,
           x.reuniones,
           x.correos,
+          x.notas,
         ]),
       },
       {
@@ -297,6 +299,7 @@ export function downloadReportsXlsx(data: ReportsExportInput, baseName: string) 
       Llamadas: x.llamadas,
       Reuniones: x.reuniones,
       Correos: x.correos,
+      Notas: x.notas,
     })),
   );
   addSheet(
@@ -414,12 +417,13 @@ export function downloadReportsPdf(data: ReportsExportInput, baseName: string) {
       },
       {
         title: 'Actividades por tipo',
-        head: [['Mes', 'Llamadas', 'Reuniones', 'Correos']],
+        head: [['Mes', 'Llamadas', 'Reuniones', 'Correos', 'Notas']],
         body: data.activitiesByType.map((x) => [
           x.name,
           x.llamadas,
           x.reuniones,
           x.correos,
+          x.notas,
         ]),
         chartKey: 'activities',
       },

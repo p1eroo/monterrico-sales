@@ -219,8 +219,48 @@ export async function fetchAgents(): Promise<ChatwootAgent[]> {
 
 export async function fetchConversation(
   id: number,
-): Promise<{ meta: { sender: ChatwootContact & { custom_attributes?: Record<string, string>; additional_attributes?: Record<string, string> }; assignee?: { id: number; name: string } }; status: string }> {
+): Promise<ChatwootConversation & {
+  meta: {
+    sender: ChatwootContact & {
+      custom_attributes?: Record<string, string>;
+      additional_attributes?: Record<string, string>;
+    };
+    assignee?: { id: number; name: string };
+  };
+}> {
   return api(`/api/chatwoot/conversations/${id}`);
+}
+
+/** Normaliza el detalle de una conversación al shape de lista usado en el inbox. */
+export function toListConversation(
+  detail: Awaited<ReturnType<typeof fetchConversation>>,
+  hint?: { name?: string; phone?: string },
+): ChatwootConversation {
+  const sender = detail.meta?.sender;
+  const hintName = hint?.name?.trim();
+  const hintPhone = hint?.phone?.trim();
+  return {
+    id: detail.id,
+    inbox_id: detail.inbox_id,
+    status: detail.status,
+    meta: {
+      sender: {
+        id: sender?.id ?? 0,
+        name: (sender?.name && sender.name !== 'Desconocido' ? sender.name : null)
+          || hintName
+          || sender?.name
+          || hintPhone
+          || 'Desconocido',
+        phone_number: sender?.phone_number || hintPhone || '',
+        email: sender?.email || '',
+        thumbnail: sender?.thumbnail,
+      },
+      assignee: detail.meta?.assignee,
+    },
+    last_activity_at: detail.last_activity_at ?? 0,
+    unread_count: detail.unread_count,
+    messages: detail.messages,
+  };
 }
 
 export async function uploadAttachment(
@@ -330,54 +370,87 @@ export function pickBestContactConversation(
   return [...pool].sort((a, b) => (b.last_activity_at ?? 0) - (a.last_activity_at ?? 0))[0];
 }
 
-/** Resuelve la conversación de un contacto: memoria → historial por contacto → búsqueda → resolve profundo. */
+/**
+ * Búsqueda ligera de conversación por teléfono (sin escaneo profundo de páginas).
+ * Útil desde Prospectos u otros flujos que solo tienen el número.
+ */
+export async function findConversationByPhoneNumber(
+  phone: string | null | undefined,
+): Promise<ChatwootConversation | null> {
+  const digits = phone?.replace(/\D/g, '') ?? '';
+  const suffix = digits.slice(-9);
+  if (suffix.length < 3) return null;
+
+  const phoneMatches = (c: ChatwootConversation) => {
+    const cd = c.meta?.sender?.phone_number?.replace(/\D/g, '') ?? '';
+    if (!cd) return false;
+    return cd === digits || cd.endsWith(suffix) || suffix.endsWith(cd.slice(-9));
+  };
+
+  const searchTerms = [digits, suffix, `+${digits}`].filter(
+    (q, i, arr) => q.length >= 3 && arr.indexOf(q) === i,
+  );
+  for (const q of searchTerms) {
+    const searchHits = await searchChatwootConversations(q);
+    if (searchHits.length === 0) continue;
+
+    // Preferir coincidencia explícita de teléfono cuando meta.sender lo trae
+    const withPhone = searchHits.filter(phoneMatches);
+    const fromPhone = pickBestContactConversation(withPhone);
+    if (fromPhone) return fromPhone;
+
+    // Chatwoot a veces no incluye phone en meta del listado; si buscamos por dígitos,
+    // aceptar el mejor hit (el backend ya filtra por inbox / prospecto vinculado).
+    const fromSearch = pickBestContactConversation(searchHits);
+    if (fromSearch) return fromSearch;
+  }
+
+  // Fallback: contacto Chatwoot → conversaciones del contacto
+  try {
+    const contacts = await searchContacts(suffix.length >= 9 ? suffix : digits);
+    const contact = contacts.find((c) => {
+      const cd = c.phone_number?.replace(/\D/g, '') ?? '';
+      return cd === digits || cd.endsWith(suffix) || suffix.endsWith(cd.slice(-9));
+    });
+    if (contact?.id) {
+      const convs = await fetchContactConversations(contact.id);
+      const fromContact = pickBestContactConversation(convs);
+      if (fromContact) return fromContact;
+    }
+  } catch {
+    /* ignorar */
+  }
+
+  return null;
+}
+
+/**
+ * Resuelve la conversación de un contacto: memoria → historial por contacto → búsqueda ligera por teléfono.
+ * No usa resolve profundo (escaneo de páginas) para no bloquear la UI cuando no hay historial.
+ */
 export async function resolveContactConversation(
   contact: ChatwootContact,
   loaded: ChatwootConversation[],
 ): Promise<ChatwootConversation | null> {
   const inMemory = findConversationByPhone(loaded, contact.phone_number);
   if (inMemory) return inMemory;
+
   const convs = await fetchContactConversations(contact.id);
   const fromContact = pickBestContactConversation(convs);
   if (fromContact) return fromContact;
-  if (contact.phone_number) {
-    const digits = contact.phone_number.replace(/\D/g, '');
-    const suffix = digits.slice(-9);
-    const searchTerms = [digits, suffix, `+${digits}`]
-      .filter((q, i, arr) => q.length >= 3 && arr.indexOf(q) === i);
-    for (const q of searchTerms) {
-      const searchHits = await searchChatwootConversations(q);
-      const fromSearch = pickBestContactConversation(searchHits);
-      if (fromSearch) return fromSearch;
-    }
-    const qs = new URLSearchParams({
-      phone: contact.phone_number,
-      contact_id: String(contact.id),
-    });
-    const res = await api<{ data: ChatwootConversation | null }>(
-      `/api/chatwoot/resolve-conversation?${qs.toString()}`,
-      { cache: 'no-store' },
-    );
-    if (res.data) return res.data;
-  }
-  return null;
+
+  return findConversationByPhoneNumber(contact.phone_number);
 }
 
-/** Abre chat de un contacto; si no hay historial resuelto, usa initiateConversation sin plantilla. */
+/**
+ * Abre el chat de un contacto si hay historial.
+ * Si no hay conversación, devuelve null para que la UI abra el diálogo de plantilla.
+ */
 export async function openContactChat(
   contact: ChatwootContact,
   loaded: ChatwootConversation[],
 ): Promise<{ conversationId: number; conversation?: ChatwootConversation | null } | null> {
   const conv = await resolveContactConversation(contact, loaded);
   if (conv) return { conversationId: conv.id, conversation: conv };
-  if (!contact.phone_number) return null;
-  const phone = contact.phone_number.startsWith('+')
-    ? contact.phone_number
-    : `+${contact.phone_number.replace(/\D/g, '')}`;
-  const result = await initiateConversation({
-    name: contact.name || phone,
-    phone,
-    skipTemplate: true,
-  });
-  return { conversationId: result.conversationId };
+  return null;
 }

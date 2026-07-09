@@ -9,9 +9,9 @@ const cardVariants = cva(
     variants: {
       variant: {
         surface:
-          "border border-[#e1e7ee] bg-card/30 shadow-[0_1px_3px_rgba(15,23,42,0.06)] dark:border-gray-700 dark:bg-gray-900/30 dark:shadow-[0_1px_3px_rgba(0,0,0,0.2)]",
+          "border border-[#e1e7ee] bg-card/30 shadow-[0_1px_3px_rgba(15,23,42,0.06)] dark:border-transparent dark:bg-card dark:shadow-[0_1px_3px_rgba(0,0,0,0.35)]",
         elevated:
-          "border border-border bg-background shadow-[0_8px_24px_rgba(15,23,42,0.06)]",
+          "border border-border bg-background shadow-[0_8px_24px_rgba(15,23,42,0.06)] dark:border-transparent dark:bg-card dark:shadow-[0_8px_24px_rgba(0,0,0,0.35)]",
       },
     },
     defaultVariants: {
