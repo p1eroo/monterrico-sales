@@ -10,6 +10,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { comercialProPopoverClass } from '@/lib/comercialFilterSurface';
 import { cn } from '@/lib/utils';
 
 function formatRangeLabel(range: DateRange | undefined): string {
@@ -65,13 +66,18 @@ export function DateRangePicker({
           {value?.from ? formatRangeLabel(value) : placeholder}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+      <PopoverContent
+        align="start"
+        sideOffset={8}
+        className={cn(comercialProPopoverClass, 'w-auto p-3 sm:p-4')}
+      >
         <Calendar
           mode="range"
           defaultMonth={value?.from ?? new Date()}
           selected={value}
           onSelect={handleSelect}
           numberOfMonths={2}
+          className="bg-transparent p-0"
         />
       </PopoverContent>
     </Popover>

@@ -301,7 +301,7 @@ export default function Dashboard() {
             value={dateRange}
             onChange={setDateRange}
             placeholder="Seleccionar periodo"
-            className={cn('w-[260px]', comercialFilterSurfaceClass)}
+            className={cn('w-full min-[400px]:w-[260px] sm:w-[260px]', comercialFilterSurfaceClass)}
           />
         </div>
         {hasPermission('dashboard.exportar') && (

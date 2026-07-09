@@ -60,7 +60,16 @@ function eventMatchesCalendarTypeFilter(
 type ViewMode = 'month' | 'week' | 'day';
 
 const WEEKDAYS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+const WEEKDAYS_SHORT = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
+
+const EVENT_DOT_COLOR: Record<string, string> = {
+  llamada: 'bg-blue-500',
+  reunion: 'bg-emerald-500',
+  tarea: 'bg-violet-500',
+  correo: 'bg-amber-500',
+  whatsapp: 'bg-green-500',
+};
 
 const NEW_ACTIVITY_ACTIONS = [
   { kind: 'llamada' as const, icon: Phone, label: 'Llamada' },
@@ -529,27 +538,27 @@ export default function CalendarioPage() {
   }
 
   return (
-    <div className="rounded-xl bg-background overflow-hidden h-[calc(100vh-8rem)] flex flex-col">
+    <div className="flex h-[calc(100dvh-6.5rem)] flex-col overflow-hidden rounded-xl bg-background md:h-[calc(100vh-8rem)]">
       {/* Header */}
-      <div className="flex items-center justify-between border-b px-4 py-3 shrink-0">
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="size-7" onClick={handlePrev}>
+      <div className="flex shrink-0 flex-col gap-2 border-b px-3 py-2 sm:px-4 sm:py-3 md:flex-row md:items-center md:justify-between md:gap-3">
+        <div className="flex min-w-0 items-center gap-1">
+          <Button variant="ghost" size="icon" className="size-7 shrink-0" onClick={handlePrev}>
             <ChevronLeft className="size-4" />
           </Button>
-          <button onClick={goToday} className="rounded-md px-3 py-1 text-sm font-medium hover:bg-muted transition-colors">
+          <button onClick={goToday} className="rounded-md px-2 py-1 text-sm font-medium transition-colors hover:bg-muted sm:px-3">
             Hoy
           </button>
-          <Button variant="ghost" size="icon" className="size-7" onClick={handleNext}>
+          <Button variant="ghost" size="icon" className="size-7 shrink-0" onClick={handleNext}>
             <ChevronRight className="size-4" />
           </Button>
-          <h2 className="text-lg font-semibold ml-2">{headerLabel}</h2>
+          <h2 className="ml-1 truncate text-base font-semibold capitalize sm:ml-2 sm:text-lg">{headerLabel}</h2>
         </div>
-          <div className="flex items-center gap-1.5">
-            <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
               {/* Asesor filter — single select */}
             <div className="flex items-center rounded-md bg-[#13944C]/5 px-1.5">
               <Select value={userFilter} onValueChange={setUserFilter}>
-                <SelectTrigger className="h-8 border-0 bg-transparent px-1 text-sm font-semibold text-[#13944C] shadow-none w-[85px] [&_svg]:hidden">
+                <SelectTrigger className="h-8 w-[72px] border-0 bg-transparent px-1 text-sm font-semibold text-[#13944C] shadow-none sm:w-[85px] [&_svg]:hidden">
                   <SelectValue placeholder="Asesor" />
                 </SelectTrigger>
                 <SelectContent>
@@ -562,7 +571,7 @@ export default function CalendarioPage() {
             {/* Tipo filter */}
             <div className="flex items-center rounded-md bg-[#13944C]/5 px-1.5">
               <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="h-8 border-0 bg-transparent px-1 text-sm font-semibold text-[#13944C] shadow-none w-auto gap-1 [&_svg]:hidden">
+                <SelectTrigger className="h-8 w-auto gap-1 border-0 bg-transparent px-1 text-sm font-semibold text-[#13944C] shadow-none [&_svg]:hidden">
                   <SelectValue placeholder="Tipo" />
                 </SelectTrigger>
                 <SelectContent>
@@ -575,7 +584,7 @@ export default function CalendarioPage() {
             {typeFilter === 'tarea' && (
               <div className="flex items-center rounded-md bg-[#13944C]/5 px-1.5">
                 <Select value={taskKindSubFilter} onValueChange={setTaskKindSubFilter}>
-                  <SelectTrigger className="h-8 border-0 bg-transparent px-1 text-sm font-semibold text-[#13944C] shadow-none w-auto gap-1 [&_svg]:hidden">
+                  <SelectTrigger className="h-8 w-auto gap-1 border-0 bg-transparent px-1 text-sm font-semibold text-[#13944C] shadow-none [&_svg]:hidden">
                     <SelectValue placeholder="Mod." />
                   </SelectTrigger>
                   <SelectContent>
@@ -589,7 +598,7 @@ export default function CalendarioPage() {
             {/* Estado filter */}
             <div className="flex items-center rounded-md bg-[#13944C]/5 px-1.5">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="h-8 border-0 bg-transparent px-1 text-sm font-semibold text-[#13944C] shadow-none w-auto gap-1 [&_svg]:hidden">
+                <SelectTrigger className="h-8 w-auto gap-1 border-0 bg-transparent px-1 text-sm font-semibold text-[#13944C] shadow-none [&_svg]:hidden">
                   <SelectValue placeholder="Estado" />
                 </SelectTrigger>
                 <SelectContent>
@@ -602,13 +611,13 @@ export default function CalendarioPage() {
               </Select>
             </div>
             </div>
-            <div className="flex rounded-md border p-px ml-1">
+            <div className="ml-0 flex rounded-md border p-px sm:ml-1">
             {(['month', 'week', 'day'] as ViewMode[]).map((mode) => (
               <button
                 key={mode}
                 onClick={() => setViewMode(mode)}
                 className={cn(
-                  'rounded px-3 h-8 text-sm font-medium transition-colors',
+                  'h-8 rounded px-2.5 text-sm font-medium transition-colors sm:px-3',
                   viewMode === mode ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
                 )}
               >
@@ -620,8 +629,9 @@ export default function CalendarioPage() {
         </div>
 
 
-      <div className="flex flex-1 min-h-0">
-        <aside className="w-64 shrink-0 border-r flex flex-col overflow-y-auto bg-muted/10">
+      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+        {/* Mini-calendario + agenda del día: solo desktop (en móvil la grilla usa todo el ancho) */}
+        <aside className="hidden w-64 shrink-0 flex-col overflow-y-auto border-r bg-muted/10 md:flex">
           <div className="p-3 border-b">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium">{format(currentDate, 'MMMM yyyy', { locale: es })}</span>
@@ -693,54 +703,92 @@ export default function CalendarioPage() {
           )}
 
           {viewMode === 'month' && (
-            <div className="flex-1 flex flex-col overflow-y-auto">
-              <div className="grid grid-cols-7 border-b shrink-0">
-                {['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'].map((d) => (
-                  <div key={d} className="p-2 text-center text-sm font-medium text-foreground border-r last:border-r-0">{d}</div>
-                ))}
+            <div className="flex min-h-0 flex-1 flex-col">
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                <div className="grid grid-cols-7 border-b shrink-0">
+                  {WEEKDAYS.map((d, i) => (
+                    <div key={d} className="border-r p-1 text-center text-[11px] font-medium text-foreground last:border-r-0 sm:p-2 sm:text-sm">
+                      <span className="sm:hidden">{WEEKDAYS_SHORT[i]}</span>
+                      <span className="hidden sm:inline">{d}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="grid auto-rows-[minmax(3.25rem,1fr)] grid-cols-7 sm:auto-rows-fr sm:min-h-[calc(100%-2rem)]">
+                  {monthDays.map((day) => {
+                    const key = format(day, 'yyyy-MM-dd');
+                    const dayEvs = eventsByDate.get(key) || [];
+                    const isCurrentMonth = isSameMonth(day, currentDate);
+                    return (
+                      <button key={key} onClick={() => { setSelectedDate(day); setCurrentDate(day); }}
+                        onDoubleClick={(e) => { setCurrentDate(day); setQuickCreateMenu({ day, x: e.clientX, y: e.clientY }); }}
+                        className={cn(
+                          'relative overflow-hidden border-b border-r p-1 text-left transition-colors hover:bg-muted/30 sm:p-1.5',
+                          !isCurrentMonth && 'bg-muted/20',
+                          isSameDay(day, selectedDate) && 'bg-muted/40 md:bg-transparent',
+                        )}
+                      >
+                        <span className={cn(
+                          'inline-flex size-6 items-center justify-center rounded-full text-xs sm:absolute sm:top-1 sm:right-1',
+                          isToday(day) && 'bg-primary font-bold text-primary-foreground',
+                          isSameDay(day, selectedDate) && !isToday(day) && 'bg-muted font-semibold',
+                        )}>
+                          {format(day, 'd')}
+                        </span>
+                        {/* Móvil: puntos de color; desktop: cards de eventos */}
+                        <div className="mt-0.5 flex justify-center gap-0.5 sm:hidden">
+                          {dayEvs.slice(0, 3).map((ev) => (
+                            <span
+                              key={ev.id}
+                              className={cn(
+                                'size-1.5 rounded-full',
+                                ev.assignedTo === 'google'
+                                  ? 'bg-blue-500'
+                                  : EVENT_DOT_COLOR[ev.type] ?? 'bg-primary',
+                              )}
+                            />
+                          ))}
+                        </div>
+                        <div className="mt-7 hidden space-y-0.5 sm:block">
+                          {dayEvs.slice(0, 3).map((ev) => (
+                            <CalendarEventCard key={ev.id} event={ev} compact onClick={(e) => { e?.stopPropagation(); setSelectedEvent(ev); setDetailOpen(true); }} />
+                          ))}
+                          {dayEvs.length > 3 && <span className="pl-1 text-[10px] text-muted-foreground">+{dayEvs.length - 3} más</span>}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="grid grid-cols-7 flex-1 auto-rows-fr">
-                {monthDays.map((day) => {
-                  const key = format(day, 'yyyy-MM-dd');
-                  const dayEvs = eventsByDate.get(key) || [];
-                  const isCurrentMonth = isSameMonth(day, currentDate);
-                  return (
-                    <button key={key} onClick={() => { setSelectedDate(day); setCurrentDate(day); }}
-                      onDoubleClick={(e) => { setCurrentDate(day); setQuickCreateMenu({ day, x: e.clientX, y: e.clientY }); }}
-                      className={cn('border-b border-r p-1.5 text-left transition-colors hover:bg-muted/30 relative overflow-hidden',
-                        !isCurrentMonth && 'bg-muted/20'
-                      )}
-                    >
-                      <span className={cn('absolute top-1 right-1 inline-flex size-6 items-center justify-center rounded-full text-xs',
-                        isToday(day) && 'bg-primary text-primary-foreground font-bold',
-                        isSameDay(day, selectedDate) && !isToday(day) && 'bg-muted font-semibold',
-                      )}>
-                        {format(day, 'd')}
-                      </span>
-                      <div className="mt-7 space-y-0.5">
-                        {dayEvs.slice(0, 3).map((ev) => (
-                          <CalendarEventCard key={ev.id} event={ev} compact onClick={(e) => { e?.stopPropagation(); setSelectedEvent(ev); setDetailOpen(true); }} />
-                        ))}
-                        {dayEvs.length > 3 && <span className="text-[10px] text-muted-foreground pl-1">+{dayEvs.length - 3} más</span>}
-                      </div>
-                    </button>
-                  );
-                })}
+              {/* Agenda del día seleccionado (reemplaza el aside en móvil) */}
+              <div className="max-h-[38%] shrink-0 overflow-y-auto border-t p-3 md:hidden">
+                <h3 className="mb-2 text-sm font-medium">
+                  {format(selectedDate, "d 'de' MMMM", { locale: es })}
+                </h3>
+                {selectedDateEvents.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Sin actividades este día</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {selectedDateEvents.map((ev) => (
+                      <CalendarEventCard key={ev.id} event={ev} compact onClick={() => { setSelectedEvent(ev); setDetailOpen(true); }} />
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
 
           {viewMode === 'week' && (
-            <div className="flex-1 flex flex-col min-h-0">
-              <div className="flex border-b shrink-0">
+            <div className="flex min-h-0 flex-1 flex-col overflow-x-auto">
+              <div className="flex min-w-[640px] flex-1 flex-col min-h-0">
+              <div className="flex shrink-0 border-b">
                 <div className="w-14 shrink-0" />
                 {weekDays.map((day) => (
                   <div key={day.toISOString()} onClick={() => setSelectedDate(day)}
-                    className={cn('flex-1 p-1.5 text-center cursor-pointer transition-colors hover:bg-muted/30 border-r last:border-r-0',
+                    className={cn('flex-1 cursor-pointer border-r p-1.5 text-center transition-colors last:border-r-0 hover:bg-muted/30',
                       isToday(day) && 'bg-muted/50'
                     )}
                   >
-                    <div className="text-xs text-foreground mb-1">{format(day, 'EEE', { locale: es })}</div>
+                    <div className="mb-1 text-xs text-foreground">{format(day, 'EEE', { locale: es })}</div>
                     <div className={cn('inline-flex size-10 items-center justify-center rounded-full text-xl',
                       isToday(day) && 'bg-primary text-primary-foreground'
                     )}>
@@ -749,13 +797,13 @@ export default function CalendarioPage() {
                   </div>
                 ))}
               </div>
-              <div className="flex-1 overflow-y-auto">
+              <div className="min-h-0 flex-1 overflow-y-auto">
                 {HOURS.map((hour) => (
                   <div key={hour} className="flex border-b">
-                    <div className="w-14 shrink-0 text-[10px] text-muted-foreground text-right pr-2 py-0 border-r">
+                    <div className="w-14 shrink-0 border-r py-0 pr-2 text-right text-[10px] text-muted-foreground">
                       {String(hour).padStart(2, '0')}:00
                     </div>
-                    <div className="flex-1 flex">
+                    <div className="flex flex-1">
                       {weekDays.map((day) => {
                         const key = format(day, 'yyyy-MM-dd');
                         const dayEvs = (eventsByDate.get(key) || []).filter((e) => {
@@ -763,7 +811,7 @@ export default function CalendarioPage() {
                           return h === hour;
                         });
                         return (
-                          <div key={`${key}-${hour}`} className="flex-1 border-r last:border-r-0 min-h-[48px] relative p-0.5">
+                          <div key={`${key}-${hour}`} className="relative min-h-[48px] flex-1 border-r p-0.5 last:border-r-0">
                             {dayEvs.map((ev) => (
                               <CalendarEventCard key={ev.id} event={ev} compact onClick={() => { setSelectedEvent(ev); setDetailOpen(true); }} />
                             ))}
@@ -773,6 +821,7 @@ export default function CalendarioPage() {
                     </div>
                   </div>
                 ))}
+              </div>
               </div>
             </div>
           )}

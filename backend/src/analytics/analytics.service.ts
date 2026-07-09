@@ -133,11 +133,12 @@ type WeekClip = {
   clipEnd: Date;
 };
 
-function eachWeekClipsInRange(from: Date, to: Date, maxWeeks = 26): WeekClip[] {
+/** Si `maxWeeks` se omite, recorre todo el rango (reportes). Sparklines pasan un tope fijo. */
+function eachWeekClipsInRange(from: Date, to: Date, maxWeeks?: number): WeekClip[] {
   const rows: WeekClip[] = [];
   let weekStart = startOfUtcWeekMonday(from);
   let weekCount = 0;
-  while (weekStart <= to && weekCount < maxWeeks) {
+  while (weekStart <= to && (maxWeeks == null || weekCount < maxWeeks)) {
     weekCount++;
     const weekEnd = endOfUtcWeekSunday(weekStart);
     rows.push({
@@ -470,11 +471,8 @@ export class AnalyticsService {
     }
 
     const rows: CompanyWeeklyProgressRow[] = [];
-    const maxWeeks = 26;
     let weekStart = startOfUtcWeekMonday(from);
-    let weekCount = 0;
-    while (weekStart <= to && weekCount < maxWeeks) {
-      weekCount++;
+    while (weekStart <= to) {
       const weekEnd = endOfUtcWeekSunday(weekStart);
       const clipStart = maxUtcDate(weekStart, from);
       const clipEnd = minUtcDate(weekEnd, to);
@@ -631,12 +629,9 @@ export class AnalyticsService {
     console.log('[DEBUG] auditsByOpp:', auditsByOpp.size);
 
     const rows: OpportunityWeeklyProgressRow[] = [];
-    const maxWeeks = 26;
     let weekStart = startOfUtcWeekMonday(from);
-    let weekCount = 0;
 
-    while (weekStart <= to && weekCount < maxWeeks) {
-      weekCount++;
+    while (weekStart <= to) {
       const weekEnd = endOfUtcWeekSunday(weekStart);
       const clipStart = maxUtcDate(weekStart, from);
       const clipEnd = minUtcDate(weekEnd, to);

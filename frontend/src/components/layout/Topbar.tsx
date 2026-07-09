@@ -31,18 +31,14 @@ export function Topbar() {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 min-w-0 shrink-0 items-center gap-3 px-6 md:px-8">
+    <header className="sticky top-0 z-30 flex h-14 min-w-0 shrink-0 items-center gap-2 px-4 md:gap-3 md:px-8">
       <SidebarTrigger className="-ml-1 text-text-secondary hover:bg-surface-hover hover:text-foreground md:hidden" />
-      <Separator
-        orientation="vertical"
-        className="h-5 bg-border/80 md:hidden"
-      />
 
-      <div className="hidden min-w-0 flex-1 items-center sm:flex">
+      <div className="min-w-0 flex-1 items-center flex">
         <AreaSwitcher />
       </div>
 
-      <div className="ml-auto flex items-center gap-3">
+      <div className="ml-auto flex shrink-0 items-center gap-2 md:gap-3">
         {area === "comercial" && (
           <>
             <AssistantLauncherButton />

@@ -109,6 +109,7 @@ import { UserHandUpIcon } from "@/components/icons/UserHandUpIcon";
 import { ChangeEtapaDialog } from "@/components/shared/ChangeEtapaDialog";
 import { AssignDialog } from "@/components/shared/AssignDialog";
 import { cn } from "@/lib/utils";
+import { comercialProPopoverClass, comercialProCommandClass } from "@/lib/comercialFilterSurface";
 import { formatCurrencyShort, formatDateShortLocal } from "@/lib/formatters";
 import type { ActivityType } from "@/types";
 
@@ -1603,8 +1604,8 @@ export default function Pipeline() {
               <ChevronDown className="size-3.5 shrink-0 opacity-50" />
             </button>
           </PopoverTrigger>
-          <PopoverContent className="w-[200px] p-0" align="start">
-            <Command>
+          <PopoverContent className={cn(comercialProPopoverClass, "w-[220px] p-1.5")} align="start" sideOffset={8}>
+            <Command className={comercialProCommandClass}>
               <CommandList className="max-h-[260px] overflow-y-auto">
                 <CommandGroup>
                   {displayColumns.map((col) => {

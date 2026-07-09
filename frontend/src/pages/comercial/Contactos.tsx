@@ -95,6 +95,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { comercialProPopoverClass, comercialProCommandClass } from "@/lib/comercialFilterSurface";
 import { api } from "@/lib/api";
 import { contactDetailHref } from "@/lib/detailRoutes";
 import type { Contact } from "@/types";
@@ -1199,8 +1200,8 @@ export default function ContactosPage() {
               <ChevronDown className="size-3.5 shrink-0 opacity-50" />
             </button>
           </PopoverTrigger>
-          <PopoverContent className="w-[200px] p-0" align="start">
-            <Command>
+          <PopoverContent className={cn(comercialProPopoverClass, "w-[220px] p-1.5")} align="start" sideOffset={8}>
+            <Command className={comercialProCommandClass}>
               <CommandList className="max-h-[260px] overflow-y-auto">
                 <CommandGroup>
                   {Object.entries(etapaLabels).map(([key, label]) => {
@@ -1247,8 +1248,8 @@ export default function ContactosPage() {
                   Columnas
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-[180px] p-0" align="end">
-                <Command>
+              <PopoverContent className={cn(comercialProPopoverClass, "w-[200px] p-1.5")} align="end" sideOffset={8}>
+                <Command className={comercialProCommandClass}>
                   <CommandList>
                     <CommandGroup>
                       {[
@@ -1289,7 +1290,7 @@ export default function ContactosPage() {
                   Filtros
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-[500px] p-3" align="end">
+              <PopoverContent className={cn(comercialProPopoverClass, "w-[min(100vw-2rem,500px)] p-3")} align="end" sideOffset={8}>
                 <div className="flex items-center gap-3">
                   <Popover>
                     <PopoverTrigger asChild>
@@ -1303,8 +1304,8 @@ export default function ContactosPage() {
                         <ChevronDown className="size-3.5 shrink-0 opacity-50" />
                       </button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[180px] p-0" align="start">
-                      <Command>
+                    <PopoverContent className={cn(comercialProPopoverClass, "w-[200px] p-1.5")} align="start" sideOffset={8}>
+                      <Command className={comercialProCommandClass}>
                         <CommandList className="max-h-[260px] overflow-y-auto">
                           <CommandGroup>
                             {leadSourceOptions.map(({ value: key, label }) => {

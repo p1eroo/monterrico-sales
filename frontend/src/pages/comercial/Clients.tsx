@@ -49,6 +49,7 @@ import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { comercialProPopoverClass, comercialProCommandClass } from '@/lib/comercialFilterSurface';
 import { rightDrawerSheetContentClass } from '@/lib/rightPanelShell';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { toast } from 'sonner';
@@ -603,8 +604,8 @@ export default function Clients() {
                 <ChevronDown className="size-3.5 shrink-0 opacity-50" />
               </button>
             </PopoverTrigger>
-            <PopoverContent className="w-[200px] p-0" align="start">
-              <Command>
+            <PopoverContent className={cn(comercialProPopoverClass, "w-[220px] p-1.5")} align="start" sideOffset={8}>
+              <Command className={comercialProCommandClass}>
                 <CommandList className="max-h-[260px] overflow-y-auto">
                   <CommandGroup>
                     {CLIENT_STATUS_OPTIONS.map(({ key, label }) => {
@@ -665,8 +666,8 @@ export default function Clients() {
                   Columnas
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-[180px] p-0" align="end">
-                <Command>
+              <PopoverContent className={cn(comercialProPopoverClass, "w-[200px] p-1.5")} align="end" sideOffset={8}>
+                <Command className={comercialProCommandClass}>
                   <CommandList>
                     <CommandGroup>
                       {[

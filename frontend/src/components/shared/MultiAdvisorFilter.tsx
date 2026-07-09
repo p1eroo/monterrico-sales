@@ -13,6 +13,10 @@ import {
   CommandSeparator,
 } from '@/components/ui/command';
 import { UserHandIcon } from '@/components/icons/UserHandIcon';
+import {
+  comercialProCommandClass,
+  comercialProPopoverClass,
+} from '@/lib/comercialFilterSurface';
 import { cn } from '@/lib/utils';
 import {
   ADVISOR_OTHERS,
@@ -86,15 +90,23 @@ export function MultiAdvisorFilter({
           <ChevronDown className="size-3.5 shrink-0 opacity-50" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-[200px] p-0" align="start">
-        <Command>
+      <PopoverContent
+        align="start"
+        sideOffset={8}
+        className={cn(comercialProPopoverClass, 'w-[220px] p-1.5')}
+      >
+        <Command className={comercialProCommandClass}>
           <CommandList className="max-h-[280px] overflow-y-auto">
-            <CommandGroup>
+            <CommandGroup className="p-0">
               {advisors.map((u) => {
                 const selected =
                   (!disabled && !isInitialized) || value.includes(u.id);
                 return (
-                  <CommandItem key={u.id} onSelect={() => toggle(u.id)}>
+                  <CommandItem
+                    key={u.id}
+                    onSelect={() => toggle(u.id)}
+                    className="rounded-xl px-2.5 py-2"
+                  >
                     <span className="[&_svg]:!text-primary-foreground">
                       <Checkbox
                         checked={selected}
@@ -108,8 +120,8 @@ export function MultiAdvisorFilter({
             </CommandGroup>
             {showSpecials && (
               <>
-                <CommandSeparator />
-                <CommandGroup>
+                <CommandSeparator className="my-1.5 mx-1 border-dashed" />
+                <CommandGroup className="p-0">
                   {ADVISOR_SPECIAL_OPTIONS.map((opt) => {
                     const selected =
                       (!disabled && !isInitialized) || value.includes(opt.id);
@@ -117,6 +129,7 @@ export function MultiAdvisorFilter({
                       <CommandItem
                         key={opt.id}
                         onSelect={() => toggle(opt.id)}
+                        className="rounded-xl px-2.5 py-2"
                       >
                         <span className="[&_svg]:!text-primary-foreground">
                           <Checkbox

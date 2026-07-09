@@ -12,6 +12,10 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { PaletteIcon } from '@/components/icons/PaletteIcon';
+import {
+  comercialProCommandClass,
+  comercialProPopoverClass,
+} from '@/lib/comercialFilterSurface';
 import { cn } from '@/lib/utils';
 
 type SourceOption = { value: string; label: string };
@@ -56,10 +60,14 @@ export function MultiSourceFilter({
           <ChevronDown className="size-3.5 shrink-0 opacity-50" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-[180px] p-0" align="start">
-        <Command>
+      <PopoverContent
+        align="start"
+        sideOffset={8}
+        className={cn(comercialProPopoverClass, 'w-[200px] p-1.5')}
+      >
+        <Command className={comercialProCommandClass}>
           <CommandList className="max-h-[260px] overflow-y-auto">
-            <CommandGroup>
+            <CommandGroup className="p-0">
               {options.map(({ value: key, label: optionLabel }) => {
                 const selected = value.includes(key);
                 return (
@@ -73,6 +81,7 @@ export function MultiSourceFilter({
                       );
                       onInteraction?.();
                     }}
+                    className="rounded-xl px-2.5 py-2"
                   >
                     <span className="[&_svg]:!text-primary-foreground">
                       <Checkbox

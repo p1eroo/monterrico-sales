@@ -118,19 +118,20 @@ export default function MainLayout() {
   }, []);
 
   return (
-    <div className="h-svh overflow-hidden">
+    <div className="h-svh max-h-svh overflow-hidden">
     <style>{`[data-slot="sidebar-wrapper"][data-collapsible="icon"] { --sidebar-width: 11rem !important; }`}</style>
-    <SidebarProvider>
+    {/* Móvil: tope a svh para que el pane interno scrollee (SidebarInset trae min-h-svh). Desktop intacto. */}
+    <SidebarProvider className="h-svh max-h-svh min-h-0 overflow-hidden">
       <AppSidebar />
       <SidebarInset
-        className="min-w-0 max-w-full bg-[#F3F4F6] dark:bg-neutral-950 md:z-20 md:min-h-0 md:h-[calc(100svh-1rem)] md:!ml-0"
+        className="h-svh max-h-svh min-h-0 min-w-0 max-w-full bg-[#F3F4F6] dark:bg-neutral-950 md:z-20 md:h-[calc(100svh-1rem)] md:max-h-[calc(100svh-1rem)] md:!ml-0"
       >
-        {/* overflow aquí recorta el card; el toggle es hermano para no cortarlo */}
+        {/* overflow solo en el card interno; el toggle es hermano para no quedar recortado */}
         <div className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-hidden md:rounded-xl">
           <Topbar />
           <div
             className={cn(
-              'min-h-0 min-w-0 max-w-full flex-1 flex-1 overflow-y-auto overflow-x-hidden px-8',
+              'min-h-0 min-w-0 max-w-full flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain [-webkit-overflow-scrolling:touch] px-4 md:px-8',
               compactMainTop
                 ? 'pt-0 pb-4 md:pt-0.5 md:pb-5'
                 : 'pt-4 pb-5 md:pt-5 md:pb-6',

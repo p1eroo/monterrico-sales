@@ -787,7 +787,7 @@ export default function Reports() {
           value={dateRange}
           onChange={setDateRange}
           placeholder="Seleccionar periodo"
-          className={cn('w-[260px]', comercialFilterSurfaceClass)}
+          className={cn('w-full min-[400px]:w-[260px] sm:w-[260px]', comercialFilterSurfaceClass)}
         />
 
         <MultiAdvisorFilter
@@ -797,14 +797,14 @@ export default function Reports() {
           disabled={!canSeeAllAdvisors}
           isActive={advisorFilterIsActive}
           isInitialized={advisorFilterInitialized}
-          className={cn('!h-12 w-[190px]', comercialFilterSurfaceClass)}
+          className={cn('!h-12 w-full min-[400px]:w-[190px] sm:w-[190px]', comercialFilterSurfaceClass)}
         />
 
         <MultiSourceFilter
           value={sourceFilter}
           onChange={setSourceFilter}
           options={leadSourceOptions}
-          className={cn('!h-12 w-[190px]', comercialFilterSurfaceClass)}
+          className={cn('!h-12 w-full min-[400px]:w-[190px] sm:w-[190px]', comercialFilterSurfaceClass)}
         />
 
         {hasPermission('reportes.exportar') && (

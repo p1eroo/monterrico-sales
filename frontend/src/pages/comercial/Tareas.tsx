@@ -71,6 +71,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { comercialProPopoverClass, comercialProCommandClass } from '@/lib/comercialFilterSurface';
 import {
   activityTypeIconCircleClass,
   ACTIVITY_ICON_INHERIT,
@@ -637,7 +638,7 @@ export default function TareasPage() {
                   Calendario
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-4" align="end">
+              <PopoverContent className={cn(comercialProPopoverClass, "w-auto p-4")} align="end" sideOffset={8}>
                 <Calendar
                   mode="single"
                   selected={calendarDate}
@@ -654,7 +655,7 @@ export default function TareasPage() {
                   Filtros
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-[500px] p-3" align="end">
+              <PopoverContent className={cn(comercialProPopoverClass, "w-[min(100vw-2rem,500px)] p-3")} align="end" sideOffset={8}>
                 <div className="flex items-center gap-3">
                   <Popover>
                     <PopoverTrigger asChild>
@@ -668,8 +669,8 @@ export default function TareasPage() {
                         <ChevronDown className="size-3.5 shrink-0 opacity-50" />
                       </button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[180px] p-0" align="start">
-                      <Command>
+                    <PopoverContent className={cn(comercialProPopoverClass, "w-[200px] p-1.5")} align="start" sideOffset={8}>
+                      <Command className={comercialProCommandClass}>
                         <CommandList className="max-h-[260px] overflow-y-auto">
                           <CommandGroup>
                             <CommandItem onSelect={() => setStatusFilter('todos')}>
@@ -703,8 +704,8 @@ export default function TareasPage() {
                         <ChevronDown className="size-3.5 shrink-0 opacity-50" />
                       </button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[180px] p-0" align="start">
-                      <Command>
+                    <PopoverContent className={cn(comercialProPopoverClass, "w-[200px] p-1.5")} align="start" sideOffset={8}>
+                      <Command className={comercialProCommandClass}>
                         <CommandList className="max-h-[260px] overflow-y-auto">
                           <CommandGroup>
                             <CommandItem onSelect={() => setPriorityFilter('todas' as any)}>
@@ -738,8 +739,8 @@ export default function TareasPage() {
                         <ChevronDown className="size-3.5 shrink-0 opacity-50" />
                       </button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[180px] p-0" align="start">
-                      <Command>
+                    <PopoverContent className={cn(comercialProPopoverClass, "w-[200px] p-1.5")} align="start" sideOffset={8}>
+                      <Command className={comercialProCommandClass}>
                         <CommandList className="max-h-[260px] overflow-y-auto">
                           <CommandGroup>
                             <CommandItem onSelect={() => setAdvisorFilter('todos')}>

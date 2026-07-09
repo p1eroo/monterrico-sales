@@ -27,6 +27,7 @@ import { BusinessGraphBoardSvgIcon } from '@/components/icons/BusinessGraphBoard
 import type { Etapa, Opportunity } from '@/types';
 import { etapaLabels, contactSourceLabels } from '@/data/mock';
 import { cn } from '@/lib/utils';
+import { comercialProPopoverClass, comercialProCommandClass } from '@/lib/comercialFilterSurface';
 
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Pagination } from '@/components/shared/Pagination';
@@ -737,8 +738,8 @@ export default function OpportunitiesPage() {
                 <ChevronDown className="size-3.5 shrink-0 opacity-50" />
               </button>
             </PopoverTrigger>
-            <PopoverContent className="w-[200px] p-0" align="start">
-              <Command>
+            <PopoverContent className={cn(comercialProPopoverClass, "w-[220px] p-1.5")} align="start" sideOffset={8}>
+              <Command className={comercialProCommandClass}>
                 <CommandList className="max-h-[260px] overflow-y-auto">
                   <CommandGroup>
                     {Object.entries(etapaLabels).map(([key, label]) => {
@@ -794,8 +795,8 @@ export default function OpportunitiesPage() {
                 <ChevronDown className="size-3.5 shrink-0 opacity-50" />
               </button>
             </PopoverTrigger>
-            <PopoverContent className="w-[180px] p-0" align="start">
-              <Command>
+            <PopoverContent className={cn(comercialProPopoverClass, "w-[200px] p-1.5")} align="start" sideOffset={8}>
+              <Command className={comercialProCommandClass}>
                 <CommandList className="max-h-[260px] overflow-y-auto">
                   <CommandGroup>
                     {leadSourceOptions.map(({ value: key, label }) => {
@@ -842,8 +843,8 @@ export default function OpportunitiesPage() {
                   Columnas
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-[180px] p-0" align="end">
-                <Command>
+              <PopoverContent className={cn(comercialProPopoverClass, "w-[200px] p-1.5")} align="end" sideOffset={8}>
+                <Command className={comercialProCommandClass}>
                   <CommandList>
                     <CommandGroup>
                       {[

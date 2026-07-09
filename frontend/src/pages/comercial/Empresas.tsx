@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 import {
   Search, Building2, Users, Briefcase,
-  FileSpreadsheet, Upload, Download, Plus, Loader2,
+  Plus, Loader2,
   Eye, Pencil, Trash2, MoreVertical,
   X, ChevronDown,
   ChevronsUpDown, ChevronUp,
@@ -65,6 +65,7 @@ import { GitForkIcon } from '@/components/icons/GitForkIcon';
 import { PaletteIcon } from '@/components/icons/PaletteIcon';
 import { addCalendarDaysLocalIso } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
+import { comercialProPopoverClass, comercialProCommandClass } from '@/lib/comercialFilterSurface';
 import { api, API_BASE } from '@/lib/api';
 import { usePermissions } from '@/hooks/usePermissions';
 import {
@@ -109,6 +110,9 @@ import {
 } from '@/components/shared/CrmListPageSkeleton';
 import { ColumnsSvgIcon } from '@/components/icons/ColumnsSvgIcon';
 import { FilterSvgIcon } from '@/components/icons/FilterSvgIcon';
+import { FileNewSvgIcon } from '@/components/icons/FileNewSvgIcon';
+import { ImportSvgIcon } from '@/components/icons/ImportSvgIcon';
+import { ExportSvgIcon } from '@/components/icons/ExportSvgIcon';
 
 type EmpresaSummaryRow = CompanySummaryRow & { isLocalOnly?: boolean };
 
@@ -1588,8 +1592,8 @@ export default function EmpresasPage() {
               <ChevronDown className="size-3.5 shrink-0 opacity-50" />
             </button>
           </PopoverTrigger>
-          <PopoverContent className="w-[200px] p-0" align="start">
-            <Command>
+          <PopoverContent className={cn(comercialProPopoverClass, "w-[220px] p-1.5")} align="start" sideOffset={8}>
+            <Command className={comercialProCommandClass}>
               <CommandList className="max-h-[260px] overflow-y-auto">
                 <CommandGroup>
                   {Object.entries(etapaLabels).map(([key, label]) => {
@@ -1634,8 +1638,8 @@ export default function EmpresasPage() {
               <ChevronDown className="size-3.5 shrink-0 opacity-50" />
             </button>
           </PopoverTrigger>
-          <PopoverContent className="w-[200px] p-0" align="start">
-            <Command>
+          <PopoverContent className={cn(comercialProPopoverClass, "w-[220px] p-1.5")} align="start" sideOffset={8}>
+            <Command className={comercialProCommandClass}>
               <CommandList className="max-h-[260px] overflow-y-auto">
                 <CommandGroup>
                   {Object.entries(companyRubroLabels).map(([key, label]) => {
@@ -1691,8 +1695,8 @@ export default function EmpresasPage() {
                 Columnas
               </button>
             </PopoverTrigger>
-            <PopoverContent className="w-[180px] p-0" align="end">
-              <Command>
+            <PopoverContent className={cn(comercialProPopoverClass, "w-[200px] p-1.5")} align="end" sideOffset={8}>
+              <Command className={comercialProCommandClass}>
                 <CommandList>
                   <CommandGroup>
                     {[
@@ -1732,7 +1736,7 @@ export default function EmpresasPage() {
                 Filtros
               </button>
             </PopoverTrigger>
-            <PopoverContent className="w-[500px] p-3" align="end">
+            <PopoverContent className={cn(comercialProPopoverClass, "w-[min(100vw-2rem,500px)] p-3")} align="end" sideOffset={8}>
               <div className="flex items-center gap-3">
                 <Popover>
                   <PopoverTrigger asChild>
@@ -1746,8 +1750,8 @@ export default function EmpresasPage() {
                       <ChevronDown className="size-3.5 shrink-0 opacity-50" />
                     </button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-[180px] p-0" align="start">
-                    <Command>
+                  <PopoverContent className={cn(comercialProPopoverClass, "w-[200px] p-1.5")} align="start" sideOffset={8}>
+                    <Command className={comercialProCommandClass}>
                       <CommandList className="max-h-[260px] overflow-y-auto">
                         <CommandGroup>
                           {leadSourceOptions.map(({ value: key, label }) => {
@@ -1791,8 +1795,8 @@ export default function EmpresasPage() {
                       <ChevronDown className="size-3.5 shrink-0 opacity-50" />
                     </button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-[180px] p-0" align="start">
-                    <Command>
+                  <PopoverContent className={cn(comercialProPopoverClass, "w-[200px] p-1.5")} align="start" sideOffset={8}>
+                    <Command className={comercialProCommandClass}>
                       <CommandList className="max-h-[260px] overflow-y-auto">
                         <CommandGroup>
                           {Object.entries(companyTipoLabels).map(([key, label]) => {
@@ -1850,7 +1854,7 @@ export default function EmpresasPage() {
                   disabled={exportBusy}
                   onClick={() => void handleCompanyTemplate()}
                 >
-                  {exportBusy ? <Loader2 className="size-3.5 animate-spin" /> : <FileSpreadsheet className="size-4" />}
+                  {exportBusy ? <Loader2 className="size-3.5 animate-spin" /> : <FileNewSvgIcon className="size-[18px]" />}
                   Plantilla
                 </DropdownMenuItem>
               )}
@@ -1859,7 +1863,7 @@ export default function EmpresasPage() {
                   disabled={importBusy}
                   onClick={openCompanyImport}
                 >
-                  {importBusy ? <Loader2 className="size-3.5 animate-spin" /> : <Upload className="size-4" />}
+                  {importBusy ? <Loader2 className="size-3.5 animate-spin" /> : <ImportSvgIcon className="size-[18px]" />}
                   Importar
                 </DropdownMenuItem>
               )}
@@ -1868,7 +1872,7 @@ export default function EmpresasPage() {
                   disabled={exportBusy}
                   onClick={() => void handleCompanyExport()}
                 >
-                  {exportBusy ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-4" />}
+                  {exportBusy ? <Loader2 className="size-3.5 animate-spin" /> : <ExportSvgIcon className="size-[18px]" />}
                   Exportar
                 </DropdownMenuItem>
               )}
@@ -1877,7 +1881,7 @@ export default function EmpresasPage() {
                   disabled={fullExportBusy}
                   onClick={() => void handleFullExport()}
                 >
-                  {fullExportBusy ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-4" />}
+                  {fullExportBusy ? <Loader2 className="size-3.5 animate-spin" /> : <ExportSvgIcon className="size-[18px]" />}
                   Full Exp
                 </DropdownMenuItem>
               )}
