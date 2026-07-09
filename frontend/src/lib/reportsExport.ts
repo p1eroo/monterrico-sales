@@ -51,6 +51,8 @@ export type ReportsExportInput = {
     sources?: string;
     funnel?: string;
     weeklyOpps?: string;
+    wonOpportunities?: string;
+    sourcesByEntity?: string;
     conversion?: string;
     performance?: string;
     sales?: string;

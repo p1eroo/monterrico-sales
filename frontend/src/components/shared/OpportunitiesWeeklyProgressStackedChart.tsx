@@ -123,7 +123,10 @@ export function OpportunitiesWeeklyProgressStackedChart({
         shared: true,
         intersect: false,
         x: {
-          formatter: (_value, { dataPointIndex }) => data[dataPointIndex]?.name ?? '',
+          formatter: (_value, opts) => {
+            const idx = (opts as { dataPointIndex?: number } | undefined)?.dataPointIndex;
+            return idx != null ? (data[idx]?.name ?? '') : '';
+          },
         },
         y: {
           formatter: (value) => (value == null ? '' : String(Math.round(Number(value)))),
