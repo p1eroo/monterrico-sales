@@ -87,6 +87,48 @@ export class ChatwootClient {
     return this.extractConversationList(raw);
   }
 
+  private unreadFilterSupported: boolean | null = null;
+
+  /**
+   * Filtro nativo de Chatwoot para conversaciones no leídas.
+   * Devuelve null si la instancia no soporta el endpoint (fallback a escaneo).
+   */
+  async filterUnreadConversations(params: {
+    inbox_id: number;
+    page?: number;
+  }): Promise<ChatwootConversationListItem[] | null> {
+    if (this.unreadFilterSupported === false) return null;
+
+    const page = params.page ?? 1;
+    try {
+      const raw = await this.request<unknown>(
+        'POST',
+        `/conversations/filter?page=${page}`,
+        {
+          payload: [
+            {
+              attribute_key: 'inbox_id',
+              filter_operator: 'equal_to',
+              values: [params.inbox_id],
+              query_operator: 'AND',
+            },
+            {
+              attribute_key: 'unread',
+              filter_operator: 'equal_to',
+              values: ['true'],
+              query_operator: 'AND',
+            },
+          ],
+        },
+      );
+      this.unreadFilterSupported = true;
+      return this.extractConversationList(raw);
+    } catch {
+      this.unreadFilterSupported = false;
+      return null;
+    }
+  }
+
   async searchConversations(q: string, page = 1): Promise<ChatwootConversationListItem[]> {
     try {
       const raw = await this.request<unknown>(

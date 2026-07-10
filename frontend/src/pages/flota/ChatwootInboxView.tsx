@@ -129,6 +129,9 @@ export default function ChatwootInboxView() {
   const lastConvLoadAtRef = useRef(0);
   const hasConvDataRef = useRef(false);
   const unreadLoadInFlightRef = useRef<Promise<void> | null>(null);
+  const unreadPageRef = useRef(1);
+  const loadingUnreadMoreRef = useRef(false);
+  const [hasMoreUnread, setHasMoreUnread] = useState(true);
   const [hasMoreConv, setHasMoreConv] = useState(true);
   const [contacts, setContacts] = useState<ChatwootContact[]>([]);
   const [loadingContacts, setLoadingContacts] = useState(false);
@@ -187,30 +190,66 @@ export default function ChatwootInboxView() {
     return () => { cancelled = true; };
   }, [debouncedQuery, filter]);
 
-  async function loadUnreadList(showLoading = true) {
-    if (unreadLoadInFlightRef.current) return unreadLoadInFlightRef.current;
+  async function loadUnreadList(options?: {
+    force?: boolean;
+    append?: boolean;
+    showLoading?: boolean;
+  }) {
+    const { force = false, append = false, showLoading = true } = options ?? {};
+
+    if (append) {
+      if (loadingUnreadMoreRef.current) return;
+    } else if (unreadLoadInFlightRef.current) {
+      return unreadLoadInFlightRef.current;
+    }
+
+    const page = append ? unreadPageRef.current + 1 : 1;
+    if (!append) unreadPageRef.current = 1;
+    else unreadPageRef.current = page;
+
     const run = (async () => {
-      if (showLoading) setLoadingUnread(true);
+      if (showLoading && !append) setLoadingUnread(true);
+      if (append) loadingUnreadMoreRef.current = true;
       try {
-        const items = await fetchUnreadConversations();
-        setUnreadList(items);
+        const items = await fetchUnreadConversations({
+          page,
+          force: force && !append,
+        });
+        setUnreadList((prev) => {
+          if (!append) return items;
+          const map = new Map<number, ChatwootConversation>();
+          for (const c of prev) map.set(c.id, c);
+          for (const c of items) map.set(c.id, c);
+          return Array.from(map.values()).sort(
+            (a, b) => (b.last_activity_at ?? 0) - (a.last_activity_at ?? 0),
+          );
+        });
+        setHasMoreUnread(items.length >= 25);
       } catch {
-        if (showLoading) setUnreadList([]);
+        if (!append && showLoading) setUnreadList([]);
+        if (!append) setHasMoreUnread(false);
       } finally {
-        if (showLoading) setLoadingUnread(false);
+        if (showLoading && !append) setLoadingUnread(false);
+        loadingUnreadMoreRef.current = false;
       }
     })();
-    unreadLoadInFlightRef.current = run;
-    try {
-      await run;
-    } finally {
-      unreadLoadInFlightRef.current = null;
+
+    if (!append) {
+      unreadLoadInFlightRef.current = run;
+      try {
+        await run;
+      } finally {
+        unreadLoadInFlightRef.current = null;
+      }
+      return;
     }
+
+    await run;
   }
 
   useEffect(() => {
     if (filter !== 'unread' || debouncedQuery) return;
-    void loadUnreadList(unreadList.length === 0);
+    void loadUnreadList({ force: true, showLoading: unreadList.length === 0 });
   }, [filter, debouncedQuery]);
 
   useEffect(() => {
@@ -352,7 +391,9 @@ export default function ChatwootInboxView() {
         setHasMoreConv(page1.length >= 25);
         hasConvDataRef.current = page1.length > 0;
         lastConvLoadAtRef.current = Date.now();
-        void fetchUnreadConversations().then((items) => setUnreadList(items)).catch(() => {});
+        void fetchUnreadConversations({ page: 1 }).then((items) => {
+          setUnreadList((prev) => (prev.length === 0 ? items : prev));
+        }).catch(() => {});
       } catch {
         // silent
       } finally {
@@ -395,6 +436,20 @@ export default function ChatwootInboxView() {
     el.addEventListener('scroll', onScroll);
     return () => el.removeEventListener('scroll', onScroll);
   }, [hasMoreConv, conversations.length, debouncedQuery, filter, loading]);
+
+  // Scroll infinito en pestaña No leídos
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el || debouncedQuery || filter !== 'unread' || loadingUnread) return;
+    const onScroll = () => {
+      if (loadingUnreadMoreRef.current || !hasMoreUnread || unreadList.length === 0) return;
+      if (el.scrollHeight - el.scrollTop - el.clientHeight < 300) {
+        void loadUnreadList({ append: true, showLoading: false });
+      }
+    };
+    el.addEventListener('scroll', onScroll);
+    return () => el.removeEventListener('scroll', onScroll);
+  }, [debouncedQuery, filter, hasMoreUnread, loadingUnread, unreadList.length]);
 
   // Efecto para cargar contactos
   useEffect(() => {

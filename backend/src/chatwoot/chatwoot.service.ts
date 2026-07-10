@@ -51,37 +51,71 @@ export class ChatwootService {
     });
   }
 
-  /** Escanea páginas de Chatwoot y devuelve solo conversaciones con mensajes no leídos. */
+  private sortUnreadList(items: ChatwootConversationListItem[]) {
+    return items.sort((a, b) => (b.last_activity_at ?? 0) - (a.last_activity_at ?? 0));
+  }
+
+  /** Recolecta no leídos vía filter API paginada (rápido). Null = no soportado. */
+  private async collectUnreadViaFilter(
+    inboxId: number,
+    maxPages = this.maxScanPages,
+  ): Promise<ChatwootConversationListItem[] | null> {
+    const unread: ChatwootConversationListItem[] = [];
+    const seen = new Set<number>();
+
+    for (let page = 1; page <= maxPages; page++) {
+      const batch = await this.client.filterUnreadConversations({ inbox_id: inboxId, page });
+      if (batch === null) return null;
+      if (batch.length === 0) break;
+
+      for (const c of batch) {
+        if (!seen.has(c.id)) {
+          seen.add(c.id);
+          unread.push(c);
+        }
+      }
+
+      if (batch.length < this.convPageSize) break;
+    }
+
+    return this.sortUnreadList(unread);
+  }
+
+  /** Escaneo completo de páginas (fallback cuando filter API no está disponible). */
+  private async scanUnreadConversations(inboxId: number): Promise<ChatwootConversationListItem[]> {
+    const unread: ChatwootConversationListItem[] = [];
+    const seen = new Set<number>();
+
+    for (let page = 1; page <= this.maxScanPages; page++) {
+      const batch = await this.client.listConversations({
+        inbox_id: inboxId,
+        page,
+        sort_by: 'unread',
+      });
+      if (batch.length === 0) break;
+
+      for (const c of batch) {
+        if ((c.unread_count ?? 0) > 0 && !seen.has(c.id)) {
+          seen.add(c.id);
+          unread.push(c);
+        }
+      }
+
+      if (batch.length < this.convPageSize) break;
+    }
+
+    return this.sortUnreadList(unread);
+  }
+
+  /** Lista completa de no leídos: filter API primero, escaneo como fallback. */
   async listUnreadConversations(): Promise<ChatwootConversationListItem[]> {
     if (this.unreadScanInFlight) return this.unreadScanInFlight;
 
     const scan = (async () => {
       const inboxId = this.client.getConfig().inboxId;
-      const unread: ChatwootConversationListItem[] = [];
-      const seen = new Set<number>();
-
-      for (let page = 1; page <= this.maxScanPages; page++) {
-        const batch = await this.client.listConversations({
-          inbox_id: inboxId,
-          page,
-          sort_by: 'unread',
-        });
-        if (batch.length === 0) break;
-
-        let pageHadUnread = false;
-        for (const c of batch) {
-          if ((c.unread_count ?? 0) > 0 && !seen.has(c.id)) {
-            seen.add(c.id);
-            unread.push(c);
-            pageHadUnread = true;
-          }
-        }
-
-        if (batch.length < this.convPageSize) break;
-        if (page > 1 && !pageHadUnread) break;
-      }
-
-      return unread.sort((a, b) => (b.last_activity_at ?? 0) - (a.last_activity_at ?? 0));
+      const viaFilter = await this.collectUnreadViaFilter(inboxId);
+      if (viaFilter !== null) return viaFilter;
+      return this.scanUnreadConversations(inboxId);
     })();
 
     this.unreadScanInFlight = scan;
@@ -92,6 +126,20 @@ export class ChatwootService {
     }
   }
 
+  /** Una página de no leídos (filter API) o slice del escaneo completo en caché. */
+  async listUnreadConversationsPage(page: number): Promise<ChatwootConversationListItem[]> {
+    const inboxId = this.client.getConfig().inboxId;
+    const filtered = await this.client.filterUnreadConversations({ inbox_id: inboxId, page });
+
+    if (filtered !== null) {
+      return this.sortUnreadList(filtered);
+    }
+
+    const all = await this.getUnreadConversations({ force: false });
+    const start = (page - 1) * this.convPageSize;
+    return all.slice(start, start + this.convPageSize);
+  }
+
   private buildUnreadSummary(items: ChatwootConversationListItem[]) {
     return {
       totalUnread: items.reduce((sum, c) => sum + (c.unread_count ?? 0), 0),
@@ -99,8 +147,19 @@ export class ChatwootService {
     };
   }
 
-  /** Lista completa de no leídos con cache compartida (badge + pestaña). */
-  async getUnreadConversations(force = false): Promise<ChatwootConversationListItem[]> {
+  /** Lista de no leídos con cache compartida (badge + pestaña). */
+  async getUnreadConversations(options?: {
+    force?: boolean;
+    page?: number;
+  }): Promise<ChatwootConversationListItem[]> {
+    const force = options?.force ?? false;
+    const page = options?.page;
+
+    if (page) {
+      if (force) this.invalidateUnreadCache();
+      return this.listUnreadConversationsPage(page);
+    }
+
     if (
       !force
       && this.unreadCache
@@ -119,6 +178,8 @@ export class ChatwootService {
   }
 
   async getUnreadSummary(force = false): Promise<{ totalUnread: number; conversationCount: number }> {
+    if (force) this.invalidateUnreadCache();
+
     if (
       !force
       && this.unreadCache
@@ -127,7 +188,7 @@ export class ChatwootService {
       return this.unreadCache.summary;
     }
 
-    const items = await this.getUnreadConversations(force);
+    const items = await this.getUnreadConversations({ force });
     return this.unreadCache?.summary ?? this.buildUnreadSummary(items);
   }
 

@@ -32,14 +32,20 @@ export class ChatwootController {
 
   @Get('conversations')
   async listConversations(
+    @Res({ passthrough: true }) res: Response,
     @Query('status') status?: string,
     @Query('q') q?: string,
     @Query('inbox_id') inboxId?: string,
     @Query('page') page?: string,
     @Query('unread_only') unreadOnly?: string,
+    @Query('force') force?: string,
   ) {
     if (unreadOnly === 'true' || unreadOnly === '1') {
-      const items = await this.service.getUnreadConversations();
+      res.setHeader('Cache-Control', 'no-store');
+      const items = await this.service.getUnreadConversations({
+        force: force === 'true' || force === '1',
+        page: page ? Number(page) : undefined,
+      });
       return { data: items };
     }
     const items = await this.service.listConversations({
@@ -77,8 +83,12 @@ export class ChatwootController {
   }
 
   @Get('unread-summary')
-  async unreadSummary() {
-    return this.service.getUnreadSummary();
+  async unreadSummary(
+    @Res({ passthrough: true }) res: Response,
+    @Query('force') force?: string,
+  ) {
+    res.setHeader('Cache-Control', 'no-store');
+    return this.service.getUnreadSummary(force === 'true' || force === '1');
   }
 
   @Get('conversations/:id')
@@ -197,6 +207,7 @@ export class ChatwootController {
   @Post('conversations/:id/read')
   async markAsRead(@Param('id', ParseIntPipe) id: number) {
     await this.client.markAsRead(id);
+    this.service.invalidateUnreadCache();
     return { received: true };
   }
 

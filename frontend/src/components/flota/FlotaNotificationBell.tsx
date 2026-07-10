@@ -1,38 +1,57 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import { MessageCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { API_BASE } from '@/lib/api';
 import { fetchUnreadSummary, CHATWOOT_MESSAGE_TYPE } from '@/lib/chatwootApi';
+import { CHATWOOT_UNREAD_CHANGED } from '@/lib/chatwootUnreadEvents';
 import ChatwootInboxPanel from '@/components/flota/ChatwootInboxPanel';
 
 const POLL_MS = 90_000;
+const REFRESH_DEBOUNCE_MS = 600;
 
 export default function FlotaNotificationBell() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [panelOpen, setPanelOpen] = useState(false);
   const refreshInFlightRef = useRef(false);
+  const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const refresh = async () => {
+  const refresh = useCallback(async (force = false) => {
     if (refreshInFlightRef.current) return;
     refreshInFlightRef.current = true;
     try {
-      const summary = await fetchUnreadSummary();
-      setUnreadCount(summary.totalUnread);
+      const summary = await fetchUnreadSummary({ force });
+      setUnreadCount(summary.conversationCount);
     } catch {
       // silently fail
     } finally {
       refreshInFlightRef.current = false;
       setLoading(false);
     }
-  };
+  }, []);
+
+  const scheduleRefresh = useCallback((force = true) => {
+    if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current);
+    refreshTimeoutRef.current = setTimeout(() => {
+      void refresh(force);
+    }, REFRESH_DEBOUNCE_MS);
+  }, [refresh]);
 
   useEffect(() => {
-    void refresh();
-    const interval = setInterval(refresh, POLL_MS);
-    return () => clearInterval(interval);
-  }, []);
+    void refresh(false);
+    const interval = setInterval(() => void refresh(false), POLL_MS);
+    return () => {
+      clearInterval(interval);
+      if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current);
+    };
+  }, [refresh]);
+
+  useEffect(() => {
+    const onUnreadChanged = () => scheduleRefresh(true);
+    window.addEventListener(CHATWOOT_UNREAD_CHANGED, onUnreadChanged);
+    return () => window.removeEventListener(CHATWOOT_UNREAD_CHANGED, onUnreadChanged);
+  }, [scheduleRefresh]);
 
   useEffect(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
@@ -53,14 +72,14 @@ export default function FlotaNotificationBell() {
         || msg.message_type === 'incoming'
         || msg.sender?.type === 'contact';
       if (isIncoming) {
-        setUnreadCount((c) => c + 1);
+        scheduleRefresh(true);
       }
     });
 
     return () => {
       socket.disconnect();
     };
-  }, []);
+  }, [scheduleRefresh]);
 
   return (
     <>
@@ -86,7 +105,7 @@ export default function FlotaNotificationBell() {
         open={panelOpen}
         onOpenChange={(open) => {
           setPanelOpen(open);
-          if (!open) void refresh();
+          if (!open) void refresh(true);
         }}
       />
     </>

@@ -1,4 +1,5 @@
 import { api } from './api';
+import { notifyChatwootUnreadChanged } from './chatwootUnreadEvents';
 
 export interface ChatwootConversation {
   id: number;
@@ -92,6 +93,7 @@ export async function fetchConversations(params?: {
   inbox_id?: number;
   page?: number;
   unread_only?: boolean;
+  force?: boolean;
 }): Promise<ChatwootConversation[]> {
   const search = new URLSearchParams();
   if (params?.status) search.set('status', params.status);
@@ -99,8 +101,12 @@ export async function fetchConversations(params?: {
   if (params?.inbox_id) search.set('inbox_id', String(params.inbox_id));
   if (params?.page) search.set('page', String(params.page));
   if (params?.unread_only) search.set('unread_only', 'true');
+  if (params?.force) search.set('force', 'true');
   const qs = search.toString();
-  const res = await api<{ data: ChatwootConversation[] }>(`/api/chatwoot/conversations${qs ? `?${qs}` : ''}`);
+  const res = await api<{ data: ChatwootConversation[] }>(
+    `/api/chatwoot/conversations${qs ? `?${qs}` : ''}`,
+    params?.force || params?.unread_only ? { cache: 'no-store' } : undefined,
+  );
   return res.data ?? [];
 }
 
@@ -134,15 +140,25 @@ export function conversationMatchesQuery(
   return false;
 }
 
-export async function fetchUnreadConversations(): Promise<ChatwootConversation[]> {
-  return fetchConversations({ unread_only: true });
+export async function fetchUnreadConversations(options?: {
+  page?: number;
+  force?: boolean;
+}): Promise<ChatwootConversation[]> {
+  return fetchConversations({
+    unread_only: true,
+    page: options?.page,
+    force: options?.force,
+  });
 }
 
-export async function fetchUnreadSummary(): Promise<{
+export async function fetchUnreadSummary(options?: {
+  force?: boolean;
+}): Promise<{
   totalUnread: number;
   conversationCount: number;
 }> {
-  return api('/api/chatwoot/unread-summary');
+  const qs = options?.force ? '?force=true' : '';
+  return api(`/api/chatwoot/unread-summary${qs}`, { cache: 'no-store' });
 }
 
 export async function fetchMessages(
@@ -284,6 +300,7 @@ export async function uploadAttachment(
 
 export async function markConversationAsRead(conversationId: number): Promise<void> {
   await api(`/api/chatwoot/conversations/${conversationId}/read`, { method: 'POST' });
+  notifyChatwootUnreadChanged();
 }
 
 export async function initiateConversation(data: {

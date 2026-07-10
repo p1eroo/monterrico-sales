@@ -219,6 +219,7 @@ export class ChatwootWebhookService {
   }
 
   private async handleStatusChanged(payload: ChatwootWebhookPayload) {
+    this.chatwootService.invalidateUnreadCache();
     this.emit('conversation_status_changed', {
       conversationId: payload.id,
       status: payload.status,
