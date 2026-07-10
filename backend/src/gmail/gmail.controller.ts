@@ -84,6 +84,7 @@ export class GmailController {
       cc?: string;
       threadId?: string;
       inReplyTo?: string;
+      attachments?: { fileName: string; mimeType?: string; contentBase64: string }[];
     },
   ) {
     await this.gmailService.sendMessage(
@@ -94,6 +95,7 @@ export class GmailController {
       body.cc,
       body.threadId,
       body.inReplyTo,
+      body.attachments,
     );
     return { ok: true };
   }

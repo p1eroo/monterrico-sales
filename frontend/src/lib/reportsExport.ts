@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import html2canvas from 'html2canvas';
 import { formatCurrency } from '@/lib/formatters';
 
 type JsPdfWithAutoTable = jsPDF & { lastAutoTable: { finalY: number } };
@@ -45,6 +46,26 @@ export type ReportsExportInput = {
   /** Datos para tablas de nuevas secciones */
   companiesByStage?: { label: string; value: number }[];
   weeklyOppsData?: { name: string; avance: number; nuevoIngreso: number; atraso: number; sinCambios: number }[];
+  sourcesByEntity?: { name: string; contactos: number; empresas: number; oportunidades: number }[];
+  wonSalesByMonth?: { name: string; ventas: number }[];
+  activitiesComparison?: {
+    previousMonth: {
+      name: string;
+      llamadas: number;
+      reuniones: number;
+      correos: number;
+      notas: number;
+    };
+    currentMonth: {
+      name: string;
+      llamadas: number;
+      reuniones: number;
+      correos: number;
+      notas: number;
+    };
+  };
+  /** Layout del PDF: `reports` alinea secciones con la pantalla de Reportes */
+  pdfLayout?: 'reports' | 'legacy';
   /** Imágenes de los gráficos (base64) capturadas desde el DOM */
   charts?: {
     contacts?: string;
@@ -65,6 +86,261 @@ export type ReportsExportInput = {
 };
 
 const UTF8_BOM = '\uFEFF';
+
+const CHART_CAPTURE_DELAY_MS = 600;
+const CHART_CAPTURE_TIMEOUT_MS = 4500;
+
+export const REPORT_CHART_CARD_IDS = {
+  weeklyOpps: 'chart-weekly-opps',
+  contacts: 'chart-contacts',
+  activities: 'chart-activities-donut',
+  funnel: 'chart-funnel',
+  wonOpportunities: 'chart-won-opportunities',
+  sourcesByEntity: 'chart-sources-by-entity',
+  tasks: 'chart-tasks',
+} as const;
+
+type ReportChartKey = keyof typeof REPORT_CHART_CARD_IDS;
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
+  return Promise.race([
+    promise,
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), ms)),
+  ]);
+}
+
+/** Captura los gráficos visibles en Reportes vía html2canvas (parcial si alguno falla). */
+export async function captureReportChartImages(): Promise<
+  NonNullable<ReportsExportInput['charts']>
+> {
+  const chartImages: NonNullable<ReportsExportInput['charts']> = {};
+  await new Promise((r) => setTimeout(r, CHART_CAPTURE_DELAY_MS));
+
+  for (const [key, id] of Object.entries(REPORT_CHART_CARD_IDS) as [ReportChartKey, string][]) {
+    const cardEl = document.getElementById(id);
+    if (!cardEl) continue;
+
+    const target =
+      cardEl.querySelector('[data-chart-capture]') ??
+      cardEl.querySelector('[data-slot="card-content"]');
+    if (!target || !(target instanceof HTMLElement)) continue;
+
+    try {
+      const dataUrl = await withTimeout(
+        html2canvas(target, {
+          backgroundColor: '#ffffff',
+          scale: 2,
+          logging: false,
+          useCORS: true,
+        }).then((canvas) => canvas.toDataURL('image/png')),
+        CHART_CAPTURE_TIMEOUT_MS,
+      );
+      if (dataUrl) {
+        chartImages[key] = dataUrl;
+      }
+    } catch (e) {
+      console.warn(`No se pudo capturar gráfico ${id}:`, e);
+    }
+  }
+
+  return chartImages;
+}
+
+type PdfSection = {
+  title: string;
+  head?: string[][];
+  body?: (string | number)[][];
+  chartKey: keyof NonNullable<ReportsExportInput['charts']>;
+};
+
+function buildReportsPdfSections(data: ReportsExportInput): PdfSection[] {
+  const activitiesBody: (string | number)[][] = data.activitiesComparison
+    ? [
+        [
+          data.activitiesComparison.previousMonth.name,
+          data.activitiesComparison.previousMonth.llamadas,
+          data.activitiesComparison.previousMonth.reuniones,
+          data.activitiesComparison.previousMonth.correos,
+          data.activitiesComparison.previousMonth.notas,
+        ],
+        [
+          data.activitiesComparison.currentMonth.name,
+          data.activitiesComparison.currentMonth.llamadas,
+          data.activitiesComparison.currentMonth.reuniones,
+          data.activitiesComparison.currentMonth.correos,
+          data.activitiesComparison.currentMonth.notas,
+        ],
+      ]
+    : data.activitiesByType.slice(-2).map((x) => [
+        x.name,
+        x.llamadas,
+        x.reuniones,
+        x.correos,
+        x.notas,
+      ]);
+
+  return [
+    {
+      title: 'Empresas',
+      head: [['Semana', 'Avance', 'Nuevos', 'Atraso', 'Sin cambios']],
+      body: data.weeklyOppsData?.map((x) => [
+        x.name,
+        x.avance,
+        x.nuevoIngreso,
+        x.atraso,
+        x.sinCambios,
+      ]),
+      chartKey: 'weeklyOpps',
+    },
+    {
+      title: 'Contactos y oportunidades',
+      head: [['Mes', 'Contactos', 'Oportunidades']],
+      body: data.contactsVsOpportunitiesByMonth.map((x) => [
+        x.name,
+        x.contactos,
+        x.oportunidades,
+      ]),
+      chartKey: 'contacts',
+    },
+    {
+      title: 'Actividades',
+      head: [['Mes', 'Llamadas', 'Reuniones', 'Correos', 'Notas']],
+      body: activitiesBody,
+      chartKey: 'activities',
+    },
+    {
+      title: 'Oportunidades por etapa',
+      head: [['Etapa', 'Cantidad']],
+      body: data.companiesByStage?.map((x) => [x.label, x.value]),
+      chartKey: 'funnel',
+    },
+    {
+      title: 'Oportunidades ganadas',
+      head: [['Mes', 'Ventas']],
+      body: data.wonSalesByMonth?.map((x) => [x.name, formatCurrency(x.ventas)]),
+      chartKey: 'wonOpportunities',
+    },
+    {
+      title: 'Fuentes mixtas',
+      head: [['Fuente', 'Contactos', 'Empresas', 'Oportunidades']],
+      body: data.sourcesByEntity?.map((x) => [
+        x.name,
+        x.contactos,
+        x.empresas,
+        x.oportunidades,
+      ]),
+      chartKey: 'sourcesByEntity',
+    },
+    {
+      title: 'Tareas por mes',
+      head: [['Mes', 'Completadas', 'Pendientes']],
+      body: data.followUpsByMonth.map((x) => [
+        x.name,
+        x.completados,
+        x.pendientes,
+      ]),
+      chartKey: 'tasks',
+    },
+  ];
+}
+
+function buildLegacyPdfSections(data: ReportsExportInput): PdfSection[] {
+  return [
+    {
+      title: 'Contactos y oportunidades por mes',
+      head: [['Mes', 'Contactos', 'Oportunidades']],
+      body: data.contactsVsOpportunitiesByMonth.map((x) => [
+        x.name,
+        x.contactos,
+        x.oportunidades,
+      ]),
+      chartKey: 'contacts',
+    },
+    {
+      title: 'Contactos por fuente',
+      head: [['Fuente', 'Cantidad']],
+      body: data.contactsBySource.map((x) => [x.name, x.value]),
+      chartKey: 'sources',
+    },
+    {
+      title: 'Empresas por etapa',
+      head: [['Etapa', 'Cantidad']],
+      body: data.companiesByStage?.map((x) => [x.label, x.value]),
+      chartKey: 'funnel',
+    },
+    {
+      title: 'Avance semanal · Empresas',
+      head: [['Semana', 'Avance', 'Nuevos', 'Atraso', 'Sin cambios']],
+      body: data.weeklyOppsData?.map((x) => [
+        x.name,
+        x.avance,
+        x.nuevoIngreso,
+        x.atraso,
+        x.sinCambios,
+      ]),
+      chartKey: 'weeklyOpps',
+    },
+    {
+      title: 'Tasa de conversión por mes',
+      head: [['Mes', 'Tasa %']],
+      body: data.conversionByMonth.map((x) => [x.name, x.tasa]),
+      chartKey: 'conversion',
+    },
+    {
+      title: 'Rendimiento por asesor',
+      head: [['Asesor', 'Contactos', 'Oportunidades', 'Empresas']],
+      body: data.performanceByAdvisor.map((x) => [
+        x.name,
+        x.contactos,
+        x.oportunidades,
+        x.empresas,
+      ]),
+      chartKey: 'performance',
+    },
+    {
+      title: 'Ventas cerradas por mes',
+      head: [['Mes', 'Ventas', 'Meta']],
+      body: data.salesByMonth.map((x) => [
+        x.name,
+        formatCurrency(x.ventas),
+        formatCurrency(x.meta),
+      ]),
+      chartKey: 'sales',
+    },
+    {
+      title: 'Pipeline por etapa',
+      head: [['Etapa', 'Oport.', 'Valor']],
+      body: data.opportunitiesByStage.map((x) => [
+        x.name,
+        x.count,
+        formatCurrency(x.value),
+      ]),
+      chartKey: 'pipeline',
+    },
+    {
+      title: 'Actividades por tipo',
+      head: [['Mes', 'Llamadas', 'Reuniones', 'Correos', 'Notas']],
+      body: data.activitiesByType.map((x) => [
+        x.name,
+        x.llamadas,
+        x.reuniones,
+        x.correos,
+        x.notas,
+      ]),
+      chartKey: 'activities',
+    },
+    {
+      title: 'Tareas por mes',
+      head: [['Mes', 'Completadas', 'Pendientes']],
+      body: data.followUpsByMonth.map((x) => [
+        x.name,
+        x.completados,
+        x.pendientes,
+      ]),
+      chartKey: 'tasks',
+    },
+  ];
+}
 
 function padExportStamp(d: Date) {
   const p = (n: number) => String(n).padStart(2, '0');
@@ -332,14 +608,24 @@ export function downloadReportsPdf(data: ReportsExportInput, baseName: string) {
   doc.text(`Fuente: ${data.meta.sourceLabel}`, 14, y);
   y += 10;
 
-  const kpiBody: (string | number)[][] = [
-    ['Total contactos del periodo', data.kpis.totalContacts],
-    ['Tasa de conversión %', data.kpis.conversionPct],
-    ['Ventas cerradas (monto)', formatCurrency(data.kpis.closedSalesAmount)],
-    ['Tareas completadas', data.kpis.activitiesCompleted],
-    ['Cambio contactos vs anterior', data.kpis.changes.contacts],
-    ['Cambio ventas vs anterior', data.kpis.changes.sales],
-  ];
+  const kpiBody: (string | number)[][] =
+    data.pdfLayout === 'reports'
+      ? [
+          ['Contactos creados en el periodo', data.kpis.totalContacts],
+          ['Ganadas en el periodo %', data.kpis.conversionPct],
+          ['Ventas cerradas', formatCurrency(data.kpis.closedSalesAmount)],
+          ['Tareas completadas', data.kpis.activitiesCompleted],
+          ['Cambio contactos vs anterior', data.kpis.changes.contacts],
+          ['Cambio ventas vs anterior', data.kpis.changes.sales],
+        ]
+      : [
+          ['Total contactos del periodo', data.kpis.totalContacts],
+          ['Tasa de conversión %', data.kpis.conversionPct],
+          ['Ventas cerradas (monto)', formatCurrency(data.kpis.closedSalesAmount)],
+          ['Tareas completadas', data.kpis.activitiesCompleted],
+          ['Cambio contactos vs anterior', data.kpis.changes.contacts],
+          ['Cambio ventas vs anterior', data.kpis.changes.sales],
+        ];
   autoTable(doc, {
     startY: y,
     head: [['Métrica', 'Valor']],
@@ -350,98 +636,11 @@ export function downloadReportsPdf(data: ReportsExportInput, baseName: string) {
   });
   y = (doc as JsPdfWithAutoTable).lastAutoTable.finalY + 12;
 
-  const sections: { title: string; head?: string[][]; body?: (string | number)[][], chartKey: keyof NonNullable<ReportsExportInput['charts']> }[] =
-    [
-      {
-        title: 'Contactos y oportunidades por mes',
-        head: [['Mes', 'Contactos', 'Oportunidades']],
-        body: data.contactsVsOpportunitiesByMonth.map((x) => [
-          x.name,
-          x.contactos,
-          x.oportunidades,
-        ]),
-        chartKey: 'contacts',
-      },
-      {
-        title: 'Contactos por fuente',
-        head: [['Fuente', 'Cantidad']],
-        body: data.contactsBySource.map((x) => [x.name, x.value]),
-        chartKey: 'sources',
-      },
-      {
-        title: 'Empresas por etapa',
-        head: [['Etapa', 'Cantidad']],
-        body: data.companiesByStage?.map((x) => [x.label, x.value]),
-        chartKey: 'funnel',
-      },
-      {
-        title: 'Avance semanal · Oportunidades',
-        head: [['Semana', 'Avance', 'Nuevos', 'Atraso', 'Sin Cambios']],
-        body: data.weeklyOppsData?.map((x) => [x.name, x.avance, x.nuevoIngreso, x.atraso, x.sinCambios]),
-        chartKey: 'weeklyOpps',
-      },
-      {
-        title: 'Tasa de conversión por mes',
-        head: [['Mes', 'Tasa %']],
-        body: data.conversionByMonth.map((x) => [x.name, x.tasa]),
-        chartKey: 'conversion',
-      },
-      {
-        title: 'Rendimiento por asesor',
-        head: [['Asesor', 'Contactos', 'Oportunidades', 'Empresas']],
-        body: data.performanceByAdvisor.map((x) => [
-          x.name,
-          x.contactos,
-          x.oportunidades,
-          x.empresas,
-        ]),
-        chartKey: 'performance',
-      },
-      {
-        title: 'Ventas cerradas por mes',
-        head: [['Mes', 'Ventas', 'Meta']],
-        body: data.salesByMonth.map((x) => [
-          x.name,
-          formatCurrency(x.ventas),
-          formatCurrency(x.meta),
-        ]),
-        chartKey: 'sales',
-      },
-      {
-        title: 'Pipeline por etapa',
-        head: [['Etapa', 'Oport.', 'Valor']],
-        body: data.opportunitiesByStage.map((x) => [
-          x.name,
-          x.count,
-          formatCurrency(x.value),
-        ]),
-        chartKey: 'pipeline',
-      },
-      {
-        title: 'Actividades por tipo',
-        head: [['Mes', 'Llamadas', 'Reuniones', 'Correos', 'Notas']],
-        body: data.activitiesByType.map((x) => [
-          x.name,
-          x.llamadas,
-          x.reuniones,
-          x.correos,
-          x.notas,
-        ]),
-        chartKey: 'activities',
-      },
-      {
-        title: 'Tareas por mes',
-        head: [['Mes', 'Completadas', 'Pendientes']],
-        body: data.followUpsByMonth.map((x) => [
-          x.name,
-          x.completados,
-          x.pendientes,
-        ]),
-        chartKey: 'tasks',
-      },
-    ];
+  const sections =
+    data.pdfLayout === 'reports'
+      ? buildReportsPdfSections(data)
+      : buildLegacyPdfSections(data);
 
-  const pageMaxY = 270;
   const contentWidth = 182; // 210 - 14*2
 
   for (const sec of sections) {

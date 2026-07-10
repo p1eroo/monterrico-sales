@@ -4,10 +4,18 @@ import type { ApexOptions } from 'apexcharts';
 import { useChartTheme } from '@/hooks/useChartTheme';
 
 /** Token CSS (`funnel-1`) o color literal (`#hex`, `rgb`, `hsl(`). */
+export interface FunnelStageWeekComparison {
+  currentWeekLabel: string;
+  previousWeekLabel: string;
+  previousValue: number;
+}
+
+/** Token CSS (`funnel-1`) o color literal (`#hex`, `rgb`, `hsl(`). */
 export interface FunnelStage {
   label: string;
   value: number;
   color: string;
+  weekComparison?: FunnelStageWeekComparison;
 }
 
 export type FunnelChartVariant = 'trapezoid' | 'rect';
@@ -136,15 +144,48 @@ export function FunnelChart({
       legend: { show: false },
       tooltip: {
         theme: chartTheme.isDark ? 'dark' : 'light',
-        y: {
-          formatter: (val) => {
-            const n = Number(val);
-            return `${n} ${n === 1 ? singularLabel : `${singularLabel}s`}`;
-          },
+        custom: ({ dataPointIndex }) => {
+          const stage = stages[dataPointIndex];
+          if (!stage) return '';
+          const comp = stage.weekComparison;
+          const bg = chartTheme.isDark ? '#1e293b' : '#ffffff';
+          const border = chartTheme.isDark ? '#334155' : '#e2e8f0';
+          const text = chartTheme.isDark ? '#f8fafc' : '#0f172a';
+          const muted = chartTheme.isDark ? '#94a3b8' : '#64748b';
+
+          if (!comp) {
+            const n = stage.value;
+            const unit = n === 1 ? singularLabel : `${singularLabel}s`;
+            return (
+              `<div style="padding:10px 12px;border-radius:8px;border:1px solid ${border};background:${bg};color:${text};font-size:13px;">` +
+              `<div style="font-weight:600;margin-bottom:2px;">${stage.label}</div>` +
+              `<div>${n} ${unit}</div></div>`
+            );
+          }
+
+          const delta = stage.value - comp.previousValue;
+          const deltaColor =
+            delta > 0 ? '#16a34a' : delta < 0 ? '#dc2626' : muted;
+          const deltaPrefix = delta > 0 ? '+' : '';
+          const unit = stage.value === 1 ? singularLabel : `${singularLabel}s`;
+
+          return (
+            `<div style="padding:10px 12px;border-radius:8px;border:1px solid ${border};background:${bg};color:${text};font-size:13px;min-width:180px;">` +
+            `<div style="font-weight:600;margin-bottom:8px;">${stage.label}</div>` +
+            `<div style="display:flex;justify-content:space-between;gap:12px;margin-bottom:4px;">` +
+            `<span style="color:${muted};">${comp.currentWeekLabel}</span>` +
+            `<span style="font-weight:600;">${stage.value} ${unit}</span></div>` +
+            `<div style="display:flex;justify-content:space-between;gap:12px;margin-bottom:6px;">` +
+            `<span style="color:${muted};">${comp.previousWeekLabel}</span>` +
+            `<span>${comp.previousValue} ${comp.previousValue === 1 ? singularLabel : `${singularLabel}s`}</span></div>` +
+            `<div style="border-top:1px solid ${border};padding-top:6px;display:flex;justify-content:space-between;gap:12px;">` +
+            `<span style="color:${muted};">Variación</span>` +
+            `<span style="font-weight:700;color:${deltaColor};">${deltaPrefix}${delta}</span></div></div>`
+          );
         },
       },
     }),
-    [categories, chartTheme.isDark, colors, labelColor, singularLabel, variant],
+    [categories, chartTheme.isDark, colors, labelColor, singularLabel, stages, variant],
   );
 
   const series = useMemo(() => [{ name: 'Pipeline', data: values }], [values]);
@@ -155,12 +196,14 @@ export function FunnelChart({
 
   return (
     <div className="min-w-0 w-full text-foreground">
-      <Chart
-        options={options}
-        series={series}
-        type={'funnel' as 'bar'}
-        height={height}
-      />
+      <div className="w-full min-w-0 leading-none [&_.apexcharts-canvas]:!w-full [&_.apexcharts-canvas]:!max-w-full [&_.apexcharts-inner]:!w-full [&_.apexcharts-svg]:!w-full [&_.apexcharts-svg]:overflow-visible [&_.apexcharts-tooltip]:!border-0 [&_.apexcharts-tooltip]:!bg-transparent [&_.apexcharts-tooltip]:!p-0 [&_.apexcharts-tooltip]:!shadow-none">
+        <Chart
+          options={options}
+          series={series}
+          type={'funnel' as 'bar'}
+          height={height}
+        />
+      </div>
 
       {showLegend && (
         <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-5">

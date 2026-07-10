@@ -3,7 +3,9 @@ import { Prisma } from '../generated/prisma';
 import { PrismaService } from '../prisma/prisma.service';
 import type { CrmDataScope } from '../auth/crm-data-scope.service';
 import { mergeCompanyScope } from '../common/crm-data-scope-where.util';
+import { STAGE_PROBABILITY_FALLBACK } from '../crm-config/crm-config.constants';
 import { CrmConfigService } from '../crm-config/crm-config.service';
+import { buildEtapaStepFunction, buildNumericStepFunction } from '../import-export/company-export-weeks.util';
 import { resolveLeadSourceKeyLoose } from '../crm-config/lead-source-normalize.util';
 import {
   type AnalyticsScopeFilters,
@@ -110,7 +112,7 @@ type CompanyWeeklyProgressRow = {
   name: string;
   avance: number;
   nuevoIngreso: number;
-  retroceso: number;
+  atraso: number;
   sinCambios: number;
 };
 
@@ -125,6 +127,123 @@ type OpportunityWeeklyProgressRow = {
 type WeeklyMetricRow = {
   name: string;
   value: number;
+};
+
+type ActiveProspectStageRow = {
+  slug: string;
+  name: string;
+  probability: number;
+  count: number;
+};
+
+type ActiveProspectsWeekRow = {
+  name: string;
+  weekStart: string;
+  weekEnd: string;
+  total: number;
+  byStage: ActiveProspectStageRow[];
+};
+
+type ActiveProspectsWeeklySnapshot = {
+  weeks: ActiveProspectsWeekRow[];
+  currentTotal: number;
+  changePct: number | null;
+};
+
+type CompanyWeeklyStageRow = ActiveProspectsWeekRow;
+
+type CompanyWeeklyStageSnapshot = ActiveProspectsWeeklySnapshot;
+
+type EstimatedBillingStageRow = {
+  slug: string;
+  name: string;
+  probability: number;
+  amount: number;
+};
+
+type EstimatedBillingWeekRow = {
+  name: string;
+  weekStart: string;
+  weekEnd: string;
+  total: number;
+  byStage: EstimatedBillingStageRow[];
+};
+
+type EstimatedBillingWeeklySnapshot = {
+  weeks: EstimatedBillingWeekRow[];
+  currentTotal: number;
+  changePct: number | null;
+};
+
+type ActiveProspectsAdvisorStageRow = {
+  slug: string;
+  name: string;
+  probability: number;
+  countsByAdvisor: Record<string, number>;
+};
+
+type ActiveProspectsAdvisorWeekRow = {
+  name: string;
+  weekStart: string;
+  weekEnd: string;
+  advisors: { id: string; name: string }[];
+  stages: ActiveProspectsAdvisorStageRow[];
+  estimatedBillingByAdvisor: Record<string, number>;
+};
+
+type ActiveProspectsByAdvisorWeeklySnapshot = {
+  weeks: ActiveProspectsAdvisorWeekRow[];
+};
+
+type AdvisorFunnelMovementMetricsRow = {
+  nuevoIngreso: number;
+  avance: number;
+  atraso: number;
+  sinCambios: number;
+};
+
+type AdvisorFunnelMovementAdvisorRow = {
+  id: string;
+  name: string;
+  activeProspects: number;
+  metrics: AdvisorFunnelMovementMetricsRow;
+};
+
+type CompaniesAdvisorFunnelMovementSnapshot = {
+  fromWeekNumber: number;
+  toWeekNumber: number;
+  fromWeekLabel: string;
+  toWeekLabel: string;
+  currentWeekLabel: string;
+  title: string;
+  advisors: AdvisorFunnelMovementAdvisorRow[];
+};
+
+const COMPANY_WEEKLY_CHART_WEEKS = 6;
+const UNASSIGNED_ADVISOR_ID = '__unassigned__';
+const ACTIVE_PROSPECT_MIN_PROBABILITY = 10;
+const ACTIVE_PROSPECT_MAX_PROBABILITY = 100;
+const ADVANCED_CONTACTS_MIN_PROBABILITY = 30;
+const ADVANCED_CONTACTS_MAX_PROBABILITY = 100;
+const ESTIMATED_BILLING_MIN_PROBABILITY = 10;
+const ESTIMATED_BILLING_MAX_PROBABILITY = 100;
+const HOT_STAGE_MIN_PROBABILITY = 70;
+const HOT_STAGE_MAX_PROBABILITY = 100;
+
+type SourceDetailStageRow = {
+  slug: string;
+  name: string;
+  probability: number;
+  count: number;
+};
+
+type SourceDetailRow = {
+  slug: string;
+  companyCount: number;
+  estimatedBilling: number;
+  stages: SourceDetailStageRow[];
+  hot70Count: number;
+  hot70Billing: number;
 };
 
 type WeekClip = {
@@ -403,10 +522,240 @@ export class AnalyticsService {
     };
   }
 
+  /** Slugs de etapa cuya probabilidad cae en [min, max] (catálogo CRM + fallback legacy). */
+  private async resolveStageSlugsInProbabilityRange(
+    minProbability: number,
+    maxProbability: number,
+  ): Promise<string[]> {
+    const stages = await this.prisma.crmStage.findMany({
+      where: { enabled: true },
+      select: { slug: true, probability: true },
+    });
+    const slugs = new Set<string>();
+    for (const stage of stages) {
+      if (
+        stage.probability >= minProbability &&
+        stage.probability <= maxProbability
+      ) {
+        slugs.add(stage.slug);
+      }
+    }
+    const catalogSlugs = new Set(stages.map((s) => s.slug));
+    for (const [slug, probability] of Object.entries(STAGE_PROBABILITY_FALLBACK)) {
+      if (catalogSlugs.has(slug)) continue;
+      if (
+        probability >= minProbability &&
+        probability <= maxProbability
+      ) {
+        slugs.add(slug);
+      }
+    }
+    return [...slugs];
+  }
+
+  private etapaInSlugsFilter(slugs: string[]): Prisma.StringFilter {
+    return { in: slugs.length > 0 ? slugs : ['__none__'] };
+  }
+
   /**
-   * Por semana ISO (lun–dom UTC): nuevas en la semana, avance/retroceso de etapa
-   * (desde auditoría) y empresas sin movimiento, sobre la cartera filtrada.
+   * Detalle por fuente para el modal de reportes: solo empresas en etapas 10–100 %.
    */
+  private async buildSourcesDetail(
+    from: Date,
+    to: Date,
+    filters: AnalyticsScopeFilters,
+    unrestricted: boolean,
+    crmScope: CrmDataScope,
+    leadCatalog: { slug: string; name: string }[],
+  ): Promise<SourceDetailRow[]> {
+    const activeStageSlugs = await this.resolveStageSlugsInProbabilityRange(
+      ACTIVE_PROSPECT_MIN_PROBABILITY,
+      ACTIVE_PROSPECT_MAX_PROBABILITY,
+    );
+
+    const [stages, companies] = await Promise.all([
+      this.prisma.crmStage.findMany({
+        where: { enabled: true },
+        select: {
+          slug: true,
+          name: true,
+          probability: true,
+          sortOrder: true,
+        },
+        orderBy: { sortOrder: 'asc' },
+      }),
+      this.prisma.company.findMany({
+        where: mergeCompanyScope(
+          {
+            ...this.companyWhere(from, to, filters, unrestricted),
+            etapa: this.etapaInSlugsFilter(activeStageSlugs),
+          },
+          crmScope,
+        ),
+        select: {
+          fuente: true,
+          etapa: true,
+          facturacionEstimada: true,
+        },
+      }),
+    ]);
+
+    const stageMeta = new Map(
+      stages.map((s) => [
+        s.slug,
+        { name: s.name, probability: s.probability, sortOrder: s.sortOrder },
+      ]),
+    );
+
+    const getProbability = (slug: string): number => {
+      const meta = stageMeta.get(slug.trim());
+      if (meta) return meta.probability;
+      return STAGE_PROBABILITY_FALLBACK[slug.trim()] ?? 0;
+    };
+
+    type SourceAcc = {
+      companyCount: number;
+      estimatedBilling: number;
+      stages: Map<string, number>;
+      hot70Count: number;
+      hot70Billing: number;
+    };
+
+    const bySource = new Map<string, SourceAcc>();
+
+    for (const company of companies) {
+      if (!company.fuente?.trim()) continue;
+      const sourceKey = resolveLeadSourceKeyLoose(company.fuente, leadCatalog);
+      const etapa = company.etapa.trim();
+      const billing = Math.max(0, Number(company.facturacionEstimada) || 0);
+      const acc = bySource.get(sourceKey) ?? {
+        companyCount: 0,
+        estimatedBilling: 0,
+        stages: new Map<string, number>(),
+        hot70Count: 0,
+        hot70Billing: 0,
+      };
+
+      acc.companyCount += 1;
+      acc.estimatedBilling += billing;
+      acc.stages.set(etapa, (acc.stages.get(etapa) ?? 0) + 1);
+
+      const probability = getProbability(etapa);
+      if (
+        probability >= HOT_STAGE_MIN_PROBABILITY &&
+        probability <= HOT_STAGE_MAX_PROBABILITY
+      ) {
+        acc.hot70Count += 1;
+        acc.hot70Billing += billing;
+      }
+
+      bySource.set(sourceKey, acc);
+    }
+
+    return [...bySource.entries()]
+      .map(([slug, acc]) => ({
+        slug,
+        companyCount: acc.companyCount,
+        estimatedBilling: acc.estimatedBilling,
+        stages: [...acc.stages.entries()]
+          .map(([stageSlug, count]) => {
+            const meta = stageMeta.get(stageSlug);
+            return {
+              slug: stageSlug,
+              name: meta?.name ?? stageSlug,
+              probability: meta?.probability ?? getProbability(stageSlug),
+              count,
+            };
+          })
+          .sort((a, b) => {
+            const oa = stageMeta.get(a.slug)?.sortOrder ?? 999_999;
+            const ob = stageMeta.get(b.slug)?.sortOrder ?? 999_999;
+            return oa - ob;
+          }),
+        hot70Count: acc.hot70Count,
+        hot70Billing: acc.hot70Billing,
+      }))
+      .sort((a, b) => b.companyCount - a.companyCount);
+  }
+
+  /**
+   * Por semana ISO (lun–dom UTC): nuevo ingreso, avance, atraso y sin cambios en cartera.
+   * Reglas basadas en probabilidad de etapa (0 % = lead; embudo desde 10 %).
+   */
+  private classifyCompanyEtapaTransition(
+    oldSlug: string,
+    newSlug: string,
+    getProb: (slug: string) => number,
+  ): 'nuevo' | 'avance' | 'atraso' | 'sinCambios' | null {
+    const ro = getProb(oldSlug.trim());
+    const rn = getProb(newSlug.trim());
+    if (ro < ACTIVE_PROSPECT_MIN_PROBABILITY && rn >= ACTIVE_PROSPECT_MIN_PROBABILITY) {
+      return 'nuevo';
+    }
+    if (ro >= ACTIVE_PROSPECT_MIN_PROBABILITY && rn > ro) {
+      return 'avance';
+    }
+    if (rn < ro) {
+      return 'atraso';
+    }
+    if (ro >= ACTIVE_PROSPECT_MIN_PROBABILITY && rn === ro) {
+      return 'sinCambios';
+    }
+    return null;
+  }
+
+  private classifyCompanyWeekMovement(
+    inWeek: { oldSlug: string; newSlug: string }[],
+    getProb: (slug: string) => number,
+  ): 'nuevo' | 'avance' | 'atraso' | 'sinCambios' | null {
+    if (inWeek.length === 0) return null;
+    if (inWeek.length === 1) {
+      const ev = inWeek[0]!;
+      return this.classifyCompanyEtapaTransition(ev.oldSlug, ev.newSlug, getProb);
+    }
+    const first = inWeek[0]!;
+    const last = inWeek[inWeek.length - 1]!;
+    return this.classifyCompanyEtapaTransition(first.oldSlug, last.newSlug, getProb);
+  }
+
+  private classifyCompanyMovementInWeekClip(
+    company: { id: string; createdAt: Date },
+    clipStart: Date,
+    clipEnd: Date,
+    etapaFn: (instant: Date) => string,
+    auditsInWeek: { oldSlug: string; newSlug: string }[],
+    getProb: (slug: string) => number,
+  ): 'nuevo' | 'avance' | 'atraso' | 'sinCambios' | null {
+    if (company.createdAt > clipEnd) return null;
+
+    const createdInWeek =
+      company.createdAt >= clipStart && company.createdAt <= clipEnd;
+
+    if (createdInWeek) {
+      const probAtCreate = getProb(etapaFn(company.createdAt));
+      if (probAtCreate >= ACTIVE_PROSPECT_MIN_PROBABILITY) return 'nuevo';
+      const promoted = auditsInWeek.some(
+        (e) =>
+          getProb(e.oldSlug) < ACTIVE_PROSPECT_MIN_PROBABILITY &&
+          getProb(e.newSlug) >= ACTIVE_PROSPECT_MIN_PROBABILITY,
+      );
+      if (promoted) return 'nuevo';
+      return null;
+    }
+
+    if (auditsInWeek.length === 0) {
+      const probEnd = getProb(etapaFn(clipEnd));
+      if (probEnd >= ACTIVE_PROSPECT_MIN_PROBABILITY) return 'sinCambios';
+      return null;
+    }
+
+    return this.classifyCompanyWeekMovement(auditsInWeek, getProb);
+  }
+
+  private formatIsoWeekLabel(week: number): string {
+    return `W${String(week).padStart(2, '0')}`;
+  }
+
   private async buildCompaniesWeeklyProgress(
     from: Date,
     to: Date,
@@ -425,17 +774,17 @@ export class AnalyticsService {
     const [stages, portfolioCompanies, auditRows] = await Promise.all([
       this.prisma.crmStage.findMany({
         where: { enabled: true },
-        select: { slug: true, sortOrder: true },
+        select: { slug: true, probability: true, sortOrder: true },
       }),
       this.prisma.company.findMany({
         where: portfolioWhere,
-        select: { id: true, createdAt: true },
+        select: { id: true, createdAt: true, etapa: true },
       }),
       this.prisma.auditChangeSet.findMany({
         where: {
           module: 'empresas',
           entityType: 'Empresa',
-          createdAt: { gte: from, lte: to },
+          createdAt: { lte: to },
           entries: { some: { fieldKey: 'etapa' } },
         },
         include: {
@@ -447,8 +796,15 @@ export class AnalyticsService {
       }),
     ]);
 
-    const order = new Map(stages.map((s) => [s.slug, s.sortOrder]));
-    const rank = (slug: string) => order.get(slug.trim()) ?? 999_999;
+    const stageInfo = new Map<string, number>();
+    for (const s of stages) {
+      stageInfo.set(s.slug, s.probability);
+    }
+    const getProb = (slug: string): number => {
+      const key = slug.trim();
+      if (stageInfo.has(key)) return stageInfo.get(key)!;
+      return STAGE_PROBABILITY_FALLBACK[key] ?? 0;
+    };
 
     const portfolioIds = new Set(portfolioCompanies.map((c) => c.id));
 
@@ -470,6 +826,19 @@ export class AnalyticsService {
       list.sort((a, b) => a.at.getTime() - b.at.getTime());
     }
 
+    const etapaAtByCompany = new Map<string, (instant: Date) => string>();
+    for (const company of portfolioCompanies) {
+      const audits = (auditsByCompany.get(company.id) ?? []).map((e) => ({
+        at: e.at,
+        oldValue: e.oldSlug,
+        newValue: e.newSlug,
+      }));
+      etapaAtByCompany.set(
+        company.id,
+        buildEtapaStepFunction(company.createdAt, company.etapa, audits),
+      );
+    }
+
     const rows: CompanyWeeklyProgressRow[] = [];
     let weekStart = startOfUtcWeekMonday(from);
     while (weekStart <= to) {
@@ -477,55 +846,927 @@ export class AnalyticsService {
       const clipStart = maxUtcDate(weekStart, from);
       const clipEnd = minUtcDate(weekEnd, to);
 
-      const subset = portfolioCompanies.filter((c) => c.createdAt <= weekEnd);
-      const total = subset.length;
-      const subsetIds = new Set(subset.map((c) => c.id));
-
-      const nuevoIds = new Set(
-        subset
-          .filter((c) => c.createdAt >= clipStart && c.createdAt <= clipEnd)
-          .map((c) => c.id),
-      );
-      const nuevoIngreso = nuevoIds.size;
-
-      const latestInWeek = new Map<string, AuditEv>();
-      for (const [cid, evs] of auditsByCompany) {
-        if (!subsetIds.has(cid) || nuevoIds.has(cid)) continue;
-        const inWeek = evs.filter((e) => e.at >= clipStart && e.at <= clipEnd);
-        if (inWeek.length === 0) continue;
-        const last = inWeek[inWeek.length - 1]!;
-        latestInWeek.set(cid, last);
-      }
-
       let avance = 0;
-      let retroceso = 0;
-      let neutralMoves = 0;
-      for (const ev of latestInWeek.values()) {
-        const ro = rank(ev.oldSlug);
-        const rn = rank(ev.newSlug);
-        if (rn > ro) avance += 1;
-        else if (rn < ro) retroceso += 1;
-        else neutralMoves += 1;
+      let nuevoIngreso = 0;
+      let atraso = 0;
+      let sinCambios = 0;
+
+      for (const company of portfolioCompanies) {
+        const etapaFn = etapaAtByCompany.get(company.id);
+        if (!etapaFn) continue;
+
+        const inWeek = (auditsByCompany.get(company.id) ?? []).filter(
+          (e) => e.at >= clipStart && e.at <= clipEnd,
+        );
+
+        const category = this.classifyCompanyMovementInWeekClip(
+          company,
+          clipStart,
+          clipEnd,
+          etapaFn,
+          inWeek,
+          getProb,
+        );
+        if (category === 'nuevo') nuevoIngreso += 1;
+        else if (category === 'avance') avance += 1;
+        else if (category === 'atraso') atraso += 1;
+        else if (category === 'sinCambios') sinCambios += 1;
       }
 
-      const sinCambios = Math.max(
-        0,
-        total - nuevoIngreso - avance - retroceso - neutralMoves,
-      );
-
-      rows.push({
-        name: String(isoWeekNumberUtc(weekStart)),
-        avance,
-        nuevoIngreso,
-        retroceso,
-        sinCambios,
-      });
+      const portfolioThisWeek = portfolioCompanies.filter(
+        (c) => c.createdAt <= clipEnd,
+      ).length;
+      if (portfolioThisWeek > 0) {
+        rows.push({
+          name: String(isoWeekNumberUtc(weekStart)),
+          avance,
+          nuevoIngreso,
+          atraso,
+          sinCambios,
+        });
+      }
 
       weekStart = new Date(weekStart);
       weekStart.setUTCDate(weekStart.getUTCDate() + 7);
     }
 
     return rows;
+  }
+
+  /**
+   * Movimiento del embudo por asesor en la penúltima semana ISO (ej. W27 si estamos en W28).
+   */
+  private async buildCompaniesAdvisorFunnelMovement(
+    referenceTo: Date,
+    filters: AnalyticsScopeFilters,
+    unrestricted: boolean,
+    crmScope: CrmDataScope,
+    advisorUsers: { id: string; name: string }[],
+  ): Promise<CompaniesAdvisorFunnelMovementSnapshot> {
+    const anchorMonday = startOfUtcWeekMonday(referenceTo);
+    const targetMonday = new Date(anchorMonday);
+    targetMonday.setUTCDate(targetMonday.getUTCDate() - 7);
+
+    const clipStart = targetMonday;
+    const clipEnd = minUtcDate(endOfUtcWeekSunday(targetMonday), referenceTo);
+
+    const toWeekNumber = isoWeekNumberUtc(targetMonday);
+    const fromWeekNumber = toWeekNumber - 1;
+    const currentWeekNumber = isoWeekNumberUtc(referenceTo);
+
+    const portfolioWhere = mergeCompanyScope(
+      {
+        ...this.companyPortfolioBaseWhere(filters, unrestricted),
+        createdAt: { lte: referenceTo },
+      },
+      crmScope,
+    );
+
+    const [stages, portfolioCompanies, auditRows] = await Promise.all([
+      this.prisma.crmStage.findMany({
+        where: { enabled: true },
+        select: { slug: true, probability: true },
+      }),
+      this.prisma.company.findMany({
+        where: portfolioWhere,
+        select: { id: true, createdAt: true, etapa: true, assignedTo: true },
+      }),
+      this.prisma.auditChangeSet.findMany({
+        where: {
+          module: 'empresas',
+          entityType: 'Empresa',
+          createdAt: { lte: referenceTo },
+          entries: {
+            some: { fieldKey: { in: ['etapa', 'assignedTo'] } },
+          },
+        },
+        include: {
+          entries: {
+            where: { fieldKey: { in: ['etapa', 'assignedTo'] } },
+            select: { fieldKey: true, oldValue: true, newValue: true },
+          },
+        },
+      }),
+    ]);
+
+    const stageInfo = new Map<string, number>();
+    for (const s of stages) stageInfo.set(s.slug, s.probability);
+    const getProb = (slug: string): number => {
+      const key = slug.trim();
+      if (stageInfo.has(key)) return stageInfo.get(key)!;
+      return STAGE_PROBABILITY_FALLBACK[key] ?? 0;
+    };
+
+    const portfolioIds = new Set(portfolioCompanies.map((c) => c.id));
+    const advisorNameById = new Map(advisorUsers.map((u) => [u.id, u.name]));
+
+    type EtapaAuditEv = { at: Date; oldSlug: string; newSlug: string };
+    const etapaAuditsByCompany = new Map<string, EtapaAuditEv[]>();
+    type FieldAuditEv = { at: Date; oldValue: string; newValue: string };
+    const assignedAuditsByCompany = new Map<string, FieldAuditEv[]>();
+
+    for (const row of auditRows) {
+      const id = row.entityId;
+      if (!id || !portfolioIds.has(id)) continue;
+      for (const et of row.entries) {
+        if (et.fieldKey === 'etapa') {
+          const oldSlug = et.oldValue.trim();
+          const newSlug = et.newValue.trim();
+          if (!oldSlug && !newSlug) continue;
+          const list = etapaAuditsByCompany.get(id) ?? [];
+          list.push({ at: row.createdAt, oldSlug, newSlug });
+          etapaAuditsByCompany.set(id, list);
+        } else if (et.fieldKey === 'assignedTo') {
+          const list = assignedAuditsByCompany.get(id) ?? [];
+          list.push({
+            at: row.createdAt,
+            oldValue: et.oldValue,
+            newValue: et.newValue,
+          });
+          assignedAuditsByCompany.set(id, list);
+        }
+      }
+    }
+    for (const [, list] of etapaAuditsByCompany) {
+      list.sort((a, b) => a.at.getTime() - b.at.getTime());
+    }
+    for (const [, list] of assignedAuditsByCompany) {
+      list.sort((a, b) => a.at.getTime() - b.at.getTime());
+    }
+
+    const etapaAtByCompany = new Map<string, (instant: Date) => string>();
+    const advisorAtByCompany = new Map<string, (instant: Date) => string>();
+    for (const company of portfolioCompanies) {
+      const etapaAudits = (etapaAuditsByCompany.get(company.id) ?? []).map((e) => ({
+        at: e.at,
+        oldValue: e.oldSlug,
+        newValue: e.newSlug,
+      }));
+      const advisorAudits = assignedAuditsByCompany.get(company.id) ?? [];
+      const currentAdvisor = company.assignedTo?.trim() ?? '';
+      etapaAtByCompany.set(
+        company.id,
+        buildEtapaStepFunction(company.createdAt, company.etapa, etapaAudits),
+      );
+      advisorAtByCompany.set(
+        company.id,
+        buildEtapaStepFunction(company.createdAt, currentAdvisor, advisorAudits),
+      );
+    }
+
+    type MetricBucket = AdvisorFunnelMovementMetricsRow;
+    const emptyMetrics = (): MetricBucket => ({
+      nuevoIngreso: 0,
+      avance: 0,
+      atraso: 0,
+      sinCambios: 0,
+    });
+    const metricsByAdvisor = new Map<string, MetricBucket>();
+    const activeByAdvisor = new Map<string, number>();
+
+    const advisorKeyAt = (companyId: string, instant: Date): string => {
+      const fn = advisorAtByCompany.get(companyId);
+      const raw = fn ? fn(instant).trim() : '';
+      return raw || UNASSIGNED_ADVISOR_ID;
+    };
+
+    const bumpMetric = (
+      advisorId: string,
+      category: 'nuevo' | 'avance' | 'atraso' | 'sinCambios',
+    ) => {
+      const bucket = metricsByAdvisor.get(advisorId) ?? emptyMetrics();
+      bucket[category === 'nuevo' ? 'nuevoIngreso' : category] += 1;
+      metricsByAdvisor.set(advisorId, bucket);
+    };
+
+    for (const company of portfolioCompanies) {
+      const etapaFn = etapaAtByCompany.get(company.id);
+      if (!etapaFn) continue;
+
+      const probEnd = getProb(etapaFn(clipEnd));
+      if (company.createdAt <= clipEnd && probEnd >= ACTIVE_PROSPECT_MIN_PROBABILITY) {
+        const advisorId = advisorKeyAt(company.id, clipEnd);
+        activeByAdvisor.set(advisorId, (activeByAdvisor.get(advisorId) ?? 0) + 1);
+      }
+
+      const inWeek = (etapaAuditsByCompany.get(company.id) ?? []).filter(
+        (e) => e.at >= clipStart && e.at <= clipEnd,
+      );
+      const category = this.classifyCompanyMovementInWeekClip(
+        company,
+        clipStart,
+        clipEnd,
+        etapaFn,
+        inWeek,
+        getProb,
+      );
+      if (!category) continue;
+
+      bumpMetric(advisorKeyAt(company.id, clipEnd), category);
+    }
+
+    const advisorIds = new Set<string>();
+    for (const id of activeByAdvisor.keys()) advisorIds.add(id);
+    for (const id of metricsByAdvisor.keys()) advisorIds.add(id);
+
+    const missingAdvisorIds = [...advisorIds].filter(
+      (id) => id !== UNASSIGNED_ADVISOR_ID && !advisorNameById.has(id),
+    );
+    if (missingAdvisorIds.length > 0) {
+      const extraUsers = await this.prisma.user.findMany({
+        where: { id: { in: missingAdvisorIds } },
+        select: { id: true, name: true },
+      });
+      for (const u of extraUsers) {
+        const name = u.name?.trim();
+        if (name) advisorNameById.set(u.id, name);
+      }
+    }
+
+    const advisorLabel = (id: string): string => {
+      if (id === UNASSIGNED_ADVISOR_ID) return 'Sin asignar';
+      return advisorNameById.get(id) ?? 'Asesor desconocido';
+    };
+
+    const sortAdvisorIds = (ids: Iterable<string>): string[] =>
+      [...ids].sort((a, b) => {
+        if (a === UNASSIGNED_ADVISOR_ID) return 1;
+        if (b === UNASSIGNED_ADVISOR_ID) return -1;
+        return advisorLabel(a).localeCompare(advisorLabel(b), 'es');
+      });
+
+    const advisors: AdvisorFunnelMovementAdvisorRow[] = sortAdvisorIds(advisorIds)
+      .map((id) => ({
+        id,
+        name: advisorLabel(id),
+        activeProspects: activeByAdvisor.get(id) ?? 0,
+        metrics: metricsByAdvisor.get(id) ?? emptyMetrics(),
+      }))
+      .filter(
+        (row) =>
+          row.activeProspects > 0 ||
+          row.metrics.nuevoIngreso > 0 ||
+          row.metrics.avance > 0 ||
+          row.metrics.atraso > 0 ||
+          row.metrics.sinCambios > 0,
+      );
+
+    return {
+      fromWeekNumber,
+      toWeekNumber,
+      fromWeekLabel: this.formatIsoWeekLabel(fromWeekNumber),
+      toWeekLabel: this.formatIsoWeekLabel(toWeekNumber),
+      currentWeekLabel: this.formatIsoWeekLabel(currentWeekNumber),
+      title: `Movimiento del funnel — Semana ${fromWeekNumber} a Semana ${toWeekNumber}`,
+      advisors,
+    };
+  }
+
+  /** Etiqueta corta eje X (día/mes UTC), alineada con el diseño de reportes. */
+  private weekShortAxisLabelUtc(monday: Date): string {
+    return `${monday.getUTCDate()}/${monday.getUTCMonth() + 1}`;
+  }
+
+  /**
+   * Empresas en etapas con probabilidad dentro del rango, al cierre de cada semana ISO.
+   * Últimas {@link COMPANY_WEEKLY_CHART_WEEKS} semanas respecto a `referenceTo`.
+   */
+  private async buildCompanyWeeklyStageSnapshot(
+    referenceTo: Date,
+    filters: AnalyticsScopeFilters,
+    unrestricted: boolean,
+    crmScope: CrmDataScope,
+    minProbability: number,
+    maxProbability: number,
+  ): Promise<CompanyWeeklyStageSnapshot> {
+    const anchorMonday = startOfUtcWeekMonday(referenceTo);
+    const weekMondays: Date[] = [];
+    for (let i = COMPANY_WEEKLY_CHART_WEEKS - 1; i >= 0; i--) {
+      const monday = new Date(anchorMonday);
+      monday.setUTCDate(monday.getUTCDate() - i * 7);
+      weekMondays.push(monday);
+    }
+
+    const portfolioWhere = mergeCompanyScope(
+      {
+        ...this.companyPortfolioBaseWhere(filters, unrestricted),
+        createdAt: { lte: referenceTo },
+      },
+      crmScope,
+    );
+
+    const [stages, portfolioCompanies, auditRows] = await Promise.all([
+      this.prisma.crmStage.findMany({
+        where: { enabled: true },
+        select: { slug: true, name: true, probability: true, sortOrder: true },
+        orderBy: { sortOrder: 'asc' },
+      }),
+      this.prisma.company.findMany({
+        where: portfolioWhere,
+        select: { id: true, createdAt: true, etapa: true },
+      }),
+      this.prisma.auditChangeSet.findMany({
+        where: {
+          module: 'empresas',
+          entityType: 'Empresa',
+          createdAt: { lte: referenceTo },
+          entries: { some: { fieldKey: 'etapa' } },
+        },
+        include: {
+          entries: {
+            where: { fieldKey: 'etapa' },
+            select: { oldValue: true, newValue: true },
+          },
+        },
+      }),
+    ]);
+
+    const stageMeta = new Map(
+      stages.map((s) => [
+        s.slug,
+        { name: s.name, probability: s.probability, sortOrder: s.sortOrder },
+      ]),
+    );
+    const qualifyingSlugs = new Set(
+      stages
+        .filter(
+          (s) =>
+            s.probability >= minProbability &&
+            s.probability <= maxProbability,
+        )
+        .map((s) => s.slug),
+    );
+
+    const getProbability = (slug: string): number => {
+      const meta = stageMeta.get(slug.trim());
+      if (meta) return meta.probability;
+      return STAGE_PROBABILITY_FALLBACK[slug.trim()] ?? 0;
+    };
+
+    const isQualifyingSlug = (slug: string): boolean => {
+      const s = slug.trim();
+      if (qualifyingSlugs.has(s)) return true;
+      const p = getProbability(s);
+      return p >= minProbability && p <= maxProbability;
+    };
+
+    const portfolioIds = new Set(portfolioCompanies.map((c) => c.id));
+
+    type AuditEv = { at: Date; oldValue: string; newValue: string };
+    const auditsByCompany = new Map<string, AuditEv[]>();
+    for (const row of auditRows) {
+      const id = row.entityId;
+      if (!id || !portfolioIds.has(id)) continue;
+      const et = row.entries[0];
+      if (!et) continue;
+      const list = auditsByCompany.get(id) ?? [];
+      list.push({
+        at: row.createdAt,
+        oldValue: et.oldValue,
+        newValue: et.newValue,
+      });
+      auditsByCompany.set(id, list);
+    }
+
+    const etapaAtByCompany = new Map<string, (instant: Date) => string>();
+    for (const company of portfolioCompanies) {
+      const audits = auditsByCompany.get(company.id) ?? [];
+      etapaAtByCompany.set(
+        company.id,
+        buildEtapaStepFunction(company.createdAt, company.etapa, audits),
+      );
+    }
+
+    const weeks: CompanyWeeklyStageRow[] = weekMondays.map((monday) => {
+      const weekEnd = minUtcDate(endOfUtcWeekSunday(monday), referenceTo);
+      const counts = new Map<string, number>();
+
+      for (const company of portfolioCompanies) {
+        if (company.createdAt > weekEnd) continue;
+        const etapaFn = etapaAtByCompany.get(company.id);
+        if (!etapaFn) continue;
+        const slug = etapaFn(weekEnd).trim();
+        if (!isQualifyingSlug(slug)) continue;
+        counts.set(slug, (counts.get(slug) ?? 0) + 1);
+      }
+
+      const byStage: ActiveProspectStageRow[] = [...counts.entries()]
+        .map(([slug, count]) => {
+          const meta = stageMeta.get(slug);
+          return {
+            slug,
+            name: meta?.name ?? slug,
+            probability: meta?.probability ?? getProbability(slug),
+            count,
+          };
+        })
+        .sort((a, b) => {
+          const oa = stageMeta.get(a.slug)?.sortOrder ?? 999_999;
+          const ob = stageMeta.get(b.slug)?.sortOrder ?? 999_999;
+          return oa - ob;
+        });
+
+      const total = byStage.reduce((sum, row) => sum + row.count, 0);
+
+      return {
+        name: this.weekShortAxisLabelUtc(monday),
+        weekStart: monday.toISOString(),
+        weekEnd: weekEnd.toISOString(),
+        total,
+        byStage,
+      };
+    });
+
+    const currentTotal = weeks[weeks.length - 1]?.total ?? 0;
+    const prevTotal = weeks[weeks.length - 2]?.total ?? 0;
+    const changePct =
+      weeks.length >= 2 && prevTotal > 0
+        ? Math.round(((currentTotal - prevTotal) / prevTotal) * 1000) / 10
+        : null;
+
+    return { weeks, currentTotal, changePct };
+  }
+
+  private buildActiveProspectsWeekly(
+    referenceTo: Date,
+    filters: AnalyticsScopeFilters,
+    unrestricted: boolean,
+    crmScope: CrmDataScope,
+  ): Promise<CompanyWeeklyStageSnapshot> {
+    return this.buildCompanyWeeklyStageSnapshot(
+      referenceTo,
+      filters,
+      unrestricted,
+      crmScope,
+      ACTIVE_PROSPECT_MIN_PROBABILITY,
+      ACTIVE_PROSPECT_MAX_PROBABILITY,
+    );
+  }
+
+  private buildAdvancedContactsWeekly(
+    referenceTo: Date,
+    filters: AnalyticsScopeFilters,
+    unrestricted: boolean,
+    crmScope: CrmDataScope,
+  ): Promise<CompanyWeeklyStageSnapshot> {
+    return this.buildCompanyWeeklyStageSnapshot(
+      referenceTo,
+      filters,
+      unrestricted,
+      crmScope,
+      ADVANCED_CONTACTS_MIN_PROBABILITY,
+      ADVANCED_CONTACTS_MAX_PROBABILITY,
+    );
+  }
+
+  /**
+   * Facturación estimada total de empresas en etapas 10–100 % al cierre de cada semana.
+   */
+  private async buildEstimatedBillingWeekly(
+    referenceTo: Date,
+    filters: AnalyticsScopeFilters,
+    unrestricted: boolean,
+    crmScope: CrmDataScope,
+  ): Promise<EstimatedBillingWeeklySnapshot> {
+    const anchorMonday = startOfUtcWeekMonday(referenceTo);
+    const weekMondays: Date[] = [];
+    for (let i = COMPANY_WEEKLY_CHART_WEEKS - 1; i >= 0; i--) {
+      const monday = new Date(anchorMonday);
+      monday.setUTCDate(monday.getUTCDate() - i * 7);
+      weekMondays.push(monday);
+    }
+
+    const portfolioWhere = mergeCompanyScope(
+      {
+        ...this.companyPortfolioBaseWhere(filters, unrestricted),
+        createdAt: { lte: referenceTo },
+      },
+      crmScope,
+    );
+
+    const [stages, portfolioCompanies, auditRows] = await Promise.all([
+      this.prisma.crmStage.findMany({
+        where: { enabled: true },
+        select: { slug: true, name: true, probability: true, sortOrder: true },
+        orderBy: { sortOrder: 'asc' },
+      }),
+      this.prisma.company.findMany({
+        where: portfolioWhere,
+        select: {
+          id: true,
+          createdAt: true,
+          etapa: true,
+          facturacionEstimada: true,
+        },
+      }),
+      this.prisma.auditChangeSet.findMany({
+        where: {
+          module: 'empresas',
+          entityType: 'Empresa',
+          createdAt: { lte: referenceTo },
+          entries: {
+            some: { fieldKey: { in: ['etapa', 'facturacionEstimada'] } },
+          },
+        },
+        include: {
+          entries: {
+            where: { fieldKey: { in: ['etapa', 'facturacionEstimada'] } },
+            select: { fieldKey: true, oldValue: true, newValue: true },
+          },
+        },
+      }),
+    ]);
+
+    const stageMeta = new Map(
+      stages.map((s) => [
+        s.slug,
+        { name: s.name, probability: s.probability, sortOrder: s.sortOrder },
+      ]),
+    );
+
+    const getProbability = (slug: string): number => {
+      const meta = stageMeta.get(slug.trim());
+      if (meta) return meta.probability;
+      return STAGE_PROBABILITY_FALLBACK[slug.trim()] ?? 0;
+    };
+
+    const isQualifyingSlug = (slug: string): boolean => {
+      const p = getProbability(slug.trim());
+      return (
+        p >= ESTIMATED_BILLING_MIN_PROBABILITY &&
+        p <= ESTIMATED_BILLING_MAX_PROBABILITY
+      );
+    };
+
+    const portfolioIds = new Set(portfolioCompanies.map((c) => c.id));
+
+    type AuditEv = { at: Date; oldValue: string; newValue: string };
+    const auditsByCompanyField = new Map<string, AuditEv[]>();
+    for (const row of auditRows) {
+      const id = row.entityId;
+      if (!id || !portfolioIds.has(id)) continue;
+      for (const et of row.entries) {
+        const key = `${id}:${et.fieldKey}`;
+        const list = auditsByCompanyField.get(key) ?? [];
+        list.push({
+          at: row.createdAt,
+          oldValue: et.oldValue,
+          newValue: et.newValue,
+        });
+        auditsByCompanyField.set(key, list);
+      }
+    }
+
+    const etapaAtByCompany = new Map<string, (instant: Date) => string>();
+    const billingAtByCompany = new Map<string, (instant: Date) => number>();
+    for (const company of portfolioCompanies) {
+      const etapaAudits = auditsByCompanyField.get(`${company.id}:etapa`) ?? [];
+      const billingAudits =
+        auditsByCompanyField.get(`${company.id}:facturacionEstimada`) ?? [];
+      const currentBilling = Number(company.facturacionEstimada) || 0;
+      etapaAtByCompany.set(
+        company.id,
+        buildEtapaStepFunction(company.createdAt, company.etapa, etapaAudits),
+      );
+      billingAtByCompany.set(
+        company.id,
+        buildNumericStepFunction(
+          company.createdAt,
+          currentBilling,
+          billingAudits,
+        ),
+      );
+    }
+
+    const weeks: EstimatedBillingWeekRow[] = weekMondays.map((monday) => {
+      const weekEnd = minUtcDate(endOfUtcWeekSunday(monday), referenceTo);
+      const amountsByStage = new Map<string, number>();
+      let total = 0;
+
+      for (const company of portfolioCompanies) {
+        if (company.createdAt > weekEnd) continue;
+        const etapaFn = etapaAtByCompany.get(company.id);
+        const billingFn = billingAtByCompany.get(company.id);
+        if (!etapaFn || !billingFn) continue;
+        const slug = etapaFn(weekEnd).trim();
+        if (!isQualifyingSlug(slug)) continue;
+        const amount = Math.max(0, billingFn(weekEnd));
+        if (amount <= 0) continue;
+        total += amount;
+        amountsByStage.set(slug, (amountsByStage.get(slug) ?? 0) + amount);
+      }
+
+      const byStage: EstimatedBillingStageRow[] = [...amountsByStage.entries()]
+        .map(([slug, amount]) => {
+          const meta = stageMeta.get(slug);
+          return {
+            slug,
+            name: meta?.name ?? slug,
+            probability: meta?.probability ?? getProbability(slug),
+            amount,
+          };
+        })
+        .sort((a, b) => {
+          const oa = stageMeta.get(a.slug)?.sortOrder ?? 999_999;
+          const ob = stageMeta.get(b.slug)?.sortOrder ?? 999_999;
+          return oa - ob;
+        });
+
+      return {
+        name: this.weekShortAxisLabelUtc(monday),
+        weekStart: monday.toISOString(),
+        weekEnd: weekEnd.toISOString(),
+        total,
+        byStage,
+      };
+    });
+
+    const currentTotal = weeks[weeks.length - 1]?.total ?? 0;
+    const prevTotal = weeks[weeks.length - 2]?.total ?? 0;
+    const changePct =
+      weeks.length >= 2 && prevTotal > 0
+        ? Math.round(((currentTotal - prevTotal) / prevTotal) * 1000) / 10
+        : null;
+
+    return { weeks, currentTotal, changePct };
+  }
+
+  /**
+   * Matriz asesor × etapa (10–100 %) y facturación estimada por asesor al cierre de cada semana.
+   */
+  private async buildActiveProspectsByAdvisorWeekly(
+    referenceTo: Date,
+    filters: AnalyticsScopeFilters,
+    unrestricted: boolean,
+    crmScope: CrmDataScope,
+    advisorUsers: { id: string; name: string }[],
+  ): Promise<ActiveProspectsByAdvisorWeeklySnapshot> {
+    const anchorMonday = startOfUtcWeekMonday(referenceTo);
+    const weekMondays: Date[] = [];
+    for (let i = COMPANY_WEEKLY_CHART_WEEKS - 1; i >= 0; i--) {
+      const monday = new Date(anchorMonday);
+      monday.setUTCDate(monday.getUTCDate() - i * 7);
+      weekMondays.push(monday);
+    }
+
+    const portfolioWhere = mergeCompanyScope(
+      {
+        ...this.companyPortfolioBaseWhere(filters, unrestricted),
+        createdAt: { lte: referenceTo },
+      },
+      crmScope,
+    );
+
+    const [stages, portfolioCompanies, auditRows] = await Promise.all([
+      this.prisma.crmStage.findMany({
+        where: { enabled: true },
+        select: { slug: true, name: true, probability: true, sortOrder: true },
+        orderBy: { sortOrder: 'asc' },
+      }),
+      this.prisma.company.findMany({
+        where: portfolioWhere,
+        select: {
+          id: true,
+          createdAt: true,
+          etapa: true,
+          assignedTo: true,
+          facturacionEstimada: true,
+        },
+      }),
+      this.prisma.auditChangeSet.findMany({
+        where: {
+          module: 'empresas',
+          entityType: 'Empresa',
+          createdAt: { lte: referenceTo },
+          entries: {
+            some: {
+              fieldKey: { in: ['etapa', 'assignedTo', 'facturacionEstimada'] },
+            },
+          },
+        },
+        include: {
+          entries: {
+            where: {
+              fieldKey: { in: ['etapa', 'assignedTo', 'facturacionEstimada'] },
+            },
+            select: { fieldKey: true, oldValue: true, newValue: true },
+          },
+        },
+      }),
+    ]);
+
+    const stageMeta = new Map(
+      stages.map((s) => [
+        s.slug,
+        { name: s.name, probability: s.probability, sortOrder: s.sortOrder },
+      ]),
+    );
+    const qualifyingStages = stages
+      .filter(
+        (s) =>
+          s.probability >= ACTIVE_PROSPECT_MIN_PROBABILITY &&
+          s.probability <= ACTIVE_PROSPECT_MAX_PROBABILITY,
+      )
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+
+    const getProbability = (slug: string): number => {
+      const meta = stageMeta.get(slug.trim());
+      if (meta) return meta.probability;
+      return STAGE_PROBABILITY_FALLBACK[slug.trim()] ?? 0;
+    };
+
+    const isQualifyingSlug = (slug: string): boolean => {
+      const p = getProbability(slug.trim());
+      return (
+        p >= ACTIVE_PROSPECT_MIN_PROBABILITY &&
+        p <= ACTIVE_PROSPECT_MAX_PROBABILITY
+      );
+    };
+
+    const portfolioIds = new Set(portfolioCompanies.map((c) => c.id));
+    const advisorNameById = new Map(advisorUsers.map((u) => [u.id, u.name]));
+
+    type AuditEv = { at: Date; oldValue: string; newValue: string };
+    const auditsByCompanyField = new Map<string, AuditEv[]>();
+    for (const row of auditRows) {
+      const id = row.entityId;
+      if (!id || !portfolioIds.has(id)) continue;
+      for (const et of row.entries) {
+        const key = `${id}:${et.fieldKey}`;
+        const list = auditsByCompanyField.get(key) ?? [];
+        list.push({
+          at: row.createdAt,
+          oldValue: et.oldValue,
+          newValue: et.newValue,
+        });
+        auditsByCompanyField.set(key, list);
+      }
+    }
+
+    const etapaAtByCompany = new Map<string, (instant: Date) => string>();
+    const advisorAtByCompany = new Map<string, (instant: Date) => string>();
+    const billingAtByCompany = new Map<string, (instant: Date) => number>();
+    for (const company of portfolioCompanies) {
+      const etapaAudits = auditsByCompanyField.get(`${company.id}:etapa`) ?? [];
+      const advisorAudits =
+        auditsByCompanyField.get(`${company.id}:assignedTo`) ?? [];
+      const billingAudits =
+        auditsByCompanyField.get(`${company.id}:facturacionEstimada`) ?? [];
+      const currentBilling = Number(company.facturacionEstimada) || 0;
+      const currentAdvisor = company.assignedTo?.trim() ?? '';
+      etapaAtByCompany.set(
+        company.id,
+        buildEtapaStepFunction(company.createdAt, company.etapa, etapaAudits),
+      );
+      advisorAtByCompany.set(
+        company.id,
+        buildEtapaStepFunction(company.createdAt, currentAdvisor, advisorAudits),
+      );
+      billingAtByCompany.set(
+        company.id,
+        buildNumericStepFunction(
+          company.createdAt,
+          currentBilling,
+          billingAudits,
+        ),
+      );
+    }
+
+    type WeekRaw = {
+      name: string;
+      weekStart: string;
+      weekEnd: string;
+      countsBySlugAdvisor: Map<string, Map<string, number>>;
+      billingByAdvisor: Map<string, number>;
+      advisorIds: Set<string>;
+    };
+
+    const rawWeeks: WeekRaw[] = weekMondays.map((monday) => {
+      const weekEnd = minUtcDate(endOfUtcWeekSunday(monday), referenceTo);
+      const countsBySlugAdvisor = new Map<string, Map<string, number>>();
+      const billingByAdvisor = new Map<string, number>();
+      const advisorIds = new Set<string>();
+
+      for (const company of portfolioCompanies) {
+        if (company.createdAt > weekEnd) continue;
+        const etapaFn = etapaAtByCompany.get(company.id);
+        const advisorFn = advisorAtByCompany.get(company.id);
+        const billingFn = billingAtByCompany.get(company.id);
+        if (!etapaFn || !advisorFn || !billingFn) continue;
+
+        const slug = etapaFn(weekEnd).trim();
+        if (!isQualifyingSlug(slug)) continue;
+
+        const advisorId = advisorFn(weekEnd).trim() || UNASSIGNED_ADVISOR_ID;
+        advisorIds.add(advisorId);
+
+        const byAdvisor = countsBySlugAdvisor.get(slug) ?? new Map<string, number>();
+        byAdvisor.set(advisorId, (byAdvisor.get(advisorId) ?? 0) + 1);
+        countsBySlugAdvisor.set(slug, byAdvisor);
+
+        const amount = Math.max(0, billingFn(weekEnd));
+        if (amount > 0) {
+          billingByAdvisor.set(
+            advisorId,
+            (billingByAdvisor.get(advisorId) ?? 0) + amount,
+          );
+        }
+      }
+
+      return {
+        name: this.weekShortAxisLabelUtc(monday),
+        weekStart: monday.toISOString(),
+        weekEnd: weekEnd.toISOString(),
+        countsBySlugAdvisor,
+        billingByAdvisor,
+        advisorIds,
+      };
+    });
+
+    const globalAdvisorIds = new Set<string>();
+    for (const w of rawWeeks) {
+      for (const id of w.advisorIds) globalAdvisorIds.add(id);
+    }
+
+    const missingAdvisorIds = [...globalAdvisorIds].filter(
+      (id) => id !== UNASSIGNED_ADVISOR_ID && !advisorNameById.has(id),
+    );
+    if (missingAdvisorIds.length > 0) {
+      const extraUsers = await this.prisma.user.findMany({
+        where: { id: { in: missingAdvisorIds } },
+        select: { id: true, name: true },
+      });
+      for (const u of extraUsers) {
+        const name = u.name?.trim();
+        if (name) advisorNameById.set(u.id, name);
+      }
+    }
+
+    const sortAdvisorIds = (ids: Iterable<string>): string[] =>
+      [...ids].sort((a, b) => {
+        if (a === UNASSIGNED_ADVISOR_ID) return 1;
+        if (b === UNASSIGNED_ADVISOR_ID) return -1;
+        const na = advisorNameById.get(a) ?? a;
+        const nb = advisorNameById.get(b) ?? b;
+        return na.localeCompare(nb, 'es');
+      });
+
+    const globalAdvisorOrder = sortAdvisorIds(globalAdvisorIds);
+
+    const advisorLabel = (id: string): string => {
+      if (id === UNASSIGNED_ADVISOR_ID) return 'Sin asignar';
+      return advisorNameById.get(id) ?? 'Asesor desconocido';
+    };
+
+    const weeks: ActiveProspectsAdvisorWeekRow[] = rawWeeks.map((raw) => {
+      const advisors = globalAdvisorOrder.map((id) => ({
+        id,
+        name: advisorLabel(id),
+      }));
+
+      const stageSlugs = new Set(qualifyingStages.map((s) => s.slug));
+      for (const slug of raw.countsBySlugAdvisor.keys()) {
+        if (isQualifyingSlug(slug)) stageSlugs.add(slug);
+      }
+
+      const orderedSlugs = [...stageSlugs].sort((a, b) => {
+        const oa = stageMeta.get(a)?.sortOrder ?? 999_999;
+        const ob = stageMeta.get(b)?.sortOrder ?? 999_999;
+        return oa - ob;
+      });
+
+      const stages: ActiveProspectsAdvisorStageRow[] = orderedSlugs.map((slug) => {
+        const byAdvisor = raw.countsBySlugAdvisor.get(slug);
+        const countsByAdvisor: Record<string, number> = {};
+        for (const advisorId of globalAdvisorOrder) {
+          countsByAdvisor[advisorId] = byAdvisor?.get(advisorId) ?? 0;
+        }
+        const meta = stageMeta.get(slug);
+        return {
+          slug,
+          name: meta?.name ?? slug,
+          probability: meta?.probability ?? getProbability(slug),
+          countsByAdvisor,
+        };
+      });
+
+      const estimatedBillingByAdvisor: Record<string, number> = {};
+      for (const advisorId of globalAdvisorOrder) {
+        estimatedBillingByAdvisor[advisorId] =
+          raw.billingByAdvisor.get(advisorId) ?? 0;
+      }
+
+      return {
+        name: raw.name,
+        weekStart: raw.weekStart,
+        weekEnd: raw.weekEnd,
+        advisors,
+        stages,
+        estimatedBillingByAdvisor,
+      };
+    });
+
+    return { weeks };
   }
 
   private opportunityPortfolioBaseWhere(
@@ -898,6 +2139,11 @@ export class AnalyticsService {
       this.companyWhere(from, to, filters, unrestricted),
       opts.crmScope,
     );
+    const activeStageSlugs = await this.resolveStageSlugsInProbabilityRange(
+      ACTIVE_PROSPECT_MIN_PROBABILITY,
+      ACTIVE_PROSPECT_MAX_PROBABILITY,
+    );
+    const activeStageEtapaFilter = this.etapaInSlugsFilter(activeStageSlugs);
 
     const [
       totalContacts,
@@ -964,7 +2210,7 @@ export class AnalyticsService {
       }),
       this.prisma.contact.groupBy({
         by: ['fuente'],
-        where: cw,
+        where: { ...cw, etapa: activeStageEtapaFilter },
         _count: { id: true },
       }),
       this.prisma.contact.groupBy({
@@ -1001,12 +2247,15 @@ export class AnalyticsService {
       }),
       this.prisma.company.groupBy({
         by: ['fuente'],
-        where: compW,
+        where: { ...compW, etapa: activeStageEtapaFilter },
         _count: { id: true },
       }),
       this.prisma.opportunity.groupBy({
         by: ['fuente'],
-        where: this.opportunityWhereCreatedInRange(from, to, filters, unrestricted),
+        where: {
+          ...this.opportunityWhereCreatedInRange(from, to, filters, unrestricted),
+          etapa: activeStageEtapaFilter,
+        },
         _count: { id: true },
       }),
       this.fetchRolling7DayChangeInputs(filters, unrestricted),
@@ -1413,13 +2662,63 @@ export class AnalyticsService {
       }),
     );
 
-    const companiesWeeklyProgress = await this.buildCompaniesWeeklyProgress(
-      from,
-      to,
-      filters,
-      unrestricted,
-      opts.crmScope,
-    );
+    const [
+      companiesWeeklyProgress,
+      activeProspectsWeekly,
+      advancedContactsWeekly,
+      estimatedBillingWeekly,
+      activeProspectsByAdvisorWeekly,
+      companiesAdvisorFunnelMovement,
+      sourcesDetail,
+    ] = await Promise.all([
+      this.buildCompaniesWeeklyProgress(
+        from,
+        to,
+        filters,
+        unrestricted,
+        opts.crmScope,
+      ),
+      this.buildActiveProspectsWeekly(
+        to,
+        filters,
+        unrestricted,
+        opts.crmScope,
+      ),
+      this.buildAdvancedContactsWeekly(
+        to,
+        filters,
+        unrestricted,
+        opts.crmScope,
+      ),
+      this.buildEstimatedBillingWeekly(
+        to,
+        filters,
+        unrestricted,
+        opts.crmScope,
+      ),
+      this.buildActiveProspectsByAdvisorWeekly(
+        to,
+        filters,
+        unrestricted,
+        opts.crmScope,
+        userRows,
+      ),
+      this.buildCompaniesAdvisorFunnelMovement(
+        to,
+        filters,
+        unrestricted,
+        opts.crmScope,
+        userRows,
+      ),
+      this.buildSourcesDetail(
+        from,
+        to,
+        filters,
+        unrestricted,
+        opts.crmScope,
+        leadCatalog,
+      ),
+    ]);
 
     const opportunitiesWeeklyProgress = await this.buildOpportunitiesWeeklyProgress(
       from,
@@ -1528,9 +2827,15 @@ export class AnalyticsService {
       contactsBySource,
       opportunitiesBySource,
       companiesBySource,
+      sourcesDetail,
       funnelByStage,
       companiesByStage,
       companiesWeeklyProgress,
+      activeProspectsWeekly,
+      activeProspectsByAdvisorWeekly,
+      companiesAdvisorFunnelMovement,
+      advancedContactsWeekly,
+      estimatedBillingWeekly,
       opportunitiesWeeklyProgress,
       contactsWeekly,
       salesWeekly,

@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import type { DateRange } from 'react-day-picker';
-import html2canvas from 'html2canvas';
 import { useUsers } from '@/hooks/useUsers';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { MetricCard } from '@/components/shared/MetricCard';
@@ -52,6 +51,7 @@ import {
   type AnalyticsKPIs,
 } from '@/lib/analyticsApi';
 import {
+  captureReportChartImages,
   downloadReport,
   reportExportBaseFilename,
   type ReportsExportInput,
@@ -68,19 +68,38 @@ import { WonOpportunitiesSalesLineChart } from '@/components/shared/WonOpportuni
 import { chartHasAnyValue } from '@/lib/chartEmpty';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FunnelChart, type FunnelStage } from '@/components/crm/FunnelChart';
-import { buildOpportunitiesStageFunnelStages } from '@/lib/companyStageFunnelData';
+import {
+  buildOpportunitiesStageFunnelStages,
+  buildCompaniesStagePanelData,
+} from '@/lib/companyStageFunnelData';
 import { ContactsOpportunitiesAreaChart } from '@/components/shared/ContactsOpportunitiesAreaChart';
 import { ActivitiesByTypeBarChart } from '@/components/shared/ActivitiesByTypeBarChart';
 import type { ActivitiesByTypeMonthComparison } from '@/components/shared/ActivitiesByTypeBarChart';
 import { SourcesByEntityMixedChart } from '@/components/shared/SourcesByEntityMixedChart';
+import { SourcesExpandedView } from '@/components/shared/SourcesExpandedView';
+import { mapSourcesDetailFromApi } from '@/lib/sourceDetailUtils';
 import { TasksByMonthLineChart } from '@/components/shared/TasksByMonthLineChart';
 import { OpportunitiesWeeklyProgressStackedChart } from '@/components/shared/OpportunitiesWeeklyProgressStackedChart';
+import { CompaniesWeeklyExpandedPanel } from '@/components/shared/CompaniesWeeklyExpandedPanel';
+import type { CompaniesWeeklyModalView } from '@/components/shared/CompaniesWeeklyExpandedPanel';
+import { buildAdvisorFunnelMovementView } from '@/lib/companiesAdvisorMovement';
+import { ActiveProspectsMetricCard } from '@/components/shared/ActiveProspectsMetricCard';
+import { AdvancedContactsMetricCard } from '@/components/shared/AdvancedContactsMetricCard';
+import { AdvancedContactsBarChart } from '@/components/shared/AdvancedContactsBarChart';
+import { EstimatedBillingMetricCard } from '@/components/shared/EstimatedBillingMetricCard';
+import { EstimatedBillingAreaChart } from '@/components/shared/EstimatedBillingAreaChart';
+import { ActiveProspectsAreaChart } from '@/components/shared/ActiveProspectsAreaChart';
+import {
+  CompaniesStageExpandedPanel,
+  CompaniesStageWeekTabs,
+  type CompaniesStageWeekView,
+} from '@/components/shared/CompaniesStageExpandedPanel';
 import { startOfMonth, endOfMonth, subMonths } from 'date-fns';
 
 const WEEKLY_COMPANY_COLORS = {
   avance: '#13944C',
   nuevoIngreso: '#34d399',
-  retroceso: '#f59e0b',
+  atraso: '#f59e0b',
   sinCambios: '#94a3b8',
 } as const;
 
@@ -194,12 +213,26 @@ export default function Reports() {
   const [activitiesBarModalOpen, setActivitiesBarModalOpen] = useState(false);
   const [weeklyCompaniesModalOpen, setWeeklyCompaniesModalOpen] = useState(false);
   const [weeklyOpportunitiesModalOpen, setWeeklyOpportunitiesModalOpen] = useState(false);
+  const [companiesWeeklyModalView, setCompaniesWeeklyModalView] =
+    useState<CompaniesWeeklyModalView>('chart');
+  const [companiesFunnelModalOpen, setCompaniesFunnelModalOpen] = useState(false);
+  const [companiesStageWeekView, setCompaniesStageWeekView] =
+    useState<CompaniesStageWeekView>('compare');
+  const [activeProspectsModalOpen, setActiveProspectsModalOpen] = useState(false);
+  const [advancedContactsModalOpen, setAdvancedContactsModalOpen] = useState(false);
+  const [estimatedBillingModalOpen, setEstimatedBillingModalOpen] = useState(false);
   const [tasksModalOpen, setTasksModalOpen] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
   const chartTheme = useChartTheme();
 
   const dialogContentClass =
     "flex max-h-[min(calc(100dvh-1.5rem),900px)] w-full max-w-[min(100vw-1rem,56rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(100vw-2rem,56rem)]";
+  const companiesFunnelDialogClass =
+    "flex max-h-[min(calc(100dvh-1.5rem),920px)] w-full max-w-[min(100vw-1rem,104rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(100vw-2rem,104rem)]";
+  const companiesWeeklyDialogClass =
+    "flex max-h-[min(calc(100dvh-1.5rem),920px)] w-full max-w-[min(100vw-1rem,72rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(100vw-2rem,72rem)]";
+  const sourcesDetailDialogClass =
+    "flex max-h-[min(calc(100dvh-1.5rem),920px)] w-full max-w-[min(100vw-1rem,96rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(100vw-2rem,96rem)]";
 
   useEffect(() => {
     if (!dateRange?.from || !dateRange?.to) {
@@ -327,10 +360,28 @@ export default function Reports() {
       }));
   }, [summary, bundle]);
 
+  const sourcesDetailData = useMemo(
+    () => mapSourcesDetailFromApi(summary?.sourcesDetail, bundle),
+    [summary?.sourcesDetail, bundle],
+  );
+
   const opportunitiesFunnelStages: FunnelStage[] = useMemo(
     () => buildOpportunitiesStageFunnelStages(summary?.opportunitiesByStage ?? [], bundle),
     [summary?.opportunitiesByStage, bundle],
   );
+
+  const companiesStagePanelData = useMemo(
+    () =>
+      buildCompaniesStagePanelData(
+        summary?.activeProspectsWeekly,
+        summary?.activeProspectsByAdvisorWeekly,
+        bundle,
+      ),
+    [summary?.activeProspectsWeekly, summary?.activeProspectsByAdvisorWeekly, bundle],
+  );
+
+  const companiesStageFunnelStages = companiesStagePanelData.totalFunnelStages;
+  const companiesWeeklyComparison = companiesStagePanelData.weeklyComparison;
 
   const companiesWeeklyProgressData = useMemo(
     () => summary?.companiesWeeklyProgress ?? [],
@@ -356,7 +407,7 @@ export default function Reports() {
       name: string;
       avance: number;
       nuevoIngreso: number;
-      retroceso: number;
+      atraso: number;
       sinCambios: number;
       weekStartMs: number;
     };
@@ -367,7 +418,7 @@ export default function Reports() {
       const api = cur.getTime() <= toD.getTime() ? apiByWeek.get(weekNum) : undefined;
       const row: Omit<Row, 'weekStartMs'> = api
         ? { ...api, name: axisName }
-        : { name: axisName, avance: 0, nuevoIngreso: 0, retroceso: 0, sinCambios: 0 };
+        : { name: axisName, avance: 0, nuevoIngreso: 0, atraso: 0, sinCambios: 0 };
       out.push({ ...row, weekStartMs: cur.getTime() });
       const next = new Date(cur.getTime());
       next.setUTCDate(next.getUTCDate() + 7);
@@ -406,7 +457,7 @@ export default function Reports() {
           name: string;
           avance: number;
           nuevoIngreso: number;
-          retroceso: number;
+          atraso: number;
           sinCambios: number;
         }[],
         truncated: false,
@@ -429,10 +480,10 @@ export default function Reports() {
 
   const weeklyProgressChartData = weeklyProgressChartSlice.chartData;
 
-  /** Semanas desde el inicio del rango del reporte hasta la semana ISO actual (UTC); rellena ceros tras el `to` del API para oportunidades. */
+  /** Semanas desde el inicio del rango del reporte hasta la semana ISO actual (UTC); rellena ceros tras el `to` del API para empresas. */
   const weeklyOppsProgressExtended = useMemo(() => {
     if (!summary?.range?.from || !summary?.range?.to) return [];
-    const apiRows = summary.opportunitiesWeeklyProgress ?? [];
+    const apiRows = summary.companiesWeeklyProgress ?? [];
     const fromD = parseAnalyticsRangeDateUtc(summary.range.from, false);
     const toD = parseAnalyticsRangeDateUtc(summary.range.to, true);
     const fromMon = startOfUtcWeekMonday(fromD);
@@ -495,6 +546,11 @@ export default function Reports() {
   }, [weeklyOppsProgressExtended]);
 
   const weeklyOppsProgressChartData = weeklyOppsProgressChartSlice.chartData;
+
+  const advisorFunnelMovement = useMemo(
+    () => buildAdvisorFunnelMovementView(summary?.companiesAdvisorFunnelMovement),
+    [summary?.companiesAdvisorFunnelMovement],
+  );
 
   const contactsVsOpportunitiesData = summary?.contactsVsOpportunitiesByMonth ?? [];
   const conversionData = summary?.conversionByMonth ?? [];
@@ -580,98 +636,36 @@ export default function Reports() {
         followUpsByMonth: followUpsData,
         companiesByStage: opportunitiesFunnelStages,
         weeklyOppsData: weeklyOppsProgressChartData,
+        sourcesByEntity: sourcesByEntityData,
+        wonSalesByMonth: wonSalesByMonthData,
+        activitiesComparison: activitiesMonthComparison ?? undefined,
+        pdfLayout: 'reports',
       };
 
       if (format === 'PDF') {
         setExportingPdf(true);
-        const captureCharts = async () => {
-          const chartIds = {
-            contacts: 'chart-contacts',
-            sources: 'chart-activities-donut',
-            funnel: 'chart-funnel',
-            wonOpportunities: 'chart-won-opportunities',
-            weeklyOpps: 'chart-weekly-opps',
-            sourcesByEntity: 'chart-sources-by-entity',
-            tasks: 'chart-tasks',
-          };
-          const chartImages: ReportsExportInput['charts'] = {};
-
-          // Esperar a que las animaciones terminen
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-
-          for (const [key, id] of Object.entries(chartIds)) {
-            const cardEl = document.getElementById(id);
-            if (!cardEl) continue;
-
-            try {
-              // Senior Strategy: En lugar de confiar en un selector, buscamos todos los SVGs 
-              // y nos quedamos con el que tenga mayor altura (el gráfico principal).
-              // Esto ignora automáticamente iconos de leyenda, botones y decoraciones.
-              const allSvgs = Array.from(cardEl.querySelectorAll('svg'));
-              if (allSvgs.length === 0) continue;
-
-              const svgEl = allSvgs.reduce((prev, current) => {
-                return (current.clientHeight > prev.clientHeight) ? current : prev;
-              });
-
-              if (!svgEl || svgEl.clientHeight < 50) { // Si es muy pequeño, probablemente no es el gráfico
-                console.warn(`No se encontró un SVG válido para el gráfico en ${id}`);
-                continue;
-              }
-
-              // Clonamos el SVG para manipularlo sin afectar la UI
-              const clonedSvg = svgEl.cloneNode(true) as SVGElement;
-              
-              // Paso Senior: Aseguramos que el SVG tenga dimensiones explícitas
-              const width = svgEl.clientWidth || 800;
-              const height = svgEl.clientHeight || 400;
-              clonedSvg.setAttribute('width', width.toString());
-              clonedSvg.setAttribute('height', height.toString());
-
-              // Serializar SVG a XML
-              const svgData = new XMLSerializer().serializeToString(clonedSvg);
-              const canvas = document.createElement('canvas');
-              const ctx = canvas.getContext('2d');
-              const img = new Image();
-              
-              canvas.width = width * 2; // Alta resolución
-              canvas.height = height * 2;
-              
-              const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-              const url = URL.createObjectURL(svgBlob);
-
-              await new Promise((resolve, reject) => {
-                img.onload = () => {
-                  if (ctx) {
-                    ctx.fillStyle = '#ffffff';
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    chartImages[key as keyof typeof chartIds] = canvas.toDataURL('image/png');
-                  }
-                  URL.revokeObjectURL(url);
-                  resolve(true);
-                };
-                img.onerror = reject;
-                img.src = url;
-              });
-            } catch (e) {
-              console.error(`Error capturando gráfico ${id} vía SVG:`, e);
-            }
-          }
-          return chartImages;
-        };
-
-        void captureCharts().then((charts) => {
-          try {
+        void captureReportChartImages()
+          .then((charts) => {
             downloadReport(format, { ...payload, charts }, reportExportBaseFilename());
-            toast.success(`Reporte PDF con gráficos generado`);
-          } catch (err) {
+            const withCharts = Object.keys(charts).length > 0;
+            toast.success(
+              withCharts
+                ? 'Reporte PDF con gráficos generado'
+                : 'Reporte PDF generado (sin gráficos)',
+            );
+          })
+          .catch((err) => {
             console.error(err);
-            toast.error('Error al generar PDF con gráficos. Intenta de nuevo.');
-          } finally {
+            try {
+              downloadReport(format, payload, reportExportBaseFilename());
+              toast.success('Reporte PDF generado (sin gráficos)');
+            } catch {
+              toast.error('No se pudo generar el PDF. Intenta de nuevo.');
+            }
+          })
+          .finally(() => {
             setExportingPdf(false);
-          }
-        });
+          });
         return;
       }
 
@@ -702,6 +696,13 @@ export default function Reports() {
       opportunitiesByStageData,
       activitiesByTypeData,
       followUpsData,
+      opportunitiesFunnelStages,
+      weeklyOppsProgressChartData,
+      sourcesByEntityData,
+      wonSalesByMonthData,
+      activitiesMonthComparison,
+      bundle,
+      contactSourceLabels,
     ],
   );
 
@@ -710,6 +711,7 @@ export default function Reports() {
   const opportunitiesFunnelChartHeight = 420;
   const wonOpportunitiesChartHeight = 420;
   const weeklyOppsChartHeight = 380;
+  const activeProspectsChartHeight = 460;
   const activitiesBarChartHeight = contactsAreaChartHeight + 80;
 
   const sourcesByEntityChartEmpty =
@@ -736,12 +738,27 @@ export default function Reports() {
   const opportunitiesFunnelEmpty =
     !loading &&
     (!summary || !chartHasAnyValue(summary.opportunitiesByStage ?? [], ['count']));
+  const activeProspectsChartEmpty =
+    !loading &&
+    (!summary?.activeProspectsWeekly?.weeks?.length ||
+      summary.activeProspectsWeekly.weeks.every((w) => w.total <= 0));
+  const advancedContactsChartEmpty =
+    !loading &&
+    (!summary?.advancedContactsWeekly?.weeks?.length ||
+      summary.advancedContactsWeekly.weeks.every((w) => w.total <= 0));
+  const estimatedBillingChartEmpty =
+    !loading &&
+    (!summary?.estimatedBillingWeekly?.weeks?.length ||
+      summary.estimatedBillingWeekly.weeks.every((w) => w.total <= 0));
+  const companiesStageFunnelEmpty =
+    !loading &&
+    companiesStageFunnelStages.length === 0;
   const weeklyCompaniesChartEmpty =
     !loading &&
     (!summary ||
       !companiesWeeklyProgressData.some(
         (r) =>
-          r.avance + r.nuevoIngreso + r.retroceso + r.sinCambios > 0,
+          r.avance + r.nuevoIngreso + r.atraso + r.sinCambios > 0,
       ));
 
   const contactsSparkline = useMemo(
@@ -887,39 +904,95 @@ export default function Reports() {
         />
       </div>
 
-      {/* Fila 2: avance semanal oportunidades (ancho completo) */}
-      <Card id="chart-weekly-opps" className="h-fit">
-        <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 px-5 pb-0 pt-5">
-          <CardTitle className="text-base font-medium">Oportunidades</CardTitle>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 shrink-0 text-muted-foreground"
-            onClick={() => setWeeklyOpportunitiesModalOpen(true)}
-            disabled={loading || weeklyOppsProgressChartEmpty}
-            aria-label="Ampliar oportunidades"
-          >
-            <Maximize2 className="h-4 w-4" />
-          </Button>
-        </CardHeader>
-        <CardContent className="px-5 pt-4 pb-5">
-          <ChartCardBody
-            loading={loading}
-            isEmpty={weeklyOppsProgressChartEmpty || weeklyOppsProgressChartData.length === 0}
-            variant="bar"
-            emptyMessage="No hay datos de oportunidades."
-            className="h-auto"
-          >
-            <OpportunitiesWeeklyProgressStackedChart
-              data={weeklyOppsProgressChartData}
-              height={weeklyOppsChartHeight}
-            />
-          </ChartCardBody>
-        </CardContent>
-      </Card>
+      {/* Fila KPI extendida: prospectos, contactos avanzados y facturación estimada */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <ActiveProspectsMetricCard
+          data={summary?.activeProspectsWeekly}
+          loading={loading}
+          onMaximize={() => setActiveProspectsModalOpen(true)}
+          maximizeDisabled={loading || activeProspectsChartEmpty}
+        />
+        <AdvancedContactsMetricCard
+          data={summary?.advancedContactsWeekly}
+          loading={loading}
+          onMaximize={() => setAdvancedContactsModalOpen(true)}
+          maximizeDisabled={loading || advancedContactsChartEmpty}
+        />
+        <EstimatedBillingMetricCard
+          data={summary?.estimatedBillingWeekly}
+          loading={loading}
+          onMaximize={() => setEstimatedBillingModalOpen(true)}
+          maximizeDisabled={loading || estimatedBillingChartEmpty}
+        />
+      </div>
 
-      {/* Fila 3: contactos (ancho) + actividades (estrecho) */}
+      {/* Fila 2: embudo empresas (izq) + avance semanal oportunidades (der) */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.45fr)] lg:items-start">
+        <Card id="chart-companies-funnel" className="h-fit">
+          <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 px-5 pb-0 pt-5">
+            <CardTitle className="text-base font-medium">Empresas por etapa</CardTitle>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0 text-muted-foreground"
+              onClick={() => setCompaniesFunnelModalOpen(true)}
+              disabled={loading || companiesStageFunnelEmpty}
+              aria-label="Ampliar empresas por etapa"
+            >
+              <Maximize2 className="h-4 w-4" />
+            </Button>
+          </CardHeader>
+          <CardContent className="px-5 pt-6 pb-5">
+            <ChartCardBody
+              loading={loading}
+              isEmpty={companiesStageFunnelEmpty}
+              variant="bar"
+              emptyMessage="Sin empresas en etapas de prospecto."
+              className="h-auto"
+            >
+              <FunnelChart
+                stages={companiesStageFunnelStages}
+                height={weeklyOppsChartHeight}
+                singularLabel="empresa"
+              />
+            </ChartCardBody>
+          </CardContent>
+        </Card>
+
+        <Card id="chart-weekly-opps" className="h-fit">
+          <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 px-5 pb-0 pt-5">
+            <CardTitle className="text-base font-medium">Empresas</CardTitle>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0 text-muted-foreground"
+              onClick={() => setWeeklyOpportunitiesModalOpen(true)}
+              disabled={loading || weeklyOppsProgressChartEmpty}
+              aria-label="Ampliar empresas"
+            >
+              <Maximize2 className="h-4 w-4" />
+            </Button>
+          </CardHeader>
+          <CardContent className="px-5 pt-4 pb-5">
+            <ChartCardBody
+              loading={loading}
+              isEmpty={weeklyOppsProgressChartEmpty || weeklyOppsProgressChartData.length === 0}
+              variant="bar"
+              emptyMessage="No hay datos de empresas."
+              className="h-auto"
+            >
+              <OpportunitiesWeeklyProgressStackedChart
+                data={weeklyOppsProgressChartData}
+                height={weeklyOppsChartHeight}
+              />
+            </ChartCardBody>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Fila 3: contactos (ancho) + fuentes (estrecho) */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)] lg:items-start">
         <Card id="chart-contacts" className="h-fit">
           <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 px-5 pb-0 pt-5">
@@ -952,35 +1025,38 @@ export default function Reports() {
           </CardContent>
         </Card>
 
-        <Card id="chart-activities-donut" className="h-fit">
+        <Card id="chart-sources-by-entity" className="h-fit">
           <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 px-5 pb-0 pt-5">
-            <CardTitle className="text-base font-medium">Actividades</CardTitle>
+            <div className="min-w-0">
+              <CardTitle className="text-base font-medium">Fuentes: Contactos, Empresas y Oportunidades</CardTitle>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Solo registros en etapas con probabilidad 10%–100%
+              </p>
+            </div>
             <Button
               type="button"
               variant="ghost"
               size="icon"
               className="h-8 w-8 shrink-0 text-muted-foreground"
-              onClick={() => setActivitiesBarModalOpen(true)}
-              disabled={loading || activitiesBarChartEmpty}
-              aria-label="Ampliar actividades"
+              onClick={() => setSourcesByEntityModalOpen(true)}
+              disabled={loading || sourcesByEntityChartEmpty}
+              aria-label="Ampliar distribución por fuente"
             >
               <Maximize2 className="h-4 w-4" />
             </Button>
           </CardHeader>
-          <CardContent className="px-5 pt-2 pb-5">
+          <CardContent className="px-5 pt-4 pb-5">
             <ChartCardBody
               loading={loading}
-              isEmpty={activitiesBarChartEmpty}
+              isEmpty={sourcesByEntityChartEmpty}
               variant="bar"
-              emptyMessage="Sin actividades registradas en este periodo."
+              emptyMessage="Sin datos por fuente en este periodo."
               className="h-auto"
             >
-              {activitiesMonthComparison ? (
-                <ActivitiesByTypeBarChart
-                  comparison={activitiesMonthComparison}
-                  chartHeight={activitiesBarChartHeight}
-                />
-              ) : null}
+              <SourcesByEntityMixedChart
+                data={sourcesByEntityData}
+                height={activitiesBarChartHeight}
+              />
             </ChartCardBody>
           </CardContent>
         </Card>
@@ -1052,35 +1128,37 @@ export default function Reports() {
         </Card>
       </div>
 
-      {/* Fila 5: fuentes (izq) + tareas por mes (der) */}
+      {/* Fila 5: actividades (izq) + tareas por mes (der) */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:items-stretch">
-        <Card id="chart-sources-by-entity" className="flex h-full flex-col">
+        <Card id="chart-activities-donut" className="flex h-full flex-col">
           <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 px-5 pb-0 pt-5">
-            <CardTitle className="text-base font-medium">Fuentes: Contactos, Empresas y Oportunidades</CardTitle>
+            <CardTitle className="text-base font-medium">Actividades</CardTitle>
             <Button
               type="button"
               variant="ghost"
               size="icon"
               className="h-8 w-8 shrink-0 text-muted-foreground"
-              onClick={() => setSourcesByEntityModalOpen(true)}
-              disabled={loading || sourcesByEntityChartEmpty}
-              aria-label="Ampliar distribución por fuente"
+              onClick={() => setActivitiesBarModalOpen(true)}
+              disabled={loading || activitiesBarChartEmpty}
+              aria-label="Ampliar actividades"
             >
               <Maximize2 className="h-4 w-4" />
             </Button>
           </CardHeader>
-          <CardContent className="flex flex-1 flex-col px-5 pt-6 pb-5">
+          <CardContent className="flex flex-1 flex-col px-5 pt-2 pb-5">
             <ChartCardBody
               loading={loading}
-              isEmpty={sourcesByEntityChartEmpty}
+              isEmpty={activitiesBarChartEmpty}
               variant="bar"
-              emptyMessage="Sin datos por fuente en este periodo."
+              emptyMessage="Sin actividades registradas en este periodo."
               className="h-auto flex-1"
             >
-              <SourcesByEntityMixedChart
-                data={sourcesByEntityData}
-                height={tasksByMonthChartHeight}
-              />
+              {activitiesMonthComparison ? (
+                <ActivitiesByTypeBarChart
+                  comparison={activitiesMonthComparison}
+                  chartHeight={tasksByMonthChartHeight}
+                />
+              ) : null}
             </ChartCardBody>
           </CardContent>
         </Card>
@@ -1118,6 +1196,60 @@ export default function Reports() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
+        <Dialog open={estimatedBillingModalOpen} onOpenChange={setEstimatedBillingModalOpen}>
+          <DialogContent className={dialogContentClass} showCloseButton>
+            <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
+              <DialogTitle className="pr-8 text-base">Facturación estimada total</DialogTitle>
+            </DialogHeader>
+            <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 sm:px-6 sm:pb-6">
+              {!estimatedBillingChartEmpty ? (
+                <EstimatedBillingAreaChart
+                  data={summary?.estimatedBillingWeekly}
+                  height={activeProspectsChartHeight}
+                  showLegend
+                  showChartTitle
+                />
+              ) : null}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={advancedContactsModalOpen} onOpenChange={setAdvancedContactsModalOpen}>
+          <DialogContent className={dialogContentClass} showCloseButton>
+            <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
+              <DialogTitle className="pr-8 text-base">Contactos avanzados</DialogTitle>
+            </DialogHeader>
+            <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 sm:px-6 sm:pb-6">
+              {!advancedContactsChartEmpty ? (
+                <AdvancedContactsBarChart
+                  data={summary?.advancedContactsWeekly}
+                  height={activeProspectsChartHeight}
+                  showLegend
+                  showChartTitle
+                />
+              ) : null}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={activeProspectsModalOpen} onOpenChange={setActiveProspectsModalOpen}>
+          <DialogContent className={dialogContentClass} showCloseButton>
+            <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
+              <DialogTitle className="pr-8 text-base">Prospectos Activos</DialogTitle>
+            </DialogHeader>
+            <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 sm:px-6 sm:pb-6">
+              {!activeProspectsChartEmpty ? (
+                <ActiveProspectsAreaChart
+                  data={summary?.activeProspectsWeekly}
+                  height={activeProspectsChartHeight}
+                  showLegend
+                  showChartTitle
+                />
+              ) : null}
+            </div>
+          </DialogContent>
+        </Dialog>
+
         <Dialog open={wonOpportunitiesModalOpen} onOpenChange={setWonOpportunitiesModalOpen}>
           <DialogContent className={dialogContentClass} showCloseButton>
             <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
@@ -1164,15 +1296,18 @@ export default function Reports() {
         </Dialog>
 
         <Dialog open={sourcesByEntityModalOpen} onOpenChange={setSourcesByEntityModalOpen}>
-          <DialogContent className={dialogContentClass} showCloseButton>
+          <DialogContent className={sourcesDetailDialogClass} showCloseButton>
             <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
               <DialogTitle className="pr-8 text-base">Fuentes: Contactos, Empresas y Oportunidades</DialogTitle>
+              <p className="text-xs text-muted-foreground">
+                Solo registros en etapas con probabilidad 10%–100%
+              </p>
             </DialogHeader>
             <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 sm:px-6 sm:pb-6">
               {!sourcesByEntityChartEmpty ? (
-                <SourcesByEntityMixedChart
-                  data={sourcesByEntityData}
-                  height={520}
+                <SourcesExpandedView
+                  chartData={sourcesByEntityData}
+                  details={sourcesDetailData}
                 />
               ) : null}
             </div>
@@ -1250,10 +1385,10 @@ export default function Reports() {
                       />
                       <Bar
                         isAnimationActive={!exportingPdf}
-                        dataKey="retroceso"
-                        name="Retroceso"
+                        dataKey="atraso"
+                        name="Atraso"
                         stackId="weeklyCompanies"
-                        fill={WEEKLY_COMPANY_COLORS.retroceso}
+                        fill={WEEKLY_COMPANY_COLORS.atraso}
                         barSize={18}
                       />
                       <Bar
@@ -1394,10 +1529,10 @@ export default function Reports() {
                     barSize={18}
                   />
                   <Bar
-                    dataKey="retroceso"
-                    name="Retroceso"
+                    dataKey="atraso"
+                    name="Atraso"
                     stackId="weeklyCompanies"
-                    fill={WEEKLY_COMPANY_COLORS.retroceso}
+                    fill={WEEKLY_COMPANY_COLORS.atraso}
                     barSize={18}
                   />
                   <Bar
@@ -1414,22 +1549,66 @@ export default function Reports() {
           </CardContent>
         </Card>*/}
 
-        <Dialog open={weeklyOpportunitiesModalOpen} onOpenChange={setWeeklyOpportunitiesModalOpen}>
-          <DialogContent className={dialogContentClass} showCloseButton>
-            <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
-              <DialogTitle className="pr-8 text-base">Oportunidades</DialogTitle>
+        <Dialog
+          open={companiesFunnelModalOpen}
+          onOpenChange={(open) => {
+            setCompaniesFunnelModalOpen(open);
+            if (!open) setCompaniesStageWeekView('compare');
+          }}
+        >
+          <DialogContent className={companiesFunnelDialogClass} showCloseButton>
+            <DialogHeader className="shrink-0 items-start space-y-2 px-4 pb-2 pt-5 text-left sm:px-6 sm:pt-6">
+              <DialogTitle className="pr-8 text-base">Empresas por etapa</DialogTitle>
+              {companiesWeeklyComparison ? (
+                <CompaniesStageWeekTabs
+                  value={companiesStageWeekView}
+                  onValueChange={setCompaniesStageWeekView}
+                  currentWeekLabel={companiesWeeklyComparison.currentWeek.weekLabel}
+                  previousWeekLabel={companiesWeeklyComparison.previousWeek.weekLabel}
+                />
+              ) : null}
+            </DialogHeader>
+            <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-auto px-4 pb-5 pt-0 sm:px-6 sm:pb-6">
+              {companiesWeeklyComparison ? (
+                <CompaniesStageExpandedPanel
+                  weeklyComparison={companiesWeeklyComparison}
+                  view={companiesStageWeekView}
+                />
+              ) : !companiesStageFunnelEmpty ? (
+                <div className="flex justify-center">
+                  <div className="w-full max-w-md">
+                    <FunnelChart
+                      stages={companiesStageFunnelStages}
+                      height={560}
+                      singularLabel="empresa"
+                    />
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={weeklyOpportunitiesModalOpen}
+          onOpenChange={(open) => {
+            setWeeklyOpportunitiesModalOpen(open);
+            if (!open) setCompaniesWeeklyModalView('chart');
+          }}
+        >
+          <DialogContent className={companiesWeeklyDialogClass} showCloseButton>
+            <DialogHeader className="shrink-0 items-start space-y-2 px-4 pb-2 pt-5 text-left sm:px-6 sm:pt-6">
+              <DialogTitle className="pr-8 text-base">Empresas</DialogTitle>
             </DialogHeader>
             <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 sm:px-6 sm:pb-6">
-              {!weeklyOppsProgressChartEmpty ? (
-                <OpportunitiesWeeklyProgressStackedChart
-                  data={weeklyOppsProgressChartData}
-                  height={520}
-                />
-              ) : (
-                <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
-                  No hay datos de oportunidades
-                </div>
-              )}
+              <CompaniesWeeklyExpandedPanel
+                chartData={weeklyOppsProgressChartData}
+                chartEmpty={weeklyOppsProgressChartEmpty || weeklyOppsProgressChartData.length === 0}
+                advisorMovement={advisorFunnelMovement}
+                chartHeight={480}
+                view={companiesWeeklyModalView}
+                onViewChange={setCompaniesWeeklyModalView}
+              />
             </div>
           </DialogContent>
         </Dialog>

@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import { google } from 'googleapis';
 import { simpleParser } from 'mailparser';
 import { PrismaService } from '../prisma/prisma.service';
@@ -197,6 +197,74 @@ export class GmailService {
     return { id: threadId, subject, messages };
   }
 
+  private buildRawEmail(params: {
+    to: string;
+    cc?: string;
+    subject: string;
+    bodyHtml: string;
+    inReplyTo?: string;
+    attachments?: { fileName: string; mimeType?: string; contentBase64: string }[];
+  }): string {
+    const lines: string[] = [];
+    lines.push('From: me');
+    lines.push(`To: ${params.to}`);
+    if (params.cc) lines.push(`Cc: ${params.cc}`);
+    lines.push(`Subject: ${params.subject}`);
+    if (params.inReplyTo) {
+      const ref = params.inReplyTo.startsWith('<') ? params.inReplyTo : `<${params.inReplyTo}>`;
+      lines.push(`In-Reply-To: ${ref}`);
+      lines.push(`References: ${ref}`);
+    }
+    lines.push('MIME-Version: 1.0');
+
+    const attachmentBuffers: { fileName: string; mimeType: string; content: Buffer }[] = [];
+    for (const att of params.attachments ?? []) {
+      const fileName = att.fileName?.trim();
+      const b64 = att.contentBase64?.trim();
+      if (!fileName || !b64) continue;
+      try {
+        const content = Buffer.from(b64, 'base64');
+        if (content.length === 0) continue;
+        attachmentBuffers.push({
+          fileName,
+          mimeType: att.mimeType?.trim() || 'application/octet-stream',
+          content,
+        });
+      } catch {
+        throw new BadRequestException(`Adjunto inválido: ${fileName}`);
+      }
+    }
+
+    if (attachmentBuffers.length === 0) {
+      lines.push('Content-Type: text/html; charset=utf-8');
+      lines.push('');
+      lines.push(params.bodyHtml);
+    } else {
+      const boundary = `mixed_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      lines.push(`Content-Type: multipart/mixed; boundary="${boundary}"`);
+      lines.push('');
+      lines.push(`--${boundary}`);
+      lines.push('Content-Type: text/html; charset=utf-8');
+      lines.push('Content-Transfer-Encoding: 7bit');
+      lines.push('');
+      lines.push(params.bodyHtml);
+      for (const att of attachmentBuffers) {
+        lines.push(`--${boundary}`);
+        lines.push(`Content-Type: ${att.mimeType}; name="${att.fileName}"`);
+        lines.push(`Content-Disposition: attachment; filename="${att.fileName}"`);
+        lines.push('Content-Transfer-Encoding: base64');
+        lines.push('');
+        const b64 = att.content.toString('base64');
+        for (let i = 0; i < b64.length; i += 76) {
+          lines.push(b64.slice(i, i + 76));
+        }
+      }
+      lines.push(`--${boundary}--`);
+    }
+
+    return Buffer.from(lines.join('\r\n')).toString('base64url');
+  }
+
   async sendMessage(
     userId: string,
     to: string,
@@ -205,23 +273,17 @@ export class GmailService {
     cc?: string,
     threadId?: string,
     inReplyTo?: string,
+    attachments?: { fileName: string; mimeType?: string; contentBase64: string }[],
   ) {
     const gmail = await this.getGmailClient(userId);
-    const emailLines: string[] = [];
-    emailLines.push(`From: me`);
-    emailLines.push(`To: ${to}`);
-    if (cc) emailLines.push(`Cc: ${cc}`);
-    emailLines.push(`Subject: ${subject}`);
-    if (inReplyTo) {
-      const ref = inReplyTo.startsWith('<') ? inReplyTo : `<${inReplyTo}>`;
-      emailLines.push(`In-Reply-To: ${ref}`);
-      emailLines.push(`References: ${ref}`);
-    }
-    emailLines.push('MIME-Version: 1.0');
-    emailLines.push('Content-Type: text/html; charset=utf-8');
-    emailLines.push('');
-    emailLines.push(bodyHtml);
-    const encoded = Buffer.from(emailLines.join('\r\n')).toString('base64url');
+    const encoded = this.buildRawEmail({
+      to,
+      cc,
+      subject,
+      bodyHtml,
+      inReplyTo,
+      attachments,
+    });
     await gmail.users.messages.send({
       userId: 'me',
       requestBody: {

@@ -18,6 +18,23 @@ export function formatCurrencyShort(amount: number): string {
   return `S/ ${amount.toLocaleString('es-PE')}`;
 }
 
+/** Formato compacto: S/424K, S/1,621K, S/2.97M */
+export function formatCurrencyCompact(amount: number): string {
+  const sign = amount < 0 ? '-' : '';
+  const abs = Math.abs(amount);
+  if (abs >= 1_000_000) {
+    const v = abs / 1_000_000;
+    const formatted =
+      v % 1 === 0 ? String(v) : v.toFixed(2).replace(/\.?0+$/, '');
+    return `${sign}S/${formatted}M`;
+  }
+  if (abs >= 1_000) {
+    const v = Math.round(abs / 1_000);
+    return `${sign}S/${v.toLocaleString('es-PE')}K`;
+  }
+  return `${sign}S/ ${abs.toLocaleString('es-PE')}`;
+}
+
 const DATE_ONLY_YMD = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Fecha local para mostrar; evita desfase UTC en campos de "solo fecha". */

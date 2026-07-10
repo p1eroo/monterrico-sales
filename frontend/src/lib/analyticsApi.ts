@@ -29,19 +29,36 @@ export type AnalyticsSummary = {
       companyName: string | null;
     }[];
   }[];
+  /** Contactos creados en el rango, por fuente (solo etapas 10%–100%). */
   contactsBySource: { name: string; value: number }[];
+  /** Oportunidades creadas en el rango, por fuente (solo etapas 10%–100%). */
   opportunitiesBySource: { name: string; value: number }[];
+  /** Empresas creadas en el rango, por fuente (solo etapas 10%–100%). */
   companiesBySource: { name: string; value: number }[];
+  /** Detalle por fuente para modal: empresas, etapas y hot 70%+. */
+  sourcesDetail: {
+    slug: string;
+    companyCount: number;
+    estimatedBilling: number;
+    stages: {
+      slug: string;
+      name: string;
+      probability: number;
+      count: number;
+    }[];
+    hot70Count: number;
+    hot70Billing: number;
+  }[];
   funnelByStage: { name: string; value: number }[];
   /** Empresas creadas en el rango, agrupadas por `etapa` (mismos filtros que contactos). */
   companiesByStage: { name: string; value: number }[];
   opportunitiesByStage: { name: string; count: number }[];
-  /** Por semana ISO (UTC): avance / nuevo / retroceso / sin cambios en cartera. */
+  /** Por semana ISO (UTC): avance / nuevo / atraso / sin cambios en cartera de empresas. */
   companiesWeeklyProgress: {
     name: string;
     avance: number;
     nuevoIngreso: number;
-    retroceso: number;
+    atraso: number;
     sinCambios: number;
   }[];
   /** Por semana ISO (UTC): avance / nuevo / atraso / sin cambios en oportunidades. */
@@ -80,7 +97,103 @@ export type AnalyticsSummary = {
   opportunitiesByStageData: { name: string; count: number; value: number }[];
   followUpsByMonth: { name: string; completados: number; pendientes: number }[];
   opportunitiesInteraction: { withInteraction: number; withoutInteraction: number };
+  /** Últimas 6 semanas: empresas en etapas con probabilidad 10–100 %. */
+  activeProspectsWeekly: {
+    weeks: {
+      name: string;
+      weekStart: string;
+      weekEnd: string;
+      total: number;
+      byStage: {
+        slug: string;
+        name: string;
+        probability: number;
+        count: number;
+      }[];
+    }[];
+    currentTotal: number;
+    changePct: number | null;
+  };
+  /** Últimas 6 semanas: matriz asesor × etapa (10–100 %) y facturación estimada por asesor. */
+  activeProspectsByAdvisorWeekly: {
+    weeks: {
+      name: string;
+      weekStart: string;
+      weekEnd: string;
+      advisors: { id: string; name: string }[];
+      stages: {
+        slug: string;
+        name: string;
+        probability: number;
+        countsByAdvisor: Record<string, number>;
+      }[];
+      estimatedBillingByAdvisor: Record<string, number>;
+    }[];
+  };
+  /** Movimiento del embudo por asesor (penúltima semana ISO vs semana anterior). */
+  companiesAdvisorFunnelMovement: {
+    fromWeekNumber: number;
+    toWeekNumber: number;
+    fromWeekLabel: string;
+    toWeekLabel: string;
+    currentWeekLabel: string;
+    title: string;
+    advisors: {
+      id: string;
+      name: string;
+      activeProspects: number;
+      metrics: {
+        nuevoIngreso: number;
+        avance: number;
+        atraso: number;
+        sinCambios: number;
+      };
+    }[];
+  };
+  /** Últimas 6 semanas: empresas en etapas con probabilidad 30–100 %. */
+  advancedContactsWeekly: {
+    weeks: {
+      name: string;
+      weekStart: string;
+      weekEnd: string;
+      total: number;
+      byStage: {
+        slug: string;
+        name: string;
+        probability: number;
+        count: number;
+      }[];
+    }[];
+    currentTotal: number;
+    changePct: number | null;
+  };
+  /** Últimas 6 semanas: facturación estimada de empresas en etapas 10–100 %. */
+  estimatedBillingWeekly: {
+    weeks: {
+      name: string;
+      weekStart: string;
+      weekEnd: string;
+      total: number;
+      byStage: {
+        slug: string;
+        name: string;
+        probability: number;
+        amount: number;
+      }[];
+    }[];
+    currentTotal: number;
+    changePct: number | null;
+  };
 };
+
+export type ActiveProspectsWeekly = AnalyticsSummary['activeProspectsWeekly'];
+
+export type ActiveProspectsByAdvisorWeekly =
+  AnalyticsSummary['activeProspectsByAdvisorWeekly'];
+
+export type AdvancedContactsWeekly = AnalyticsSummary['advancedContactsWeekly'];
+
+export type EstimatedBillingWeekly = AnalyticsSummary['estimatedBillingWeekly'];
 
 export type GoalChartPoint = {
   name: string;

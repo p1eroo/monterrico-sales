@@ -12,6 +12,8 @@ export type WeeklyOpportunityProgressPoint = {
   sinCambios: number;
 };
 
+export type WeeklyPortfolioProgressPoint = WeeklyOpportunityProgressPoint;
+
 const SERIES_COLORS = {
   avance: '#13944C',
   nuevoIngreso: '#34d399',
@@ -25,10 +27,11 @@ function shortWeekLabel(name: string): string {
 }
 
 interface OpportunitiesWeeklyProgressStackedChartProps {
-  data: WeeklyOpportunityProgressPoint[];
+  data: WeeklyPortfolioProgressPoint[];
   className?: string;
   height?: number;
   showLegend?: boolean;
+  emptyMessage?: string;
 }
 
 export function OpportunitiesWeeklyProgressStackedChart({
@@ -36,6 +39,7 @@ export function OpportunitiesWeeklyProgressStackedChart({
   className,
   height = 380,
   showLegend = true,
+  emptyMessage = 'No hay datos de empresas.',
 }: OpportunitiesWeeklyProgressStackedChartProps) {
   const chartTheme = useChartTheme();
 
@@ -152,7 +156,7 @@ export function OpportunitiesWeeklyProgressStackedChart({
         )}
         style={{ height }}
       >
-        No hay datos de oportunidades.
+        {emptyMessage}
       </div>
     );
   }

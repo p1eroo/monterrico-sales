@@ -2081,7 +2081,9 @@ export class ImportExportService {
       const fuenteQ = await this.crmConfig.normalizeLeadSource(opts.fuente).catch(() => opts.fuente!.trim());
       where.fuente = { equals: fuenteQ, mode: 'insensitive' };
     }
-    if (opts?.etapa?.trim()) where.etapa = opts.etapa.trim();
+    const etapas = opts?.etapa?.split(',').map((s) => s.trim()).filter(Boolean) ?? [];
+    if (etapas.length === 1) where.etapa = etapas[0];
+    else if (etapas.length > 1) where.etapa = { in: etapas };
     if (!(scope && !scope.unrestricted)) {
       const advisorClause = companyAdvisorWhere(
         parseAdvisorFilterQuery({

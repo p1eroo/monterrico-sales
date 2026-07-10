@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef, type DragEvent, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -33,7 +33,8 @@ import {
   contactDetailHref,
   opportunityDetailHref,
 } from '@/lib/detailRoutes';
-import { fetchGmailMessages, fetchGmailThread, sendGmailMessage, linkEmailToCRM, downloadGmailAttachment } from '@/lib/gmailApi';
+import { fetchGmailMessages, fetchGmailThread, sendGmailMessage, filesToGmailAttachments, linkEmailToCRM, downloadGmailAttachment } from '@/lib/gmailApi';
+import { filterValidAttachmentFiles, ingestComposeFiles } from '@/lib/composeFiles';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -93,6 +94,15 @@ function formatTime(iso: string) {
   if (days === 1) return 'Ayer';
   if (days < 7) return d.toLocaleDateString('es-PE', { weekday: 'short' });
   return d.toLocaleDateString('es-PE', { day: '2-digit', month: 'short' });
+}
+
+function formatComposeFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) {
+    const kb = Math.round(bytes / 1024);
+    return `${kb.toLocaleString('es-PE')} K`;
+  }
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function formatFullDate(iso: string) {
@@ -274,18 +284,148 @@ export default function InboxPage() {
   const [composeShowBcc, setComposeShowBcc] = useState(false);
   const composeFileRef = useRef<HTMLInputElement>(null);
   const composeBodyRef = useRef<HTMLDivElement>(null);
+  const composeDragCounter = useRef(0);
+  const [composeDragOver, setComposeDragOver] = useState(false);
   const composeHasAttachments = composeAttachments.length > 0;
 
+  const syncComposeBodyFromRef = useCallback(() => {
+    if (composeBodyRef.current) {
+      setComposeBody(composeBodyRef.current.innerHTML);
+    }
+  }, []);
+
+  const reportComposeFileErrors = useCallback((errors: string[]) => {
+    for (const err of errors) toast.error(err);
+  }, []);
+
+  const addComposeAttachments = useCallback((files: File[]) => {
+    if (!files.length) return;
+    setComposeAttachments((prev) => [...prev, ...files]);
+  }, []);
+
+  const processComposeFiles = useCallback(
+    async (files: File[]) => {
+      if (!files.length) return;
+      const result = await ingestComposeFiles(files, composeBodyRef.current);
+      if (result.inlineImages > 0) {
+        syncComposeBodyFromRef();
+        toast.success(
+          result.inlineImages === 1
+            ? 'Imagen insertada en el mensaje'
+            : `${result.inlineImages} imágenes insertadas en el mensaje`,
+        );
+      }
+      if (result.attachments.length) {
+        addComposeAttachments(result.attachments);
+        toast.success(
+          result.attachments.length === 1
+            ? 'Archivo adjuntado'
+            : `${result.attachments.length} archivos adjuntados`,
+        );
+      }
+      reportComposeFileErrors(result.errors);
+    },
+    [syncComposeBodyFromRef, addComposeAttachments, reportComposeFileErrors],
+  );
+
+  const handleComposeFileInputChange = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(e.target.files ?? []);
+      e.target.value = '';
+      if (!files.length) return;
+      const { valid, errors } = filterValidAttachmentFiles(files);
+      if (valid.length) {
+        addComposeAttachments(valid);
+        toast.success(
+          valid.length === 1 ? 'Archivo adjuntado' : `${valid.length} archivos adjuntados`,
+        );
+      }
+      reportComposeFileErrors(errors);
+    },
+    [addComposeAttachments, reportComposeFileErrors],
+  );
+
+  const hasComposeFileDrag = (e: DragEvent) =>
+    Array.from(e.dataTransfer.types).includes('Files');
+
+  const handleComposeDragEnter = useCallback((e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!hasComposeFileDrag(e)) return;
+    composeDragCounter.current += 1;
+    setComposeDragOver(true);
+  }, []);
+
+  const handleComposeDragLeave = useCallback((e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    composeDragCounter.current -= 1;
+    if (composeDragCounter.current <= 0) {
+      composeDragCounter.current = 0;
+      setComposeDragOver(false);
+    }
+  }, []);
+
+  const handleComposeDragOver = useCallback((e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (hasComposeFileDrag(e)) {
+      e.dataTransfer.dropEffect = 'copy';
+    }
+  }, []);
+
+  const handleComposeDrop = useCallback(
+    (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      composeDragCounter.current = 0;
+      setComposeDragOver(false);
+      const files = Array.from(e.dataTransfer.files ?? []);
+      if (!files.length) return;
+      void processComposeFiles(files);
+    },
+    [processComposeFiles],
+  );
+
+  const composeBodyClassName = cn(
+    'min-h-0 flex-1 overflow-y-auto border-0 bg-transparent text-sm outline-none [&:empty:before]:content-[attr(data-placeholder)] [&:empty:before]:text-muted-foreground/50',
+    composeDragOver && 'bg-primary/5',
+  );
+
+  const composeDropOverlay = composeDragOver ? (
+    <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-lg border-2 border-dashed border-primary/60 bg-primary/5">
+      <div className="flex flex-col items-center gap-1 text-primary">
+        <Paperclip className="size-5" />
+        <span className="text-xs font-medium">Suelta para adjuntar</span>
+      </div>
+    </div>
+  ) : null;
+
+  useEffect(() => {
+    if (!composeOpen) {
+      composeDragCounter.current = 0;
+      setComposeDragOver(false);
+    }
+  }, [composeOpen]);
+
   const composeAttachmentsPreview = composeHasAttachments ? (
-    <div className="flex items-center gap-1 overflow-x-auto px-1 py-1 border-t">
+    <div className="shrink-0 divide-y border-t bg-muted/40">
       {composeAttachments.map((file, i) => (
-        <span key={i} className="flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-[10px] text-muted-foreground whitespace-nowrap">
-          <Paperclip className="size-3" />
-          <span className="truncate max-w-[100px]">{file.name}</span>
-          <button type="button" className="ml-0.5 hover:text-foreground" onClick={() => setComposeAttachments((prev) => prev.filter((_, j) => j !== i))}>
-            <X className="size-3" />
+        <div key={`${file.name}-${file.size}-${i}`} className="flex items-center gap-2 px-4 py-2">
+          <Paperclip className="size-4 shrink-0 text-muted-foreground" />
+          <span className="min-w-0 flex-1 truncate text-sm text-[#0b57d0] dark:text-[#8ab4f8]">
+            {file.name}
+            <span className="text-muted-foreground"> ({formatComposeFileSize(file.size)})</span>
+          </span>
+          <button
+            type="button"
+            className="shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+            title="Quitar adjunto"
+            onClick={() => setComposeAttachments((prev) => prev.filter((_, j) => j !== i))}
+          >
+            <X className="size-4" />
           </button>
-        </span>
+        </div>
       ))}
     </div>
   ) : null;
@@ -484,21 +624,19 @@ export default function InboxPage() {
       return;
     }
     setSendingEmail(true);
+    const to = composeTo;
+    const subject = composeSubject;
+    const cc = composeShowCc ? composeCc.trim() : undefined;
     try {
-      const cc = composeShowCc ? composeCc.trim() : undefined;
-      const bcc = composeShowBcc ? composeBcc.trim() : undefined;
-      await sendGmailMessage(composeTo, composeSubject, bodyHtml, { cc: cc || undefined });
+      const attachments =
+        composeAttachments.length > 0
+          ? await filesToGmailAttachments(composeAttachments)
+          : undefined;
+      await sendGmailMessage(to, subject, bodyHtml, {
+        cc: cc || undefined,
+        attachments,
+      });
       toast.success('Correo enviado');
-
-      // Vincular destinatarios al CRM
-      toast.loading('Vinculando destinatario(s) al CRM...', { id: 'gmail-link' });
-      try {
-        await linkEmailToCRM(composeTo, composeSubject);
-        toast.dismiss('gmail-link');
-      } catch (e) {
-        toast.dismiss('gmail-link');
-        toast.error('Error al vincular: ' + (e instanceof Error ? e.message : ''));
-      }
       setComposeOpen(false);
       setComposeMinimized(false);
       setComposeFullscreen(false);
@@ -507,12 +645,17 @@ export default function InboxPage() {
       setComposeBcc('');
       setComposeSubject('');
       setComposeBody('');
+      setComposeAttachments([]);
       setComposeFormatOpen(false);
       setComposeEmojiOpen(false);
       if (composeBodyRef.current) composeBodyRef.current.innerHTML = '';
       setComposeShowCc(false);
       setComposeShowBcc(false);
-      // Refresh after a short delay to let Gmail index the message
+      void linkEmailToCRM(to, subject)
+        .then(() => toast.success('Destinatario vinculado al CRM'))
+        .catch((e) =>
+          toast.error('Error al vincular: ' + (e instanceof Error ? e.message : '')),
+        );
       setTimeout(async () => {
         try {
           const res = await fetchGmailMessages(50, undefined, gmailFolderParams.labelIds, gmailFolderParams.q);
@@ -524,6 +667,7 @@ export default function InboxPage() {
     } catch (e) {
       console.error('Error sending email:', e);
       toast.error(e instanceof Error ? e.message : 'Error al enviar el correo');
+    } finally {
       setSendingEmail(false);
     }
   };
@@ -1173,6 +1317,15 @@ export default function InboxPage() {
       ))}
 
       {/* Compose floating card / fullscreen */}
+      {composeOpen && (
+        <input
+          ref={composeFileRef}
+          type="file"
+          multiple
+          className="hidden"
+          onChange={handleComposeFileInputChange}
+        />
+      )}
       {composeOpen && composeFullscreen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="flex h-[90vh] w-[90vw] max-w-4xl flex-col rounded-xl border border-border bg-card shadow-2xl">
@@ -1187,7 +1340,14 @@ export default function InboxPage() {
                 </button>
               </div>
             </div>
-            <div className="flex min-h-0 flex-1 flex-col">
+            <div
+              className="relative flex min-h-0 flex-1 flex-col"
+              onDragEnter={handleComposeDragEnter}
+              onDragLeave={handleComposeDragLeave}
+              onDragOver={handleComposeDragOver}
+              onDrop={handleComposeDrop}
+            >
+              {composeDropOverlay}
               {/* Recipients */}
               <div className="shrink-0">
                 <div className="flex items-center gap-2 border-b px-5">
@@ -1220,14 +1380,11 @@ export default function InboxPage() {
                 ref={composeBodyRef}
                 contentEditable
                 suppressContentEditableWarning
-                className="min-h-0 flex-1 overflow-y-auto border-0 bg-transparent px-5 py-3 text-sm outline-none [&:empty:before]:content-[attr(data-placeholder)] [&:empty:before]:text-muted-foreground/50"
+                className={cn(composeBodyClassName, 'px-5 py-3')}
                 data-placeholder="Escribe tu mensaje..."
-                onInput={() => {
-                  if (composeBodyRef.current) {
-                    setComposeBody(composeBodyRef.current.innerHTML);
-                  }
-                }}
+                onInput={syncComposeBodyFromRef}
               />
+              {composeAttachmentsPreview}
               <div className="flex shrink-0 items-center justify-between border-t px-4 py-2">
                 <div className="flex items-center gap-1">
                   <Button className="bg-[#13944C] hover:bg-[#0f7a3d]" disabled={sendingEmail} onClick={() => void handleSendEmail()}>
@@ -1235,7 +1392,7 @@ export default function InboxPage() {
                     {sendingEmail ? 'Enviando…' : 'Enviar'}
                   </Button>
                   <button type="button" className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" title="Formato"><span className="text-xs font-semibold tracking-wide">Aa</span></button>
-                  <button type="button" className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" title="Adjuntar archivos"><Paperclip className="size-4" /></button>
+                  <button type="button" className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" title="Adjuntar archivos" onClick={() => composeFileRef.current?.click()}><Paperclip className="size-4" /></button>
                   <button type="button" className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" title="Insertar emoji"><span className="text-sm">😊</span></button>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => setComposeFullscreen(false)}>Salir de pantalla completa</Button>
@@ -1280,7 +1437,14 @@ export default function InboxPage() {
 
           {/* Body (hidden when minimized) */}
           {!composeMinimized && (
-            <div className="flex min-h-0 flex-1 flex-col">
+            <div
+              className="relative flex min-h-0 flex-1 flex-col"
+              onDragEnter={handleComposeDragEnter}
+              onDragLeave={handleComposeDragLeave}
+              onDragOver={handleComposeDragOver}
+              onDrop={handleComposeDrop}
+            >
+              {composeDropOverlay}
               {/* Recipients */}
               <div className="shrink-0">
                 {/* PARA */}
@@ -1350,13 +1514,9 @@ export default function InboxPage() {
                 ref={composeBodyRef}
                 contentEditable
                 suppressContentEditableWarning
-                className="min-h-0 flex-1 overflow-y-auto border-0 bg-transparent px-4 py-3 text-sm outline-none [&:empty:before]:content-[attr(data-placeholder)] [&:empty:before]:text-muted-foreground/50"
+                className={cn(composeBodyClassName, 'px-4 py-3')}
                 data-placeholder="Escribe tu mensaje..."
-                onInput={() => {
-                  if (composeBodyRef.current) {
-                    setComposeBody(composeBodyRef.current.innerHTML);
-                  }
-                }}
+                onInput={syncComposeBodyFromRef}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                     e.preventDefault();
@@ -1365,8 +1525,9 @@ export default function InboxPage() {
                 }}
               />
 
-              {/* Toolbar */}
+              {/* Adjuntos + toolbar */}
               <div className="shrink-0">
+                {composeAttachmentsPreview}
                 <div className="mx-4 border-t" />
                  <div className="flex items-center justify-between px-2 py-1.5">
                    <div className="flex items-center gap-0.5">
@@ -1452,19 +1613,6 @@ export default function InboxPage() {
                   >
                     <Paperclip className="size-4" />
                   </button>
-                  <input
-                    ref={composeFileRef}
-                    type="file"
-                    multiple
-                    className="hidden"
-                    onChange={(e) => {
-                      const files = Array.from(e.target.files ?? []);
-                      if (files.length > 0) {
-                        setComposeAttachments((prev) => [...prev, ...files]);
-                      }
-                      e.target.value = '';
-                    }}
-                  />
 
                   {/* Emoji picker */}
                   <div className="relative">
@@ -1514,7 +1662,6 @@ export default function InboxPage() {
                 </div>
 
                   </div>  {/* toolbar content */}
-                {composeAttachmentsPreview}
               </div>
           </div>
           )}

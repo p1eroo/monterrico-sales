@@ -39,7 +39,11 @@ export function ChartCardBody({
     );
   }
 
-  return <div className={outer}>{children}</div>;
+  return (
+    <div className={outer} data-chart-capture>
+      {children}
+    </div>
+  );
 }
 
 export type { ChartSilhouetteVariant };

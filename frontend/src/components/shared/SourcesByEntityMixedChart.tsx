@@ -158,7 +158,7 @@ export function SourcesByEntityMixedChart({
   return (
     <div className={cn('flex w-full flex-col', className)}>
       {showLegendSummary ? (
-        <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-1 px-1 text-xs text-muted-foreground">
+        <div className="mb-3 shrink-0 flex flex-wrap items-center gap-x-5 gap-y-1 px-1 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
             <span
               className="inline-block size-2.5 shrink-0 rounded-full"
@@ -191,7 +191,7 @@ export function SourcesByEntityMixedChart({
           </span>
         </div>
       ) : null}
-      <div className="shrink-0 leading-none [&_.apexcharts-svg]:overflow-visible">
+      <div className="min-h-0 flex-1 shrink-0 leading-none [&_.apexcharts-canvas]:!w-full [&_.apexcharts-svg]:overflow-visible">
         <Chart options={options} series={series} type="line" height={height} />
       </div>
     </div>

@@ -54,11 +54,43 @@ export async function fetchGmailThread(threadId: string): Promise<GmailThreadDet
   return api<GmailThreadDetail>(`/gmail/threads/${threadId}`);
 }
 
+export type GmailAttachmentInput = {
+  fileName: string;
+  mimeType?: string;
+  contentBase64: string;
+};
+
 export type SendGmailMessageOptions = {
   cc?: string;
   threadId?: string;
   inReplyTo?: string;
+  attachments?: GmailAttachmentInput[];
 };
+
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      const i = result.indexOf('base64,');
+      resolve(i >= 0 ? result.slice(i + 7) : result);
+    };
+    reader.onerror = () => reject(new Error(`No se pudo leer ${file.name}`));
+    reader.readAsDataURL(file);
+  });
+}
+
+export async function filesToGmailAttachments(files: File[]): Promise<GmailAttachmentInput[]> {
+  const attachments: GmailAttachmentInput[] = [];
+  for (const file of files) {
+    attachments.push({
+      fileName: file.name,
+      mimeType: file.type || 'application/octet-stream',
+      contentBase64: await readFileAsBase64(file),
+    });
+  }
+  return attachments;
+}
 
 export async function sendGmailMessage(
   to: string,
@@ -75,6 +107,7 @@ export async function sendGmailMessage(
       cc: options?.cc,
       threadId: options?.threadId,
       inReplyTo: options?.inReplyTo,
+      attachments: options?.attachments?.length ? options.attachments : undefined,
     }),
   });
 }

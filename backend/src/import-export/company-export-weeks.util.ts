@@ -81,3 +81,36 @@ export function buildEtapaStepFunction(
     return cur;
   };
 }
+
+function parseAuditNumber(raw: string, fallback: number): number {
+  const n = Number(String(raw).replace(/[^\d.-]/g, ''));
+  return Number.isFinite(n) ? n : fallback;
+}
+
+/** Construye función escalón para campos numéricos (p. ej. facturación estimada). */
+export function buildNumericStepFunction(
+  createdAt: Date,
+  currentValue: number,
+  audits: { at: Date; oldValue: string; newValue: string }[],
+): (instant: Date) => number {
+  const sorted = [...audits].sort((a, b) => a.at.getTime() - b.at.getTime());
+  const initial =
+    sorted.length > 0 && sorted[0].oldValue.trim()
+      ? parseAuditNumber(sorted[0].oldValue, currentValue)
+      : currentValue;
+  const steps: { t: Date; value: number }[] = [{ t: createdAt, value: initial }];
+  for (const a of sorted) {
+    steps.push({
+      t: a.at,
+      value: parseAuditNumber(a.newValue, initial),
+    });
+  }
+  return (instant: Date) => {
+    let cur = steps[0].value;
+    for (let i = 1; i < steps.length; i++) {
+      if (steps[i].t <= instant) cur = steps[i].value;
+      else break;
+    }
+    return cur;
+  };
+}

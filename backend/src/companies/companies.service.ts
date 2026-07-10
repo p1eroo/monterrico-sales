@@ -698,8 +698,18 @@ export class CompaniesService {
     return andParts;
   }
 
+  /** Filtro por etapa de la empresa (CSV); alineado con la columna `displayEtapa` del listado. */
+  private buildCompanyEtapaWhere(
+    raw?: string,
+  ): Prisma.CompanyWhereInput | null {
+    const etapas = raw?.split(',').map((s) => s.trim()).filter(Boolean) ?? [];
+    if (etapas.length === 0) return null;
+    if (etapas.length === 1) return { etapa: etapas[0] };
+    return { etapa: { in: etapas } };
+  }
+
   /**
-   * Conteos por etapa para pestañas dinámicas (misma lógica OR empresa / contacto que `findAllSummary`).
+   * Conteos por etapa para pestañas dinámicas (misma lógica que `findAllSummary`).
    */
   async summaryEtapaCounts(
     opts?: {
@@ -721,19 +731,7 @@ export class CompaniesService {
       this.prisma.company.count({
         where: mergeCompanyScope(
           {
-            AND: [
-              ...andParts,
-              {
-                OR: [
-                  { etapa: etapaQ },
-                  {
-                    contacts: {
-                      some: { contact: { etapa: etapaQ } },
-                    },
-                  },
-                ],
-              },
-            ],
+            AND: [...andParts, { etapa: etapaQ }],
           },
           scope,
         ),
@@ -750,7 +748,7 @@ export class CompaniesService {
 
   /**
    * Listado paginado con agregados por empresa (sin cargar todos los contactos en el cliente).
-   * Filtro por etapa: empresas con al menos un contacto en esa etapa (no coincide siempre con la etapa “display” por peso).
+   * Filtro por etapa: solo `company.etapa` (coincide con la columna `displayEtapa`).
    */
   async findAllSummary(
     opts?: {
@@ -775,19 +773,8 @@ export class CompaniesService {
     const skip = (page - 1) * limit;
 
     const andParts = await this.buildCompanySummaryAndParts(opts, scope);
-    const etapaQ = opts?.etapa?.trim();
-    if (etapaQ) {
-      andParts.push({
-        OR: [
-          { etapa: etapaQ },
-          {
-            contacts: {
-              some: { contact: { etapa: etapaQ } },
-            },
-          },
-        ],
-      });
-    }
+    const etapaWhere = this.buildCompanyEtapaWhere(opts?.etapa);
+    if (etapaWhere) andParts.push(etapaWhere);
 
     const inner: Prisma.CompanyWhereInput =
       andParts.length > 0 ? { AND: andParts } : {};
