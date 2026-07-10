@@ -111,6 +111,7 @@ export default function ChatwootInboxView() {
   const [searching, setSearching] = useState(false);
   const [unreadList, setUnreadList] = useState<ChatwootConversation[]>([]);
   const [loadingUnread, setLoadingUnread] = useState(false);
+  const [loadingUnreadMore, setLoadingUnreadMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [messagesCache, setMessagesCache] = useState<Record<number, ChatwootMessage[]>>({});
   const [filter, setFilter] = useState<'all' | 'unread' | 'open' | 'resolved' | 'contacts'>('all');
@@ -193,9 +194,8 @@ export default function ChatwootInboxView() {
   async function loadUnreadList(options?: {
     force?: boolean;
     append?: boolean;
-    showLoading?: boolean;
   }) {
-    const { force = false, append = false, showLoading = true } = options ?? {};
+    const { force = false, append = false } = options ?? {};
 
     if (append) {
       if (loadingUnreadMoreRef.current) return;
@@ -208,8 +208,12 @@ export default function ChatwootInboxView() {
     else unreadPageRef.current = page;
 
     const run = (async () => {
-      if (showLoading && !append) setLoadingUnread(true);
-      if (append) loadingUnreadMoreRef.current = true;
+      if (append) {
+        loadingUnreadMoreRef.current = true;
+        setLoadingUnreadMore(true);
+      } else {
+        setLoadingUnread(true);
+      }
       try {
         const items = await fetchUnreadConversations({
           page,
@@ -226,11 +230,15 @@ export default function ChatwootInboxView() {
         });
         setHasMoreUnread(items.length >= 25);
       } catch {
-        if (!append && showLoading) setUnreadList([]);
+        if (!append) setUnreadList([]);
         if (!append) setHasMoreUnread(false);
       } finally {
-        if (showLoading && !append) setLoadingUnread(false);
-        loadingUnreadMoreRef.current = false;
+        if (append) {
+          loadingUnreadMoreRef.current = false;
+          setLoadingUnreadMore(false);
+        } else {
+          setLoadingUnread(false);
+        }
       }
     })();
 
@@ -249,7 +257,7 @@ export default function ChatwootInboxView() {
 
   useEffect(() => {
     if (filter !== 'unread' || debouncedQuery) return;
-    void loadUnreadList({ force: true, showLoading: unreadList.length === 0 });
+    void loadUnreadList({ force: true });
   }, [filter, debouncedQuery]);
 
   useEffect(() => {
@@ -391,9 +399,6 @@ export default function ChatwootInboxView() {
         setHasMoreConv(page1.length >= 25);
         hasConvDataRef.current = page1.length > 0;
         lastConvLoadAtRef.current = Date.now();
-        void fetchUnreadConversations({ page: 1 }).then((items) => {
-          setUnreadList((prev) => (prev.length === 0 ? items : prev));
-        }).catch(() => {});
       } catch {
         // silent
       } finally {
@@ -442,14 +447,14 @@ export default function ChatwootInboxView() {
     const el = scrollContainerRef.current;
     if (!el || debouncedQuery || filter !== 'unread' || loadingUnread) return;
     const onScroll = () => {
-      if (loadingUnreadMoreRef.current || !hasMoreUnread || unreadList.length === 0) return;
+      if (loadingUnreadMoreRef.current || loadingUnreadMore || !hasMoreUnread || unreadList.length === 0) return;
       if (el.scrollHeight - el.scrollTop - el.clientHeight < 300) {
-        void loadUnreadList({ append: true, showLoading: false });
+        void loadUnreadList({ append: true });
       }
     };
     el.addEventListener('scroll', onScroll);
     return () => el.removeEventListener('scroll', onScroll);
-  }, [debouncedQuery, filter, hasMoreUnread, loadingUnread, unreadList.length]);
+  }, [debouncedQuery, filter, hasMoreUnread, loadingUnread, loadingUnreadMore, unreadList.length]);
 
   // Efecto para cargar contactos
   useEffect(() => {
@@ -643,9 +648,12 @@ export default function ChatwootInboxView() {
             </div>
           </div>
           <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto scrollbar-thin pt-1.5">
-            {((loading && filter !== 'contacts' && filter !== 'unread' && !debouncedQuery) || (searching && debouncedQuery.length >= 2 && filtered.length === 0) || (filter === 'unread' && loadingUnread && !debouncedQuery)) ? (
-              <div className="flex items-center justify-center py-16">
+            {((loading && filter !== 'contacts' && filter !== 'unread' && !debouncedQuery) || (searching && debouncedQuery.length >= 2 && filtered.length === 0) || (filter === 'unread' && loadingUnread && filtered.length === 0 && !debouncedQuery)) ? (
+              <div className="flex flex-col items-center justify-center gap-2 py-16">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                {filter === 'unread' && !debouncedQuery && (
+                  <p className="text-sm text-muted-foreground">Cargando no leídos...</p>
+                )}
               </div>
             ) : filter === 'contacts' ? (
               loadingContacts ? (
@@ -692,26 +700,40 @@ export default function ChatwootInboxView() {
               )
             ) : filtered.length === 0 ? (
               <div className="py-16 text-center text-sm text-muted-foreground">
-                {query ? 'Sin resultados' : 'No hay conversaciones'}
+                {query ? 'Sin resultados' : filter === 'unread' ? 'No hay mensajes no leídos' : 'No hay conversaciones'}
               </div>
             ) : (
-              <div style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
-                {virtualizer.getVirtualItems().map((vi) => {
-                  const c = filtered[vi.index];
-                  return (
-                     <ChatwootConversationItem
-                          key={c.id}
-                          conversation={c}
-                          isActive={activeId === c.id}
-                          index={vi.index}
-                          start={vi.start}
-                          measureElement={virtualizer.measureElement}
-                          onClick={handleSelectConversation}
-                          conductorCodes={conductorCodesAll}
-                        />
-                  );
-                })}
-              </div>
+              <>
+                {filter === 'unread' && loadingUnread && !debouncedQuery && (
+                  <div className="flex items-center justify-center gap-2 border-b border-muted py-2 text-xs text-muted-foreground">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Actualizando no leídos...
+                  </div>
+                )}
+                <div style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
+                  {virtualizer.getVirtualItems().map((vi) => {
+                    const c = filtered[vi.index];
+                    return (
+                       <ChatwootConversationItem
+                            key={c.id}
+                            conversation={c}
+                            isActive={activeId === c.id}
+                            index={vi.index}
+                            start={vi.start}
+                            measureElement={virtualizer.measureElement}
+                            onClick={handleSelectConversation}
+                            conductorCodes={conductorCodesAll}
+                          />
+                    );
+                  })}
+                </div>
+                {filter === 'unread' && loadingUnreadMore && (
+                  <div className="flex items-center justify-center gap-2 py-4 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Cargando más...
+                  </div>
+                )}
+              </>
             )}
           </div>
         </aside>

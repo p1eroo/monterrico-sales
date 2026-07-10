@@ -96,9 +96,15 @@ function ClientStatusBadge({ status }: { status: ClientStatus }) {
 
 function ClientsStatsSkeleton() {
   return (
-    <Card className="flex flex-col overflow-hidden py-0 sm:flex-row" aria-hidden>
+    <Card
+      className="flex-row flex-nowrap overflow-x-auto overflow-y-hidden py-0 scrollbar-thin [-webkit-overflow-scrolling:touch] sm:overflow-hidden"
+      aria-hidden
+    >
       {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="relative flex flex-1 items-center justify-center gap-3 px-5 py-4">
+        <div
+          key={i}
+          className="relative flex w-[min(260px,82vw)] shrink-0 items-center gap-3 px-5 py-4 sm:w-auto sm:min-w-0 sm:flex-1 sm:justify-center"
+        >
           <Skeleton className="size-16 shrink-0 rounded-full" />
           <div className="space-y-2">
             <Skeleton className="h-4 w-28" />
@@ -106,7 +112,7 @@ function ClientsStatsSkeleton() {
             <Skeleton className="h-3 w-20" />
           </div>
           {i < 3 && (
-            <div className="absolute right-0 top-4 bottom-4 hidden w-px bg-border sm:block" />
+            <div className="absolute right-0 top-4 bottom-4 border-r border-dashed border-border sm:w-px sm:border-0 sm:bg-border" />
           )}
         </div>
       ))}
@@ -521,49 +527,49 @@ export default function Clients() {
       {loading ? (
         <ClientsStatsSkeleton />
       ) : (
-        <Card className="flex flex-col overflow-hidden py-0 sm:flex-row">
-          <div className="relative flex flex-1 items-center justify-center gap-3 px-5 py-4">
+        <Card className="flex-row flex-nowrap overflow-x-auto overflow-y-hidden py-0 scrollbar-thin [-webkit-overflow-scrolling:touch] sm:overflow-hidden">
+          <div className="relative flex w-[min(260px,82vw)] shrink-0 items-center gap-3 px-5 py-4 sm:w-auto sm:min-w-0 sm:flex-1 sm:justify-center">
             <div className="flex size-16 shrink-0 items-center justify-center rounded-full border-2 border-emerald-500 bg-transparent text-emerald-600">
               <Building2 className="size-7" />
             </div>
-            <div className="space-y-0.5">
+            <div className="min-w-0 space-y-0.5">
               <p className="text-sm font-medium text-[#647789] dark:text-gray-400">Total clientes</p>
               <p className="text-[22px] font-bold tracking-tight text-[#0F172A] dark:text-gray-100">{stats.total}</p>
               <p className="text-xs text-[#8a9aab] dark:text-gray-400">en cartera</p>
             </div>
-            <div className="absolute right-0 top-4 bottom-4 hidden w-px bg-border sm:block" />
+            <div className="absolute right-0 top-4 bottom-4 border-r border-dashed border-border sm:w-px sm:border-0 sm:bg-border" />
           </div>
-          <div className="relative flex flex-1 items-center justify-center gap-3 px-5 py-4">
+          <div className="relative flex w-[min(260px,82vw)] shrink-0 items-center gap-3 px-5 py-4 sm:w-auto sm:min-w-0 sm:flex-1 sm:justify-center">
             <div className="flex size-16 shrink-0 items-center justify-center rounded-full border-2 border-emerald-500 bg-transparent text-emerald-600">
               <Users className="size-7" />
             </div>
-            <div className="space-y-0.5">
+            <div className="min-w-0 space-y-0.5">
               <p className="text-sm font-medium text-[#647789] dark:text-gray-400">Activos</p>
               <p className="text-[22px] font-bold tracking-tight text-[#0F172A] dark:text-gray-100">{stats.activos}</p>
               <p className="text-xs text-[#8a9aab] dark:text-gray-400">
                 {stats.total > 0 ? `${Math.round((stats.activos / stats.total) * 100)}% del total` : '—'}
               </p>
             </div>
-            <div className="absolute right-0 top-4 bottom-4 hidden w-px bg-border sm:block" />
+            <div className="absolute right-0 top-4 bottom-4 border-r border-dashed border-border sm:w-px sm:border-0 sm:bg-border" />
           </div>
-          <div className="relative flex flex-1 items-center justify-center gap-3 px-5 py-4">
+          <div className="relative flex w-[min(260px,82vw)] shrink-0 items-center gap-3 px-5 py-4 sm:w-auto sm:min-w-0 sm:flex-1 sm:justify-center">
             <div className="flex size-16 shrink-0 items-center justify-center rounded-full border-2 border-red-500 bg-transparent text-red-600">
               <UserX className="size-7" />
             </div>
-            <div className="space-y-0.5">
+            <div className="min-w-0 space-y-0.5">
               <p className="text-sm font-medium text-[#647789] dark:text-gray-400">Inactivos</p>
               <p className="text-[22px] font-bold tracking-tight text-[#0F172A] dark:text-gray-100">{stats.inactivos}</p>
               <p className="text-xs text-[#8a9aab] dark:text-gray-400">
                 {stats.inactivos === 0 ? 'ninguno registrado' : 'requieren seguimiento'}
               </p>
             </div>
-            <div className="absolute right-0 top-4 bottom-4 hidden w-px bg-border sm:block" />
+            <div className="absolute right-0 top-4 bottom-4 border-r border-dashed border-border sm:w-px sm:border-0 sm:bg-border" />
           </div>
-          <div className="relative flex flex-1 items-center justify-center gap-3 px-5 py-4">
+          <div className="relative flex w-[min(260px,82vw)] shrink-0 items-center gap-3 px-5 py-4 sm:w-auto sm:min-w-0 sm:flex-1 sm:justify-center">
             <div className="flex size-16 shrink-0 items-center justify-center rounded-full border-2 border-blue-500 bg-transparent text-blue-600">
               <MoneySackSvgIcon className="size-7" />
             </div>
-            <div className="space-y-0.5">
+            <div className="min-w-0 space-y-0.5">
               <p className="text-sm font-medium text-[#647789] dark:text-gray-400">Ingresos totales</p>
               <p className="text-[22px] font-bold tracking-tight text-[#0F172A] dark:text-gray-100">{formatCurrency(stats.ingresos)}</p>
               <p className="text-xs text-[#8a9aab] dark:text-gray-400">acumulado del año</p>

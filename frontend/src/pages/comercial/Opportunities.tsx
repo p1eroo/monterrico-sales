@@ -663,13 +663,13 @@ export default function OpportunitiesPage() {
         </Button>
       </PageHeader>
 
-      {/* Stats */}
-      <Card className="flex flex-col overflow-hidden py-0 sm:flex-row">
-        <div className="flex-1 flex items-center justify-center gap-3 py-4 px-5 relative">
-          <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-transparent text-emerald-600 border-2 border-emerald-500">
+      {/* Stats — móvil: fila horizontal con scroll; desktop: 3 columnas iguales */}
+      <Card className="flex-row flex-nowrap overflow-x-auto overflow-y-hidden py-0 scrollbar-thin [-webkit-overflow-scrolling:touch] sm:overflow-hidden">
+        <div className="relative flex w-[min(280px,82vw)] shrink-0 items-center gap-3 px-5 py-4 sm:w-auto sm:min-w-0 sm:flex-1 sm:justify-center">
+          <div className="flex size-16 shrink-0 items-center justify-center rounded-full border-2 border-emerald-500 bg-transparent text-emerald-600">
             <BlackSuitcaseSvgIcon className="size-7" />
           </div>
-          <div className="space-y-0.5">
+          <div className="min-w-0 space-y-0.5">
             <p className="text-sm font-medium text-[#647789] dark:text-gray-400">Total oportunidades</p>
             <p className="text-[22px] font-bold tracking-tight text-[#0F172A] dark:text-gray-100">{stats.total}</p>
             <div className="flex items-center gap-1.5 text-xs">
@@ -678,13 +678,13 @@ export default function OpportunitiesPage() {
               <span className="text-[#8a9aab] dark:text-gray-400">este mes</span>
             </div>
           </div>
-          <div className="absolute right-0 top-4 bottom-4 w-px bg-border hidden sm:block" />
+          <div className="absolute right-0 top-4 bottom-4 border-r border-dashed border-border sm:w-px sm:border-0 sm:bg-border" />
         </div>
-        <div className="flex-1 flex items-center justify-center gap-3 py-4 px-5 relative">
-          <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-transparent text-blue-600 border-2 border-blue-500">
+        <div className="relative flex w-[min(280px,82vw)] shrink-0 items-center gap-3 px-5 py-4 sm:w-auto sm:min-w-0 sm:flex-1 sm:justify-center">
+          <div className="flex size-16 shrink-0 items-center justify-center rounded-full border-2 border-blue-500 bg-transparent text-blue-600">
             <MoneySackSvgIcon className="size-7" />
           </div>
-          <div className="space-y-0.5">
+          <div className="min-w-0 space-y-0.5">
             <p className="text-sm font-medium text-[#647789] dark:text-gray-400">Valor total</p>
             <p className="text-[22px] font-bold tracking-tight text-[#0F172A] dark:text-gray-100">{formatCurrency(stats.totalValue)}</p>
             <div className="flex items-center gap-1.5 text-xs">
@@ -693,13 +693,13 @@ export default function OpportunitiesPage() {
               <span className="text-[#8a9aab] dark:text-gray-400">vs mes anterior</span>
             </div>
           </div>
-          <div className="absolute right-0 top-4 bottom-4 w-px bg-border hidden sm:block" />
+          <div className="absolute right-0 top-4 bottom-4 border-r border-dashed border-border sm:w-px sm:border-0 sm:bg-border" />
         </div>
-        <div className="flex-1 flex items-center justify-center gap-3 py-4 px-5 relative">
-          <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-transparent text-amber-600 border-2 border-amber-500">
+        <div className="relative flex w-[min(280px,82vw)] shrink-0 items-center gap-3 px-5 py-4 sm:w-auto sm:min-w-0 sm:flex-1 sm:justify-center">
+          <div className="flex size-16 shrink-0 items-center justify-center rounded-full border-2 border-amber-500 bg-transparent text-amber-600">
             <BusinessGraphBoardSvgIcon className="size-7" />
           </div>
-          <div className="space-y-0.5">
+          <div className="min-w-0 space-y-0.5">
             <p className="text-sm font-medium text-[#647789] dark:text-gray-400">Tasa promedio de cierre</p>
             <p className="text-[22px] font-bold tracking-tight text-[#0F172A] dark:text-gray-100">{stats.avgProbability}%</p>
             <div className="flex items-center gap-1.5 text-xs">
