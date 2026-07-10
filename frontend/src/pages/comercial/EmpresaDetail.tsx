@@ -88,7 +88,7 @@ import {
 import { buildOptimisticContact } from '@/lib/optimisticEntities';
 import { generateOptimisticId, useOptimisticCrmStore } from '@/store/optimisticCrmStore';
 import { useStageBadgeTone } from '@/hooks/useStageBadgeTone';
-import { useCrmConfigStore, getStageLabelFromCatalog, getSourceLabelFromCatalog } from '@/store/crmConfigStore';
+import { useCrmConfigStore, getStageLabelFromCatalog, getSourceLabelFromCatalog, useLeadSourceOptions } from '@/store/crmConfigStore';
 import { getHighestPriorityOpportunityEtapa } from '@/lib/opportunityUtils';
 
 const TIMELINE_PAGE_SIZE = 8;
@@ -118,6 +118,7 @@ export default function EmpresaDetailPage() {
   const [apiLoading, setApiLoading] = useState(fromApiById);
   const { users, activeAdvisors } = useUsers();
   const crmBundle = useCrmConfigStore((s) => s.bundle);
+  const leadSourceOptions = useLeadSourceOptions();
   const currentUserRole = useAppStore((s) => s.currentUser.role ?? '');
   const canEditAssignee = canReassignCommercialAdvisor(currentUserRole);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -609,7 +610,7 @@ export default function EmpresaDetailPage() {
   }
   const [editForm, setEditForm] = useState({
     name: '', domain: '', telefono: '', rubro: '' as CompanyRubro | '', tipo: '' as CompanyTipo | '', assignedTo: '',
-    ruc: '', razonSocial: '',
+    ruc: '', razonSocial: '', fuente: 'base' as ContactSource,
   });
 
 
@@ -682,6 +683,9 @@ export default function EmpresaDetailPage() {
       assignedTo: assignedToInit,
       ruc: (fromApiById && apiRecord?.ruc) ? apiRecord.ruc : '',
       razonSocial: (fromApiById && apiRecord?.razonSocial) ? apiRecord.razonSocial : '',
+      fuente: (fromApiById && apiRecord?.fuente
+        ? apiRecord.fuente
+        : firstContact?.fuente) as ContactSource || 'base',
     });
     setEditDialogOpen(true);
   }
@@ -700,6 +704,7 @@ export default function EmpresaDetailPage() {
             tipo: editForm.tipo || undefined,
             ruc: editForm.ruc?.trim() || undefined,
             razonSocial: editForm.razonSocial?.trim() || undefined,
+            fuente: editForm.fuente || undefined,
           };
           if (canEditAssignee && showAdvisorInCompanyEdit && editForm.assignedTo) {
             if (!isLikelyContactCuid(editForm.assignedTo)) {
@@ -1722,6 +1727,24 @@ return (
                 }
               />
             ) : <div />}
+          </div>
+          <div className="space-y-2">
+            <Label>Fuente</Label>
+            <Select
+              value={editForm.fuente}
+              onValueChange={(v) => setEditForm((f) => ({ ...f, fuente: v as ContactSource }))}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Seleccionar" />
+              </SelectTrigger>
+              <SelectContent>
+                {leadSourceOptions.map(({ value: key, label }) => (
+                  <SelectItem key={key} value={key}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
         <DialogFooter>

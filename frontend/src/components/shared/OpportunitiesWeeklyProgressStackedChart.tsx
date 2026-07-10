@@ -21,9 +21,11 @@ const SERIES_COLORS = {
   sinCambios: '#94a3b8',
 } as const;
 
+import { formatIsoWeekLabel, parseIsoWeekNumberFromLabel } from '@/lib/crmTimezone';
+
 function shortWeekLabel(name: string): string {
-  const match = /W(\d{1,2})$/.exec(name);
-  return match ? `W${match[1]}` : name;
+  const weekNum = parseIsoWeekNumberFromLabel(name);
+  return weekNum != null ? formatIsoWeekLabel(weekNum) : name;
 }
 
 interface OpportunitiesWeeklyProgressStackedChartProps {

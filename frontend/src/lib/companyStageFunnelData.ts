@@ -1,6 +1,7 @@
 import type { FunnelStage } from '@/components/crm/FunnelChart';
 import type { CrmConfigBundle } from '@/lib/crmConfigApi';
 import type { ActiveProspectsWeekly, ActiveProspectsByAdvisorWeekly } from '@/lib/analyticsApi';
+import { formatIsoWeekLabel, isoWeekNumberLima, parseIsoWeekNumberFromLabel } from '@/lib/crmTimezone';
 import { etapaLabels, etapaProbabilidad } from '@/data/mock';
 
 export type CompanyStageFunnelRow = {
@@ -338,18 +339,6 @@ export function getMockCompaniesByAdvisorStageTable(
   };
 }
 
-function isoWeekNumberUtc(d: Date): number {
-  const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-  const dayNum = x.getUTCDay() || 7;
-  x.setUTCDate(x.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(x.getUTCFullYear(), 0, 1));
-  return Math.ceil((x.getTime() - yearStart.getTime() + 86400000) / 86400000 / 7);
-}
-
-function formatIsoWeekLabel(week: number): string {
-  return `W${String(week).padStart(2, '0')}`;
-}
-
 export type CompaniesWeekSnapshot = {
   weekNumber: number;
   weekLabel: string;
@@ -373,9 +362,11 @@ export type CompaniesStagePanelData = {
 
 type ProspectWeekRow = ActiveProspectsWeekly['weeks'][number];
 
-function weekMetaFromStart(weekStartIso: string): { weekNumber: number; weekLabel: string } {
-  const d = new Date(weekStartIso);
-  const weekNumber = isoWeekNumberUtc(d);
+function weekMetaFromStart(weekStartIso: string, weekName?: string): { weekNumber: number; weekLabel: string } {
+  const fromName = weekName ? parseIsoWeekNumberFromLabel(weekName) : null;
+  const weekNumber =
+    fromName ??
+    isoWeekNumberLima(new Date(weekStartIso));
   return { weekNumber, weekLabel: formatIsoWeekLabel(weekNumber) };
 }
 
@@ -508,15 +499,15 @@ export function buildCompaniesStagePanelData(
     ? findAdvisorWeekByStart(byAdvisorWeekly, comparePreviousWeek.weekStart)
     : undefined;
 
-  const primaryMeta = weekMetaFromStart(comparePrimaryWeek.weekStart);
+  const primaryMeta = weekMetaFromStart(comparePrimaryWeek.weekStart, comparePrimaryWeek.name);
   const previousMeta = comparePreviousWeek
-    ? weekMetaFromStart(comparePreviousWeek.weekStart)
+    ? weekMetaFromStart(comparePreviousWeek.weekStart, comparePreviousWeek.name)
     : {
         weekNumber: primaryMeta.weekNumber - 1,
         weekLabel: formatIsoWeekLabel(primaryMeta.weekNumber - 1),
       };
 
-  const referenceWeekNumber = isoWeekNumberUtc(new Date());
+  const referenceWeekNumber = isoWeekNumberLima(new Date());
 
   return {
     totalFunnelStages,
@@ -629,7 +620,7 @@ function buildFunnelStagesFromAdvisorCounts(
 export function getMockCompaniesWeeklyComparison(
   bundle: CrmConfigBundle | null,
 ): CompaniesWeeklyComparison {
-  const referenceWeekNumber = isoWeekNumberUtc(new Date());
+  const referenceWeekNumber = isoWeekNumberLima(new Date());
   const currentWeekNumber = referenceWeekNumber - 1;
   const previousWeekNumber = referenceWeekNumber - 2;
   const currentWeekLabel = formatIsoWeekLabel(currentWeekNumber);

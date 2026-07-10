@@ -5,6 +5,7 @@ import { useChartTheme } from '@/hooks/useChartTheme';
 import { cn } from '@/lib/utils';
 import type { AdvancedContactsWeekly } from '@/lib/analyticsApi';
 import { buildCompanyWeeklyStageTooltipHtml } from '@/lib/companyWeeklyStageChartUtils';
+import { weekAxisLabelFromWeekRow } from '@/lib/crmTimezone';
 
 const SERIES_COLOR = '#2563eb';
 
@@ -28,7 +29,7 @@ export function AdvancedContactsBarChart({
 
   const weeks = data?.weeks ?? [];
   const categories = useMemo(
-    () => weeks.map((_, index) => `W${index + 1}`),
+    () => weeks.map((week) => weekAxisLabelFromWeekRow(week)),
     [weeks],
   );
   const totals = useMemo(() => weeks.map((w) => w.total), [weeks]);
@@ -92,7 +93,7 @@ export function AdvancedContactsBarChart({
         custom({ dataPointIndex }) {
           const week = weeks[dataPointIndex];
           if (!week || dataPointIndex < 0) return '';
-          return buildCompanyWeeklyStageTooltipHtml(week, dataPointIndex, isDark);
+          return buildCompanyWeeklyStageTooltipHtml(week, isDark);
         },
       },
     }),

@@ -6,6 +6,7 @@ import { formatCurrencyCompact } from '@/lib/formatters';
 import { buildEstimatedBillingTooltipHtml } from '@/lib/estimatedBillingChartUtils';
 import { cn } from '@/lib/utils';
 import type { EstimatedBillingWeekly } from '@/lib/analyticsApi';
+import { weekAxisLabelFromWeekRow } from '@/lib/crmTimezone';
 
 const SERIES_COLOR = '#6366f1';
 
@@ -29,7 +30,7 @@ export function EstimatedBillingAreaChart({
 
   const weeks = data?.weeks ?? [];
   const categories = useMemo(
-    () => weeks.map((_, index) => `W${index + 1}`),
+    () => weeks.map((week) => weekAxisLabelFromWeekRow(week)),
     [weeks],
   );
   const totals = useMemo(() => weeks.map((w) => w.total), [weeks]);
@@ -93,7 +94,7 @@ export function EstimatedBillingAreaChart({
         custom({ dataPointIndex }) {
           const week = weeks[dataPointIndex];
           if (!week || dataPointIndex < 0) return '';
-          return buildEstimatedBillingTooltipHtml(week, dataPointIndex, isDark);
+          return buildEstimatedBillingTooltipHtml(week, isDark);
         },
       },
       states: {

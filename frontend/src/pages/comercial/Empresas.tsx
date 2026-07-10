@@ -640,6 +640,46 @@ export default function EmpresasPage() {
         enableResizing: false,
       },
       {
+        id: 'actions',
+        header: '',
+        enableResizing: false,
+        enableSorting: false,
+        enableHiding: false,
+        size: 40,
+        maxSize: 40,
+        cell: ({ row }) => {
+          const emp = row.original;
+          return (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon-sm" aria-label="Acciones">
+                  <MoreVertical className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onClick={() => openCompanyPreview(emp)}>
+                  <Eye /> Vista previa
+                </DropdownMenuItem>
+                {hasPermission('empresas.editar') && (
+                  <DropdownMenuItem onClick={() => openCompanyEdit(emp)}>
+                    <Pencil /> Editar
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                {hasPermission('empresas.eliminar') && (
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onClick={() => requestDeleteCompany(emp)}
+                  >
+                    <Trash2 /> Eliminar
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          );
+        },
+      },
+      {
         accessorKey: 'name',
         id: 'empresa',
         header: 'Empresa',
@@ -784,46 +824,6 @@ export default function EmpresasPage() {
         ),
         enableSorting: false,
         size: 145,
-      },
-      {
-        id: 'actions',
-        header: '',
-        enableResizing: false,
-        enableSorting: false,
-        enableHiding: false,
-        size: 40,
-        maxSize: 40,
-        cell: ({ row }) => {
-          const emp = row.original;
-          return (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon-sm" aria-label="Acciones">
-                  <MoreVertical className="size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => openCompanyPreview(emp)}>
-                  <Eye /> Vista previa
-                </DropdownMenuItem>
-                {hasPermission('empresas.editar') && (
-                  <DropdownMenuItem onClick={() => openCompanyEdit(emp)}>
-                    <Pencil /> Editar
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                {hasPermission('empresas.eliminar') && (
-                  <DropdownMenuItem
-                    variant="destructive"
-                    onClick={() => requestDeleteCompany(emp)}
-                  >
-                    <Trash2 /> Eliminar
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          );
-        },
       },
     ],
     [openCompanyPreview, openCompanyEdit, requestDeleteCompany, hasPermission, bundle],
@@ -1096,6 +1096,7 @@ export default function EmpresasPage() {
           tipo: payload.tipo || undefined,
           ruc: payload.ruc.trim() || undefined,
           razonSocial: payload.razonSocial.trim() || undefined,
+          fuente: payload.fuente || undefined,
           ...(payload.assignedTo && isLikelyContactCuid(payload.assignedTo)
             ? { assignedTo: payload.assignedTo }
             : {}),
@@ -1285,7 +1286,7 @@ export default function EmpresasPage() {
       }
 
       // Build column headers
-      const fixedHeaders = ['Empresa', 'RUC', 'Etapa', 'Asesor', 'Teléfono', 'Rubro', 'Fuente', 'Última interacción'];
+      const fixedHeaders = ['Empresa', 'RUC', 'Dominio', 'Etapa', 'Asesor', 'Teléfono', 'Rubro', 'Fuente', 'Última interacción'];
       const contactHeaders: string[] = [];
       for (let i = 0; i < maxContacts; i++) {
         contactHeaders.push(`Contacto ${i + 1}`, `Email ${i + 1}`, `Teléfono ${i + 1}`);
@@ -1301,6 +1302,7 @@ export default function EmpresasPage() {
         const row: Record<string, string> = {
           Empresa: c.name,
           RUC: c.ruc || '',
+          Dominio: c.domain || '',
           Etapa: c.displayEtapa,
           Asesor: c.displayAdvisorName || '',
           Teléfono: c.telefono || '',
@@ -1896,6 +1898,7 @@ export default function EmpresasPage() {
           <GhostTableSkeleton
             columns={[
               { label: '', width: 44 },
+              { label: '', width: 40 },
               { label: 'Empresa', width: 280 },
               { label: 'Etapa', width: 140, className: 'hidden md:table-cell' },
               { label: 'Fuente', width: 100, className: 'hidden lg:table-cell' },
@@ -1906,7 +1909,6 @@ export default function EmpresasPage() {
               { label: 'Creación', width: 115 },
               { label: 'Contactos', width: 115, className: 'text-center' },
               { label: 'Última interacción', width: 145 },
-              { label: '', width: 40 },
             ]}
             rows={10}
           />
@@ -1935,6 +1937,7 @@ export default function EmpresasPage() {
                         "relative px-3 align-middle overflow-hidden",
                         header.column.getCanSort() && "cursor-pointer select-none hover:text-[#1f2933] dark:hover:text-gray-100",
                         header.column.id === "select" && "pr-0",
+                        header.column.id === "actions" && "px-1",
                         header.column.id === "empresa" && "pl-1",
                         getResponsiveClass(header.column.id),
                       )}
@@ -1983,6 +1986,7 @@ export default function EmpresasPage() {
                       className={cn(
                         "px-3 align-middle overflow-hidden",
                         cell.column.id === "select" && "pr-0",
+                        cell.column.id === "actions" && "px-1",
                         cell.column.id === "empresa" && "pl-1",
                         getResponsiveClass(cell.column.id),
                       )}

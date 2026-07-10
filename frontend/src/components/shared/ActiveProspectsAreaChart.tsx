@@ -5,6 +5,7 @@ import { useChartTheme } from '@/hooks/useChartTheme';
 import { cn } from '@/lib/utils';
 import type { ActiveProspectsWeekly } from '@/lib/analyticsApi';
 import { buildCompanyWeeklyStageTooltipHtml } from '@/lib/companyWeeklyStageChartUtils';
+import { weekAxisLabelFromWeekRow } from '@/lib/crmTimezone';
 
 const SERIES_COLOR = '#4f46e5';
 
@@ -28,7 +29,7 @@ export function ActiveProspectsAreaChart({
 
   const weeks = data?.weeks ?? [];
   const categories = useMemo(
-    () => weeks.map((_, index) => `W${index + 1}`),
+    () => weeks.map((week) => weekAxisLabelFromWeekRow(week)),
     [weeks],
   );
   const totals = useMemo(() => weeks.map((w) => w.total), [weeks]);
@@ -102,7 +103,7 @@ export function ActiveProspectsAreaChart({
         custom({ dataPointIndex }) {
           const week = weeks[dataPointIndex];
           if (!week || dataPointIndex < 0) return '';
-          return buildCompanyWeeklyStageTooltipHtml(week, dataPointIndex, isDark);
+          return buildCompanyWeeklyStageTooltipHtml(week, isDark);
         },
       },
       states: {

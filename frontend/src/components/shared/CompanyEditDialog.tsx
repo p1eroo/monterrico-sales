@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { companyRubroLabels, companyTipoLabels } from '@/data/mock';
-import type { CompanyRubro, CompanyTipo } from '@/types';
+import type { CompanyRubro, CompanyTipo, ContactSource } from '@/types';
 import { api } from '@/lib/api';
 import type { ApiCompanyRecord } from '@/lib/companyApi';
 import { isLikelyCompanyCuid } from '@/lib/companyApi';
@@ -27,6 +27,7 @@ import { useAppStore } from '@/store';
 import { canReassignCommercialAdvisor } from '@/data/rbac';
 import { useUsers } from '@/hooks/useUsers';
 import { AssignedAdvisorFormField } from '@/components/shared/AssignedAdvisorFormField';
+import { useLeadSourceOptions } from '@/store/crmConfigStore';
 
 export type CompanyEditSavePayload = {
   name: string;
@@ -37,6 +38,7 @@ export type CompanyEditSavePayload = {
   ruc: string;
   razonSocial: string;
   assignedTo: string;
+  fuente: string;
 };
 
 export type CompanyEditSummaryRow = {
@@ -45,6 +47,7 @@ export type CompanyEditSummaryRow = {
   isLocalOnly?: boolean;
   rubro?: string | null;
   tipo?: string | null;
+  fuente?: string | null;
 };
 
 type CompanyEditDialogProps = {
@@ -66,6 +69,7 @@ export function CompanyEditDialog({
   const { users, activeAdvisors } = useUsers();
   const currentUserRole = useAppStore((s) => s.currentUser.role ?? '');
   const canEditAssignee = canReassignCommercialAdvisor(currentUserRole);
+  const leadSourceOptions = useLeadSourceOptions();
 
   const [editForm, setEditForm] = useState({
     name: '',
@@ -76,6 +80,7 @@ export function CompanyEditDialog({
     ruc: '',
     razonSocial: '',
     assignedTo: '',
+    fuente: 'base' as ContactSource,
   });
   const [saving, setSaving] = useState(false);
   const [loadingApi, setLoadingApi] = useState(false);
@@ -93,6 +98,7 @@ export function CompanyEditDialog({
         ruc: '',
         razonSocial: '',
         assignedTo: '',
+        fuente: 'base',
       });
       return;
     }
@@ -107,6 +113,7 @@ export function CompanyEditDialog({
         ruc: '',
         razonSocial: '',
         assignedTo: '',
+        fuente: 'base',
       });
       return;
     }
@@ -121,6 +128,7 @@ export function CompanyEditDialog({
         ruc: '',
         razonSocial: '',
         assignedTo: '',
+        fuente: (row.fuente as ContactSource) || 'base',
       });
       return;
     }
@@ -139,6 +147,7 @@ export function CompanyEditDialog({
           ruc: rec.ruc ?? '',
           razonSocial: rec.razonSocial ?? '',
           assignedTo: rec.assignedTo ?? activeAdvisors[0]?.id ?? '',
+          fuente: (rec.fuente as ContactSource) || 'base',
         });
       })
       .catch(() => {
@@ -152,6 +161,7 @@ export function CompanyEditDialog({
             ruc: '',
             razonSocial: '',
             assignedTo: '',
+            fuente: (row.fuente as ContactSource) || 'base',
           });
         }
       })
@@ -177,6 +187,7 @@ export function CompanyEditDialog({
       ruc: editForm.ruc.trim(),
       razonSocial: editForm.razonSocial.trim(),
       assignedTo: editForm.assignedTo,
+      fuente: editForm.fuente,
     })).finally(() => setSaving(false));
   }
 
@@ -288,6 +299,24 @@ export function CompanyEditDialog({
                   disabled={!canEditAssignee}
                   fallbackName={users.find((u) => u.id === editForm.assignedTo)?.name}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label>Fuente</Label>
+                <Select
+                  value={editForm.fuente}
+                  onValueChange={(v) => setEditForm((f) => ({ ...f, fuente: v as ContactSource }))}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Seleccionar" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {leadSourceOptions.map(({ value: key, label }) => (
+                      <SelectItem key={key} value={key}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <DialogFooter>

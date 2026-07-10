@@ -171,6 +171,7 @@ async function linkNewContactToOpportunities(
 
 const CONTACTOS_TABLE_SKELETON_COLUMNS = [
   { label: "", className: "w-10", skeletonCell: "checkbox" as const },
+  { label: "", className: "w-10" },
   { label: "Nombre", className: "min-w-0 max-w-[20rem]" },
   { label: "Empresa", className: "hidden min-w-0 max-w-[16rem] md:table-cell" },
   { label: "Teléfono", className: "hidden lg:table-cell" },
@@ -180,7 +181,6 @@ const CONTACTOS_TABLE_SKELETON_COLUMNS = [
   { label: "Etapa" },
   { label: "Asesor", className: "hidden xl:table-cell" },
   { label: "Creación", className: "hidden md:table-cell" },
-  { label: "", className: "w-10" },
 ];
 
 function importPreviewCell(v: string | undefined) {
@@ -1395,6 +1395,7 @@ export default function ContactosPage() {
             <GhostTableSkeleton
               columns={[
                 { label: "", width: 44 },
+                { label: "", width: 60 },
                 { label: "Nombre", width: 280 },
                 { label: "Empresa", width: 200 },
                 { label: "Teléfono", width: 120, className: "hidden lg:table-cell" },
@@ -1405,7 +1406,6 @@ export default function ContactosPage() {
                 { label: "Asesor", width: 150, className: "hidden xl:table-cell" },
                 { label: "Creación", width: 120, className: "hidden md:table-cell" },
                 { label: "Última interacción", width: 140, className: "hidden lg:table-cell" },
-                { label: "", width: 60 },
               ]}
               rows={10}
             />
@@ -1599,6 +1599,42 @@ function ContactsTable({
         enableResizing: false,
       },
       {
+        id: "actions",
+        header: "",
+        meta: { responsive: "" } as any,
+        cell: ({ row }) => (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="h-8 w-8 rounded-lg"
+              >
+                <MoreVertical className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onClick={() => onPreview(row.original)}>
+                <Eye /> Vista previa
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onEdit(row.original)}>
+                <Pencil /> Editar
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {hasPermission("contactos.eliminar") && (
+                <DropdownMenuItem variant="destructive" onClick={() => onDelete(row.original.id)}>
+                  <Trash2 /> Eliminar
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ),
+        size: 60,
+        maxSize: 60,
+        enableSorting: false,
+        enableResizing: false,
+      },
+      {
         accessorKey: "name",
         id: "nombre",
         header: "Nombre",
@@ -1771,42 +1807,6 @@ function ContactsTable({
         enableSorting: false,
         size: 140,
       },
-      {
-        id: "actions",
-        header: "",
-        meta: { responsive: "" } as any,
-        cell: ({ row }) => (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="h-8 w-8 rounded-lg"
-              >
-                <MoreVertical className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onPreview(row.original)}>
-                <Eye /> Vista previa
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onEdit(row.original)}>
-                <Pencil /> Editar
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              {hasPermission("contactos.eliminar") && (
-                <DropdownMenuItem variant="destructive" onClick={() => onDelete(row.original.id)}>
-                  <Trash2 /> Eliminar
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ),
-        size: 60,
-        maxSize: 60,
-        enableSorting: false,
-        enableResizing: false,
-      },
     ],
     [allSelected, onToggleSelectAll, selectedContacts, onToggleSelect, isPendingContactId, onPreview, onEdit, onDelete, hasPermission, bundle],
   );
@@ -1842,6 +1842,7 @@ function ContactsTable({
                     "relative px-3 align-middle overflow-hidden",
                     header.column.getCanSort() && "cursor-pointer select-none hover:text-[#1f2933] dark:hover:text-gray-100",
                     header.column.id === "select" && "pr-0",
+                    header.column.id === "actions" && "px-1",
                     header.column.id === "nombre" && "pl-2",
                   )}
                   style={{ width: header.getSize() }}
@@ -1894,6 +1895,7 @@ function ContactsTable({
                     className={cn(
                       "px-3 align-middle overflow-hidden",
                       cell.column.id === "select" && "pr-0",
+                      cell.column.id === "actions" && "px-1",
                       cell.column.id === "nombre" && "pl-2",
                     )}
                     style={{ width: cell.column.getSize() }}

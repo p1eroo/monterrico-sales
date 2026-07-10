@@ -95,6 +95,7 @@ import { ColumnsSvgIcon } from '@/components/icons/ColumnsSvgIcon';
 
 const OPPORTUNITIES_TABLE_SKELETON_COLUMNS = [
   { label: '', width: 44 },
+  { label: '', width: 40 },
   { label: 'Nombre', width: 280 },
   { label: 'Monto', width: 150 },
   { label: 'Etapa', width: 140, className: 'hidden lg:table-cell' },
@@ -103,7 +104,6 @@ const OPPORTUNITIES_TABLE_SKELETON_COLUMNS = [
   { label: 'Prioridad', width: 110, className: 'hidden lg:table-cell' },
   { label: 'Probabilidad', width: 150, className: 'hidden sm:table-cell' },
   { label: 'Fecha cierre', width: 120, className: 'hidden xl:table-cell' },
-  { label: '', width: 40 },
 ];
 
 const etapas: Etapa[] = [
@@ -468,6 +468,44 @@ export default function OpportunitiesPage() {
         enableResizing: false,
       },
       {
+        id: 'actions',
+        header: '',
+        enableResizing: false,
+        enableSorting: false,
+        enableHiding: false,
+        size: 40,
+        maxSize: 40,
+        cell: ({ row }) => {
+          const opp = row.original;
+          const pending = isPendingOpportunityId(opp.id);
+          return (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon-sm" aria-label="Acciones">
+                  <MoreVertical className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onClick={() => openOpportunityPreview(opp)}>
+                  <Eye /> Vista previa
+                </DropdownMenuItem>
+                {hasPermission('oportunidades.editar') && (
+                  <DropdownMenuItem onClick={() => openOpportunityEdit(opp)} disabled={pending}>
+                    <Pencil /> Editar
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                {hasPermission('oportunidades.eliminar') && (
+                  <DropdownMenuItem variant="destructive" onClick={() => requestDeleteOpportunity(opp)} disabled={pending}>
+                    <Trash2 /> Eliminar
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          );
+        },
+      },
+      {
         accessorKey: 'title',
         id: 'title',
         header: 'Nombre',
@@ -579,44 +617,6 @@ export default function OpportunitiesPage() {
           <span className="text-sm text-[#475569] dark:text-gray-400">{formatDate(getValue() as string)}</span>
         ),
         enableSorting: false,
-      },
-      {
-        id: 'actions',
-        header: '',
-        enableResizing: false,
-        enableSorting: false,
-        enableHiding: false,
-        size: 40,
-        maxSize: 40,
-        cell: ({ row }) => {
-          const opp = row.original;
-          const pending = isPendingOpportunityId(opp.id);
-          return (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon-sm" aria-label="Acciones">
-                  <MoreVertical className="size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => openOpportunityPreview(opp)}>
-                  <Eye /> Vista previa
-                </DropdownMenuItem>
-                {hasPermission('oportunidades.editar') && (
-                  <DropdownMenuItem onClick={() => openOpportunityEdit(opp)} disabled={pending}>
-                    <Pencil /> Editar
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                {hasPermission('oportunidades.eliminar') && (
-                  <DropdownMenuItem variant="destructive" onClick={() => requestDeleteOpportunity(opp)} disabled={pending}>
-                    <Trash2 /> Eliminar
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          );
-        },
       },
     ],
     [isPendingOpportunityId, openOpportunityPreview, openOpportunityEdit, requestDeleteOpportunity, hasPermission, bundle],
@@ -946,6 +946,7 @@ export default function OpportunitiesPage() {
                           'relative px-3 align-middle overflow-hidden',
                           header.column.getCanSort() && 'cursor-pointer select-none hover:text-[#1f2933] dark:hover:text-gray-100',
                           header.column.id === 'select' && 'pr-0',
+                          header.column.id === 'actions' && 'px-1',
                           header.column.id === 'title' && 'pl-2',
                         )}
                         style={{ width: header.getSize() }}
@@ -998,6 +999,7 @@ export default function OpportunitiesPage() {
                           className={cn(
                             'px-3 align-middle overflow-hidden',
                             cell.column.id === 'select' && 'pr-0',
+                            cell.column.id === 'actions' && 'px-1',
                             cell.column.id === 'title' && 'pl-2',
                           )}
                           style={{ width: cell.column.getSize() }}

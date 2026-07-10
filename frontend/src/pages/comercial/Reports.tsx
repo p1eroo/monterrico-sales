@@ -95,6 +95,14 @@ import {
   type CompaniesStageWeekView,
 } from '@/components/shared/CompaniesStageExpandedPanel';
 import { startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import {
+  isoWeekNumberLima,
+  parseDayEndLima,
+  parseDayStartLima,
+  parseIsoWeekNumberFromLabel,
+  startOfWeekMondayLima,
+  weekAxisLabelLima,
+} from '@/lib/crmTimezone';
 
 const WEEKLY_COMPANY_COLORS = {
   avance: '#13944C',
@@ -138,48 +146,6 @@ const EMPTY_ACTIVITY_MONTH = {
   notas: 0,
 } as const;
 
-/** Alineado con `analytics.service.ts` (semanas ISO lun–dom UTC). */
-function startOfUtcWeekMonday(d: Date): Date {
-  const x = new Date(d.getTime());
-  const day = x.getUTCDay();
-  const diff = day === 0 ? 6 : day - 1;
-  x.setUTCDate(x.getUTCDate() - diff);
-  x.setUTCHours(0, 0, 0, 0);
-  return x;
-}
-
-function isoWeekNumberUtc(d: Date): number {
-  const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-  const dayNum = x.getUTCDay() || 7;
-  x.setUTCDate(x.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(x.getUTCFullYear(), 0, 1));
-  return Math.ceil((x.getTime() - yearStart.getTime() + 86400000) / 86400000 / 7);
-}
-
-function isoWeekYearUtc(monday: Date): number {
-  const thu = new Date(monday.getTime());
-  thu.setUTCDate(thu.getUTCDate() + 3);
-  return thu.getUTCFullYear();
-}
-
-/** Etiqueta única por semana ISO (evita duplicados al cruzar año). */
-function weekAxisLabelUtc(monday: Date): string {
-  const y = isoWeekYearUtc(monday);
-  const w = isoWeekNumberUtc(monday);
-  return `${y}-W${String(w).padStart(2, '0')}`;
-}
-
-/** Acepta `YYYY-MM-DD` o ISO completo del API (`…T00:00:00.000Z`). */
-function parseAnalyticsRangeDateUtc(s: string, endOfDay: boolean): Date {
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s.trim());
-  if (!m) return new Date(NaN);
-  const y = Number(m[1]);
-  const mo = Number(m[2]);
-  const d = Number(m[3]);
-  if (endOfDay) return new Date(Date.UTC(y, mo - 1, d, 23, 59, 59, 999));
-  return new Date(Date.UTC(y, mo - 1, d, 0, 0, 0, 0));
-}
-
 export default function Reports() {
   const { users, activeAdvisors } = useUsers();
   const currentUser = useAppStore((s) => s.currentUser);
@@ -204,7 +170,7 @@ export default function Reports() {
   const [kpis, setKpis] = useState<AnalyticsKPIs | null>(null);
   const [loading, setLoading] = useState(false);
   const [kpisLoading, setKpisLoading] = useState(false);
-  /** Lunes UTC (ms) de la última semana visible en el gráfico de avance semanal. */
+  /** Lunes Lima (ms) de la última semana visible en el gráfico de avance semanal. */
   const [weeklyProgressCapMs, setWeeklyProgressCapMs] = useState<number | null>(null);
   const [opportunitiesFunnelModalOpen, setOpportunitiesFunnelModalOpen] = useState(false);
   const [wonOpportunitiesModalOpen, setWonOpportunitiesModalOpen] = useState(false);
@@ -397,12 +363,17 @@ export default function Reports() {
   const weeklyProgressExtended = useMemo(() => {
     if (!summary?.range?.from || !summary?.range?.to) return [];
     const apiRows = summary.companiesWeeklyProgress ?? [];
-    const fromD = parseAnalyticsRangeDateUtc(summary.range.from, false);
-    const toD = parseAnalyticsRangeDateUtc(summary.range.to, true);
-    const fromMon = startOfUtcWeekMonday(fromD);
-    const todayMon = startOfUtcWeekMonday(new Date());
+    const fromD = parseDayStartLima(summary.range.from);
+    const toD = parseDayEndLima(summary.range.to);
+    const fromMon = startOfWeekMondayLima(fromD);
+    const todayMon = startOfWeekMondayLima(new Date());
     // Index API rows by ISO week number so each row lands on the correct axis position.
-    const apiByWeek = new Map(apiRows.map((r) => [Number(r.name), r]));
+    const apiByWeek = new Map(
+      apiRows.flatMap((r) => {
+        const weekNum = parseIsoWeekNumberFromLabel(r.name);
+        return weekNum != null ? [[weekNum, r] as const] : [];
+      }),
+    );
     type Row = {
       name: string;
       avance: number;
@@ -413,15 +384,15 @@ export default function Reports() {
     };
     const out: Row[] = [];
     for (let cur = new Date(fromMon.getTime()); cur.getTime() <= todayMon.getTime(); ) {
-      const axisName = weekAxisLabelUtc(cur);
-      const weekNum = isoWeekNumberUtc(cur);
+      const axisName = weekAxisLabelLima(cur);
+      const weekNum = isoWeekNumberLima(cur);
       const api = cur.getTime() <= toD.getTime() ? apiByWeek.get(weekNum) : undefined;
       const row: Omit<Row, 'weekStartMs'> = api
         ? { ...api, name: axisName }
         : { name: axisName, avance: 0, nuevoIngreso: 0, atraso: 0, sinCambios: 0 };
       out.push({ ...row, weekStartMs: cur.getTime() });
       const next = new Date(cur.getTime());
-      next.setUTCDate(next.getUTCDate() + 7);
+      next.setTime(cur.getTime() + 7 * 24 * 60 * 60 * 1000);
       cur = next;
     }
     return out;
@@ -484,12 +455,17 @@ export default function Reports() {
   const weeklyOppsProgressExtended = useMemo(() => {
     if (!summary?.range?.from || !summary?.range?.to) return [];
     const apiRows = summary.companiesWeeklyProgress ?? [];
-    const fromD = parseAnalyticsRangeDateUtc(summary.range.from, false);
-    const toD = parseAnalyticsRangeDateUtc(summary.range.to, true);
-    const fromMon = startOfUtcWeekMonday(fromD);
-    const todayMon = startOfUtcWeekMonday(new Date());
+    const fromD = parseDayStartLima(summary.range.from);
+    const toD = parseDayEndLima(summary.range.to);
+    const fromMon = startOfWeekMondayLima(fromD);
+    const todayMon = startOfWeekMondayLima(new Date());
     // Index API rows by ISO week number so each row lands on the correct axis position.
-    const apiByWeek = new Map(apiRows.map((r) => [Number(r.name), r]));
+    const apiByWeek = new Map(
+      apiRows.flatMap((r) => {
+        const weekNum = parseIsoWeekNumberFromLabel(r.name);
+        return weekNum != null ? [[weekNum, r] as const] : [];
+      }),
+    );
     type RowOpp = {
       name: string;
       avance: number;
@@ -500,15 +476,15 @@ export default function Reports() {
     };
     const out: RowOpp[] = [];
     for (let cur = new Date(fromMon.getTime()); cur.getTime() <= todayMon.getTime(); ) {
-      const axisName = weekAxisLabelUtc(cur);
-      const weekNum = isoWeekNumberUtc(cur);
+      const axisName = weekAxisLabelLima(cur);
+      const weekNum = isoWeekNumberLima(cur);
       const api = cur.getTime() <= toD.getTime() ? apiByWeek.get(weekNum) : undefined;
       const row: Omit<RowOpp, 'weekStartMs'> = api
         ? { avance: api.avance, nuevoIngreso: api.nuevoIngreso, atraso: api.atraso, sinCambios: api.sinCambios, name: axisName }
         : { name: axisName, avance: 0, nuevoIngreso: 0, atraso: 0, sinCambios: 0 };
       out.push({ ...row, weekStartMs: cur.getTime() });
       const next = new Date(cur.getTime());
-      next.setUTCDate(next.getUTCDate() + 7);
+      next.setTime(cur.getTime() + 7 * 24 * 60 * 60 * 1000);
       cur = next;
     }
     return out;
