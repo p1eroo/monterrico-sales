@@ -8,6 +8,22 @@ import { CrmConfigService } from '../crm-config/crm-config.service';
 import { buildEtapaStepFunction, buildNumericStepFunction } from '../import-export/company-export-weeks.util';
 import { resolveLeadSourceKeyLoose } from '../crm-config/lead-source-normalize.util';
 import {
+  endOfMonthLima,
+  endOfWeekSundayLima,
+  instantToLimaParts,
+  isoWeekNumberLima,
+  limaDayStart,
+  maxInstant,
+  minInstant,
+  monthKeyLima,
+  parseDayEndLima,
+  parseDayStartLima,
+  startOfMonthLima,
+  startOfWeekMondayLima,
+  isoWeekLabelFromInstant,
+  formatIsoWeekLabel,
+} from '../common/crm-timezone.util';
+import {
   type AnalyticsScopeFilters,
   applyAdvisorFilter,
   applyCompanyAdvisorFilter,
@@ -23,25 +39,23 @@ const MAX_RANGE_DAYS = 366;
 const ADVISOR_ROLE_SLUG = 'asesor';
 
 function parseDayStart(isoDate: string): Date {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
+  try {
+    return parseDayStartLima(isoDate);
+  } catch {
     throw new BadRequestException('from/to debe ser YYYY-MM-DD');
   }
-  const [y, m, d] = isoDate.split('-').map(Number);
-  return new Date(Date.UTC(y, m - 1, d, 5, 0, 0, 0));
 }
 
 function parseDayEnd(isoDate: string): Date {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
+  try {
+    return parseDayEndLima(isoDate);
+  } catch {
     throw new BadRequestException('from/to debe ser YYYY-MM-DD');
   }
-  const [y, m, d] = isoDate.split('-').map(Number);
-  return new Date(Date.UTC(y, m - 1, d + 1, 4, 59, 59, 999));
 }
 
 function monthKey(d: Date): string {
-  const y = d.getUTCFullYear();
-  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
-  return `${y}-${m}`;
+  return monthKeyLima(d);
 }
 
 function monthLabelEs(ym: string): string {
@@ -55,57 +69,24 @@ function monthLabelEs(ym: string): string {
 
 function eachMonthBetween(from: Date, to: Date): string[] {
   const keys: string[] = [];
-  const cur = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), 1));
-  const end = new Date(Date.UTC(to.getUTCFullYear(), to.getUTCMonth(), 1));
+  let cur = startOfMonthLima(from);
+  const end = startOfMonthLima(to);
   while (cur.getTime() <= end.getTime()) {
     keys.push(monthKey(cur));
-    cur.setUTCMonth(cur.getUTCMonth() + 1);
+    const p = instantToLimaParts(cur);
+    cur = limaDayStart(p.year, p.month + 1, 1);
   }
   return keys;
 }
 
-/** Intersección del mes calendario `ym` (YYYY-MM) con el rango de analytics. */
+/** Intersección del mes calendario Lima `ym` (YYYY-MM) con el rango de analytics. */
 function clipMonthToAnalyticsRange(ym: string, from: Date, to: Date): { start: Date; end: Date } {
   const [y, m] = ym.split('-').map((x) => parseInt(x, 10));
-  const mStart = new Date(Date.UTC(y, m - 1, 1, 0, 0, 0, 0));
-  const mEnd = new Date(Date.UTC(y, m, 0, 23, 59, 59, 999));
+  const mStart = limaDayStart(y, m - 1, 1);
+  const mEnd = endOfMonthLima(mStart);
   const start = mStart.getTime() > from.getTime() ? mStart : from;
   const end = mEnd.getTime() < to.getTime() ? mEnd : to;
   return { start, end };
-}
-
-function startOfUtcWeekMonday(d: Date): Date {
-  const x = new Date(d);
-  const day = x.getUTCDay();
-  const diff = day === 0 ? 6 : day - 1;
-  x.setUTCDate(x.getUTCDate() - diff);
-  x.setUTCHours(0, 0, 0, 0);
-  return x;
-}
-
-function endOfUtcWeekSunday(d: Date): Date {
-  const s = startOfUtcWeekMonday(d);
-  const e = new Date(s);
-  e.setUTCDate(e.getUTCDate() + 7);
-  e.setUTCMilliseconds(-1);
-  return e;
-}
-
-function maxUtcDate(a: Date, b: Date): Date {
-  return a.getTime() >= b.getTime() ? a : b;
-}
-
-function minUtcDate(a: Date, b: Date): Date {
-  return a.getTime() <= b.getTime() ? a : b;
-}
-
-/** Semana ISO (1–53) a partir de un instante UTC (algoritmo jueves). */
-function isoWeekNumberUtc(d: Date): number {
-  const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-  const dayNum = x.getUTCDay() || 7;
-  x.setUTCDate(x.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(x.getUTCFullYear(), 0, 1));
-  return Math.ceil((x.getTime() - yearStart.getTime() + 86400000) / 86400000 / 7);
 }
 
 type CompanyWeeklyProgressRow = {
@@ -255,18 +236,17 @@ type WeekClip = {
 /** Si `maxWeeks` se omite, recorre todo el rango (reportes). Sparklines pasan un tope fijo. */
 function eachWeekClipsInRange(from: Date, to: Date, maxWeeks?: number): WeekClip[] {
   const rows: WeekClip[] = [];
-  let weekStart = startOfUtcWeekMonday(from);
+  let weekStart = startOfWeekMondayLima(from);
   let weekCount = 0;
   while (weekStart <= to && (maxWeeks == null || weekCount < maxWeeks)) {
     weekCount++;
-    const weekEnd = endOfUtcWeekSunday(weekStart);
+    const weekEnd = endOfWeekSundayLima(weekStart);
     rows.push({
-      name: String(isoWeekNumberUtc(weekStart)),
-      clipStart: maxUtcDate(weekStart, from),
-      clipEnd: minUtcDate(weekEnd, to),
+      name: formatIsoWeekLabel(isoWeekNumberLima(weekStart)),
+      clipStart: maxInstant(weekStart, from),
+      clipEnd: minInstant(weekEnd, to),
     });
-    weekStart = new Date(weekStart);
-    weekStart.setUTCDate(weekStart.getUTCDate() + 7);
+    weekStart = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
   }
   return rows;
 }
@@ -281,15 +261,22 @@ type GoalChartPoint = {
   avance: number;
 };
 
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+function addLimaWeeks(monday: Date, weeks: number): Date {
+  return new Date(monday.getTime() + weeks * WEEK_MS);
+}
+
+function monthRangeLima(ym: string): { start: Date; end: Date } {
+  const [y, m] = ym.split('-').map((x) => parseInt(x, 10));
+  const start = limaDayStart(y, m - 1, 1);
+  return { start, end: endOfMonthLima(start) };
+}
+
 function pctChange(cur: number, prev: number): string {
   if (prev <= 0) return cur > 0 ? '+100%' : '0%';
   const p = Math.round(((cur - prev) / prev) * 1000) / 10;
   return `${p >= 0 ? '+' : ''}${p}%`;
-}
-
-/** Inicio del día calendario en Lima (UTC-5), coherente con parseDayStart. */
-function limaDayStartFromUtcParts(y: number, m: number, d: number): Date {
-  return new Date(Date.UTC(y, m, d, 5, 0, 0, 0));
 }
 
 /** Últimos 7 días (incl. hoy) vs los 7 días anteriores, anclado a hora Lima. */
@@ -299,16 +286,11 @@ function rolling7DayRanges(now = new Date()): {
   prevFrom: Date;
   prevTo: Date;
 } {
-  const limaNow = new Date(now.getTime() - 5 * 3600000);
-  const y = limaNow.getUTCFullYear();
-  const m = limaNow.getUTCMonth();
-  const d = limaNow.getUTCDate();
-
-  const from = limaDayStartFromUtcParts(y, m, d - 6);
+  const { year, month, day } = instantToLimaParts(now);
+  const from = limaDayStart(year, month, day - 6);
   const to = now;
   const prevTo = new Date(from.getTime() - 1);
-  const prevFrom = limaDayStartFromUtcParts(y, m, d - 13);
-
+  const prevFrom = limaDayStart(year, month, day - 13);
   return { from, to, prevFrom, prevTo };
 }
 
@@ -319,15 +301,15 @@ function lastNMonthClips(n: number, now = new Date()): {
   clipEnd: Date;
   label: string;
 }[] {
-  const lima = new Date(now.getTime() - 5 * 3600000);
+  const { year, month } = instantToLimaParts(now);
   const rows: { ym: string; clipStart: Date; clipEnd: Date; label: string }[] = [];
   for (let i = n - 1; i >= 0; i--) {
-    const anchor = new Date(Date.UTC(lima.getUTCFullYear(), lima.getUTCMonth() - i, 1));
+    const anchor = limaDayStart(year, month - i, 1);
     const ym = monthKey(anchor);
     rows.push({
       ym,
-      clipStart: startOfUtcMonth(anchor),
-      clipEnd: endOfUtcMonth(anchor),
+      clipStart: startOfMonthLima(anchor),
+      clipEnd: endOfMonthLima(anchor),
       label: monthLabelEs(ym),
     });
   }
@@ -336,9 +318,8 @@ function lastNMonthClips(n: number, now = new Date()): {
 
 /** Ventana fija para sparklines KPI: últimas N semanas incluyendo la actual (anclada a hoy). */
 function sparklineRange(weekCount: number, now = new Date()): { from: Date; to: Date; weeks: WeekClip[] } {
-  const currentWeekStart = startOfUtcWeekMonday(now);
-  const from = new Date(currentWeekStart);
-  from.setUTCDate(from.getUTCDate() - 7 * (weekCount - 1));
+  const currentWeekStart = startOfWeekMondayLima(now);
+  const from = new Date(currentWeekStart.getTime() - 7 * (weekCount - 1) * 24 * 60 * 60 * 1000);
   const to = now;
   const weeks = eachWeekClipsInRange(from, to, weekCount);
   return { from, to, weeks };
@@ -351,15 +332,6 @@ function weekNameForDate(d: Date, weeks: WeekClip[]): string | null {
     }
   }
   return null;
-}
-
-function startOfUtcMonth(d: Date): Date {
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1, 0, 0, 0, 0));
-}
-
-function endOfUtcMonth(d: Date): Date {
-  const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0, 23, 59, 59, 999));
-  return x;
 }
 
 /** Seguimiento operativo: solo filas de tarea (modelo Activity con type=tarea + taskKind). */
@@ -752,10 +724,6 @@ export class AnalyticsService {
     return this.classifyCompanyWeekMovement(auditsInWeek, getProb);
   }
 
-  private formatIsoWeekLabel(week: number): string {
-    return `W${String(week).padStart(2, '0')}`;
-  }
-
   private async buildCompaniesWeeklyProgress(
     from: Date,
     to: Date,
@@ -840,11 +808,11 @@ export class AnalyticsService {
     }
 
     const rows: CompanyWeeklyProgressRow[] = [];
-    let weekStart = startOfUtcWeekMonday(from);
+    let weekStart = startOfWeekMondayLima(from);
     while (weekStart <= to) {
-      const weekEnd = endOfUtcWeekSunday(weekStart);
-      const clipStart = maxUtcDate(weekStart, from);
-      const clipEnd = minUtcDate(weekEnd, to);
+      const weekEnd = endOfWeekSundayLima(weekStart);
+      const clipStart = maxInstant(weekStart, from);
+      const clipEnd = minInstant(weekEnd, to);
 
       let avance = 0;
       let nuevoIngreso = 0;
@@ -878,7 +846,7 @@ export class AnalyticsService {
       ).length;
       if (portfolioThisWeek > 0) {
         rows.push({
-          name: String(isoWeekNumberUtc(weekStart)),
+          name: formatIsoWeekLabel(isoWeekNumberLima(weekStart)),
           avance,
           nuevoIngreso,
           atraso,
@@ -887,7 +855,7 @@ export class AnalyticsService {
       }
 
       weekStart = new Date(weekStart);
-      weekStart.setUTCDate(weekStart.getUTCDate() + 7);
+      weekStart = addLimaWeeks(weekStart, 1);
     }
 
     return rows;
@@ -903,16 +871,16 @@ export class AnalyticsService {
     crmScope: CrmDataScope,
     advisorUsers: { id: string; name: string }[],
   ): Promise<CompaniesAdvisorFunnelMovementSnapshot> {
-    const anchorMonday = startOfUtcWeekMonday(referenceTo);
+    const anchorMonday = startOfWeekMondayLima(referenceTo);
     const targetMonday = new Date(anchorMonday);
-    targetMonday.setUTCDate(targetMonday.getUTCDate() - 7);
+    targetMonday.setTime(anchorMonday.getTime() - WEEK_MS);
 
     const clipStart = targetMonday;
-    const clipEnd = minUtcDate(endOfUtcWeekSunday(targetMonday), referenceTo);
+    const clipEnd = minInstant(endOfWeekSundayLima(targetMonday), referenceTo);
 
-    const toWeekNumber = isoWeekNumberUtc(targetMonday);
+    const toWeekNumber = isoWeekNumberLima(targetMonday);
     const fromWeekNumber = toWeekNumber - 1;
-    const currentWeekNumber = isoWeekNumberUtc(referenceTo);
+    const currentWeekNumber = isoWeekNumberLima(referenceTo);
 
     const portfolioWhere = mergeCompanyScope(
       {
@@ -1114,21 +1082,16 @@ export class AnalyticsService {
     return {
       fromWeekNumber,
       toWeekNumber,
-      fromWeekLabel: this.formatIsoWeekLabel(fromWeekNumber),
-      toWeekLabel: this.formatIsoWeekLabel(toWeekNumber),
-      currentWeekLabel: this.formatIsoWeekLabel(currentWeekNumber),
+      fromWeekLabel: formatIsoWeekLabel(fromWeekNumber),
+      toWeekLabel: formatIsoWeekLabel(toWeekNumber),
+      currentWeekLabel: formatIsoWeekLabel(currentWeekNumber),
       title: `Movimiento del funnel — Semana ${fromWeekNumber} a Semana ${toWeekNumber}`,
       advisors,
     };
   }
 
-  /** Etiqueta corta eje X (día/mes UTC), alineada con el diseño de reportes. */
-  private weekShortAxisLabelUtc(monday: Date): string {
-    return `${monday.getUTCDate()}/${monday.getUTCMonth() + 1}`;
-  }
-
   /**
-   * Empresas en etapas con probabilidad dentro del rango, al cierre de cada semana ISO.
+   * Empresas en etapas con probabilidad dentro del rango, al cierre de cada semana ISO (Lima).
    * Últimas {@link COMPANY_WEEKLY_CHART_WEEKS} semanas respecto a `referenceTo`.
    */
   private async buildCompanyWeeklyStageSnapshot(
@@ -1139,11 +1102,10 @@ export class AnalyticsService {
     minProbability: number,
     maxProbability: number,
   ): Promise<CompanyWeeklyStageSnapshot> {
-    const anchorMonday = startOfUtcWeekMonday(referenceTo);
+    const anchorMonday = startOfWeekMondayLima(referenceTo);
     const weekMondays: Date[] = [];
     for (let i = COMPANY_WEEKLY_CHART_WEEKS - 1; i >= 0; i--) {
-      const monday = new Date(anchorMonday);
-      monday.setUTCDate(monday.getUTCDate() - i * 7);
+      const monday = addLimaWeeks(anchorMonday, -i);
       weekMondays.push(monday);
     }
 
@@ -1238,7 +1200,7 @@ export class AnalyticsService {
     }
 
     const weeks: CompanyWeeklyStageRow[] = weekMondays.map((monday) => {
-      const weekEnd = minUtcDate(endOfUtcWeekSunday(monday), referenceTo);
+      const weekEnd = minInstant(endOfWeekSundayLima(monday), referenceTo);
       const counts = new Map<string, number>();
 
       for (const company of portfolioCompanies) {
@@ -1269,7 +1231,7 @@ export class AnalyticsService {
       const total = byStage.reduce((sum, row) => sum + row.count, 0);
 
       return {
-        name: this.weekShortAxisLabelUtc(monday),
+        name: isoWeekLabelFromInstant(monday),
         weekStart: monday.toISOString(),
         weekEnd: weekEnd.toISOString(),
         total,
@@ -1328,11 +1290,10 @@ export class AnalyticsService {
     unrestricted: boolean,
     crmScope: CrmDataScope,
   ): Promise<EstimatedBillingWeeklySnapshot> {
-    const anchorMonday = startOfUtcWeekMonday(referenceTo);
+    const anchorMonday = startOfWeekMondayLima(referenceTo);
     const weekMondays: Date[] = [];
     for (let i = COMPANY_WEEKLY_CHART_WEEKS - 1; i >= 0; i--) {
-      const monday = new Date(anchorMonday);
-      monday.setUTCDate(monday.getUTCDate() - i * 7);
+      const monday = addLimaWeeks(anchorMonday, -i);
       weekMondays.push(monday);
     }
 
@@ -1439,7 +1400,7 @@ export class AnalyticsService {
     }
 
     const weeks: EstimatedBillingWeekRow[] = weekMondays.map((monday) => {
-      const weekEnd = minUtcDate(endOfUtcWeekSunday(monday), referenceTo);
+      const weekEnd = minInstant(endOfWeekSundayLima(monday), referenceTo);
       const amountsByStage = new Map<string, number>();
       let total = 0;
 
@@ -1473,7 +1434,7 @@ export class AnalyticsService {
         });
 
       return {
-        name: this.weekShortAxisLabelUtc(monday),
+        name: isoWeekLabelFromInstant(monday),
         weekStart: monday.toISOString(),
         weekEnd: weekEnd.toISOString(),
         total,
@@ -1501,11 +1462,10 @@ export class AnalyticsService {
     crmScope: CrmDataScope,
     advisorUsers: { id: string; name: string }[],
   ): Promise<ActiveProspectsByAdvisorWeeklySnapshot> {
-    const anchorMonday = startOfUtcWeekMonday(referenceTo);
+    const anchorMonday = startOfWeekMondayLima(referenceTo);
     const weekMondays: Date[] = [];
     for (let i = COMPANY_WEEKLY_CHART_WEEKS - 1; i >= 0; i--) {
-      const monday = new Date(anchorMonday);
-      monday.setUTCDate(monday.getUTCDate() - i * 7);
+      const monday = addLimaWeeks(anchorMonday, -i);
       weekMondays.push(monday);
     }
 
@@ -1642,7 +1602,7 @@ export class AnalyticsService {
     };
 
     const rawWeeks: WeekRaw[] = weekMondays.map((monday) => {
-      const weekEnd = minUtcDate(endOfUtcWeekSunday(monday), referenceTo);
+      const weekEnd = minInstant(endOfWeekSundayLima(monday), referenceTo);
       const countsBySlugAdvisor = new Map<string, Map<string, number>>();
       const billingByAdvisor = new Map<string, number>();
       const advisorIds = new Set<string>();
@@ -1674,7 +1634,7 @@ export class AnalyticsService {
       }
 
       return {
-        name: this.weekShortAxisLabelUtc(monday),
+        name: isoWeekLabelFromInstant(monday),
         weekStart: monday.toISOString(),
         weekEnd: weekEnd.toISOString(),
         countsBySlugAdvisor,
@@ -1870,12 +1830,12 @@ export class AnalyticsService {
     console.log('[DEBUG] auditsByOpp:', auditsByOpp.size);
 
     const rows: OpportunityWeeklyProgressRow[] = [];
-    let weekStart = startOfUtcWeekMonday(from);
+    let weekStart = startOfWeekMondayLima(from);
 
     while (weekStart <= to) {
-      const weekEnd = endOfUtcWeekSunday(weekStart);
-      const clipStart = maxUtcDate(weekStart, from);
-      const clipEnd = minUtcDate(weekEnd, to);
+      const weekEnd = endOfWeekSundayLima(weekStart);
+      const clipStart = maxInstant(weekStart, from);
+      const clipEnd = minInstant(weekEnd, to);
 
       // Nuevo ingreso: oportunidades creadas en esta semana
       const nuevoIds = new Set(
@@ -1947,7 +1907,7 @@ export class AnalyticsService {
       // Incluir la semana si hay alguna oportunidad en cartera (aunque todo sea sinCambios)
       if (portfolioThisWeek > 0) {
         rows.push({
-          name: String(isoWeekNumberUtc(weekStart)),
+          name: formatIsoWeekLabel(isoWeekNumberLima(weekStart)),
           avance,
           nuevoIngreso,
           atraso,
@@ -1956,7 +1916,7 @@ export class AnalyticsService {
       }
 
       weekStart = new Date(weekStart);
-      weekStart.setUTCDate(weekStart.getUTCDate() + 7);
+      weekStart = addLimaWeeks(weekStart, 1);
     }
 
     console.log('[DEBUG] buildOpportunitiesWeeklyProgress result:', rows);
@@ -2352,9 +2312,7 @@ export class AnalyticsService {
 
     const salesByMonth = await Promise.all(
       months.map(async (ym) => {
-        const [y, m] = ym.split('-').map((x) => parseInt(x, 10));
-        const mStart = new Date(Date.UTC(y, m - 1, 1, 0, 0, 0, 0));
-        const mEnd = new Date(Date.UTC(y, m, 0, 23, 59, 59, 999));
+        const { start: mStart, end: mEnd } = monthRangeLima(ym);
         const agg = await this.prisma.opportunity.aggregate({
           where: this.opportunityWhereWonInRange(
             mStart > from ? mStart : from,
@@ -2567,9 +2525,7 @@ export class AnalyticsService {
     /** Conversión por mes (oportunidades ganadas en el mes) */
     const conversionByMonth = await Promise.all(
       months.map(async (ym) => {
-        const [y, m] = ym.split('-').map((x) => parseInt(x, 10));
-        const mStart = new Date(Date.UTC(y, m - 1, 1, 0, 0, 0, 0));
-        const mEnd = new Date(Date.UTC(y, m, 0, 23, 59, 59, 999));
+        const { start: mStart, end: mEnd } = monthRangeLima(ym);
         const cFrom = mStart > from ? mStart : from;
         const cTo = mEnd < to ? mEnd : to;
         const ganadas = await this.prisma.opportunity.count({
@@ -2626,9 +2582,7 @@ export class AnalyticsService {
 
     const followUpsByMonth = await Promise.all(
       months.map(async (ym) => {
-        const [y, m] = ym.split('-').map((x) => parseInt(x, 10));
-        const mStart = new Date(Date.UTC(y, m - 1, 1, 0, 0, 0, 0));
-        const mEnd = new Date(Date.UTC(y, m, 0, 23, 59, 59, 999));
+        const { start: mStart, end: mEnd } = monthRangeLima(ym);
         const cFrom = mStart > from ? mStart : from;
         const cTo = mEnd < to ? mEnd : to;
         const [completados, pendientes] = await Promise.all([
@@ -2980,10 +2934,10 @@ export class AnalyticsService {
       : viewerUserId;
 
     const now = new Date();
-    const weekStart = startOfUtcWeekMonday(now);
-    const weekEnd = endOfUtcWeekSunday(now);
-    const monthStart = startOfUtcMonth(now);
-    const monthEnd = endOfUtcMonth(now);
+    const weekStart = startOfWeekMondayLima(now);
+    const weekEnd = endOfWeekSundayLima(now);
+    const monthStart = startOfMonthLima(now);
+    const monthEnd = endOfMonthLima(now);
 
     const portfolio = isUnrestricted ? {} : { assignedTo: viewerUserId };
     const myPortfolio = {};

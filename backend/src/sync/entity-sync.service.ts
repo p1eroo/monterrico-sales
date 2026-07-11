@@ -10,8 +10,8 @@ type Tx = Prisma.TransactionClient;
  * Sincronización empresa ↔ contactos ↔ oportunidad principal vinculada.
  * La oportunidad principal por empresa es la de mayor probabilidad de etapa (catálogo);
  * solo ella alinea Company y contactos; las demás oportunidades de la empresa no se pisan.
- * La **fuente** de la empresa (y en propagación desde empresa, la de los contactos) sigue a la
- * oportunidad principal, no al revés.
+ * La fuente de contacto principal y oportunidad principal se alinea con la empresa al propagar
+ * desde empresa; desde contacto u oportunidad principal rige la lógica existente.
  * Usar prisma directo aquí (no pasar por ContactsService.update) para evitar recursión.
  */
 @Injectable()
@@ -54,7 +54,7 @@ export class EntitySyncService {
     }
   }
 
-  /** Tras editar empresa: todos los contactos y opps vinculados copian campos comerciales. */
+  /** Tras editar empresa: contacto principal (o único) y oportunidad principal alinean campos comerciales. */
   async propagateFromCompany(companyId: string): Promise<void> {
     if (!this.lockCompany(companyId)) return;
     try {
@@ -138,6 +138,39 @@ export class EntitySyncService {
     return scored[0]?.id ?? null;
   }
 
+  /**
+   * Contacto principal de la empresa: `isPrimary` en el vínculo; si hay uno solo, ese;
+   * si hay varios sin principal, el vinculado a la oportunidad principal de la empresa.
+   */
+  private async resolvePrimaryContactIdForCompanyTx(
+    tx: Tx,
+    companyId: string,
+  ): Promise<string | null> {
+    const ccRows = await tx.companyContact.findMany({
+      where: { companyId },
+      select: { contactId: true, isPrimary: true },
+    });
+    if (ccRows.length === 0) return null;
+    if (ccRows.length === 1) return ccRows[0].contactId;
+
+    const flagged = ccRows.filter((r) => r.isPrimary);
+    if (flagged.length >= 1) {
+      return flagged[0].contactId;
+    }
+
+    const primaryOppId =
+      await this.resolvePrimaryOpportunityIdForCompanyTx(tx, companyId);
+    if (!primaryOppId) return null;
+
+    const companyContactIds = new Set(ccRows.map((r) => r.contactId));
+    const oppContacts = await tx.contactOpportunity.findMany({
+      where: { opportunityId: primaryOppId },
+      select: { contactId: true },
+    });
+    const linked = oppContacts.find((oc) => companyContactIds.has(oc.contactId));
+    return linked?.contactId ?? null;
+  }
+
   private async applyContactSnapshot(
     tx: Tx,
     companyId: string,
@@ -213,25 +246,15 @@ export class EntitySyncService {
     const fact = company.facturacionEstimada;
     const etapa = company.etapa;
     const assignedTo = company.assignedTo;
+    const syncFuente = await this.crmConfig.normalizeLeadSourceOrDefault(
+      company.fuente,
+    );
 
-    const primaryOppId =
-      await this.resolvePrimaryOpportunityIdForCompanyTx(tx, companyId);
-    let syncFuente = await this.crmConfig.normalizeLeadSourceOrDefault(company.fuente);
-    if (primaryOppId) {
-      const po = await tx.opportunity.findUnique({
-        where: { id: primaryOppId },
-        select: { fuente: true },
-      });
-      syncFuente = await this.crmConfig.normalizeLeadSourceOrDefault(po?.fuente);
-    }
-
-    const ccRows = await tx.companyContact.findMany({
-      where: { companyId },
-      select: { contactId: true },
-    });
-    for (const { contactId: cid } of ccRows) {
+    const primaryContactId =
+      await this.resolvePrimaryContactIdForCompanyTx(tx, companyId);
+    if (primaryContactId) {
       await tx.contact.update({
-        where: { id: cid },
+        where: { id: primaryContactId },
         data: {
           etapa,
           fuente: syncFuente,
@@ -241,15 +264,14 @@ export class EntitySyncService {
       });
     }
 
+    const primaryOppId =
+      await this.resolvePrimaryOpportunityIdForCompanyTx(tx, companyId);
     if (primaryOppId) {
       await this.updateOppCommercial(tx, primaryOppId, {
         amount: fact,
         etapa,
         assignedTo,
-      });
-      await tx.company.update({
-        where: { id: companyId },
-        data: { fuente: syncFuente },
+        fuente: syncFuente,
       });
     }
   }
@@ -319,6 +341,7 @@ export class EntitySyncService {
       amount: number;
       etapa: string;
       assignedTo: string | null;
+      fuente?: string;
     },
   ) {
     const status = this.statusFromEtapa(patch.etapa);
@@ -333,6 +356,7 @@ export class EntitySyncService {
         assignedTo: patch.assignedTo,
         status,
         probability,
+        ...(patch.fuente !== undefined ? { fuente: patch.fuente } : {}),
       },
     });
   }
