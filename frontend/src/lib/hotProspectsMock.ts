@@ -44,6 +44,21 @@ export const MOCK_HOT_PROSPECTS_SUMMARY: HotProspectsSummary = {
   pipelineCaliente: 1_245_000,
   enCierre: 8,
   yaActivos: 9,
+  weeklyTrend: {
+    weeks: [
+      { name: 'W22', weekStart: '2026-06-02T05:00:00.000Z', weekEnd: '2026-06-09T04:59:59.999Z' },
+      { name: 'W23', weekStart: '2026-06-09T05:00:00.000Z', weekEnd: '2026-06-16T04:59:59.999Z' },
+      { name: 'W24', weekStart: '2026-06-16T05:00:00.000Z', weekEnd: '2026-06-23T04:59:59.999Z' },
+      { name: 'W25', weekStart: '2026-06-23T05:00:00.000Z', weekEnd: '2026-06-30T04:59:59.999Z' },
+      { name: 'W26', weekStart: '2026-06-30T05:00:00.000Z', weekEnd: '2026-07-07T04:59:59.999Z' },
+      { name: 'W27', weekStart: '2026-07-07T05:00:00.000Z', weekEnd: '2026-07-14T04:59:59.999Z' },
+      { name: 'W28', weekStart: '2026-07-14T05:00:00.000Z', weekEnd: '2026-07-21T04:59:59.999Z' },
+    ],
+    totalCalientes: MOCK_HOT_PROSPECTS_SPARKLINES.total.data,
+    pipelineCaliente: MOCK_HOT_PROSPECTS_SPARKLINES.pipeline.data,
+    enCierre: MOCK_HOT_PROSPECTS_SPARKLINES.cierre.data,
+    yaActivos: MOCK_HOT_PROSPECTS_SPARKLINES.activos.data,
+  },
   topProspects: [
     {
       id: 'mock-hot-1',

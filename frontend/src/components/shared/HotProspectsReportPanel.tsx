@@ -26,7 +26,7 @@ interface HotProspectsReportPanelProps {
 type StatCardKey = 'total' | 'pipeline' | 'cierre' | 'activos';
 
 type StatCard = {
-  key: StatCardKey;
+  cardKey: StatCardKey;
   label: string;
   value: string;
   hint?: string;
@@ -164,28 +164,28 @@ function buildStatCards(
 ): StatCard[] {
   return [
     {
-      key: 'total',
+      cardKey: 'total',
       label: 'Total Calientes',
       value: (data?.totalCalientes ?? 0).toLocaleString('es-PE'),
       hint: 'Empresas en etapas 70%–100%',
       sparkline: sparklines?.total,
     },
     {
-      key: 'pipeline',
+      cardKey: 'pipeline',
       label: 'Pipeline caliente',
       value: formatCurrency(data?.pipelineCaliente ?? 0),
       hint: 'Facturación estimada (70%+)',
       sparkline: sparklines?.pipeline,
     },
     {
-      key: 'cierre',
+      cardKey: 'cierre',
       label: 'En cierre',
       value: (data?.enCierre ?? 0).toLocaleString('es-PE'),
       hint: 'Etapas 85%–99%',
       sparkline: sparklines?.cierre,
     },
     {
-      key: 'activos',
+      cardKey: 'activos',
       label: 'Ya activos',
       value: (data?.yaActivos ?? 0).toLocaleString('es-PE'),
       hint: 'Etapa Activo (100%)',
@@ -234,7 +234,7 @@ export function HotProspectsReportPanel({
     >
       <div className="grid min-h-[420px] min-w-0 grid-rows-4 gap-3 lg:min-h-0 lg:h-full">
         {statCards.map((card) => (
-          <HotProspectStatCard key={card.key} {...card} loading={loading} />
+          <HotProspectStatCard key={card.cardKey} {...card} loading={loading} />
         ))}
       </div>
 
