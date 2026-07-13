@@ -67,6 +67,11 @@ export class ContactsController {
     @Query('linkedToCompany') linkedToCompany?: string,
     @Query('excludeCompanyLink') excludeCompanyLink?: string,
     @Query('excludeOpportunityLink') excludeOpportunityLink?: string,
+    @Query('lastInteraction') lastInteraction?: string,
+    @Query('lastInteractionFrom') lastInteractionFrom?: string,
+    @Query('lastInteractionTo') lastInteractionTo?: string,
+    @Query('createdFrom') createdFrom?: string,
+    @Query('createdTo') createdTo?: string,
   ) {
     const scope = await this.crmDataScope.buildScope(
       req.user.userId,
@@ -87,6 +92,11 @@ export class ContactsController {
         linkedToCompanyId: linkedToCompany?.trim() || undefined,
         excludeCompanyLinkId: excludeCompanyLink?.trim() || undefined,
         excludeOpportunityLinkId: excludeOpportunityLink?.trim() || undefined,
+        lastInteraction: lastInteraction?.trim() || undefined,
+        lastInteractionFrom: lastInteractionFrom?.trim() || undefined,
+        lastInteractionTo: lastInteractionTo?.trim() || undefined,
+        createdFrom: createdFrom?.trim() || undefined,
+        createdTo: createdTo?.trim() || undefined,
       },
       scope,
     );
@@ -101,6 +111,11 @@ export class ContactsController {
     @Query('assignedTo') assignedTo?: string,
     @Query('excludeAssignedTo') excludeAssignedTo?: string,
     @Query('advisorPool') advisorPool?: string,
+    @Query('lastInteraction') lastInteraction?: string,
+    @Query('lastInteractionFrom') lastInteractionFrom?: string,
+    @Query('lastInteractionTo') lastInteractionTo?: string,
+    @Query('createdFrom') createdFrom?: string,
+    @Query('createdTo') createdTo?: string,
   ) {
     const scope = await this.crmDataScope.buildScope(
       req.user.userId,
@@ -113,6 +128,11 @@ export class ContactsController {
         assignedTo: assignedTo?.trim() || undefined,
         excludeAssignedTo: excludeAssignedTo?.trim() || undefined,
         advisorPool: advisorPool?.trim() || undefined,
+        lastInteraction: lastInteraction?.trim() || undefined,
+        lastInteractionFrom: lastInteractionFrom?.trim() || undefined,
+        lastInteractionTo: lastInteractionTo?.trim() || undefined,
+        createdFrom: createdFrom?.trim() || undefined,
+        createdTo: createdTo?.trim() || undefined,
       },
       scope,
     );

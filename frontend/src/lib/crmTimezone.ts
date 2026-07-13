@@ -1,3 +1,5 @@
+import type { DateRange } from 'react-day-picker';
+
 /** Alineado con `backend/src/common/crm-timezone.util.ts` (Perú, sin DST). */
 export const CRM_TIMEZONE = 'America/Lima' as const;
 
@@ -40,6 +42,31 @@ export function parseDayEndLima(isoDate: string): Date {
   const mo = Number(m[2]);
   const d = Number(m[3]);
   return new Date(Date.UTC(y, mo - 1, d + 1, 4, 59, 59, 999));
+}
+
+/** Día calendario elegido en un picker → YYYY-MM-DD (sin desfase UTC). */
+export function calendarDateToLimaYmd(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/** Instant → YYYY-MM-DD según calendario Lima. */
+export function instantToLimaYmd(d: Date): string {
+  const { year, month, day } = instantToLimaParts(d);
+  return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+/** Rango de filtros CRM → fechas YYYY-MM-DD (día completo en Lima). */
+export function dateRangeToLimaYmdBounds(range: DateRange | undefined): {
+  from?: string;
+  to?: string;
+} {
+  return {
+    from: range?.from ? calendarDateToLimaYmd(range.from) : undefined,
+    to: range?.to ? calendarDateToLimaYmd(range.to) : undefined,
+  };
 }
 
 export function startOfWeekMondayLima(d: Date): Date {

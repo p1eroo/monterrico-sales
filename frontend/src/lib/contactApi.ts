@@ -349,6 +349,11 @@ export async function contactListPaginated(params?: {
   linkedToCompanyId?: string;
   excludeCompanyLinkId?: string;
   excludeOpportunityLinkId?: string;
+  lastInteraction?: string;
+  lastInteractionFrom?: string;
+  lastInteractionTo?: string;
+  createdFrom?: string;
+  createdTo?: string;
 }): Promise<ContactListPaginatedResponse> {
   const sp = new URLSearchParams();
   if (params?.page != null) sp.set('page', String(params.page));
@@ -372,6 +377,21 @@ export async function contactListPaginated(params?: {
   if (params?.excludeOpportunityLinkId?.trim()) {
     sp.set('excludeOpportunityLink', params.excludeOpportunityLinkId.trim());
   }
+  if (params?.lastInteraction?.trim()) {
+    sp.set('lastInteraction', params.lastInteraction.trim());
+  }
+  if (params?.lastInteractionFrom?.trim()) {
+    sp.set('lastInteractionFrom', params.lastInteractionFrom.trim());
+  }
+  if (params?.lastInteractionTo?.trim()) {
+    sp.set('lastInteractionTo', params.lastInteractionTo.trim());
+  }
+  if (params?.createdFrom?.trim()) {
+    sp.set('createdFrom', params.createdFrom.trim());
+  }
+  if (params?.createdTo?.trim()) {
+    sp.set('createdTo', params.createdTo.trim());
+  }
   const qs = sp.toString();
   const url = qs ? `/contacts?${qs}` : '/contacts';
   return api<ContactListPaginatedResponse>(url);
@@ -384,6 +404,11 @@ export async function contactListEtapaCounts(params?: {
   assignedTo?: string;
   excludeAssignedTo?: string;
   advisorPool?: string;
+  lastInteraction?: string;
+  lastInteractionFrom?: string;
+  lastInteractionTo?: string;
+  createdFrom?: string;
+  createdTo?: string;
 }): Promise<{ counts: Record<string, number> }> {
   const sp = new URLSearchParams();
   if (params?.search?.trim()) sp.set('search', params.search.trim());
@@ -394,6 +419,21 @@ export async function contactListEtapaCounts(params?: {
   }
   if (params?.advisorPool?.trim()) {
     sp.set('advisorPool', params.advisorPool.trim());
+  }
+  if (params?.lastInteraction?.trim()) {
+    sp.set('lastInteraction', params.lastInteraction.trim());
+  }
+  if (params?.lastInteractionFrom?.trim()) {
+    sp.set('lastInteractionFrom', params.lastInteractionFrom.trim());
+  }
+  if (params?.lastInteractionTo?.trim()) {
+    sp.set('lastInteractionTo', params.lastInteractionTo.trim());
+  }
+  if (params?.createdFrom?.trim()) {
+    sp.set('createdFrom', params.createdFrom.trim());
+  }
+  if (params?.createdTo?.trim()) {
+    sp.set('createdTo', params.createdTo.trim());
   }
   const qs = sp.toString();
   return api<{ counts: Record<string, number> }>(

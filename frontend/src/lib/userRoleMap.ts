@@ -49,6 +49,20 @@ export function mapApiRoleStringToUserRole(r: string): User['role'] {
   return 'asesor';
 }
 
+/** Roles visibles en el filtro de usuarios de Archivos (Comercial). */
+const FILES_COMMERCIAL_ROLE_SLUGS = new Set([
+  'asesor',
+  'asesor_comercial',
+  'asesor_sup',
+  'supervisor',
+  'jefe_comercial',
+]);
+
+export function isCommercialFilesFilterRoleSlug(slug: string): boolean {
+  const x = slug.trim().toLowerCase().replace(/\.$/, '');
+  return FILES_COMMERCIAL_ROLE_SLUGS.has(x);
+}
+
 /** roleId viene de la API como Role.id (cuid) o legacy r1–r4. */
 export function inferRoleIdFromApiUser(
   role: string,
@@ -86,5 +100,6 @@ export function apiUserRecordToUser(row: ApiUserRecord): User {
     joinedAt: joinedAtToDateString(row.joinedAt),
     lastActivity: row.lastActivity ?? undefined,
     allowedAreas: (row.allowedAreas as User['allowedAreas']) || [],
+    roleSlug: row.role.trim().toLowerCase(),
   };
 }

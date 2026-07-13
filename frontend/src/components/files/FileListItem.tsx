@@ -8,13 +8,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { FileTypeIcon } from './FileTypeIcon';
 import { formatDate } from '@/lib/formatters';
+import { formatFileSize } from '@/lib/fileUtils';
 import type { FileAttachment } from '@/types';
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
 
 interface FileListItemProps {
   file: FileAttachment;

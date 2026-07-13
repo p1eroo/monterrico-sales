@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import type { DateRange } from "react-day-picker";
 import {
   flexRender,
   getCoreRowModel,
@@ -95,7 +96,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { comercialProPopoverClass, comercialProCommandClass } from "@/lib/comercialFilterSurface";
+import { formatDateShort } from "@/lib/formatters";
+import { comercialProPopoverClass, comercialProCommandClass, dateRangeToQueryBounds } from "@/lib/comercialFilterSurface";
 import { api } from "@/lib/api";
 import { contactDetailHref } from "@/lib/detailRoutes";
 import type { Contact } from "@/types";
@@ -141,6 +143,7 @@ import { ImportSvgIcon } from "@/components/icons/ImportSvgIcon";
 import { ExportSvgIcon } from "@/components/icons/ExportSvgIcon";
 import { ColumnsSvgIcon } from "@/components/icons/ColumnsSvgIcon";
 import { FilterSvgIcon } from "@/components/icons/FilterSvgIcon";
+import { DateRangeFilterButton } from "@/components/ui/date-range-filter-button";
 
 const DEFAULT_ITEMS_PER_PAGE = 25;
 
@@ -236,6 +239,8 @@ export default function ContactosPage() {
     ultimaInteraccion: true,
   });
   const [sourceFilter, setSourceFilter] = useState<string[]>([]);
+  const [interactionRange, setInteractionRange] = useState<DateRange | undefined>();
+  const [creationRange, setCreationRange] = useState<DateRange | undefined>();
   const [viewMode, setViewMode] = useState<"table" | "cards">(() => {
     if (typeof window !== "undefined" && window.innerWidth < 768)
       return "cards";
@@ -283,6 +288,11 @@ export default function ContactosPage() {
   const loadApiContacts = useCallback(async () => {
     setLoading(true);
     try {
+      const { from: interactionFromIso, to: interactionToIso } =
+        dateRangeToQueryBounds(interactionRange);
+      const { from: createdFromIso, to: createdToIso } =
+        dateRangeToQueryBounds(creationRange);
+
       const res = await contactListPaginated({
         page,
         limit: pageSize,
@@ -292,6 +302,10 @@ export default function ContactosPage() {
         assignedTo: advisorListParams.assignedTo,
         excludeAssignedTo: advisorListParams.excludeAssignedTo,
         advisorPool: advisorListParams.advisorPool,
+        lastInteractionFrom: interactionFromIso,
+        lastInteractionTo: interactionToIso,
+        createdFrom: createdFromIso,
+        createdTo: createdToIso,
       });
       setApiRows(res.data);
       setTotalContacts(res.total);
@@ -303,7 +317,7 @@ export default function ContactosPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, searchDebounced, etapaFilter, sourceFilter, advisorListParams]);
+  }, [page, pageSize, searchDebounced, etapaFilter, sourceFilter, advisorListParams, interactionRange, creationRange]);
 
   useEffect(() => {
     void loadApiContacts();
@@ -311,18 +325,26 @@ export default function ContactosPage() {
 
   const loadEtapaTabCounts = useCallback(async () => {
     try {
+      const { from: interactionFromIso, to: interactionToIso } =
+        dateRangeToQueryBounds(interactionRange);
+      const { from: createdFromIso, to: createdToIso } =
+        dateRangeToQueryBounds(creationRange);
       const { counts } = await contactListEtapaCounts({
         search: searchDebounced || undefined,
         fuente: sourceFilter.length > 0 ? sourceFilter.join(',') : undefined,
         assignedTo: advisorListParams.assignedTo,
         excludeAssignedTo: advisorListParams.excludeAssignedTo,
         advisorPool: advisorListParams.advisorPool,
+        lastInteractionFrom: interactionFromIso,
+        lastInteractionTo: interactionToIso,
+        createdFrom: createdFromIso,
+        createdTo: createdToIso,
       });
       setEtapaTabCounts(counts);
     } catch {
       setEtapaTabCounts({});
     }
-  }, [searchDebounced, sourceFilter, advisorListParams]);
+  }, [searchDebounced, sourceFilter, advisorListParams, interactionRange, creationRange]);
 
   useEffect(() => {
     void loadEtapaTabCounts();
@@ -461,12 +483,16 @@ export default function ContactosPage() {
     etapaFilter.length > 0 ||
     sourceFilter.length > 0 ||
     advisorFilterIsActive ||
-    search !== "";
+    search !== "" ||
+    Boolean(interactionRange?.from || interactionRange?.to) ||
+    Boolean(creationRange?.from || creationRange?.to);
 
   function clearFilters() {
     setSearch("");
     setEtapaFilter([]);
     setSourceFilter([]);
+    setInteractionRange(undefined);
+    setCreationRange(undefined);
     resetAdvisorFilter();
     setPage(1);
   }
@@ -909,6 +935,14 @@ export default function ContactosPage() {
         params.excludeAssignedTo = advisorListParams.excludeAssignedTo;
       }
       if (advisorListParams.advisorPool) params.advisorPool = advisorListParams.advisorPool;
+      const { from: interactionFromIso, to: interactionToIso } =
+        dateRangeToQueryBounds(interactionRange);
+      const { from: createdFromIso, to: createdToIso } =
+        dateRangeToQueryBounds(creationRange);
+      if (interactionFromIso) params.lastInteractionFrom = interactionFromIso;
+      if (interactionToIso) params.lastInteractionTo = interactionToIso;
+      if (createdFromIso) params.createdFrom = createdFromIso;
+      if (createdToIso) params.createdTo = createdToIso;
       // Mapear columnas visibles de la tabla a nombres de columnas CSV
       const tableToCsv: Record<string, string[]> = {
         nombre: ["nombre"],
@@ -1234,6 +1268,15 @@ export default function ContactosPage() {
           </PopoverContent>
         </Popover>
 
+        <DateRangeFilterButton
+          value={interactionRange}
+          onChange={(range) => {
+            setInteractionRange(range);
+            setPage(1);
+          }}
+          placeholder="Última interacción"
+        />
+
           {hasActiveFilters && (
             <Button variant="ghost" size="sm" onClick={clearFilters}>
               <X className="size-4" /> Limpiar
@@ -1346,6 +1389,15 @@ export default function ContactosPage() {
                     isInitialized={advisorFilterInitialized}
                     className="!h-12 flex-1"
                     onInteraction={() => setPage(1)}
+                  />
+                  <DateRangeFilterButton
+                    value={creationRange}
+                    onChange={(range) => {
+                      setCreationRange(range);
+                      setPage(1);
+                    }}
+                    placeholder="Creación"
+                    className="min-w-0 w-auto flex-1"
                   />
                 </div>
               </PopoverContent>
@@ -1777,10 +1829,7 @@ function ContactsTable({
         enableHiding: true,
         cell: ({ getValue }) => (
           <span className="text-sm text-[#475569] dark:text-gray-400">
-            {new Date(String(getValue())).toLocaleDateString("es-PE", {
-              day: "2-digit",
-              month: "short",
-            })}
+            {formatDateShort(String(getValue()))}
           </span>
         ),
         sortingFn: "datetime",
@@ -1795,12 +1844,7 @@ function ContactsTable({
           const val = getValue() as string | null | undefined;
           return (
             <span className="text-sm text-[#475569] dark:text-gray-400">
-              {val
-                ? new Date(val).toLocaleDateString("es-PE", {
-                    day: "2-digit",
-                    month: "short",
-                  })
-                : "—"}
+              {val ? formatDateShort(val) : "—"}
             </span>
           );
         },

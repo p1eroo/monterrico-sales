@@ -5,6 +5,8 @@ import {
 } from '@/components/shared/SourcesByEntityMixedChart';
 import { SourceDetailCard } from '@/components/shared/SourceDetailCard';
 import type { SourceDetail } from '@/lib/sourceDetailTypes';
+import type { ApiSourcesDetailWeek } from '@/lib/sourceDetailUtils';
+import { formatWeekRangeLima } from '@/lib/crmTimezone';
 import { cn } from '@/lib/utils';
 
 const LEGEND_SUMMARY_OFFSET_PX = 56;
@@ -15,6 +17,8 @@ const PANEL_HEIGHT_CLASS = 'lg:min-h-[min(68vh,640px)] lg:max-h-[min(68vh,640px)
 interface SourcesExpandedViewProps {
   chartData: SourceByEntityPoint[];
   details: SourceDetail[];
+  /** Semana ISO de corte para los cards (semana anterior a la actual). */
+  detailWeek?: ApiSourcesDetailWeek | null;
   /** Altura del gráfico en vista apilada (móvil). */
   chartHeight?: number;
   className?: string;
@@ -23,6 +27,7 @@ interface SourcesExpandedViewProps {
 export function SourcesExpandedView({
   chartData,
   details,
+  detailWeek,
   chartHeight = MOBILE_CHART_HEIGHT,
   className,
 }: SourcesExpandedViewProps) {
@@ -32,6 +37,16 @@ export function SourcesExpandedView({
   const sortedDetails = [...details].sort(
     (a, b) => b.companyCount - a.companyCount,
   );
+
+  const weekRangeLabel =
+    detailWeek?.weekStart && detailWeek?.weekEnd
+      ? formatWeekRangeLima(detailWeek.weekStart, detailWeek.weekEnd)
+      : null;
+  const weekCaption = detailWeek?.name
+    ? weekRangeLabel
+      ? `Empresas creadas en semana ${detailWeek.name} (${weekRangeLabel})`
+      : `Empresas creadas en semana ${detailWeek.name}`
+    : null;
 
   useEffect(() => {
     const node = chartPanelRef.current;
@@ -91,7 +106,10 @@ export function SourcesExpandedView({
       >
         <div className="flex shrink-0 flex-wrap items-baseline justify-between gap-2">
           <h3 className="text-sm font-semibold text-foreground">Detalle por fuente</h3>
-          <p className="text-[11px] text-muted-foreground">Empresas en etapas 10%–100%</p>
+          <p className="text-[11px] text-muted-foreground">
+            {weekCaption ? `${weekCaption} · ` : ''}
+            Empresas en etapas 10%–100%
+          </p>
         </div>
         {sortedDetails.length > 0 ? (
           <div className="flex flex-col gap-4">
@@ -101,7 +119,7 @@ export function SourcesExpandedView({
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Sin empresas por fuente en este periodo.
+            Sin empresas creadas por fuente en la semana anterior.
           </p>
         )}
       </div>

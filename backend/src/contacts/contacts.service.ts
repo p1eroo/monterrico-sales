@@ -23,6 +23,7 @@ import {
   applySimpleAdvisorFilter,
   parseAdvisorFilterQuery,
 } from '../common/advisor-filter.util';
+import { resolveLimaDayRange } from '../common/crm-timezone.util';
 import { NotificationsService } from '../notifications/notifications.service';
 import { normalizeContactCargo } from './contact-cargo.util';
 import { normalizeClienteRecuperado } from '../common/normalize-cliente-recuperado';
@@ -498,6 +499,12 @@ export class ContactsService {
       linkedToCompanyId?: string;
       excludeCompanyLinkId?: string;
       excludeOpportunityLinkId?: string;
+      /** "none" | "7d" | "30d" | "90d" | "180d" */
+      lastInteraction?: string;
+      lastInteractionFrom?: string;
+      lastInteractionTo?: string;
+      createdFrom?: string;
+      createdTo?: string;
     },
     scope?: CrmDataScope,
   ): Promise<Prisma.ContactWhereInput> {
@@ -563,6 +570,144 @@ export class ContactsService {
         }),
       );
     }
+
+    const createdRange = resolveLimaDayRange(
+      opts?.createdFrom,
+      opts?.createdTo,
+    );
+    if (createdRange) {
+      const pushAnd = (clause: Prisma.ContactWhereInput) => {
+        if (where.AND) {
+          where.AND = Array.isArray(where.AND)
+            ? [...where.AND, clause]
+            : [where.AND, clause];
+        } else {
+          where.AND = [clause];
+        }
+      };
+      pushAnd({
+        createdAt: { gte: createdRange.from, lte: createdRange.to },
+      });
+    }
+
+    const li = opts?.lastInteraction?.trim();
+    const interactionRange = resolveLimaDayRange(
+      opts?.lastInteractionFrom,
+      opts?.lastInteractionTo,
+    );
+    const hasValidRange = !!interactionRange;
+
+    if (li || hasValidRange) {
+      const activityAny: Prisma.ContactWhereInput = {
+        OR: [
+          { activities: { some: { activity: {} } } },
+          {
+            companies: {
+              some: {
+                company: { activities: { some: { activity: {} } } },
+              },
+            },
+          },
+          {
+            opportunities: {
+              some: {
+                opportunity: { activities: { some: { activity: {} } } },
+              },
+            },
+          },
+        ],
+      };
+
+      const pushAnd = (clause: Prisma.ContactWhereInput) => {
+        if (where.AND) {
+          where.AND = Array.isArray(where.AND)
+            ? [...where.AND, clause]
+            : [where.AND, clause];
+        } else {
+          where.AND = [clause];
+        }
+      };
+
+      if (li === 'none') {
+        pushAnd({ NOT: activityAny });
+      } else if (hasValidRange && interactionRange) {
+        const { from, to } = interactionRange;
+        pushAnd({
+          OR: [
+            {
+              activities: {
+                some: { activity: { createdAt: { gte: from, lte: to } } },
+              },
+            },
+            {
+              companies: {
+                some: {
+                  company: {
+                    activities: {
+                      some: { activity: { createdAt: { gte: from, lte: to } } },
+                    },
+                  },
+                },
+              },
+            },
+            {
+              opportunities: {
+                some: {
+                  opportunity: {
+                    activities: {
+                      some: { activity: { createdAt: { gte: from, lte: to } } },
+                    },
+                  },
+                },
+              },
+            },
+          ],
+        });
+      } else {
+        const daysMap: Record<string, number> = {
+          '7d': 7,
+          '30d': 30,
+          '90d': 90,
+          '180d': 180,
+        };
+        const days = li ? daysMap[li] : undefined;
+        if (days) {
+          const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+          pushAnd({
+            OR: [
+              {
+                activities: {
+                  some: { activity: { createdAt: { gte: cutoff } } },
+                },
+              },
+              {
+                companies: {
+                  some: {
+                    company: {
+                      activities: {
+                        some: { activity: { createdAt: { gte: cutoff } } },
+                      },
+                    },
+                  },
+                },
+              },
+              {
+                opportunities: {
+                  some: {
+                    opportunity: {
+                      activities: {
+                        some: { activity: { createdAt: { gte: cutoff } } },
+                      },
+                    },
+                  },
+                },
+              },
+            ],
+          });
+        }
+      }
+    }
+
     return where;
   }
 
@@ -576,6 +721,11 @@ export class ContactsService {
       assignedTo?: string;
       excludeAssignedTo?: string;
       advisorPool?: string;
+      lastInteraction?: string;
+      lastInteractionFrom?: string;
+      lastInteractionTo?: string;
+      createdFrom?: string;
+      createdTo?: string;
     },
     scope?: CrmDataScope,
   ): Promise<{ counts: Record<string, number> }> {
@@ -608,6 +758,11 @@ export class ContactsService {
       linkedToCompanyId?: string;
       excludeCompanyLinkId?: string;
       excludeOpportunityLinkId?: string;
+      lastInteraction?: string;
+      lastInteractionFrom?: string;
+      lastInteractionTo?: string;
+      createdFrom?: string;
+      createdTo?: string;
     },
     scope?: CrmDataScope,
   ) {

@@ -65,7 +65,8 @@ import { GitForkIcon } from '@/components/icons/GitForkIcon';
 import { PaletteIcon } from '@/components/icons/PaletteIcon';
 import { addCalendarDaysLocalIso } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
-import { comercialProPopoverClass, comercialProCommandClass } from '@/lib/comercialFilterSurface';
+import { formatDateShort } from '@/lib/formatters';
+import { comercialProPopoverClass, comercialProCommandClass, dateRangeToQueryBounds } from '@/lib/comercialFilterSurface';
 import { api, API_BASE } from '@/lib/api';
 import { usePermissions } from '@/hooks/usePermissions';
 import {
@@ -337,6 +338,7 @@ export default function EmpresasPage() {
   const [rubroFilter, setRubroFilter] = useState<string[]>([]);
   const [tipoFilter, setTipoFilter] = useState<string[]>([]);
   const [interactionRange, setInteractionRange] = useState<DateRange | undefined>();
+  const [creationRange, setCreationRange] = useState<DateRange | undefined>();
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({
     fuente: true,
     rubro: true,
@@ -395,24 +397,10 @@ export default function EmpresasPage() {
   const loadSummary = useCallback(async () => {
     setLoading(true);
     try {
-      const interactionFromIso =
-        interactionRange?.from
-          ? new Date(
-              interactionRange.from.getFullYear(),
-              interactionRange.from.getMonth(),
-              interactionRange.from.getDate(),
-              0, 0, 0, 0,
-            ).toISOString()
-          : undefined;
-      const interactionToIso =
-        interactionRange?.to
-          ? new Date(
-              interactionRange.to.getFullYear(),
-              interactionRange.to.getMonth(),
-              interactionRange.to.getDate(),
-              23, 59, 59, 999,
-            ).toISOString()
-          : undefined;
+      const { from: interactionFromIso, to: interactionToIso } =
+        dateRangeToQueryBounds(interactionRange);
+      const { from: createdFromIso, to: createdToIso } =
+        dateRangeToQueryBounds(creationRange);
 
       const res = await companyListSummaryPaginated({
         page,
@@ -428,6 +416,8 @@ export default function EmpresasPage() {
         lastInteraction: undefined,
         lastInteractionFrom: interactionFromIso,
         lastInteractionTo: interactionToIso,
+        createdFrom: createdFromIso,
+        createdTo: createdToIso,
       });
       setSummaryRows(res.data);
       setTotal(res.total);
@@ -448,8 +438,8 @@ export default function EmpresasPage() {
     advisorListParams,
     rubroFilter,
     tipoFilter,
-    interactionRange?.from,
-    interactionRange?.to,
+    interactionRange,
+    creationRange,
   ]);
 
   useEffect(() => {
@@ -458,24 +448,10 @@ export default function EmpresasPage() {
 
   const loadEtapaTabCounts = useCallback(async () => {
     try {
-      const interactionFromIso =
-        interactionRange?.from
-          ? new Date(
-              interactionRange.from.getFullYear(),
-              interactionRange.from.getMonth(),
-              interactionRange.from.getDate(),
-              0, 0, 0, 0,
-            ).toISOString()
-          : undefined;
-      const interactionToIso =
-        interactionRange?.to
-          ? new Date(
-              interactionRange.to.getFullYear(),
-              interactionRange.to.getMonth(),
-              interactionRange.to.getDate(),
-              23, 59, 59, 999,
-            ).toISOString()
-          : undefined;
+      const { from: interactionFromIso, to: interactionToIso } =
+        dateRangeToQueryBounds(interactionRange);
+      const { from: createdFromIso, to: createdToIso } =
+        dateRangeToQueryBounds(creationRange);
       const { counts } = await companySummaryEtapaCounts({
         search: searchDebounced || undefined,
         fuente: sourceFilter.length > 0 ? sourceFilter.join(',') : undefined,
@@ -487,6 +463,8 @@ export default function EmpresasPage() {
         lastInteraction: undefined,
         lastInteractionFrom: interactionFromIso,
         lastInteractionTo: interactionToIso,
+        createdFrom: createdFromIso,
+        createdTo: createdToIso,
       });
       setEtapaTabCounts(counts);
     } catch {
@@ -498,8 +476,8 @@ export default function EmpresasPage() {
     advisorListParams,
     rubroFilter,
     tipoFilter,
-    interactionRange?.from,
-    interactionRange?.to,
+    interactionRange,
+    creationRange,
   ]);
 
   useEffect(() => {
@@ -518,7 +496,9 @@ export default function EmpresasPage() {
     rubroFilter.length > 0 ||
     tipoFilter.length > 0 ||
     advisorFilterIsActive ||
-    searchDebounced !== '';
+    searchDebounced !== '' ||
+    Boolean(interactionRange?.from || interactionRange?.to) ||
+    Boolean(creationRange?.from || creationRange?.to);
 
   const filtersDefault = !hasActiveFilters;
 
@@ -531,6 +511,7 @@ export default function EmpresasPage() {
     setTipoFilter([]);
     resetAdvisorFilter();
     setInteractionRange(undefined);
+    setCreationRange(undefined);
     setPage(1);
   }
 
@@ -788,7 +769,7 @@ export default function EmpresasPage() {
         enableHiding: true,
         cell: ({ getValue }) => (
           <span className="text-sm text-[#475569] dark:text-gray-400">
-            {new Date(getValue() as string).toLocaleDateString('es-PE')}
+            {formatDateShort(String(getValue() ?? ''))}
           </span>
         ),
         enableSorting: false,
@@ -817,9 +798,7 @@ export default function EmpresasPage() {
         enableHiding: true,
         cell: ({ getValue }) => (
           <span className="text-sm text-[#475569] dark:text-gray-400">
-            {getValue()
-              ? new Date(getValue() as string).toLocaleDateString('es-PE')
-              : '—'}
+            {getValue() ? formatDateShort(String(getValue())) : '—'}
           </span>
         ),
         enableSorting: false,
@@ -1181,18 +1160,14 @@ export default function EmpresasPage() {
         params.excludeAssignedTo = advisorListParams.excludeAssignedTo;
       }
       if (advisorListParams.advisorPool) params.advisorPool = advisorListParams.advisorPool;
-      if (interactionRange?.from) params.lastInteractionFrom = new Date(
-        interactionRange.from.getFullYear(),
-        interactionRange.from.getMonth(),
-        interactionRange.from.getDate(),
-        0, 0, 0, 0,
-      ).toISOString();
-      if (interactionRange?.to) params.lastInteractionTo = new Date(
-        interactionRange.to.getFullYear(),
-        interactionRange.to.getMonth(),
-        interactionRange.to.getDate(),
-        23, 59, 59, 999,
-      ).toISOString();
+      const { from: interactionFromIso, to: interactionToIso } =
+        dateRangeToQueryBounds(interactionRange);
+      const { from: createdFromIso, to: createdToIso } =
+        dateRangeToQueryBounds(creationRange);
+      if (interactionFromIso) params.lastInteractionFrom = interactionFromIso;
+      if (interactionToIso) params.lastInteractionTo = interactionToIso;
+      if (createdFromIso) params.createdFrom = createdFromIso;
+      if (createdToIso) params.createdTo = createdToIso;
       await downloadImportExportCsv('companies', 'export', params);
       toast.success('Exportación descargada');
     } catch (e) {
@@ -1216,8 +1191,14 @@ export default function EmpresasPage() {
         params.excludeAssignedTo = advisorListParams.excludeAssignedTo;
       }
       if (advisorListParams.advisorPool) params.advisorPool = advisorListParams.advisorPool;
-      if (interactionRange?.from) params.lastInteractionFrom = interactionRange.from.toISOString();
-      if (interactionRange?.to) params.lastInteractionTo = interactionRange.to.toISOString();
+      const { from: interactionFromIso, to: interactionToIso } =
+        dateRangeToQueryBounds(interactionRange);
+      const { from: createdFromIso, to: createdToIso } =
+        dateRangeToQueryBounds(creationRange);
+      if (interactionFromIso) params.lastInteractionFrom = interactionFromIso;
+      if (interactionToIso) params.lastInteractionTo = interactionToIso;
+      if (createdFromIso) params.createdFrom = createdFromIso;
+      if (createdToIso) params.createdTo = createdToIso;
 
       const [companies, contacts, opportunities] = await Promise.all([
         companyListSummaryPaginated({
@@ -1232,6 +1213,8 @@ export default function EmpresasPage() {
           advisorPool: advisorListParams.advisorPool,
           lastInteractionFrom: params.lastInteractionFrom,
           lastInteractionTo: params.lastInteractionTo,
+          createdFrom: params.createdFrom,
+          createdTo: params.createdTo,
         }),
         contactListAll({
           etapa: params.etapa,
@@ -1308,7 +1291,7 @@ export default function EmpresasPage() {
           Teléfono: c.telefono || '',
           Rubro: c.rubro || '',
           Fuente: c.fuente || '',
-          'Última interacción': c.lastInteractionAt ? new Date(c.lastInteractionAt).toLocaleDateString('es-PE') : '',
+          'Última interacción': c.lastInteractionAt ? formatDateShort(c.lastInteractionAt) : '',
         };
 
         const cs = contactsByCompany.get(c.id) || [];
@@ -1738,7 +1721,7 @@ export default function EmpresasPage() {
                 Filtros
               </button>
             </PopoverTrigger>
-            <PopoverContent className={cn(comercialProPopoverClass, "w-[min(100vw-2rem,500px)] p-3")} align="end" sideOffset={8}>
+            <PopoverContent className={cn(comercialProPopoverClass, "w-[min(100vw-2rem,680px)] p-3")} align="end" sideOffset={8}>
               <div className="flex items-center gap-3">
                 <Popover>
                   <PopoverTrigger asChild>
@@ -1839,6 +1822,15 @@ export default function EmpresasPage() {
                   isInitialized={advisorFilterInitialized}
                   className="!h-12 flex-1"
                   onInteraction={() => setPage(1)}
+                />
+                <DateRangeFilterButton
+                  value={creationRange}
+                  onChange={(range) => {
+                    setCreationRange(range);
+                    setPage(1);
+                  }}
+                  placeholder="Creación"
+                  className="min-w-0 w-auto flex-1"
                 />
               </div>
             </PopoverContent>
@@ -2099,10 +2091,10 @@ export default function EmpresasPage() {
 
                   <div className="mt-3 flex items-center justify-between border-t pt-3">
                     <div className="flex flex-col gap-0.5 text-xs text-muted-foreground">
-                      <span>Creación: {new Date(emp.createdAt).toLocaleDateString('es-PE')}</span>
+                      <span>Creación: {formatDateShort(emp.createdAt)}</span>
                       <span>
                         Última interact.: {emp.lastInteractionAt
-                          ? new Date(emp.lastInteractionAt).toLocaleDateString('es-PE')
+                          ? formatDateShort(emp.lastInteractionAt)
                           : '—'}
                       </span>
                     </div>

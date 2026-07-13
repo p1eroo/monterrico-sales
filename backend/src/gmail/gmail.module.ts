@@ -1,12 +1,15 @@
 import { Module } from '@nestjs/common';
 import { GmailService } from './gmail.service';
 import { GmailController } from './gmail.controller';
+import { EmailSignatureService } from './email-signature.service';
 import { SyncModule } from '../sync/sync.module';
 import { CompaniesModule } from '../companies/companies.module';
+import { FilesModule } from '../files/files.module';
+import { MediaModule } from '../media/media.module';
 
 @Module({
-  imports: [SyncModule, CompaniesModule],
-  providers: [GmailService],
+  imports: [SyncModule, CompaniesModule, FilesModule, MediaModule],
+  providers: [GmailService, EmailSignatureService],
   controllers: [GmailController],
   exports: [GmailService],
 })

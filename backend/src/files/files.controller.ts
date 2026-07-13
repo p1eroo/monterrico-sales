@@ -36,8 +36,9 @@ export class FilesController {
   findAll(
     @Query('entityType') entityType?: string,
     @Query('entityId') entityId?: string,
+    @Query('scope') scope?: string,
   ) {
-    return this.filesService.findAll(entityType, entityId);
+    return this.filesService.findAll(entityType, entityId, scope);
   }
 
   @Post()

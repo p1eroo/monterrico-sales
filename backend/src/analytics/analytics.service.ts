@@ -210,6 +210,9 @@ const ESTIMATED_BILLING_MIN_PROBABILITY = 10;
 const ESTIMATED_BILLING_MAX_PROBABILITY = 100;
 const HOT_STAGE_MIN_PROBABILITY = 70;
 const HOT_STAGE_MAX_PROBABILITY = 100;
+/** Etapas de cierre (85–99 %): lic. final, cierre ganado, firma, etc. */
+const CLOSING_STAGE_MIN_PROBABILITY = 85;
+const HOT_PROSPECTS_TOP_LIMIT = 15;
 
 type SourceDetailStageRow = {
   slug: string;
@@ -225,6 +228,42 @@ type SourceDetailRow = {
   stages: SourceDetailStageRow[];
   hot70Count: number;
   hot70Billing: number;
+};
+
+type SourcesDetailSnapshot = {
+  week: { name: string; weekStart: string; weekEnd: string };
+  sources: SourceDetailRow[];
+};
+
+type HotProspectRow = {
+  id: string;
+  urlSlug: string;
+  name: string;
+  etapa: string;
+  etapaLabel: string;
+  probability: number;
+  assignedToName: string | null;
+  facturacionEstimada: number;
+};
+
+type HotProspectsSnapshot = {
+  week: {
+    name: string;
+    weekStart: string;
+    weekEnd: string;
+  };
+  totalCalientes: number;
+  pipelineCaliente: number;
+  enCierre: number;
+  yaActivos: number;
+  topProspects: HotProspectRow[];
+  weeklyTrend: {
+    weeks: { name: string; weekStart: string; weekEnd: string }[];
+    totalCalientes: number[];
+    pipelineCaliente: number[];
+    enCierre: number[];
+    yaActivos: number[];
+  };
 };
 
 type WeekClip = {
@@ -530,16 +569,20 @@ export class AnalyticsService {
   }
 
   /**
-   * Detalle por fuente para el modal de reportes: solo empresas en etapas 10–100 %.
+   * Detalle por fuente para cards: empresas creadas en la semana ISO anterior
+   * (misma lógica que `companiesBySource` del gráfico, acotada a esa semana).
    */
   private async buildSourcesDetail(
-    from: Date,
-    to: Date,
+    referenceTo: Date,
     filters: AnalyticsScopeFilters,
     unrestricted: boolean,
     crmScope: CrmDataScope,
     leadCatalog: { slug: string; name: string }[],
-  ): Promise<SourceDetailRow[]> {
+  ): Promise<SourcesDetailSnapshot> {
+    const anchorMonday = startOfWeekMondayLima(referenceTo);
+    const targetMonday = addLimaWeeks(anchorMonday, -1);
+    const weekEnd = endOfWeekSundayLima(targetMonday);
+
     const activeStageSlugs = await this.resolveStageSlugsInProbabilityRange(
       ACTIVE_PROSPECT_MIN_PROBABILITY,
       ACTIVE_PROSPECT_MAX_PROBABILITY,
@@ -559,7 +602,8 @@ export class AnalyticsService {
       this.prisma.company.findMany({
         where: mergeCompanyScope(
           {
-            ...this.companyWhere(from, to, filters, unrestricted),
+            ...this.companyPortfolioBaseWhere(filters, unrestricted),
+            createdAt: { gte: targetMonday, lte: weekEnd },
             etapa: this.etapaInSlugsFilter(activeStageSlugs),
           },
           crmScope,
@@ -624,7 +668,7 @@ export class AnalyticsService {
       bySource.set(sourceKey, acc);
     }
 
-    return [...bySource.entries()]
+    const sources = [...bySource.entries()]
       .map(([slug, acc]) => ({
         slug,
         companyCount: acc.companyCount,
@@ -648,6 +692,265 @@ export class AnalyticsService {
         hot70Billing: acc.hot70Billing,
       }))
       .sort((a, b) => b.companyCount - a.companyCount);
+
+    return {
+      week: {
+        name: isoWeekLabelFromInstant(targetMonday),
+        weekStart: targetMonday.toISOString(),
+        weekEnd: weekEnd.toISOString(),
+      },
+      sources,
+    };
+  }
+
+  /**
+   * Cartera de prospectos calientes al cierre de la semana ISO anterior a `referenceTo`.
+   * - Total calientes / pipeline: empresas con etapa ≥ 70 %.
+   * - En cierre: etapa ≥ 85 % y menor que 100 %.
+   * - Ya activos: etapa 100 %.
+   * Top 15: empresas ≥ 70 % (excl. activo), por facturación estimada.
+   * Sparklines: mismas métricas en las 6 semanas ISO (Lima) que terminan en esa semana.
+   */
+  private async buildHotProspectsSummary(
+    referenceTo: Date,
+    filters: AnalyticsScopeFilters,
+    unrestricted: boolean,
+    crmScope: CrmDataScope,
+  ): Promise<HotProspectsSnapshot> {
+    const anchorMonday = startOfWeekMondayLima(referenceTo);
+    const targetMonday = addLimaWeeks(anchorMonday, -1);
+    const snapshotInstant = minInstant(
+      endOfWeekSundayLima(targetMonday),
+      referenceTo,
+    );
+
+    const portfolioWhere = mergeCompanyScope(
+      {
+        ...this.companyPortfolioBaseWhere(filters, unrestricted),
+        createdAt: { lte: referenceTo },
+      },
+      crmScope,
+    );
+
+    const [stages, portfolioCompanies, auditRows, advisorUsers] =
+      await Promise.all([
+        this.prisma.crmStage.findMany({
+          where: { enabled: true },
+          select: { slug: true, name: true, probability: true },
+        }),
+        this.prisma.company.findMany({
+          where: portfolioWhere,
+          select: {
+            id: true,
+            urlSlug: true,
+            name: true,
+            createdAt: true,
+            etapa: true,
+            assignedTo: true,
+            facturacionEstimada: true,
+            user: { select: { id: true, name: true } },
+          },
+        }),
+        this.prisma.auditChangeSet.findMany({
+          where: {
+            module: 'empresas',
+            entityType: 'Empresa',
+            createdAt: { lte: referenceTo },
+            entries: {
+              some: {
+                fieldKey: {
+                  in: ['etapa', 'facturacionEstimada', 'assignedTo'],
+                },
+              },
+            },
+          },
+          include: {
+            entries: {
+              where: {
+                fieldKey: {
+                  in: ['etapa', 'facturacionEstimada', 'assignedTo'],
+                },
+              },
+              select: { fieldKey: true, oldValue: true, newValue: true },
+            },
+          },
+        }),
+        this.prisma.user.findMany({
+          where: { role: { slug: ADVISOR_ROLE_SLUG } },
+          select: { id: true, name: true },
+        }),
+      ]);
+
+    const stageMeta = new Map(
+      stages.map((s) => [s.slug, { name: s.name, probability: s.probability }]),
+    );
+    const getProbability = (slug: string): number => {
+      const meta = stageMeta.get(slug.trim());
+      if (meta) return meta.probability;
+      return STAGE_PROBABILITY_FALLBACK[slug.trim()] ?? 0;
+    };
+    const getStageLabel = (slug: string): string =>
+      stageMeta.get(slug.trim())?.name ?? slug;
+
+    const portfolioIds = new Set(portfolioCompanies.map((c) => c.id));
+    type AuditEv = { at: Date; oldValue: string; newValue: string };
+    const auditsByCompanyField = new Map<string, AuditEv[]>();
+    for (const row of auditRows) {
+      const id = row.entityId;
+      if (!id || !portfolioIds.has(id)) continue;
+      for (const et of row.entries) {
+        const key = `${id}:${et.fieldKey}`;
+        const list = auditsByCompanyField.get(key) ?? [];
+        list.push({
+          at: row.createdAt,
+          oldValue: et.oldValue,
+          newValue: et.newValue,
+        });
+        auditsByCompanyField.set(key, list);
+      }
+    }
+
+    const advisorNameById = new Map(advisorUsers.map((u) => [u.id, u.name]));
+    for (const company of portfolioCompanies) {
+      if (company.user?.id && company.user.name) {
+        advisorNameById.set(company.user.id, company.user.name);
+      }
+    }
+
+    type CompanySnapshotFns = {
+      id: string;
+      urlSlug: string;
+      name: string;
+      createdAt: Date;
+      etapaFn: (instant: Date) => string;
+      billingFn: (instant: Date) => number;
+      advisorFn: (instant: Date) => string;
+    };
+
+    const companyFns: CompanySnapshotFns[] = portfolioCompanies.map((company) => ({
+      id: company.id,
+      urlSlug: company.urlSlug,
+      name: company.name,
+      createdAt: company.createdAt,
+      etapaFn: buildEtapaStepFunction(
+        company.createdAt,
+        company.etapa,
+        auditsByCompanyField.get(`${company.id}:etapa`) ?? [],
+      ),
+      billingFn: buildNumericStepFunction(
+        company.createdAt,
+        Number(company.facturacionEstimada) || 0,
+        auditsByCompanyField.get(`${company.id}:facturacionEstimada`) ?? [],
+      ),
+      advisorFn: buildEtapaStepFunction(
+        company.createdAt,
+        company.assignedTo?.trim() ?? '',
+        auditsByCompanyField.get(`${company.id}:assignedTo`) ?? [],
+      ),
+    }));
+
+    const aggregateAt = (instant: Date) => {
+      let totalCalientes = 0;
+      let pipelineCaliente = 0;
+      let enCierre = 0;
+      let yaActivos = 0;
+      const hotRows: (HotProspectRow & { billing: number })[] = [];
+
+      for (const company of companyFns) {
+        if (company.createdAt > instant) continue;
+
+        const etapa = company.etapaFn(instant).trim();
+        const probability = getProbability(etapa);
+        const billing = Math.max(0, company.billingFn(instant));
+
+        const isHot =
+          probability >= HOT_STAGE_MIN_PROBABILITY &&
+          probability <= HOT_STAGE_MAX_PROBABILITY;
+        if (!isHot) continue;
+
+        totalCalientes += 1;
+        pipelineCaliente += billing;
+
+        if (probability === HOT_STAGE_MAX_PROBABILITY) {
+          yaActivos += 1;
+        } else if (probability >= CLOSING_STAGE_MIN_PROBABILITY) {
+          enCierre += 1;
+        }
+
+        if (probability < HOT_STAGE_MAX_PROBABILITY) {
+          const advisorId = company.advisorFn(instant).trim();
+          hotRows.push({
+            id: company.id,
+            urlSlug: company.urlSlug,
+            name: company.name,
+            etapa,
+            etapaLabel: getStageLabel(etapa),
+            probability,
+            assignedToName: advisorId
+              ? (advisorNameById.get(advisorId) ?? null)
+              : null,
+            facturacionEstimada: billing,
+            billing,
+          });
+        }
+      }
+
+      hotRows.sort((a, b) => b.billing - a.billing);
+      const topProspects = hotRows
+        .slice(0, HOT_PROSPECTS_TOP_LIMIT)
+        .map(({ billing: _billing, ...row }) => row);
+
+      return {
+        totalCalientes,
+        pipelineCaliente,
+        enCierre,
+        yaActivos,
+        topProspects,
+      };
+    };
+
+    const weekMondays: Date[] = [];
+    for (let i = COMPANY_WEEKLY_CHART_WEEKS - 1; i >= 0; i--) {
+      weekMondays.push(addLimaWeeks(targetMonday, -i));
+    }
+
+    const weekMeta: HotProspectsSnapshot['weeklyTrend']['weeks'] = [];
+    const totalSeries: number[] = [];
+    const pipelineSeries: number[] = [];
+    const cierreSeries: number[] = [];
+    const activosSeries: number[] = [];
+
+    for (const monday of weekMondays) {
+      const weekEnd = minInstant(endOfWeekSundayLima(monday), referenceTo);
+      const agg = aggregateAt(weekEnd);
+      weekMeta.push({
+        name: isoWeekLabelFromInstant(monday),
+        weekStart: monday.toISOString(),
+        weekEnd: weekEnd.toISOString(),
+      });
+      totalSeries.push(agg.totalCalientes);
+      pipelineSeries.push(agg.pipelineCaliente);
+      cierreSeries.push(agg.enCierre);
+      activosSeries.push(agg.yaActivos);
+    }
+
+    const current = aggregateAt(snapshotInstant);
+
+    return {
+      week: {
+        name: isoWeekLabelFromInstant(targetMonday),
+        weekStart: targetMonday.toISOString(),
+        weekEnd: snapshotInstant.toISOString(),
+      },
+      ...current,
+      weeklyTrend: {
+        weeks: weekMeta,
+        totalCalientes: totalSeries,
+        pipelineCaliente: pipelineSeries,
+        enCierre: cierreSeries,
+        yaActivos: activosSeries,
+      },
+    };
   }
 
   /**
@@ -2624,6 +2927,7 @@ export class AnalyticsService {
       activeProspectsByAdvisorWeekly,
       companiesAdvisorFunnelMovement,
       sourcesDetail,
+      hotProspects,
     ] = await Promise.all([
       this.buildCompaniesWeeklyProgress(
         from,
@@ -2665,12 +2969,17 @@ export class AnalyticsService {
         userRows,
       ),
       this.buildSourcesDetail(
-        from,
         to,
         filters,
         unrestricted,
         opts.crmScope,
         leadCatalog,
+      ),
+      this.buildHotProspectsSummary(
+        to,
+        filters,
+        unrestricted,
+        opts.crmScope,
       ),
     ]);
 
@@ -2782,6 +3091,7 @@ export class AnalyticsService {
       opportunitiesBySource,
       companiesBySource,
       sourcesDetail,
+      hotProspects,
       funnelByStage,
       companiesByStage,
       companiesWeeklyProgress,

@@ -1,5 +1,5 @@
 import { Card, CardContent } from '@/components/ui/card';
-import { formatCurrency, formatCurrencyCompact } from '@/lib/formatters';
+import { formatCurrency } from '@/lib/formatters';
 import { sourceAdvanceRate, type SourceDetail } from '@/lib/sourceDetailTypes';
 import { cn } from '@/lib/utils';
 
@@ -31,7 +31,7 @@ export function SourceDetailCard({ detail, className }: SourceDetailCardProps) {
           </div>
           <div className="text-right">
             <p className="text-lg font-bold tabular-nums tracking-tight text-foreground">
-              {formatCurrencyCompact(detail.estimatedBilling)}
+              {formatCurrency(detail.estimatedBilling)}
             </p>
             <p className="text-[11px] text-muted-foreground">facturación estimada</p>
           </div>

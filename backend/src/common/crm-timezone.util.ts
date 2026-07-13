@@ -45,6 +45,61 @@ export function parseDayEndLima(isoDate: string): Date {
   return new Date(Date.UTC(y, m - 1, d + 1, 4, 59, 59, 999));
 }
 
+const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function limaYmdFromParts(year: number, month: number, day: number): string {
+  return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+/** Inicio de día Lima desde YYYY-MM-DD o ISO (legacy). */
+export function parseDateFilterStartLima(raw?: string | null): Date | null {
+  const t = raw?.trim();
+  if (!t) return null;
+  if (YMD_RE.test(t)) {
+    try {
+      return parseDayStartLima(t);
+    } catch {
+      return null;
+    }
+  }
+  const d = new Date(t);
+  if (Number.isNaN(d.getTime())) return null;
+  const { year, month, day } = instantToLimaParts(d);
+  return limaDayStart(year, month, day);
+}
+
+/** Fin de día Lima desde YYYY-MM-DD o ISO (legacy). */
+export function parseDateFilterEndLima(raw?: string | null): Date | null {
+  const t = raw?.trim();
+  if (!t) return null;
+  if (YMD_RE.test(t)) {
+    try {
+      return parseDayEndLima(t);
+    } catch {
+      return null;
+    }
+  }
+  const d = new Date(t);
+  if (Number.isNaN(d.getTime())) return null;
+  const { year, month, day } = instantToLimaParts(d);
+  try {
+    return parseDayEndLima(limaYmdFromParts(year, month, day));
+  } catch {
+    return null;
+  }
+}
+
+/** Rango inclusivo 00:00–23:59:59.999 Lima; requiere ambos extremos. */
+export function resolveLimaDayRange(
+  fromRaw?: string | null,
+  toRaw?: string | null,
+): { from: Date; to: Date } | null {
+  const from = parseDateFilterStartLima(fromRaw);
+  const to = parseDateFilterEndLima(toRaw);
+  if (!from || !to) return null;
+  return { from, to };
+}
+
 /** Lunes 00:00 Lima de la semana que contiene `d`. */
 export function startOfWeekMondayLima(d: Date): Date {
   const { year, month, day, weekday } = instantToLimaParts(d);

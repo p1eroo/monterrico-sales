@@ -35,13 +35,17 @@ export function mapApiFileRow(row: ApiFileRow): FileAttachment {
   };
 }
 
+export type FilesListScope = 'comercial' | 'flota';
+
 export async function fetchFiles(params?: {
   entityType?: string;
   entityId?: string;
+  scope?: FilesListScope;
 }): Promise<FileAttachment[]> {
   const q = new URLSearchParams();
   if (params?.entityType) q.set('entityType', params.entityType);
   if (params?.entityId) q.set('entityId', params.entityId);
+  if (params?.scope) q.set('scope', params.scope);
   const qs = q.toString();
   const rows = await api<ApiFileRow[]>(`/files${qs ? `?${qs}` : ''}`);
   return rows.map(mapApiFileRow);

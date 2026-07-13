@@ -9,3 +9,5 @@ export { FileListItem } from './FileListItem';
 export { FilePreviewModal } from './FilePreviewModal';
 export { FileTypeIcon } from './FileTypeIcon';
 export { FileUploadArea } from './FileUploadArea';
+export { FilesManagerTable } from './FilesManagerTable';
+export { FilesManagerGrid } from './FilesManagerGrid';

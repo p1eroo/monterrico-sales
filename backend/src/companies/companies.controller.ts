@@ -118,6 +118,8 @@ export class CompaniesController {
     @Query('lastInteraction') lastInteraction?: string,
     @Query('lastInteractionFrom') lastInteractionFrom?: string,
     @Query('lastInteractionTo') lastInteractionTo?: string,
+    @Query('createdFrom') createdFrom?: string,
+    @Query('createdTo') createdTo?: string,
   ) {
     const scope = await this.crmDataScope.buildScope(
       req.user.userId,
@@ -135,6 +137,8 @@ export class CompaniesController {
         lastInteraction: lastInteraction?.trim() || undefined,
         lastInteractionFrom: lastInteractionFrom?.trim() || undefined,
         lastInteractionTo: lastInteractionTo?.trim() || undefined,
+        createdFrom: createdFrom?.trim() || undefined,
+        createdTo: createdTo?.trim() || undefined,
       },
       scope,
     );
@@ -167,6 +171,8 @@ export class CompaniesController {
     @Query('lastInteraction') lastInteraction?: string,
     @Query('lastInteractionFrom') lastInteractionFrom?: string,
     @Query('lastInteractionTo') lastInteractionTo?: string,
+    @Query('createdFrom') createdFrom?: string,
+    @Query('createdTo') createdTo?: string,
   ) {
     const scope = await this.crmDataScope.buildScope(
       req.user.userId,
@@ -191,6 +197,8 @@ export class CompaniesController {
         lastInteraction: lastInteraction?.trim() || undefined,
         lastInteractionFrom: lastInteractionFrom?.trim() || undefined,
         lastInteractionTo: lastInteractionTo?.trim() || undefined,
+        createdFrom: createdFrom?.trim() || undefined,
+        createdTo: createdTo?.trim() || undefined,
       },
       scope,
     );

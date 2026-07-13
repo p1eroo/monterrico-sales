@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
+import type { DateRange } from "react-day-picker";
 import { toast } from "sonner";
 import {
   Car,
@@ -9,9 +10,6 @@ import {
   CheckCircle2,
   Maximize2,
   CalendarDays,
-  FileText,
-  FileSpreadsheet,
-  User,
   XCircle,
 } from "lucide-react";
 import {
@@ -46,6 +44,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { MultiOperadorFilter } from "@/components/shared/MultiOperadorFilter";
+import { DateRangeFilterButton } from "@/components/ui/date-range-filter-button";
 import {
   Popover,
   PopoverContent,
@@ -55,19 +55,21 @@ import {
   DateRangeCalendar,
   type DateRangeValue,
 } from "@/components/shared/DateRangeCalendar";
+import { PdfSvgIcon } from "@/components/icons/PdfSvgIcon";
+import { XlsSvgIcon } from "@/components/icons/XlsSvgIcon";
+import {
+  comercialFilterActionClass,
+  comercialFilterSurfaceClass,
+} from "@/lib/comercialFilterSurface";
+import { cn } from "@/lib/utils";
 import { useChartTheme } from "@/hooks/useChartTheme";
 import { TooltipProvider as UITooltipProvider } from "@/components/ui/tooltip";
-import { getConductores, type Conductor } from "@/lib/flotaConductoresApi";
 import {
-  flotaProspectosList,
-  type FlotaProspectoRow,
-  fetchOperadorStats,
-  fetchOperadores,
-  getOperatorDisplayName,
-  type OperadorStats,
-} from "@/lib/flotaProspectosApi";
-import { getSunatHistorial } from "@/lib/flotaSunatApi";
-import { useFlotaProspectosRealtime } from "@/lib/flotaProspectosRealtime";
+  useFlotaReportesData,
+  useFlotaReportesOperadorStats,
+  useFlotaReportesSunat,
+} from "@/hooks/useFlotaReportesData";
+import { useFlotaReportesStore } from "@/store/flotaReportesStore";
 import {
   PieChart,
   Pie,
@@ -147,17 +149,19 @@ const CustomTooltip = ({
 };
 
 export default function FlotaReportes() {
-  const [dateRange, setDateRange] = useState<DateRangeValue | undefined>(() => {
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
     const now = new Date();
     return {
       from: startOfMonth(now),
       to: min([endOfMonth(now), now]),
     };
   });
-  const [conductores, setConductores] = useState<Conductor[]>([]);
-  const [prospectos, setProspectos] = useState<FlotaProspectoRow[]>([]);
-  const [loadingSunat, setLoadingSunat] = useState(true);
-  const [loadingProspectos, setLoadingProspectos] = useState(true);
+  const {
+    conductores,
+    prospectos,
+    loadingProspectos,
+    loadingConductores,
+  } = useFlotaReportesData();
   const chartTheme = useChartTheme();
 
   const [sunatDateRange, setSunatDateRange] = useState<
@@ -166,10 +170,8 @@ export default function FlotaReportes() {
     from: startOfWeek(new Date(), { weekStartsOn: 1 }),
     to: endOfWeek(new Date(), { weekStartsOn: 1 }),
   });
-  const [sunatHistory, setSunatHistory] = useState<Record<string, unknown>[]>(
-    [],
-  );
-  const [loadingSunatReal, setLoadingSunatReal] = useState(false);
+  const { sunatHistory, loadingSunatReal } =
+    useFlotaReportesSunat(sunatDateRange);
   const [conductoresDateRange, setConductoresDateRange] = useState<
     DateRangeValue | undefined
   >({
@@ -231,58 +233,16 @@ export default function FlotaReportes() {
     };
   }, []);
 
-  async function loadData() {
-    setLoadingSunat(true);
-    setLoadingProspectos(true);
-    try {
-      const [conds, pros] = await Promise.all([
-        getConductores(),
-        flotaProspectosList({ limit: 10000 }),
-      ]);
-      setConductores(Array.isArray(conds) ? conds : []);
-      setProspectos(Array.isArray(pros.data) ? pros.data : []);
-    } catch (err) {
-      console.error("Error loading report data:", err);
-      setConductores([]);
-      setProspectos([]);
-    } finally {
-      setLoadingSunat(false);
-      setLoadingProspectos(false);
-    }
-  }
-
-  useEffect(() => {
-    void loadData();
-  }, []);
-
-  useFlotaProspectosRealtime(() => {
-    void loadData();
-  });
-
-  useEffect(() => {
-    async function loadSunatHistory() {
-      if (!sunatDateRange?.from || !sunatDateRange?.to) return;
-      setLoadingSunatReal(true);
-      try {
-        const fecini = format(sunatDateRange.from, "yyyy-MM-dd");
-        const fecfin = format(sunatDateRange.to, "yyyy-MM-dd");
-        const history = await getSunatHistorial(fecini, fecfin);
-        setSunatHistory(history);
-      } catch (err) {
-        console.error("Error loading SUNAT history:", err);
-      } finally {
-        setLoadingSunatReal(false);
-      }
-    }
-    void loadSunatHistory();
-  }, [sunatDateRange]);
-
-  const [operadorStats, setOperadorStats] = useState<OperadorStats[]>([]);
-  const [loadingOperadorStats, setLoadingOperadorStats] = useState(false);
-  const [operadorNames, setOperadorNames] = useState<string[]>([]);
-  const hasInitialSelection = useRef(false);
+  const { operadorStats, operadorNames, loadingOperadorStats } =
+    useFlotaReportesOperadorStats(dateRange);
+  const hasInitialSelection = useRef(
+    useFlotaReportesStore.getState().operadorNames.length > 0,
+  );
+  const [operadorFilterInitialized, setOperadorFilterInitialized] = useState(
+    () => useFlotaReportesStore.getState().operadorNames.length > 0,
+  );
   const [selectedOperadores, setSelectedOperadores] = useState<Set<string>>(
-    new Set(),
+    () => new Set(useFlotaReportesStore.getState().operadorNames),
   );
 
   const filteredOperadorStats = useMemo(
@@ -290,51 +250,21 @@ export default function FlotaReportes() {
     [operadorStats, selectedOperadores],
   );
 
+  const operadorFilterActive =
+    operadorNames.length > 0 &&
+    selectedOperadores.size !== operadorNames.length;
+
+  const reportExportReady =
+    !loadingProspectos && (prospectos.length > 0 || conductores.length > 0);
+
   useEffect(() => {
-    async function load() {
-      if (!dateRange?.from || !dateRange?.to) return;
-      setLoadingOperadorStats(true);
-      try {
-        const fecini = format(dateRange.from, "yyyy-MM-dd");
-        const fecfin = format(dateRange.to, "yyyy-MM-dd");
-        const [rawStats, operadores] = await Promise.all([
-          fetchOperadorStats(fecini, fecfin),
-          fetchOperadores(),
-        ]);
-
-          const unified = new Map<string, OperadorStats>();
-          for (const s of rawStats) {
-            const canonical =
-              getOperatorDisplayName(s.operador, operadores) || s.operador;
-            const existing = unified.get(canonical);
-            if (existing) {
-              existing.prospectosAsignados += s.prospectosAsignados;
-              existing.chatsActivos += s.chatsActivos;
-              existing.mensajesEnviados += s.mensajesEnviados;
-              existing.mensajesRecibidos += s.mensajesRecibidos;
-              existing.llamadas += s.llamadas;
-              existing.citasProgramadas += s.citasProgramadas;
-            } else {
-            unified.set(canonical, { ...s, operador: canonical });
-          }
-        }
-
-        const names = Array.from(unified.keys());
-        setOperadorNames(names);
-        if (!hasInitialSelection.current) {
-          hasInitialSelection.current = true;
-          setSelectedOperadores(new Set(names));
-        }
-        setOperadorStats(Array.from(unified.values()));
-      } catch (err) {
-        console.error("Error loading operator stats:", err);
-        setOperadorStats([]);
-      } finally {
-        setLoadingOperadorStats(false);
-      }
+    if (operadorNames.length === 0) return;
+    if (!hasInitialSelection.current) {
+      hasInitialSelection.current = true;
+      setSelectedOperadores(new Set(operadorNames));
     }
-    void load();
-  }, [dateRange]);
+    setOperadorFilterInitialized(true);
+  }, [operadorNames]);
 
   const weeklyData = useMemo(() => {
     if (!conductores.length) return [];
@@ -974,96 +904,50 @@ export default function FlotaReportes() {
           title="Reportes Flota"
           description="Métricas de prospectos y conductores"
         >
-          <div className="flex items-center gap-2">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-auto justify-start gap-1.5 font-normal"
-                >
-                  <User className="size-4" />
-                  <span>
-                    {selectedOperadores.size === operadorNames.length
-                      ? "Todos los operadores"
-                      : `${selectedOperadores.size} operador(es)`}
-                  </span>
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-56 p-2" align="start">
-                <div className="space-y-1">
-                  {operadorNames.map((name) => (
-                    <label
-                      key={name}
-                      className="flex items-center gap-2 cursor-pointer rounded px-2 py-1 hover:bg-muted"
-                    >
-                      <Checkbox
-                        checked={selectedOperadores.has(name)}
-                        onCheckedChange={(checked) => {
-                          setSelectedOperadores((prev) => {
-                            const next = new Set(prev);
-                            if (checked) next.add(name);
-                            else next.delete(name);
-                            return next;
-                          });
-                        }}
-                      />
-                      <span className="text-sm">{name}</span>
-                    </label>
-                  ))}
-                  {operadorNames.length === 0 && (
-                    <p className="text-xs text-muted-foreground px-2 py-1">
-                      Sin operadores
-                    </p>
-                  )}
-                </div>
-              </PopoverContent>
-            </Popover>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-65 justify-start gap-1.5 font-normal"
-                >
-                  <CalendarDays className="size-4" />
-                  <span
-                    className={!dateRange?.from ? "text-muted-foreground" : ""}
-                  >
-                    {dateRange?.from
-                      ? `${format(dateRange.from, "d MMM yyyy", { locale: es })}${dateRange.to && dateRange.to.getTime() !== dateRange.from.getTime() ? ` - ${format(dateRange.to, "d MMM yyyy", { locale: es })}` : ""}`
-                      : "Seleccionar fechas"}
-                  </span>
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-3" align="start">
-                <DateRangeCalendar value={dateRange} onChange={setDateRange} />
-              </PopoverContent>
-            </Popover>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={handleExportXlsx}
-            >
-              <FileSpreadsheet className="size-4" />
-              Excel
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => setExportPdfDialogOpen(true)}
-              disabled={exportingPdf}
-            >
-              {exportingPdf ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <FileText className="size-4" />
-              )}
-              {exportingPdf ? "Generando..." : "PDF"}
-            </Button>
-          </div>
+          <DateRangeFilterButton
+            value={dateRange}
+            onChange={setDateRange}
+            placeholder="Seleccionar periodo"
+            className={cn(
+              "w-full min-[400px]:w-[260px] sm:w-[260px]",
+              comercialFilterSurfaceClass,
+            )}
+          />
+
+          <MultiOperadorFilter
+            value={Array.from(selectedOperadores)}
+            onChange={(next) => setSelectedOperadores(new Set(next))}
+            operadores={operadorNames}
+            isActive={operadorFilterActive}
+            isInitialized={operadorFilterInitialized}
+            className={cn(
+              "!h-12 w-full min-[400px]:w-[190px] sm:w-[190px]",
+              comercialFilterSurfaceClass,
+            )}
+          />
+
+          <button
+            type="button"
+            disabled={!reportExportReady || exportingPdf}
+            onClick={() => setExportPdfDialogOpen(true)}
+            className={cn(comercialFilterActionClass, "cursor-pointer")}
+          >
+            {exportingPdf ? (
+              <Loader2 className="size-5 shrink-0 animate-spin" />
+            ) : (
+              <PdfSvgIcon className="size-5 shrink-0" />
+            )}
+            {exportingPdf ? "Generando…" : "PDF"}
+          </button>
+          <button
+            type="button"
+            disabled={!reportExportReady}
+            onClick={handleExportXlsx}
+            className={cn(comercialFilterActionClass, "cursor-pointer")}
+          >
+            <XlsSvgIcon className="size-5 shrink-0" />
+            Excel
+          </button>
         </PageHeader>
 
         {/* Conversión & Nuevos Conductores */}
@@ -1453,7 +1337,7 @@ export default function FlotaReportes() {
                     size="icon"
                     className="h-8 w-8 shrink-0 text-muted-foreground"
                     onClick={() => setConductoresModalOpen(true)}
-                    disabled={loadingSunat || filteredWeeklyData.length === 0}
+                    disabled={loadingConductores || filteredWeeklyData.length === 0}
                     aria-label="Ampliar nuevos conductores"
                   >
                     <Maximize2 className="h-4 w-4" />
@@ -1463,7 +1347,7 @@ export default function FlotaReportes() {
             </CardHeader>
             <CardContent>
               <ChartCardBody
-                loading={loadingSunat}
+                loading={loadingConductores}
                 isEmpty={filteredWeeklyData.length === 0}
                 variant="area"
                 className="h-80"

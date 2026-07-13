@@ -64,7 +64,6 @@ import {
   useLeadSourceOptions,
 } from '@/store/crmConfigStore';
 import { ChartCardBody } from '@/components/shared/ChartCardBody';
-import { WonOpportunitiesSalesLineChart } from '@/components/shared/WonOpportunitiesSalesLineChart';
 import { chartHasAnyValue } from '@/lib/chartEmpty';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FunnelChart, type FunnelStage } from '@/components/crm/FunnelChart';
@@ -77,6 +76,7 @@ import { ActivitiesByTypeBarChart } from '@/components/shared/ActivitiesByTypeBa
 import type { ActivitiesByTypeMonthComparison } from '@/components/shared/ActivitiesByTypeBarChart';
 import { SourcesByEntityMixedChart } from '@/components/shared/SourcesByEntityMixedChart';
 import { SourcesExpandedView } from '@/components/shared/SourcesExpandedView';
+import { HotProspectsReportPanel } from '@/components/shared/HotProspectsReportPanel';
 import { mapSourcesDetailFromApi } from '@/lib/sourceDetailUtils';
 import { TasksByMonthLineChart } from '@/components/shared/TasksByMonthLineChart';
 import { OpportunitiesWeeklyProgressStackedChart } from '@/components/shared/OpportunitiesWeeklyProgressStackedChart';
@@ -172,8 +172,6 @@ export default function Reports() {
   const [kpisLoading, setKpisLoading] = useState(false);
   /** Lunes Lima (ms) de la última semana visible en el gráfico de avance semanal. */
   const [weeklyProgressCapMs, setWeeklyProgressCapMs] = useState<number | null>(null);
-  const [opportunitiesFunnelModalOpen, setOpportunitiesFunnelModalOpen] = useState(false);
-  const [wonOpportunitiesModalOpen, setWonOpportunitiesModalOpen] = useState(false);
   const [periodModalOpen, setPeriodModalOpen] = useState(false);
   const [sourcesByEntityModalOpen, setSourcesByEntityModalOpen] = useState(false);
   const [activitiesBarModalOpen, setActivitiesBarModalOpen] = useState(false);
@@ -330,6 +328,8 @@ export default function Reports() {
     () => mapSourcesDetailFromApi(summary?.sourcesDetail, bundle),
     [summary?.sourcesDetail, bundle],
   );
+
+  const sourcesDetailWeek = summary?.sourcesDetail?.week ?? null;
 
   const opportunitiesFunnelStages: FunnelStage[] = useMemo(
     () => buildOpportunitiesStageFunnelStages(summary?.opportunitiesByStage ?? [], bundle),
@@ -682,13 +682,13 @@ export default function Reports() {
     ],
   );
 
-  const contactsAreaChartHeight = 290;
+  const contactsAreaLegendHeight = 28;
+  const contactsAreaChartHeight = 260;
+  const contactsAreaCardHeight = contactsAreaChartHeight + contactsAreaLegendHeight;
   const tasksByMonthChartHeight = 380;
-  const opportunitiesFunnelChartHeight = 420;
-  const wonOpportunitiesChartHeight = 420;
   const weeklyOppsChartHeight = 380;
   const activeProspectsChartHeight = 460;
-  const activitiesBarChartHeight = contactsAreaChartHeight + 80;
+  const activitiesBarChartHeight = contactsAreaChartHeight + 72;
 
   const sourcesByEntityChartEmpty =
     !loading &&
@@ -706,14 +706,9 @@ export default function Reports() {
         [activitiesMonthComparison.previousMonth, activitiesMonthComparison.currentMonth],
         ['correos', 'llamadas', 'reuniones', 'notas'],
       ));
-  const salesChartEmpty =
-    !loading && (!summary || !chartHasAnyValue(salesByMonthData, ['ventas', 'meta']));
   const followUpsChartEmpty =
     !loading &&
     (!summary || !chartHasAnyValue(followUpsData, ['completados', 'pendientes']));
-  const opportunitiesFunnelEmpty =
-    !loading &&
-    (!summary || !chartHasAnyValue(summary.opportunitiesByStage ?? [], ['count']));
   const activeProspectsChartEmpty =
     !loading &&
     (!summary?.activeProspectsWeekly?.weeks?.length ||
@@ -925,7 +920,7 @@ export default function Reports() {
               isEmpty={companiesStageFunnelEmpty}
               variant="bar"
               emptyMessage="Sin empresas en etapas de prospecto."
-              className="h-auto"
+              chartHeight={weeklyOppsChartHeight}
             >
               <FunnelChart
                 stages={companiesStageFunnelStages}
@@ -955,9 +950,9 @@ export default function Reports() {
             <ChartCardBody
               loading={loading}
               isEmpty={weeklyOppsProgressChartEmpty || weeklyOppsProgressChartData.length === 0}
-              variant="bar"
+              variant="stackedBar"
               emptyMessage="No hay datos de empresas."
-              className="h-auto"
+              chartHeight={weeklyOppsChartHeight}
             >
               <OpportunitiesWeeklyProgressStackedChart
                 data={weeklyOppsProgressChartData}
@@ -985,13 +980,13 @@ export default function Reports() {
               <Maximize2 className="h-4 w-4" />
             </Button>
           </CardHeader>
-          <CardContent className="px-5 pt-6 pb-5">
+          <CardContent className="px-5 pt-4 pb-5">
             <ChartCardBody
               loading={loading}
               isEmpty={periodChartEmpty}
               variant="area"
               emptyMessage="Sin contactos ni oportunidades en el año."
-              className="h-auto"
+              chartHeight={contactsAreaCardHeight}
             >
               <ContactsOpportunitiesAreaChart
                 data={contactsVsOpportunitiesData}
@@ -1027,7 +1022,7 @@ export default function Reports() {
               isEmpty={sourcesByEntityChartEmpty}
               variant="bar"
               emptyMessage="Sin datos por fuente en este periodo."
-              className="h-auto"
+              chartHeight={activitiesBarChartHeight}
             >
               <SourcesByEntityMixedChart
                 data={sourcesByEntityData}
@@ -1038,73 +1033,12 @@ export default function Reports() {
         </Card>
       </div>
 
-      {/* Fila 4: embudo por etapa (izq) + oportunidades ganadas (der) */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.45fr)] lg:items-start">
-        <Card id="chart-funnel" className="h-fit">
-          <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 px-5 pb-0 pt-5">
-            <CardTitle className="text-base font-medium">Oportunidades por etapa</CardTitle>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 shrink-0 text-muted-foreground"
-              onClick={() => setOpportunitiesFunnelModalOpen(true)}
-              disabled={loading || opportunitiesFunnelEmpty}
-              aria-label="Ampliar oportunidades por etapa"
-            >
-              <Maximize2 className="h-4 w-4" />
-            </Button>
-          </CardHeader>
-          <CardContent className="px-5 pt-6 pb-5">
-            <ChartCardBody
-              loading={loading}
-              isEmpty={opportunitiesFunnelEmpty}
-              variant="bar"
-              emptyMessage="Sin oportunidades en este periodo con las etapas seleccionadas."
-              className="h-auto"
-            >
-              <FunnelChart
-                stages={opportunitiesFunnelStages}
-                height={opportunitiesFunnelChartHeight}
-                singularLabel="oportunidad"
-              />
-            </ChartCardBody>
-          </CardContent>
-        </Card>
+      {/* Prospectos calientes: KPIs + top 15 */}
+      <HotProspectsReportPanel
+        data={summary?.hotProspects}
+        loading={loading}
+      />
 
-        <Card id="chart-won-opportunities" className="h-fit">
-          <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 px-5 pb-0 pt-5">
-            <CardTitle className="text-base font-medium">Oportunidades ganadas</CardTitle>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 shrink-0 text-muted-foreground"
-              onClick={() => setWonOpportunitiesModalOpen(true)}
-              disabled={loading || salesChartEmpty}
-              aria-label="Ampliar oportunidades ganadas"
-            >
-              <Maximize2 className="h-4 w-4" />
-            </Button>
-          </CardHeader>
-          <CardContent className="px-5 pt-4 pb-5">
-            <ChartCardBody
-              loading={loading}
-              isEmpty={salesChartEmpty}
-              variant="line"
-              emptyMessage="Sin ventas en etapa Activo en este periodo."
-              className="h-auto"
-            >
-              <WonOpportunitiesSalesLineChart
-                data={wonSalesByMonthData}
-                height={wonOpportunitiesChartHeight}
-              />
-            </ChartCardBody>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Fila 5: actividades (izq) + tareas por mes (der) */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:items-stretch">
         <Card id="chart-activities-donut" className="flex h-full flex-col">
           <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 px-5 pb-0 pt-5">
@@ -1127,7 +1061,8 @@ export default function Reports() {
               isEmpty={activitiesBarChartEmpty}
               variant="bar"
               emptyMessage="Sin actividades registradas en este periodo."
-              className="h-auto flex-1"
+              chartHeight={tasksByMonthChartHeight}
+              className="flex-1"
             >
               {activitiesMonthComparison ? (
                 <ActivitiesByTypeBarChart
@@ -1160,7 +1095,8 @@ export default function Reports() {
               isEmpty={followUpsChartEmpty}
               variant="line"
               emptyMessage="Sin tareas en este periodo."
-              className="h-auto flex-1"
+              chartHeight={tasksByMonthChartHeight}
+              className="flex-1"
             >
               <TasksByMonthLineChart
                 data={followUpsData}
@@ -1226,35 +1162,6 @@ export default function Reports() {
           </DialogContent>
         </Dialog>
 
-        <Dialog open={wonOpportunitiesModalOpen} onOpenChange={setWonOpportunitiesModalOpen}>
-          <DialogContent className={dialogContentClass} showCloseButton>
-            <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
-              <DialogTitle className="pr-8 text-base">Oportunidades ganadas</DialogTitle>
-            </DialogHeader>
-            <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 sm:px-6 sm:pb-6">
-              {!salesChartEmpty ? (
-                <WonOpportunitiesSalesLineChart data={wonSalesByMonthData} height={420} />
-              ) : null}
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={opportunitiesFunnelModalOpen} onOpenChange={setOpportunitiesFunnelModalOpen}>
-          <DialogContent
-            className={dialogContentClass}
-            showCloseButton
-          >
-            <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
-              <DialogTitle className="pr-8 text-base">Oportunidades por etapa</DialogTitle>
-            </DialogHeader>
-            <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 sm:px-6 sm:pb-6">
-              {!opportunitiesFunnelEmpty ? (
-                <FunnelChart stages={opportunitiesFunnelStages} height={560} showLegend singularLabel="oportunidad" />
-              ) : null}
-            </div>
-          </DialogContent>
-        </Dialog>
-
         <Dialog open={periodModalOpen} onOpenChange={setPeriodModalOpen}>
           <DialogContent className={dialogContentClass} showCloseButton>
             <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
@@ -1284,6 +1191,7 @@ export default function Reports() {
                 <SourcesExpandedView
                   chartData={sourcesByEntityData}
                   details={sourcesDetailData}
+                  detailWeek={sourcesDetailWeek}
                 />
               ) : null}
             </div>

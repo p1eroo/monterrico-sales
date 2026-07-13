@@ -4,7 +4,8 @@ import { getSourceLabelFromCatalog, getStageLabelFromCatalog } from '@/store/crm
 import { contactSourceLabels } from '@/data/mock';
 import type { SourceDetail, SourceStageSlice } from '@/lib/sourceDetailTypes';
 
-export type ApiSourceDetail = AnalyticsSummary['sourcesDetail'][number];
+export type ApiSourceDetail = AnalyticsSummary['sourcesDetail']['sources'][number];
+export type ApiSourcesDetailWeek = AnalyticsSummary['sourcesDetail']['week'];
 
 const SOURCE_ACCENT_COLORS: Record<string, string> = {
   base: '#0f766e',
@@ -67,9 +68,10 @@ function mapStage(
 }
 
 export function mapSourcesDetailFromApi(
-  rows: ApiSourceDetail[] | null | undefined,
+  snapshot: AnalyticsSummary['sourcesDetail'] | null | undefined,
   bundle: CrmConfigBundle | null,
 ): SourceDetail[] {
+  const rows = snapshot?.sources;
   if (!rows?.length) return [];
 
   return rows.map((row) => ({

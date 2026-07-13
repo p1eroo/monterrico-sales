@@ -139,6 +139,8 @@ export async function companyListSummaryPaginated(params?: {
   lastInteraction?: string;
   lastInteractionFrom?: string;
   lastInteractionTo?: string;
+  createdFrom?: string;
+  createdTo?: string;
 }): Promise<CompanySummaryListResponse> {
   const sp = new URLSearchParams();
   if (params?.page != null) sp.set('page', String(params.page));
@@ -158,6 +160,8 @@ export async function companyListSummaryPaginated(params?: {
   if (params?.lastInteraction?.trim()) sp.set('lastInteraction', params.lastInteraction.trim());
   if (params?.lastInteractionFrom?.trim()) sp.set('lastInteractionFrom', params.lastInteractionFrom.trim());
   if (params?.lastInteractionTo?.trim()) sp.set('lastInteractionTo', params.lastInteractionTo.trim());
+  if (params?.createdFrom?.trim()) sp.set('createdFrom', params.createdFrom.trim());
+  if (params?.createdTo?.trim()) sp.set('createdTo', params.createdTo.trim());
   const qs = sp.toString();
   return api<CompanySummaryListResponse>(
     qs ? `/companies/summary?${qs}` : '/companies/summary',
@@ -176,6 +180,8 @@ export async function companySummaryEtapaCounts(params?: {
   lastInteraction?: string;
   lastInteractionFrom?: string;
   lastInteractionTo?: string;
+  createdFrom?: string;
+  createdTo?: string;
 }): Promise<{ counts: Record<string, number> }> {
   const sp = new URLSearchParams();
   if (params?.search?.trim()) sp.set('search', params.search.trim());
@@ -192,6 +198,8 @@ export async function companySummaryEtapaCounts(params?: {
   if (params?.lastInteraction?.trim()) sp.set('lastInteraction', params.lastInteraction.trim());
   if (params?.lastInteractionFrom?.trim()) sp.set('lastInteractionFrom', params.lastInteractionFrom.trim());
   if (params?.lastInteractionTo?.trim()) sp.set('lastInteractionTo', params.lastInteractionTo.trim());
+  if (params?.createdFrom?.trim()) sp.set('createdFrom', params.createdFrom.trim());
+  if (params?.createdTo?.trim()) sp.set('createdTo', params.createdTo.trim());
   const qs = sp.toString();
   return api<{ counts: Record<string, number> }>(
     qs

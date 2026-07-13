@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef, type DragEvent, type ChangeEvent } from 'react';
+import type { Editor } from '@tiptap/core';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -14,7 +15,6 @@ import {
   Forward,
   Paperclip,
   ChevronLeft,
-  ChevronDown,
   MoreHorizontal,
   User,
   Building2,
@@ -22,8 +22,8 @@ import {
   Link2,
   Loader2,
   X,
-  Maximize2,
   Download,
+  Settings,
 } from 'lucide-react';
 import type { EmailThread, EmailFolder, EmailMessage } from '@/types';
 import { emailThreads, folderLabels, entityTypeLabels } from '@/data/emailMock';
@@ -34,7 +34,10 @@ import {
   opportunityDetailHref,
 } from '@/lib/detailRoutes';
 import { fetchGmailMessages, fetchGmailThread, sendGmailMessage, filesToGmailAttachments, linkEmailToCRM, downloadGmailAttachment } from '@/lib/gmailApi';
+import { fetchEmailSignature, resolveSignatureHtmlForEditor, prepareBodyHtmlForSend } from '@/lib/emailSignatureApi';
 import { filterValidAttachmentFiles, ingestComposeFiles } from '@/lib/composeFiles';
+import { EmailSignatureSettingsDialog } from '@/components/shared/EmailSignatureSettingsDialog';
+import { ComposeEmailPanel } from '@/components/shared/ComposeEmailPanel';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -96,14 +99,6 @@ function formatTime(iso: string) {
   return d.toLocaleDateString('es-PE', { day: '2-digit', month: 'short' });
 }
 
-function formatComposeFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) {
-    const kb = Math.round(bytes / 1024);
-    return `${kb.toLocaleString('es-PE')} K`;
-  }
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
 
 function formatFullDate(iso: string) {
   return new Date(iso).toLocaleString('es-PE', {
@@ -275,24 +270,18 @@ export default function InboxPage() {
   const [composeSubject, setComposeSubject] = useState('');
   const [composeBody, setComposeBody] = useState('');
   const [composeAttachments, setComposeAttachments] = useState<File[]>([]);
-  const [composeEmojiOpen, setComposeEmojiOpen] = useState(false);
-  const [composeFormatOpen, setComposeFormatOpen] = useState(false);
+  const [composeResetKey, setComposeResetKey] = useState(0);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [composeMinimized, setComposeMinimized] = useState(false);
   const [composeFullscreen, setComposeFullscreen] = useState(false);
   const [composeShowCc, setComposeShowCc] = useState(false);
   const [composeShowBcc, setComposeShowBcc] = useState(false);
   const composeFileRef = useRef<HTMLInputElement>(null);
-  const composeBodyRef = useRef<HTMLDivElement>(null);
+  const composeEditorRef = useRef<Editor | null>(null);
   const composeDragCounter = useRef(0);
   const [composeDragOver, setComposeDragOver] = useState(false);
-  const composeHasAttachments = composeAttachments.length > 0;
-
-  const syncComposeBodyFromRef = useCallback(() => {
-    if (composeBodyRef.current) {
-      setComposeBody(composeBodyRef.current.innerHTML);
-    }
-  }, []);
+  const [signatureSettingsOpen, setSignatureSettingsOpen] = useState(false);
+  const [userSignatureHtml, setUserSignatureHtml] = useState<string | null>(null);
 
   const reportComposeFileErrors = useCallback((errors: string[]) => {
     for (const err of errors) toast.error(err);
@@ -306,9 +295,8 @@ export default function InboxPage() {
   const processComposeFiles = useCallback(
     async (files: File[]) => {
       if (!files.length) return;
-      const result = await ingestComposeFiles(files, composeBodyRef.current);
+      const result = await ingestComposeFiles(files, null);
       if (result.inlineImages > 0) {
-        syncComposeBodyFromRef();
         toast.success(
           result.inlineImages === 1
             ? 'Imagen insertada en el mensaje'
@@ -325,7 +313,7 @@ export default function InboxPage() {
       }
       reportComposeFileErrors(result.errors);
     },
-    [syncComposeBodyFromRef, addComposeAttachments, reportComposeFileErrors],
+    [addComposeAttachments, reportComposeFileErrors],
   );
 
   const handleComposeFileInputChange = useCallback(
@@ -387,11 +375,6 @@ export default function InboxPage() {
     [processComposeFiles],
   );
 
-  const composeBodyClassName = cn(
-    'min-h-0 flex-1 overflow-y-auto border-0 bg-transparent text-sm outline-none [&:empty:before]:content-[attr(data-placeholder)] [&:empty:before]:text-muted-foreground/50',
-    composeDragOver && 'bg-primary/5',
-  );
-
   const composeDropOverlay = composeDragOver ? (
     <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-lg border-2 border-dashed border-primary/60 bg-primary/5">
       <div className="flex flex-col items-center gap-1 text-primary">
@@ -408,27 +391,55 @@ export default function InboxPage() {
     }
   }, [composeOpen]);
 
-  const composeAttachmentsPreview = composeHasAttachments ? (
-    <div className="shrink-0 divide-y border-t bg-muted/40">
-      {composeAttachments.map((file, i) => (
-        <div key={`${file.name}-${file.size}-${i}`} className="flex items-center gap-2 px-4 py-2">
-          <Paperclip className="size-4 shrink-0 text-muted-foreground" />
-          <span className="min-w-0 flex-1 truncate text-sm text-[#0b57d0] dark:text-[#8ab4f8]">
-            {file.name}
-            <span className="text-muted-foreground"> ({formatComposeFileSize(file.size)})</span>
-          </span>
-          <button
-            type="button"
-            className="shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-            title="Quitar adjunto"
-            onClick={() => setComposeAttachments((prev) => prev.filter((_, j) => j !== i))}
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-      ))}
-    </div>
-  ) : null;
+  useEffect(() => {
+    if (!googleConnected) return;
+    fetchEmailSignature()
+      .then((res) => setUserSignatureHtml(res.html?.trim() || null))
+      .catch(() => setUserSignatureHtml(null));
+  }, [googleConnected]);
+
+  const formatSignatureForInsert = useCallback((raw: string) => {
+    const trimmed = raw.trim();
+    if (!trimmed) return '';
+    if (/<[a-z][\s\S]*>/i.test(trimmed)) return trimmed;
+    return trimmed
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\n/g, '<br>');
+  }, []);
+
+  const insertComposeSignature = useCallback(async () => {
+    if (!userSignatureHtml) {
+      toast.error('No tienes firma configurada. Ve a Configuración para crearla.');
+      setSignatureSettingsOpen(true);
+      return;
+    }
+    const resolvedHtml = await resolveSignatureHtmlForEditor(
+      formatSignatureForInsert(userSignatureHtml),
+    );
+    if (composeEditorRef.current) {
+      composeEditorRef.current.chain().focus().insertContent(resolvedHtml).run();
+      toast.success('Firma insertada');
+      return;
+    }
+    setComposeBody((prev) => {
+      const sep = prev.trim() && prev !== '<p></p>' ? '<br><br>' : '';
+      return prev + sep + resolvedHtml;
+    });
+    toast.success('Firma insertada');
+  }, [userSignatureHtml, formatSignatureForInsert]);
+
+  const handleComposeEditorReady = useCallback((editor: Editor | null) => {
+    composeEditorRef.current = editor;
+  }, []);
+
+  const closeCompose = useCallback(() => {
+    setComposeOpen(false);
+    setComposeMinimized(false);
+    setComposeFullscreen(false);
+  }, []);
+
   // Gmail state
   const [gmailMessages, setGmailMessages] = useState<any[]>([]);
   const [gmailLoading, setGmailLoading] = useState(false);
@@ -615,8 +626,8 @@ export default function InboxPage() {
   }, []);
 
   const handleSendEmail = async () => {
-    const bodyHtml = composeBodyRef.current?.innerHTML.trim() || composeBody;
-    const bodyText = bodyHtml.replace(/<[^>]*>/g, '').trim();
+    const bodyHtml = prepareBodyHtmlForSend(composeBody, userSignatureHtml);
+    const bodyText = bodyHtml.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
     if (!composeTo.trim() || !composeSubject.trim() || !bodyText) {
       if (!composeTo.trim()) toast.error('Indica el destinatario');
       else if (!composeSubject.trim()) toast.error('El asunto es obligatorio');
@@ -646,9 +657,7 @@ export default function InboxPage() {
       setComposeSubject('');
       setComposeBody('');
       setComposeAttachments([]);
-      setComposeFormatOpen(false);
-      setComposeEmojiOpen(false);
-      if (composeBodyRef.current) composeBodyRef.current.innerHTML = '';
+      setComposeResetKey((k) => k + 1);
       setComposeShowCc(false);
       setComposeShowBcc(false);
       void linkEmailToCRM(to, subject)
@@ -788,6 +797,14 @@ export default function InboxPage() {
               </button>
             );
           })}
+          <button
+            type="button"
+            onClick={() => setSignatureSettingsOpen(true)}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <Settings className="size-4 shrink-0" />
+            Configuración
+          </button>
         </nav>
       </aside>
 
@@ -1327,77 +1344,45 @@ export default function InboxPage() {
         />
       )}
       {composeOpen && composeFullscreen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="flex h-[90vh] w-[90vw] max-w-4xl flex-col rounded-xl border border-border bg-card shadow-2xl">
-            <div className="flex shrink-0 items-center justify-between border-b px-5 py-3">
-              <span className="text-base font-semibold text-foreground">Nuevo mensaje</span>
-              <div className="flex items-center gap-1">
-                <button type="button" onClick={() => setComposeFullscreen(false)} className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" title="Vista flotante">
-                  <ChevronDown className="size-4" />
-                </button>
-                <button type="button" onClick={() => { setComposeOpen(false); setComposeMinimized(false); setComposeFullscreen(false); }} className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" title="Cerrar">
-                  <X className="size-4" />
-                </button>
-              </div>
-            </div>
-            <div
-              className="relative flex min-h-0 flex-1 flex-col"
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="flex h-[90vh] w-full max-w-4xl min-h-0 flex-col">
+            <ComposeEmailPanel
+              fullscreen
+              minimized={composeMinimized}
+              onToggleFullscreen={() => setComposeFullscreen(false)}
+              onToggleMinimized={() => setComposeMinimized((v) => !v)}
+              onClose={closeCompose}
+              subject={composeSubject}
+              onSubjectChange={setComposeSubject}
+              to={composeTo}
+              onToChange={setComposeTo}
+              cc={composeCc}
+              onCcChange={setComposeCc}
+              bcc={composeBcc}
+              onBccChange={setComposeBcc}
+              showCc={composeShowCc}
+              showBcc={composeShowBcc}
+              onShowCc={() => setComposeShowCc(true)}
+              onShowBcc={() => setComposeShowBcc(true)}
+              bodyHtml={composeBody}
+              onBodyChange={setComposeBody}
+              bodyResetKey={composeResetKey}
+              onEditorReady={handleComposeEditorReady}
+              attachments={composeAttachments}
+              onRemoveAttachment={(index) =>
+                setComposeAttachments((prev) => prev.filter((_, j) => j !== index))
+              }
+              onAttachClick={() => composeFileRef.current?.click()}
+              onInsertSignature={() => void insertComposeSignature()}
+              sending={sendingEmail}
+              onSend={() => void handleSendEmail()}
+              dragOver={composeDragOver}
+              dropOverlay={composeDropOverlay}
               onDragEnter={handleComposeDragEnter}
               onDragLeave={handleComposeDragLeave}
               onDragOver={handleComposeDragOver}
               onDrop={handleComposeDrop}
-            >
-              {composeDropOverlay}
-              {/* Recipients */}
-              <div className="shrink-0">
-                <div className="flex items-center gap-2 border-b px-5">
-                  <span className="w-10 shrink-0 text-xs font-medium text-muted-foreground">Para</span>
-                  <EmailRecipientsInput value={composeTo} onChange={setComposeTo} />
-                </div>
-                {composeShowCc && (
-                  <div className="flex items-center gap-2 border-b px-5">
-                    <span className="w-10 shrink-0 text-xs font-medium text-muted-foreground">CC</span>
-                    <input className="min-w-0 flex-1 border-0 bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground/50" placeholder="CC" value={composeCc} onChange={(e) => setComposeCc(e.target.value)} />
-                  </div>
-                )}
-                {composeShowBcc && (
-                  <div className="flex items-center gap-2 border-b px-5">
-                    <span className="w-10 shrink-0 text-xs font-medium text-muted-foreground">CCO</span>
-                    <input className="min-w-0 flex-1 border-0 bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground/50" placeholder="CCO" value={composeBcc} onChange={(e) => setComposeBcc(e.target.value)} />
-                  </div>
-                )}
-                {(!composeShowCc || !composeShowBcc) && (
-                  <div className="flex items-center gap-3 border-b px-5 py-1.5">
-                    {!composeShowCc && <button type="button" onClick={() => setComposeShowCc(true)} className="text-xs text-primary hover:underline">CC</button>}
-                    {!composeShowBcc && <button type="button" onClick={() => setComposeShowBcc(true)} className="text-xs text-primary hover:underline">CCO</button>}
-                  </div>
-                )}
-              </div>
-              <div className="shrink-0 border-b px-5">
-                <input className="w-full border-0 bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground/50" placeholder="Asunto" value={composeSubject} onChange={(e) => setComposeSubject(e.target.value)} />
-              </div>
-              <div
-                ref={composeBodyRef}
-                contentEditable
-                suppressContentEditableWarning
-                className={cn(composeBodyClassName, 'px-5 py-3')}
-                data-placeholder="Escribe tu mensaje..."
-                onInput={syncComposeBodyFromRef}
-              />
-              {composeAttachmentsPreview}
-              <div className="flex shrink-0 items-center justify-between border-t px-4 py-2">
-                <div className="flex items-center gap-1">
-                  <Button className="bg-[#13944C] hover:bg-[#0f7a3d]" disabled={sendingEmail} onClick={() => void handleSendEmail()}>
-                    {sendingEmail ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-                    {sendingEmail ? 'Enviando…' : 'Enviar'}
-                  </Button>
-                  <button type="button" className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" title="Formato"><span className="text-xs font-semibold tracking-wide">Aa</span></button>
-                  <button type="button" className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" title="Adjuntar archivos" onClick={() => composeFileRef.current?.click()}><Paperclip className="size-4" /></button>
-                  <button type="button" className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" title="Insertar emoji"><span className="text-sm">😊</span></button>
-                </div>
-                <Button variant="outline" size="sm" onClick={() => setComposeFullscreen(false)}>Salir de pantalla completa</Button>
-              </div>
-            </div>
+            />
           </div>
         </div>
       )}
@@ -1405,268 +1390,57 @@ export default function InboxPage() {
       {composeOpen && !composeFullscreen && (
         <div
           className={cn(
-            'fixed z-50 shadow-xl border border-border bg-card flex flex-col',
+            'fixed z-50 flex flex-col overflow-hidden border border-border bg-card shadow-2xl',
             composeMinimized
               ? 'bottom-4 right-4 w-72 rounded-lg'
-              : 'bottom-4 right-4 w-[640px] rounded-lg max-lg:left-4 max-lg:w-auto'
+              : 'bottom-4 right-4 w-[min(720px,calc(100vw-2rem))] rounded-xl max-lg:left-4 max-lg:right-4 max-lg:w-auto',
           )}
-          style={!composeMinimized ? { maxHeight: '85vh', height: '640px' } : undefined}
+          style={!composeMinimized ? { maxHeight: '85vh', height: '680px' } : undefined}
         >
-          {/* Header bar */}
-          <div
-            className={cn(
-              'flex shrink-0 items-center justify-between px-4 py-2.5',
-              composeMinimized ? 'rounded-lg' : 'rounded-t-lg border-b'
-            )}
-          >
-            <span className="text-sm font-semibold text-foreground">
-              {composeMinimized ? composeSubject || 'Nuevo mensaje' : 'Nuevo mensaje'}
-            </span>
-            <div className="flex items-center gap-0.5">
-              <button type="button" onClick={() => setComposeFullscreen(true)} className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" title="Pantalla completa">
-                <Maximize2 className="size-3.5" />
-              </button>
-              <button type="button" onClick={() => setComposeMinimized(!composeMinimized)} className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" title={composeMinimized ? 'Maximizar' : 'Minimizar'}>
-                <ChevronDown className={cn('size-3.5 transition-transform', composeMinimized && 'rotate-180')} />
-              </button>
-              <button type="button" onClick={() => { setComposeOpen(false); setComposeMinimized(false); setComposeFullscreen(false); }} className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" title="Cerrar">
-                <X className="size-3.5" />
-              </button>
-            </div>
-          </div>
-
-          {/* Body (hidden when minimized) */}
-          {!composeMinimized && (
-            <div
-              className="relative flex min-h-0 flex-1 flex-col"
-              onDragEnter={handleComposeDragEnter}
-              onDragLeave={handleComposeDragLeave}
-              onDragOver={handleComposeDragOver}
-              onDrop={handleComposeDrop}
-            >
-              {composeDropOverlay}
-              {/* Recipients */}
-              <div className="shrink-0">
-                {/* PARA */}
-                <div className="flex items-center gap-2 px-4">
-                  <span className="w-10 shrink-0 text-xs font-medium text-muted-foreground">Para</span>
-                  <EmailRecipientsInput value={composeTo} onChange={setComposeTo} />
-                </div>
-                <div className="mx-4 border-b" />
-                {/* CC */}
-                {composeShowCc && (
-                  <>
-                    <div className="flex items-center gap-2 px-4">
-                      <span className="w-10 shrink-0 text-xs font-medium text-muted-foreground">CC</span>
-                      <input
-                        className="min-w-0 flex-1 border-0 bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground/50"
-                        placeholder="CC"
-                        value={composeCc}
-                        onChange={(e) => setComposeCc(e.target.value)}
-                      />
-                    </div>
-                    <div className="mx-4 border-b" />
-                  </>
-                )}
-                {/* CCO */}
-                {composeShowBcc && (
-                  <>
-                    <div className="flex items-center gap-2 px-4">
-                      <span className="w-10 shrink-0 text-xs font-medium text-muted-foreground">CCO</span>
-                      <input
-                        className="min-w-0 flex-1 border-0 bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground/50"
-                        placeholder="CCO"
-                        value={composeBcc}
-                        onChange={(e) => setComposeBcc(e.target.value)}
-                      />
-                    </div>
-                    <div className="mx-4 border-b" />
-                  </>
-                )}
-                {/* CC / CCO Toggle */}
-                {(!composeShowCc || !composeShowBcc) && (
-                  <div className="flex items-center gap-3 px-4 py-1.5">
-                    {!composeShowCc && (
-                      <button type="button" onClick={() => setComposeShowCc(true)} className="text-xs text-primary hover:underline">CC</button>
-                    )}
-                    {!composeShowBcc && (
-                      <button type="button" onClick={() => setComposeShowBcc(true)} className="text-xs text-primary hover:underline">CCO</button>
-                    )}
-                  </div>
-                )}
-              </div>  {/* recipients shrink-0 */}
-
-              {/* Asunto */}
-              <div className="shrink-0">
-                <div className="px-4">
-                  <input
-                    className="w-full border-0 bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground/50"
-                    placeholder="Asunto"
-                    value={composeSubject}
-                    onChange={(e) => setComposeSubject(e.target.value)}
-                  />
-                </div>
-                <div className="mx-4 border-b" />
-              </div>  {/* asunto shrink-0 */}
-
-              {/* Rich text body */}
-              <div
-                ref={composeBodyRef}
-                contentEditable
-                suppressContentEditableWarning
-                className={cn(composeBodyClassName, 'px-4 py-3')}
-                data-placeholder="Escribe tu mensaje..."
-                onInput={syncComposeBodyFromRef}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                    e.preventDefault();
-                    void handleSendEmail();
-                  }
-                }}
-              />
-
-              {/* Adjuntos + toolbar */}
-              <div className="shrink-0">
-                {composeAttachmentsPreview}
-                <div className="mx-4 border-t" />
-                 <div className="flex items-center justify-between px-2 py-1.5">
-                   <div className="flex items-center gap-0.5">
-                  <Button
-                    size="sm"
-                    className="bg-[#13944C] hover:bg-[#0f7a3d]"
-                    disabled={sendingEmail}
-                    onClick={() => void handleSendEmail()}
-                  >
-                    {sendingEmail ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
-                    {sendingEmail ? 'Enviando…' : 'Enviar'}
-                  </Button>
-
-                  {/* Aa — Format popover */}
-                  <div className="relative">
-                    <button
-                      type="button"
-                      className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                      title="Formato"
-                      onClick={() => setComposeFormatOpen(!composeFormatOpen)}
-                    >
-                      <span className="text-xs font-semibold tracking-wide">Aa</span>
-                    </button>
-                    {composeFormatOpen && (
-                      <div className="absolute bottom-full left-0 mb-1 flex gap-0.5 rounded-lg border bg-background p-1.5 shadow-xl" onMouseDown={(e) => e.preventDefault()}>
-                        <button
-                          type="button"
-                          className="rounded px-2 py-1 text-sm font-bold hover:bg-muted transition-colors"
-                          title="Negrita"
-                          onClick={() => { document.execCommand('bold'); composeBodyRef.current?.focus(); }}
-                        >B</button>
-                        <button
-                          type="button"
-                          className="rounded px-2 py-1 text-sm font-serif italic hover:bg-muted transition-colors"
-                          title="Cursiva"
-                          onClick={() => { document.execCommand('italic'); composeBodyRef.current?.focus(); }}
-                        >I</button>
-                        <button
-                          type="button"
-                          className="rounded px-2 py-1 text-sm underline hover:bg-muted transition-colors"
-                          title="Subrayado"
-                          onClick={() => { document.execCommand('underline'); composeBodyRef.current?.focus(); }}
-                        >U</button>
-                        <span className="mx-0.5 self-stretch w-px bg-border" />
-                        <button
-                          type="button"
-                          className="rounded px-2 py-1 text-sm hover:bg-muted transition-colors"
-                          title="Lista ordenada"
-                          onClick={() => { document.execCommand('insertOrderedList'); composeBodyRef.current?.focus(); }}
-                        ><span className="text-xs">1.</span></button>
-                        <button
-                          type="button"
-                          className="rounded px-2 py-1 text-sm hover:bg-muted transition-colors"
-                          title="Lista con viñetas"
-                          onClick={() => { document.execCommand('insertUnorderedList'); composeBodyRef.current?.focus(); }}
-                        ><span className="text-xs">•</span></button>
-                        <span className="mx-0.5 self-stretch w-px bg-border" />
-                        <button
-                          type="button"
-                          className="rounded px-2 py-1 text-sm hover:bg-muted transition-colors"
-                          title="Citar"
-                          onClick={() => { document.execCommand('formatBlock', false, 'blockquote'); composeBodyRef.current?.focus(); }}
-                        ><span className="text-xs">❝</span></button>
-                        <button
-                          type="button"
-                          className="rounded px-2 py-1 text-sm hover:bg-muted transition-colors"
-                          title="Enlace"
-                          onClick={() => {
-                            const url = prompt('URL del enlace:');
-                            if (url) { document.execCommand('createLink', false, url); composeBodyRef.current?.focus(); }
-                          }}
-                        ><span className="text-xs">🔗</span></button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Adjuntar archivos */}
-                  <button
-                    type="button"
-                    className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                    title="Adjuntar archivos"
-                    onClick={() => composeFileRef.current?.click()}
-                  >
-                    <Paperclip className="size-4" />
-                  </button>
-
-                  {/* Emoji picker */}
-                  <div className="relative">
-                    <button
-                      type="button"
-                      className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                      title="Insertar emoji"
-                      onClick={() => setComposeEmojiOpen(!composeEmojiOpen)}
-                    >
-                      <span className="text-sm">😊</span>
-                    </button>
-                    {composeEmojiOpen && (
-                      <div className="absolute bottom-full left-0 mb-1 grid w-64 grid-cols-8 gap-0.5 rounded-lg border bg-background p-2 shadow-xl">
-                        {['😀','😁','😂','🤣','😃','😄','😅','😆','😉','😊','😋','😎','😍','😘','🥰','😗','😙','😚','🙂','🤗','🤩','🤔','🤨','😐','😑','😶','🙄','😏','😣','😥','😮','🤐','😯','😪','😫','😴','😌','😛','😜','😝','🤤','😒','😓','😔','😕','🙃','🤑','😲','☹️','🙁','😖','😞','😟','😤','😢','😭','😦','😧','😨','😩','🤯','😬','😰','😱','🥵','🥶','😳','🤪','😵','😡','😠','🤬','👍','👎','👊','✊','🤛','🤜','👏','🙌','👐','🤲','🤝','🙏','✍️','💪','🎉','❤️','💔','💖','💙','💚','💛','💜','🖤','⭐','🌈','🔥','💯','✅','❌','📎','📧','📅','📁','📂','📌','🔗','🎯','💡','🚀','⭐','🎁'].map((emoji) => (
-                          <button
-                            key={emoji}
-                            type="button"
-                            className="rounded p-1 text-sm hover:bg-muted transition-colors"
-                            onClick={() => {
-                              if (composeBodyRef.current) {
-                                const sel = window.getSelection();
-                                if (sel && sel.rangeCount > 0) {
-                                  const range = sel.getRangeAt(0);
-                                  if (composeBodyRef.current.contains(range.commonAncestorContainer)) {
-                                    range.deleteContents();
-                                    range.insertNode(document.createTextNode(emoji));
-                                    range.collapse(false);
-                                  } else {
-                                    composeBodyRef.current.innerHTML += emoji;
-                                  }
-                                } else {
-                                  composeBodyRef.current.innerHTML += emoji;
-                                }
-                                setComposeBody(composeBodyRef.current.innerHTML);
-                              } else {
-                                setComposeBody((prev) => prev + emoji);
-                              }
-                              setComposeEmojiOpen(false);
-                            }}
-                          >
-                            {emoji}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                  </div>  {/* toolbar content */}
-              </div>
-          </div>
-          )}
+          <ComposeEmailPanel
+            minimized={composeMinimized}
+            onToggleMinimized={() => setComposeMinimized((v) => !v)}
+            onToggleFullscreen={() => setComposeFullscreen(true)}
+            onClose={closeCompose}
+            subject={composeSubject}
+            onSubjectChange={setComposeSubject}
+            to={composeTo}
+            onToChange={setComposeTo}
+            cc={composeCc}
+            onCcChange={setComposeCc}
+            bcc={composeBcc}
+            onBccChange={setComposeBcc}
+            showCc={composeShowCc}
+            showBcc={composeShowBcc}
+            onShowCc={() => setComposeShowCc(true)}
+            onShowBcc={() => setComposeShowBcc(true)}
+            bodyHtml={composeBody}
+            onBodyChange={setComposeBody}
+            bodyResetKey={composeResetKey}
+            onEditorReady={handleComposeEditorReady}
+            attachments={composeAttachments}
+            onRemoveAttachment={(index) =>
+              setComposeAttachments((prev) => prev.filter((_, j) => j !== index))
+            }
+            onAttachClick={() => composeFileRef.current?.click()}
+            onInsertSignature={() => void insertComposeSignature()}
+            sending={sendingEmail}
+            onSend={() => void handleSendEmail()}
+            dragOver={composeDragOver}
+            dropOverlay={composeDropOverlay}
+            onDragEnter={handleComposeDragEnter}
+            onDragLeave={handleComposeDragLeave}
+            onDragOver={handleComposeDragOver}
+            onDrop={handleComposeDrop}
+          />
         </div>
       )}
+
+      <EmailSignatureSettingsDialog
+        open={signatureSettingsOpen}
+        onOpenChange={setSignatureSettingsOpen}
+        onSaved={setUserSignatureHtml}
+      />
     </div>
   );
 }

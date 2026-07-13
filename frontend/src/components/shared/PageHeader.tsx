@@ -7,7 +7,7 @@ interface PageHeaderProps {
   className?: string;
 }
 
-export function PageHeader({ title, children, className }: PageHeaderProps) {
+export function PageHeader({ title, description, children, className }: PageHeaderProps) {
   return (
     <div
       className={cn(
@@ -15,8 +15,11 @@ export function PageHeader({ title, children, className }: PageHeaderProps) {
         className
       )}
     >
-      <div className="flex min-w-0 items-center">
+      <div className="flex min-w-0 flex-col gap-1">
         <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{title}</h1>
+        {description ? (
+          <p className="text-sm text-muted-foreground">{description}</p>
+        ) : null}
       </div>
       {children && (
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">

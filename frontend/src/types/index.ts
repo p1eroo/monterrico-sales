@@ -178,6 +178,8 @@ export interface User {
   /** Última actividad (mock) */
   lastActivity?: string;
   allowedAreas: ('comercial' | 'flota' | 'marketing')[];
+  /** Slug del rol RBAC tal como viene de la API (p. ej. `asesor_comercial`). */
+  roleSlug?: string;
 }
 
 export interface Contact {

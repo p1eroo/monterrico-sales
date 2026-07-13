@@ -1,4 +1,6 @@
+import type { DateRange } from 'react-day-picker';
 import { cn } from '@/lib/utils';
+import { dateRangeToLimaYmdBounds } from '@/lib/crmTimezone';
 
 /** Mismo borde y fondo que `Card variant="surface"` (sin sombra). */
 export const comercialCardSurfaceClass =
@@ -25,3 +27,14 @@ export const comercialProPopoverClass = cn(
 
 /** Command list dentro del popover pro (fondo transparente para ver el gradiente). */
 export const comercialProCommandClass = 'bg-transparent';
+
+/**
+ * Convierte un rango de calendario a YYYY-MM-DD (días completos en hora Perú).
+ * El backend interpreta estos valores con `parseDayStartLima` / `parseDayEndLima`.
+ */
+export function dateRangeToQueryBounds(range: DateRange | undefined): {
+  from?: string;
+  to?: string;
+} {
+  return dateRangeToLimaYmdBounds(range);
+}

@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { DateRange } from 'react-day-picker';
 import { ChevronDown } from 'lucide-react';
@@ -10,11 +9,13 @@ import { CalendarSvgIcon } from '@/components/icons/CalendarSvgIcon';
 import {
   comercialProPopoverClass,
 } from '@/lib/comercialFilterSurface';
+import { calendarDateToLimaYmd } from '@/lib/crmTimezone';
+import { formatDateDMY } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 
 function formatDisplayRange(range: DateRange | undefined): string {
   if (!range?.from && !range?.to) return '';
-  const fmt = (d: Date) => format(d, 'dd/MM/yyyy', { locale: es });
+  const fmt = (d: Date) => formatDateDMY(calendarDateToLimaYmd(d));
   if (range?.from && range?.to) return `${fmt(range.from)} — ${fmt(range.to)}`;
   if (range?.from) return `${fmt(range.from)} —`;
   return '';

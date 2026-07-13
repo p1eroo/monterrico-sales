@@ -1,13 +1,40 @@
-import { Controller, Get, Post, Query, Body, Req, Param, Res, StreamableFile } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Post,
+  Put,
+  Query,
+  Req,
+  Param,
+  Res,
+  StreamableFile,
+  UploadedFile,
+  UseInterceptors,
+  NotFoundException,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import type { Response } from 'express';
 import { GmailService } from './gmail.service';
+import { EmailSignatureService } from './email-signature.service';
 import { Public } from '../auth/decorators/public.decorator';
 
-type AuthedReq = { user: { userId: string } };
+type AuthedReq = {
+  user: { userId: string };
+  headers: { authorization?: string };
+};
+
+const signatureUploadStorage = memoryStorage();
 
 @Controller('gmail')
 export class GmailController {
-  constructor(private readonly gmailService: GmailService) {}
+  constructor(
+    private readonly gmailService: GmailService,
+    private readonly emailSignature: EmailSignatureService,
+  ) {}
 
   @Get('sender-avatar')
   @Public()
@@ -106,5 +133,71 @@ export class GmailController {
     @Body() body: { to: string; subject: string },
   ) {
     return this.gmailService.linkEmail(body.to, body.subject, req.user.userId);
+  }
+
+  @Get('signature')
+  async getSignature(@Req() req: AuthedReq) {
+    return this.emailSignature.getSignature(req.user.userId);
+  }
+
+  @Get('signature/image')
+  async getSignatureImage(
+    @Req() req: AuthedReq,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    const opened = await this.emailSignature.openStoredImageStream(
+      req.user.userId,
+    );
+    if (!opened) {
+      throw new NotFoundException('No hay imagen de firma guardada');
+    }
+    res.set({
+      'Content-Type': opened.mimeType,
+      'Cache-Control': 'private, max-age=3600',
+    });
+    return new StreamableFile(opened.stream);
+  }
+
+  @Put('signature')
+  async saveSignature(
+    @Req() req: AuthedReq,
+    @Body() body: { html?: string },
+  ) {
+    if (typeof body?.html !== 'string') {
+      throw new BadRequestException('html es obligatorio');
+    }
+    return this.emailSignature.saveSignature(req.user.userId, body.html);
+  }
+
+  @Post('signature/image')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: signatureUploadStorage,
+      limits: { fileSize: 6 * 1024 * 1024 },
+    }),
+  )
+  async uploadSignatureImage(
+    @Req() req: AuthedReq,
+    @UploadedFile() file: Express.Multer.File | undefined,
+  ) {
+    if (!file?.buffer?.length) {
+      throw new BadRequestException('Falta el archivo (campo file)');
+    }
+    const auth =
+      typeof req.headers.authorization === 'string'
+        ? req.headers.authorization
+        : undefined;
+    return this.emailSignature.uploadSignatureImage(
+      req.user.userId,
+      file.buffer,
+      file.mimetype || 'image/png',
+      file.originalname || 'firma.png',
+      auth,
+    );
+  }
+
+  @Delete('signature')
+  async deleteSignature(@Req() req: AuthedReq) {
+    return this.emailSignature.deleteSignature(req.user.userId);
   }
 }

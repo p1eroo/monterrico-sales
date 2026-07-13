@@ -22,6 +22,7 @@ import {
   companyAdvisorWhere,
   parseAdvisorFilterQuery,
 } from '../common/advisor-filter.util';
+import { resolveLimaDayRange } from '../common/crm-timezone.util';
 import { formatImportedCompanyName } from '../common/import-display-name.util';
 import { FactilizaService } from '../factiliza/factiliza.service';
 import { normalizeClienteRecuperado } from '../common/normalize-cliente-recuperado';
@@ -556,6 +557,9 @@ export class CompaniesService {
       lastInteractionFrom?: string;
       /** ISO date (YYYY-MM-DD o ISO completo). Si existe junto a `lastInteractionFrom`, filtra por rango. */
       lastInteractionTo?: string;
+      /** ISO date: rango de fecha de creación de la empresa. */
+      createdFrom?: string;
+      createdTo?: string;
     },
     scope?: CrmDataScope,
   ): Promise<Prisma.CompanyWhereInput[]> {
@@ -619,15 +623,11 @@ export class CompaniesService {
     }
 
     const li = opts?.lastInteraction?.trim();
-    const fromRaw = opts?.lastInteractionFrom?.trim();
-    const toRaw = opts?.lastInteractionTo?.trim();
-    const from = fromRaw ? new Date(fromRaw) : null;
-    const to = toRaw ? new Date(toRaw) : null;
-    const hasValidRange =
-      !!from &&
-      !!to &&
-      !Number.isNaN(from.getTime()) &&
-      !Number.isNaN(to.getTime());
+    const interactionRange = resolveLimaDayRange(
+      opts?.lastInteractionFrom,
+      opts?.lastInteractionTo,
+    );
+    const hasValidRange = !!interactionRange;
 
     if (li || hasValidRange) {
       const activityAny: Prisma.CompanyWhereInput = {
@@ -640,7 +640,8 @@ export class CompaniesService {
 
       if (li === 'none') {
         andParts.push({ NOT: activityAny });
-      } else if (hasValidRange && from && to) {
+      } else if (hasValidRange && interactionRange) {
+        const { from, to } = interactionRange;
         andParts.push({
           OR: [
             { activities: { some: { activity: { createdAt: { gte: from, lte: to } } } } },
@@ -695,6 +696,17 @@ export class CompaniesService {
         }
       }
     }
+
+    const createdRange = resolveLimaDayRange(
+      opts?.createdFrom,
+      opts?.createdTo,
+    );
+    if (createdRange) {
+      andParts.push({
+        createdAt: { gte: createdRange.from, lte: createdRange.to },
+      });
+    }
+
     return andParts;
   }
 
@@ -723,6 +735,8 @@ export class CompaniesService {
       lastInteraction?: string;
       lastInteractionFrom?: string;
       lastInteractionTo?: string;
+      createdFrom?: string;
+      createdTo?: string;
     },
     scope?: CrmDataScope,
   ): Promise<{ counts: Record<string, number> }> {
@@ -765,6 +779,8 @@ export class CompaniesService {
       lastInteraction?: string;
       lastInteractionFrom?: string;
       lastInteractionTo?: string;
+      createdFrom?: string;
+      createdTo?: string;
     },
     scope?: CrmDataScope,
   ) {

@@ -1,4 +1,4 @@
-import { useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import type { Editor } from '@tiptap/core';
 import { Color } from '@tiptap/extension-color';
 import { Highlight } from '@tiptap/extension-highlight';
@@ -442,6 +442,8 @@ export type CampaignEmailEditorProps = {
   compact?: boolean;
   /** Muestra el borde/anillo del contenedor. Desactívalo cuando ya va dentro de otro contenedor */
   bordered?: boolean;
+  /** Expone la instancia del editor (p. ej. insertar firma desde el panel de redacción) */
+  onEditorReady?: (editor: Editor | null) => void;
 };
 
 export function CampaignEmailEditor({
@@ -451,6 +453,7 @@ export function CampaignEmailEditor({
   placeholder = 'Escribe tu mensaje. Usa {{nombre}} para personalizar.',
   compact = false,
   bordered = true,
+  onEditorReady,
 }: CampaignEmailEditorProps) {
   const editor = useEditor(
     {
@@ -506,6 +509,11 @@ export function CampaignEmailEditor({
     },
     [resetKey],
   );
+
+  useEffect(() => {
+    onEditorReady?.(editor);
+    return () => onEditorReady?.(null);
+  }, [editor, onEditorReady]);
 
   return (
     <div

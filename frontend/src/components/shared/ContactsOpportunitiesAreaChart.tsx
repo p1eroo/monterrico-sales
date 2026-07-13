@@ -43,6 +43,19 @@ export function ContactsOpportunitiesAreaChart({
     [oportunidadesSeries],
   );
 
+  const dataMax = useMemo(() => {
+    const values = [...contactosSeries, ...oportunidadesSeries];
+    return values.length > 0 ? Math.max(...values) : 0;
+  }, [contactosSeries, oportunidadesSeries]);
+
+  const yAxisMax = useMemo(() => {
+    if (dataMax <= 0) return 10;
+    const padded = dataMax * 1.12;
+    if (padded <= 50) return Math.ceil(padded / 10) * 10;
+    if (padded <= 500) return Math.ceil(padded / 50) * 50;
+    return Math.ceil(padded / 100) * 100;
+  }, [dataMax]);
+
   const options = useMemo<ApexOptions>(
     () => ({
       chart: {
@@ -90,7 +103,8 @@ export function ContactsOpportunitiesAreaChart({
       },
       yaxis: {
         min: 0,
-        tickAmount: 5,
+        max: yAxisMax,
+        tickAmount: 4,
         labels: {
           formatter: (value) => String(Math.round(Number(value))),
           style: { colors: chartTheme.axisColor, fontSize: '11px' },
@@ -105,7 +119,7 @@ export function ContactsOpportunitiesAreaChart({
         },
       },
     }),
-    [categories, chartTheme.axisColor, chartTheme.gridStroke, chartTheme.isDark],
+    [categories, chartTheme.axisColor, chartTheme.gridStroke, chartTheme.isDark, yAxisMax],
   );
 
   const series = useMemo(
@@ -138,34 +152,30 @@ export function ContactsOpportunitiesAreaChart({
   return (
     <div className={cn('flex w-full flex-col', className)}>
       {showLegendSummary ? (
-        <div className="mb-6 flex flex-wrap items-end gap-6 sm:gap-10">
-          <div>
-            <div className="mb-1 flex items-center gap-2 text-sm text-muted-foreground">
-              <span
-                className="size-2 shrink-0 rounded-full"
-                style={{ backgroundColor: CONTACTOS_COLOR }}
-              />
-              Contactos
-            </div>
-            <p className="text-xl font-medium tabular-nums tracking-tight">
+        <div className="mb-3 shrink-0 flex flex-wrap items-center gap-x-5 gap-y-1 px-1 text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              className="inline-block size-2.5 shrink-0 rounded-full"
+              style={{ backgroundColor: CONTACTOS_COLOR }}
+            />
+            Contactos{' '}
+            <span className="font-semibold text-foreground">
               {formatTotal(totalContactos)}
-            </p>
-          </div>
-          <div>
-            <div className="mb-1 flex items-center gap-2 text-sm text-muted-foreground">
-              <span
-                className="size-2 shrink-0 rounded-full"
-                style={{ backgroundColor: OPORTUNIDADES_COLOR }}
-              />
-              Oportunidades
-            </div>
-            <p className="text-xl font-medium tabular-nums tracking-tight">
+            </span>
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              className="inline-block size-2.5 shrink-0 rounded-full"
+              style={{ backgroundColor: OPORTUNIDADES_COLOR }}
+            />
+            Oportunidades{' '}
+            <span className="font-semibold text-foreground">
               {formatTotal(totalOportunidades)}
-            </p>
-          </div>
+            </span>
+          </span>
         </div>
       ) : null}
-      <div className="shrink-0 pb-2 leading-none [&_.apexcharts-svg]:overflow-visible">
+      <div className="min-h-0 shrink-0 leading-none [&_.apexcharts-canvas]:!w-full [&_.apexcharts-svg]:overflow-visible">
         <Chart options={options} series={series} type="area" height={height} />
       </div>
     </div>

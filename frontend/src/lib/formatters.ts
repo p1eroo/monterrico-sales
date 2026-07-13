@@ -37,26 +37,36 @@ export function formatCurrencyCompact(amount: number): string {
 
 const DATE_ONLY_YMD = /^\d{4}-\d{2}-\d{2}$/;
 
-/** Fecha local para mostrar; evita desfase UTC en campos de "solo fecha". */
-function parseDateForDisplay(dateStr: string): Date {
+/** Zona usada en el CRM (Lima, sin horario de verano). */
+export const CRM_TIMEZONE_PERU = 'America/Lima' as const;
+
+function parseDateInput(dateStr: string): Date {
   const t = dateStr.trim();
-  // Si es YYYY-MM-DD
   if (DATE_ONLY_YMD.test(t)) {
-    return new Date(`${t}T00:00:00`);
+    return new Date(`${t}T12:00:00-05:00`);
   }
-  // Si viene del backend como ISO con medianoche UTC (ej: 2026-01-29T00:00:00.000Z)
-  // lo tratamos como fecha local para que no salte al día anterior en zonas horarias negativas (Perú).
   if (t.includes('T00:00:00')) {
-    return new Date(t.split('T')[0] + 'T00:00:00');
+    return new Date(`${t.split('T')[0]}T12:00:00-05:00`);
   }
-  return new Date(dateStr);
+  return new Date(t);
 }
 
+function formatInLimaCalendar(
+  d: Date,
+  options: Intl.DateTimeFormatOptions,
+): string {
+  return d.toLocaleDateString('es-PE', {
+    ...options,
+    timeZone: CRM_TIMEZONE_PERU,
+  });
+}
 
 /** Formatea una fecha en formato corto: "15 mar 2026" */
 export function formatDate(dateStr: string): string {
   if (!dateStr) return '—';
-  return parseDateForDisplay(dateStr).toLocaleDateString('es-PE', {
+  const d = parseDateInput(dateStr);
+  if (Number.isNaN(d.getTime())) return '—';
+  return formatInLimaCalendar(d, {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -66,72 +76,32 @@ export function formatDate(dateStr: string): string {
 /** Formatea una fecha en formato DD/MM/YYYY */
 export function formatDateDMY(dateStr: string): string {
   if (!dateStr) return '—';
-  const d = parseDateForDisplay(dateStr);
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const year = d.getFullYear();
+  const d = parseDateInput(dateStr);
+  if (Number.isNaN(d.getTime())) return '—';
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: CRM_TIMEZONE_PERU,
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).formatToParts(d);
+  const day = parts.find((p) => p.type === 'day')?.value ?? '00';
+  const month = parts.find((p) => p.type === 'month')?.value ?? '00';
+  const year = parts.find((p) => p.type === 'year')?.value ?? '0000';
   return `${day}/${month}/${year}`;
 }
 
 /** Formato muy corto: "15 mar" (sin año, para listas) */
 export function formatDateShort(dateStr: string): string {
   if (!dateStr) return '—';
-  return parseDateForDisplay(dateStr).toLocaleDateString('es-PE', {
-    day: '2-digit',
-    month: 'short',
-  });
+  const d = parseDateInput(dateStr);
+  if (Number.isNaN(d.getTime())) return '—';
+  return formatInLimaCalendar(d, { day: '2-digit', month: 'short' });
 }
 
-/** Para strings solo-fecha (ej: "2026-03-05") - evita desfase por UTC */
+/** Para strings solo-fecha (ej: "2026-03-05") — calendario Lima. */
 export function formatDateShortLocal(dateStr: string): string {
-  if (!dateStr) return '—';
-  const d = new Date(`${dateStr.trim()}T00:00:00`);
-  return d.toLocaleDateString('es-PE', { day: '2-digit', month: 'short' });
+  return formatDateShort(dateStr);
 }
-
-/** Suma días al calendario local y devuelve `YYYY-MM-DD` (para defaults de cierre, etc.). */
-export function addCalendarDaysLocalIso(days: number): string {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() + days);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-/** Formatea fecha y hora: "15 mar 2026, 14:30" */
-export function formatDateTime(iso: string): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  return d.toLocaleString('es-PE', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-/** Para agrupar fechas en auditoría: "Hoy", "Ayer", "Esta semana" o fecha */
-export function formatDateGroup(iso: string): string {
-  const d = new Date(iso);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const weekStart = new Date(today);
-  weekStart.setDate(weekStart.getDate() - 7);
-  d.setHours(0, 0, 0, 0);
-
-  if (d.getTime() === today.getTime()) return 'Hoy';
-  if (d.getTime() === yesterday.getTime()) return 'Ayer';
-  if (d >= weekStart) return 'Esta semana';
-  return d.toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' });
-}
-
-/** Zona usada en el CRM (Lima, sin horario de verano). */
-export const CRM_TIMEZONE_PERU = 'America/Lima' as const;
 
 /**
  * “Hoy” en Perú en formato YYYY-MM-DD (inputs type="date").
@@ -139,6 +109,40 @@ export const CRM_TIMEZONE_PERU = 'America/Lima' as const;
  */
 export function formatTodayPeruYmd(): string {
   return new Date().toLocaleDateString('en-CA', { timeZone: CRM_TIMEZONE_PERU });
+}
+
+/** Suma días al calendario Lima y devuelve `YYYY-MM-DD`. */
+export function addCalendarDaysLocalIso(days: number): string {
+  const base = formatTodayPeruYmd();
+  const [y, m, d] = base.split('-').map(Number);
+  const shifted = new Date(Date.UTC(y, m - 1, d + days, 12, 0, 0));
+  return shifted.toLocaleDateString('en-CA', { timeZone: CRM_TIMEZONE_PERU });
+}
+
+/** Formatea fecha y hora: "15 mar 2026, 14:30" */
+export function formatDateTime(iso: string): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString('es-PE', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: CRM_TIMEZONE_PERU,
+  });
+}
+
+/** Para agrupar fechas en auditoría: "Hoy", "Ayer", "Esta semana" o fecha */
+export function formatDateGroup(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  const dYmd = d.toLocaleDateString('en-CA', { timeZone: CRM_TIMEZONE_PERU });
+  if (dYmd === formatTodayPeruYmd()) return 'Hoy';
+  if (dYmd === addCalendarDaysLocalIso(-1)) return 'Ayer';
+  if (dYmd >= addCalendarDaysLocalIso(-7)) return 'Esta semana';
+  return formatDate(iso);
 }
 
 /**

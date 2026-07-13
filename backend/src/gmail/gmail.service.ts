@@ -4,6 +4,11 @@ import { simpleParser } from 'mailparser';
 import { PrismaService } from '../prisma/prisma.service';
 import { EntitySyncService } from '../sync/entity-sync.service';
 import { CompanyLogoService } from '../companies/company-logo.service';
+import { EmailSignatureService } from './email-signature.service';
+import {
+  buildMultipartEmailLines,
+  embedInlineImagesInHtml,
+} from './email-inline-images.util';
 
 /** Dominios de correo personales: no tienen logo de marca, se usa la inicial. */
 const PERSONAL_EMAIL_DOMAINS = new Set([
@@ -46,6 +51,7 @@ export class GmailService {
     private readonly prisma: PrismaService,
     private readonly entitySync: EntitySyncService,
     private readonly companyLogo: CompanyLogoService,
+    private readonly emailSignature: EmailSignatureService,
   ) {}
 
   /**
@@ -204,19 +210,8 @@ export class GmailService {
     bodyHtml: string;
     inReplyTo?: string;
     attachments?: { fileName: string; mimeType?: string; contentBase64: string }[];
+    inlineImages?: { cid: string; mimeType: string; content: Buffer; fileName: string }[];
   }): string {
-    const lines: string[] = [];
-    lines.push('From: me');
-    lines.push(`To: ${params.to}`);
-    if (params.cc) lines.push(`Cc: ${params.cc}`);
-    lines.push(`Subject: ${params.subject}`);
-    if (params.inReplyTo) {
-      const ref = params.inReplyTo.startsWith('<') ? params.inReplyTo : `<${params.inReplyTo}>`;
-      lines.push(`In-Reply-To: ${ref}`);
-      lines.push(`References: ${ref}`);
-    }
-    lines.push('MIME-Version: 1.0');
-
     const attachmentBuffers: { fileName: string; mimeType: string; content: Buffer }[] = [];
     for (const att of params.attachments ?? []) {
       const fileName = att.fileName?.trim();
@@ -235,32 +230,15 @@ export class GmailService {
       }
     }
 
-    if (attachmentBuffers.length === 0) {
-      lines.push('Content-Type: text/html; charset=utf-8');
-      lines.push('');
-      lines.push(params.bodyHtml);
-    } else {
-      const boundary = `mixed_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-      lines.push(`Content-Type: multipart/mixed; boundary="${boundary}"`);
-      lines.push('');
-      lines.push(`--${boundary}`);
-      lines.push('Content-Type: text/html; charset=utf-8');
-      lines.push('Content-Transfer-Encoding: 7bit');
-      lines.push('');
-      lines.push(params.bodyHtml);
-      for (const att of attachmentBuffers) {
-        lines.push(`--${boundary}`);
-        lines.push(`Content-Type: ${att.mimeType}; name="${att.fileName}"`);
-        lines.push(`Content-Disposition: attachment; filename="${att.fileName}"`);
-        lines.push('Content-Transfer-Encoding: base64');
-        lines.push('');
-        const b64 = att.content.toString('base64');
-        for (let i = 0; i < b64.length; i += 76) {
-          lines.push(b64.slice(i, i + 76));
-        }
-      }
-      lines.push(`--${boundary}--`);
-    }
+    const lines = buildMultipartEmailLines({
+      to: params.to,
+      cc: params.cc,
+      subject: params.subject,
+      bodyHtml: params.bodyHtml,
+      inReplyTo: params.inReplyTo,
+      attachments: attachmentBuffers,
+      inlineImages: params.inlineImages ?? [],
+    });
 
     return Buffer.from(lines.join('\r\n')).toString('base64url');
   }
@@ -275,14 +253,20 @@ export class GmailService {
     inReplyTo?: string,
     attachments?: { fileName: string; mimeType?: string; contentBase64: string }[],
   ) {
+    const { html: processedHtml, inlineImages } = await embedInlineImagesInHtml(
+      bodyHtml,
+      (src) => this.emailSignature.resolveStoredImage(userId, src),
+    );
+
     const gmail = await this.getGmailClient(userId);
     const encoded = this.buildRawEmail({
       to,
       cc,
       subject,
-      bodyHtml,
+      bodyHtml: processedHtml,
       inReplyTo,
       attachments,
+      inlineImages,
     });
     await gmail.users.messages.send({
       userId: 'me',

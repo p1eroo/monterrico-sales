@@ -1,5 +1,7 @@
 import { api } from '@/lib/api';
 import type { DateRange } from 'react-day-picker';
+import { calendarDateToLimaYmd } from '@/lib/crmTimezone';
+import { addCalendarDaysLocalIso, formatTodayPeruYmd } from '@/lib/formatters';
 
 export type AnalyticsSummary = {
   range: { from: string; to: string };
@@ -35,20 +37,23 @@ export type AnalyticsSummary = {
   opportunitiesBySource: { name: string; value: number }[];
   /** Empresas creadas en el rango, por fuente (solo etapas 10%–100%). */
   companiesBySource: { name: string; value: number }[];
-  /** Detalle por fuente para modal: empresas, etapas y hot 70%+. */
+  /** Detalle por fuente (cards): empresas creadas en la semana ISO anterior, etapas 10%–100%. */
   sourcesDetail: {
-    slug: string;
-    companyCount: number;
-    estimatedBilling: number;
-    stages: {
+    week: { name: string; weekStart: string; weekEnd: string };
+    sources: {
       slug: string;
-      name: string;
-      probability: number;
-      count: number;
+      companyCount: number;
+      estimatedBilling: number;
+      stages: {
+        slug: string;
+        name: string;
+        probability: number;
+        count: number;
+      }[];
+      hot70Count: number;
+      hot70Billing: number;
     }[];
-    hot70Count: number;
-    hot70Billing: number;
-  }[];
+  };
   funnelByStage: { name: string; value: number }[];
   /** Empresas creadas en el rango, agrupadas por `etapa` (mismos filtros que contactos). */
   companiesByStage: { name: string; value: number }[];
@@ -184,6 +189,35 @@ export type AnalyticsSummary = {
     currentTotal: number;
     changePct: number | null;
   };
+  /** Prospectos calientes al cierre de la semana ISO anterior (empresas). */
+  hotProspects: {
+    week: {
+      name: string;
+      weekStart: string;
+      weekEnd: string;
+    };
+    totalCalientes: number;
+    pipelineCaliente: number;
+    enCierre: number;
+    yaActivos: number;
+    topProspects: {
+      id: string;
+      urlSlug: string;
+      name: string;
+      etapa: string;
+      etapaLabel: string;
+      probability: number;
+      assignedToName: string | null;
+      facturacionEstimada: number;
+    }[];
+    weeklyTrend: {
+      weeks: { name: string; weekStart: string; weekEnd: string }[];
+      totalCalientes: number[];
+      pipelineCaliente: number[];
+      enCierre: number[];
+      yaActivos: number[];
+    };
+  };
 };
 
 export type ActiveProspectsWeekly = AnalyticsSummary['activeProspectsWeekly'];
@@ -194,6 +228,9 @@ export type ActiveProspectsByAdvisorWeekly =
 export type AdvancedContactsWeekly = AnalyticsSummary['advancedContactsWeekly'];
 
 export type EstimatedBillingWeekly = AnalyticsSummary['estimatedBillingWeekly'];
+
+export type HotProspectsSummary = AnalyticsSummary['hotProspects'];
+export type HotProspectRow = HotProspectsSummary['topProspects'][number];
 
 export type GoalChartPoint = {
   name: string;
@@ -214,20 +251,18 @@ export type AnalyticsGoalProgress = {
   monthlyChart: GoalChartPoint[];
 };
 
-function pad2(n: number) {
-  return String(n).padStart(2, '0');
-}
-
-/** Fechas locales YYYY-MM-DD para el API */
+/** Fecha calendario Lima YYYY-MM-DD para el API de analytics. */
 export function formatLocalISODate(d: Date): string {
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  return calendarDateToLimaYmd(d);
 }
 
 /** Año en curso: 1 ene → hoy (gráficos de tendencia en Reportes). */
 export function analyticsYearToDateRange(now = new Date()): { from: string; to: string } {
+  const to = formatTodayPeruYmd();
+  const year = calendarDateToLimaYmd(now).slice(0, 4);
   return {
-    from: `${now.getFullYear()}-01-01`,
-    to: formatLocalISODate(now),
+    from: `${year}-01-01`,
+    to,
   };
 }
 
@@ -235,32 +270,24 @@ export function analyticsRangeFromPreset(
   preset: '7d' | '1m' | '3m' | '1y' | 'custom',
   custom?: DateRange,
 ): { from: string; to: string } {
-  const to = new Date();
-  const toStr = formatLocalISODate(to);
+  const toStr = formatTodayPeruYmd();
   if (preset === 'custom' && custom?.from && custom?.to) {
     return {
       from: formatLocalISODate(custom.from),
       to: formatLocalISODate(custom.to),
     };
   }
-  const from = new Date(to);
   switch (preset) {
     case '7d':
-      from.setDate(from.getDate() - 7);
-      break;
+      return { from: addCalendarDaysLocalIso(-7), to: toStr };
     case '3m':
-      from.setMonth(from.getMonth() - 3);
-      break;
+      return { from: addCalendarDaysLocalIso(-90), to: toStr };
     case '1y':
-      from.setMonth(0, 1);
-      from.setHours(0, 0, 0, 0);
-      break;
+      return { from: `${toStr.slice(0, 4)}-01-01`, to: toStr };
     case '1m':
     default:
-      from.setMonth(from.getMonth() - 1);
-      break;
+      return { from: addCalendarDaysLocalIso(-30), to: toStr };
   }
-  return { from: formatLocalISODate(from), to: toStr };
 }
 
 export type AnalyticsKPIs = {

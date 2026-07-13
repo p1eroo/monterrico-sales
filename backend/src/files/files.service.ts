@@ -26,6 +26,17 @@ const ENTITY_TYPES = new Set([
   'flota-prospecto',
 ]);
 
+const COMERCIAL_ENTITY_TYPES = [
+  'contact',
+  'company',
+  'opportunity',
+  'activity',
+  'email',
+  'task',
+] as const;
+
+export type FilesListScope = 'comercial' | 'flota';
+
 function safeFilename(name: string): string {
   const base = name.replace(/[^a-zA-Z0-9._\-ñÑ áéíóúÁÉÍÓÚ]+/g, '_').trim();
   return (base || 'archivo').slice(0, 200);
@@ -55,12 +66,26 @@ export class FilesService {
     }
   }
 
-  async findAll(entityType?: string, entityId?: string) {
+  async findAll(
+    entityType?: string,
+    entityId?: string,
+    scope?: string,
+  ) {
     const where: Record<string, unknown> = {};
+
     if (entityType?.trim() && entityId?.trim()) {
       where.entityType = entityType.trim();
       where.entityId = entityId.trim();
+    } else if (scope === 'comercial') {
+      /** Cartera comercial: contacto, empresa, oportunidad, etc. Excluye solo flota-prospecto. */
+      where.entityType = { in: [...COMERCIAL_ENTITY_TYPES] };
+    } else if (scope === 'flota') {
+      where.OR = [
+        { entityType: 'flota-prospecto' },
+        { relatedEntityType: 'whatsapp-message' },
+      ];
     }
+
     const rows = await this.prisma.crmFile.findMany({
       where,
       include: {
