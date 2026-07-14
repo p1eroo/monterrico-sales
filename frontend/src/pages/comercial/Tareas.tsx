@@ -91,7 +91,7 @@ import type { TaskFormResult } from '@/components/shared/TaskFormDialog';
 import { contactListAll, mapApiContactRowToContact } from '@/lib/contactApi';
 import { companyListAll } from '@/lib/companyApi';
 import { opportunityListAll, mapApiOpportunityToOpportunity } from '@/lib/opportunityApi';
-import { formatTodayPeruYmd } from '@/lib/formatters';
+import { formatTodayPeruYmd, formatDate } from '@/lib/formatters';
 import {
   contactLineFromTaskAssociations,
   taskAssociationsFromActivity,
@@ -152,8 +152,13 @@ function isTaskRow(a: Activity): boolean {
   );
 }
 
-function taskDueDay(dueDate: string): Date {
-  return startOfDay(new Date(`${dueDate}T00:00:00`));
+const DATE_ONLY_YMD = /^\d{4}-\d{2}-\d{2}$/;
+
+function taskDueDay(dueDate: string): Date | null {
+  const t = dueDate?.trim();
+  if (!t || !DATE_ONLY_YMD.test(t)) return null;
+  const d = startOfDay(new Date(`${t}T12:00:00-05:00`));
+  return Number.isNaN(d.getTime()) ? null : d;
 }
 
 /** Nombre de empresa para listados (coherente con `mapApiActivityToActivity`). */
@@ -271,7 +276,9 @@ export default function TareasPage() {
       const matchesPriority =
         priorityFilter === 'todas' || taskPriority === priorityFilter;
       const matchesAdvisor = advisorFilter === 'todos' || task.assignedTo === advisorFilter;
-      const matchesCalendarDate = !calendarDate || isSameDay(taskDueDay(task.dueDate), calendarDate);
+      const dueDay = taskDueDay(task.dueDate);
+      const matchesCalendarDate =
+        !calendarDate || (dueDay != null && isSameDay(dueDay, calendarDate));
 
       return (
         matchesSearch &&
@@ -306,7 +313,9 @@ export default function TareasPage() {
       const matchesPriority =
         priorityFilter === 'todas' || taskPriority === priorityFilter;
       const matchesAdvisor = advisorFilter === 'todos' || task.assignedTo === advisorFilter;
-      const matchesCalendarDate = !calendarDate || isSameDay(taskDueDay(task.dueDate), calendarDate);
+      const dueDay = taskDueDay(task.dueDate);
+      const matchesCalendarDate =
+        !calendarDate || (dueDay != null && isSameDay(dueDay, calendarDate));
       return (
         matchesSearch &&
         matchesStatus &&
@@ -334,7 +343,9 @@ export default function TareasPage() {
   const taskDateCounts = useMemo(
     () =>
       allTasksForDisplay.reduce((map, task) => {
-        const key = format(taskDueDay(task.dueDate), 'yyyy-MM-dd');
+        const day = taskDueDay(task.dueDate);
+        if (!day) return map;
+        const key = format(day, 'yyyy-MM-dd');
         map.set(key, (map.get(key) ?? 0) + 1);
         return map;
       }, new Map<string, number>()),
@@ -432,7 +443,9 @@ export default function TareasPage() {
 
   function isOverdue(dueDate: string, status: ActivityStatus) {
     if (status === 'completada') return false;
-    return isBefore(new Date(dueDate), startOfDay(new Date()));
+    const day = taskDueDay(dueDate);
+    if (!day) return false;
+    return isBefore(day, startOfDay(new Date()));
   }
 
   const selectedDateLabel = format(
@@ -442,8 +455,7 @@ export default function TareasPage() {
   );
 
   function formatDueDate(dueDate: string, startTime?: string) {
-    const date = new Date(dueDate + 'T00:00:00');
-    const dateStr = date.toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' });
+    const dateStr = formatDate(dueDate);
     if (startTime) return `${dateStr} (${startTime})`;
     return dateStr;
   }
