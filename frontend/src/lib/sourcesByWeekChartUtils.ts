@@ -6,7 +6,7 @@ import {
   weekTooltipHeading,
 } from '@/lib/crmTimezone';
 import { getSourceLabelFromCatalog } from '@/store/crmConfigStore';
-import type { CrmConfigBundle } from '@/store/crmConfigStore';
+import type { CrmConfigBundle } from '@/lib/crmConfigApi';
 
 export const UNASSIGNED_SOURCE_SLUG = '__sin_fuente__';
 

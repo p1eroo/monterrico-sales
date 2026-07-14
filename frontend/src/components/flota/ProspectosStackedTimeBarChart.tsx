@@ -119,12 +119,14 @@ export function ProspectosStackedTimeBarChart({
         events: onDaySelect
           ? {
               mouseMove(_event, _chartContext, config) {
+                if (!config) return;
                 const idx = config.dataPointIndex;
                 if (idx != null && idx >= 0) {
                   hoverIndexRef.current = idx;
                 }
               },
               click(_event, _chartContext, config) {
+                if (!config) return;
                 const idx =
                   config.dataPointIndex >= 0
                     ? config.dataPointIndex
@@ -134,6 +136,7 @@ export function ProspectosStackedTimeBarChart({
                 }
               },
               dataPointSelection(_event, _chartContext, config) {
+                if (!config) return;
                 const idx = config.dataPointIndex;
                 if (idx != null && idx >= 0) {
                   onDaySelectRef.current?.(idx);

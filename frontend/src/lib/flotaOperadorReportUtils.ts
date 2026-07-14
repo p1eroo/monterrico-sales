@@ -383,11 +383,9 @@ export function mergeOperadorDetallePorDia(
         const metrics = actDay?.operadores.find((o) => o.operador === operador);
         const zonas =
           asigDay?.operadores.find((o) => o.operador === operador)?.zonas ?? [];
-        return {
-          operador,
-          ...(metrics ?? { operador, ...EMPTY_ACTIVIDAD() }),
-          zonas,
-        };
+        return metrics
+          ? { ...metrics, zonas }
+          : { operador, ...EMPTY_ACTIVIDAD(), zonas };
       })
       .filter((row) => actividadDiaTotal(row) > 0 || row.zonas.length > 0)
       .sort((a, b) => actividadDiaTotal(b) - actividadDiaTotal(a));
