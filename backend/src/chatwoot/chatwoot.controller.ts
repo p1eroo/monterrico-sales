@@ -258,6 +258,7 @@ export class ChatwootController {
     @Body() body: {
       name: string;
       phone: string;
+      contactId?: number;
       templateName?: string;
       templateCategory?: string;
       templateLanguage?: string;

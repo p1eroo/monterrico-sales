@@ -41,6 +41,7 @@ import {
 } from '@/hooks/useMultiAdvisorFilter';
 import { MultiAdvisorFilter } from '@/components/shared/MultiAdvisorFilter';
 import { MultiSourceFilter } from '@/components/shared/MultiSourceFilter';
+import { inclusiveMultiSourceFilterToApiParam, isInclusiveMultiFilterNone } from '@/lib/comercialFilterSurface';
 import { contactSourceLabels } from '@/data/mock';
 import {
   fetchAnalyticsSummary,
@@ -49,6 +50,7 @@ import {
   analyticsYearToDateRange,
   type AnalyticsSummary,
   type AnalyticsKPIs,
+  type AdvisorFunnelMovementDetailQuery,
 } from '@/lib/analyticsApi';
 import {
   captureReportChartImages,
@@ -72,17 +74,42 @@ import {
   buildCompaniesStagePanelData,
 } from '@/lib/companyStageFunnelData';
 import { ContactsOpportunitiesAreaChart } from '@/components/shared/ContactsOpportunitiesAreaChart';
-import { ActivitiesByTypeBarChart } from '@/components/shared/ActivitiesByTypeBarChart';
+import { ActivitiesByTypeHeatmapChart } from '@/components/shared/ActivitiesByTypeHeatmapChart';
+import {
+  buildActivitiesByTypeHeatmapData,
+  activitiesByTypeHeatmapHasData,
+} from '@/lib/activitiesByTypeHeatmapUtils';
+import { ActivitiesByAdvisorStackedBarChart } from '@/components/shared/ActivitiesByAdvisorStackedBarChart';
+import {
+  buildActivitiesByAdvisorStackedData,
+  activitiesByAdvisorStackedHasData,
+} from '@/lib/activitiesByAdvisorStackedUtils';
 import type { ActivitiesByTypeMonthComparison } from '@/components/shared/ActivitiesByTypeBarChart';
 import { SourcesByEntityMixedChart } from '@/components/shared/SourcesByEntityMixedChart';
 import { SourcesExpandedView } from '@/components/shared/SourcesExpandedView';
+import { WeeklyPillFilter } from '@/components/shared/WeeklyPillFilter';
+import { buildWeeklyPillOptions } from '@/lib/weeklyAdvisorFilterUtils';
 import { HotProspectsReportPanel } from '@/components/shared/HotProspectsReportPanel';
-import { mapSourcesDetailFromApi } from '@/lib/sourceDetailUtils';
-import { TasksByMonthLineChart } from '@/components/shared/TasksByMonthLineChart';
+import { mapSourcesDetailWeeklyFromApi } from '@/lib/sourceDetailUtils';
+import {
+  buildSourcesByWeekStackedChartData,
+  flattenSourcesByWeekForExport,
+  sourcesByWeekChartHasData,
+} from '@/lib/sourcesByWeekChartUtils';
+import { TasksByKindHeatmapChart } from '@/components/shared/TasksByKindHeatmapChart';
+import {
+  buildTasksByKindHeatmapData,
+  tasksByKindHeatmapHasData,
+} from '@/lib/tasksByKindHeatmapUtils';
+import { TasksByAdvisorStackedBarChart } from '@/components/shared/TasksByAdvisorStackedBarChart';
+import {
+  buildTasksByAdvisorStackedData,
+  tasksByAdvisorStackedHasData,
+} from '@/lib/tasksByAdvisorStackedUtils';
 import { OpportunitiesWeeklyProgressStackedChart } from '@/components/shared/OpportunitiesWeeklyProgressStackedChart';
 import { CompaniesWeeklyExpandedPanel } from '@/components/shared/CompaniesWeeklyExpandedPanel';
 import type { CompaniesWeeklyModalView } from '@/components/shared/CompaniesWeeklyExpandedPanel';
-import { buildAdvisorFunnelMovementView } from '@/lib/companiesAdvisorMovement';
+import { buildAdvisorFunnelMovementBundle } from '@/lib/companiesAdvisorMovement';
 import { ActiveProspectsMetricCard } from '@/components/shared/ActiveProspectsMetricCard';
 import { AdvancedContactsMetricCard } from '@/components/shared/AdvancedContactsMetricCard';
 import { AdvancedContactsBarChart } from '@/components/shared/AdvancedContactsBarChart';
@@ -94,8 +121,9 @@ import {
   CompaniesStageWeekTabs,
   type CompaniesStageWeekView,
 } from '@/components/shared/CompaniesStageExpandedPanel';
-import { startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import { subMonths } from 'date-fns';
 import {
+  currentLimaWeekCalendarRange,
   isoWeekNumberLima,
   parseDayEndLima,
   parseDayStartLima,
@@ -161,10 +189,11 @@ export default function Reports() {
     isActive: advisorFilterIsActive,
     queryParams: advisorListParams,
   } = useMultiAdvisorFilter();
-  const [dateRange, setDateRange] = useState<DateRange | undefined>({
-    from: startOfMonth(subMonths(new Date(), 1)),
-    to: endOfMonth(new Date()),
-  });
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(
+    () => currentLimaWeekCalendarRange(),
+  );
+  /** false al entrar: vista estándar (año en curso). true tras elegir semana en el calendario. */
+  const [weekFilterActive, setWeekFilterActive] = useState(false);
   const [sourceFilter, setSourceFilter] = useState<string[]>([]);
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [kpis, setKpis] = useState<AnalyticsKPIs | null>(null);
@@ -175,6 +204,8 @@ export default function Reports() {
   const [periodModalOpen, setPeriodModalOpen] = useState(false);
   const [sourcesByEntityModalOpen, setSourcesByEntityModalOpen] = useState(false);
   const [activitiesBarModalOpen, setActivitiesBarModalOpen] = useState(false);
+  const [activitiesChartView, setActivitiesChartView] = useState<'type' | 'advisor'>('type');
+  const [activitiesAdvisorWeekPillIndex, setActivitiesAdvisorWeekPillIndex] = useState(0);
   const [weeklyCompaniesModalOpen, setWeeklyCompaniesModalOpen] = useState(false);
   const [weeklyOpportunitiesModalOpen, setWeeklyOpportunitiesModalOpen] = useState(false);
   const [companiesWeeklyModalView, setCompaniesWeeklyModalView] =
@@ -186,6 +217,8 @@ export default function Reports() {
   const [advancedContactsModalOpen, setAdvancedContactsModalOpen] = useState(false);
   const [estimatedBillingModalOpen, setEstimatedBillingModalOpen] = useState(false);
   const [tasksModalOpen, setTasksModalOpen] = useState(false);
+  const [tasksChartView, setTasksChartView] = useState<'type' | 'advisor'>('type');
+  const [tasksAdvisorWeekPillIndex, setTasksAdvisorWeekPillIndex] = useState(0);
   const [exportingPdf, setExportingPdf] = useState(false);
   const chartTheme = useChartTheme();
 
@@ -198,14 +231,33 @@ export default function Reports() {
   const sourcesDetailDialogClass =
     "flex max-h-[min(calc(100dvh-1.5rem),920px)] w-full max-w-[min(100vw-1rem,96rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(100vw-2rem,96rem)]";
 
-  useEffect(() => {
-    if (!dateRange?.from || !dateRange?.to) {
-      setKpis(null);
+  const reportsEffectiveRange = useMemo(() => {
+    if (weekFilterActive && dateRange?.from && dateRange?.to) {
+      return {
+        from: formatLocalISODate(dateRange.from),
+        to: formatLocalISODate(dateRange.to),
+      };
+    }
+    return analyticsYearToDateRange();
+  }, [
+    weekFilterActive,
+    dateRange?.from?.getTime(),
+    dateRange?.to?.getTime(),
+  ]);
+
+  const handleWeekFilterChange = useCallback((range: DateRange | undefined) => {
+    if (!range?.from || !range?.to) {
+      setDateRange(currentLimaWeekCalendarRange());
+      setWeekFilterActive(false);
       return;
     }
-    const from = formatLocalISODate(dateRange.from);
-    const to = formatLocalISODate(dateRange.to);
-    const source = sourceFilter.length > 0 ? sourceFilter.join(',') : undefined;
+    setDateRange(range);
+    setWeekFilterActive(true);
+  }, []);
+
+  useEffect(() => {
+    const { from, to } = reportsEffectiveRange;
+    const source = inclusiveMultiSourceFilterToApiParam(sourceFilter);
     let cancelled = false;
 
     setKpisLoading(true);
@@ -232,8 +284,8 @@ export default function Reports() {
       cancelled = true;
     };
   }, [
-    dateRange?.from?.getTime(),
-    dateRange?.to?.getTime(),
+    reportsEffectiveRange.from,
+    reportsEffectiveRange.to,
     advisorListParams.assignedTo,
     advisorListParams.excludeAssignedTo,
     advisorListParams.advisorPool,
@@ -241,8 +293,8 @@ export default function Reports() {
   ]);
 
   useEffect(() => {
-    const { from, to } = analyticsYearToDateRange();
-    const source = sourceFilter.length > 0 ? sourceFilter.join(',') : undefined;
+    const { from, to } = reportsEffectiveRange;
+    const source = inclusiveMultiSourceFilterToApiParam(sourceFilter);
     let cancelled = false;
 
     setLoading(true);
@@ -270,6 +322,8 @@ export default function Reports() {
       cancelled = true;
     };
   }, [
+    reportsEffectiveRange.from,
+    reportsEffectiveRange.to,
     advisorListParams.assignedTo,
     advisorListParams.excludeAssignedTo,
     advisorListParams.advisorPool,
@@ -292,44 +346,20 @@ export default function Reports() {
     }));
   }, [summary, bundle]);
 
-  const sourcesByEntityData = useMemo(() => {
-    if (!summary) return [];
-    const map = new Map<string, { contactos: number; empresas: number; oportunidades: number }>();
-
-    for (const row of summary.contactsBySource) {
-      const prev = map.get(row.name) ?? { contactos: 0, empresas: 0, oportunidades: 0 };
-      map.set(row.name, { ...prev, contactos: row.value });
-    }
-    for (const row of summary.companiesBySource) {
-      const prev = map.get(row.name) ?? { contactos: 0, empresas: 0, oportunidades: 0 };
-      map.set(row.name, { ...prev, empresas: row.value });
-    }
-    for (const row of summary.opportunitiesBySource) {
-      const prev = map.get(row.name) ?? { contactos: 0, empresas: 0, oportunidades: 0 };
-      map.set(row.name, { ...prev, oportunidades: row.value });
-    }
-
-    return [...map.entries()]
-      .map(([slug, counts]) => ({
-        name: getSourceLabelFromCatalog(slug, bundle, contactSourceLabels),
-        ...counts,
-        total: counts.contactos + counts.empresas + counts.oportunidades,
-      }))
-      .sort((a, b) => b.total - a.total)
-      .map(({ name, contactos, empresas, oportunidades }) => ({
-        name,
-        contactos,
-        empresas,
-        oportunidades,
-      }));
-  }, [summary, bundle]);
-
-  const sourcesDetailData = useMemo(
-    () => mapSourcesDetailFromApi(summary?.sourcesDetail, bundle),
-    [summary?.sourcesDetail, bundle],
+  const sourcesByEntityData = useMemo(
+    () =>
+      buildSourcesByWeekStackedChartData(
+        summary?.companiesBySourceWeekly?.weeks,
+        bundle,
+        contactSourceLabels,
+      ),
+    [summary?.companiesBySourceWeekly?.weeks, bundle, contactSourceLabels],
   );
 
-  const sourcesDetailWeek = summary?.sourcesDetail?.week ?? null;
+  const sourcesDetailWeeks = useMemo(
+    () => mapSourcesDetailWeeklyFromApi(summary?.sourcesDetailWeekly, bundle),
+    [summary?.sourcesDetailWeekly, bundle],
+  );
 
   const opportunitiesFunnelStages: FunnelStage[] = useMemo(
     () => buildOpportunitiesStageFunnelStages(summary?.opportunitiesByStage ?? [], bundle),
@@ -524,12 +554,117 @@ export default function Reports() {
   const weeklyOppsProgressChartData = weeklyOppsProgressChartSlice.chartData;
 
   const advisorFunnelMovement = useMemo(
-    () => buildAdvisorFunnelMovementView(summary?.companiesAdvisorFunnelMovement),
+    () => buildAdvisorFunnelMovementBundle(summary?.companiesAdvisorFunnelMovement),
     [summary?.companiesAdvisorFunnelMovement],
   );
 
+  const advisorMovementDetailQuery = useMemo((): AdvisorFunnelMovementDetailQuery => {
+    const { to } = analyticsYearToDateRange();
+    const summaryTo = summary?.range?.to?.trim();
+    const referenceTo =
+      summaryTo && summaryTo.length >= 10 ? summaryTo.slice(0, 10) : to;
+    return {
+      to: referenceTo,
+      assignedTo: advisorListParams.assignedTo,
+      excludeAssignedTo: advisorListParams.excludeAssignedTo,
+      advisorPool: advisorListParams.advisorPool,
+      source: inclusiveMultiSourceFilterToApiParam(sourceFilter),
+      area: 'comercial',
+    };
+  }, [
+    summary?.range?.to,
+    advisorListParams.assignedTo,
+    advisorListParams.excludeAssignedTo,
+    advisorListParams.advisorPool,
+    sourceFilter,
+  ]);
+
   const contactsVsOpportunitiesData = summary?.contactsVsOpportunitiesByMonth ?? [];
   const conversionData = summary?.conversionByMonth ?? [];
+  const activitiesByTypeHeatmap = useMemo(
+    () => buildActivitiesByTypeHeatmapData(summary?.activitiesByTypeWeekly),
+    [summary?.activitiesByTypeWeekly],
+  );
+
+  const activitiesByAdvisorStacked = useMemo(
+    () => buildActivitiesByAdvisorStackedData(summary?.activitiesByAdvisorWeekly),
+    [summary?.activitiesByAdvisorWeekly],
+  );
+
+  const activitiesAdvisorWeekOptions = useMemo(
+    () => buildWeeklyPillOptions(summary?.activitiesByAdvisorWeekly?.weeks),
+    [summary?.activitiesByAdvisorWeekly?.weeks],
+  );
+
+  const activitiesAdvisorSelectedWeekIndex = useMemo(
+    () =>
+      activitiesAdvisorWeekOptions[activitiesAdvisorWeekPillIndex]?.sourceIndex ??
+      -1,
+    [activitiesAdvisorWeekOptions, activitiesAdvisorWeekPillIndex],
+  );
+
+  const activitiesByAdvisorStackedModal = useMemo(
+    () =>
+      buildActivitiesByAdvisorStackedData(
+        summary?.activitiesByAdvisorWeekly,
+        activitiesAdvisorSelectedWeekIndex >= 0
+          ? activitiesAdvisorSelectedWeekIndex
+          : undefined,
+      ),
+    [summary?.activitiesByAdvisorWeekly, activitiesAdvisorSelectedWeekIndex],
+  );
+
+  const tasksByKindHeatmap = useMemo(
+    () => buildTasksByKindHeatmapData(summary?.tasksByKindWeekly),
+    [summary?.tasksByKindWeekly],
+  );
+
+  const tasksByAdvisorStacked = useMemo(
+    () => buildTasksByAdvisorStackedData(summary?.tasksByAdvisorWeekly),
+    [summary?.tasksByAdvisorWeekly],
+  );
+
+  const tasksAdvisorWeekOptions = useMemo(
+    () => buildWeeklyPillOptions(summary?.tasksByAdvisorWeekly?.weeks),
+    [summary?.tasksByAdvisorWeekly?.weeks],
+  );
+
+  const tasksAdvisorSelectedWeekIndex = useMemo(
+    () =>
+      tasksAdvisorWeekOptions[tasksAdvisorWeekPillIndex]?.sourceIndex ?? -1,
+    [tasksAdvisorWeekOptions, tasksAdvisorWeekPillIndex],
+  );
+
+  const tasksByAdvisorStackedModal = useMemo(
+    () =>
+      buildTasksByAdvisorStackedData(
+        summary?.tasksByAdvisorWeekly,
+        tasksAdvisorSelectedWeekIndex >= 0
+          ? tasksAdvisorSelectedWeekIndex
+          : undefined,
+      ),
+    [summary?.tasksByAdvisorWeekly, tasksAdvisorSelectedWeekIndex],
+  );
+
+  const activitiesHeatmapScopeLabel = useMemo(() => {
+    if (!canSeeAllAdvisors || !advisorFilterIsActive) return 'Equipo completo';
+    if (advisorFilter.length === 0) return 'Sin asesores seleccionados';
+    return advisorFilter
+      .map((id) => {
+        if (id === ADVISOR_UNASSIGNED) return 'Sin asignar';
+        if (id === ADVISOR_OTHERS) return 'Otros';
+        return activeAdvisors.find((u) => u.id === id)?.name ?? id;
+      })
+      .join(', ');
+  }, [
+    canSeeAllAdvisors,
+    advisorFilterIsActive,
+    advisorFilter,
+    activeAdvisors,
+  ]);
+
+  const tasksHeatmapScopeLabel = activitiesHeatmapScopeLabel;
+
   const activitiesByTypeData = summary?.activitiesByTypeData ?? [];
 
   const activitiesMonthComparison = useMemo((): ActivitiesByTypeMonthComparison | null => {
@@ -589,8 +724,9 @@ export default function Reports() {
                   );
                 })
                 .join(', ');
-      const sourceLabel =
-        sourceFilter.length === 0
+      const sourceLabel = isInclusiveMultiFilterNone(sourceFilter)
+        ? 'Sin fuente'
+        : sourceFilter.length === 0
           ? 'Todas las fuentes'
           : sourceFilter
               .map((key) =>
@@ -612,7 +748,7 @@ export default function Reports() {
         followUpsByMonth: followUpsData,
         companiesByStage: opportunitiesFunnelStages,
         weeklyOppsData: weeklyOppsProgressChartData,
-        sourcesByEntity: sourcesByEntityData,
+        sourcesByEntity: flattenSourcesByWeekForExport(sourcesByEntityData),
         wonSalesByMonth: wonSalesByMonthData,
         activitiesComparison: activitiesMonthComparison ?? undefined,
         pdfLayout: 'reports',
@@ -683,17 +819,15 @@ export default function Reports() {
   );
 
   const contactsAreaLegendHeight = 28;
-  const contactsAreaChartHeight = 260;
+  const contactsAreaChartHeight = 320;
   const contactsAreaCardHeight = contactsAreaChartHeight + contactsAreaLegendHeight;
   const tasksByMonthChartHeight = 380;
-  const weeklyOppsChartHeight = 380;
+  const weeklyOppsChartHeight = 420;
   const activeProspectsChartHeight = 460;
-  const activitiesBarChartHeight = contactsAreaChartHeight + 72;
+  const sourcesByEntityChartHeight = 372;
 
   const sourcesByEntityChartEmpty =
-    !loading &&
-    (!summary ||
-      !chartHasAnyValue(sourcesByEntityData, ['contactos', 'empresas', 'oportunidades']));
+    !loading && (!summary || !sourcesByWeekChartHasData(sourcesByEntityData));
   const periodChartEmpty =
     !loading &&
     (!summary ||
@@ -701,14 +835,27 @@ export default function Reports() {
   const activitiesBarChartEmpty =
     !loading &&
     (!summary ||
-      !activitiesMonthComparison ||
-      !chartHasAnyValue(
-        [activitiesMonthComparison.previousMonth, activitiesMonthComparison.currentMonth],
-        ['correos', 'llamadas', 'reuniones', 'notas'],
-      ));
-  const followUpsChartEmpty =
+      (!activitiesByTypeHeatmapHasData(activitiesByTypeHeatmap) &&
+        !activitiesByAdvisorStackedHasData(activitiesByAdvisorStacked)));
+  const activitiesChartEmptyForView =
     !loading &&
-    (!summary || !chartHasAnyValue(followUpsData, ['completados', 'pendientes']));
+    (activitiesChartView === 'type'
+      ? !summary || !activitiesByTypeHeatmapHasData(activitiesByTypeHeatmap)
+      : !summary || !activitiesByAdvisorStackedHasData(activitiesByAdvisorStacked));
+  const activitiesAdvisorChartHeight = Math.max(
+    220,
+    activitiesByAdvisorStackedModal.advisors.length * 44 + 88,
+  );
+  const tasksChartEmpty =
+    !loading &&
+    (!summary ||
+      (!tasksByKindHeatmapHasData(tasksByKindHeatmap) &&
+        !tasksByAdvisorStackedHasData(tasksByAdvisorStacked)));
+  const tasksChartEmptyForView =
+    !loading &&
+    (tasksChartView === 'type'
+      ? !summary || !tasksByKindHeatmapHasData(tasksByKindHeatmap)
+      : !summary || !tasksByAdvisorStackedHasData(tasksByAdvisorStacked));
   const activeProspectsChartEmpty =
     !loading &&
     (!summary?.activeProspectsWeekly?.weeks?.length ||
@@ -769,12 +916,17 @@ export default function Reports() {
     <div className="space-y-6">
       <PageHeader
         title="Reportes"
-        description="KPIs por periodo seleccionado · gráficos con datos del año en curso"
+        description={
+          weekFilterActive
+            ? 'Filtrado por la semana seleccionada'
+            : 'KPIs acumulados del año · gráficos con datos del año en curso'
+        }
       >
         <DateRangeFilterButton
           value={dateRange}
-          onChange={setDateRange}
-          placeholder="Seleccionar periodo"
+          onChange={handleWeekFilterChange}
+          selectionMode="week"
+          placeholder="Seleccionar semana"
           className={cn('w-full min-[400px]:w-[260px] sm:w-[260px]', comercialFilterSurfaceClass)}
         />
 
@@ -963,8 +1115,8 @@ export default function Reports() {
         </Card>
       </div>
 
-      {/* Fila 3: contactos (ancho) + fuentes (estrecho) */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)] lg:items-start">
+      {/* Fila 3: contactos + fuentes */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1.15fr)] lg:items-start">
         <Card id="chart-contacts" className="h-fit">
           <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 px-5 pb-0 pt-5">
             <CardTitle className="text-base font-medium">Contactos y Oportunidades</CardTitle>
@@ -998,12 +1150,7 @@ export default function Reports() {
 
         <Card id="chart-sources-by-entity" className="h-fit">
           <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 px-5 pb-0 pt-5">
-            <div className="min-w-0">
-              <CardTitle className="text-base font-medium">Fuentes: Contactos, Empresas y Oportunidades</CardTitle>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Solo registros en etapas con probabilidad 10%–100%
-              </p>
-            </div>
+            <CardTitle className="text-base font-medium">Fuentes: Empresas</CardTitle>
             <Button
               type="button"
               variant="ghost"
@@ -1021,12 +1168,12 @@ export default function Reports() {
               loading={loading}
               isEmpty={sourcesByEntityChartEmpty}
               variant="bar"
-              emptyMessage="Sin datos por fuente en este periodo."
-              chartHeight={activitiesBarChartHeight}
+              emptyMessage="Sin empresas acumuladas por fuente en las últimas 6 semanas."
+              chartHeight={sourcesByEntityChartHeight}
             >
               <SourcesByEntityMixedChart
                 data={sourcesByEntityData}
-                height={activitiesBarChartHeight}
+                height={sourcesByEntityChartHeight}
               />
             </ChartCardBody>
           </CardContent>
@@ -1058,49 +1205,55 @@ export default function Reports() {
           <CardContent className="flex flex-1 flex-col px-5 pt-2 pb-5">
             <ChartCardBody
               loading={loading}
-              isEmpty={activitiesBarChartEmpty}
+              isEmpty={
+                !loading &&
+                (!summary || !activitiesByTypeHeatmapHasData(activitiesByTypeHeatmap))
+              }
               variant="bar"
-              emptyMessage="Sin actividades registradas en este periodo."
+              emptyMessage="Sin actividades registradas en las últimas 6 semanas."
               chartHeight={tasksByMonthChartHeight}
               className="flex-1"
             >
-              {activitiesMonthComparison ? (
-                <ActivitiesByTypeBarChart
-                  comparison={activitiesMonthComparison}
-                  chartHeight={tasksByMonthChartHeight}
-                />
-              ) : null}
+              <ActivitiesByTypeHeatmapChart
+                data={activitiesByTypeHeatmap}
+                scopeLabel={activitiesHeatmapScopeLabel}
+                chartHeight={tasksByMonthChartHeight}
+              />
             </ChartCardBody>
           </CardContent>
         </Card>
 
         <Card id="chart-tasks" className="flex h-full flex-col">
           <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 px-5 pb-0 pt-5">
-            <CardTitle className="text-base font-medium">Tareas por mes</CardTitle>
+            <CardTitle className="text-base font-medium">Tareas</CardTitle>
             <Button
               type="button"
               variant="ghost"
               size="icon"
               className="h-8 w-8 shrink-0 text-muted-foreground"
               onClick={() => setTasksModalOpen(true)}
-              disabled={loading || followUpsChartEmpty}
-              aria-label="Ampliar tareas por mes"
+              disabled={loading || tasksChartEmpty}
+              aria-label="Ampliar tareas"
             >
               <Maximize2 className="h-4 w-4" />
             </Button>
           </CardHeader>
-          <CardContent className="flex flex-1 flex-col px-5 pt-6 pb-5">
+          <CardContent className="flex flex-1 flex-col px-5 pt-2 pb-5">
             <ChartCardBody
               loading={loading}
-              isEmpty={followUpsChartEmpty}
-              variant="line"
-              emptyMessage="Sin tareas en este periodo."
+              isEmpty={
+                !loading &&
+                (!summary || !tasksByKindHeatmapHasData(tasksByKindHeatmap))
+              }
+              variant="bar"
+              emptyMessage="Sin tareas registradas en las últimas 6 semanas."
               chartHeight={tasksByMonthChartHeight}
               className="flex-1"
             >
-              <TasksByMonthLineChart
-                data={followUpsData}
-                height={tasksByMonthChartHeight}
+              <TasksByKindHeatmapChart
+                data={tasksByKindHeatmap}
+                scopeLabel={tasksHeatmapScopeLabel}
+                chartHeight={tasksByMonthChartHeight}
               />
             </ChartCardBody>
           </CardContent>
@@ -1181,34 +1334,93 @@ export default function Reports() {
         <Dialog open={sourcesByEntityModalOpen} onOpenChange={setSourcesByEntityModalOpen}>
           <DialogContent className={sourcesDetailDialogClass} showCloseButton>
             <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
-              <DialogTitle className="pr-8 text-base">Fuentes: Contactos, Empresas y Oportunidades</DialogTitle>
-              <p className="text-xs text-muted-foreground">
-                Solo registros en etapas con probabilidad 10%–100%
-              </p>
+              <DialogTitle className="pr-8 text-base">Fuentes: Empresas</DialogTitle>
             </DialogHeader>
             <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 sm:px-6 sm:pb-6">
               {!sourcesByEntityChartEmpty ? (
                 <SourcesExpandedView
                   chartData={sourcesByEntityData}
-                  details={sourcesDetailData}
-                  detailWeek={sourcesDetailWeek}
+                  detailWeeks={sourcesDetailWeeks}
+                  advisors={activeAdvisors}
+                  canSeeAllAdvisors={canSeeAllAdvisors}
                 />
               ) : null}
             </div>
           </DialogContent>
         </Dialog>
 
-        <Dialog open={activitiesBarModalOpen} onOpenChange={setActivitiesBarModalOpen}>
+        <Dialog
+          open={activitiesBarModalOpen}
+          onOpenChange={(open) => {
+            setActivitiesBarModalOpen(open);
+            if (!open) {
+              setActivitiesChartView('type');
+              setActivitiesAdvisorWeekPillIndex(0);
+            }
+          }}
+        >
           <DialogContent className={dialogContentClass} showCloseButton>
             <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
               <DialogTitle className="pr-8 text-base">Actividades</DialogTitle>
+              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 pr-8 pt-3">
+                <div className="flex w-fit rounded-md border border-border/80 bg-muted/30 p-0.5">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      'h-7 rounded px-2.5 text-xs font-medium',
+                      activitiesChartView === 'type' && 'bg-background shadow-sm',
+                    )}
+                    onClick={() => setActivitiesChartView('type')}
+                  >
+                    Por tipo
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      'h-7 rounded px-2.5 text-xs font-medium',
+                      activitiesChartView === 'advisor' && 'bg-background shadow-sm',
+                    )}
+                    onClick={() => setActivitiesChartView('advisor')}
+                  >
+                    Por asesor
+                  </Button>
+                </div>
+                {activitiesChartView === 'advisor' ? (
+                  <WeeklyPillFilter
+                    weeks={activitiesAdvisorWeekOptions}
+                    selectedIndex={activitiesAdvisorWeekPillIndex}
+                    onChange={setActivitiesAdvisorWeekPillIndex}
+                    className="justify-end"
+                  />
+                ) : null}
+              </div>
             </DialogHeader>
             <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 sm:px-6 sm:pb-6">
-              {!activitiesBarChartEmpty && activitiesMonthComparison ? (
-                <ActivitiesByTypeBarChart
-                  comparison={activitiesMonthComparison}
-                  chartHeight={320}
-                />
+              {!activitiesChartEmptyForView ? (
+                activitiesChartView === 'type' ? (
+                  <ActivitiesByTypeHeatmapChart
+                    data={activitiesByTypeHeatmap}
+                    scopeLabel={activitiesHeatmapScopeLabel}
+                    chartHeight={280}
+                  />
+                ) : activitiesByAdvisorStackedHasData(activitiesByAdvisorStackedModal) ? (
+                  <ActivitiesByAdvisorStackedBarChart
+                    data={activitiesByAdvisorStackedModal}
+                    chartHeight={Math.max(
+                      320,
+                      activitiesByAdvisorStackedModal.advisors.length * 44 + 96,
+                    )}
+                  />
+                ) : (
+                  <p className="py-8 text-center text-sm text-muted-foreground">
+                    Sin actividades en{' '}
+                    {activitiesByAdvisorStackedModal.weekLabel ?? 'esta semana'}.
+                  </p>
+                )
               ) : null}
             </div>
           </DialogContent>
@@ -1292,14 +1504,78 @@ export default function Reports() {
           </DialogContent>
         </Dialog>
 
-        <Dialog open={tasksModalOpen} onOpenChange={setTasksModalOpen}>
+        <Dialog
+          open={tasksModalOpen}
+          onOpenChange={(open) => {
+            setTasksModalOpen(open);
+            if (!open) {
+              setTasksChartView('type');
+              setTasksAdvisorWeekPillIndex(0);
+            }
+          }}
+        >
           <DialogContent className={dialogContentClass} showCloseButton>
             <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
-              <DialogTitle className="pr-8 text-base">Tareas por mes</DialogTitle>
+              <DialogTitle className="pr-8 text-base">Tareas</DialogTitle>
+              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 pr-8 pt-3">
+                <div className="flex w-fit rounded-md border border-border/80 bg-muted/30 p-0.5">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      'h-7 rounded px-2.5 text-xs font-medium',
+                      tasksChartView === 'type' && 'bg-background shadow-sm',
+                    )}
+                    onClick={() => setTasksChartView('type')}
+                  >
+                    Por tipo
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      'h-7 rounded px-2.5 text-xs font-medium',
+                      tasksChartView === 'advisor' && 'bg-background shadow-sm',
+                    )}
+                    onClick={() => setTasksChartView('advisor')}
+                  >
+                    Por asesor
+                  </Button>
+                </div>
+                {tasksChartView === 'advisor' ? (
+                  <WeeklyPillFilter
+                    weeks={tasksAdvisorWeekOptions}
+                    selectedIndex={tasksAdvisorWeekPillIndex}
+                    onChange={setTasksAdvisorWeekPillIndex}
+                    className="justify-end"
+                  />
+                ) : null}
+              </div>
             </DialogHeader>
             <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 sm:px-6 sm:pb-6">
-              {!followUpsChartEmpty ? (
-                <TasksByMonthLineChart data={followUpsData} height={420} />
+              {!tasksChartEmptyForView ? (
+                tasksChartView === 'type' ? (
+                  <TasksByKindHeatmapChart
+                    data={tasksByKindHeatmap}
+                    scopeLabel={tasksHeatmapScopeLabel}
+                    chartHeight={280}
+                  />
+                ) : tasksByAdvisorStackedHasData(tasksByAdvisorStackedModal) ? (
+                  <TasksByAdvisorStackedBarChart
+                    data={tasksByAdvisorStackedModal}
+                    chartHeight={Math.max(
+                      320,
+                      tasksByAdvisorStackedModal.advisors.length * 44 + 96,
+                    )}
+                  />
+                ) : (
+                  <p className="py-8 text-center text-sm text-muted-foreground">
+                    Sin tareas en{' '}
+                    {tasksByAdvisorStackedModal.weekLabel ?? 'esta semana'}.
+                  </p>
+                )
               ) : null}
             </div>
           </DialogContent>
@@ -1489,6 +1765,7 @@ export default function Reports() {
                 chartData={weeklyOppsProgressChartData}
                 chartEmpty={weeklyOppsProgressChartEmpty || weeklyOppsProgressChartData.length === 0}
                 advisorMovement={advisorFunnelMovement}
+                advisorMovementDetailQuery={advisorMovementDetailQuery}
                 chartHeight={480}
                 view={companiesWeeklyModalView}
                 onViewChange={setCompaniesWeeklyModalView}

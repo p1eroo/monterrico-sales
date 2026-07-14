@@ -82,6 +82,7 @@ function HotProspectMiniChart({
       dataLabels: { enabled: false },
       tooltip: {
         enabled: true,
+        appendTo: typeof document !== 'undefined' ? document.body : undefined,
         custom({ series, seriesIndex, dataPointIndex }) {
           const value = series[seriesIndex]?.[dataPointIndex];
           if (value == null) return '';
@@ -104,7 +105,7 @@ function HotProspectMiniChart({
   const series = useMemo(() => [{ data }], [data]);
 
   return (
-    <div className="h-14 max-w-full min-w-0 overflow-hidden">
+    <div className="h-14 max-w-full min-w-0 overflow-visible [&_.apexcharts-svg]:overflow-visible [&_.apexcharts-tooltip]:!z-[100]">
       <Chart
         options={options}
         series={series}
@@ -126,7 +127,7 @@ function HotProspectStatCard({
 }: StatCard & { loading?: boolean }) {
   if (loading) {
     return (
-      <Card className="h-full overflow-hidden py-0">
+      <Card className="h-full overflow-visible py-0">
         <CardContent className="flex h-full min-w-0 flex-col px-3 py-4">
           <Skeleton className="mb-2 h-3.5 w-28" />
           <Skeleton className="h-8 w-20" />
@@ -137,7 +138,7 @@ function HotProspectStatCard({
   }
 
   return (
-    <Card className="h-full overflow-hidden py-0">
+    <Card className="relative z-0 h-full overflow-visible py-0 hover:z-30">
       <CardContent className="flex h-full min-w-0 flex-col px-4 py-4">
         <div className="min-w-0">
           <p className="text-xs font-medium text-muted-foreground">{label}</p>
@@ -149,7 +150,7 @@ function HotProspectStatCard({
           ) : null}
         </div>
         {sparkline ? (
-          <div className="mt-auto min-w-0 overflow-hidden pt-3">
+          <div className="mt-auto min-w-0 overflow-visible pt-3">
             <HotProspectMiniChart sparkline={sparkline} cardKey={cardKey} />
           </div>
         ) : null}
@@ -210,6 +211,11 @@ export function HotProspectsReportPanel({
   );
   const statCards = buildStatCards(data, sparklines);
   const rows = data?.topProspects ?? [];
+  const topBillingTotal = useMemo(
+    () => rows.reduce((sum, row) => sum + (row.facturacionEstimada ?? 0), 0),
+    [rows],
+  );
+  const totalCalientes = data?.totalCalientes ?? 0;
   const weekRangeLabel =
     data?.week?.weekStart && data?.week?.weekEnd
       ? formatWeekRangeLima(data.week.weekStart, data.week.weekEnd)
@@ -281,7 +287,7 @@ export function HotProspectsReportPanel({
                   {rows.map((row, index) => (
                     <tr
                       key={row.id}
-                      className="border-b border-border/70 last:border-0 hover:bg-muted/30"
+                      className="border-b border-border/70 hover:bg-muted/30"
                     >
                       <td className="px-2 py-2 tabular-nums text-muted-foreground">
                         {index + 1}
@@ -307,6 +313,20 @@ export function HotProspectsReportPanel({
                     </tr>
                   ))}
                 </tbody>
+                <tfoot>
+                  <tr className="border-t border-border bg-emerald-500/[0.04] dark:bg-emerald-500/[0.08]">
+                    <td
+                      colSpan={4}
+                      className="px-2 py-2.5 text-xs font-medium text-foreground sm:text-sm"
+                    >
+                      Top {rows.length} de {totalCalientes.toLocaleString('es-PE')} prospectos
+                      calientes
+                    </td>
+                    <td className="whitespace-nowrap px-2 py-2.5 text-right text-sm font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
+                      {formatCurrency(topBillingTotal)}
+                    </td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
           )}

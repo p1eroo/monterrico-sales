@@ -15,6 +15,9 @@ import { PaletteIcon } from '@/components/icons/PaletteIcon';
 import {
   comercialProCommandClass,
   comercialProPopoverClass,
+  isInclusiveMultiFilterSelected,
+  toggleInclusiveMultiFilter,
+  formatInclusiveMultiSourceFilterLabel,
 } from '@/lib/comercialFilterSurface';
 import { cn } from '@/lib/utils';
 
@@ -36,11 +39,11 @@ export function MultiSourceFilter({
   onInteraction,
 }: MultiSourceFilterProps) {
   const isActive = value.length > 0;
-  const label = !isActive
-    ? 'Fuente'
-    : value
-        .map((key) => options.find((o) => o.value === key)?.label ?? key)
-        .join(', ');
+  const label = formatInclusiveMultiSourceFilterLabel(
+    value,
+    'Fuente',
+    (key) => options.find((o) => o.value === key)?.label ?? key,
+  );
 
   return (
     <Popover>
@@ -69,15 +72,17 @@ export function MultiSourceFilter({
           <CommandList className="max-h-[260px] overflow-y-auto">
             <CommandGroup className="p-0">
               {options.map(({ value: key, label: optionLabel }) => {
-                const selected = value.includes(key);
+                const selected = isInclusiveMultiFilterSelected(value, key);
                 return (
                   <CommandItem
                     key={key}
                     onSelect={() => {
                       onChange(
-                        selected
-                          ? value.filter((e) => e !== key)
-                          : [...value, key],
+                        toggleInclusiveMultiFilter(
+                          value,
+                          key,
+                          options.map((o) => o.value),
+                        ),
                       );
                       onInteraction?.();
                     }}

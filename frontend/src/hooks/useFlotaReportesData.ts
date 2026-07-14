@@ -32,6 +32,7 @@ export function useFlotaReportesData() {
 
 export function useFlotaReportesOperadorStats(dateRange: DateRangeValue | undefined) {
   const operadorStats = useFlotaReportesStore((s) => s.operadorStats);
+  const operadorStatsDaily = useFlotaReportesStore((s) => s.operadorStatsDaily);
   const operadorNames = useFlotaReportesStore((s) => s.operadorNames);
   const operadorStatsRange = useFlotaReportesStore((s) => s.operadorStatsRange);
   const operadorStatsLoading = useFlotaReportesStore((s) => s.operadorStatsLoading);
@@ -56,7 +57,7 @@ export function useFlotaReportesOperadorStats(dateRange: DateRangeValue | undefi
   const loadingOperadorStats =
     operadorStatsLoading && !(hasCachedRange && operadorStats.length > 0);
 
-  return { operadorStats, operadorNames, loadingOperadorStats };
+  return { operadorStats, operadorStatsDaily, operadorNames, loadingOperadorStats };
 }
 
 export function useFlotaReportesSunat(sunatDateRange: DateRangeValue | undefined) {

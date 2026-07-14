@@ -23,6 +23,9 @@ import {
   parseAdvisorFilterQuery,
 } from '../common/advisor-filter.util';
 import { resolveLimaDayRange } from '../common/crm-timezone.util';
+import {
+  isUnassignedSourceSlug,
+} from '../crm-config/lead-source-normalize.util';
 import { formatImportedCompanyName } from '../common/import-display-name.util';
 import { FactilizaService } from '../factiliza/factiliza.service';
 import { normalizeClienteRecuperado } from '../common/normalize-cliente-recuperado';
@@ -588,28 +591,18 @@ export class CompaniesService {
         ],
       });
     }
-    if (opts?.rubro?.trim()) andParts.push({ rubro: opts.rubro.trim() });
-    if (opts?.tipo?.trim()) andParts.push({ tipo: opts.tipo.trim() });
+    if (opts?.rubro?.trim()) {
+      const rubroWhere = this.buildCompanyScalarCsvWhere('rubro', opts.rubro);
+      if (rubroWhere) andParts.push(rubroWhere);
+    }
+    if (opts?.tipo?.trim()) {
+      const tipoWhere = this.buildCompanyScalarCsvWhere('tipo', opts.tipo);
+      if (tipoWhere) andParts.push(tipoWhere);
+    }
     const fuenteQ = opts?.fuente?.trim();
     if (fuenteQ) {
-      let canon = fuenteQ;
-      try {
-        canon = await this.crmConfig.normalizeLeadSource(fuenteQ);
-      } catch {
-        /* filtro legacy fuera del catálogo */
-      }
-      andParts.push({
-        OR: [
-          { fuente: { equals: canon, mode: 'insensitive' } },
-          {
-            contacts: {
-              some: {
-                contact: { fuente: { equals: canon, mode: 'insensitive' } },
-              },
-            },
-          },
-        ],
-      });
+      const fuenteWhere = await this.buildCompanyFuenteWhere(fuenteQ);
+      if (fuenteWhere) andParts.push(fuenteWhere);
     }
     if (!(scope && !scope.unrestricted)) {
       const advisorClause = companyAdvisorWhere(
@@ -718,6 +711,71 @@ export class CompaniesService {
     if (etapas.length === 0) return null;
     if (etapas.length === 1) return { etapa: etapas[0] };
     return { etapa: { in: etapas } };
+  }
+
+  private buildCompanyScalarCsvWhere(
+    field: 'rubro' | 'tipo',
+    raw?: string,
+  ): Prisma.CompanyWhereInput | null {
+    const values = raw?.split(',').map((s) => s.trim()).filter(Boolean) ?? [];
+    if (values.length === 0) return null;
+    if (values.length === 1) return { [field]: values[0] };
+    return { [field]: { in: values } };
+  }
+
+  private async buildCompanyFuenteWhere(
+    raw: string,
+  ): Promise<Prisma.CompanyWhereInput | null> {
+    const parts = raw.split(',').map((s) => s.trim()).filter(Boolean);
+    if (parts.length === 0) return null;
+
+    const wantsUnassigned = parts.some(isUnassignedSourceSlug);
+    const catalogParts = parts.filter((p) => !isUnassignedSourceSlug(p));
+    const orClauses: Prisma.CompanyWhereInput[] = [];
+
+    if (wantsUnassigned) {
+      orClauses.push({
+        OR: [{ fuente: null }, { fuente: '' }],
+      });
+    }
+
+    if (catalogParts.length > 0) {
+      const normalized = await Promise.all(
+        catalogParts.map(async (part) => {
+          try {
+            return await this.crmConfig.normalizeLeadSource(part);
+          } catch {
+            return part;
+          }
+        }),
+      );
+      const unique = [
+        ...new Set(normalized.map((s) => s.trim()).filter(Boolean)),
+      ];
+      if (unique.length > 0) {
+        const fuenteClause =
+          unique.length === 1
+            ? { equals: unique[0], mode: 'insensitive' as const }
+            : { in: unique, mode: 'insensitive' as const };
+
+        orClauses.push({
+          OR: [
+            { fuente: fuenteClause },
+            {
+              contacts: {
+                some: {
+                  contact: { fuente: fuenteClause },
+                },
+              },
+            },
+          ],
+        });
+      }
+    }
+
+    if (orClauses.length === 0) return null;
+    if (orClauses.length === 1) return orClauses[0]!;
+    return { OR: orClauses };
   }
 
   /**

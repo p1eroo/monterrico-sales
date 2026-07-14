@@ -1,12 +1,19 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   SourcesByEntityMixedChart,
-  type SourceByEntityPoint,
+  type SourcesByWeekStackedChartData,
 } from '@/components/shared/SourcesByEntityMixedChart';
 import { SourceDetailCard } from '@/components/shared/SourceDetailCard';
+import { MultiAdvisorFilter } from '@/components/shared/MultiAdvisorFilter';
 import type { SourceDetail } from '@/lib/sourceDetailTypes';
-import type { ApiSourcesDetailWeek } from '@/lib/sourceDetailUtils';
-import { formatWeekRangeLima } from '@/lib/crmTimezone';
+import {
+  resolveSourcesDetailForFilters,
+  type ApiSourcesDetailWeek,
+} from '@/lib/sourceDetailUtils';
+import {
+  ADVISOR_OTHERS,
+  ADVISOR_UNASSIGNED,
+} from '@/hooks/useMultiAdvisorFilter';
 import { cn } from '@/lib/utils';
 
 const LEGEND_SUMMARY_OFFSET_PX = 56;
@@ -14,39 +21,90 @@ const MOBILE_CHART_HEIGHT = 340;
 const DESKTOP_CHART_MIN_HEIGHT = 360;
 const PANEL_HEIGHT_CLASS = 'lg:min-h-[min(68vh,640px)] lg:max-h-[min(68vh,640px)]';
 
-interface SourcesExpandedViewProps {
-  chartData: SourceByEntityPoint[];
+type SourcesDetailWeekView = {
+  week: ApiSourcesDetailWeek;
   details: SourceDetail[];
-  /** Semana ISO de corte para los cards (semana anterior a la actual). */
-  detailWeek?: ApiSourcesDetailWeek | null;
-  /** Altura del gráfico en vista apilada (móvil). */
+  byAdvisor: Record<string, SourceDetail[]>;
+};
+
+type AdvisorOption = { id: string; name: string };
+
+interface SourcesExpandedViewProps {
+  chartData: SourcesByWeekStackedChartData;
+  detailWeeks: SourcesDetailWeekView[];
+  advisors: AdvisorOption[];
+  canSeeAllAdvisors?: boolean;
   chartHeight?: number;
   className?: string;
 }
 
 export function SourcesExpandedView({
   chartData,
-  details,
-  detailWeek,
+  detailWeeks,
+  advisors,
+  canSeeAllAdvisors = true,
   chartHeight = MOBILE_CHART_HEIGHT,
   className,
 }: SourcesExpandedViewProps) {
   const chartPanelRef = useRef<HTMLDivElement>(null);
   const [resolvedChartHeight, setResolvedChartHeight] = useState(chartHeight);
+  const [selectedWeekIndex, setSelectedWeekIndex] = useState(0);
+  const [advisorFilter, setAdvisorFilter] = useState<string[]>([]);
+  const [advisorFilterInitialized, setAdvisorFilterInitialized] = useState(false);
 
-  const sortedDetails = [...details].sort(
-    (a, b) => b.companyCount - a.companyCount,
+  const allAdvisorIds = useMemo(
+    () => advisors.map((advisor) => advisor.id),
+    [advisors],
   );
 
-  const weekRangeLabel =
-    detailWeek?.weekStart && detailWeek?.weekEnd
-      ? formatWeekRangeLima(detailWeek.weekStart, detailWeek.weekEnd)
-      : null;
-  const weekCaption = detailWeek?.name
-    ? weekRangeLabel
-      ? `Empresas creadas en semana ${detailWeek.name} (${weekRangeLabel})`
-      : `Empresas creadas en semana ${detailWeek.name}`
-    : null;
+  useEffect(() => {
+    setSelectedWeekIndex(0);
+  }, [detailWeeks]);
+
+  useEffect(() => {
+    if (!canSeeAllAdvisors || advisorFilterInitialized || allAdvisorIds.length === 0) {
+      return;
+    }
+    setAdvisorFilter([...allAdvisorIds, ADVISOR_UNASSIGNED, ADVISOR_OTHERS]);
+    setAdvisorFilterInitialized(true);
+  }, [
+    canSeeAllAdvisors,
+    advisorFilterInitialized,
+    allAdvisorIds,
+  ]);
+
+  const allAdvisorsSelected =
+    canSeeAllAdvisors &&
+    advisorFilterInitialized &&
+    allAdvisorIds.length > 0 &&
+    allAdvisorIds.every((id) => advisorFilter.includes(id)) &&
+    advisorFilter.includes(ADVISOR_UNASSIGNED) &&
+    advisorFilter.includes(ADVISOR_OTHERS);
+
+  const advisorFilterIsActive =
+    canSeeAllAdvisors &&
+    advisorFilterInitialized &&
+    (advisorFilter.length === 0 || !allAdvisorsSelected);
+
+  const selectedWeek = detailWeeks[selectedWeekIndex] ?? detailWeeks[0];
+
+  const filteredDetails = useMemo(
+    () =>
+      resolveSourcesDetailForFilters(
+        selectedWeek,
+        advisorFilter,
+        allAdvisorsSelected,
+      ),
+    [
+      selectedWeek,
+      advisorFilter,
+      allAdvisorsSelected,
+    ],
+  );
+
+  const sortedDetails = [...filteredDetails].sort(
+    (a, b) => b.companyCount - a.companyCount,
+  );
 
   useEffect(() => {
     const node = chartPanelRef.current;
@@ -104,13 +162,42 @@ export function SourcesExpandedView({
           PANEL_HEIGHT_CLASS,
         )}
       >
-        <div className="flex shrink-0 flex-wrap items-baseline justify-between gap-2">
-          <h3 className="text-sm font-semibold text-foreground">Detalle por fuente</h3>
-          <p className="text-[11px] text-muted-foreground">
-            {weekCaption ? `${weekCaption} · ` : ''}
-            Empresas en etapas 10%–100%
-          </p>
+        <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <MultiAdvisorFilter
+            value={advisorFilter}
+            onChange={setAdvisorFilter}
+            advisors={advisors}
+            disabled={!canSeeAllAdvisors}
+            isActive={advisorFilterIsActive}
+            isInitialized={advisorFilterInitialized}
+            className="!h-8 w-full min-w-0 sm:w-[190px]"
+          />
+
+          {detailWeeks.length > 0 ? (
+            <div
+              className="flex flex-wrap items-center gap-1"
+              role="group"
+              aria-label="Filtrar por semana"
+            >
+              {detailWeeks.map((weekRow, index) => (
+                <button
+                  key={weekRow.week.name}
+                  type="button"
+                  onClick={() => setSelectedWeekIndex(index)}
+                  className={cn(
+                    'h-7 rounded-md border px-2.5 text-xs font-medium transition-colors',
+                    selectedWeekIndex === index
+                      ? 'border-[#13944C] bg-[#13944C]/10 text-[#13944C]'
+                      : 'border-transparent text-muted-foreground hover:bg-muted/80',
+                  )}
+                >
+                  {weekRow.week.name}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
+
         {sortedDetails.length > 0 ? (
           <div className="flex flex-col gap-4">
             {sortedDetails.map((detail) => (
@@ -119,7 +206,7 @@ export function SourcesExpandedView({
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Sin empresas creadas por fuente en la semana anterior.
+            Sin empresas acumuladas por fuente en esta semana.
           </p>
         )}
       </div>

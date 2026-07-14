@@ -115,6 +115,25 @@ export function formatIsoWeekLabel(weekNumber: number): string {
   return `W${String(weekNumber).padStart(2, '0')}`;
 }
 
+/** Instant Lima → Date de calendario local (mismo día civil que Lima). */
+export function limaInstantToCalendarDate(d: Date): Date {
+  const { year, month, day } = instantToLimaParts(d);
+  return new Date(year, month, day);
+}
+
+/** Semana ISO (Lima, lun–dom) que contiene el día elegido en el picker. */
+export function weekRangeFromCalendarDay(day: Date): DateRange {
+  const anchor = parseDayStartLima(calendarDateToLimaYmd(day));
+  return {
+    from: limaInstantToCalendarDate(startOfWeekMondayLima(anchor)),
+    to: limaInstantToCalendarDate(endOfWeekSundayLima(anchor)),
+  };
+}
+
+export function currentLimaWeekCalendarRange(): DateRange {
+  return weekRangeFromCalendarDay(new Date());
+}
+
 export function isoWeekLabelFromInstant(d: Date): string {
   return formatIsoWeekLabel(isoWeekNumberLima(d));
 }

@@ -3,10 +3,12 @@ import { getConductores, type Conductor } from '@/lib/flotaConductoresApi';
 import {
   flotaProspectosList,
   fetchOperadorStats,
+  fetchOperadorStatsDaily,
   fetchOperadores,
   getOperatorDisplayName,
   type FlotaProspectoRow,
   type OperadorStats,
+  type OperadorStatsDailyRow,
 } from '@/lib/flotaProspectosApi';
 import { getSunatHistorial } from '@/lib/flotaSunatApi';
 
@@ -29,6 +31,7 @@ interface FlotaReportesState {
   baseLastFetchedAt: number | null;
 
   operadorStats: OperadorStats[];
+  operadorStatsDaily: OperadorStatsDailyRow[];
   operadorNames: string[];
   operadorStatsRange: string | null;
   operadorStatsLoading: boolean;
@@ -58,6 +61,7 @@ export const useFlotaReportesStore = create<FlotaReportesState>((set, get) => ({
   baseLastFetchedAt: null,
 
   operadorStats: [],
+  operadorStatsDaily: [],
   operadorNames: [],
   operadorStatsRange: null,
   operadorStatsLoading: false,
@@ -126,12 +130,15 @@ export const useFlotaReportesStore = create<FlotaReportesState>((set, get) => ({
 
     operadorFetchPromise = (async () => {
       try {
-        const [rawStats, operadores] = await Promise.all([
+        const [rawStats, rawDaily, operadores] = await Promise.all([
           fetchOperadorStats(fecini, fecfin),
+          fetchOperadorStatsDaily(fecini, fecfin),
           fetchOperadores(),
         ]);
 
         const unified = new Map<string, OperadorStats>();
+        const dailyUnified: OperadorStatsDailyRow[] = [];
+
         for (const s of rawStats) {
           const canonical =
             getOperatorDisplayName(s.operador, operadores) || s.operador;
@@ -148,16 +155,28 @@ export const useFlotaReportesStore = create<FlotaReportesState>((set, get) => ({
           }
         }
 
+        for (const row of rawDaily) {
+          const canonical =
+            getOperatorDisplayName(row.operador, operadores) || row.operador;
+          dailyUnified.push({ ...row, operador: canonical });
+        }
+
         const names = Array.from(unified.keys());
         set({
           operadorNames: names,
           operadorStats: Array.from(unified.values()),
+          operadorStatsDaily: dailyUnified,
           operadorStatsRange: key,
         });
       } catch (err) {
         console.error('Error loading operator stats:', err);
         if (!hasData) {
-          set({ operadorStats: [], operadorNames: [], operadorStatsRange: key });
+          set({
+            operadorStats: [],
+            operadorStatsDaily: [],
+            operadorNames: [],
+            operadorStatsRange: key,
+          });
         }
       } finally {
         set({ operadorStatsLoading: false });

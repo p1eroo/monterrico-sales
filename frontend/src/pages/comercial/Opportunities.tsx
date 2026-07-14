@@ -27,7 +27,17 @@ import { BusinessGraphBoardSvgIcon } from '@/components/icons/BusinessGraphBoard
 import type { Etapa, Opportunity } from '@/types';
 import { etapaLabels, contactSourceLabels } from '@/data/mock';
 import { cn } from '@/lib/utils';
-import { comercialProPopoverClass, comercialProCommandClass } from '@/lib/comercialFilterSurface';
+import {
+  comercialProPopoverClass,
+  comercialProCommandClass,
+  isInclusiveMultiFilterSelected,
+  toggleInclusiveMultiFilter,
+  formatInclusiveMultiFilterLabel,
+  matchesInclusiveMultiFilterValue,
+  matchesInclusiveMultiSourceFilterValue,
+  inclusiveMultiSourceFilterToApiParam,
+  formatInclusiveMultiSourceFilterLabel,
+} from '@/lib/comercialFilterSurface';
 
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Pagination } from '@/components/shared/Pagination';
@@ -229,8 +239,11 @@ export default function OpportunitiesPage() {
         opp.contactName?.toLowerCase().includes(search.toLowerCase()) ||
         opp.clientName?.toLowerCase().includes(search.toLowerCase());
 
-      const matchesEtapa = etapaFilter.length === 0 || etapaFilter.includes(opp.etapa);
-      const matchesSource = sourceFilter.length === 0 || (opp.fuente ? sourceFilter.includes(opp.fuente) : false);
+      const matchesEtapa = matchesInclusiveMultiFilterValue(etapaFilter, opp.etapa);
+      const matchesSource = matchesInclusiveMultiSourceFilterValue(
+        sourceFilter,
+        opp.fuente,
+      );
 
       return matchesSearch && matchesEtapa && matchesAssignee(opp.assignedTo) && matchesSource;
     });
@@ -358,7 +371,8 @@ export default function OpportunitiesPage() {
       const params: Record<string, string> = {};
       if (search) params.search = search;
       if (etapaFilter.length > 0) params.etapa = etapaFilter.join(',');
-      if (sourceFilter.length > 0) params.fuente = sourceFilter.join(',');
+      const fuenteParam = inclusiveMultiSourceFilterToApiParam(sourceFilter);
+      if (fuenteParam) params.fuente = fuenteParam;
       if (advisorListParams.assignedTo) params.assignedTo = advisorListParams.assignedTo;
       if (advisorListParams.excludeAssignedTo) {
         params.excludeAssignedTo = advisorListParams.excludeAssignedTo;
@@ -731,9 +745,12 @@ export default function OpportunitiesPage() {
               <button className={`!h-12 w-[190px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left ${etapaFilter.length > 0 ? 'text-black dark:text-gray-100' : 'text-[#8a9aab] dark:text-gray-400'}`}>
                 <ChartSquareIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
                 <span className="truncate flex-1">
-                  {etapaFilter.length === 0
-                    ? 'Etapa'
-                    : etapaFilter.map((k) => etapaLabels[k as keyof typeof etapaLabels] || k).join(', ')}
+                  {formatInclusiveMultiFilterLabel(
+                    etapaFilter,
+                    'Etapa',
+                    (k) => etapaLabels[k as keyof typeof etapaLabels] || k,
+                    'etapas',
+                  )}
                 </span>
                 <ChevronDown className="size-3.5 shrink-0 opacity-50" />
               </button>
@@ -743,15 +760,17 @@ export default function OpportunitiesPage() {
                 <CommandList className="max-h-[260px] overflow-y-auto">
                   <CommandGroup>
                     {Object.entries(etapaLabels).map(([key, label]) => {
-                      const selected = etapaFilter.includes(key);
+                      const selected = isInclusiveMultiFilterSelected(etapaFilter, key);
                       return (
                         <CommandItem
                           key={key}
                           onSelect={() => {
                             setEtapaFilter((prev) =>
-                              prev.includes(key)
-                                ? prev.filter((e) => e !== key)
-                                : [...prev, key],
+                              toggleInclusiveMultiFilter(
+                                prev,
+                                key,
+                                Object.keys(etapaLabels),
+                              ),
                             );
                             setPage(1);
                           }}
@@ -788,9 +807,12 @@ export default function OpportunitiesPage() {
               <button className={`!h-12 w-[190px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate ${sourceFilter.length > 0 ? 'text-black dark:text-gray-100' : 'text-[#8a9aab] dark:text-gray-400'}`}>
                 <PaletteIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
                 <span className="truncate flex-1">
-                  {sourceFilter.length === 0
-                    ? 'Fuente'
-                    : sourceFilter.map((k) => getSourceLabelFromCatalog(k, bundle, contactSourceLabels)).join(', ')}
+                  {formatInclusiveMultiSourceFilterLabel(
+                    sourceFilter,
+                    'Fuente',
+                    (k) =>
+                      getSourceLabelFromCatalog(k, bundle, contactSourceLabels),
+                  )}
                 </span>
                 <ChevronDown className="size-3.5 shrink-0 opacity-50" />
               </button>
@@ -800,15 +822,17 @@ export default function OpportunitiesPage() {
                 <CommandList className="max-h-[260px] overflow-y-auto">
                   <CommandGroup>
                     {leadSourceOptions.map(({ value: key, label }) => {
-                      const selected = sourceFilter.includes(key);
+                      const selected = isInclusiveMultiFilterSelected(sourceFilter, key);
                       return (
                         <CommandItem
                           key={key}
                           onSelect={() => {
                             setSourceFilter((prev) =>
-                              prev.includes(key)
-                                ? prev.filter((e) => e !== key)
-                                : [...prev, key],
+                              toggleInclusiveMultiFilter(
+                                prev,
+                                key,
+                                leadSourceOptions.map((o) => o.value),
+                              ),
                             );
                             setPage(1);
                           }}

@@ -15,6 +15,12 @@ function limaDate(): Date {
   return new Date(dateStr + 'T00:00:00.000Z');
 }
 
+function limaDateFromUnix(unixSeconds: number): Date {
+  const d = new Date(unixSeconds * 1000);
+  const dateStr = d.toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
+  return new Date(dateStr + 'T00:00:00.000Z');
+}
+
 @Injectable()
 export class ChatwootOperadorSyncService {
   private readonly logger = new Logger(ChatwootOperadorSyncService.name);
@@ -110,11 +116,42 @@ export class ChatwootOperadorSyncService {
 
   private extractConversationMeta(
     raw: unknown,
-  ): { assignee?: { id: number; name: string } } | undefined {
+  ): {
+    assignee?: { id: number; name: string };
+    sender?: { id?: number; phone_number?: string; name?: string };
+  } | undefined {
     if (!raw || typeof raw !== 'object') return undefined;
     const r = raw as Record<string, unknown>;
-    const payload = (r.payload ?? r.data ?? raw) as { meta?: { assignee?: { id: number; name: string } } };
-    return payload?.meta;
+    const payload = (r.payload ?? r.data ?? raw) as {
+      meta?: {
+        assignee?: { id: number; name: string };
+        sender?: { id?: number; phone_number?: string; name?: string };
+      };
+      contact_inbox?: { source_id?: string };
+    };
+    return payload?.meta
+      ? {
+          ...payload.meta,
+          sender: payload.meta.sender ?? (
+            payload.contact_inbox?.source_id
+              ? { phone_number: payload.contact_inbox.source_id }
+              : undefined
+          ),
+        }
+      : undefined;
+  }
+
+  /** Teléfono del contacto desde payload Chatwoot (webhook o API). */
+  extractPhoneFromConversation(raw: unknown): string | undefined {
+    if (!raw || typeof raw !== 'object') return undefined;
+    const r = raw as Record<string, unknown>;
+    const payload = (r.payload ?? r.data ?? raw) as {
+      meta?: { sender?: { phone_number?: string } };
+      contact_inbox?: { source_id?: string };
+    };
+    const phone = payload?.meta?.sender?.phone_number
+      ?? payload?.contact_inbox?.source_id;
+    return phone?.trim() || undefined;
   }
 
   operadoresAreSame(
@@ -148,21 +185,86 @@ export class ChatwootOperadorSyncService {
     }) ?? null;
   }
 
+  /**
+   * Fecha de asignación desde mensaje de actividad Chatwoot
+   * (ej. "Asignado a Paul Medrano por Soporte").
+   */
+  private async inferAsignadoAtFromChatwoot(
+    conversationId: number,
+    canonicalOperador: string,
+  ): Promise<Date | null> {
+    const operadorLower = canonicalOperador.toLowerCase().trim();
+    const firstName = operadorLower.split(/\s+/)[0] ?? '';
+    let before: number | undefined;
+    let bestTs: number | null = null;
+
+    try {
+      for (let i = 0; i < 12; i++) {
+        const batch = await this.client.listMessages(conversationId, before);
+        if (!batch.length) break;
+
+        for (const msg of batch) {
+          const mt = msg.message_type;
+          if (mt !== 2) continue;
+          const content = String(msg.content ?? '').toLowerCase();
+          if (!content.includes('asignado')) continue;
+          const matches = content.includes(operadorLower)
+            || (firstName.length >= 3 && content.includes(firstName));
+          if (!matches) continue;
+          const ts = typeof msg.created_at === 'number' ? msg.created_at : null;
+          if (ts != null && (bestTs === null || ts > bestTs)) bestTs = ts;
+        }
+
+        if (batch.length < 15) break;
+        before = Math.min(...batch.map((m) => m.id));
+      }
+    } catch (e) {
+      this.logger.warn(
+        `No se pudo inferir asignadoAt conv ${conversationId}: ${e instanceof Error ? e.message : e}`,
+      );
+      return null;
+    }
+
+    return bestTs != null ? limaDateFromUnix(bestTs) : null;
+  }
+
+  private async resolveAsignadoAt(
+    conversationId: number | undefined,
+    canonicalOperador: string,
+    existing: { operador: string | null; asignadoAt: Date | null },
+    ops: OperadorUser[],
+  ): Promise<Date> {
+    const fixingInvalid = this.isInvalidOperadorName(existing.operador, ops);
+    if (fixingInvalid && existing.asignadoAt) {
+      return existing.asignadoAt;
+    }
+
+    if (conversationId) {
+      const inferred = await this.inferAsignadoAtFromChatwoot(conversationId, canonicalOperador);
+      if (inferred) return inferred;
+    }
+
+    return limaDate();
+  }
+
   async findProspectoForConversation(
     conversationId: number,
     phone?: string,
   ) {
     let prospecto = await this.prisma.flotaProspecto.findFirst({
-      where: { chatwootConversationId: conversationId },
+      where: { chatwootConversationId: conversationId, eliminadoAt: null },
     });
     if (!prospecto && phone) {
       const cleaned = phone.replace(/\D/g, '').slice(-9);
       if (cleaned) {
         prospecto = await this.prisma.flotaProspecto.findFirst({
           where: {
+            eliminadoAt: null,
             OR: [
               { celular: { endsWith: cleaned } },
               { movil: { endsWith: cleaned } },
+              { celular: { contains: cleaned } },
+              { movil: { contains: cleaned } },
             ],
           },
         });
@@ -179,6 +281,7 @@ export class ChatwootOperadorSyncService {
     prospectoId: string,
     assignee: { id?: number; name?: string } | null | undefined,
     assigneeId?: number,
+    conversationId?: number,
   ): Promise<{ updated: boolean; operador: string | null }> {
     const ops = await this.listOperadores();
     let canonicalOperador: string | null = null;
@@ -209,10 +312,12 @@ export class ChatwootOperadorSyncService {
       return { updated: false, operador: canonicalOperador };
     }
 
-    const fixingInvalid = this.isInvalidOperadorName(existing.operador, ops);
-    const asignadoAt = fixingInvalid && existing.asignadoAt
-      ? existing.asignadoAt
-      : limaDate();
+    const asignadoAt = await this.resolveAsignadoAt(
+      conversationId,
+      canonicalOperador,
+      existing,
+      ops,
+    );
 
     await this.prisma.flotaProspecto.update({
       where: { id: prospectoId },
@@ -262,38 +367,194 @@ export class ChatwootOperadorSyncService {
     assignee?: { id?: number; name?: string } | null,
     assigneeId?: number,
   ): Promise<{ updated: boolean; operador: string | null; prospectoId: string | null }> {
-    const prospecto = await this.findProspectoForConversation(conversationId, phone);
-    if (!prospecto) {
-      return { updated: false, operador: null, prospectoId: null };
-    }
-
+    let resolvedPhone = phone?.trim() || undefined;
     let resolvedAssignee = assignee;
     let resolvedAssigneeId = assigneeId ?? assignee?.id;
+    let contactId: number | undefined;
 
-    if (!resolvedAssignee?.name && !resolvedAssigneeId) {
+    if (!resolvedPhone || (!resolvedAssignee?.name && !resolvedAssigneeId)) {
       try {
         const conversation = await this.client.getConversation(conversationId);
-        resolvedAssignee = this.extractConversationMeta(conversation)?.assignee;
-        resolvedAssigneeId = resolvedAssignee?.id;
+        const meta = this.extractConversationMeta(conversation);
+        if (!resolvedPhone) {
+          resolvedPhone = this.extractPhoneFromConversation(conversation);
+        }
+        if (!resolvedAssignee?.name && !resolvedAssigneeId) {
+          resolvedAssignee = meta?.assignee;
+          resolvedAssigneeId = resolvedAssignee?.id;
+        }
+        contactId = meta?.sender?.id;
       } catch (e) {
         this.logger.warn(`No se pudo leer conversación ${conversationId}: ${e instanceof Error ? e.message : e}`);
       }
+    }
+
+    let prospecto = await this.findProspectoForConversation(conversationId, resolvedPhone);
+    if (!prospecto) {
+      this.logger.warn(
+        `Sync operador: sin prospecto para conv ${conversationId} (tel: ${resolvedPhone ?? '—'})`,
+      );
+      return { updated: false, operador: null, prospectoId: null };
     }
 
     const result = await this.syncOperadorFromAssignee(
       prospecto.id,
       resolvedAssignee,
       resolvedAssigneeId,
+      conversationId,
     );
 
+    const linkData: { chatwootConversationId?: number; chatwootContactId?: number } = {};
     if (!prospecto.chatwootConversationId) {
+      linkData.chatwootConversationId = conversationId;
+    }
+    if (contactId && !prospecto.chatwootContactId) {
+      linkData.chatwootContactId = contactId;
+    }
+    if (Object.keys(linkData).length > 0) {
       await this.prisma.flotaProspecto.update({
         where: { id: prospecto.id },
-        data: { chatwootConversationId: conversationId },
+        data: linkData,
       });
     }
 
     return { ...result, prospectoId: prospecto.id };
+  }
+
+  /** Prospectos con operador vacío o con valor que no corresponde a un operador activo. */
+  prospectoNeedsOperadorReconcile(
+    operador: string | null | undefined,
+    operadores?: OperadorUser[],
+  ): boolean {
+    if (!operador?.trim()) return true;
+    return this.isInvalidOperadorName(operador, operadores);
+  }
+
+  /**
+   * Reconcilia operador CRM ← assignee Chatwoot (backfill y cron).
+   * Fase 1: prospectos vinculados sin operador válido.
+   * Fase 2: conversaciones del inbox con assignee.
+   */
+  async reconcileOperadoresFromChatwoot(options?: {
+    dryRun?: boolean;
+    maxConversations?: number;
+  }): Promise<{
+    prospectsChecked: number;
+    conversationsChecked: number;
+    updated: number;
+    noProspecto: number;
+    noAssignee: number;
+    noOperadorMatch: number;
+    alreadyOk: number;
+    errors: number;
+  }> {
+    const dryRun = options?.dryRun ?? false;
+    const maxConversations = options?.maxConversations ?? 10_000;
+    const ops = await this.listOperadores();
+    const stats = {
+      prospectsChecked: 0,
+      conversationsChecked: 0,
+      updated: 0,
+      noProspecto: 0,
+      noAssignee: 0,
+      noOperadorMatch: 0,
+      alreadyOk: 0,
+      errors: 0,
+    };
+
+    const prospects = await this.prisma.flotaProspecto.findMany({
+      where: {
+        eliminadoAt: null,
+        chatwootConversationId: { not: null },
+      },
+      select: {
+        id: true,
+        nombreCompleto: true,
+        celular: true,
+        operador: true,
+        chatwootConversationId: true,
+      },
+    });
+
+    for (const p of prospects) {
+      stats.prospectsChecked++;
+      if (!this.prospectoNeedsOperadorReconcile(p.operador, ops)) {
+        stats.alreadyOk++;
+        continue;
+      }
+      if (!p.chatwootConversationId) continue;
+      if (dryRun) continue;
+      try {
+        const result = await this.syncOperadorFromConversation(
+          p.chatwootConversationId,
+          p.celular ?? undefined,
+        );
+        if (result.updated) stats.updated++;
+        else if (!result.operador) stats.noOperadorMatch++;
+      } catch (e) {
+        stats.errors++;
+        this.logger.warn(
+          `Reconcile prospecto ${p.id}: ${e instanceof Error ? e.message : e}`,
+        );
+      }
+    }
+
+    const inboxId = this.client.getConfig().inboxId;
+    let page = 1;
+    let convProcessed = 0;
+
+    while (convProcessed < maxConversations) {
+      let convs: Awaited<ReturnType<ChatwootClient['listConversations']>>;
+      try {
+        convs = await this.client.listConversations({
+          inbox_id: inboxId,
+          status: 'all',
+          page,
+        });
+      } catch (e) {
+        stats.errors++;
+        this.logger.warn(`Reconcile listConversations p${page}: ${e instanceof Error ? e.message : e}`);
+        break;
+      }
+
+      if (!convs.length) break;
+
+      for (const conv of convs) {
+        if (convProcessed >= maxConversations) break;
+        convProcessed++;
+        stats.conversationsChecked++;
+
+        if (!conv.meta?.assignee?.id) {
+          stats.noAssignee++;
+          continue;
+        }
+
+        if (dryRun) continue;
+
+        try {
+          const result = await this.syncOperadorFromConversation(
+            conv.id,
+            conv.meta?.sender?.phone_number,
+            conv.meta.assignee,
+            conv.meta.assignee.id,
+          );
+          if (result.updated) stats.updated++;
+          else if (!result.prospectoId) stats.noProspecto++;
+          else if (!result.operador) stats.noOperadorMatch++;
+          else stats.alreadyOk++;
+        } catch (e) {
+          stats.errors++;
+          if (stats.errors <= 20) {
+            this.logger.warn(`Reconcile conv ${conv.id}: ${e instanceof Error ? e.message : e}`);
+          }
+        }
+      }
+
+      if (convs.length < 25) break;
+      page++;
+    }
+
+    return stats;
   }
 
   /**
@@ -360,7 +621,12 @@ export class ChatwootOperadorSyncService {
       if (assignee?.name) {
         const assigneeOperador = this.resolveOperadorName(assignee.name, ops);
         if (assigneeOperador && !this.operadoresAreSame(assigneeOperador, canonicalOperador, ops)) {
-          await this.syncOperadorFromAssignee(params.prospectoId, assignee, assignee.id);
+          await this.syncOperadorFromAssignee(
+            params.prospectoId,
+            assignee,
+            assignee.id,
+            params.conversationId,
+          );
           return { assigned: false, operador: assigneeOperador };
         }
       }

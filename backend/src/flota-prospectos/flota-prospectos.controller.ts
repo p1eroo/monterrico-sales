@@ -135,6 +135,21 @@ export class FlotaProspectosController {
     return this.service.getOperadorStats(fecini, fecfin, scope);
   }
 
+  /** GET /flota-prospectos/operador-stats/daily — Desglose diario por operador */
+  @Get('flota-prospectos/operador-stats/daily')
+  @RequirePermissions('flota_prospectos.ver')
+  async getOperadorStatsDaily(
+    @Query('fecini') fecini: string,
+    @Query('fecfin') fecfin: string,
+    @Req() req: AuthedReq,
+  ) {
+    const scope = await this.buildFlotaScope(
+      req.user.userId,
+      req.user.roleId,
+    );
+    return this.service.getOperadorStatsDaily(fecini, fecfin, scope);
+  }
+
   /**
    * POST /flota-prospectos/operador-stats/backfill
    * Cierra/reconstruye historial diario. Con fromActivityLog=true corrige asignados desde ActivityLog.

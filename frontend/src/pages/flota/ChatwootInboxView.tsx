@@ -142,7 +142,7 @@ export default function ChatwootInboxView() {
   const [newChatTemplates, setNewChatTemplates] = useState<{ name: string; language: string; category: string; content?: string }[]>([]);
   const [newChatSelectedTemplate, setNewChatSelectedTemplate] = useState('afiliacion_atu');
   const [newChatLoadingTpl, setNewChatLoadingTpl] = useState(false);
-  const [contactNewChatData, setContactNewChatData] = useState<{ phone: string; name: string } | null>(null);
+  const [contactNewChatData, setContactNewChatData] = useState<{ phone: string; name: string; contactId?: number } | null>(null);
   const [openingContactId, setOpeningContactId] = useState<number | null>(null);
 
   useEffect(() => {
@@ -530,8 +530,8 @@ export default function ChatwootInboxView() {
     setActiveId(id);
   }, []);
 
-  const openNewChatForContact = useCallback((phone: string, name: string) => {
-    setContactNewChatData({ phone, name });
+  const openNewChatForContact = useCallback((phone: string, name: string, contactId?: number) => {
+    setContactNewChatData({ phone, name, contactId });
     setNewChatSelectedTemplate('afiliacion_atu');
     setNewChatLoadingTpl(true);
     setNewChatTemplates([]);
@@ -561,7 +561,7 @@ export default function ChatwootInboxView() {
         return;
       }
       if (contact.phone_number) {
-        openNewChatForContact(contact.phone_number, contact.name);
+        openNewChatForContact(contact.phone_number, contact.name, contact.id);
       }
     } catch {
       toast.error('No se pudo abrir el chat del contacto');
@@ -586,6 +586,7 @@ export default function ChatwootInboxView() {
       const result = await initiateConversation({
         name,
         phone: fullPhone,
+        contactId: contactNewChatData?.contactId,
         templateName: finalName,
         templateCategory: finalCategory,
         operador: currentUser.name,
@@ -1354,10 +1355,13 @@ export function ChatwootChatPanel({
     const cleaned = (phone ?? sender?.phone_number ?? prospecto?.celular ?? '').replace(/\D/g, '');
     if (!cleaned) return;
     try {
-      await syncOperadorFromChatwoot(conversationId, cleaned);
+      const syncResult = await syncOperadorFromChatwoot(conversationId, cleaned);
       const res = await flotaProspectosByPhone(cleaned);
       if (res.found && res.prospecto && !res.prospecto.eliminadoAt) {
         setProspecto(res.prospecto);
+      }
+      if (syncResult.updated || syncResult.operador) {
+        notifyFlotaProspectosRefresh();
       }
     } catch { /* silent */ }
   }

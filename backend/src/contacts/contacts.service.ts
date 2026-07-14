@@ -24,6 +24,7 @@ import {
   parseAdvisorFilterQuery,
 } from '../common/advisor-filter.util';
 import { resolveLimaDayRange } from '../common/crm-timezone.util';
+import { isUnassignedSourceSlug } from '../crm-config/lead-source-normalize.util';
 import { NotificationsService } from '../notifications/notifications.service';
 import { normalizeContactCargo } from './contact-cargo.util';
 import { normalizeClienteRecuperado } from '../common/normalize-cliente-recuperado';
@@ -548,14 +549,35 @@ export class ContactsService {
     }
     if (opts?.fuente?.trim()) {
       const fuentes = opts.fuente.split(',').map((s) => s.trim()).filter(Boolean);
-      const normalized = await Promise.all(
-        fuentes.map((f) => this.crmConfig.normalizeLeadSource(f)),
-      );
-      const unique = [...new Set(normalized.filter(Boolean))];
-      if (unique.length > 1) {
-        where.fuente = { in: unique, mode: 'insensitive' };
-      } else if (unique.length === 1) {
-        where.fuente = { equals: unique[0], mode: 'insensitive' };
+      const wantsUnassigned = fuentes.some(isUnassignedSourceSlug);
+      const catalogFuentes = fuentes.filter((f) => !isUnassignedSourceSlug(f));
+      const orParts: Prisma.ContactWhereInput[] = [];
+
+      if (wantsUnassigned) {
+        orParts.push({ fuente: '' });
+      }
+
+      if (catalogFuentes.length > 0) {
+        const normalized = await Promise.all(
+          catalogFuentes.map((f) => this.crmConfig.normalizeLeadSource(f)),
+        );
+        const unique = [...new Set(normalized.filter(Boolean))];
+        if (unique.length > 1) {
+          orParts.push({ fuente: { in: unique, mode: 'insensitive' } });
+        } else if (unique.length === 1) {
+          orParts.push({ fuente: { equals: unique[0], mode: 'insensitive' } });
+        }
+      }
+
+      if (orParts.length > 0) {
+        const existingAnd = Array.isArray(where.AND)
+          ? where.AND
+          : where.AND
+            ? [where.AND]
+            : [];
+        const clause =
+          orParts.length === 1 ? orParts[0]! : { OR: orParts };
+        where.AND = [...existingAnd, clause];
       }
     }
     if (scope && !scope.unrestricted) {

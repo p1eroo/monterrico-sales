@@ -97,7 +97,17 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { formatDateShort } from "@/lib/formatters";
-import { comercialProPopoverClass, comercialProCommandClass, dateRangeToQueryBounds } from "@/lib/comercialFilterSurface";
+import {
+  comercialProPopoverClass,
+  comercialProCommandClass,
+  dateRangeToQueryBounds,
+  isInclusiveMultiFilterSelected,
+  toggleInclusiveMultiFilter,
+  formatInclusiveMultiFilterLabel,
+  isInclusiveMultiFilterNone,
+  inclusiveMultiSourceFilterToApiParam,
+  formatInclusiveMultiSourceFilterLabel,
+} from "@/lib/comercialFilterSurface";
 import { api } from "@/lib/api";
 import { contactDetailHref } from "@/lib/detailRoutes";
 import type { Contact } from "@/types";
@@ -298,7 +308,7 @@ export default function ContactosPage() {
         limit: pageSize,
         search: searchDebounced || undefined,
         etapa: etapaFilter.length > 0 ? etapaFilter.join(',') : undefined,
-        fuente: sourceFilter.length > 0 ? sourceFilter.join(',') : undefined,
+        fuente: inclusiveMultiSourceFilterToApiParam(sourceFilter),
         assignedTo: advisorListParams.assignedTo,
         excludeAssignedTo: advisorListParams.excludeAssignedTo,
         advisorPool: advisorListParams.advisorPool,
@@ -331,7 +341,7 @@ export default function ContactosPage() {
         dateRangeToQueryBounds(creationRange);
       const { counts } = await contactListEtapaCounts({
         search: searchDebounced || undefined,
-        fuente: sourceFilter.length > 0 ? sourceFilter.join(',') : undefined,
+        fuente: inclusiveMultiSourceFilterToApiParam(sourceFilter),
         assignedTo: advisorListParams.assignedTo,
         excludeAssignedTo: advisorListParams.excludeAssignedTo,
         advisorPool: advisorListParams.advisorPool,
@@ -379,7 +389,7 @@ export default function ContactosPage() {
 
   useEffect(() => {
     if (etapaTabCounts == null) return;
-    if (etapaFilter.length === 0) return;
+    if (etapaFilter.length === 0 || isInclusiveMultiFilterNone(etapaFilter)) return;
     const hasAnyResult = etapaFilter.some((e) => (effectiveEtapaTabCounts[e] ?? 0) > 0);
     if (hasAnyResult) return;
     setEtapaFilter([]);
@@ -929,7 +939,8 @@ export default function ContactosPage() {
       const params: Record<string, string> = {};
       if (searchDebounced) params.search = searchDebounced;
       if (etapaFilter.length > 0) params.etapa = etapaFilter.join(',');
-      if (sourceFilter.length > 0) params.fuente = sourceFilter.join(',');
+      const fuenteParam = inclusiveMultiSourceFilterToApiParam(sourceFilter);
+      if (fuenteParam) params.fuente = fuenteParam;
       if (advisorListParams.assignedTo) params.assignedTo = advisorListParams.assignedTo;
       if (advisorListParams.excludeAssignedTo) {
         params.excludeAssignedTo = advisorListParams.excludeAssignedTo;
@@ -1227,9 +1238,12 @@ export default function ContactosPage() {
             <button className={`!h-12 w-[190px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left ${etapaFilter.length > 0 ? "text-black dark:text-gray-100" : "text-[#8a9aab] dark:text-gray-400"}`}>
               <ChartSquareIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
               <span className="truncate flex-1">
-                {etapaFilter.length === 0
-                  ? "Etapa"
-                  : etapaFilter.map((k) => etapaLabels[k] || k).join(", ")}
+                {formatInclusiveMultiFilterLabel(
+                  etapaFilter,
+                  "Etapa",
+                  (k) => etapaLabels[k] || k,
+                  "etapas",
+                )}
               </span>
               <ChevronDown className="size-3.5 shrink-0 opacity-50" />
             </button>
@@ -1239,15 +1253,17 @@ export default function ContactosPage() {
               <CommandList className="max-h-[260px] overflow-y-auto">
                 <CommandGroup>
                   {Object.entries(etapaLabels).map(([key, label]) => {
-                    const selected = etapaFilter.includes(key);
+                    const selected = isInclusiveMultiFilterSelected(etapaFilter, key);
                     return (
                       <CommandItem
                         key={key}
                         onSelect={() => {
                           setEtapaFilter((prev) =>
-                            prev.includes(key)
-                              ? prev.filter((e) => e !== key)
-                              : [...prev, key],
+                            toggleInclusiveMultiFilter(
+                              prev,
+                              key,
+                              Object.keys(etapaLabels),
+                            ),
                           );
                           setPage(1);
                         }}
@@ -1340,9 +1356,16 @@ export default function ContactosPage() {
                       <button className={`!h-12 flex-1 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer text-left truncate flex items-center gap-1.5 ${sourceFilter.length > 0 ? "text-black dark:text-gray-100" : "text-[#8a9aab] dark:text-gray-400"}`}>
                         <PaletteIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
                         <span className="truncate flex-1">
-                          {sourceFilter.length === 0
-                            ? "Fuente"
-                            : sourceFilter.map((k) => getSourceLabelFromCatalog(k, bundle, contactSourceLabels)).join(", ")}
+                          {formatInclusiveMultiSourceFilterLabel(
+                            sourceFilter,
+                            "Fuente",
+                            (k) =>
+                              getSourceLabelFromCatalog(
+                                k,
+                                bundle,
+                                contactSourceLabels,
+                              ),
+                          )}
                         </span>
                         <ChevronDown className="size-3.5 shrink-0 opacity-50" />
                       </button>
@@ -1352,15 +1375,20 @@ export default function ContactosPage() {
                         <CommandList className="max-h-[260px] overflow-y-auto">
                           <CommandGroup>
                             {leadSourceOptions.map(({ value: key, label }) => {
-                              const selected = sourceFilter.includes(key);
+                              const selected = isInclusiveMultiFilterSelected(
+                                sourceFilter,
+                                key,
+                              );
                               return (
                                 <CommandItem
                                   key={key}
                                   onSelect={() => {
                                     setSourceFilter((prev) =>
-                                      prev.includes(key)
-                                        ? prev.filter((e) => e !== key)
-                                        : [...prev, key],
+                                      toggleInclusiveMultiFilter(
+                                        prev,
+                                        key,
+                                        leadSourceOptions.map((o) => o.value),
+                                      ),
                                     );
                                     setPage(1);
                                   }}

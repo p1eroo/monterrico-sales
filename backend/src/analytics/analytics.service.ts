@@ -24,6 +24,11 @@ import {
   formatIsoWeekLabel,
 } from '../common/crm-timezone.util';
 import {
+  ADVISOR_OTHERS,
+  ADVISOR_UNASSIGNED,
+} from '../common/advisor-filter.util';
+import { findCommercialAdvisorUsers } from '../common/commercial-advisor-users.util';
+import {
   type AnalyticsScopeFilters,
   applyAdvisorFilter,
   applyCompanyAdvisorFilter,
@@ -35,20 +40,20 @@ import {
 } from './analytics-filter.util';
 
 const MAX_RANGE_DAYS = 366;
-/** Solo para listados de asesores (nombres); el filtrado de métricas usa `assignedTo`. */
-const ADVISOR_ROLE_SLUG = 'asesor';
 
 function parseDayStart(isoDate: string): Date {
+  const normalized = isoDate.trim().slice(0, 10);
   try {
-    return parseDayStartLima(isoDate);
+    return parseDayStartLima(normalized);
   } catch {
     throw new BadRequestException('from/to debe ser YYYY-MM-DD');
   }
 }
 
 function parseDayEnd(isoDate: string): Date {
+  const normalized = isoDate.trim().slice(0, 10);
   try {
-    return parseDayEndLima(isoDate);
+    return parseDayEndLima(normalized);
   } catch {
     throw new BadRequestException('from/to debe ser YYYY-MM-DD');
   }
@@ -190,18 +195,176 @@ type AdvisorFunnelMovementAdvisorRow = {
   metrics: AdvisorFunnelMovementMetricsRow;
 };
 
-type CompaniesAdvisorFunnelMovementSnapshot = {
+type AdvisorFunnelMovementPeriodRow = {
   fromWeekNumber: number;
   toWeekNumber: number;
   fromWeekLabel: string;
   toWeekLabel: string;
-  currentWeekLabel: string;
   title: string;
   advisors: AdvisorFunnelMovementAdvisorRow[];
 };
 
+type CompaniesAdvisorFunnelMovementSnapshot = {
+  currentWeekLabel: string;
+  periods: AdvisorFunnelMovementPeriodRow[];
+};
+
+type AdvisorFunnelMovementMetricKey =
+  | 'nuevoIngreso'
+  | 'avance'
+  | 'atraso'
+  | 'sinCambios';
+
+type AdvisorFunnelMovementCompanyRow = {
+  id: string;
+  name: string;
+  urlSlug: string;
+  etapa: string;
+  etapaLabel: string;
+};
+
+type AdvisorFunnelMovementCompaniesPage = {
+  data: AdvisorFunnelMovementCompanyRow[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
+
+const ADVISOR_FUNNEL_METRIC_TO_CATEGORY: Record<
+  AdvisorFunnelMovementMetricKey,
+  'nuevo' | 'avance' | 'atraso' | 'sinCambios'
+> = {
+  nuevoIngreso: 'nuevo',
+  avance: 'avance',
+  atraso: 'atraso',
+  sinCambios: 'sinCambios',
+};
+
+type CompaniesBySourceWeekRow = {
+  name: string;
+  weekStart: string;
+  weekEnd: string;
+  sources: { slug: string; value: number }[];
+};
+
+type CompaniesBySourceWeeklySnapshot = {
+  weeks: CompaniesBySourceWeekRow[];
+};
+
+type ActivitiesByTypeWeeklyRow = {
+  key: 'llamadas' | 'reuniones' | 'correos' | 'notas';
+  label: string;
+  counts: number[];
+  total: number;
+};
+
+type ActivitiesByTypeWeeklySnapshot = {
+  weeks: { name: string; weekStart: string; weekEnd: string }[];
+  types: ActivitiesByTypeWeeklyRow[];
+  maxCount: number;
+};
+
+type ActivitiesByAdvisorWeeklyRow = {
+  advisorId: string;
+  advisorName: string;
+  llamadas: number;
+  reuniones: number;
+  correos: number;
+  notas: number;
+  total: number;
+  byWeek: {
+    llamadas: number;
+    reuniones: number;
+    correos: number;
+    notas: number;
+    total: number;
+  }[];
+};
+
+type ActivitiesByAdvisorWeeklySnapshot = {
+  weeks: { name: string; weekStart: string; weekEnd: string }[];
+  advisors: ActivitiesByAdvisorWeeklyRow[];
+};
+
+type TasksByKindWeeklyRow = {
+  key: 'llamadas' | 'reuniones' | 'correos' | 'whatsapp';
+  label: string;
+  counts: number[];
+  total: number;
+};
+
+type TasksByKindWeeklySnapshot = {
+  weeks: { name: string; weekStart: string; weekEnd: string }[];
+  kinds: TasksByKindWeeklyRow[];
+  maxCount: number;
+};
+
+type TasksByAdvisorWeeklyRow = {
+  advisorId: string;
+  advisorName: string;
+  llamadas: number;
+  reuniones: number;
+  correos: number;
+  whatsapp: number;
+  total: number;
+  byWeek: {
+    llamadas: number;
+    reuniones: number;
+    correos: number;
+    whatsapp: number;
+    total: number;
+  }[];
+};
+
+type TasksByAdvisorWeeklySnapshot = {
+  weeks: { name: string; weekStart: string; weekEnd: string }[];
+  advisors: TasksByAdvisorWeeklyRow[];
+};
+
+const ACTIVITY_TYPE_DEFINITIONS = [
+  { key: 'llamadas' as const, label: 'Llamadas' },
+  { key: 'reuniones' as const, label: 'Reuniones' },
+  { key: 'correos' as const, label: 'Correos' },
+  { key: 'notas' as const, label: 'Notas' },
+];
+
+function activityTypeKeyFromRaw(
+  type: string | null | undefined,
+): ActivitiesByTypeWeeklyRow['key'] | null {
+  const t = type?.toLowerCase() ?? '';
+  if (t === 'llamada') return 'llamadas';
+  if (t === 'reunion' || t === 'reunión') return 'reuniones';
+  if (t === 'correo') return 'correos';
+  if (t === 'nota') return 'notas';
+  return null;
+}
+
+const TASK_KIND_DEFINITIONS = [
+  { key: 'llamadas' as const, label: 'Llamadas' },
+  { key: 'reuniones' as const, label: 'Reuniones' },
+  { key: 'correos' as const, label: 'Correos' },
+  { key: 'whatsapp' as const, label: 'WhatsApp' },
+];
+
+function taskKindKeyFromRaw(
+  taskKind: string | null | undefined,
+): TasksByKindWeeklyRow['key'] | null {
+  const k = taskKind?.toLowerCase() ?? '';
+  if (k === 'llamada') return 'llamadas';
+  if (k === 'reunion' || k === 'reunión') return 'reuniones';
+  if (k === 'correo') return 'correos';
+  if (k === 'whatsapp') return 'whatsapp';
+  return null;
+}
+
 const COMPANY_WEEKLY_CHART_WEEKS = 6;
+const SOURCES_WEEKLY_CHART_WEEKS = 6;
+const SOURCES_DETAIL_WEEKLY_COUNT = 5;
+const ACTIVITIES_HEATMAP_WEEK_COUNT = 6;
+const ADVISOR_FUNNEL_MOVEMENT_WEEK_OFFSETS = [1, 3, 5, 7] as const;
 const UNASSIGNED_ADVISOR_ID = '__unassigned__';
+const UNASSIGNED_SOURCE_SLUG = '__sin_fuente__';
 const ACTIVE_PROSPECT_MIN_PROBABILITY = 10;
 const ACTIVE_PROSPECT_MAX_PROBABILITY = 100;
 const ADVANCED_CONTACTS_MIN_PROBABILITY = 30;
@@ -233,6 +396,14 @@ type SourceDetailRow = {
 type SourcesDetailSnapshot = {
   week: { name: string; weekStart: string; weekEnd: string };
   sources: SourceDetailRow[];
+};
+
+type SourcesDetailWeekSnapshot = SourcesDetailSnapshot & {
+  byAdvisor: Record<string, SourceDetailRow[]>;
+};
+
+type SourcesDetailWeeklySnapshot = {
+  weeks: SourcesDetailWeekSnapshot[];
 };
 
 type HotProspectRow = {
@@ -355,11 +526,11 @@ function lastNMonthClips(n: number, now = new Date()): {
   return rows;
 }
 
-/** Ventana fija para sparklines KPI: últimas N semanas incluyendo la actual (anclada a hoy). */
-function sparklineRange(weekCount: number, now = new Date()): { from: Date; to: Date; weeks: WeekClip[] } {
-  const currentWeekStart = startOfWeekMondayLima(now);
+/** Ventana fija para sparklines KPI: últimas N semanas ancladas a `referenceTo` (fin del periodo). */
+function sparklineRange(weekCount: number, referenceTo = new Date()): { from: Date; to: Date; weeks: WeekClip[] } {
+  const currentWeekStart = startOfWeekMondayLima(referenceTo);
   const from = new Date(currentWeekStart.getTime() - 7 * (weekCount - 1) * 24 * 60 * 60 * 1000);
-  const to = now;
+  const to = referenceTo;
   const weeks = eachWeekClipsInRange(from, to, weekCount);
   return { from, to, weeks };
 }
@@ -568,27 +739,206 @@ export class AnalyticsService {
     return { in: slugs.length > 0 ? slugs : ['__none__'] };
   }
 
+  private resolveCompanySourceSlug(
+    fuente: string | null | undefined,
+    leadCatalog: { slug: string; name: string }[],
+  ): string {
+    if (!fuente?.trim()) return UNASSIGNED_SOURCE_SLUG;
+    return resolveLeadSourceKeyLoose(fuente, leadCatalog);
+  }
+
+  private buildActiveProspectStageHelpers(
+    stages: {
+      slug: string;
+      name: string;
+      probability: number;
+      sortOrder: number;
+    }[],
+  ) {
+    const stageMeta = new Map(
+      stages.map((s) => [
+        s.slug,
+        { name: s.name, probability: s.probability, sortOrder: s.sortOrder },
+      ]),
+    );
+    const qualifyingSlugs = new Set(
+      stages
+        .filter(
+          (s) =>
+            s.probability >= ACTIVE_PROSPECT_MIN_PROBABILITY &&
+            s.probability <= ACTIVE_PROSPECT_MAX_PROBABILITY,
+        )
+        .map((s) => s.slug),
+    );
+    const getProbability = (slug: string): number => {
+      const meta = stageMeta.get(slug.trim());
+      if (meta) return meta.probability;
+      return STAGE_PROBABILITY_FALLBACK[slug.trim()] ?? 0;
+    };
+    const isQualifyingSlug = (slug: string): boolean => {
+      const key = slug.trim();
+      if (qualifyingSlugs.has(key)) return true;
+      const probability = getProbability(key);
+      return (
+        probability >= ACTIVE_PROSPECT_MIN_PROBABILITY &&
+        probability <= ACTIVE_PROSPECT_MAX_PROBABILITY
+      );
+    };
+    return { stageMeta, getProbability, isQualifyingSlug };
+  }
+
   /**
-   * Detalle por fuente para cards: empresas creadas en la semana ISO anterior
-   * (misma lógica que `companiesBySource` del gráfico, acotada a esa semana).
+   * Empresas por fuente acumuladas (1 ene → cierre de cada semana) en las últimas
+   * {@link SOURCES_WEEKLY_CHART_WEEKS} semanas ISO (Lima). Etapa 10%–100% al cierre
+   * de cada semana (auditoría). Incluye bucket {@link UNASSIGNED_SOURCE_SLUG}.
    */
-  private async buildSourcesDetail(
+  private async buildCompaniesBySourceWeekly(
     referenceTo: Date,
     filters: AnalyticsScopeFilters,
     unrestricted: boolean,
     crmScope: CrmDataScope,
     leadCatalog: { slug: string; name: string }[],
-  ): Promise<SourcesDetailSnapshot> {
+  ): Promise<CompaniesBySourceWeeklySnapshot> {
     const anchorMonday = startOfWeekMondayLima(referenceTo);
-    const targetMonday = addLimaWeeks(anchorMonday, -1);
-    const weekEnd = endOfWeekSundayLima(targetMonday);
+    const weekMondays: Date[] = [];
+    for (let i = SOURCES_WEEKLY_CHART_WEEKS - 1; i >= 0; i--) {
+      weekMondays.push(addLimaWeeks(anchorMonday, -i));
+    }
 
-    const activeStageSlugs = await this.resolveStageSlugsInProbabilityRange(
-      ACTIVE_PROSPECT_MIN_PROBABILITY,
-      ACTIVE_PROSPECT_MAX_PROBABILITY,
+    const { year } = instantToLimaParts(referenceTo);
+    const yearStart = limaDayStart(year, 0, 1);
+
+    const portfolioWhere = mergeCompanyScope(
+      {
+        ...this.companyPortfolioBaseWhere(filters, unrestricted),
+        createdAt: { gte: yearStart, lte: referenceTo },
+      },
+      crmScope,
     );
 
-    const [stages, companies] = await Promise.all([
+    const [stages, portfolioCompanies, auditRows] = await Promise.all([
+      this.prisma.crmStage.findMany({
+        where: { enabled: true },
+        select: { slug: true, name: true, probability: true, sortOrder: true },
+        orderBy: { sortOrder: 'asc' },
+      }),
+      this.prisma.company.findMany({
+        where: portfolioWhere,
+        select: { id: true, createdAt: true, etapa: true, fuente: true },
+      }),
+      this.prisma.auditChangeSet.findMany({
+        where: {
+          module: 'empresas',
+          entityType: 'Empresa',
+          createdAt: { lte: referenceTo },
+          entries: { some: { fieldKey: 'etapa' } },
+        },
+        include: {
+          entries: {
+            where: { fieldKey: 'etapa' },
+            select: { oldValue: true, newValue: true },
+          },
+        },
+      }),
+    ]);
+
+    const { isQualifyingSlug } = this.buildActiveProspectStageHelpers(stages);
+    const portfolioIds = new Set(portfolioCompanies.map((c) => c.id));
+
+    type AuditEv = { at: Date; oldValue: string; newValue: string };
+    const auditsByCompany = new Map<string, AuditEv[]>();
+    for (const row of auditRows) {
+      const id = row.entityId;
+      if (!id || !portfolioIds.has(id)) continue;
+      const et = row.entries[0];
+      if (!et) continue;
+      const list = auditsByCompany.get(id) ?? [];
+      list.push({
+        at: row.createdAt,
+        oldValue: et.oldValue,
+        newValue: et.newValue,
+      });
+      auditsByCompany.set(id, list);
+    }
+
+    const etapaAtByCompany = new Map<string, (instant: Date) => string>();
+    for (const company of portfolioCompanies) {
+      const audits = auditsByCompany.get(company.id) ?? [];
+      etapaAtByCompany.set(
+        company.id,
+        buildEtapaStepFunction(company.createdAt, company.etapa, audits),
+      );
+    }
+
+    const weeks: CompaniesBySourceWeekRow[] = weekMondays.map((monday) => {
+      const weekEnd = minInstant(endOfWeekSundayLima(monday), referenceTo);
+      const counts = new Map<string, number>();
+
+      for (const company of portfolioCompanies) {
+        if (company.createdAt < yearStart || company.createdAt > weekEnd) continue;
+        const etapaFn = etapaAtByCompany.get(company.id);
+        if (!etapaFn) continue;
+        const etapaSlug = etapaFn(weekEnd).trim();
+        if (!isQualifyingSlug(etapaSlug)) continue;
+        const sourceKey = this.resolveCompanySourceSlug(
+          company.fuente,
+          leadCatalog,
+        );
+        counts.set(sourceKey, (counts.get(sourceKey) ?? 0) + 1);
+      }
+
+      const sources = [...counts.entries()]
+        .map(([slug, value]) => ({ slug, value }))
+        .sort((a, b) => b.value - a.value);
+
+      return {
+        name: isoWeekLabelFromInstant(monday),
+        weekStart: monday.toISOString(),
+        weekEnd: weekEnd.toISOString(),
+        sources,
+      };
+    });
+
+    return { weeks };
+  }
+
+  /**
+   * Detalle por fuente para cards: últimas {@link SOURCES_DETAIL_WEEKLY_COUNT} semanas
+   * ISO completas (Lima). Acumulado 1 ene → cierre de cada semana; etapa y facturación
+   * al cierre (auditoría). Desglose por asesor usa `assignedTo` actual (filtro local en UI).
+   */
+  private async buildSourcesDetailWeekly(
+    referenceTo: Date,
+    filters: AnalyticsScopeFilters,
+    unrestricted: boolean,
+    crmScope: CrmDataScope,
+    leadCatalog: { slug: string; name: string }[],
+    advisorPoolIds: string[],
+  ): Promise<SourcesDetailWeeklySnapshot> {
+    const anchorMonday = startOfWeekMondayLima(referenceTo);
+    const weekTargets: { monday: Date; weekEnd: Date }[] = [];
+    for (let i = 1; i <= SOURCES_DETAIL_WEEKLY_COUNT; i += 1) {
+      const monday = addLimaWeeks(anchorMonday, -i);
+      weekTargets.push({
+        monday,
+        weekEnd: minInstant(endOfWeekSundayLima(monday), referenceTo),
+      });
+    }
+
+    const maxWeekEnd = weekTargets[0]?.weekEnd ?? referenceTo;
+    const { year } = instantToLimaParts(referenceTo);
+    const yearStart = limaDayStart(year, 0, 1);
+    const advisorPool = new Set(advisorPoolIds);
+
+    const portfolioWhere = mergeCompanyScope(
+      {
+        ...this.companyPortfolioBaseWhere(filters, unrestricted),
+        createdAt: { gte: yearStart, lte: maxWeekEnd },
+      },
+      crmScope,
+    );
+
+    const [stages, portfolioCompanies, auditRows] = await Promise.all([
       this.prisma.crmStage.findMany({
         where: { enabled: true },
         select: {
@@ -600,34 +950,83 @@ export class AnalyticsService {
         orderBy: { sortOrder: 'asc' },
       }),
       this.prisma.company.findMany({
-        where: mergeCompanyScope(
-          {
-            ...this.companyPortfolioBaseWhere(filters, unrestricted),
-            createdAt: { gte: targetMonday, lte: weekEnd },
-            etapa: this.etapaInSlugsFilter(activeStageSlugs),
-          },
-          crmScope,
-        ),
+        where: portfolioWhere,
         select: {
+          id: true,
+          createdAt: true,
           fuente: true,
           etapa: true,
+          assignedTo: true,
           facturacionEstimada: true,
+        },
+      }),
+      this.prisma.auditChangeSet.findMany({
+        where: {
+          module: 'empresas',
+          entityType: 'Empresa',
+          createdAt: { lte: maxWeekEnd },
+          entries: {
+            some: {
+              fieldKey: {
+                in: ['etapa', 'facturacionEstimada'],
+              },
+            },
+          },
+        },
+        include: {
+          entries: {
+            where: {
+              fieldKey: {
+                in: ['etapa', 'facturacionEstimada'],
+              },
+            },
+            select: { fieldKey: true, oldValue: true, newValue: true },
+          },
         },
       }),
     ]);
 
-    const stageMeta = new Map(
-      stages.map((s) => [
-        s.slug,
-        { name: s.name, probability: s.probability, sortOrder: s.sortOrder },
-      ]),
-    );
+    const { stageMeta, getProbability, isQualifyingSlug } =
+      this.buildActiveProspectStageHelpers(stages);
+    const portfolioIds = new Set(portfolioCompanies.map((c) => c.id));
 
-    const getProbability = (slug: string): number => {
-      const meta = stageMeta.get(slug.trim());
-      if (meta) return meta.probability;
-      return STAGE_PROBABILITY_FALLBACK[slug.trim()] ?? 0;
-    };
+    type AuditEv = { at: Date; oldValue: string; newValue: string };
+    const auditsByCompanyField = new Map<string, AuditEv[]>();
+    for (const row of auditRows) {
+      const id = row.entityId;
+      if (!id || !portfolioIds.has(id)) continue;
+      for (const et of row.entries) {
+        const key = `${id}:${et.fieldKey}`;
+        const list = auditsByCompanyField.get(key) ?? [];
+        list.push({
+          at: row.createdAt,
+          oldValue: et.oldValue,
+          newValue: et.newValue,
+        });
+        auditsByCompanyField.set(key, list);
+      }
+    }
+
+    const etapaAtByCompany = new Map<string, (instant: Date) => string>();
+    const billingAtByCompany = new Map<string, (instant: Date) => number>();
+    for (const company of portfolioCompanies) {
+      const etapaAudits = auditsByCompanyField.get(`${company.id}:etapa`) ?? [];
+      const billingAudits =
+        auditsByCompanyField.get(`${company.id}:facturacionEstimada`) ?? [];
+      const currentBilling = Number(company.facturacionEstimada) || 0;
+      etapaAtByCompany.set(
+        company.id,
+        buildEtapaStepFunction(company.createdAt, company.etapa, etapaAudits),
+      );
+      billingAtByCompany.set(
+        company.id,
+        buildNumericStepFunction(
+          company.createdAt,
+          currentBilling,
+          billingAudits,
+        ),
+      );
+    }
 
     type SourceAcc = {
       companyCount: number;
@@ -637,26 +1036,23 @@ export class AnalyticsService {
       hot70Billing: number;
     };
 
-    const bySource = new Map<string, SourceAcc>();
+    const emptyAcc = (): SourceAcc => ({
+      companyCount: 0,
+      estimatedBilling: 0,
+      stages: new Map<string, number>(),
+      hot70Count: 0,
+      hot70Billing: 0,
+    });
 
-    for (const company of companies) {
-      if (!company.fuente?.trim()) continue;
-      const sourceKey = resolveLeadSourceKeyLoose(company.fuente, leadCatalog);
-      const etapa = company.etapa.trim();
-      const billing = Math.max(0, Number(company.facturacionEstimada) || 0);
-      const acc = bySource.get(sourceKey) ?? {
-        companyCount: 0,
-        estimatedBilling: 0,
-        stages: new Map<string, number>(),
-        hot70Count: 0,
-        hot70Billing: 0,
-      };
-
+    const bumpAcc = (
+      acc: SourceAcc,
+      etapa: string,
+      billing: number,
+      probability: number,
+    ) => {
       acc.companyCount += 1;
       acc.estimatedBilling += billing;
       acc.stages.set(etapa, (acc.stages.get(etapa) ?? 0) + 1);
-
-      const probability = getProbability(etapa);
       if (
         probability >= HOT_STAGE_MIN_PROBABILITY &&
         probability <= HOT_STAGE_MAX_PROBABILITY
@@ -664,43 +1060,99 @@ export class AnalyticsService {
         acc.hot70Count += 1;
         acc.hot70Billing += billing;
       }
-
-      bySource.set(sourceKey, acc);
-    }
-
-    const sources = [...bySource.entries()]
-      .map(([slug, acc]) => ({
-        slug,
-        companyCount: acc.companyCount,
-        estimatedBilling: acc.estimatedBilling,
-        stages: [...acc.stages.entries()]
-          .map(([stageSlug, count]) => {
-            const meta = stageMeta.get(stageSlug);
-            return {
-              slug: stageSlug,
-              name: meta?.name ?? stageSlug,
-              probability: meta?.probability ?? getProbability(stageSlug),
-              count,
-            };
-          })
-          .sort((a, b) => {
-            const oa = stageMeta.get(a.slug)?.sortOrder ?? 999_999;
-            const ob = stageMeta.get(b.slug)?.sortOrder ?? 999_999;
-            return oa - ob;
-          }),
-        hot70Count: acc.hot70Count,
-        hot70Billing: acc.hot70Billing,
-      }))
-      .sort((a, b) => b.companyCount - a.companyCount);
-
-    return {
-      week: {
-        name: isoWeekLabelFromInstant(targetMonday),
-        weekStart: targetMonday.toISOString(),
-        weekEnd: weekEnd.toISOString(),
-      },
-      sources,
     };
+
+    const accToRows = (
+      bySource: Map<string, SourceAcc>,
+    ): SourceDetailRow[] =>
+      [...bySource.entries()]
+        .map(([slug, acc]) => ({
+          slug,
+          companyCount: acc.companyCount,
+          estimatedBilling: acc.estimatedBilling,
+          stages: [...acc.stages.entries()]
+            .map(([stageSlug, count]) => {
+              const meta = stageMeta.get(stageSlug);
+              return {
+                slug: stageSlug,
+                name: meta?.name ?? stageSlug,
+                probability: meta?.probability ?? getProbability(stageSlug),
+                count,
+              };
+            })
+            .sort((a, b) => {
+              const oa = stageMeta.get(a.slug)?.sortOrder ?? 999_999;
+              const ob = stageMeta.get(b.slug)?.sortOrder ?? 999_999;
+              return oa - ob;
+            }),
+          hot70Count: acc.hot70Count,
+          hot70Billing: acc.hot70Billing,
+        }))
+        .sort((a, b) => b.companyCount - a.companyCount);
+
+    const resolveAdvisorBucket = (assignedTo: string): string => {
+      const id = assignedTo.trim();
+      if (!id) return ADVISOR_UNASSIGNED;
+      if (advisorPool.has(id)) return id;
+      return ADVISOR_OTHERS;
+    };
+
+    const weeks: SourcesDetailWeekSnapshot[] = weekTargets.map(
+      ({ monday, weekEnd }) => {
+        const totalBySource = new Map<string, SourceAcc>();
+        const byAdvisorAcc = new Map<string, Map<string, SourceAcc>>();
+
+        for (const company of portfolioCompanies) {
+          if (company.createdAt < yearStart || company.createdAt > weekEnd) {
+            continue;
+          }
+          const etapaFn = etapaAtByCompany.get(company.id);
+          const billingFn = billingAtByCompany.get(company.id);
+          if (!etapaFn || !billingFn) continue;
+
+          const etapa = etapaFn(weekEnd).trim();
+          if (!isQualifyingSlug(etapa)) continue;
+
+          const sourceKey = this.resolveCompanySourceSlug(
+            company.fuente,
+            leadCatalog,
+          );
+          const billing = Math.max(0, billingFn(weekEnd));
+          const probability = getProbability(etapa);
+          const advisorKey = resolveAdvisorBucket(
+            company.assignedTo?.trim() ?? '',
+          );
+
+          const totalAcc = totalBySource.get(sourceKey) ?? emptyAcc();
+          bumpAcc(totalAcc, etapa, billing, probability);
+          totalBySource.set(sourceKey, totalAcc);
+
+          const advisorSources =
+            byAdvisorAcc.get(advisorKey) ?? new Map<string, SourceAcc>();
+          const advisorAcc = advisorSources.get(sourceKey) ?? emptyAcc();
+          bumpAcc(advisorAcc, etapa, billing, probability);
+          advisorSources.set(sourceKey, advisorAcc);
+          byAdvisorAcc.set(advisorKey, advisorSources);
+        }
+
+        const byAdvisor: Record<string, SourceDetailRow[]> = {};
+        for (const [advisorKey, sourceMap] of byAdvisorAcc.entries()) {
+          byAdvisor[advisorKey] = accToRows(sourceMap);
+        }
+
+        return {
+          week: {
+            name: isoWeekLabelFromInstant(monday),
+            weekStart: monday.toISOString(),
+            weekEnd: weekEnd.toISOString(),
+          },
+          sources: accToRows(totalBySource),
+          byAdvisor,
+        };
+      },
+    );
+
+    return { weeks };
   }
 
   /**
@@ -775,10 +1227,7 @@ export class AnalyticsService {
             },
           },
         }),
-        this.prisma.user.findMany({
-          where: { role: { slug: ADVISOR_ROLE_SLUG } },
-          select: { id: true, name: true },
-        }),
+        findCommercialAdvisorUsers(this.prisma),
       ]);
 
     const stageMeta = new Map(
@@ -1165,7 +1614,8 @@ export class AnalyticsService {
   }
 
   /**
-   * Movimiento del embudo por asesor en la penúltima semana ISO (ej. W27 si estamos en W28).
+   * Movimiento del embudo por asesor en las últimas 4 parejas de semanas ISO
+   * (ej. W27→W28, W25→W26, W23→W24, W21→W22 si la semana en curso es W29).
    */
   private async buildCompaniesAdvisorFunnelMovement(
     referenceTo: Date,
@@ -1175,15 +1625,8 @@ export class AnalyticsService {
     advisorUsers: { id: string; name: string }[],
   ): Promise<CompaniesAdvisorFunnelMovementSnapshot> {
     const anchorMonday = startOfWeekMondayLima(referenceTo);
-    const targetMonday = new Date(anchorMonday);
-    targetMonday.setTime(anchorMonday.getTime() - WEEK_MS);
-
-    const clipStart = targetMonday;
-    const clipEnd = minInstant(endOfWeekSundayLima(targetMonday), referenceTo);
-
-    const toWeekNumber = isoWeekNumberLima(targetMonday);
-    const fromWeekNumber = toWeekNumber - 1;
     const currentWeekNumber = isoWeekNumberLima(referenceTo);
+    const currentWeekLabel = formatIsoWeekLabel(currentWeekNumber);
 
     const portfolioWhere = mergeCompanyScope(
       {
@@ -1292,8 +1735,6 @@ export class AnalyticsService {
       atraso: 0,
       sinCambios: 0,
     });
-    const metricsByAdvisor = new Map<string, MetricBucket>();
-    const activeByAdvisor = new Map<string, number>();
 
     const advisorKeyAt = (companyId: string, instant: Date): string => {
       const fn = advisorAtByCompany.get(companyId);
@@ -1301,47 +1742,19 @@ export class AnalyticsService {
       return raw || UNASSIGNED_ADVISOR_ID;
     };
 
-    const bumpMetric = (
-      advisorId: string,
-      category: 'nuevo' | 'avance' | 'atraso' | 'sinCambios',
-    ) => {
-      const bucket = metricsByAdvisor.get(advisorId) ?? emptyMetrics();
-      bucket[category === 'nuevo' ? 'nuevoIngreso' : category] += 1;
-      metricsByAdvisor.set(advisorId, bucket);
-    };
-
+    const portfolioAdvisorIds = new Set<string>();
     for (const company of portfolioCompanies) {
-      const etapaFn = etapaAtByCompany.get(company.id);
-      if (!etapaFn) continue;
-
-      const probEnd = getProb(etapaFn(clipEnd));
-      if (company.createdAt <= clipEnd && probEnd >= ACTIVE_PROSPECT_MIN_PROBABILITY) {
-        const advisorId = advisorKeyAt(company.id, clipEnd);
-        activeByAdvisor.set(advisorId, (activeByAdvisor.get(advisorId) ?? 0) + 1);
+      const currentAdvisor = company.assignedTo?.trim();
+      if (currentAdvisor) portfolioAdvisorIds.add(currentAdvisor);
+      for (const audit of assignedAuditsByCompany.get(company.id) ?? []) {
+        const oldId = audit.oldValue.trim();
+        const newId = audit.newValue.trim();
+        if (oldId) portfolioAdvisorIds.add(oldId);
+        if (newId) portfolioAdvisorIds.add(newId);
       }
-
-      const inWeek = (etapaAuditsByCompany.get(company.id) ?? []).filter(
-        (e) => e.at >= clipStart && e.at <= clipEnd,
-      );
-      const category = this.classifyCompanyMovementInWeekClip(
-        company,
-        clipStart,
-        clipEnd,
-        etapaFn,
-        inWeek,
-        getProb,
-      );
-      if (!category) continue;
-
-      bumpMetric(advisorKeyAt(company.id, clipEnd), category);
     }
-
-    const advisorIds = new Set<string>();
-    for (const id of activeByAdvisor.keys()) advisorIds.add(id);
-    for (const id of metricsByAdvisor.keys()) advisorIds.add(id);
-
-    const missingAdvisorIds = [...advisorIds].filter(
-      (id) => id !== UNASSIGNED_ADVISOR_ID && !advisorNameById.has(id),
+    const missingAdvisorIds = [...portfolioAdvisorIds].filter(
+      (id) => !advisorNameById.has(id),
     );
     if (missingAdvisorIds.length > 0) {
       const extraUsers = await this.prisma.user.findMany({
@@ -1366,35 +1779,320 @@ export class AnalyticsService {
         return advisorLabel(a).localeCompare(advisorLabel(b), 'es');
       });
 
-    const advisors: AdvisorFunnelMovementAdvisorRow[] = sortAdvisorIds(advisorIds)
-      .map((id) => ({
-        id,
-        name: advisorLabel(id),
-        activeProspects: activeByAdvisor.get(id) ?? 0,
-        metrics: metricsByAdvisor.get(id) ?? emptyMetrics(),
-      }))
-      .filter(
-        (row) =>
-          row.activeProspects > 0 ||
-          row.metrics.nuevoIngreso > 0 ||
-          row.metrics.avance > 0 ||
-          row.metrics.atraso > 0 ||
-          row.metrics.sinCambios > 0,
-      );
+    const buildPeriod = (weeksBack: number): AdvisorFunnelMovementPeriodRow => {
+      const targetMonday = addLimaWeeks(anchorMonday, -weeksBack);
+      const clipStart = targetMonday;
+      const clipEnd = minInstant(endOfWeekSundayLima(targetMonday), referenceTo);
+      const toWeekNumber = isoWeekNumberLima(targetMonday);
+      const fromWeekNumber = toWeekNumber - 1;
+
+      const metricsByAdvisor = new Map<string, MetricBucket>();
+      const activeByAdvisor = new Map<string, number>();
+
+      const bumpMetric = (
+        advisorId: string,
+        category: 'nuevo' | 'avance' | 'atraso' | 'sinCambios',
+      ) => {
+        const bucket = metricsByAdvisor.get(advisorId) ?? emptyMetrics();
+        bucket[category === 'nuevo' ? 'nuevoIngreso' : category] += 1;
+        metricsByAdvisor.set(advisorId, bucket);
+      };
+
+      for (const company of portfolioCompanies) {
+        const etapaFn = etapaAtByCompany.get(company.id);
+        if (!etapaFn) continue;
+
+        const probEnd = getProb(etapaFn(clipEnd));
+        if (company.createdAt <= clipEnd && probEnd >= ACTIVE_PROSPECT_MIN_PROBABILITY) {
+          const advisorId = advisorKeyAt(company.id, clipEnd);
+          activeByAdvisor.set(advisorId, (activeByAdvisor.get(advisorId) ?? 0) + 1);
+        }
+
+        const inWeek = (etapaAuditsByCompany.get(company.id) ?? []).filter(
+          (e) => e.at >= clipStart && e.at <= clipEnd,
+        );
+        const category = this.classifyCompanyMovementInWeekClip(
+          company,
+          clipStart,
+          clipEnd,
+          etapaFn,
+          inWeek,
+          getProb,
+        );
+        if (!category) continue;
+
+        bumpMetric(advisorKeyAt(company.id, clipEnd), category);
+      }
+
+      const advisorIds = new Set<string>();
+      for (const id of activeByAdvisor.keys()) advisorIds.add(id);
+      for (const id of metricsByAdvisor.keys()) advisorIds.add(id);
+
+      const advisors: AdvisorFunnelMovementAdvisorRow[] = sortAdvisorIds(advisorIds)
+        .map((id) => ({
+          id,
+          name: advisorLabel(id),
+          activeProspects: activeByAdvisor.get(id) ?? 0,
+          metrics: metricsByAdvisor.get(id) ?? emptyMetrics(),
+        }))
+        .filter(
+          (row) =>
+            row.activeProspects > 0 ||
+            row.metrics.nuevoIngreso > 0 ||
+            row.metrics.avance > 0 ||
+            row.metrics.atraso > 0 ||
+            row.metrics.sinCambios > 0,
+        );
+
+      return {
+        fromWeekNumber,
+        toWeekNumber,
+        fromWeekLabel: formatIsoWeekLabel(fromWeekNumber),
+        toWeekLabel: formatIsoWeekLabel(toWeekNumber),
+        title: `Movimiento del funnel — Semana ${fromWeekNumber} a Semana ${toWeekNumber}`,
+        advisors,
+      };
+    };
+
+    const periods = ADVISOR_FUNNEL_MOVEMENT_WEEK_OFFSETS.map((weeksBack) =>
+      buildPeriod(weeksBack),
+    );
 
     return {
-      fromWeekNumber,
-      toWeekNumber,
-      fromWeekLabel: formatIsoWeekLabel(fromWeekNumber),
-      toWeekLabel: formatIsoWeekLabel(toWeekNumber),
-      currentWeekLabel: formatIsoWeekLabel(currentWeekNumber),
-      title: `Movimiento del funnel — Semana ${fromWeekNumber} a Semana ${toWeekNumber}`,
-      advisors,
+      currentWeekLabel,
+      periods,
+    };
+  }
+
+  /** Empresas de un bucket del movimiento por asesor (paginado). */
+  async getAdvisorFunnelMovementCompanies(opts: {
+    to?: string;
+    advisorId: string;
+    metric: AdvisorFunnelMovementMetricKey;
+    toWeekNumber: number;
+    page?: number;
+    limit?: number;
+    advisorIdFilter?: string;
+    assignedTo?: string;
+    excludeAssignedTo?: string;
+    advisorPool?: string;
+    source?: string;
+    crmScope: CrmDataScope;
+  }): Promise<AdvisorFunnelMovementCompaniesPage> {
+    const metric = opts.metric;
+    if (!ADVISOR_FUNNEL_METRIC_TO_CATEGORY[metric]) {
+      throw new BadRequestException('metric inválida');
+    }
+    const targetCategory = ADVISOR_FUNNEL_METRIC_TO_CATEGORY[metric];
+    const advisorId = opts.advisorId?.trim();
+    if (!advisorId) {
+      throw new BadRequestException('advisorId requerido');
+    }
+    const toWeekNumber = Number(opts.toWeekNumber);
+    if (!Number.isFinite(toWeekNumber) || toWeekNumber <= 0) {
+      throw new BadRequestException('toWeekNumber inválido');
+    }
+
+    const page = Math.max(1, Number(opts.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(opts.limit) || 25));
+    const referenceTo = opts.to?.trim()
+      ? parseDayEnd(opts.to.trim())
+      : new Date();
+    const unrestricted = opts.crmScope.unrestricted;
+    const filters = await this.resolveScopeFilters({
+      advisorId: opts.advisorIdFilter,
+      assignedTo: opts.assignedTo,
+      excludeAssignedTo: opts.excludeAssignedTo,
+      advisorPool: opts.advisorPool,
+      source: opts.source,
+      unrestricted,
+      viewerUserId: opts.crmScope.viewerUserId,
+    });
+
+    const anchorMonday = startOfWeekMondayLima(referenceTo);
+    let weeksBack: number | null = null;
+    for (const offset of ADVISOR_FUNNEL_MOVEMENT_WEEK_OFFSETS) {
+      const targetMonday = addLimaWeeks(anchorMonday, -offset);
+      if (isoWeekNumberLima(targetMonday) === toWeekNumber) {
+        weeksBack = offset;
+        break;
+      }
+    }
+    if (weeksBack == null) {
+      throw new BadRequestException('Semana no disponible en el movimiento por asesor');
+    }
+
+    const targetMonday = addLimaWeeks(anchorMonday, -weeksBack);
+    const clipStart = targetMonday;
+    const clipEnd = minInstant(endOfWeekSundayLima(targetMonday), referenceTo);
+
+    const portfolioWhere = mergeCompanyScope(
+      {
+        ...this.companyPortfolioBaseWhere(filters, unrestricted),
+        createdAt: { lte: referenceTo },
+      },
+      opts.crmScope,
+    );
+
+    const [stages, portfolioCompanies, auditRows] = await Promise.all([
+      this.prisma.crmStage.findMany({
+        where: { enabled: true },
+        select: { slug: true, name: true, probability: true },
+      }),
+      this.prisma.company.findMany({
+        where: portfolioWhere,
+        select: {
+          id: true,
+          name: true,
+          urlSlug: true,
+          createdAt: true,
+          etapa: true,
+          assignedTo: true,
+        },
+      }),
+      this.prisma.auditChangeSet.findMany({
+        where: {
+          module: 'empresas',
+          entityType: 'Empresa',
+          createdAt: { lte: referenceTo },
+          entries: {
+            some: { fieldKey: { in: ['etapa', 'assignedTo'] } },
+          },
+        },
+        include: {
+          entries: {
+            where: { fieldKey: { in: ['etapa', 'assignedTo'] } },
+            select: { fieldKey: true, oldValue: true, newValue: true },
+          },
+        },
+      }),
+    ]);
+
+    const stageInfo = new Map<string, { name: string; probability: number }>();
+    for (const s of stages) {
+      stageInfo.set(s.slug, { name: s.name, probability: s.probability });
+    }
+    const getProb = (slug: string): number => {
+      const key = slug.trim();
+      const meta = stageInfo.get(key);
+      if (meta) return meta.probability;
+      return STAGE_PROBABILITY_FALLBACK[key] ?? 0;
+    };
+    const getStageLabel = (slug: string): string => {
+      const key = slug.trim();
+      return stageInfo.get(key)?.name ?? key;
+    };
+
+    const portfolioIds = new Set(portfolioCompanies.map((c) => c.id));
+
+    type EtapaAuditEv = { at: Date; oldSlug: string; newSlug: string };
+    const etapaAuditsByCompany = new Map<string, EtapaAuditEv[]>();
+    type FieldAuditEv = { at: Date; oldValue: string; newValue: string };
+    const assignedAuditsByCompany = new Map<string, FieldAuditEv[]>();
+
+    for (const row of auditRows) {
+      const id = row.entityId;
+      if (!id || !portfolioIds.has(id)) continue;
+      for (const et of row.entries) {
+        if (et.fieldKey === 'etapa') {
+          const oldSlug = et.oldValue.trim();
+          const newSlug = et.newValue.trim();
+          if (!oldSlug && !newSlug) continue;
+          const list = etapaAuditsByCompany.get(id) ?? [];
+          list.push({ at: row.createdAt, oldSlug, newSlug });
+          etapaAuditsByCompany.set(id, list);
+        } else if (et.fieldKey === 'assignedTo') {
+          const list = assignedAuditsByCompany.get(id) ?? [];
+          list.push({
+            at: row.createdAt,
+            oldValue: et.oldValue,
+            newValue: et.newValue,
+          });
+          assignedAuditsByCompany.set(id, list);
+        }
+      }
+    }
+    for (const [, list] of etapaAuditsByCompany) {
+      list.sort((a, b) => a.at.getTime() - b.at.getTime());
+    }
+    for (const [, list] of assignedAuditsByCompany) {
+      list.sort((a, b) => a.at.getTime() - b.at.getTime());
+    }
+
+    const etapaAtByCompany = new Map<string, (instant: Date) => string>();
+    const advisorAtByCompany = new Map<string, (instant: Date) => string>();
+    for (const company of portfolioCompanies) {
+      const etapaAudits = (etapaAuditsByCompany.get(company.id) ?? []).map((e) => ({
+        at: e.at,
+        oldValue: e.oldSlug,
+        newValue: e.newSlug,
+      }));
+      const advisorAudits = assignedAuditsByCompany.get(company.id) ?? [];
+      const currentAdvisor = company.assignedTo?.trim() ?? '';
+      etapaAtByCompany.set(
+        company.id,
+        buildEtapaStepFunction(company.createdAt, company.etapa, etapaAudits),
+      );
+      advisorAtByCompany.set(
+        company.id,
+        buildEtapaStepFunction(company.createdAt, currentAdvisor, advisorAudits),
+      );
+    }
+
+    const advisorKeyAt = (companyId: string, instant: Date): string => {
+      const fn = advisorAtByCompany.get(companyId);
+      const raw = fn ? fn(instant).trim() : '';
+      return raw || UNASSIGNED_ADVISOR_ID;
+    };
+
+    const matches: AdvisorFunnelMovementCompanyRow[] = [];
+    for (const company of portfolioCompanies) {
+      const etapaFn = etapaAtByCompany.get(company.id);
+      if (!etapaFn) continue;
+
+      const inWeek = (etapaAuditsByCompany.get(company.id) ?? []).filter(
+        (e) => e.at >= clipStart && e.at <= clipEnd,
+      );
+      const category = this.classifyCompanyMovementInWeekClip(
+        company,
+        clipStart,
+        clipEnd,
+        etapaFn,
+        inWeek,
+        getProb,
+      );
+      if (!category) continue;
+      if (category !== targetCategory) continue;
+      if (advisorKeyAt(company.id, clipEnd) !== advisorId) continue;
+
+      const etapaSlug = etapaFn(clipEnd).trim();
+      matches.push({
+        id: company.id,
+        name: company.name.trim() || 'Sin nombre',
+        urlSlug: company.urlSlug?.trim() || company.id,
+        etapa: etapaSlug,
+        etapaLabel: getStageLabel(etapaSlug),
+      });
+    }
+
+    matches.sort((a, b) => a.name.localeCompare(b.name, 'es'));
+    const total = matches.length;
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const safePage = Math.min(page, totalPages);
+    const start = (safePage - 1) * limit;
+
+    return {
+      data: matches.slice(start, start + limit),
+      total,
+      page: safePage,
+      limit,
+      totalPages,
     };
   }
 
   /**
-   * Empresas en etapas con probabilidad dentro del rango, al cierre de cada semana ISO (Lima).
+   * Empresas creadas en el año en curso (1 ene Lima) en etapas con probabilidad
+   * dentro del rango, al cierre de cada semana ISO (Lima).
    * Últimas {@link COMPANY_WEEKLY_CHART_WEEKS} semanas respecto a `referenceTo`.
    */
   private async buildCompanyWeeklyStageSnapshot(
@@ -1412,10 +2110,13 @@ export class AnalyticsService {
       weekMondays.push(monday);
     }
 
+    const { year } = instantToLimaParts(referenceTo);
+    const yearStart = limaDayStart(year, 0, 1);
+
     const portfolioWhere = mergeCompanyScope(
       {
         ...this.companyPortfolioBaseWhere(filters, unrestricted),
-        createdAt: { lte: referenceTo },
+        createdAt: { gte: yearStart, lte: referenceTo },
       },
       crmScope,
     );
@@ -1507,7 +2208,7 @@ export class AnalyticsService {
       const counts = new Map<string, number>();
 
       for (const company of portfolioCompanies) {
-        if (company.createdAt > weekEnd) continue;
+        if (company.createdAt < yearStart || company.createdAt > weekEnd) continue;
         const etapaFn = etapaAtByCompany.get(company.id);
         if (!etapaFn) continue;
         const slug = etapaFn(weekEnd).trim();
@@ -1585,7 +2286,8 @@ export class AnalyticsService {
   }
 
   /**
-   * Facturación estimada total de empresas en etapas 10–100 % al cierre de cada semana.
+   * Facturación estimada total de empresas creadas en el año en curso (1 ene Lima)
+   * en etapas 10–100 % al cierre de cada semana.
    */
   private async buildEstimatedBillingWeekly(
     referenceTo: Date,
@@ -1600,10 +2302,13 @@ export class AnalyticsService {
       weekMondays.push(monday);
     }
 
+    const { year } = instantToLimaParts(referenceTo);
+    const yearStart = limaDayStart(year, 0, 1);
+
     const portfolioWhere = mergeCompanyScope(
       {
         ...this.companyPortfolioBaseWhere(filters, unrestricted),
-        createdAt: { lte: referenceTo },
+        createdAt: { gte: yearStart, lte: referenceTo },
       },
       crmScope,
     );
@@ -1708,7 +2413,7 @@ export class AnalyticsService {
       let total = 0;
 
       for (const company of portfolioCompanies) {
-        if (company.createdAt > weekEnd) continue;
+        if (company.createdAt < yearStart || company.createdAt > weekEnd) continue;
         const etapaFn = etapaAtByCompany.get(company.id);
         const billingFn = billingAtByCompany.get(company.id);
         if (!etapaFn || !billingFn) continue;
@@ -1757,6 +2462,7 @@ export class AnalyticsService {
 
   /**
    * Matriz asesor × etapa (10–100 %) y facturación estimada por asesor al cierre de cada semana.
+   * Solo empresas creadas en el año en curso (1 ene Lima).
    */
   private async buildActiveProspectsByAdvisorWeekly(
     referenceTo: Date,
@@ -1772,10 +2478,13 @@ export class AnalyticsService {
       weekMondays.push(monday);
     }
 
+    const { year } = instantToLimaParts(referenceTo);
+    const yearStart = limaDayStart(year, 0, 1);
+
     const portfolioWhere = mergeCompanyScope(
       {
         ...this.companyPortfolioBaseWhere(filters, unrestricted),
-        createdAt: { lte: referenceTo },
+        createdAt: { gte: yearStart, lte: referenceTo },
       },
       crmScope,
     );
@@ -1911,7 +2620,7 @@ export class AnalyticsService {
       const advisorIds = new Set<string>();
 
       for (const company of portfolioCompanies) {
-        if (company.createdAt > weekEnd) continue;
+        if (company.createdAt < yearStart || company.createdAt > weekEnd) continue;
         const etapaFn = etapaAtByCompany.get(company.id);
         const advisorFn = advisorAtByCompany.get(company.id);
         const billingFn = billingAtByCompany.get(company.id);
@@ -2314,6 +3023,499 @@ export class AnalyticsService {
     return weekClips.map((w) => ({ name: w.name, value: counts.get(w.name) ?? 0 }));
   }
 
+  /**
+   * Actividades de interacción completadas por tipo y semana ISO (Lima),
+   * últimas {@link ACTIVITIES_HEATMAP_WEEK_COUNT} semanas. Respeta filtro de asesor.
+   */
+  private async buildActivitiesByTypeWeekly(
+    referenceTo: Date,
+    filters: AnalyticsScopeFilters,
+    unrestricted: boolean,
+  ): Promise<ActivitiesByTypeWeeklySnapshot> {
+    const anchorMonday = startOfWeekMondayLima(referenceTo);
+    const weekTargets = Array.from({ length: ACTIVITIES_HEATMAP_WEEK_COUNT }, (_, i) => {
+      const offset = ACTIVITIES_HEATMAP_WEEK_COUNT - 1 - i;
+      const monday = addLimaWeeks(anchorMonday, -offset);
+      return {
+        name: formatIsoWeekLabel(isoWeekNumberLima(monday)),
+        weekStart: monday,
+        weekEnd: minInstant(endOfWeekSundayLima(monday), referenceTo),
+      };
+    });
+
+    const rangeStart = weekTargets[0]?.weekStart ?? anchorMonday;
+    const acts = await this.prisma.activity.findMany({
+      where: this.activityWhereForAnalytics(
+        {
+          completedAt: { gte: rangeStart, lte: referenceTo },
+        },
+        filters,
+        unrestricted,
+      ),
+      select: { completedAt: true, type: true },
+    });
+
+    const weekIndexByName = new Map(
+      weekTargets.map((week, index) => [week.name, index] as const),
+    );
+    const countsByType = new Map<
+      ActivitiesByTypeWeeklyRow['key'],
+      number[]
+    >(
+      ACTIVITY_TYPE_DEFINITIONS.map((def) => [
+        def.key,
+        Array(weekTargets.length).fill(0),
+      ]),
+    );
+
+    for (const act of acts) {
+      if (!act.completedAt) continue;
+      const typeKey = activityTypeKeyFromRaw(act.type);
+      if (!typeKey) continue;
+
+      let weekIndex: number | null = null;
+      for (const week of weekTargets) {
+        if (
+          act.completedAt >= week.weekStart &&
+          act.completedAt <= week.weekEnd
+        ) {
+          weekIndex = weekIndexByName.get(week.name) ?? null;
+          break;
+        }
+      }
+      if (weekIndex == null) continue;
+
+      const row = countsByType.get(typeKey);
+      if (!row) continue;
+      row[weekIndex] = (row[weekIndex] ?? 0) + 1;
+    }
+
+    let maxCount = 0;
+    const types: ActivitiesByTypeWeeklyRow[] = ACTIVITY_TYPE_DEFINITIONS.map(
+      (def) => {
+        const counts = countsByType.get(def.key) ?? Array(weekTargets.length).fill(0);
+        const total = counts.reduce((sum, n) => sum + n, 0);
+        for (const n of counts) maxCount = Math.max(maxCount, n);
+        return {
+          key: def.key,
+          label: def.label,
+          counts,
+          total,
+        };
+      },
+    )
+      .filter((row) => row.total > 0)
+      .sort((a, b) => b.total - a.total || a.label.localeCompare(b.label, 'es'));
+
+    return {
+      weeks: weekTargets.map((week) => ({
+        name: week.name,
+        weekStart: week.weekStart.toISOString(),
+        weekEnd: week.weekEnd.toISOString(),
+      })),
+      types,
+      maxCount,
+    };
+  }
+
+  /**
+   * Actividades completadas por asesor y tipo, últimas
+   * {@link ACTIVITIES_HEATMAP_WEEK_COUNT} semanas ISO (Lima).
+   */
+  private async buildActivitiesByAdvisorWeekly(
+    referenceTo: Date,
+    filters: AnalyticsScopeFilters,
+    unrestricted: boolean,
+    userRows: { id: string; name: string }[],
+  ): Promise<ActivitiesByAdvisorWeeklySnapshot> {
+    const anchorMonday = startOfWeekMondayLima(referenceTo);
+    const weekTargets = Array.from({ length: ACTIVITIES_HEATMAP_WEEK_COUNT }, (_, i) => {
+      const offset = ACTIVITIES_HEATMAP_WEEK_COUNT - 1 - i;
+      const monday = addLimaWeeks(anchorMonday, -offset);
+      return {
+        name: formatIsoWeekLabel(isoWeekNumberLima(monday)),
+        weekStart: monday,
+        weekEnd: minInstant(endOfWeekSundayLima(monday), referenceTo),
+      };
+    });
+
+    const rangeStart = weekTargets[0]?.weekStart ?? anchorMonday;
+    const acts = await this.prisma.activity.findMany({
+      where: this.activityWhereForAnalytics(
+        {
+          completedAt: { gte: rangeStart, lte: referenceTo },
+        },
+        filters,
+        unrestricted,
+      ),
+      select: { completedAt: true, type: true, assignedTo: true },
+    });
+
+    type AdvisorCounts = {
+      llamadas: number;
+      reuniones: number;
+      correos: number;
+      notas: number;
+    };
+
+    const emptyCounts = (): AdvisorCounts => ({
+      llamadas: 0,
+      reuniones: 0,
+      correos: 0,
+      notas: 0,
+    });
+
+    const countsByAdvisor = new Map<string, AdvisorCounts[]>();
+
+    const ensureAdvisorWeeks = (advisorId: string): AdvisorCounts[] => {
+      const existing = countsByAdvisor.get(advisorId);
+      if (existing) return existing;
+      const rows = weekTargets.map(() => emptyCounts());
+      countsByAdvisor.set(advisorId, rows);
+      return rows;
+    };
+
+    for (const act of acts) {
+      if (!act.completedAt) continue;
+      const typeKey = activityTypeKeyFromRaw(act.type);
+      if (!typeKey) continue;
+
+      let weekIndex: number | null = null;
+      for (const [index, week] of weekTargets.entries()) {
+        if (
+          act.completedAt >= week.weekStart &&
+          act.completedAt <= week.weekEnd
+        ) {
+          weekIndex = index;
+          break;
+        }
+      }
+      if (weekIndex == null) continue;
+
+      const advisorId = act.assignedTo?.trim() || UNASSIGNED_ADVISOR_ID;
+      const rows = ensureAdvisorWeeks(advisorId);
+      const row = rows[weekIndex] ?? emptyCounts();
+      row[typeKey] = (row[typeKey] ?? 0) + 1;
+      rows[weekIndex] = row;
+    }
+
+    const idToName = new Map(
+      userRows.map((u) => [u.id, u.name.trim() || 'Sin nombre'] as const),
+    );
+    const missingNameIds = [...countsByAdvisor.keys()].filter(
+      (id) => id !== UNASSIGNED_ADVISOR_ID && !idToName.has(id),
+    );
+    if (missingNameIds.length > 0) {
+      const resolved = await this.prisma.user.findMany({
+        where: { id: { in: missingNameIds } },
+        select: { id: true, name: true },
+      });
+      for (const u of resolved) {
+        idToName.set(u.id, u.name.trim() || 'Sin nombre');
+      }
+    }
+
+    const resolveAdvisorName = (id: string): string => {
+      if (id === UNASSIGNED_ADVISOR_ID) return 'Sin asignar';
+      return idToName.get(id) ?? 'Sin nombre';
+    };
+
+    const advisors: ActivitiesByAdvisorWeeklyRow[] = [...countsByAdvisor.entries()]
+      .map(([advisorId, byWeekRows]) => {
+        const totals = emptyCounts();
+        const byWeek = byWeekRows.map((weekRow) => {
+          totals.llamadas += weekRow.llamadas;
+          totals.reuniones += weekRow.reuniones;
+          totals.correos += weekRow.correos;
+          totals.notas += weekRow.notas;
+          const weekTotal =
+            weekRow.llamadas +
+            weekRow.reuniones +
+            weekRow.correos +
+            weekRow.notas;
+          return {
+            llamadas: weekRow.llamadas,
+            reuniones: weekRow.reuniones,
+            correos: weekRow.correos,
+            notas: weekRow.notas,
+            total: weekTotal,
+          };
+        });
+        const total =
+          totals.llamadas +
+          totals.reuniones +
+          totals.correos +
+          totals.notas;
+        return {
+          advisorId,
+          advisorName: resolveAdvisorName(advisorId),
+          ...totals,
+          total,
+          byWeek,
+        };
+      })
+      .filter((row) => row.total > 0)
+      .sort(
+        (a, b) =>
+          b.total - a.total ||
+          a.advisorName.localeCompare(b.advisorName, 'es'),
+      );
+
+    return {
+      weeks: weekTargets.map((week) => ({
+        name: week.name,
+        weekStart: week.weekStart.toISOString(),
+        weekEnd: week.weekEnd.toISOString(),
+      })),
+      advisors,
+    };
+  }
+
+  /**
+   * Tareas completadas por tipo (taskKind) y semana ISO (Lima),
+   * últimas {@link ACTIVITIES_HEATMAP_WEEK_COUNT} semanas.
+   */
+  private async buildTasksByKindWeekly(
+    referenceTo: Date,
+    filters: AnalyticsScopeFilters,
+    unrestricted: boolean,
+  ): Promise<TasksByKindWeeklySnapshot> {
+    const anchorMonday = startOfWeekMondayLima(referenceTo);
+    const weekTargets = Array.from({ length: ACTIVITIES_HEATMAP_WEEK_COUNT }, (_, i) => {
+      const offset = ACTIVITIES_HEATMAP_WEEK_COUNT - 1 - i;
+      const monday = addLimaWeeks(anchorMonday, -offset);
+      return {
+        name: formatIsoWeekLabel(isoWeekNumberLima(monday)),
+        weekStart: monday,
+        weekEnd: minInstant(endOfWeekSundayLima(monday), referenceTo),
+      };
+    });
+
+    const rangeStart = weekTargets[0]?.weekStart ?? anchorMonday;
+    const tasks = await this.prisma.activity.findMany({
+      where: this.activityWhereForAnalytics(
+        {
+          ...TASK_ACTIVITY_FILTER,
+          completedAt: { gte: rangeStart, lte: referenceTo },
+        },
+        filters,
+        unrestricted,
+      ),
+      select: { completedAt: true, taskKind: true },
+    });
+
+    const weekIndexByName = new Map(
+      weekTargets.map((week, index) => [week.name, index] as const),
+    );
+    const countsByKind = new Map<TasksByKindWeeklyRow['key'], number[]>(
+      TASK_KIND_DEFINITIONS.map((def) => [
+        def.key,
+        Array(weekTargets.length).fill(0),
+      ]),
+    );
+
+    for (const task of tasks) {
+      if (!task.completedAt) continue;
+      const kindKey = taskKindKeyFromRaw(task.taskKind);
+      if (!kindKey) continue;
+
+      let weekIndex: number | null = null;
+      for (const week of weekTargets) {
+        if (
+          task.completedAt >= week.weekStart &&
+          task.completedAt <= week.weekEnd
+        ) {
+          weekIndex = weekIndexByName.get(week.name) ?? null;
+          break;
+        }
+      }
+      if (weekIndex == null) continue;
+
+      const row = countsByKind.get(kindKey);
+      if (!row) continue;
+      row[weekIndex] = (row[weekIndex] ?? 0) + 1;
+    }
+
+    let maxCount = 0;
+    const kinds: TasksByKindWeeklyRow[] = TASK_KIND_DEFINITIONS.map((def) => {
+      const counts = countsByKind.get(def.key) ?? Array(weekTargets.length).fill(0);
+      const total = counts.reduce((sum, n) => sum + n, 0);
+      for (const n of counts) maxCount = Math.max(maxCount, n);
+      return {
+        key: def.key,
+        label: def.label,
+        counts,
+        total,
+      };
+    })
+      .filter((row) => row.total > 0)
+      .sort((a, b) => b.total - a.total || a.label.localeCompare(b.label, 'es'));
+
+    return {
+      weeks: weekTargets.map((week) => ({
+        name: week.name,
+        weekStart: week.weekStart.toISOString(),
+        weekEnd: week.weekEnd.toISOString(),
+      })),
+      kinds,
+      maxCount,
+    };
+  }
+
+  /**
+   * Tareas completadas por asesor y tipo, últimas
+   * {@link ACTIVITIES_HEATMAP_WEEK_COUNT} semanas ISO (Lima).
+   */
+  private async buildTasksByAdvisorWeekly(
+    referenceTo: Date,
+    filters: AnalyticsScopeFilters,
+    unrestricted: boolean,
+    userRows: { id: string; name: string }[],
+  ): Promise<TasksByAdvisorWeeklySnapshot> {
+    const anchorMonday = startOfWeekMondayLima(referenceTo);
+    const weekTargets = Array.from({ length: ACTIVITIES_HEATMAP_WEEK_COUNT }, (_, i) => {
+      const offset = ACTIVITIES_HEATMAP_WEEK_COUNT - 1 - i;
+      const monday = addLimaWeeks(anchorMonday, -offset);
+      return {
+        name: formatIsoWeekLabel(isoWeekNumberLima(monday)),
+        weekStart: monday,
+        weekEnd: minInstant(endOfWeekSundayLima(monday), referenceTo),
+      };
+    });
+
+    const rangeStart = weekTargets[0]?.weekStart ?? anchorMonday;
+    const tasks = await this.prisma.activity.findMany({
+      where: this.activityWhereForAnalytics(
+        {
+          ...TASK_ACTIVITY_FILTER,
+          completedAt: { gte: rangeStart, lte: referenceTo },
+        },
+        filters,
+        unrestricted,
+      ),
+      select: { completedAt: true, taskKind: true, assignedTo: true },
+    });
+
+    type AdvisorCounts = {
+      llamadas: number;
+      reuniones: number;
+      correos: number;
+      whatsapp: number;
+    };
+
+    const emptyCounts = (): AdvisorCounts => ({
+      llamadas: 0,
+      reuniones: 0,
+      correos: 0,
+      whatsapp: 0,
+    });
+
+    const countsByAdvisor = new Map<string, AdvisorCounts[]>();
+
+    const ensureAdvisorWeeks = (advisorId: string): AdvisorCounts[] => {
+      const existing = countsByAdvisor.get(advisorId);
+      if (existing) return existing;
+      const rows = weekTargets.map(() => emptyCounts());
+      countsByAdvisor.set(advisorId, rows);
+      return rows;
+    };
+
+    for (const task of tasks) {
+      if (!task.completedAt) continue;
+      const kindKey = taskKindKeyFromRaw(task.taskKind);
+      if (!kindKey) continue;
+
+      let weekIndex: number | null = null;
+      for (const [index, week] of weekTargets.entries()) {
+        if (
+          task.completedAt >= week.weekStart &&
+          task.completedAt <= week.weekEnd
+        ) {
+          weekIndex = index;
+          break;
+        }
+      }
+      if (weekIndex == null) continue;
+
+      const advisorId = task.assignedTo?.trim() || UNASSIGNED_ADVISOR_ID;
+      const rows = ensureAdvisorWeeks(advisorId);
+      const row = rows[weekIndex] ?? emptyCounts();
+      row[kindKey] = (row[kindKey] ?? 0) + 1;
+      rows[weekIndex] = row;
+    }
+
+    const idToName = new Map(
+      userRows.map((u) => [u.id, u.name.trim() || 'Sin nombre'] as const),
+    );
+    const missingNameIds = [...countsByAdvisor.keys()].filter(
+      (id) => id !== UNASSIGNED_ADVISOR_ID && !idToName.has(id),
+    );
+    if (missingNameIds.length > 0) {
+      const resolved = await this.prisma.user.findMany({
+        where: { id: { in: missingNameIds } },
+        select: { id: true, name: true },
+      });
+      for (const u of resolved) {
+        idToName.set(u.id, u.name.trim() || 'Sin nombre');
+      }
+    }
+
+    const resolveAdvisorName = (id: string): string => {
+      if (id === UNASSIGNED_ADVISOR_ID) return 'Sin asignar';
+      return idToName.get(id) ?? 'Sin nombre';
+    };
+
+    const advisors: TasksByAdvisorWeeklyRow[] = [...countsByAdvisor.entries()]
+      .map(([advisorId, byWeekRows]) => {
+        const totals = emptyCounts();
+        const byWeek = byWeekRows.map((weekRow) => {
+          totals.llamadas += weekRow.llamadas;
+          totals.reuniones += weekRow.reuniones;
+          totals.correos += weekRow.correos;
+          totals.whatsapp += weekRow.whatsapp;
+          const weekTotal =
+            weekRow.llamadas +
+            weekRow.reuniones +
+            weekRow.correos +
+            weekRow.whatsapp;
+          return {
+            llamadas: weekRow.llamadas,
+            reuniones: weekRow.reuniones,
+            correos: weekRow.correos,
+            whatsapp: weekRow.whatsapp,
+            total: weekTotal,
+          };
+        });
+        const total =
+          totals.llamadas +
+          totals.reuniones +
+          totals.correos +
+          totals.whatsapp;
+        return {
+          advisorId,
+          advisorName: resolveAdvisorName(advisorId),
+          ...totals,
+          total,
+          byWeek,
+        };
+      })
+      .filter((row) => row.total > 0)
+      .sort(
+        (a, b) =>
+          b.total - a.total ||
+          a.advisorName.localeCompare(b.advisorName, 'es'),
+      );
+
+    return {
+      weeks: weekTargets.map((week) => ({
+        name: week.name,
+        weekStart: week.weekStart.toISOString(),
+        weekEnd: week.weekEnd.toISOString(),
+      })),
+      advisors,
+    };
+  }
+
   private opportunityWhereOpen(
     filters: AnalyticsScopeFilters,
     _unrestricted: boolean,
@@ -2384,7 +3586,6 @@ export class AnalyticsService {
     sparklineWeeks?: number;
   }) {
     const { from, to } = this.resolveRange(opts.from, opts.to);
-    console.log('[DEBUG-BACKEND] getSummary range:', { from: from.toISOString(), to: to.toISOString() });
     const unrestricted = opts.crmScope.unrestricted;
     const filters = await this.resolveScopeFilters({
       advisorId: opts.advisorId,
@@ -2482,15 +3683,7 @@ export class AnalyticsService {
         _count: { id: true },
       }),
       opts.crmScope.unrestricted
-        ? this.prisma.user.findMany({
-            where: {
-              role: { slug: ADVISOR_ROLE_SLUG },
-              ...(opts.area ? { allowedAreas: { has: opts.area } } : {}),
-            },
-            select: { id: true, name: true },
-            orderBy: { name: 'asc' },
-            take: 200,
-          })
+        ? findCommercialAdvisorUsers(this.prisma, { area: opts.area })
         : this.prisma.user.findMany({
             where: { id: opts.crmScope.viewerUserId },
             select: { id: true, name: true },
@@ -2926,8 +4119,13 @@ export class AnalyticsService {
       estimatedBillingWeekly,
       activeProspectsByAdvisorWeekly,
       companiesAdvisorFunnelMovement,
-      sourcesDetail,
+      companiesBySourceWeekly,
+      sourcesDetailWeekly,
       hotProspects,
+      activitiesByTypeWeekly,
+      activitiesByAdvisorWeekly,
+      tasksByKindWeekly,
+      tasksByAdvisorWeekly,
     ] = await Promise.all([
       this.buildCompaniesWeeklyProgress(
         from,
@@ -2968,12 +4166,20 @@ export class AnalyticsService {
         opts.crmScope,
         userRows,
       ),
-      this.buildSourcesDetail(
+      this.buildCompaniesBySourceWeekly(
         to,
         filters,
         unrestricted,
         opts.crmScope,
         leadCatalog,
+      ),
+      this.buildSourcesDetailWeekly(
+        to,
+        filters,
+        unrestricted,
+        opts.crmScope,
+        leadCatalog,
+        userRows.map((u) => u.id),
       ),
       this.buildHotProspectsSummary(
         to,
@@ -2981,7 +4187,25 @@ export class AnalyticsService {
         unrestricted,
         opts.crmScope,
       ),
+      this.buildActivitiesByTypeWeekly(to, filters, unrestricted),
+      this.buildActivitiesByAdvisorWeekly(to, filters, unrestricted, userRows),
+      this.buildTasksByKindWeekly(to, filters, unrestricted),
+      this.buildTasksByAdvisorWeekly(to, filters, unrestricted, userRows),
     ]);
+
+    const sourcesDetail: SourcesDetailSnapshot = sourcesDetailWeekly.weeks[0]
+      ? {
+          week: sourcesDetailWeekly.weeks[0].week,
+          sources: sourcesDetailWeekly.weeks[0].sources,
+        }
+      : {
+          week: {
+            name: '',
+            weekStart: '',
+            weekEnd: '',
+          },
+          sources: [],
+        };
 
     const opportunitiesWeeklyProgress = await this.buildOpportunitiesWeeklyProgress(
       from,
@@ -2995,7 +4219,7 @@ export class AnalyticsService {
       opts.sparklineWeeks === REPORTS_SPARKLINE_WEEKS
         ? REPORTS_SPARKLINE_WEEKS
         : DASHBOARD_SPARKLINE_WEEKS;
-    const { from: sparkFrom, to: sparkTo, weeks: sparklineWeeks } = sparklineRange(sparkWeeks);
+    const { from: sparkFrom, to: sparkTo, weeks: sparklineWeeks } = sparklineRange(sparkWeeks, to);
 
     const [contactsWeekly, salesWeekly, wonOpportunitiesWeekly, activitiesCompletedWeekly, opportunitiesWeeklySparklineProgress] = await Promise.all([
       this.buildContactsWeekly(
@@ -3090,7 +4314,9 @@ export class AnalyticsService {
       contactsBySource,
       opportunitiesBySource,
       companiesBySource,
+      companiesBySourceWeekly,
       sourcesDetail,
+      sourcesDetailWeekly,
       hotProspects,
       funnelByStage,
       companiesByStage,
@@ -3111,6 +4337,10 @@ export class AnalyticsService {
       contactsVsOpportunitiesByMonth,
       conversionByMonth,
       activitiesByTypeData,
+      activitiesByTypeWeekly,
+      activitiesByAdvisorWeekly,
+      tasksByKindWeekly,
+      tasksByAdvisorWeekly,
       opportunitiesByStageData,
       opportunitiesByStage: opportunitiesByStageData2,
       followUpsByMonth,

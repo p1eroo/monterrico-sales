@@ -66,7 +66,17 @@ import { PaletteIcon } from '@/components/icons/PaletteIcon';
 import { addCalendarDaysLocalIso } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 import { formatDateShort } from '@/lib/formatters';
-import { comercialProPopoverClass, comercialProCommandClass, dateRangeToQueryBounds } from '@/lib/comercialFilterSurface';
+import {
+  comercialProPopoverClass,
+  comercialProCommandClass,
+  dateRangeToQueryBounds,
+  isInclusiveMultiFilterSelected,
+  toggleInclusiveMultiFilter,
+  formatInclusiveMultiFilterLabel,
+  isInclusiveMultiFilterNone,
+  inclusiveMultiSourceFilterToApiParam,
+  formatInclusiveMultiSourceFilterLabel,
+} from '@/lib/comercialFilterSurface';
 import { api, API_BASE } from '@/lib/api';
 import { usePermissions } from '@/hooks/usePermissions';
 import {
@@ -407,7 +417,7 @@ export default function EmpresasPage() {
         limit: pageSize,
         search: searchDebounced || undefined,
         etapa: etapaFilter.length > 0 ? etapaFilter.join(',') : undefined,
-        fuente: sourceFilter.length > 0 ? sourceFilter.join(',') : undefined,
+        fuente: inclusiveMultiSourceFilterToApiParam(sourceFilter),
         assignedTo: advisorListParams.assignedTo,
         excludeAssignedTo: advisorListParams.excludeAssignedTo,
         advisorPool: advisorListParams.advisorPool,
@@ -454,7 +464,7 @@ export default function EmpresasPage() {
         dateRangeToQueryBounds(creationRange);
       const { counts } = await companySummaryEtapaCounts({
         search: searchDebounced || undefined,
-        fuente: sourceFilter.length > 0 ? sourceFilter.join(',') : undefined,
+        fuente: inclusiveMultiSourceFilterToApiParam(sourceFilter),
         assignedTo: advisorListParams.assignedTo,
         excludeAssignedTo: advisorListParams.excludeAssignedTo,
         advisorPool: advisorListParams.advisorPool,
@@ -850,7 +860,7 @@ export default function EmpresasPage() {
 
   useEffect(() => {
     if (etapaTabCounts == null) return;
-    if (etapaFilter.length === 0) return;
+    if (etapaFilter.length === 0 || isInclusiveMultiFilterNone(etapaFilter)) return;
     const hasAnyResult = etapaFilter.some((e) => (effectiveEtapaTabCounts[e] ?? 0) > 0);
     if (hasAnyResult) return;
     setEtapaFilter([]);
@@ -1152,7 +1162,8 @@ export default function EmpresasPage() {
       const params: Record<string, string> = {};
       if (searchDebounced) params.search = searchDebounced;
       if (etapaFilter.length > 0) params.etapa = etapaFilter.join(',');
-      if (sourceFilter.length > 0) params.fuente = sourceFilter.join(',');
+      const fuenteParam = inclusiveMultiSourceFilterToApiParam(sourceFilter);
+      if (fuenteParam) params.fuente = fuenteParam;
       if (rubroFilter.length > 0) params.rubro = rubroFilter.join(',');
       if (tipoFilter.length > 0) params.tipo = tipoFilter.join(',');
       if (advisorListParams.assignedTo) params.assignedTo = advisorListParams.assignedTo;
@@ -1183,7 +1194,8 @@ export default function EmpresasPage() {
       const params: Record<string, string> = {};
       if (searchDebounced) params.search = searchDebounced;
       if (etapaFilter.length > 0) params.etapa = etapaFilter.join(',');
-      if (sourceFilter.length > 0) params.fuente = sourceFilter.join(',');
+      const fuenteParam = inclusiveMultiSourceFilterToApiParam(sourceFilter);
+      if (fuenteParam) params.fuente = fuenteParam;
       if (rubroFilter.length > 0) params.rubro = rubroFilter.join(',');
       if (tipoFilter.length > 0) params.tipo = tipoFilter.join(',');
       if (advisorListParams.assignedTo) params.assignedTo = advisorListParams.assignedTo;
@@ -1570,9 +1582,12 @@ export default function EmpresasPage() {
             <button className={`!h-12 w-[190px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left ${etapaFilter.length > 0 ? 'text-black dark:text-gray-100' : 'text-[#8a9aab] dark:text-gray-400'}`}>
               <ChartSquareIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
               <span className="truncate flex-1">
-                {etapaFilter.length === 0
-                  ? 'Etapa'
-                  : etapaFilter.map((k) => etapaLabels[k] || k).join(', ')}
+                {formatInclusiveMultiFilterLabel(
+                  etapaFilter,
+                  'Etapa',
+                  (k) => etapaLabels[k] || k,
+                  'etapas',
+                )}
               </span>
               <ChevronDown className="size-3.5 shrink-0 opacity-50" />
             </button>
@@ -1582,15 +1597,17 @@ export default function EmpresasPage() {
               <CommandList className="max-h-[260px] overflow-y-auto">
                 <CommandGroup>
                   {Object.entries(etapaLabels).map(([key, label]) => {
-                    const selected = etapaFilter.includes(key);
+                    const selected = isInclusiveMultiFilterSelected(etapaFilter, key);
                     return (
                       <CommandItem
                         key={key}
                         onSelect={() => {
                           setEtapaFilter((prev) =>
-                            prev.includes(key)
-                              ? prev.filter((e) => e !== key)
-                              : [...prev, key],
+                            toggleInclusiveMultiFilter(
+                              prev,
+                              key,
+                              Object.keys(etapaLabels),
+                            ),
                           );
                           setPage(1);
                         }}
@@ -1616,9 +1633,12 @@ export default function EmpresasPage() {
             <button className={`!h-12 w-[190px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate ${rubroFilter.length > 0 ? 'text-black dark:text-gray-100' : 'text-[#8a9aab] dark:text-gray-400'}`}>
               <CategorySolidIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
               <span className="truncate flex-1">
-                {rubroFilter.length === 0
-                  ? 'Rubro'
-                  : rubroFilter.map((k) => companyRubroLabels[k] || k).join(', ')}
+                {formatInclusiveMultiFilterLabel(
+                  rubroFilter,
+                  'Rubro',
+                  (k) => companyRubroLabels[k] || k,
+                  'rubros',
+                )}
               </span>
               <ChevronDown className="size-3.5 shrink-0 opacity-50" />
             </button>
@@ -1628,15 +1648,17 @@ export default function EmpresasPage() {
               <CommandList className="max-h-[260px] overflow-y-auto">
                 <CommandGroup>
                   {Object.entries(companyRubroLabels).map(([key, label]) => {
-                    const selected = rubroFilter.includes(key);
+                    const selected = isInclusiveMultiFilterSelected(rubroFilter, key);
                     return (
                       <CommandItem
                         key={key}
                         onSelect={() => {
                           setRubroFilter((prev) =>
-                            prev.includes(key)
-                              ? prev.filter((e) => e !== key)
-                              : [...prev, key],
+                            toggleInclusiveMultiFilter(
+                              prev,
+                              key,
+                              Object.keys(companyRubroLabels),
+                            ),
                           );
                           setPage(1);
                         }}
@@ -1728,9 +1750,16 @@ export default function EmpresasPage() {
                     <button className={`!h-12 flex-1 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer text-left truncate flex items-center gap-1.5 ${sourceFilter.length > 0 ? 'text-black dark:text-gray-100' : 'text-[#8a9aab] dark:text-gray-400'}`}>
                       <PaletteIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
                       <span className="truncate flex-1">
-                        {sourceFilter.length === 0
-                          ? 'Fuente'
-                          : sourceFilter.map((k) => getSourceLabelFromCatalog(k, bundle, contactSourceLabels)).join(', ')}
+                        {formatInclusiveMultiSourceFilterLabel(
+                          sourceFilter,
+                          'Fuente',
+                          (k) =>
+                            getSourceLabelFromCatalog(
+                              k,
+                              bundle,
+                              contactSourceLabels,
+                            ),
+                        )}
                       </span>
                       <ChevronDown className="size-3.5 shrink-0 opacity-50" />
                     </button>
@@ -1740,15 +1769,20 @@ export default function EmpresasPage() {
                       <CommandList className="max-h-[260px] overflow-y-auto">
                         <CommandGroup>
                           {leadSourceOptions.map(({ value: key, label }) => {
-                            const selected = sourceFilter.includes(key);
+                            const selected = isInclusiveMultiFilterSelected(
+                              sourceFilter,
+                              key,
+                            );
                             return (
                               <CommandItem
                                 key={key}
                                 onSelect={() => {
                                   setSourceFilter((prev) =>
-                                    prev.includes(key)
-                                      ? prev.filter((e) => e !== key)
-                                      : [...prev, key],
+                                    toggleInclusiveMultiFilter(
+                                      prev,
+                                      key,
+                                      leadSourceOptions.map((o) => o.value),
+                                    ),
                                   );
                                   setPage(1);
                                 }}
@@ -1773,9 +1807,12 @@ export default function EmpresasPage() {
                     <button className={`!h-12 flex-1 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer text-left truncate flex items-center gap-1.5 ${tipoFilter.length > 0 ? 'text-black dark:text-gray-100' : 'text-[#8a9aab] dark:text-gray-400'}`}>
                       <GitForkIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
                       <span className="truncate flex-1">
-                        {tipoFilter.length === 0
-                          ? 'Tipo'
-                          : tipoFilter.map((k) => companyTipoLabels[k] || k).join(', ')}
+                        {formatInclusiveMultiFilterLabel(
+                          tipoFilter,
+                          'Tipo',
+                          (k) => companyTipoLabels[k] || k,
+                          'tipos',
+                        )}
                       </span>
                       <ChevronDown className="size-3.5 shrink-0 opacity-50" />
                     </button>
@@ -1785,15 +1822,17 @@ export default function EmpresasPage() {
                       <CommandList className="max-h-[260px] overflow-y-auto">
                         <CommandGroup>
                           {Object.entries(companyTipoLabels).map(([key, label]) => {
-                            const selected = tipoFilter.includes(key);
+                            const selected = isInclusiveMultiFilterSelected(tipoFilter, key);
                             return (
                               <CommandItem
                                 key={key}
                                 onSelect={() => {
                                   setTipoFilter((prev) =>
-                                    prev.includes(key)
-                                      ? prev.filter((e) => e !== key)
-                                      : [...prev, key],
+                                    toggleInclusiveMultiFilter(
+                                      prev,
+                                      key,
+                                      Object.keys(companyTipoLabels),
+                                    ),
                                   );
                                   setPage(1);
                                 }}

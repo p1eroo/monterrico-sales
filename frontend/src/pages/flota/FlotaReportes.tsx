@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import type { DateRange } from "react-day-picker";
 import { toast } from "sonner";
 import {
@@ -28,10 +28,8 @@ import {
   getISOWeek,
   format,
   parseISO,
-  isWithinInterval,
   startOfMonth,
   endOfMonth,
-  eachMonthOfInterval,
   eachDayOfInterval,
   min,
 } from "date-fns";
@@ -71,12 +69,8 @@ import {
 } from "@/hooks/useFlotaReportesData";
 import { useFlotaReportesStore } from "@/store/flotaReportesStore";
 import {
-  PieChart,
-  Pie,
-  Cell,
   ResponsiveContainer,
   Legend,
-  BarChart,
   Bar,
   XAxis,
   YAxis,
@@ -88,19 +82,29 @@ import {
   Tooltip,
 } from "recharts";
 import { ChartCardBody } from "@/components/shared/ChartCardBody";
+import { ConversionDailyMixedChart } from "@/components/flota/ConversionDailyMixedChart";
+import { OperadorActivityStackedAreaChart } from "@/components/flota/OperadorActivityStackedAreaChart";
+import { OperadorAsignacionesZonaPanel } from "@/components/flota/OperadorAsignacionesZonaPanel";
+import { ProspectosStackedTimeBarChart } from "@/components/flota/ProspectosStackedTimeBarChart";
+import {
+  buildDailyConversionTimeSeries,
+  buildProspectosByFuenteBarData,
+  buildProspectosByFuenteTimeSeries,
+  buildProspectosByZonaBarData,
+  buildProspectosByZonaTimeSeries,
+  prospectosTimeGranularityLabel,
+  resolveProspectosTimeGranularity,
+} from "@/lib/flotaProspectosReportUtils";
+import {
+  buildOperadorActivityByOperatorDailySeries,
+  buildOperadorActivityTimeSeries,
+  buildOperadorAsignacionesPorDia,
+  buildOperadorActividadMetricasPorDia,
+  mergeOperadorDetallePorDia,
+} from "@/lib/flotaOperadorReportUtils";
 import * as XLSX from "xlsx";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-
-const PIE_COLORS_FUENTE = [
-  "#13944C",
-  "#3b82f6",
-  "#f59e0b",
-  "#8b5cf6",
-  "#ec4899",
-  "#06b6d4",
-];
-const PIE_COLORS_ZONA = ["#13944C", "#22c55e", "#3b82f6", "#06b6d4", "#8b5cf6"];
 
 const CustomTooltip = ({
   active,
@@ -183,6 +187,8 @@ export default function FlotaReportes() {
   const [fuenteModalOpen, setFuenteModalOpen] = useState(false);
   const [zonaModalOpen, setZonaModalOpen] = useState(false);
   const [actividadModalOpen, setActividadModalOpen] = useState(false);
+  const [actividadChartView, setActividadChartView] = useState<'time' | 'operador'>('time');
+  const [actividadSelectedDayIndex, setActividadSelectedDayIndex] = useState(-1);
   const [sunatModalOpen, setSunatModalOpen] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [exportPdfDialogOpen, setExportPdfDialogOpen] = useState(false);
@@ -198,7 +204,7 @@ export default function FlotaReportes() {
   );
 
   const EXPORT_SECTIONS_CONFIG = [
-    { key: "conversion", label: "Conversión Mensual" },
+    { key: "conversion", label: "Conversión" },
     { key: "conductores", label: "Nuevos Conductores" },
     { key: "fuente", label: "Prospectos por Fuente" },
     { key: "zona", label: "Prospectos por Zona" },
@@ -233,7 +239,7 @@ export default function FlotaReportes() {
     };
   }, []);
 
-  const { operadorStats, operadorNames, loadingOperadorStats } =
+  const { operadorStats, operadorStatsDaily, operadorNames, loadingOperadorStats } =
     useFlotaReportesOperadorStats(dateRange);
   const hasInitialSelection = useRef(
     useFlotaReportesStore.getState().operadorNames.length > 0,
@@ -440,131 +446,149 @@ export default function FlotaReportes() {
     });
   }, [sunatFiltered, sunatDateRange]);
 
-  const monthlyProspectsData = useMemo(() => {
-    if (!dateRange?.from || !dateRange?.to) return [];
+  const dailyConversionData = useMemo(
+    () => buildDailyConversionTimeSeries(prospectos, dateRange),
+    [prospectos, dateRange],
+  );
 
-    const interval = eachMonthOfInterval({
-      start: startOfMonth(dateRange.from),
-      end: startOfMonth(dateRange.to),
-    });
+  const prospectosTimeGranularity = useMemo(
+    () => resolveProspectosTimeGranularity(dateRange),
+    [dateRange],
+  );
+  const prospectosTimeGranularityText = prospectosTimeGranularityLabel(
+    prospectosTimeGranularity,
+  );
 
-    return interval.map((m) => {
-      const monthStart = new Date(Date.UTC(m.getFullYear(), m.getMonth(), 1));
-      const monthEnd = new Date(
-        Date.UTC(m.getFullYear(), m.getMonth() + 1, 0, 23, 59, 59, 999),
+  const operadorActivityTime = useMemo(
+    () =>
+      buildOperadorActivityTimeSeries(
+        operadorStatsDaily,
+        selectedOperadores,
+        dateRange,
+        prospectosTimeGranularity,
+      ),
+    [
+      operadorStatsDaily,
+      selectedOperadores,
+      dateRange,
+      prospectosTimeGranularity,
+    ],
+  );
+
+  const operadorActivityByOperatorDaily = useMemo(
+    () =>
+      buildOperadorActivityByOperatorDailySeries(
+        operadorStatsDaily,
+        selectedOperadores,
+        dateRange,
+        prospectosTimeGranularity,
+      ),
+    [
+      operadorStatsDaily,
+      selectedOperadores,
+      dateRange,
+      prospectosTimeGranularity,
+    ],
+  );
+
+  const resolveProspectOperador = useCallback(
+    (raw: string | null) => {
+      if (!raw?.trim()) return null;
+      const v = raw.trim();
+      const exact = operadorNames.find(
+        (n) => n.toLowerCase() === v.toLowerCase(),
       );
+      if (exact) return exact;
+      const byFirst = operadorNames.find(
+        (n) => n.split(" ")[0]?.toLowerCase() === v.toLowerCase(),
+      );
+      if (byFirst) return byFirst;
+      return (
+        operadorNames.find(
+          (n) =>
+            n.toLowerCase().includes(v.toLowerCase()) ||
+            v.toLowerCase().includes(n.toLowerCase()),
+        ) ?? null
+      );
+    },
+    [operadorNames],
+  );
 
-      const nuevos = prospectos.filter((p) => {
-        const d = p.fechaRegistro
-          ? parseISO(p.fechaRegistro)
-          : new Date(p.createdAt);
-        return isWithinInterval(d, { start: monthStart, end: monthEnd });
-      }).length;
-
-      const conversion = prospectos.filter((p) => {
-        if (p.estado?.toLowerCase() !== "afiliado") return false;
-        const d = p.fechaAfiliacion ? parseISO(p.fechaAfiliacion) : null;
-        if (!d) return false;
-        return isWithinInterval(d, { start: monthStart, end: monthEnd });
-      }).length;
-
-      return {
-        name: format(m, "MMM", { locale: es }),
-        nuevos,
-        conversion,
-      };
-    });
-  }, [prospectos, dateRange]);
-
-  const prospectosByFuente = useMemo(() => {
-    if (!dateRange?.from || !dateRange?.to || !prospectos.length) return [];
-
-    const monthStart = new Date(
-      Date.UTC(dateRange.from.getFullYear(), dateRange.from.getMonth(), 1),
-    );
-    const monthEnd = new Date(
-      Date.UTC(
-        dateRange.to.getFullYear(),
-        dateRange.to.getMonth() + 1,
-        0,
-        23,
-        59,
-        59,
-        999,
+  const operadorAsignacionesPorDia = useMemo(
+    () =>
+      buildOperadorAsignacionesPorDia(
+        prospectos,
+        dateRange,
+        selectedOperadores,
+        resolveProspectOperador,
+        prospectosTimeGranularity,
       ),
-    );
-    const interval = { start: monthStart, end: monthEnd };
+    [
+      prospectos,
+      dateRange,
+      selectedOperadores,
+      resolveProspectOperador,
+      prospectosTimeGranularity,
+    ],
+  );
 
-    const filtered = prospectos.filter((p) => {
-      const d = p.fechaRegistro
-        ? parseISO(p.fechaRegistro)
-        : new Date(p.createdAt);
-      return isWithinInterval(d, interval);
-    });
-
-    const total = filtered.length;
-    if (total === 0) return [];
-
-    const map: Record<string, number> = {};
-    for (const p of filtered) {
-      if (!p.redSocial) continue;
-      map[p.redSocial] = (map[p.redSocial] || 0) + 1;
-    }
-
-    return Object.entries(map)
-      .map(([name, count]) => ({
-        name,
-        value: Math.round((count / total) * 100),
-        count,
-      }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 6);
-  }, [prospectos, dateRange]);
-
-  const prospectosByZona = useMemo(() => {
-    if (!dateRange?.from || !dateRange?.to || !prospectos.length) return [];
-
-    const monthStart = new Date(
-      Date.UTC(dateRange.from.getFullYear(), dateRange.from.getMonth(), 1),
-    );
-    const monthEnd = new Date(
-      Date.UTC(
-        dateRange.to.getFullYear(),
-        dateRange.to.getMonth() + 1,
-        0,
-        23,
-        59,
-        59,
-        999,
+  const operadorActividadMetricasPorDia = useMemo(
+    () =>
+      buildOperadorActividadMetricasPorDia(
+        operadorStatsDaily,
+        selectedOperadores,
+        dateRange,
+        prospectosTimeGranularity,
       ),
-    );
-    const interval = { start: monthStart, end: monthEnd };
+    [
+      operadorStatsDaily,
+      selectedOperadores,
+      dateRange,
+      prospectosTimeGranularity,
+    ],
+  );
 
-    const filtered = prospectos.filter((p) => {
-      const d = p.fechaRegistro
-        ? parseISO(p.fechaRegistro)
-        : new Date(p.createdAt);
-      return isWithinInterval(d, interval);
-    });
+  const operadorDetallePorDia = useMemo(
+    () =>
+      mergeOperadorDetallePorDia(
+        operadorActividadMetricasPorDia,
+        operadorAsignacionesPorDia,
+      ),
+    [operadorActividadMetricasPorDia, operadorAsignacionesPorDia],
+  );
 
-    const total = filtered.length;
-    if (total === 0) return [];
-
-    const map: Record<string, number> = {};
-    for (const p of filtered) {
-      if (!p.distrito) continue;
-      map[p.distrito] = (map[p.distrito] || 0) + 1;
+  useEffect(() => {
+    if (!actividadModalOpen || actividadChartView !== "operador") return;
+    const lastIdx = operadorDetallePorDia.length - 1;
+    if (lastIdx < 0) {
+      setActividadSelectedDayIndex(-1);
+      return;
     }
+    const lastWithData = [...operadorDetallePorDia.keys()]
+      .reverse()
+      .find((i) => operadorDetallePorDia[i].operadores.length > 0);
+    setActividadSelectedDayIndex(lastWithData ?? lastIdx);
+  }, [actividadModalOpen, actividadChartView, operadorDetallePorDia]);
 
-    return Object.entries(map)
-      .map(([name, count]) => ({
-        name,
-        value: Math.round((count / total) * 100),
-        count,
-      }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 6);
-  }, [prospectos, dateRange]);
+  const prospectosByFuente = useMemo(
+    () => buildProspectosByFuenteBarData(prospectos, dateRange),
+    [prospectos, dateRange],
+  );
+
+  const prospectosByZona = useMemo(
+    () => buildProspectosByZonaBarData(prospectos, dateRange),
+    [prospectos, dateRange],
+  );
+
+  const prospectosByFuenteTime = useMemo(
+    () => buildProspectosByFuenteTimeSeries(prospectos, dateRange),
+    [prospectos, dateRange],
+  );
+
+  const prospectosByZonaTime = useMemo(
+    () => buildProspectosByZonaTimeSeries(prospectos, dateRange),
+    [prospectos, dateRange],
+  );
 
   function padExportStamp(d: Date) {
     const p = (n: number) => String(n).padStart(2, "0");
@@ -621,11 +645,11 @@ export default function FlotaReportes() {
     };
 
     addSheet(
-      "Conversión Mensual",
-      monthlyProspectsData.map((x) => ({
-        Mes: x.name,
-        Nuevos: x.nuevos,
-        Conversiones: x.conversion,
+      "Conversión",
+      dailyConversionData.categories.map((fecha, i) => ({
+        Fecha: fecha,
+        Nuevos: dailyConversionData.nuevos[i] ?? 0,
+        Conversiones: dailyConversionData.conversiones[i] ?? 0,
       })),
     );
     addSheet(
@@ -638,18 +662,28 @@ export default function FlotaReportes() {
     );
     addSheet(
       "Prospectos por Fuente",
-      prospectosByFuente.map((x) => ({
+      prospectosByFuente.allFuentes.map((x) => ({
         Fuente: x.name,
         Cantidad: x.count,
-        Porcentaje: `${x.value}%`,
       })),
     );
     addSheet(
       "Prospectos por Zona",
-      prospectosByZona.map((x) => ({
+      prospectosByZona.allZones.map((x) => ({
         Distrito: x.name,
         Cantidad: x.count,
-        Porcentaje: `${x.value}%`,
+      })),
+    );
+    addSheet(
+      "Actividad Operador",
+      operadorActivityTime.categories.map((fecha, i) => ({
+        Fecha: fecha,
+        Asignados: operadorActivityTime.series[0]?.data[i] ?? 0,
+        Chats: operadorActivityTime.series[1]?.data[i] ?? 0,
+        Enviados: operadorActivityTime.series[2]?.data[i] ?? 0,
+        Recibidos: operadorActivityTime.series[3]?.data[i] ?? 0,
+        Llamadas: operadorActivityTime.series[4]?.data[i] ?? 0,
+        "Citas programadas": operadorActivityTime.series[5]?.data[i] ?? 0,
       })),
     );
     addSheet(
@@ -791,12 +825,12 @@ export default function FlotaReportes() {
       }[] = [
         {
           key: "conversion",
-          title: "Conversión Mensual",
-          head: [["Mes", "Nuevos", "Conversiones"]],
-          body: monthlyProspectsData.map((x) => [
-            x.name,
-            x.nuevos,
-            x.conversion,
+          title: "Conversión",
+          head: [["Fecha", "Nuevos", "Conversiones"]],
+          body: dailyConversionData.categories.map((fecha, i) => [
+            fecha,
+            dailyConversionData.nuevos[i] ?? 0,
+            dailyConversionData.conversiones[i] ?? 0,
           ]),
         },
         {
@@ -812,14 +846,14 @@ export default function FlotaReportes() {
         {
           key: "fuente",
           title: "Prospectos por Fuente",
-          head: [["Fuente", "Cantidad", "%"]],
-          body: prospectosByFuente.map((x) => [x.name, x.count, `${x.value}%`]),
+          head: [["Fuente", "Cantidad"]],
+          body: prospectosByFuente.allFuentes.map((x) => [x.name, x.count]),
         },
         {
           key: "zona",
           title: "Prospectos por Zona",
-          head: [["Distrito", "Cantidad", "%"]],
-          body: prospectosByZona.map((x) => [x.name, x.count, `${x.value}%`]),
+          head: [["Distrito", "Cantidad"]],
+          body: prospectosByZona.allZones.map((x) => [x.name, x.count]),
         },
         {
           key: "operador",
@@ -955,7 +989,10 @@ export default function FlotaReportes() {
           <Card id="chart-conversion">
             <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2">
               <div className="min-w-0 space-y-1">
-                <CardTitle className="text-base font-medium">Conversión Mensual</CardTitle>
+                <CardTitle className="text-base font-medium">Conversión</CardTitle>
+                <p className="text-xs text-muted-foreground capitalize">
+                  Distribuido {prospectosTimeGranularityText}
+                </p>
               </div>
               <Button
                 type="button"
@@ -964,9 +1001,9 @@ export default function FlotaReportes() {
                 className="h-8 w-8 shrink-0 text-muted-foreground"
                 onClick={() => setConversionModalOpen(true)}
                 disabled={
-                  loadingProspectos || monthlyProspectsData.length === 0
+                  loadingProspectos || !dailyConversionData.hasData
                 }
-                aria-label="Ampliar conversión mensual"
+                aria-label="Ampliar conversión"
               >
                 <Maximize2 className="h-4 w-4" />
               </Button>
@@ -974,73 +1011,12 @@ export default function FlotaReportes() {
             <CardContent>
               <ChartCardBody
                 loading={loadingProspectos}
-                isEmpty={monthlyProspectsData.length === 0}
+                isEmpty={!dailyConversionData.hasData}
                 variant="bar"
                 className="h-80"
                 emptyMessage="Sin datos de conversión en el periodo"
               >
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={monthlyProspectsData}
-                    barGap={4}
-                    barCategoryGap="20%"
-                  >
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      vertical={false}
-                      stroke={chartTheme.gridStroke}
-                      opacity={0.4}
-                    />
-                    <XAxis
-                      dataKey="name"
-                      tick={{ fontSize: 12 }}
-                      tickLine={false}
-                      axisLine={false}
-                      dy={8}
-                    />
-                    <YAxis
-                      tick={{ fontSize: 12 }}
-                      tickLine={false}
-                      axisLine={false}
-                      allowDecimals={false}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        borderRadius: "8px",
-                        border: `1px solid ${chartTheme.tooltipBorder}`,
-                        backgroundColor: chartTheme.tooltipBg,
-                        color: chartTheme.tooltipText,
-                        fontSize: "13px",
-                      }}
-                      itemStyle={{ color: chartTheme.tooltipText }}
-                      labelStyle={{
-                        color: chartTheme.tooltipTextMuted,
-                        marginBottom: 4,
-                      }}
-                    />
-                    <Legend
-                      verticalAlign="top"
-                      align="center"
-                      height={24}
-                      iconType="circle"
-                      wrapperStyle={{ fontSize: "12px" }}
-                    />
-                    <Bar
-                      dataKey="nuevos"
-                      name="Prospectos nuevos"
-                      fill="#13944C"
-                      radius={[4, 4, 0, 0]}
-                      maxBarSize={40}
-                    />
-                    <Bar
-                      dataKey="conversion"
-                      name="Conversiones"
-                      fill="#3b82f6"
-                      radius={[4, 4, 0, 0]}
-                      maxBarSize={40}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
+                <ConversionDailyMixedChart data={dailyConversionData} />
               </ChartCardBody>
             </CardContent>
           </Card>
@@ -1051,6 +1027,9 @@ export default function FlotaReportes() {
                 <CardTitle className="text-base font-medium">
                   Actividad por Operador
                 </CardTitle>
+                <p className="text-xs text-muted-foreground capitalize">
+                  Distribuido {prospectosTimeGranularityText}
+                </p>
               </div>
               <Button
                 type="button"
@@ -1059,7 +1038,7 @@ export default function FlotaReportes() {
                 className="h-8 w-8 shrink-0 text-muted-foreground"
                 onClick={() => setActividadModalOpen(true)}
                 disabled={
-                  loadingOperadorStats || filteredOperadorStats.length === 0
+                  loadingOperadorStats || !operadorActivityTime.hasData
                 }
                 aria-label="Ampliar actividad por operador"
               >
@@ -1069,101 +1048,12 @@ export default function FlotaReportes() {
             <CardContent className="flex flex-col flex-1 pb-4">
               <ChartCardBody
                 loading={loadingOperadorStats}
-                isEmpty={filteredOperadorStats.length === 0}
+                isEmpty={!operadorActivityTime.hasData}
                 variant="stackedBar"
                 className="flex-1 min-h-0"
                 emptyMessage="Sin datos de operadores en el periodo"
               >
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={filteredOperadorStats}
-                    barSize={32}
-                    barGap={2}
-                  >
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      vertical={false}
-                      stroke={chartTheme.gridStroke}
-                      opacity={0.4}
-                    />
-                    <XAxis
-                      dataKey="operador"
-                      tick={{ fontSize: 12 }}
-                      tickLine={false}
-                      axisLine={false}
-                      tickFormatter={(v: string) => v.split(" ")[0]}
-                    />
-                    <YAxis
-                      tick={{ fontSize: 12 }}
-                      tickLine={false}
-                      axisLine={false}
-                      allowDecimals={false}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        borderRadius: "8px",
-                        border: `1px solid ${chartTheme.tooltipBorder}`,
-                        backgroundColor: chartTheme.tooltipBg,
-                        color: chartTheme.tooltipText,
-                        fontSize: "13px",
-                      }}
-                      itemStyle={{ color: chartTheme.tooltipText }}
-                      labelStyle={{
-                        color: chartTheme.tooltipTextMuted,
-                        marginBottom: 4,
-                      }}
-                    />
-                    <Legend
-                      verticalAlign="top"
-                      align="center"
-                      height={24}
-                      iconType="circle"
-                      wrapperStyle={{ fontSize: "12px" }}
-                    />
-                    <Bar
-                      dataKey="prospectosAsignados"
-                      name="Asignados"
-                      fill="#13944C"
-                      radius={[0, 3, 3, 0]}
-                      stackId="a"
-                    />
-                    <Bar
-                      dataKey="chatsActivos"
-                      name="Chats"
-                      fill="#3b82f6"
-                      radius={[0, 3, 3, 0]}
-                      stackId="a"
-                    />
-                    <Bar
-                      dataKey="mensajesEnviados"
-                      name="Enviados"
-                      fill="#8b5cf6"
-                      radius={[0, 3, 3, 0]}
-                      stackId="a"
-                    />
-                    <Bar
-                      dataKey="mensajesRecibidos"
-                      name="Recibidos"
-                      fill="#f59e0b"
-                      radius={[0, 3, 3, 0]}
-                      stackId="a"
-                    />
-                    <Bar
-                      dataKey="llamadas"
-                      name="Llamadas"
-                      fill="#ec4899"
-                      radius={[0, 3, 3, 0]}
-                      stackId="a"
-                    />
-                    <Bar
-                      dataKey="citasProgramadas"
-                      name="Citas programadas"
-                      fill="#06b6d4"
-                      radius={[0, 3, 3, 0]}
-                      stackId="a"
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
+                <OperadorActivityStackedAreaChart data={operadorActivityTime} />
               </ChartCardBody>
             </CardContent>
           </Card>
@@ -1177,6 +1067,9 @@ export default function FlotaReportes() {
                 <CardTitle className="text-base font-medium">
                   Prospectos por Fuente
                 </CardTitle>
+                <p className="text-xs text-muted-foreground capitalize">
+                  Distribuido {prospectosTimeGranularityText}
+                </p>
               </div>
               <Button
                 type="button"
@@ -1184,7 +1077,7 @@ export default function FlotaReportes() {
                 size="icon"
                 className="h-8 w-8 shrink-0 text-muted-foreground"
                 onClick={() => setFuenteModalOpen(true)}
-                disabled={loadingProspectos || prospectosByFuente.length === 0}
+                disabled={loadingProspectos || !prospectosByFuenteTime.hasData}
                 aria-label="Ampliar prospectos por fuente"
               >
                 <Maximize2 className="h-4 w-4" />
@@ -1193,41 +1086,12 @@ export default function FlotaReportes() {
             <CardContent>
               <ChartCardBody
                 loading={loadingProspectos}
-                isEmpty={prospectosByFuente.length === 0}
-                variant="donut"
-                className="h-87.5"
+                isEmpty={!prospectosByFuenteTime.hasData}
+                variant="bar"
+                className="min-h-87.5"
                 emptyMessage="Sin datos en el periodo"
               >
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={prospectosByFuente}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={70}
-                      outerRadius={115}
-                      dataKey="count"
-                      nameKey="name"
-                      stroke="none"
-                      paddingAngle={2}
-                      animationDuration={300}
-                      label={({ name, percent }) =>
-                        `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
-                      }
-                      labelLine={{ strokeWidth: 1 }}
-                    >
-                      {prospectosByFuente.map((_, index) => (
-                        <Cell
-                          key={index}
-                          fill={
-                            PIE_COLORS_FUENTE[index % PIE_COLORS_FUENTE.length]
-                          }
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
+                <ProspectosStackedTimeBarChart data={prospectosByFuenteTime} />
               </ChartCardBody>
             </CardContent>
           </Card>
@@ -1236,6 +1100,9 @@ export default function FlotaReportes() {
             <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2">
               <div className="min-w-0 space-y-1">
                 <CardTitle className="text-base font-medium">Prospectos por Zona</CardTitle>
+                <p className="text-xs text-muted-foreground capitalize">
+                  Distribuido {prospectosTimeGranularityText}
+                </p>
               </div>
               <Button
                 type="button"
@@ -1243,7 +1110,7 @@ export default function FlotaReportes() {
                 size="icon"
                 className="h-8 w-8 shrink-0 text-muted-foreground"
                 onClick={() => setZonaModalOpen(true)}
-                disabled={loadingProspectos || prospectosByZona.length === 0}
+                disabled={loadingProspectos || !prospectosByZonaTime.hasData}
                 aria-label="Ampliar prospectos por zona"
               >
                 <Maximize2 className="h-4 w-4" />
@@ -1252,39 +1119,12 @@ export default function FlotaReportes() {
             <CardContent>
               <ChartCardBody
                 loading={loadingProspectos}
-                isEmpty={prospectosByZona.length === 0}
-                variant="donut"
-                className="h-87.5"
+                isEmpty={!prospectosByZonaTime.hasData}
+                variant="bar"
+                className="min-h-87.5"
                 emptyMessage="Sin datos en el periodo"
               >
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={prospectosByZona}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={70}
-                      outerRadius={115}
-                      dataKey="count"
-                      nameKey="name"
-                      stroke="none"
-                      paddingAngle={2}
-                      animationDuration={300}
-                      label={({ name, percent }) =>
-                        `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
-                      }
-                      labelLine={{ strokeWidth: 1 }}
-                    >
-                      {prospectosByZona.map((_, index) => (
-                        <Cell
-                          key={index}
-                          fill={PIE_COLORS_ZONA[index % PIE_COLORS_ZONA.length]}
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
+                <ProspectosStackedTimeBarChart data={prospectosByZonaTime} />
               </ChartCardBody>
             </CardContent>
           </Card>
@@ -1651,75 +1491,15 @@ export default function FlotaReportes() {
         >
           <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
             <DialogTitle className="pr-8 text-base">
-              Conversión Mensual
+              Conversión
             </DialogTitle>
           </DialogHeader>
           <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 sm:px-6 sm:pb-6">
-            {monthlyProspectsData.length > 0 && (
-              <div className="h-130 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={monthlyProspectsData}
-                    barGap={4}
-                    barCategoryGap="20%"
-                  >
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      vertical={false}
-                      stroke={chartTheme.gridStroke}
-                      opacity={0.4}
-                    />
-                    <XAxis
-                      dataKey="name"
-                      tick={{ fontSize: 12 }}
-                      tickLine={false}
-                      axisLine={false}
-                      dy={8}
-                    />
-                    <YAxis
-                      tick={{ fontSize: 12 }}
-                      tickLine={false}
-                      axisLine={false}
-                      allowDecimals={false}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        borderRadius: "8px",
-                        border: `1px solid ${chartTheme.tooltipBorder}`,
-                        backgroundColor: chartTheme.tooltipBg,
-                        color: chartTheme.tooltipText,
-                        fontSize: "13px",
-                      }}
-                      itemStyle={{ color: chartTheme.tooltipText }}
-                      labelStyle={{
-                        color: chartTheme.tooltipTextMuted,
-                        marginBottom: 4,
-                      }}
-                    />
-                    <Legend
-                      verticalAlign="top"
-                      align="center"
-                      height={24}
-                      iconType="circle"
-                      wrapperStyle={{ fontSize: "12px" }}
-                    />
-                    <Bar
-                      dataKey="nuevos"
-                      name="Prospectos nuevos"
-                      fill="#13944C"
-                      radius={[4, 4, 0, 0]}
-                      maxBarSize={60}
-                    />
-                    <Bar
-                      dataKey="conversion"
-                      name="Conversiones"
-                      fill="#3b82f6"
-                      radius={[4, 4, 0, 0]}
-                      maxBarSize={60}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+            {dailyConversionData.hasData && (
+              <ConversionDailyMixedChart
+                data={dailyConversionData}
+                chartHeight={520}
+              />
             )}
           </div>
         </DialogContent>
@@ -1860,39 +1640,11 @@ export default function FlotaReportes() {
             </DialogTitle>
           </DialogHeader>
           <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 sm:px-6 sm:pb-6">
-            {prospectosByFuente.length > 0 && (
-              <div className="h-130 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={prospectosByFuente}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={90}
-                      outerRadius={140}
-                      dataKey="count"
-                      nameKey="name"
-                      stroke="none"
-                      paddingAngle={3}
-                      animationDuration={300}
-                      label={({ name, percent }) =>
-                        `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
-                      }
-                      labelLine={{ strokeWidth: 1 }}
-                    >
-                      {prospectosByFuente.map((_, index) => (
-                        <Cell
-                          key={index}
-                          fill={
-                            PIE_COLORS_FUENTE[index % PIE_COLORS_FUENTE.length]
-                          }
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
+            {prospectosByFuenteTime.hasData && (
+              <ProspectosStackedTimeBarChart
+                data={prospectosByFuenteTime}
+                chartHeight={420}
+              />
             )}
           </div>
         </DialogContent>
@@ -1909,146 +1661,109 @@ export default function FlotaReportes() {
             </DialogTitle>
           </DialogHeader>
           <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 sm:px-6 sm:pb-6">
-            {prospectosByZona.length > 0 && (
-              <div className="h-130 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={prospectosByZona}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={90}
-                      outerRadius={140}
-                      dataKey="count"
-                      nameKey="name"
-                      stroke="none"
-                      paddingAngle={3}
-                      animationDuration={300}
-                      label={({ name, percent }) =>
-                        `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
-                      }
-                      labelLine={{ strokeWidth: 1 }}
-                    >
-                      {prospectosByZona.map((_, index) => (
-                        <Cell
-                          key={index}
-                          fill={PIE_COLORS_ZONA[index % PIE_COLORS_ZONA.length]}
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
+            {prospectosByZonaTime.hasData && (
+              <ProspectosStackedTimeBarChart
+                data={prospectosByZonaTime}
+                chartHeight={480}
+              />
             )}
           </div>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={actividadModalOpen} onOpenChange={setActividadModalOpen}>
+      <Dialog
+        open={actividadModalOpen}
+        onOpenChange={(open) => {
+          setActividadModalOpen(open);
+          if (!open) {
+            setActividadChartView("time");
+            setActividadSelectedDayIndex(-1);
+          }
+        }}
+      >
         <DialogContent
-          className="flex max-h-[min(calc(100dvh-1.5rem),900px)] w-full max-w-[min(100vw-1rem,56rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(100vw-2rem,56rem)]"
+          className="flex max-h-[min(calc(100dvh-1.5rem),960px)] w-full max-w-[min(100vw-1rem,80rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(100vw-2rem,80rem)]"
           showCloseButton
         >
           <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
             <DialogTitle className="pr-8 text-base">
               Actividad por Operador
             </DialogTitle>
-          </DialogHeader>
-          <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 sm:px-6 sm:pb-6">
-            {filteredOperadorStats.length > 0 && (
-              <div className="h-130 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={filteredOperadorStats}
-                    barSize={50}
-                    barGap={4}
-                  >
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      vertical={false}
-                      stroke={chartTheme.gridStroke}
-                      opacity={0.4}
-                    />
-                    <XAxis
-                      dataKey="operador"
-                      tick={{ fontSize: 12 }}
-                      tickLine={false}
-                      axisLine={false}
-                      tickFormatter={(v: string) => v.split(" ")[0]}
-                    />
-                    <YAxis
-                      tick={{ fontSize: 12 }}
-                      tickLine={false}
-                      axisLine={false}
-                      allowDecimals={false}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        borderRadius: "8px",
-                        border: `1px solid ${chartTheme.tooltipBorder}`,
-                        backgroundColor: chartTheme.tooltipBg,
-                        color: chartTheme.tooltipText,
-                        fontSize: "13px",
-                      }}
-                      itemStyle={{ color: chartTheme.tooltipText }}
-                      labelStyle={{
-                        color: chartTheme.tooltipTextMuted,
-                        marginBottom: 4,
-                      }}
-                    />
-                    <Legend
-                      verticalAlign="top"
-                      align="center"
-                      height={24}
-                      iconType="circle"
-                      wrapperStyle={{ fontSize: "12px" }}
-                    />
-                    <Bar
-                      dataKey="prospectosAsignados"
-                      name="Asignados"
-                      fill="#13944C"
-                      radius={[0, 3, 3, 0]}
-                      stackId="a"
-                    />
-                    <Bar
-                      dataKey="chatsActivos"
-                      name="Chats"
-                      fill="#3b82f6"
-                      radius={[0, 3, 3, 0]}
-                      stackId="a"
-                    />
-                    <Bar
-                      dataKey="mensajesEnviados"
-                      name="Enviados"
-                      fill="#8b5cf6"
-                      radius={[0, 3, 3, 0]}
-                      stackId="a"
-                    />
-                    <Bar
-                      dataKey="mensajesRecibidos"
-                      name="Recibidos"
-                      fill="#f59e0b"
-                      radius={[0, 3, 3, 0]}
-                      stackId="a"
-                    />
-                    <Bar
-                      dataKey="llamadas"
-                      name="Llamadas"
-                      fill="#ec4899"
-                      radius={[0, 3, 3, 0]}
-                      stackId="a"
-                    />
-                    <Bar
-                      dataKey="citasProgramadas"
-                      name="Citas programadas"
-                      fill="#06b6d4"
-                      radius={[0, 3, 3, 0]}
-                      stackId="a"
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 pr-8 pt-3">
+              <div className="flex w-fit rounded-md border border-border/80 bg-muted/30 p-0.5">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    'h-7 rounded px-2.5 text-xs font-medium',
+                    actividadChartView === 'time' && 'bg-background shadow-sm',
+                  )}
+                  onClick={() => setActividadChartView('time')}
+                >
+                  Por tipo
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    'h-7 rounded px-2.5 text-xs font-medium',
+                    actividadChartView === 'operador' && 'bg-background shadow-sm',
+                  )}
+                  onClick={() => setActividadChartView('operador')}
+                >
+                  Por operador
+                </Button>
               </div>
+              <p className="text-xs text-muted-foreground capitalize">
+                {actividadChartView === 'time'
+                  ? `Actividad por tipo · ${prospectosTimeGranularityText}`
+                  : `Actividad por operador · ${prospectosTimeGranularityText}`}
+              </p>
+            </div>
+          </DialogHeader>
+          <div
+            className={cn(
+              'min-h-0 w-full flex-1 px-4 pb-5 pt-0 sm:px-6 sm:pb-6',
+              actividadChartView === 'operador' &&
+                operadorActivityByOperatorDaily.hasData
+                ? 'overflow-hidden'
+                : 'overflow-y-auto overflow-x-hidden',
+            )}
+          >
+            {actividadChartView === 'time' ? (
+              operadorActivityTime.hasData ? (
+                <OperadorActivityStackedAreaChart
+                  data={operadorActivityTime}
+                  chartHeight={580}
+                />
+              ) : (
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  Sin datos de operadores en el periodo.
+                </p>
+              )
+            ) : operadorActivityByOperatorDaily.hasData ? (
+              <div className="grid h-[580px] min-h-0 gap-4 overflow-hidden lg:grid-cols-[minmax(0,1fr)_300px]">
+                <div className="min-h-0 overflow-hidden">
+                  <ProspectosStackedTimeBarChart
+                    data={operadorActivityByOperatorDaily}
+                    countLabel="actividad"
+                    chartHeight={580}
+                    selectedDayIndex={actividadSelectedDayIndex}
+                    onDaySelect={setActividadSelectedDayIndex}
+                  />
+                </div>
+                <OperadorAsignacionesZonaPanel
+                  data={operadorDetallePorDia}
+                  selectedDayIndex={actividadSelectedDayIndex}
+                  className="h-full"
+                />
+              </div>
+            ) : (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                Sin actividad de operadores en el periodo.
+              </p>
             )}
           </div>
         </DialogContent>

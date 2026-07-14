@@ -1,6 +1,7 @@
 import type { DateRange } from 'react-day-picker';
 import { cn } from '@/lib/utils';
 import { dateRangeToLimaYmdBounds } from '@/lib/crmTimezone';
+import { UNASSIGNED_SOURCE_SLUG } from '@/lib/sourcesByWeekChartUtils';
 
 /** Mismo borde y fondo que `Card variant="surface"` (sin sombra). */
 export const comercialCardSurfaceClass =
@@ -37,4 +38,120 @@ export function dateRangeToQueryBounds(range: DateRange | undefined): {
   to?: string;
 } {
   return dateRangeToLimaYmdBounds(range);
+}
+
+/**
+ * Multi-select inclusivo:
+ * - `[]` = todas las opciones activas (sin filtro en API)
+ * - `[INCLUSIVE_MULTI_NONE]` = ninguna del catálogo (en fuente → sin fuente en API)
+ * - lista parcial = filtro activo
+ */
+export const INCLUSIVE_MULTI_NONE = '__none__';
+
+export function isInclusiveMultiFilterNone(
+  selected: readonly string[],
+): boolean {
+  return selected.length === 1 && selected[0] === INCLUSIVE_MULTI_NONE;
+}
+
+export function isInclusiveMultiFilterAll(
+  selected: readonly string[],
+): boolean {
+  return selected.length === 0;
+}
+
+export function isInclusiveMultiFilterSelected(
+  selected: readonly string[],
+  key: string,
+): boolean {
+  if (isInclusiveMultiFilterNone(selected)) return false;
+  return selected.length === 0 || selected.includes(key);
+}
+
+export function matchesInclusiveMultiFilterValue(
+  selected: readonly string[],
+  value: string | null | undefined,
+): boolean {
+  if (isInclusiveMultiFilterNone(selected)) return false;
+  if (selected.length === 0) return true;
+  return value != null && value !== '' && selected.includes(value);
+}
+
+export function toggleInclusiveMultiFilter(
+  selected: string[],
+  key: string,
+  allKeys: readonly string[],
+): string[] {
+  const isSelected = isInclusiveMultiFilterSelected(selected, key);
+
+  if (isSelected) {
+    if (selected.length === 0) {
+      return allKeys.filter((k) => k !== key);
+    }
+    const next = selected.filter((k) => k !== key);
+    if (next.length === 0) {
+      return [INCLUSIVE_MULTI_NONE];
+    }
+    return next;
+  }
+
+  if (isInclusiveMultiFilterNone(selected)) {
+    return [key];
+  }
+
+  const next = [...selected, key];
+  if (
+    next.length >= allKeys.length &&
+    allKeys.every((k) => next.includes(k))
+  ) {
+    return [];
+  }
+  return next;
+}
+
+/** Etiqueta del botón: una opción por nombre; varias → contador (evita truncado CSS). */
+export function formatInclusiveMultiFilterLabel(
+  selected: string[],
+  placeholder: string,
+  resolveLabel: (key: string) => string,
+  countLabel: string,
+): string {
+  if (isInclusiveMultiFilterNone(selected)) return 'Ninguna';
+  if (selected.length === 0) return placeholder;
+  if (selected.length === 1) return resolveLabel(selected[0]!);
+  return `${selected.length} ${countLabel}`;
+}
+
+/** Parámetro API para filtro de fuente: ninguna del catálogo → sin fuente. */
+export function inclusiveMultiSourceFilterToApiParam(
+  selected: readonly string[],
+): string | undefined {
+  if (isInclusiveMultiFilterNone(selected)) return UNASSIGNED_SOURCE_SLUG;
+  if (selected.length === 0) return undefined;
+  return selected.join(',');
+}
+
+export function matchesInclusiveMultiSourceFilterValue(
+  selected: readonly string[],
+  value: string | null | undefined,
+): boolean {
+  if (isInclusiveMultiFilterNone(selected)) {
+    return value == null || value.trim() === '';
+  }
+  if (selected.length === 0) return true;
+  return value != null && value !== '' && selected.includes(value);
+}
+
+export function formatInclusiveMultiSourceFilterLabel(
+  selected: string[],
+  placeholder: string,
+  resolveLabel: (key: string) => string,
+): string {
+  if (isInclusiveMultiFilterNone(selected)) return 'Sin fuente';
+  return formatInclusiveMultiFilterLabel(
+    selected,
+    placeholder,
+    resolveLabel,
+    'fuentes',
+  );
 }

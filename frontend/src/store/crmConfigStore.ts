@@ -31,6 +31,7 @@ export function getSourceLabelFromCatalog(
   bundle: CrmConfigBundle | null,
   fallback: Record<string, string> = contactSourceLabels,
 ): string {
+  if (slug === '__sin_fuente__') return 'Sin fuente';
   const s = bundle?.catalog.leadSources.find((x) => x.slug === slug);
   if (s) return s.name;
   return fallback[slug] ?? slug;

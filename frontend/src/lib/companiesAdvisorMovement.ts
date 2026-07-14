@@ -23,12 +23,16 @@ export type AdvisorFunnelMovementSnapshot = {
   advisors: AdvisorFunnelMovementCardData[];
 };
 
-export type CompaniesAdvisorFunnelMovementApi = {
+export type AdvisorFunnelMovementBundle = {
+  currentWeekLabel: string;
+  periods: AdvisorFunnelMovementSnapshot[];
+};
+
+export type CompaniesAdvisorFunnelMovementPeriodApi = {
   fromWeekNumber: number;
   toWeekNumber: number;
   fromWeekLabel: string;
   toWeekLabel: string;
-  currentWeekLabel: string;
   title: string;
   advisors: {
     id: string;
@@ -36,6 +40,11 @@ export type CompaniesAdvisorFunnelMovementApi = {
     activeProspects: number;
     metrics: AdvisorFunnelMovementMetrics;
   }[];
+};
+
+export type CompaniesAdvisorFunnelMovementApi = {
+  currentWeekLabel: string;
+  periods: CompaniesAdvisorFunnelMovementPeriodApi[];
 };
 
 const ADVISOR_ACCENT_CLASSES = [
@@ -47,41 +56,23 @@ const ADVISOR_ACCENT_CLASSES = [
   'bg-orange-500/15 text-orange-800 ring-orange-500/25 dark:text-orange-200',
 ] as const;
 
-const EMPTY_SNAPSHOT: AdvisorFunnelMovementSnapshot = {
-  fromWeekNumber: 0,
-  toWeekNumber: 0,
-  fromWeekLabel: '—',
-  toWeekLabel: '—',
+const EMPTY_BUNDLE: AdvisorFunnelMovementBundle = {
   currentWeekLabel: '—',
-  title: 'Movimiento del funnel',
-  advisors: [],
+  periods: [],
 };
 
-export function buildAdvisorFunnelMovementView(
-  api: CompaniesAdvisorFunnelMovementApi | null | undefined,
+function mapPeriodToSnapshot(
+  period: CompaniesAdvisorFunnelMovementPeriodApi,
+  currentWeekLabel: string,
 ): AdvisorFunnelMovementSnapshot {
-  if (!api?.advisors?.length) {
-    return api
-      ? {
-          fromWeekNumber: api.fromWeekNumber,
-          toWeekNumber: api.toWeekNumber,
-          fromWeekLabel: api.fromWeekLabel,
-          toWeekLabel: api.toWeekLabel,
-          currentWeekLabel: api.currentWeekLabel,
-          title: api.title,
-          advisors: [],
-        }
-      : EMPTY_SNAPSHOT;
-  }
-
   return {
-    fromWeekNumber: api.fromWeekNumber,
-    toWeekNumber: api.toWeekNumber,
-    fromWeekLabel: api.fromWeekLabel,
-    toWeekLabel: api.toWeekLabel,
-    currentWeekLabel: api.currentWeekLabel,
-    title: api.title,
-    advisors: api.advisors.map((advisor, index) => ({
+    fromWeekNumber: period.fromWeekNumber,
+    toWeekNumber: period.toWeekNumber,
+    fromWeekLabel: period.fromWeekLabel,
+    toWeekLabel: period.toWeekLabel,
+    currentWeekLabel,
+    title: period.title,
+    advisors: (period.advisors ?? []).map((advisor, index) => ({
       ...advisor,
       metrics: { ...advisor.metrics },
       accentClass:
@@ -89,4 +80,43 @@ export function buildAdvisorFunnelMovementView(
         'bg-muted text-foreground ring-border',
     })),
   };
+}
+
+export function buildAdvisorFunnelMovementBundle(
+  api: CompaniesAdvisorFunnelMovementApi | null | undefined,
+): AdvisorFunnelMovementBundle {
+  if (!api?.periods?.length) {
+    return {
+      currentWeekLabel: api?.currentWeekLabel ?? '—',
+      periods: [],
+    };
+  }
+
+  const currentWeekLabel = api.currentWeekLabel;
+  return {
+    currentWeekLabel,
+    periods: api.periods.map((period) => mapPeriodToSnapshot(period, currentWeekLabel)),
+  };
+}
+
+/** @deprecated Usar `buildAdvisorFunnelMovementBundle`; conserva el primer periodo. */
+export function buildAdvisorFunnelMovementView(
+  api: CompaniesAdvisorFunnelMovementApi | null | undefined,
+): AdvisorFunnelMovementSnapshot {
+  const bundle = buildAdvisorFunnelMovementBundle(api);
+  return (
+    bundle.periods[0] ?? {
+      fromWeekNumber: 0,
+      toWeekNumber: 0,
+      fromWeekLabel: '—',
+      toWeekLabel: '—',
+      currentWeekLabel: bundle.currentWeekLabel,
+      title: 'Movimiento del funnel',
+      advisors: [],
+    }
+  );
+}
+
+export function advisorFunnelPeriodFilterLabel(period: AdvisorFunnelMovementSnapshot): string {
+  return `${period.fromWeekLabel} → ${period.toWeekLabel}`;
 }

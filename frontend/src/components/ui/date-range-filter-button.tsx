@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { es } from 'date-fns/locale';
 import type { DateRange } from 'react-day-picker';
 import { ChevronDown } from 'lucide-react';
@@ -9,14 +9,30 @@ import { CalendarSvgIcon } from '@/components/icons/CalendarSvgIcon';
 import {
   comercialProPopoverClass,
 } from '@/lib/comercialFilterSurface';
-import { calendarDateToLimaYmd } from '@/lib/crmTimezone';
+import {
+  calendarDateToLimaYmd,
+  isoWeekLabelFromInstant,
+  parseDayStartLima,
+  weekRangeFromCalendarDay,
+} from '@/lib/crmTimezone';
 import { formatDateDMY } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 
-function formatDisplayRange(range: DateRange | undefined): string {
+function formatDisplayRange(
+  range: DateRange | undefined,
+  selectionMode: 'range' | 'week',
+): string {
   if (!range?.from && !range?.to) return '';
   const fmt = (d: Date) => formatDateDMY(calendarDateToLimaYmd(d));
-  if (range?.from && range?.to) return `${fmt(range.from)} — ${fmt(range.to)}`;
+  if (range?.from && range?.to) {
+    if (selectionMode === 'week') {
+      const weekLabel = isoWeekLabelFromInstant(
+        parseDayStartLima(calendarDateToLimaYmd(range.from)),
+      );
+      return `${weekLabel} · ${fmt(range.from)} — ${fmt(range.to)}`;
+    }
+    return `${fmt(range.from)} — ${fmt(range.to)}`;
+  }
   if (range?.from) return `${fmt(range.from)} —`;
   return '';
 }
@@ -49,6 +65,8 @@ export interface DateRangeFilterButtonProps {
   placeholder?: string;
   className?: string;
   disabled?: boolean;
+  /** Un clic selecciona la semana ISO completa (lun–dom, Lima). */
+  selectionMode?: 'range' | 'week';
 }
 
 export function DateRangeFilterButton({
@@ -57,12 +75,24 @@ export function DateRangeFilterButton({
   placeholder = 'Última interacción',
   className,
   disabled,
+  selectionMode = 'range',
 }: DateRangeFilterButtonProps) {
   const [open, setOpen] = useState(false);
   const [draftRange, setDraftRange] = useState<DateRange | undefined>();
 
-  const displayText = formatDisplayRange(value);
+  const displayText = formatDisplayRange(value, selectionMode);
   const hasValue = Boolean(value?.from || value?.to);
+
+  const handleSelect = useCallback(
+    (range: DateRange | undefined, triggerDate: Date) => {
+      if (selectionMode === 'week') {
+        setDraftRange(weekRangeFromCalendarDay(triggerDate));
+        return;
+      }
+      setDraftRange(range);
+    },
+    [selectionMode],
+  );
 
   return (
     <Popover
@@ -101,10 +131,11 @@ export function DateRangeFilterButton({
           <Calendar
             mode="range"
             locale={es}
+            weekStartsOn={1}
             numberOfMonths={2}
             defaultMonth={draftRange?.from ?? value?.from ?? new Date()}
             selected={draftRange}
-            onSelect={(range) => setDraftRange(range)}
+            onSelect={handleSelect}
             showOutsideDays
             className="bg-transparent p-0 [--cell-size:2.25rem]"
             formatters={{

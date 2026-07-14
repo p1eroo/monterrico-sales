@@ -97,4 +97,43 @@ export class AnalyticsController {
       area,
     );
   }
+
+  /** Empresas de un bucket del movimiento por asesor (paginado). */
+  @Get('advisor-funnel-movement/companies')
+  @RequireAnyPermission('dashboard.ver', 'reportes.ver')
+  async getAdvisorFunnelMovementCompanies(
+    @Req() req: AuthedReq,
+    @Query('to') to?: string,
+    @Query('advisorId') advisorId?: string,
+    @Query('metric') metric?: string,
+    @Query('toWeekNumber') toWeekNumber?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('assignedTo') assignedTo?: string,
+    @Query('excludeAssignedTo') excludeAssignedTo?: string,
+    @Query('advisorPool') advisorPool?: string,
+    @Query('source') source?: string,
+  ) {
+    const crmScope = await this.crmDataScope.buildScope(
+      req.user.userId,
+      req.user.roleId,
+    );
+    return this.analytics.getAdvisorFunnelMovementCompanies({
+      to,
+      advisorId: advisorId ?? '',
+      metric: metric as
+        | 'nuevoIngreso'
+        | 'avance'
+        | 'atraso'
+        | 'sinCambios',
+      toWeekNumber: Number(toWeekNumber),
+      page: page ? Number(page) : undefined,
+      limit: limit ? Number(limit) : undefined,
+      assignedTo,
+      excludeAssignedTo,
+      advisorPool,
+      source,
+      crmScope,
+    });
+  }
 }

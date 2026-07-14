@@ -46,7 +46,7 @@ export type ReportsExportInput = {
   /** Datos para tablas de nuevas secciones */
   companiesByStage?: { label: string; value: number }[];
   weeklyOppsData?: { name: string; avance: number; nuevoIngreso: number; atraso: number; sinCambios: number }[];
-  sourcesByEntity?: { name: string; contactos: number; empresas: number; oportunidades: number }[];
+  sourcesByEntity?: { semana: string; fuente: string; empresas: number }[];
   wonSalesByMonth?: { name: string; ventas: number }[];
   activitiesComparison?: {
     previousMonth: {
@@ -221,14 +221,9 @@ function buildReportsPdfSections(data: ReportsExportInput): PdfSection[] {
       chartKey: 'wonOpportunities',
     },
     {
-      title: 'Fuentes mixtas',
-      head: [['Fuente', 'Contactos', 'Empresas', 'Oportunidades']],
-      body: data.sourcesByEntity?.map((x) => [
-        x.name,
-        x.contactos,
-        x.empresas,
-        x.oportunidades,
-      ]),
+      title: 'Fuentes: Empresas',
+      head: [['Semana', 'Fuente', 'Empresas']],
+      body: data.sourcesByEntity?.map((x) => [x.semana, x.fuente, x.empresas]),
       chartKey: 'sourcesByEntity',
     },
     {

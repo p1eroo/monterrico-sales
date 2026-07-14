@@ -227,21 +227,51 @@ export class ChatwootWebhookService {
     return { received: true };
   }
 
+  private async resolveAssigneePhone(
+    conversationId: number,
+    payload: ChatwootWebhookPayload,
+  ): Promise<string | undefined> {
+    const fromPayload = payload.conversation?.meta?.sender?.phone_number
+      ?? (payload as { contact?: { phone_number?: string } }).contact?.phone_number
+      ?? (payload.conversation as { contact_inbox?: { source_id?: string } } | undefined)
+        ?.contact_inbox?.source_id;
+    if (fromPayload?.trim()) return fromPayload.trim();
+
+    try {
+      const conversation = await this.client.getConversation(conversationId);
+      return this.operadorSync.extractPhoneFromConversation(conversation);
+    } catch (e) {
+      this.logger.warn(
+        `Webhook assignee: no se pudo obtener teléfono conv ${conversationId}: ${e instanceof Error ? e.message : e}`,
+      );
+    }
+    return undefined;
+  }
+
   private async handleAssigneeChanged(payload: ChatwootWebhookPayload) {
     const conversationId = payload.id
       ?? payload.conversation?.id
       ?? (payload as unknown as { conversation_id?: number }).conversation_id;
     const assignee = payload.assignee
       ?? payload.conversation?.meta?.assignee;
-    const phone = payload.conversation?.meta?.sender?.phone_number;
 
     if (conversationId) {
-      await this.operadorSync.syncOperadorFromConversation(
+      const phone = await this.resolveAssigneePhone(conversationId, payload);
+      const result = await this.operadorSync.syncOperadorFromConversation(
         conversationId,
         phone,
         assignee ?? null,
         assignee?.id,
       );
+      if (!result.prospectoId) {
+        this.logger.warn(
+          `Webhook assignee_changed conv ${conversationId}: prospecto no encontrado (tel: ${phone ?? '—'})`,
+        );
+      } else if (result.updated) {
+        this.logger.log(
+          `Webhook assignee_changed conv ${conversationId} → operador ${result.operador} (prospecto ${result.prospectoId})`,
+        );
+      }
     }
 
     this.emit('conversation_updated', {

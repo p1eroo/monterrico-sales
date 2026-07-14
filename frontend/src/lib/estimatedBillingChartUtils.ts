@@ -5,6 +5,20 @@ import { weekTooltipHeading } from '@/lib/crmTimezone';
 
 type WeekRow = EstimatedBillingWeekly['weeks'][number];
 
+const HOT_STAGE_MIN_PROBABILITY = 70;
+
+export function hotStageBillingFromWeek(week: WeekRow): number {
+  return week.byStage
+    .filter((stage) => stage.probability >= HOT_STAGE_MIN_PROBABILITY)
+    .reduce((sum, stage) => sum + stage.amount, 0);
+}
+
+/** Valor Y del punto/línea: facturación estimada en etapas 70%+. */
+export function hotStageBillingMarkerYFromWeek(week: WeekRow): number | null {
+  const hotBilling = hotStageBillingFromWeek(week);
+  return hotBilling > 0 ? hotBilling : null;
+}
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
@@ -24,6 +38,7 @@ export function buildEstimatedBillingTooltipHtml(
   const text = isDark ? '#f8fafc' : '#0f172a';
 
   const rows = week.byStage
+    .filter((stage) => stage.amount > 0)
     .map((stage) => {
       const label = escapeHtml(`${stage.name} (${stage.probability}%)`);
       return (
@@ -46,7 +61,7 @@ export function buildEstimatedBillingTooltipHtml(
     `<p style="margin:0;font-size:11px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:${muted};">${escapeHtml(weekTooltipHeading(week))}</p>` +
     `<p style="margin:4px 0 0;font-size:12px;font-weight:500;color:${text};">${escapeHtml(formatWeekRange(week.weekStart, week.weekEnd))}</p>` +
     `</div>` +
-    `<div style="max-height:220px;overflow-y:auto;padding:6px 14px;">${body}</div>` +
+    `<div style="padding:6px 14px;">${body}</div>` +
     `<div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid ${border};` +
     `background:${headerBg};padding:10px 14px;font-size:13px;font-weight:600;color:${text};">` +
     `<span>Total</span><span style="font-variant-numeric:tabular-nums;">${escapeHtml(formatCurrency(week.total))}</span></div>` +

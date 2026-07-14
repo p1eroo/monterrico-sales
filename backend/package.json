@@ -23,7 +23,8 @@
     "scripts:diagnose-duplicates": "node -r ts-node/register -r tsconfig-paths/register scripts/diagnose_duplicates.ts",
     "scripts:merge-duplicates": "node -r ts-node/register -r tsconfig-paths/register scripts/merge_duplicates.ts",
     "scripts:sync-chatwoot-contacts": "node -r ts-node/register -r tsconfig-paths/register scripts/sync-chatwoot-contacts.ts",
-    "scripts:backfill-flota-operador-stats": "node -r ts-node/register -r tsconfig-paths/register scripts/backfill-flota-operador-stats.ts"
+    "scripts:backfill-flota-operador-stats": "node -r ts-node/register -r tsconfig-paths/register scripts/backfill-flota-operador-stats.ts",
+    "scripts:backfill-operador-from-chatwoot": "node -r ts-node/register -r tsconfig-paths/register scripts/backfill-operador-from-chatwoot.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1016.0",

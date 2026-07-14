@@ -23,6 +23,7 @@ export interface FlotaProspectoRow {
   placa: string | null;
   aireAcondicionado: string | null;
   distrito: string | null;
+  asignadoAt?: string | null;
   fechaCita: string | null;
   asistencia: string | null;
   fechaAfiliacion: string | null;
@@ -313,8 +314,19 @@ export interface OperadorStats {
   citasProgramadas: number;
 }
 
+export interface OperadorStatsDailyRow extends OperadorStats {
+  fecha: string;
+}
+
 export async function fetchOperadorStats(fecini: string, fecfin: string): Promise<OperadorStats[]> {
   return api(`/flota-prospectos/operador-stats?fecini=${fecini}&fecfin=${fecfin}`);
+}
+
+export async function fetchOperadorStatsDaily(
+  fecini: string,
+  fecfin: string,
+): Promise<OperadorStatsDailyRow[]> {
+  return api(`/flota-prospectos/operador-stats/daily?fecini=${fecini}&fecfin=${fecfin}`);
 }
 
 export interface FlotaLlamada {

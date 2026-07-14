@@ -27,3 +27,10 @@ export function resolveLeadSourceKeyLoose(
   if (!trimmed) return trimmed;
   return resolveLeadSourceSlug(trimmed, catalog) ?? trimmed;
 }
+
+/** Bucket de empresas/contactos sin `fuente` asignada en BD (null o vacío). */
+export const UNASSIGNED_SOURCE_SLUG = '__sin_fuente__';
+
+export function isUnassignedSourceSlug(value: string): boolean {
+  return value.trim() === UNASSIGNED_SOURCE_SLUG;
+}

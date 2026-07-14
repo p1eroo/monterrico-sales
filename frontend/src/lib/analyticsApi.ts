@@ -37,7 +37,16 @@ export type AnalyticsSummary = {
   opportunitiesBySource: { name: string; value: number }[];
   /** Empresas creadas en el rango, por fuente (solo etapas 10%–100%). */
   companiesBySource: { name: string; value: number }[];
-  /** Detalle por fuente (cards): empresas creadas en la semana ISO anterior, etapas 10%–100%. */
+  /** Últimas 6 semanas: empresas acumuladas por fuente (1 ene → cierre semana, etapa histórica 10%–100%). */
+  companiesBySourceWeekly: {
+    weeks: {
+      name: string;
+      weekStart: string;
+      weekEnd: string;
+      sources: { slug: string; value: number }[];
+    }[];
+  };
+  /** Detalle por fuente (cards): empresas acumuladas del 1 ene al cierre de la semana ISO anterior, etapas 10%–100%. */
   sourcesDetail: {
     week: { name: string; weekStart: string; weekEnd: string };
     sources: {
@@ -52,6 +61,14 @@ export type AnalyticsSummary = {
       }[];
       hot70Count: number;
       hot70Billing: number;
+    }[];
+  };
+  /** Últimas 5 semanas ISO: detalle por fuente + desglose por asesor (filtro local en modal). */
+  sourcesDetailWeekly: {
+    weeks: {
+      week: { name: string; weekStart: string; weekEnd: string };
+      sources: AnalyticsSummary['sourcesDetail']['sources'];
+      byAdvisor: Record<string, AnalyticsSummary['sourcesDetail']['sources']>;
     }[];
   };
   funnelByStage: { name: string; value: number }[];
@@ -99,10 +116,72 @@ export type AnalyticsSummary = {
     correos: number;
     notas: number;
   }[];
+  /** Últimas 6 semanas ISO: actividades completadas por tipo (llamada, reunión, etc.). */
+  activitiesByTypeWeekly: {
+    weeks: { name: string; weekStart: string; weekEnd: string }[];
+    types: {
+      key: 'llamadas' | 'reuniones' | 'correos' | 'notas';
+      label: string;
+      counts: number[];
+      total: number;
+    }[];
+    maxCount: number;
+  };
+  /** Últimas 6 semanas ISO: actividades completadas por asesor y tipo. */
+  activitiesByAdvisorWeekly: {
+    weeks: { name: string; weekStart: string; weekEnd: string }[];
+    advisors: {
+      advisorId: string;
+      advisorName: string;
+      llamadas: number;
+      reuniones: number;
+      correos: number;
+      notas: number;
+      total: number;
+      byWeek: {
+        llamadas: number;
+        reuniones: number;
+        correos: number;
+        notas: number;
+        total: number;
+      }[];
+    }[];
+  };
+  /** Últimas 6 semanas ISO: tareas completadas por tipo (taskKind). */
+  tasksByKindWeekly: {
+    weeks: { name: string; weekStart: string; weekEnd: string }[];
+    kinds: {
+      key: 'llamadas' | 'reuniones' | 'correos' | 'whatsapp';
+      label: string;
+      counts: number[];
+      total: number;
+    }[];
+    maxCount: number;
+  };
+  /** Últimas 6 semanas ISO: tareas completadas por asesor y tipo. */
+  tasksByAdvisorWeekly: {
+    weeks: { name: string; weekStart: string; weekEnd: string }[];
+    advisors: {
+      advisorId: string;
+      advisorName: string;
+      llamadas: number;
+      reuniones: number;
+      correos: number;
+      whatsapp: number;
+      total: number;
+      byWeek: {
+        llamadas: number;
+        reuniones: number;
+        correos: number;
+        whatsapp: number;
+        total: number;
+      }[];
+    }[];
+  };
   opportunitiesByStageData: { name: string; count: number; value: number }[];
   followUpsByMonth: { name: string; completados: number; pendientes: number }[];
   opportunitiesInteraction: { withInteraction: number; withoutInteraction: number };
-  /** Últimas 6 semanas: empresas en etapas con probabilidad 10–100 %. */
+  /** Últimas 6 semanas: empresas creadas en el año (1 ene) en etapas 10–100 %. */
   activeProspectsWeekly: {
     weeks: {
       name: string;
@@ -119,7 +198,7 @@ export type AnalyticsSummary = {
     currentTotal: number;
     changePct: number | null;
   };
-  /** Últimas 6 semanas: matriz asesor × etapa (10–100 %) y facturación estimada por asesor. */
+  /** Últimas 6 semanas: matriz asesor × etapa (10–100 %), empresas del año en curso. */
   activeProspectsByAdvisorWeekly: {
     weeks: {
       name: string;
@@ -135,27 +214,29 @@ export type AnalyticsSummary = {
       estimatedBillingByAdvisor: Record<string, number>;
     }[];
   };
-  /** Movimiento del embudo por asesor (penúltima semana ISO vs semana anterior). */
+  /** Movimiento del embudo por asesor (últimas 4 parejas de semanas ISO). */
   companiesAdvisorFunnelMovement: {
-    fromWeekNumber: number;
-    toWeekNumber: number;
-    fromWeekLabel: string;
-    toWeekLabel: string;
     currentWeekLabel: string;
-    title: string;
-    advisors: {
-      id: string;
-      name: string;
-      activeProspects: number;
-      metrics: {
-        nuevoIngreso: number;
-        avance: number;
-        atraso: number;
-        sinCambios: number;
-      };
+    periods: {
+      fromWeekNumber: number;
+      toWeekNumber: number;
+      fromWeekLabel: string;
+      toWeekLabel: string;
+      title: string;
+      advisors: {
+        id: string;
+        name: string;
+        activeProspects: number;
+        metrics: {
+          nuevoIngreso: number;
+          avance: number;
+          atraso: number;
+          sinCambios: number;
+        };
+      }[];
     }[];
   };
-  /** Últimas 6 semanas: empresas en etapas con probabilidad 30–100 %. */
+  /** Últimas 6 semanas: empresas creadas en el año (1 ene) en etapas 30–100 %. */
   advancedContactsWeekly: {
     weeks: {
       name: string;
@@ -172,7 +253,7 @@ export type AnalyticsSummary = {
     currentTotal: number;
     changePct: number | null;
   };
-  /** Últimas 6 semanas: facturación estimada de empresas en etapas 10–100 %. */
+  /** Últimas 6 semanas: facturación estimada del año (1 ene), etapas 10–100 %. */
   estimatedBillingWeekly: {
     weeks: {
       name: string;
@@ -359,4 +440,54 @@ export async function fetchAnalyticsGoalProgress(
   if (area) q.set('area', area);
   const qs = q.toString();
   return api<AnalyticsGoalProgress>(`/analytics/goal-progress${qs ? `?${qs}` : ''}`);
+}
+
+export type AdvisorFunnelMovementMetricKey =
+  | 'nuevoIngreso'
+  | 'avance'
+  | 'atraso'
+  | 'sinCambios';
+
+export type AdvisorFunnelMovementCompanyRow = {
+  id: string;
+  name: string;
+  urlSlug: string;
+  etapa: string;
+  etapaLabel: string;
+};
+
+export type AdvisorFunnelMovementCompaniesPage = {
+  data: AdvisorFunnelMovementCompanyRow[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
+
+export type AdvisorFunnelMovementCompaniesQuery = AnalyticsQueryFilters & {
+  advisorId: string;
+  metric: AdvisorFunnelMovementMetricKey;
+  toWeekNumber: number;
+  page?: number;
+  limit?: number;
+};
+
+export type AdvisorFunnelMovementDetailQuery = Pick<
+  AdvisorFunnelMovementCompaniesQuery,
+  'to' | 'assignedTo' | 'excludeAssignedTo' | 'advisorPool' | 'source' | 'area'
+>;
+
+export async function fetchAdvisorFunnelMovementCompanies(
+  params: AdvisorFunnelMovementCompaniesQuery,
+): Promise<AdvisorFunnelMovementCompaniesPage> {
+  const q = new URLSearchParams();
+  appendAnalyticsFilters(q, params);
+  q.set('advisorId', params.advisorId);
+  q.set('metric', params.metric);
+  q.set('toWeekNumber', String(params.toWeekNumber));
+  if (params.page != null) q.set('page', String(params.page));
+  if (params.limit != null) q.set('limit', String(params.limit));
+  return api<AdvisorFunnelMovementCompaniesPage>(
+    `/analytics/advisor-funnel-movement/companies?${q.toString()}`,
+  );
 }

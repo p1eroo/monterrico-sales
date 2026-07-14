@@ -75,12 +75,42 @@ export function applySourceFilter(
   sources: string[],
 ): void {
   if (sources.length === 0) return;
-  const target = w as { fuente?: Prisma.StringFilter | Prisma.StringNullableFilter };
-  if (sources.length === 1) {
-    target.fuente = { equals: sources[0], mode: 'insensitive' };
-  } else {
-    target.fuente = { in: sources, mode: 'insensitive' };
+
+  const wantsUnassigned = sources.some((s) => s.trim() === '__sin_fuente__');
+  const catalog = sources.filter((s) => s.trim() !== '__sin_fuente__');
+  const orParts: PortfolioEntityWhere[] = [];
+
+  if (wantsUnassigned) {
+    orParts.push({
+      OR: [{ fuente: null }, { fuente: '' }],
+    } as PortfolioEntityWhere);
   }
+
+  if (catalog.length > 0) {
+    const target = {} as {
+      fuente?: Prisma.StringFilter | Prisma.StringNullableFilter;
+    };
+    if (catalog.length === 1) {
+      target.fuente = { equals: catalog[0], mode: 'insensitive' };
+    } else {
+      target.fuente = { in: catalog, mode: 'insensitive' };
+    }
+    orParts.push(target as PortfolioEntityWhere);
+  }
+
+  if (orParts.length === 0) return;
+  if (orParts.length === 1) {
+    Object.assign(w, orParts[0]);
+    return;
+  }
+
+  const clause = { OR: orParts } as PortfolioEntityWhere;
+  const existingAnd = Array.isArray(w.AND)
+    ? w.AND
+    : w.AND
+      ? [w.AND]
+      : [];
+  w.AND = [...existingAnd, clause] as typeof w.AND;
 }
 
 export function advisorWhereFromFilters(

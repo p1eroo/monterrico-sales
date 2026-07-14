@@ -1638,6 +1638,107 @@ export class FlotaProspectosService {
     return this.applyOperadorStatsScope(Array.from(aggregated.values()), scope);
   }
 
+  /** Desglose diario por operador (histórico DB + días faltantes en vivo). */
+  async getOperadorStatsDaily(fecini: string, fecfin: string, scope?: CrmDataScope) {
+    const today = this.limaDateString();
+    const effectiveEnd = fecfin > today ? today : fecfin;
+    if (fecini > effectiveEnd) return [];
+
+    const days = this.eachDateInclusive(fecini, effectiveEnd);
+    if (days.length === 0) return [];
+
+    const rangeStart = this.dateOnlyUtc(fecini);
+    const rangeEndExclusive = this.dateOnlyUtc(effectiveEnd);
+    rangeEndExclusive.setUTCDate(rangeEndExclusive.getUTCDate() + 1);
+
+    const historyRows = await this.prisma.flotaOperadorStatsDaily.findMany({
+      where: {
+        fecha: { gte: rangeStart, lt: rangeEndExclusive },
+      },
+    });
+
+    const rowsByDay = new Map<string, typeof historyRows>();
+    for (const row of historyRows) {
+      const ymd = this.fechaToYmd(row.fecha);
+      const bucket = rowsByDay.get(ymd) ?? [];
+      bucket.push(row);
+      rowsByDay.set(ymd, bucket);
+    }
+
+    const daily: Array<{
+      fecha: string;
+      operador: string;
+      prospectosAsignados: number;
+      chatsActivos: number;
+      mensajesEnviados: number;
+      mensajesRecibidos: number;
+      llamadas: number;
+      citasProgramadas: number;
+    }> = [];
+
+    if (rowsByDay.size === 0) {
+      for (const day of days) {
+        const live = await this.computeLiveOperadorStats(day, day, scope);
+        for (const row of live) {
+          daily.push({ fecha: day, ...row });
+        }
+      }
+      return this.applyOperadorStatsDailyScope(daily, scope);
+    }
+
+    for (const day of days) {
+      const dbRows = rowsByDay.get(day);
+      if (dbRows?.length) {
+        for (const r of dbRows) {
+          daily.push({
+            fecha: day,
+            operador: r.operador,
+            prospectosAsignados: r.prospectosAsignados,
+            chatsActivos: r.chatsActivos,
+            mensajesEnviados: r.mensajesEnviados,
+            mensajesRecibidos: r.mensajesRecibidos,
+            llamadas: r.llamadas,
+            citasProgramadas: r.citasProgramadas,
+          });
+        }
+      } else {
+        const live = await this.computeLiveOperadorStats(day, day, scope);
+        for (const row of live) {
+          daily.push({ fecha: day, ...row });
+        }
+      }
+    }
+
+    return this.applyOperadorStatsDailyScope(daily, scope);
+  }
+
+  private async applyOperadorStatsDailyScope(
+    rows: Array<{
+      fecha: string;
+      operador: string;
+      prospectosAsignados: number;
+      chatsActivos: number;
+      mensajesEnviados: number;
+      mensajesRecibidos: number;
+      llamadas: number;
+      citasProgramadas: number;
+    }>,
+    scope?: CrmDataScope,
+  ) {
+    if (!scope || scope.unrestricted) return rows;
+
+    const filter = await this.getScopeOperadorFilter(scope.viewerUserId);
+    if (!filter) return [];
+    const op = (filter as { operador?: string | { in?: string[] } }).operador;
+    const aliases = typeof op === 'string' ? [op] : (op?.in ?? []);
+    const allowed = new Set(aliases.map((a) => a.trim().toLowerCase()));
+    if (allowed.size === 0) return [];
+    return rows.filter((r) => {
+      const name = r.operador.trim().toLowerCase();
+      return allowed.has(name) || [...allowed].some((a) => name.includes(a) || a.includes(name));
+    });
+  }
+
   private async applyOperadorStatsScope(
     rows: ReturnType<FlotaProspectosService['emptyOperadorStats']>[],
     scope?: CrmDataScope,

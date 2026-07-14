@@ -306,6 +306,7 @@ export async function markConversationAsRead(conversationId: number): Promise<vo
 export async function initiateConversation(data: {
   name: string;
   phone: string;
+  contactId?: number;
   templateName?: string;
   templateCategory?: string;
   templateLanguage?: string;
